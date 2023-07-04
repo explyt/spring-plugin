@@ -1,0 +1,121 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij'
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+evaluationDependsOn(":spring-core")
+
+ext.pluginVersion = '2023.1'
+
+if (!hasProperty('snapshotVersion')) {
+    ext.snapshotVersion = 'SNAPSHOT'
+}
+
+version = {
+    if (rootProject.hasProperty('buildVersion')) {
+        def bv = rootProject.property('buildVersion') as String
+        return bv.startsWith("spring.v.") ? bv.substring(7) : (bv.startsWith("v.") ? bv.substring(2) : bv)
+    }
+    def sincePostfix = "${sinceVersion}".substring(0, 3)
+    return "${pluginVersion}.${snapshotVersion}-${sincePostfix}".toString()
+}()
+
+ext.springPluginName = 'spring-tool'
+ext.buildArchiveName = rootProject.hasProperty("distFilePostfix")
+        ? "${springPluginName}-${rootProject.distFilePostfix}.zip" : "${springPluginName}-${version}.zip"
+
+//Add '-PlaunchUltimate' property to 'run jpa buddy' run/debug configuration in arguments
+def launchUltimate = rootProject.hasProperty("launchUltimate")
+
+def springCoreProject = project(':spring-core')
+def springBootstrapModule = project(':spring-bootstrap')
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation springCoreProject
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    pluginName.set(springPluginName)
+    version.set(defaultIdeaVersion)
+    plugins.set(springCoreProject.intellijPlugins)
+    downloadSources.set(true)
+    if (launchUltimate) {
+        type.set("IU")
+    }
+    buildSearchableOptions {
+        enabled false
+    }
+    instrumentCode.set(false)
+}
+
+patchPluginXml {
+    version.set(springBootstrapModule.version)
+    sinceBuild.set(sinceVersion)
+    untilBuild.set(project.hasProperty('setUntilVersion') ? untilVersion : '')
+    changeNotes.set(springCoreProject.file("CHANGELOG.html").text)
+}
+
+runIde {
+    // Customize in ~/.gradle/gradle.properties:
+    // runIdeXmx=1600M
+    if (rootProject.hasProperty('runIdeXmx')) {
+        def xmx = rootProject['runIdeXmx']
+        jvmArgs("-Xmx$xmx")
+    }
+}
+
+//TODO
+//runPluginVerifier {
+//    ideVersions = [pluginVerifierIdeVersion]
+//    failureLevel.set(EnumSet.copyOf([FailureLevel.INVALID_PLUGIN, FailureLevel.COMPATIBILITY_PROBLEMS, FailureLevel.COMPATIBILITY_WARNINGS]))
+//
+//    def buildDir = project.getBuildDir()
+//    def buildArchivePath = "${buildDir}/distributions/${buildArchiveName}"
+//    distributionFile.set(new File(buildArchivePath))
+//}
+
+//TODO
+//if (rootProject.hasProperty('pluginRepoToken') && rootProject.hasProperty('pluginRepoChannel')) {
+//    publishPlugin {
+//        token.set(pluginRepoToken)
+//        channels.set([pluginRepoChannel])
+//        if (rootProject.hasProperty('pluginDistributionFile')) {
+//            distributionFile.set(pluginDistributionFile)
+//        }
+//    }
+//}
+
+buildPlugin {
+    archiveFileName = buildArchiveName
+}
+
+//TODO try to remove extra logic
+test {
+    scanForTestClasses false
+
+    include "**/*Test.class"
+
+    ['java.security.egd'].each {
+        def propertyValue = System.getProperty(it)
+        if (propertyValue) {
+            systemProperties[it] = propertyValue
+        }
+    }
+}
+
+// TODO Figure out how to configure existing tasks for local testing instead of creating new ones
+task testFromIdea(type: Test) {
+    setGroup("verification")
+    scanForTestClasses false
+    include "**/*Test.class"
+}
+
+//sourceSets {
+//    main.kotlin.srcDirs += 'src/main/kotlin'
+//}

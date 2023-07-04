@@ -1,0 +1,17 @@
+.gradle
+.idea
+*.iml
+*.iws
+build
+out
+buildSrc/.gradle
+plugins/
+modules/web-resources/generated/
+.directory
+build/
+modules/backend/build
+modules/intellij/build
+modules/ui-toolkit/build
+modules/web-resources/build
+modules/web-ui/build
+modules/intellij/test-run

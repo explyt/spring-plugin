@@ -1,0 +1,15 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup displayType="BALLOON" id="com.esprito.spring.notification"
+                           bundle="messages.MainBundle" key="esprito.spring.common.notifications"/>
+
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>

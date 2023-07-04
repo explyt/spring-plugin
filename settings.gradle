@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2008-2021 Haulmont. All rights reserved.
+ * Use is subject to license terms, see http://www.cuba-platform.com/commercial-software-license for details.
+ */
+rootProject.name = 'esprito-studio'
+
+includeProject('spring-core', 'modules/spring-core')
+includeProject('spring-bootstrap', 'modules/spring-bootstrap')
+
+void includeProject(String name, String path, boolean changeBuildFileName = true, boolean ktScript = false) {
+    include ":$name"
+    project(":$name").projectDir = new File(settingsDir, "$path")
+
+    if (changeBuildFileName) {
+        project(":$name").buildFileName = "${name}.gradle" + (ktScript ? ".kts" : "")
+    }
+}
