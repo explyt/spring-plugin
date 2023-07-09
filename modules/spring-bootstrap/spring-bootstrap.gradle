@@ -5,6 +5,7 @@ plugins {
 }
 
 evaluationDependsOn(":spring-core")
+evaluationDependsOn(":jpql")
 
 ext.pluginVersion = '2023.1'
 
@@ -29,6 +30,7 @@ ext.buildArchiveName = rootProject.hasProperty("distFilePostfix")
 def launchUltimate = rootProject.hasProperty("launchUltimate")
 
 def springCoreProject = project(':spring-core')
+def jpqlProject = project(':jpql')
 def springBootstrapModule = project(':spring-bootstrap')
 
 repositories {
@@ -37,6 +39,7 @@ repositories {
 
 dependencies {
     implementation springCoreProject
+    implementation jpqlProject
 }
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/

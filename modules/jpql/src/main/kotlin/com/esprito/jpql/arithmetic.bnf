@@ -1,0 +1,68 @@
+{
+  parserClass="com.esprito.jpql.parser.JpqlParser"
+//  parserUtilClass="com.esprito.jpql.parser.JpqlParserUtil"
+
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Jpql"
+  psiImplClassSuffix="Impl"
+  psiPackage="com.esprito.jpql.psi"
+  psiImplPackage="com.esprito.jpql.psi.impl"
+
+  elementTypeHolderClass="com.esprito.jpql.psi.JpqlTypes"
+  elementTypeClass="com.esprito.jpql.psi.JpqlElementType"
+  tokenTypeClass="com.esprito.jpql.psi.JpqlTokenType"
+
+//  extends(".*reference_expression")=reference_expression
+  extends(".*expression")=expression
+
+  tokens = [
+    boolean_literal = 'regexp:(true|false)'
+    AND = 'AND'
+    OR = 'OR'
+    COMMA = ','
+    WHITESPACE='regexp:[ \n\r\t\f]'
+    LPAREN = '('
+    RPAREN = ')'
+    COLON = ':'
+    FROM = 'FROM'
+
+    identifier = 'regexp:[a-zA-Z][a-zA-Z0-9]*'
+    numeric_literal = 'regexp:[0-9]+(\.[0-9]+)*'
+    string_literal = "regexp:'.*'"
+  ]
+}
+
+root ::= {expression ';'}*
+
+expression ::= additive_expression | multiplicative_expression | term_expression | paren_expression
+
+paren_expression ::= '(' expression ')'
+
+term_expression ::= reference_expression
+
+additive_expression ::=
+    expression {'+'|'-'} expression
+
+multiplicative_expression ::=
+    expression {'*'|'/'} expression
+
+reference_expression ::= identifier ('.' identifier)* | map_based_expression |  input_parameter_expression
+map_based_expression ::= KEY'('reference_expression')' | VALUE'('reference_expression')' | ENTRY'('reference_expression')'
+
+//input_parameter
+input_parameter_expression ::= ':'identifier
+
+
+conditional_expression ::= conditional_or_expression
+    | conditional_and_expression
+    | term_expression
+
+term_expression ::= identifier
+
+conditional_or_expression ::= conditional_expression OR conditional_expression {
+    extends = conditional_expression
+}
+conditional_and_expression ::= conditional_expression AND conditional_expression {
+    extends = conditional_expression
+}

@@ -6,6 +6,7 @@ rootProject.name = 'esprito-studio'
 
 includeProject('spring-core', 'modules/spring-core')
 includeProject('spring-bootstrap', 'modules/spring-bootstrap')
+includeProject('jpql', 'modules/jpql')
 
 void includeProject(String name, String path, boolean changeBuildFileName = true, boolean ktScript = false) {
     include ":$name"

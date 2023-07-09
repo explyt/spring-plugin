@@ -1,0 +1,9 @@
+SELECT e FROM Entity e WHERE e.date = CURRENT_DATE;
+SELECT e FROM Entity e WHERE e.timestamp > CURRENT_TIMESTAMP;
+SELECT e FROM Entity e WHERE EXTRACT(YEAR FROM e.date) = :year;
+SELECT e FROM Entity e WHERE TRUNC(e.date) = :targetDate;
+SELECT e FROM Entity e WHERE e.date >= ADD_DAYS(:startDate, 7);
+SELECT e FROM Entity e WHERE DIFF_DAYS(e.startDate, e.endDate) > 30;
+SELECT e FROM Entity e WHERE DATE_FORMAT(e.date, 'yyyy-MM-dd') = :formattedDate;
+SELECT e FROM Entity e WHERE DATEADD(HOUR, 2, e.timestamp) > CURRENT_TIMESTAMP;
+SELECT e FROM Entity e WHERE e.date <= LAST_DAY(CURRENT_DATE);
