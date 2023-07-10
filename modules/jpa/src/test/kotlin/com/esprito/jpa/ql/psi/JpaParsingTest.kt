@@ -1,6 +1,5 @@
-package com.esprito.jpql.psi
+package com.esprito.jpa.ql.psi
 
-import com.esprito.jpa.ql.psi.JpqlParserDefinition
 import com.intellij.testFramework.ParsingTestCase
 
 class JpaParsingTest : ParsingTestCase("", "jpql", JpqlParserDefinition()) {
