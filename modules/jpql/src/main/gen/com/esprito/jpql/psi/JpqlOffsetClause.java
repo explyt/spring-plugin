@@ -7,10 +7,7 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlOffsetClause extends PsiElement {
 
-  @Nullable
-  JpqlInputParameterExpression getInputParameterExpression();
-
-  @Nullable
-  PsiElement getNumericLiteral();
+  @NotNull
+  JpqlExpression getExpression();
 
 }

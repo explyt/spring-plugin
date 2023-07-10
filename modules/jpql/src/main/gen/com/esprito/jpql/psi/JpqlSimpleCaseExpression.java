@@ -10,25 +10,10 @@ public interface JpqlSimpleCaseExpression extends JpqlExpression {
   @NotNull
   JpqlCaseOperand getCaseOperand();
 
-  @Nullable
-  JpqlDatetimeFunction getDatetimeFunction();
-
-  @Nullable
+  @NotNull
   JpqlExpression getExpression();
-
-  @Nullable
-  JpqlIdentifier getIdentifier();
 
   @NotNull
   List<JpqlSimpleWhenClause> getSimpleWhenClauseList();
-
-  @Nullable
-  PsiElement getBooleanLiteral();
-
-  @Nullable
-  PsiElement getDatetimeLiteral();
-
-  @Nullable
-  PsiElement getStringLiteral();
 
 }

@@ -8,35 +8,23 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpql.psi.*;
 
-public class JpqlStringExpressionImpl extends JpqlExpressionImpl implements JpqlStringExpression {
+public class JpqlFunctionArgImpl extends ASTWrapperPsiElement implements JpqlFunctionArg {
 
-  public JpqlStringExpressionImpl(@NotNull ASTNode node) {
+  public JpqlFunctionArgImpl(@NotNull ASTNode node) {
     super(node);
   }
 
-  @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitStringExpression(this);
+    visitor.visitFunctionArg(this);
   }
 
   @Override
   public void accept(@NotNull PsiElementVisitor visitor) {
     if (visitor instanceof JpqlVisitor) accept((JpqlVisitor)visitor);
     else super.accept(visitor);
-  }
-
-  @Override
-  @Nullable
-  public JpqlExpression getExpression() {
-    return findChildByClass(JpqlExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getStringLiteral() {
-    return findChildByType(STRING_LITERAL);
   }
 
 }

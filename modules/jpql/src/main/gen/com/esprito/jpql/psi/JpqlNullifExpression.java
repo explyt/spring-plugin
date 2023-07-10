@@ -8,12 +8,6 @@ import com.intellij.psi.PsiElement;
 public interface JpqlNullifExpression extends JpqlExpression {
 
   @NotNull
-  List<JpqlDatetimeFunction> getDatetimeFunctionList();
-
-  @NotNull
   List<JpqlExpression> getExpressionList();
-
-  @NotNull
-  List<JpqlIdentifier> getIdentifierList();
 
 }

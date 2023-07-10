@@ -29,20 +29,8 @@ public class JpqlNullifExpressionImpl extends JpqlExpressionImpl implements Jpql
 
   @Override
   @NotNull
-  public List<JpqlDatetimeFunction> getDatetimeFunctionList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlDatetimeFunction.class);
-  }
-
-  @Override
-  @NotNull
   public List<JpqlExpression> getExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
-  }
-
-  @Override
-  @NotNull
-  public List<JpqlIdentifier> getIdentifierList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlIdentifier.class);
   }
 
 }

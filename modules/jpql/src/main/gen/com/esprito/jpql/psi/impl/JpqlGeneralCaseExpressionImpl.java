@@ -28,45 +28,15 @@ public class JpqlGeneralCaseExpressionImpl extends JpqlExpressionImpl implements
   }
 
   @Override
-  @Nullable
-  public JpqlDatetimeFunction getDatetimeFunction() {
-    return findChildByClass(JpqlDatetimeFunction.class);
-  }
-
-  @Override
-  @Nullable
+  @NotNull
   public JpqlExpression getExpression() {
-    return findChildByClass(JpqlExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
+    return findNotNullChildByClass(JpqlExpression.class);
   }
 
   @Override
   @NotNull
   public List<JpqlWhenClause> getWhenClauseList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlWhenClause.class);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getBooleanLiteral() {
-    return findChildByType(BOOLEAN_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getDatetimeLiteral() {
-    return findChildByType(DATETIME_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getStringLiteral() {
-    return findChildByType(STRING_LITERAL);
   }
 
 }

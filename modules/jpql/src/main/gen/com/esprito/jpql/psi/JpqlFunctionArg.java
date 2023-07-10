@@ -5,12 +5,6 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlBooleanExpression extends JpqlExpression {
-
-  @Nullable
-  JpqlExpression getExpression();
-
-  @Nullable
-  PsiElement getBooleanLiteral();
+public interface JpqlFunctionArg extends PsiElement {
 
 }

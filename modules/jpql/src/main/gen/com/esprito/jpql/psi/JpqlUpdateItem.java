@@ -7,22 +7,7 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlUpdateItem extends PsiElement {
 
-  @Nullable
-  JpqlDatetimeFunction getDatetimeFunction();
-
   @NotNull
   List<JpqlExpression> getExpressionList();
-
-  @Nullable
-  JpqlIdentifier getIdentifier();
-
-  @Nullable
-  PsiElement getBooleanLiteral();
-
-  @Nullable
-  PsiElement getDatetimeLiteral();
-
-  @Nullable
-  PsiElement getStringLiteral();
 
 }

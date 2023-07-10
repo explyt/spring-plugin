@@ -8,21 +8,9 @@ import com.intellij.psi.PsiElement;
 public interface JpqlInItem extends PsiElement {
 
   @Nullable
+  JpqlExpression getExpression();
+
+  @Nullable
   JpqlIdentifier getIdentifier();
-
-  @Nullable
-  JpqlInputParameterExpression getInputParameterExpression();
-
-  @Nullable
-  PsiElement getBooleanLiteral();
-
-  @Nullable
-  PsiElement getDatetimeLiteral();
-
-  @Nullable
-  PsiElement getNumericLiteral();
-
-  @Nullable
-  PsiElement getStringLiteral();
 
 }

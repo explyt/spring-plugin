@@ -28,9 +28,9 @@ public class JpqlAggregateExpressionImpl extends JpqlExpressionImpl implements J
   }
 
   @Override
-  @NotNull
-  public JpqlReferenceExpression getReferenceExpression() {
-    return findNotNullChildByClass(JpqlReferenceExpression.class);
+  @Nullable
+  public JpqlExpression getExpression() {
+    return findChildByClass(JpqlExpression.class);
   }
 
 }

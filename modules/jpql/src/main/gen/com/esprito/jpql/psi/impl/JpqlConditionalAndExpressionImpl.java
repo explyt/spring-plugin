@@ -10,7 +10,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
 import com.esprito.jpql.psi.*;
 
-public class JpqlConditionalAndExpressionImpl extends JpqlExpressionImpl implements JpqlConditionalAndExpression {
+public class JpqlConditionalAndExpressionImpl extends JpqlBinaryExpressionImpl implements JpqlConditionalAndExpression {
 
   public JpqlConditionalAndExpressionImpl(@NotNull ASTNode node) {
     super(node);
@@ -25,12 +25,6 @@ public class JpqlConditionalAndExpressionImpl extends JpqlExpressionImpl impleme
   public void accept(@NotNull PsiElementVisitor visitor) {
     if (visitor instanceof JpqlVisitor) accept((JpqlVisitor)visitor);
     else super.accept(visitor);
-  }
-
-  @Override
-  @NotNull
-  public List<JpqlExpression> getExpressionList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
   }
 
 }

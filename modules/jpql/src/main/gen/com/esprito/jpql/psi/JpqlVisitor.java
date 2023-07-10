@@ -12,7 +12,7 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitAdditiveExpression(@NotNull JpqlAdditiveExpression o) {
-    visitExpression(o);
+    visitBinaryExpression(o);
   }
 
   public void visitAggregateExpression(@NotNull JpqlAggregateExpression o) {
@@ -27,7 +27,11 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitExpression(o);
   }
 
-  public void visitBooleanExpression(@NotNull JpqlBooleanExpression o) {
+  public void visitBinaryExpression(@NotNull JpqlBinaryExpression o) {
+    visitExpression(o);
+  }
+
+  public void visitBooleanLiteral(@NotNull JpqlBooleanLiteral o) {
     visitExpression(o);
   }
 
@@ -56,7 +60,7 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitConditionalAndExpression(@NotNull JpqlConditionalAndExpression o) {
-    visitExpression(o);
+    visitBinaryExpression(o);
   }
 
   public void visitConditionalNotExpression(@NotNull JpqlConditionalNotExpression o) {
@@ -64,23 +68,27 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitConditionalOrExpression(@NotNull JpqlConditionalOrExpression o) {
-    visitExpression(o);
+    visitBinaryExpression(o);
+  }
+
+  public void visitConstructorArgumentsList(@NotNull JpqlConstructorArgumentsList o) {
+    visitPsiElement(o);
   }
 
   public void visitConstructorExpression(@NotNull JpqlConstructorExpression o) {
     visitExpression(o);
   }
 
-  public void visitConstructorItem(@NotNull JpqlConstructorItem o) {
+  public void visitDatetimeFunction(@NotNull JpqlDatetimeFunction o) {
     visitPsiElement(o);
   }
 
-  public void visitDatetimeExpression(@NotNull JpqlDatetimeExpression o) {
+  public void visitDatetimeFunctionExpression(@NotNull JpqlDatetimeFunctionExpression o) {
     visitExpression(o);
   }
 
-  public void visitDatetimeFunction(@NotNull JpqlDatetimeFunction o) {
-    visitPsiElement(o);
+  public void visitDatetimeLiteral(@NotNull JpqlDatetimeLiteral o) {
+    visitExpression(o);
   }
 
   public void visitDeleteClause(@NotNull JpqlDeleteClause o) {
@@ -99,19 +107,7 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitExpression(o);
   }
 
-  public void visitEntityExpression(@NotNull JpqlEntityExpression o) {
-    visitExpression(o);
-  }
-
   public void visitEntityOrValueExpression(@NotNull JpqlEntityOrValueExpression o) {
-    visitExpression(o);
-  }
-
-  public void visitEntityTypeExpression(@NotNull JpqlEntityTypeExpression o) {
-    visitExpression(o);
-  }
-
-  public void visitEnumExpression(@NotNull JpqlEnumExpression o) {
     visitExpression(o);
   }
 
@@ -137,6 +133,14 @@ public class JpqlVisitor extends PsiElementVisitor {
 
   public void visitFromClause(@NotNull JpqlFromClause o) {
     visitPsiElement(o);
+  }
+
+  public void visitFunctionArg(@NotNull JpqlFunctionArg o) {
+    visitPsiElement(o);
+  }
+
+  public void visitFunctionInvocationExpression(@NotNull JpqlFunctionInvocationExpression o) {
+    visitExpression(o);
   }
 
   public void visitFunctionsReturningNumericsExpression(@NotNull JpqlFunctionsReturningNumericsExpression o) {
@@ -199,16 +203,12 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
-  public void visitLiteralExpression(@NotNull JpqlLiteralExpression o) {
-    visitExpression(o);
-  }
-
   public void visitMapBasedReferenceExpression(@NotNull JpqlMapBasedReferenceExpression o) {
     visitReferenceExpression(o);
   }
 
   public void visitMultiplicativeExpression(@NotNull JpqlMultiplicativeExpression o) {
-    visitExpression(o);
+    visitBinaryExpression(o);
   }
 
   public void visitNullComparisonExpression(@NotNull JpqlNullComparisonExpression o) {
@@ -216,6 +216,10 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitNullifExpression(@NotNull JpqlNullifExpression o) {
+    visitExpression(o);
+  }
+
+  public void visitNumericLiteral(@NotNull JpqlNumericLiteral o) {
     visitExpression(o);
   }
 
@@ -251,10 +255,6 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
-  public void visitSelectExpression(@NotNull JpqlSelectExpression o) {
-    visitExpression(o);
-  }
-
   public void visitSelectItem(@NotNull JpqlSelectItem o) {
     visitPsiElement(o);
   }
@@ -267,10 +267,6 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitExpression(o);
   }
 
-  public void visitSimpleEntityExpression(@NotNull JpqlSimpleEntityExpression o) {
-    visitExpression(o);
-  }
-
   public void visitSimpleEntityOrValueExpression(@NotNull JpqlSimpleEntityOrValueExpression o) {
     visitExpression(o);
   }
@@ -279,19 +275,15 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
-  public void visitSimpleSelectExpression(@NotNull JpqlSimpleSelectExpression o) {
-    visitExpression(o);
-  }
-
   public void visitSimpleWhenClause(@NotNull JpqlSimpleWhenClause o) {
     visitPsiElement(o);
   }
 
-  public void visitStringExpression(@NotNull JpqlStringExpression o) {
+  public void visitStringFunctionExpression(@NotNull JpqlStringFunctionExpression o) {
     visitExpression(o);
   }
 
-  public void visitStringFunctionExpression(@NotNull JpqlStringFunctionExpression o) {
+  public void visitStringLiteral(@NotNull JpqlStringLiteral o) {
     visitExpression(o);
   }
 

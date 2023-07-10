@@ -28,15 +28,9 @@ public class JpqlLimitClauseImpl extends ASTWrapperPsiElement implements JpqlLim
   }
 
   @Override
-  @Nullable
-  public JpqlInputParameterExpression getInputParameterExpression() {
-    return findChildByClass(JpqlInputParameterExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getNumericLiteral() {
-    return findChildByType(NUMERIC_LITERAL);
+  @NotNull
+  public JpqlExpression getExpression() {
+    return findNotNullChildByClass(JpqlExpression.class);
   }
 
 }

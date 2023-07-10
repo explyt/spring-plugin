@@ -28,39 +28,9 @@ public class JpqlUpdateItemImpl extends ASTWrapperPsiElement implements JpqlUpda
   }
 
   @Override
-  @Nullable
-  public JpqlDatetimeFunction getDatetimeFunction() {
-    return findChildByClass(JpqlDatetimeFunction.class);
-  }
-
-  @Override
   @NotNull
   public List<JpqlExpression> getExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getBooleanLiteral() {
-    return findChildByType(BOOLEAN_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getDatetimeLiteral() {
-    return findChildByType(DATETIME_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getStringLiteral() {
-    return findChildByType(STRING_LITERAL);
   }
 
 }

@@ -29,38 +29,14 @@ public class JpqlInItemImpl extends ASTWrapperPsiElement implements JpqlInItem {
 
   @Override
   @Nullable
+  public JpqlExpression getExpression() {
+    return findChildByClass(JpqlExpression.class);
+  }
+
+  @Override
+  @Nullable
   public JpqlIdentifier getIdentifier() {
     return findChildByClass(JpqlIdentifier.class);
-  }
-
-  @Override
-  @Nullable
-  public JpqlInputParameterExpression getInputParameterExpression() {
-    return findChildByClass(JpqlInputParameterExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getBooleanLiteral() {
-    return findChildByType(BOOLEAN_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getDatetimeLiteral() {
-    return findChildByType(DATETIME_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getNumericLiteral() {
-    return findChildByType(NUMERIC_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getStringLiteral() {
-    return findChildByType(STRING_LITERAL);
   }
 
 }

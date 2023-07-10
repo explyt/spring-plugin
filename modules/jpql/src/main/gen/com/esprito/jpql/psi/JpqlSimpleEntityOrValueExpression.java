@@ -8,18 +8,9 @@ import com.intellij.psi.PsiElement;
 public interface JpqlSimpleEntityOrValueExpression extends JpqlExpression {
 
   @Nullable
+  JpqlExpression getExpression();
+
+  @Nullable
   JpqlIdentifier getIdentifier();
-
-  @Nullable
-  PsiElement getBooleanLiteral();
-
-  @Nullable
-  PsiElement getDatetimeLiteral();
-
-  @Nullable
-  PsiElement getNumericLiteral();
-
-  @Nullable
-  PsiElement getStringLiteral();
 
 }

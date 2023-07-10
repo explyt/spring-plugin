@@ -5,9 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlEntityTypeExpression extends JpqlExpression {
+public interface JpqlNumericLiteral extends JpqlExpression {
 
-  @Nullable
-  JpqlIdentifier getIdentifier();
+  @NotNull
+  PsiElement getNumeric();
 
 }

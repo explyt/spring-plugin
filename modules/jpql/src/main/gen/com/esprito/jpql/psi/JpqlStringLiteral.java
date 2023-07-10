@@ -5,6 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlConditionalOrExpression extends JpqlBinaryExpression {
+public interface JpqlStringLiteral extends JpqlExpression {
+
+  @NotNull
+  PsiElement getString();
 
 }

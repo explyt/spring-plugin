@@ -5,9 +5,6 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlConditionalAndExpression extends JpqlExpression {
-
-  @NotNull
-  List<JpqlExpression> getExpressionList();
+public interface JpqlConditionalAndExpression extends JpqlBinaryExpression {
 
 }

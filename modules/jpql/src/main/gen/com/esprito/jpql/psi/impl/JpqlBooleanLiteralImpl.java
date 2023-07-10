@@ -10,21 +10,27 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
 import com.esprito.jpql.psi.*;
 
-public abstract class JpqlEntityExpressionImpl extends JpqlExpressionImpl implements JpqlEntityExpression {
+public class JpqlBooleanLiteralImpl extends JpqlExpressionImpl implements JpqlBooleanLiteral {
 
-  public JpqlEntityExpressionImpl(@NotNull ASTNode node) {
+  public JpqlBooleanLiteralImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitEntityExpression(this);
+    visitor.visitBooleanLiteral(this);
   }
 
   @Override
   public void accept(@NotNull PsiElementVisitor visitor) {
     if (visitor instanceof JpqlVisitor) accept((JpqlVisitor)visitor);
     else super.accept(visitor);
+  }
+
+  @Override
+  @NotNull
+  public PsiElement getBoolean() {
+    return findNotNullChildByType(BOOLEAN);
   }
 
 }

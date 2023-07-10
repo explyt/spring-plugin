@@ -8,17 +8,17 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpql.psi.*;
 
-public class JpqlSimpleCaseExpressionImpl extends JpqlExpressionImpl implements JpqlSimpleCaseExpression {
+public class JpqlConstructorArgumentsListImpl extends ASTWrapperPsiElement implements JpqlConstructorArgumentsList {
 
-  public JpqlSimpleCaseExpressionImpl(@NotNull ASTNode node) {
+  public JpqlConstructorArgumentsListImpl(@NotNull ASTNode node) {
     super(node);
   }
 
-  @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitSimpleCaseExpression(this);
+    visitor.visitConstructorArgumentsList(this);
   }
 
   @Override
@@ -29,20 +29,8 @@ public class JpqlSimpleCaseExpressionImpl extends JpqlExpressionImpl implements 
 
   @Override
   @NotNull
-  public JpqlCaseOperand getCaseOperand() {
-    return findNotNullChildByClass(JpqlCaseOperand.class);
-  }
-
-  @Override
-  @NotNull
-  public JpqlExpression getExpression() {
-    return findNotNullChildByClass(JpqlExpression.class);
-  }
-
-  @Override
-  @NotNull
-  public List<JpqlSimpleWhenClause> getSimpleWhenClauseList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlSimpleWhenClause.class);
+  public List<JpqlExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
   }
 
 }

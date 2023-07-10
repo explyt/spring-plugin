@@ -7,25 +7,10 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlGeneralCaseExpression extends JpqlExpression {
 
-  @Nullable
-  JpqlDatetimeFunction getDatetimeFunction();
-
-  @Nullable
+  @NotNull
   JpqlExpression getExpression();
-
-  @Nullable
-  JpqlIdentifier getIdentifier();
 
   @NotNull
   List<JpqlWhenClause> getWhenClauseList();
-
-  @Nullable
-  PsiElement getBooleanLiteral();
-
-  @Nullable
-  PsiElement getDatetimeLiteral();
-
-  @Nullable
-  PsiElement getStringLiteral();
 
 }

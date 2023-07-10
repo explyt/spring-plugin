@@ -29,8 +29,8 @@ public class JpqlConstructorExpressionImpl extends JpqlExpressionImpl implements
 
   @Override
   @NotNull
-  public List<JpqlConstructorItem> getConstructorItemList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlConstructorItem.class);
+  public JpqlConstructorArgumentsList getConstructorArgumentsList() {
+    return findNotNullChildByClass(JpqlConstructorArgumentsList.class);
   }
 
   @Override

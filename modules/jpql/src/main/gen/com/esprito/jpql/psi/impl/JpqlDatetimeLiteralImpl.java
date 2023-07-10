@@ -10,15 +10,15 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
 import com.esprito.jpql.psi.*;
 
-public class JpqlBooleanExpressionImpl extends JpqlExpressionImpl implements JpqlBooleanExpression {
+public class JpqlDatetimeLiteralImpl extends JpqlExpressionImpl implements JpqlDatetimeLiteral {
 
-  public JpqlBooleanExpressionImpl(@NotNull ASTNode node) {
+  public JpqlDatetimeLiteralImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitBooleanExpression(this);
+    visitor.visitDatetimeLiteral(this);
   }
 
   @Override
@@ -28,15 +28,9 @@ public class JpqlBooleanExpressionImpl extends JpqlExpressionImpl implements Jpq
   }
 
   @Override
-  @Nullable
-  public JpqlExpression getExpression() {
-    return findChildByClass(JpqlExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getBooleanLiteral() {
-    return findChildByType(BOOLEAN_LITERAL);
+  @NotNull
+  public PsiElement getDatetime() {
+    return findNotNullChildByType(DATETIME);
   }
 
 }

@@ -56,6 +56,7 @@ object JpqlTokensSets {
         JpqlTypes.ESCAPE,
         JpqlTypes.EXISTS,
         JpqlTypes.FETCH,
+        JpqlTypes.FUNCTION,
         JpqlTypes.FROM,
         JpqlTypes.GROUP,
         JpqlTypes.HAVING,

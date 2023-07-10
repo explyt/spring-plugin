@@ -10,4 +10,8 @@ public interface JpqlMapBasedReferenceExpression extends JpqlReferenceExpression
   @NotNull
   JpqlReferenceExpression getReferenceExpression();
 
+  //WARNING: getMapOperationType(...) is skipped
+  //matching getMapOperationType(JpqlMapBasedReferenceExpression, ...)
+  //methods are not found in JpqlPsiImplUtil
+
 }

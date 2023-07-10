@@ -5,9 +5,6 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlMultiplicativeExpression extends JpqlExpression {
-
-  @NotNull
-  List<JpqlExpression> getExpressionList();
+public interface JpqlMultiplicativeExpression extends JpqlBinaryExpression {
 
 }

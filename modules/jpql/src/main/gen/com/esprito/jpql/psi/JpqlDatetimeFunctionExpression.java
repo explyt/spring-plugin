@@ -5,6 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlEntityExpression extends JpqlExpression {
+public interface JpqlDatetimeFunctionExpression extends JpqlExpression {
+
+  @NotNull
+  JpqlDatetimeFunction getDatetimeFunction();
 
 }

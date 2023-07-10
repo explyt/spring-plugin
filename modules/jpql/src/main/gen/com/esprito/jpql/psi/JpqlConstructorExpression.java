@@ -8,7 +8,7 @@ import com.intellij.psi.PsiElement;
 public interface JpqlConstructorExpression extends JpqlExpression {
 
   @NotNull
-  List<JpqlConstructorItem> getConstructorItemList();
+  JpqlConstructorArgumentsList getConstructorArgumentsList();
 
   @NotNull
   JpqlReferenceExpression getReferenceExpression();

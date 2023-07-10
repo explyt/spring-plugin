@@ -7,7 +7,7 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlAggregateExpression extends JpqlExpression {
 
-  @NotNull
-  JpqlReferenceExpression getReferenceExpression();
+  @Nullable
+  JpqlExpression getExpression();
 
 }

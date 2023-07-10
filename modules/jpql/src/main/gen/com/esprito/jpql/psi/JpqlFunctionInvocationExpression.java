@@ -5,15 +5,12 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlDatetimeExpression extends JpqlExpression {
+public interface JpqlFunctionInvocationExpression extends JpqlExpression {
+
+  @NotNull
+  List<JpqlFunctionArg> getFunctionArgList();
 
   @Nullable
-  JpqlDatetimeFunction getDatetimeFunction();
-
-  @Nullable
-  JpqlExpression getExpression();
-
-  @Nullable
-  PsiElement getDatetimeLiteral();
+  JpqlStringLiteral getStringLiteral();
 
 }

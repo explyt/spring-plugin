@@ -10,15 +10,15 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
 import com.esprito.jpql.psi.*;
 
-public class JpqlEnumExpressionImpl extends JpqlExpressionImpl implements JpqlEnumExpression {
+public class JpqlDatetimeFunctionExpressionImpl extends JpqlExpressionImpl implements JpqlDatetimeFunctionExpression {
 
-  public JpqlEnumExpressionImpl(@NotNull ASTNode node) {
+  public JpqlDatetimeFunctionExpressionImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitEnumExpression(this);
+    visitor.visitDatetimeFunctionExpression(this);
   }
 
   @Override
@@ -28,15 +28,9 @@ public class JpqlEnumExpressionImpl extends JpqlExpressionImpl implements JpqlEn
   }
 
   @Override
-  @Nullable
-  public JpqlExpression getExpression() {
-    return findChildByClass(JpqlExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
+  @NotNull
+  public JpqlDatetimeFunction getDatetimeFunction() {
+    return findNotNullChildByClass(JpqlDatetimeFunction.class);
   }
 
 }

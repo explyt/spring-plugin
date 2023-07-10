@@ -39,10 +39,4 @@ public class JpqlFunctionsReturningNumericsExpressionImpl extends JpqlExpression
     return findChildByClass(JpqlIdentifier.class);
   }
 
-  @Override
-  @Nullable
-  public PsiElement getStringLiteral() {
-    return findChildByType(STRING_LITERAL);
-  }
-
 }

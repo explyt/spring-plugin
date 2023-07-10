@@ -10,15 +10,15 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
 import com.esprito.jpql.psi.*;
 
-public class JpqlSimpleEntityExpressionImpl extends JpqlExpressionImpl implements JpqlSimpleEntityExpression {
+public class JpqlStringLiteralImpl extends JpqlExpressionImpl implements JpqlStringLiteral {
 
-  public JpqlSimpleEntityExpressionImpl(@NotNull ASTNode node) {
+  public JpqlStringLiteralImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitSimpleEntityExpression(this);
+    visitor.visitStringLiteral(this);
   }
 
   @Override
@@ -28,9 +28,9 @@ public class JpqlSimpleEntityExpressionImpl extends JpqlExpressionImpl implement
   }
 
   @Override
-  @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
+  @NotNull
+  public PsiElement getString() {
+    return findNotNullChildByType(STRING);
   }
 
 }

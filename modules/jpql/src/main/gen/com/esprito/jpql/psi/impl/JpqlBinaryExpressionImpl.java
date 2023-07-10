@@ -10,15 +10,15 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
 import com.esprito.jpql.psi.*;
 
-public class JpqlLiteralExpressionImpl extends JpqlExpressionImpl implements JpqlLiteralExpression {
+public class JpqlBinaryExpressionImpl extends JpqlExpressionImpl implements JpqlBinaryExpression {
 
-  public JpqlLiteralExpressionImpl(@NotNull ASTNode node) {
+  public JpqlBinaryExpressionImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitLiteralExpression(this);
+    visitor.visitBinaryExpression(this);
   }
 
   @Override
@@ -28,33 +28,23 @@ public class JpqlLiteralExpressionImpl extends JpqlExpressionImpl implements Jpq
   }
 
   @Override
-  @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
+  @NotNull
+  public List<JpqlExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
+  }
+
+  @Override
+  @NotNull
+  public JpqlExpression getLeftOperand() {
+    List<JpqlExpression> p1 = getExpressionList();
+    return p1.get(0);
   }
 
   @Override
   @Nullable
-  public PsiElement getBooleanLiteral() {
-    return findChildByType(BOOLEAN_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getDatetimeLiteral() {
-    return findChildByType(DATETIME_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getNumericLiteral() {
-    return findChildByType(NUMERIC_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getStringLiteral() {
-    return findChildByType(STRING_LITERAL);
+  public JpqlExpression getRightOperand() {
+    List<JpqlExpression> p1 = getExpressionList();
+    return p1.size() < 2 ? null : p1.get(1);
   }
 
 }

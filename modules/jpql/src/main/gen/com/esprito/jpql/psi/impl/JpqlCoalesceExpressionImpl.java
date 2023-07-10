@@ -29,20 +29,8 @@ public class JpqlCoalesceExpressionImpl extends JpqlExpressionImpl implements Jp
 
   @Override
   @NotNull
-  public List<JpqlDatetimeFunction> getDatetimeFunctionList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlDatetimeFunction.class);
-  }
-
-  @Override
-  @NotNull
   public List<JpqlExpression> getExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
-  }
-
-  @Override
-  @NotNull
-  public List<JpqlIdentifier> getIdentifierList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlIdentifier.class);
   }
 
 }

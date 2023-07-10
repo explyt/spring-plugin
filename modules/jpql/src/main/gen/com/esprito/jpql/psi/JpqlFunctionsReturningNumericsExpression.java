@@ -13,7 +13,4 @@ public interface JpqlFunctionsReturningNumericsExpression extends JpqlExpression
   @Nullable
   JpqlIdentifier getIdentifier();
 
-  @Nullable
-  PsiElement getStringLiteral();
-
 }

@@ -8,6 +8,7 @@
   psiImplClassSuffix="Impl"
   psiPackage="com.esprito.jpql.psi"
   psiImplPackage="com.esprito.jpql.psi.impl"
+  psiImplUtilClass="com.esprito.jpql.psi.impl.JpqlPsiImplUtil"
 
   elementTypeHolderClass="com.esprito.jpql.psi.JpqlTypes"
   elementTypeClass="com.esprito.jpql.psi.JpqlElementType"
@@ -37,24 +38,23 @@
     RBRACE = '}'
 
 
-    boolean_literal = 'regexp:(TRUE|FALSE)'
+    boolean = 'regexp:(TRUE|FALSE)'
     id = 'regexp:[a-zA-Z][a-zA-Z0-9]*'
-    numeric_literal = 'regexp:[0-9]+(\.[0-9]+)*'
-    string_literal = "regexp:'([^']|'')*'"
-    datetime_literal = "regexp:\{[dt]s?\s+'[^']*'\}"
+    numeric = 'regexp:[0-9]+(\.[0-9]+)*'
+    string = "regexp:'([^']|'')*'"
+    datetime = "regexp:\{\s*[dt]s?\s+'([^']|'')*'\s*\}"
   ]
 }
 
 QL_file ::= semicolon_delimited_statements | QL_statement
 
 private semicolon_delimited_statements ::= <<isUnitTestMode>> QL_statement { [';'] QL_statement }* [';']
-{
-    recoverWhile = "statement_recover"
-}
 
 private statement_recover ::= !{';' | 'SELECT' | 'UPDATE' | 'DELETE' }
 
-QL_statement ::= select_statement | update_statement | delete_statement
+QL_statement ::= select_statement | update_statement | delete_statement {
+    recoverWhile = "statement_recover"
+}
 
 select_statement ::=
     {<<isHql>> [select_clause] | select_clause}
@@ -65,9 +65,7 @@ select_statement ::=
     [orderby_clause]
     [limit_clause]
     [offset_clause]
-    [fetch_clause] {
-    pin = 'SELECT'
-}
+    [fetch_clause]
 
 update_statement ::= update_clause [where_clause] {
     pin = 'UPDATE'
@@ -77,7 +75,9 @@ delete_statement ::= delete_clause [where_clause] {
     pin = 'DELETE'
 }
 
-from_clause ::= FROM identification_variable_declaration {',' {identification_variable_declaration | collection_member_declaration}}*
+from_clause ::= FROM identification_variable_declaration {',' {identification_variable_declaration | collection_member_declaration}}* {
+    pin = FROM
+}
 
 identification_variable_declaration ::= range_variable_declaration { join_expression | fetch_join }*
 
@@ -96,32 +96,37 @@ expression ::= conditional_group
     | arithmetic_expression
     | all_or_any_expression
     | reference_expression
-    | literal_expression
+    | literal_group
     | input_parameter_expression
     | subquery_expression
-    | string_expression
-    | datetime_expression
-    | boolean_expression
-    | enum_expression
-    | entity_expression
+    | string_function_expression
+    | aggregate_expression
+    | case_expression
+    | datetime_function_expression
+    | function_invocation_expression
     | paren_expression
 
 subquery_expression ::= '(' subquery ')'
 
-literal_expression ::= literal
+private literal_group ::= string_literal
+    | boolean_literal
+    | datetime_literal
+    |numeric_literal
 
 collection_member_declaration ::= IN reference_expression AS? identifier
 
 update_clause ::= UPDATE identifier [[AS] identifier] SET update_item {',' update_item}*
 update_item ::= reference_expression '=' new_value
-private new_value ::= scalar_expression | simple_entity_expression | NULL
+private new_value ::= scalar_expression | NULL
 
 delete_clause ::= DELETE FROM identifier [[AS] identifier]
 
-select_clause ::= SELECT [DISTINCT] select_item {',' select_item}*
+select_clause ::= SELECT [DISTINCT] select_item {',' select_item}* {
+    pin = SELECT
+}
 select_item ::= select_expression [[AS] identifier]
 
-select_expression ::=
+private select_expression ::=
     reference_expression |
     scalar_expression |
     arithmetic_expression |
@@ -132,14 +137,20 @@ select_expression ::=
 
 object_expression ::= OBJECT'('identifier')'
 
-constructor_expression ::= NEW reference_expression '(' constructor_item {',' constructor_item}* ')'
-constructor_item ::=
-    reference_expression |
-    scalar_expression |
-    aggregate_expression |
-    identifier
+constructor_expression ::= NEW reference_expression '(' constructor_arguments_list ')'
+constructor_arguments_list ::= expression {',' expression}*
 
-aggregate_expression ::= { AVG | MAX | MIN | SUM | COUNT } '('[DISTINCT] reference_expression')'
+aggregate_expression ::= { AVG | MAX | MIN | SUM | COUNT } '('[DISTINCT] reference_expression')' | function_invocation_expression
+
+function_invocation_expression ::= FUNCTION '(' string_literal {',' function_arg}* ')'
+function_arg ::= literal_group
+    | reference_expression
+    | input_parameter_expression
+    | scalar_expression {
+    methods = [
+        expression = "/expression"
+    ]
+}
 
 where_clause ::= WHERE { conditional_group | comparison_expression }
 
@@ -173,39 +184,51 @@ derived_collection_member_declaration ::=
     IN reference_expression
 
 simple_select_clause ::= SELECT [DISTINCT] simple_select_expression
-simple_select_expression::=
+private simple_select_expression::=
    reference_expression |
    scalar_expression |
-   aggregate_expression |
-   identifier
+   aggregate_expression
 
-private scalar_expression ::=
-   simple_arithmetic_expression |
-   string_primary_expression |
-   enum_primary |
-   datetime_primary |
-   boolean_primary |
-   case_expression |
-   entity_type_expression
+private scalar_expression ::= simple_arithmetic_expression
+    | string_expression
+    | reference_expression
+    | input_parameter_expression
+    | case_expression
+    | datetime_expression
+    | literal_group
+    | boolean_expression
+    | entity_type_expression
+
+fake binary_expression ::= expression + {
+  methods = [
+    leftOperand="/expression[0]"
+    rightOperand="/expression[1]"
+  ]
+}
 
 private conditional_group ::= conditional_or_expression
     | conditional_and_expression
     | conditional_not_expression
 
-conditional_or_expression ::= expression OR expression {rightAssociative = true}
-conditional_and_expression ::= expression AND expression
+conditional_or_expression ::= expression OR expression {
+    rightAssociative = true
+    extends=binary_expression
+}
+conditional_and_expression ::= expression AND expression {
+    extends=binary_expression
+}
 conditional_not_expression ::= NOT expression
 
 paren_expression ::= '(' expression ')'
 
-private comparison_group ::= comparison_expression |
-   between_expression |
-   in_expression |
-   like_expression |
-   null_comparison_expression |
-   empty_collection_comparison_expression |
-   collection_member_expression |
-   exists_expression
+private comparison_group ::= comparison_expression
+    | between_expression
+    | in_expression
+    | like_expression
+    | null_comparison_expression
+    | empty_collection_comparison_expression
+    | collection_member_expression
+    | exists_expression
 
 in_expression ::=
     {reference_expression | type_expression} [NOT] IN
@@ -225,14 +248,12 @@ empty_collection_comparison_expression ::=
 collection_member_expression ::= entity_or_value_expression
     [NOT] MEMBER [OF] reference_expression
 
-entity_or_value_expression ::=
-    reference_expression |
-    simple_entity_or_value_expression
+entity_or_value_expression ::= reference_expression
+    | simple_entity_or_value_expression
 
-simple_entity_or_value_expression ::=
-    identifier |
-    input_parameter_expression |
-    literal
+simple_entity_or_value_expression ::= identifier
+    | input_parameter_expression
+    | literal
 
 exists_expression::= [NOT] EXISTS '('subquery')'
 all_or_any_expression ::= { ALL | ANY | SOME} '('subquery')'
@@ -247,94 +268,76 @@ private arithmetic_expression ::= additive_expression
     | multiplicative_expression
     | unary_arithmetic_expression
     | functions_returning_numerics_expression
+    | function_invocation_expression
 
-//fake arithmetic_expression ::= additive_expression | multiplicative_expression | unary_arithmetic_expression
-
-additive_expression ::= expression { '+' | '-' } expression { rightAssociative=true }
-multiplicative_expression ::= expression { '*' | '/' } expression
+additive_expression ::= expression { '+' | '-' } expression {
+    rightAssociative=true
+    extends=binary_expression
+}
+multiplicative_expression ::= expression { '*' | '/' } expression {
+    extends = binary_expression
+}
 unary_arithmetic_expression ::= { '+' | '-' } expression
 
-string_expression ::= string_primary_expression | subquery_expression
+private string_expression ::= reference_expression
+    | string_literal
+    | input_parameter_expression
+    | string_function_expression
+    | aggregate_expression
+    | case_expression
+    | function_invocation_expression
 
-private string_primary_expression ::=
-    reference_expression |
-    string_literal |
-    input_parameter_expression |
-    string_function_expression |
-    aggregate_expression |
-    case_expression
+private datetime_expression ::= reference_expression
+    | input_parameter_expression
+    | datetime_function_expression
+    | aggregate_expression
+    | case_expression
+    | datetime_literal
+    | function_invocation_expression
 
-datetime_expression ::= datetime_primary | subquery_expression
+private boolean_expression ::= reference_expression
+    | input_parameter_expression
+    | case_expression
+    | boolean_literal
+    | function_invocation_expression
 
-private datetime_primary ::=
-    reference_expression |
-    input_parameter_expression |
-    datetime_function |
-    aggregate_expression |
-    case_expression |
-    datetime_literal
-
-boolean_expression ::= boolean_primary | subquery_expression
-private boolean_primary ::=
-    reference_expression |
-    boolean_literal |
-    input_parameter_expression |
-    case_expression
-
-enum_expression ::= enum_primary | subquery_expression
-
-private enum_primary ::=
-    reference_expression |
-    identifier |
-    input_parameter_expression |
-    case_expression
-
-entity_expression ::=
-    reference_expression | simple_entity_expression
-
-simple_entity_expression ::=
-    identifier |
-    input_parameter_expression
-
-entity_type_expression ::=
-    type_expression |
-    identifier |
-    input_parameter_expression
+private entity_type_expression ::= type_expression
+    | reference_expression
+    | input_parameter_expression
 
 type_literal ::= INTEGER | STRING | DATE | TIME | TIMESTAMP | BOOLEAN
 
 type_expression ::= TYPE'('reference_expression | input_parameter_expression')' | type_literal
 
-functions_returning_numerics_expression ::=
-    LENGTH'('string_primary_expression')' |
-    LOCATE'('string_primary_expression',' string_primary_expression[',' simple_arithmetic_expression]')' |
-    ABS'('simple_arithmetic_expression')' |
-    SQRT'('simple_arithmetic_expression')' |
-    MOD'('simple_arithmetic_expression',' simple_arithmetic_expression')' |
-    SIZE'('reference_expression')' |
-    INDEX'('identifier')'
+functions_returning_numerics_expression ::= LENGTH'('string_expression')'
+    | LOCATE'('string_expression',' string_expression[',' simple_arithmetic_expression]')'
+    | ABS'('simple_arithmetic_expression')'
+    | SQRT'('simple_arithmetic_expression')'
+    | MOD'('simple_arithmetic_expression',' simple_arithmetic_expression')'
+    | SIZE'('reference_expression')'
+    | INDEX'('identifier')'
 
 private simple_arithmetic_expression ::= expression
+
+datetime_function_expression ::= datetime_function
 
 datetime_function ::=
     CURRENT_DATE |
     CURRENT_TIME |
     CURRENT_TIMESTAMP
 
-string_function_expression ::=
-    CONCAT'('string_primary_expression',' string_primary_expression {',' string_primary_expression}*')' |
-    SUBSTRING'('string_primary_expression',' arithmetic_expression [',' arithmetic_expression]')' |
-    TRIM'('[[trim_specification] [string_literal] FROM] string_primary_expression')' |
-    LOWER'('string_primary_expression')' |
-    UPPER'('string_primary_expression')'
+string_function_expression ::= CONCAT'('string_expression',' string_expression {',' string_expression}*')'
+    | SUBSTRING'('string_expression',' arithmetic_expression [',' arithmetic_expression]')'
+    | TRIM'('[[trim_specification] [string_literal] FROM] string_expression')'
+    | LOWER'('string_expression')'
+    | UPPER'('string_expression')'
 
 trim_specification ::= LEADING | TRAILING | BOTH
 
-case_expression ::=
-    general_case_expression |
-    simple_case_expression |
-    coalesce_expression |
-    nullif_expression
+case_expression ::= general_case_expression
+    | simple_case_expression
+    | coalesce_expression
+    | nullif_expression
 
 general_case_expression::=
     CASE when_clause {when_clause}* ELSE scalar_expression END
@@ -356,15 +359,47 @@ nullif_expression::= NULLIF'('scalar_expression',' scalar_expression')'
 
 private reference_or_parameter ::= reference_expression | input_parameter_expression
 
-// reference_expression
-reference_expression ::= identifier {'.' identifier}* | map_based_reference_expression
-map_based_reference_expression ::= KEY'('reference_expression')' | VALUE'('reference_expression')' | ENTRY'('reference_expression')' {extends=reference_expression}
 
-//input_parameter
+reference_expression ::= identifier {'.' identifier}* | map_based_reference_expression
+map_based_reference_expression ::= KEY'('reference_expression')'
+    | VALUE'('reference_expression')'
+    | ENTRY'('reference_expression')' {
+    extends=reference_expression
+    methods = [getMapOperationType]
+}
+
 input_parameter_expression ::= ':'identifier
 
 // todo support keywords as a parameter or an identifier
-identifier ::= id | VALUE | KEY | TYPE | ENTRY
+private identifier_like_keyword ::= VALUE
+    | KEY
+    | TYPE
+    | ENTRY
+    | DATE
+    | CURRENT_DATE
+    | CURRENT_TIME
+    | CURRENT_TIMESTAMP
+    | TIME
+    | TIMESTAMP
+    | ORDER
+
+identifier ::= id | identifier_like_keyword
+
+boolean_literal ::= boolean {
+    extends = expression
+}
+
+numeric_literal ::= numeric {
+    extends = expression
+}
+
+datetime_literal ::= datetime {
+    extends = expression
+}
+
+string_literal ::= string {
+    extends = expression
+}
 
 private literal ::= string_literal
     | numeric_literal

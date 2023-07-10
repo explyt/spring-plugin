@@ -10,15 +10,15 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpql.psi.JpqlTypes.*;
 import com.esprito.jpql.psi.*;
 
-public class JpqlDatetimeExpressionImpl extends JpqlExpressionImpl implements JpqlDatetimeExpression {
+public class JpqlNumericLiteralImpl extends JpqlExpressionImpl implements JpqlNumericLiteral {
 
-  public JpqlDatetimeExpressionImpl(@NotNull ASTNode node) {
+  public JpqlNumericLiteralImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitDatetimeExpression(this);
+    visitor.visitNumericLiteral(this);
   }
 
   @Override
@@ -28,21 +28,9 @@ public class JpqlDatetimeExpressionImpl extends JpqlExpressionImpl implements Jp
   }
 
   @Override
-  @Nullable
-  public JpqlDatetimeFunction getDatetimeFunction() {
-    return findChildByClass(JpqlDatetimeFunction.class);
-  }
-
-  @Override
-  @Nullable
-  public JpqlExpression getExpression() {
-    return findChildByClass(JpqlExpression.class);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getDatetimeLiteral() {
-    return findChildByType(DATETIME_LITERAL);
+  @NotNull
+  public PsiElement getNumeric() {
+    return findNotNullChildByType(NUMERIC);
   }
 
 }
