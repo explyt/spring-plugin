@@ -1,0 +1,54 @@
+// This is a generated file. Not intended for manual editing.
+package com.esprito.jpa.ql.psi.impl;
+
+import java.util.List;
+import org.jetbrains.annotations.*;
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.util.PsiTreeUtil;
+import static com.esprito.jpa.ql.psi.JpqlTypes.*;
+import com.esprito.jpa.ql.psi.*;
+
+public class JpqlJoinExpressionImpl extends JpqlExpressionImpl implements JpqlJoinExpression {
+
+  public JpqlJoinExpressionImpl(@NotNull ASTNode node) {
+    super(node);
+  }
+
+  @Override
+  public void accept(@NotNull JpqlVisitor visitor) {
+    visitor.visitJoinExpression(this);
+  }
+
+  @Override
+  public void accept(@NotNull PsiElementVisitor visitor) {
+    if (visitor instanceof JpqlVisitor) accept((JpqlVisitor)visitor);
+    else super.accept(visitor);
+  }
+
+  @Override
+  @NotNull
+  public JpqlIdentifier getIdentifier() {
+    return findNotNullChildByClass(JpqlIdentifier.class);
+  }
+
+  @Override
+  @Nullable
+  public JpqlJoinCondition getJoinCondition() {
+    return findChildByClass(JpqlJoinCondition.class);
+  }
+
+  @Override
+  @NotNull
+  public JpqlJoinSpec getJoinSpec() {
+    return findNotNullChildByClass(JpqlJoinSpec.class);
+  }
+
+  @Override
+  @NotNull
+  public JpqlReferenceExpression getReferenceExpression() {
+    return findNotNullChildByClass(JpqlReferenceExpression.class);
+  }
+
+}
