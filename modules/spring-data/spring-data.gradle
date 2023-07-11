@@ -5,15 +5,17 @@ plugins {
 }
 
 evaluationDependsOn(":spring-core")
+evaluationDependsOn(":jpa")
 
 ext.intellijPlugins = []
 def springCoreProject = project(':spring-core')
+def jpaProject = project(':jpa')
 
 sourceCompatibility = JavaVersion.VERSION_17
 
 intellij {
     version.set(defaultIdeaVersion)
-    plugins.set(springCoreProject.intellijPlugins + intellijPlugins)
+    plugins.set(springCoreProject.intellijPlugins + jpaProject.intellijPlugins + intellijPlugins)
     downloadSources.set(true)
     buildSearchableOptions {
         enabled false
@@ -27,6 +29,7 @@ verifyPlugin.enabled = false
 
 dependencies {
     implementation springCoreProject
+    implementation jpaProject
 }
 
 repositories {

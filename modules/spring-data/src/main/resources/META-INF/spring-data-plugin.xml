@@ -1,6 +1,7 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
-
+        <languageInjector
+                implementation="com.esprito.spring.data.langinjection.JpqlLanguageInjector"/>
     </extensions>
 
     <actions>

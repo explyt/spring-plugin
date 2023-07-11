@@ -1,7 +1,7 @@
-package com.esprito.jpa.ql.injection
+package com.esprito.spring.data.langinjection
 
-import com.esprito.jpa.JpaClasses
 import com.esprito.jpa.ql.JpqlLanguage
+import com.esprito.spring.data.SpringDataClasses
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.InjectedLanguagePlaces
 import com.intellij.psi.LanguageInjector
@@ -11,7 +11,6 @@ import org.jetbrains.uast.expressions.UInjectionHost
 import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.toUElementOfType
 
-// todo move to spring-data module
 class JpqlLanguageInjector : LanguageInjector {
     override fun getLanguagesToInject(
         host: PsiLanguageInjectionHost,
@@ -21,7 +20,7 @@ class JpqlLanguageInjector : LanguageInjector {
             ?: return
 
         val parentAnnotation = uInjectionHost.getParentOfType<UAnnotation>()
-            ?.takeIf { it.qualifiedName == JpaClasses.query }
+            ?.takeIf { it.qualifiedName == SpringDataClasses.query }
             ?: return
 
         if (
