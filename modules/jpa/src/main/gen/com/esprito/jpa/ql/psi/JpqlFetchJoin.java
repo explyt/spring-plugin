@@ -8,7 +8,7 @@ import com.intellij.psi.PsiElement;
 public interface JpqlFetchJoin extends PsiElement {
 
   @NotNull
-  JpqlIdentifier getIdentifier();
+  JpqlAliasDeclaration getAliasDeclaration();
 
   @NotNull
   JpqlJoinSpec getJoinSpec();

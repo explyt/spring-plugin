@@ -29,8 +29,8 @@ public class JpqlCollectionMemberDeclarationImpl extends ASTWrapperPsiElement im
 
   @Override
   @NotNull
-  public JpqlIdentifier getIdentifier() {
-    return findNotNullChildByClass(JpqlIdentifier.class);
+  public JpqlAliasDeclaration getAliasDeclaration() {
+    return findNotNullChildByClass(JpqlAliasDeclaration.class);
   }
 
   @Override

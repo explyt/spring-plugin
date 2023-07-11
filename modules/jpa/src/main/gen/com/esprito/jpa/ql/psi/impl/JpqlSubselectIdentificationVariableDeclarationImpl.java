@@ -29,6 +29,12 @@ public class JpqlSubselectIdentificationVariableDeclarationImpl extends ASTWrapp
 
   @Override
   @Nullable
+  public JpqlAliasDeclaration getAliasDeclaration() {
+    return findChildByClass(JpqlAliasDeclaration.class);
+  }
+
+  @Override
+  @Nullable
   public JpqlDerivedCollectionMemberDeclaration getDerivedCollectionMemberDeclaration() {
     return findChildByClass(JpqlDerivedCollectionMemberDeclaration.class);
   }
@@ -43,12 +49,6 @@ public class JpqlSubselectIdentificationVariableDeclarationImpl extends ASTWrapp
   @Nullable
   public JpqlIdentificationVariableDeclaration getIdentificationVariableDeclaration() {
     return findChildByClass(JpqlIdentificationVariableDeclaration.class);
-  }
-
-  @Override
-  @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
   }
 
 }

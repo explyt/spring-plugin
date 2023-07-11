@@ -8,7 +8,7 @@ import com.intellij.psi.PsiElement;
 public interface JpqlJoinExpression extends JpqlExpression {
 
   @NotNull
-  JpqlIdentifier getIdentifier();
+  JpqlAliasDeclaration getAliasDeclaration();
 
   @Nullable
   JpqlJoinCondition getJoinCondition();

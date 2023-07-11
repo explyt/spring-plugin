@@ -8,7 +8,7 @@ import com.intellij.psi.PsiElement;
 public interface JpqlCollectionMemberDeclaration extends PsiElement {
 
   @NotNull
-  JpqlIdentifier getIdentifier();
+  JpqlAliasDeclaration getAliasDeclaration();
 
   @NotNull
   JpqlReferenceExpression getReferenceExpression();

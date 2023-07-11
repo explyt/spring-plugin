@@ -8,6 +8,9 @@ import com.intellij.psi.PsiElement;
 public interface JpqlSubselectIdentificationVariableDeclaration extends PsiElement {
 
   @Nullable
+  JpqlAliasDeclaration getAliasDeclaration();
+
+  @Nullable
   JpqlDerivedCollectionMemberDeclaration getDerivedCollectionMemberDeclaration();
 
   @NotNull
@@ -15,8 +18,5 @@ public interface JpqlSubselectIdentificationVariableDeclaration extends PsiEleme
 
   @Nullable
   JpqlIdentificationVariableDeclaration getIdentificationVariableDeclaration();
-
-  @Nullable
-  JpqlIdentifier getIdentifier();
 
 }

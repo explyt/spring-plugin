@@ -164,25 +164,18 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // IN reference_expression AS? identifier
+  // IN '(' reference_expression ')' alias_declaration
   public static boolean collection_member_declaration(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "collection_member_declaration")) return false;
     if (!nextTokenIs(b, IN)) return false;
     boolean r;
     Marker m = enter_section_(b);
-    r = consumeToken(b, IN);
+    r = consumeTokens(b, 0, IN, LPAREN);
     r = r && reference_expression(b, l + 1);
-    r = r && collection_member_declaration_2(b, l + 1);
-    r = r && identifier(b, l + 1);
+    r = r && consumeToken(b, RPAREN);
+    r = r && alias_declaration(b, l + 1);
     exit_section_(b, m, COLLECTION_MEMBER_DECLARATION, r);
     return r;
-  }
-
-  // AS?
-  private static boolean collection_member_declaration_2(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "collection_member_declaration_2")) return false;
-    consumeToken(b, AS);
-    return true;
   }
 
   /* ********************************************************** */
@@ -431,7 +424,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // join_spec FETCH reference_expression AS? identifier
+  // join_spec FETCH reference_expression alias_declaration
   public static boolean fetch_join(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "fetch_join")) return false;
     boolean r;
@@ -439,17 +432,9 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     r = join_spec(b, l + 1);
     r = r && consumeToken(b, FETCH);
     r = r && reference_expression(b, l + 1);
-    r = r && fetch_join_3(b, l + 1);
-    r = r && identifier(b, l + 1);
+    r = r && alias_declaration(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
-  }
-
-  // AS?
-  private static boolean fetch_join_3(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "fetch_join_3")) return false;
-    consumeToken(b, AS);
-    return true;
   }
 
   /* ********************************************************** */
@@ -713,30 +698,22 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // join_spec reference_expression AS? identifier [join_condition]
+  // join_spec reference_expression alias_declaration [join_condition]
   public static boolean join_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "join_expression")) return false;
     boolean r;
     Marker m = enter_section_(b, l, _NONE_, JOIN_EXPRESSION, "<join expression>");
     r = join_spec(b, l + 1);
     r = r && reference_expression(b, l + 1);
-    r = r && join_expression_2(b, l + 1);
-    r = r && identifier(b, l + 1);
-    r = r && join_expression_4(b, l + 1);
+    r = r && alias_declaration(b, l + 1);
+    r = r && join_expression_3(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
   }
 
-  // AS?
-  private static boolean join_expression_2(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "join_expression_2")) return false;
-    consumeToken(b, AS);
-    return true;
-  }
-
   // [join_condition]
-  private static boolean join_expression_4(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "join_expression_4")) return false;
+  private static boolean join_expression_3(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_3")) return false;
     join_condition(b, l + 1);
     return true;
   }
@@ -1546,7 +1523,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // identification_variable_declaration |
-  //     reference_expression AS? identifier {join_expression}*|
+  //     reference_expression alias_declaration {join_expression}*|
   //     derived_collection_member_declaration
   public static boolean subselect_identification_variable_declaration(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "subselect_identification_variable_declaration")) return false;
@@ -1559,40 +1536,32 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // reference_expression AS? identifier {join_expression}*
+  // reference_expression alias_declaration {join_expression}*
   private static boolean subselect_identification_variable_declaration_1(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "subselect_identification_variable_declaration_1")) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = reference_expression(b, l + 1);
-    r = r && subselect_identification_variable_declaration_1_1(b, l + 1);
-    r = r && identifier(b, l + 1);
-    r = r && subselect_identification_variable_declaration_1_3(b, l + 1);
+    r = r && alias_declaration(b, l + 1);
+    r = r && subselect_identification_variable_declaration_1_2(b, l + 1);
     exit_section_(b, m, null, r);
     return r;
   }
 
-  // AS?
-  private static boolean subselect_identification_variable_declaration_1_1(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "subselect_identification_variable_declaration_1_1")) return false;
-    consumeToken(b, AS);
-    return true;
-  }
-
   // {join_expression}*
-  private static boolean subselect_identification_variable_declaration_1_3(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "subselect_identification_variable_declaration_1_3")) return false;
+  private static boolean subselect_identification_variable_declaration_1_2(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "subselect_identification_variable_declaration_1_2")) return false;
     while (true) {
       int c = current_position_(b);
-      if (!subselect_identification_variable_declaration_1_3_0(b, l + 1)) break;
-      if (!empty_element_parsed_guard_(b, "subselect_identification_variable_declaration_1_3", c)) break;
+      if (!subselect_identification_variable_declaration_1_2_0(b, l + 1)) break;
+      if (!empty_element_parsed_guard_(b, "subselect_identification_variable_declaration_1_2", c)) break;
     }
     return true;
   }
 
   // {join_expression}
-  private static boolean subselect_identification_variable_declaration_1_3_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "subselect_identification_variable_declaration_1_3_0")) return false;
+  private static boolean subselect_identification_variable_declaration_1_2_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "subselect_identification_variable_declaration_1_2_0")) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = join_expression(b, l + 1);

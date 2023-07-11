@@ -18,16 +18,19 @@ class JpaEntityPsi private constructor(
 
     private val psiElementPointer = SmartPointerManager.createPointer(psiElement)
 
-    override val psiElement: PsiElement
-        get() = psiElementPointer.element ?: throw ProcessCanceledException()
+    override val psiElement: PsiElement?
+        get() = psiElementPointer.element
 
     override val name: String?
         get() {
+            val psiElement = psiElement ?: return null
             return cacheProvider.computeName(psiElement)
         }
 
     override val attributes: List<JpaEntityAttribute>
         get() {
+            val psiElement = psiElement ?: return emptyList()
+
             return cacheProvider.computeAttributes(psiElement)
         }
 

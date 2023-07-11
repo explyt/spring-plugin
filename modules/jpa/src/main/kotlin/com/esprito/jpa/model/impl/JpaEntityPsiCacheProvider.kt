@@ -42,7 +42,8 @@ class JpaEntityPsiCacheProvider(
     }
 
     private fun isEntityAttribute(uField: UField): Boolean {
-        return false
+        //todo
+        return true
     }
 
 }
