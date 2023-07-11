@@ -5,6 +5,13 @@ plugins {
 }
 
 evaluationDependsOn(":spring-core")
+evaluationDependsOn(":spring-data")
+evaluationDependsOn(":spring-security")
+evaluationDependsOn(":spring-web")
+evaluationDependsOn(":spring-cloud")
+evaluationDependsOn(":spring-initializr")
+evaluationDependsOn(":spring-integration")
+evaluationDependsOn(":spring-messaging")
 evaluationDependsOn(":jpa")
 
 ext.pluginVersion = '2023.1'
@@ -30,6 +37,13 @@ ext.buildArchiveName = rootProject.hasProperty("distFilePostfix")
 def launchUltimate = rootProject.hasProperty("launchUltimate")
 
 def springCoreProject = project(':spring-core')
+def springDataProject = project(':spring-data')
+def springSecurityProject = project(':spring-security')
+def springWebProject = project(':spring-web')
+def springCloudProject = project(':spring-cloud')
+def springInitializrProject = project(':spring-initializr')
+def springIntegrationProject = project(':spring-integration')
+def springMessagingProject = project(':spring-messaging')
 def jpqlProject = project(':jpa')
 def springBootstrapModule = project(':spring-bootstrap')
 
@@ -39,6 +53,13 @@ repositories {
 
 dependencies {
     implementation springCoreProject
+    implementation springDataProject
+    implementation springSecurityProject
+    implementation springWebProject
+    implementation springCloudProject
+    implementation springInitializrProject
+    implementation springIntegrationProject
+    implementation springMessagingProject
     implementation jpqlProject
 }
 
