@@ -111,6 +111,10 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitExpression(o);
   }
 
+  public void visitEntityAccess(@NotNull JpqlEntityAccess o) {
+    visitPsiElement(o);
+  }
+
   public void visitEntityOrValueExpression(@NotNull JpqlEntityOrValueExpression o) {
     visitExpression(o);
   }
@@ -249,10 +253,6 @@ public class JpqlVisitor extends PsiElementVisitor {
 
   public void visitPathReferenceExpression(@NotNull JpqlPathReferenceExpression o) {
     visitReferenceExpression(o);
-  }
-
-  public void visitRangeVariableDeclaration(@NotNull JpqlRangeVariableDeclaration o) {
-    visitPsiElement(o);
   }
 
   public void visitReferenceExpression(@NotNull JpqlReferenceExpression o) {

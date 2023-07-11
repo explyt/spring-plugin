@@ -28,15 +28,9 @@ public class JpqlUpdateClauseImpl extends ASTWrapperPsiElement implements JpqlUp
   }
 
   @Override
-  @Nullable
-  public JpqlAliasDeclaration getAliasDeclaration() {
-    return findChildByClass(JpqlAliasDeclaration.class);
-  }
-
-  @Override
   @NotNull
-  public JpqlIdentifier getIdentifier() {
-    return findNotNullChildByClass(JpqlIdentifier.class);
+  public JpqlEntityAccess getEntityAccess() {
+    return findNotNullChildByClass(JpqlEntityAccess.class);
   }
 
   @Override

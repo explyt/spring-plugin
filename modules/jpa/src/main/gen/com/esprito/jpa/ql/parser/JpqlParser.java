@@ -279,24 +279,16 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // DELETE FROM identifier [alias_declaration]
+  // DELETE FROM entity_access
   public static boolean delete_clause(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "delete_clause")) return false;
     if (!nextTokenIs(b, DELETE)) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = consumeTokens(b, 0, DELETE, FROM);
-    r = r && identifier(b, l + 1);
-    r = r && delete_clause_3(b, l + 1);
+    r = r && entity_access(b, l + 1);
     exit_section_(b, m, DELETE_CLAUSE, r);
     return r;
-  }
-
-  // [alias_declaration]
-  private static boolean delete_clause_3(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "delete_clause_3")) return false;
-    alias_declaration(b, l + 1);
-    return true;
   }
 
   /* ********************************************************** */
@@ -330,6 +322,25 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     r = r && reference_expression(b, l + 1);
     exit_section_(b, m, DERIVED_COLLECTION_MEMBER_DECLARATION, r);
     return r;
+  }
+
+  /* ********************************************************** */
+  // identifier [alias_declaration]
+  public static boolean entity_access(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "entity_access")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, ENTITY_ACCESS, "<entity access>");
+    r = identifier(b, l + 1);
+    r = r && entity_access_1(b, l + 1);
+    exit_section_(b, l, m, r, false, null);
+    return r;
+  }
+
+  // [alias_declaration]
+  private static boolean entity_access_1(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "entity_access_1")) return false;
+    alias_declaration(b, l + 1);
+    return true;
   }
 
   /* ********************************************************** */
@@ -600,12 +611,12 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // range_variable_declaration { join_expression | fetch_join }*
+  // entity_access { join_expression | fetch_join }*
   public static boolean identification_variable_declaration(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "identification_variable_declaration")) return false;
     boolean r;
     Marker m = enter_section_(b, l, _NONE_, IDENTIFICATION_VARIABLE_DECLARATION, "<identification variable declaration>");
-    r = range_variable_declaration(b, l + 1);
+    r = entity_access(b, l + 1);
     r = r && identification_variable_declaration_1(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
@@ -1019,25 +1030,6 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     r = r && identifier(b, l + 1);
     exit_section_(b, m, null, r);
     return r;
-  }
-
-  /* ********************************************************** */
-  // identifier [alias_declaration]
-  public static boolean range_variable_declaration(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "range_variable_declaration")) return false;
-    boolean r;
-    Marker m = enter_section_(b, l, _NONE_, RANGE_VARIABLE_DECLARATION, "<range variable declaration>");
-    r = identifier(b, l + 1);
-    r = r && range_variable_declaration_1(b, l + 1);
-    exit_section_(b, l, m, r, false, null);
-    return r;
-  }
-
-  // [alias_declaration]
-  private static boolean range_variable_declaration_1(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "range_variable_declaration_1")) return false;
-    alias_declaration(b, l + 1);
-    return true;
   }
 
   /* ********************************************************** */
@@ -1670,43 +1662,35 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // UPDATE identifier [alias_declaration] SET update_item {',' update_item}*
+  // UPDATE entity_access SET update_item {',' update_item}*
   public static boolean update_clause(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "update_clause")) return false;
     if (!nextTokenIs(b, UPDATE)) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = consumeToken(b, UPDATE);
-    r = r && identifier(b, l + 1);
-    r = r && update_clause_2(b, l + 1);
+    r = r && entity_access(b, l + 1);
     r = r && consumeToken(b, SET);
     r = r && update_item(b, l + 1);
-    r = r && update_clause_5(b, l + 1);
+    r = r && update_clause_4(b, l + 1);
     exit_section_(b, m, UPDATE_CLAUSE, r);
     return r;
   }
 
-  // [alias_declaration]
-  private static boolean update_clause_2(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "update_clause_2")) return false;
-    alias_declaration(b, l + 1);
-    return true;
-  }
-
   // {',' update_item}*
-  private static boolean update_clause_5(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "update_clause_5")) return false;
+  private static boolean update_clause_4(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "update_clause_4")) return false;
     while (true) {
       int c = current_position_(b);
-      if (!update_clause_5_0(b, l + 1)) break;
-      if (!empty_element_parsed_guard_(b, "update_clause_5", c)) break;
+      if (!update_clause_4_0(b, l + 1)) break;
+      if (!empty_element_parsed_guard_(b, "update_clause_4", c)) break;
     }
     return true;
   }
 
   // ',' update_item
-  private static boolean update_clause_5_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "update_clause_5_0")) return false;
+  private static boolean update_clause_4_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "update_clause_4_0")) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = consumeToken(b, COMMA);

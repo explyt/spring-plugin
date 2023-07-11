@@ -29,6 +29,12 @@ public class JpqlIdentificationVariableDeclarationImpl extends ASTWrapperPsiElem
 
   @Override
   @NotNull
+  public JpqlEntityAccess getEntityAccess() {
+    return findNotNullChildByClass(JpqlEntityAccess.class);
+  }
+
+  @Override
+  @NotNull
   public List<JpqlFetchJoin> getFetchJoinList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlFetchJoin.class);
   }
@@ -37,12 +43,6 @@ public class JpqlIdentificationVariableDeclarationImpl extends ASTWrapperPsiElem
   @NotNull
   public List<JpqlJoinExpression> getJoinExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlJoinExpression.class);
-  }
-
-  @Override
-  @NotNull
-  public JpqlRangeVariableDeclaration getRangeVariableDeclaration() {
-    return findNotNullChildByClass(JpqlRangeVariableDeclaration.class);
   }
 
 }

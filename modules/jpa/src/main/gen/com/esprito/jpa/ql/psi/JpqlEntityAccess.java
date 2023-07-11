@@ -5,7 +5,7 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlRangeVariableDeclaration extends PsiElement {
+public interface JpqlEntityAccess extends PsiElement {
 
   @Nullable
   JpqlAliasDeclaration getAliasDeclaration();

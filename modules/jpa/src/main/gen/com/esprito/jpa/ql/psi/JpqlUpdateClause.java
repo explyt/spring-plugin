@@ -7,11 +7,8 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlUpdateClause extends PsiElement {
 
-  @Nullable
-  JpqlAliasDeclaration getAliasDeclaration();
-
   @NotNull
-  JpqlIdentifier getIdentifier();
+  JpqlEntityAccess getEntityAccess();
 
   @NotNull
   List<JpqlUpdateItem> getUpdateItemList();

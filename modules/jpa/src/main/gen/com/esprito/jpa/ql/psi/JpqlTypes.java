@@ -32,6 +32,7 @@ public interface JpqlTypes {
   IElementType DELETE_STATEMENT = new JpqlElementType("DELETE_STATEMENT");
   IElementType DERIVED_COLLECTION_MEMBER_DECLARATION = new JpqlElementType("DERIVED_COLLECTION_MEMBER_DECLARATION");
   IElementType EMPTY_COLLECTION_COMPARISON_EXPRESSION = new JpqlElementType("EMPTY_COLLECTION_COMPARISON_EXPRESSION");
+  IElementType ENTITY_ACCESS = new JpqlElementType("ENTITY_ACCESS");
   IElementType ENTITY_OR_VALUE_EXPRESSION = new JpqlElementType("ENTITY_OR_VALUE_EXPRESSION");
   IElementType EXISTS_EXPRESSION = new JpqlElementType("EXISTS_EXPRESSION");
   IElementType EXPRESSION = new JpqlElementType("EXPRESSION");
@@ -68,7 +69,6 @@ public interface JpqlTypes {
   IElementType PAREN_EXPRESSION = new JpqlElementType("PAREN_EXPRESSION");
   IElementType PATH_REFERENCE_EXPRESSION = new JpqlElementType("PATH_REFERENCE_EXPRESSION");
   IElementType QL_STATEMENT = new JpqlElementType("QL_STATEMENT");
-  IElementType RANGE_VARIABLE_DECLARATION = new JpqlElementType("RANGE_VARIABLE_DECLARATION");
   IElementType REFERENCE_EXPRESSION = new JpqlElementType("REFERENCE_EXPRESSION");
   IElementType SELECT_CLAUSE = new JpqlElementType("SELECT_CLAUSE");
   IElementType SELECT_ITEM = new JpqlElementType("SELECT_ITEM");
@@ -275,6 +275,9 @@ public interface JpqlTypes {
       else if (type == EMPTY_COLLECTION_COMPARISON_EXPRESSION) {
         return new JpqlEmptyCollectionComparisonExpressionImpl(node);
       }
+      else if (type == ENTITY_ACCESS) {
+        return new JpqlEntityAccessImpl(node);
+      }
       else if (type == EXISTS_EXPRESSION) {
         return new JpqlExistsExpressionImpl(node);
       }
@@ -376,9 +379,6 @@ public interface JpqlTypes {
       }
       else if (type == QL_STATEMENT) {
         return new JpqlQLStatementImpl(node);
-      }
-      else if (type == RANGE_VARIABLE_DECLARATION) {
-        return new JpqlRangeVariableDeclarationImpl(node);
       }
       else if (type == SELECT_CLAUSE) {
         return new JpqlSelectClauseImpl(node);

@@ -79,9 +79,9 @@ from_clause ::= FROM identification_variable_declaration {',' {identification_va
     pin = FROM
 }
 
-identification_variable_declaration ::= range_variable_declaration { join_expression | fetch_join }*
+entity_access ::= identifier [alias_declaration]
 
-range_variable_declaration ::= identifier [alias_declaration]
+identification_variable_declaration ::= entity_access { join_expression | fetch_join }*
 
 alias_declaration ::= [AS] identifier {
     mixin = "com.esprito.jpa.ql.psi.impl.JpqlNameIdentifierOwnerImpl"
@@ -121,11 +121,11 @@ private literal_group ::= string_literal
 
 collection_member_declaration ::= IN '(' reference_expression ')' alias_declaration
 
-update_clause ::= UPDATE identifier [alias_declaration] SET update_item {',' update_item}*
+update_clause ::= UPDATE entity_access SET update_item {',' update_item}*
 update_item ::= reference_expression '=' new_value
 private new_value ::= scalar_expression | NULL
 
-delete_clause ::= DELETE FROM identifier [alias_declaration]
+delete_clause ::= DELETE FROM entity_access
 
 select_clause ::= SELECT [DISTINCT] select_item {',' select_item}* {
     pin = SELECT

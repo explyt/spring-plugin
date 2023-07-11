@@ -21,6 +21,10 @@
 
         <languageInjector
                 implementation="com.esprito.jpa.ql.injection.JpqlLanguageInjector"/>
+
+        <completion.contributor
+                language="JPQL"
+                implementationClass="com.esprito.jpa.ql.completion.JpqlCompletionContributor"/>
     </extensions>
 
     <actions>

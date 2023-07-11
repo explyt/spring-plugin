@@ -28,15 +28,9 @@ public class JpqlDeleteClauseImpl extends ASTWrapperPsiElement implements JpqlDe
   }
 
   @Override
-  @Nullable
-  public JpqlAliasDeclaration getAliasDeclaration() {
-    return findChildByClass(JpqlAliasDeclaration.class);
-  }
-
-  @Override
   @NotNull
-  public JpqlIdentifier getIdentifier() {
-    return findNotNullChildByClass(JpqlIdentifier.class);
+  public JpqlEntityAccess getEntityAccess() {
+    return findNotNullChildByClass(JpqlEntityAccess.class);
   }
 
 }

@@ -11,14 +11,14 @@ import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public class JpqlRangeVariableDeclarationImpl extends ASTWrapperPsiElement implements JpqlRangeVariableDeclaration {
+public class JpqlEntityAccessImpl extends ASTWrapperPsiElement implements JpqlEntityAccess {
 
-  public JpqlRangeVariableDeclarationImpl(@NotNull ASTNode node) {
+  public JpqlEntityAccessImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitRangeVariableDeclaration(this);
+    visitor.visitEntityAccess(this);
   }
 
   @Override

@@ -29,6 +29,16 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
     }
 
     override fun getVariants(): Array<Any> {
+        if (element.previousIdentifierInPath() == null) {
+            val module = ModuleUtilCore.findModuleForPsiElement(element)
+                ?: return emptyArray()
+
+            return jpaEntitySearch.loadEntities(module)
+                .mapNotNull { it.name }
+                .map { LookupElementBuilder.create(it) }
+                .toTypedArray()
+        }
+
         // todo
         return arrayOf(
             LookupElementBuilder.create("foo"),
@@ -38,7 +48,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
     }
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        if (element.parent is JpqlRangeVariableDeclaration) {
+        if (element.parent is JpqlEntityAccess) {
             return resolveEntity()
         }
 
@@ -109,19 +119,63 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
     }
 
     private fun resolveToAlias(incompleteCode: Boolean): Array<ResolveResult> {
-        val subquery = element.parentOfType<JpqlSubquery>()
-        // todo
-
         val selectStatement = element.parentOfType<JpqlSelectStatement>()
-            ?: return emptyArray()
+        if (selectStatement != null) {
+            val fromClause = selectStatement
+                .fromClause
 
-        val fromClause = selectStatement
-            .fromClause
+            return resolveAliasFromFrom(fromClause)
+        }
 
-        return sequence {
+        val deleteStatement = element.parentOfType<JpqlDeleteStatement>()
+        if (deleteStatement != null) {
+            val deleteClause = deleteStatement
+                .deleteClause
+
+            return resolveAliasFromDelete(deleteClause)
+        }
+
+        val updateStatement = element.parentOfType<JpqlUpdateStatement>()
+        if (updateStatement != null) {
+            val updateClause = updateStatement
+                .updateClause
+
+            return resolveAliasFromUpdate(updateClause)
+        }
+
+
+        return emptyArray()
+    }
+
+    private fun resolveAliasFromUpdate(updateClause: JpqlUpdateClause): Array<ResolveResult> = sequence {
+        val aliasDeclaration = updateClause.entityAccess
+            .aliasDeclaration
+
+        if (aliasDeclaration != null) {
+            yield(aliasDeclaration)
+        }
+    }.filter { it.name == element.text }
+        .map { PsiElementResolveResult(it.identifier) }
+        .toList()
+        .toTypedArray()
+
+    private fun resolveAliasFromDelete(deleteClause: JpqlDeleteClause): Array<ResolveResult> = sequence {
+        val aliasDeclaration = deleteClause.entityAccess
+            .aliasDeclaration
+
+        if (aliasDeclaration != null) {
+            yield(aliasDeclaration)
+        }
+    }.filter { it.name == element.text }
+        .map { PsiElementResolveResult(it.identifier) }
+        .toList()
+        .toTypedArray()
+
+    private fun resolveAliasFromFrom(fromClause: JpqlFromClause): Array<ResolveResult> =
+        sequence {
             fromClause.identificationVariableDeclarationList
                 .asSequence()
-                .map { it.rangeVariableDeclaration }
+                .map { it.entityAccess }
                 .mapNotNull { it.aliasDeclaration }
                 .let { yieldAll(it) }
 
@@ -139,7 +193,6 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             .map { PsiElementResolveResult(it.identifier) }
             .toList()
             .toTypedArray()
-    }
 
     private fun resolveEntity(): Array<ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element)
