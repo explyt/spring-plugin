@@ -7,10 +7,10 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlSelectItem extends PsiElement {
 
+  @Nullable
+  JpqlAliasDeclaration getAliasDeclaration();
+
   @NotNull
   JpqlExpression getExpression();
-
-  @Nullable
-  JpqlIdentifier getIdentifier();
 
 }

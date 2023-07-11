@@ -75,6 +75,25 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
+  // [AS] identifier
+  public static boolean alias_declaration(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "alias_declaration")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, ALIAS_DECLARATION, "<alias declaration>");
+    r = alias_declaration_0(b, l + 1);
+    r = r && identifier(b, l + 1);
+    exit_section_(b, l, m, r, false, null);
+    return r;
+  }
+
+  // [AS]
+  private static boolean alias_declaration_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "alias_declaration_0")) return false;
+    consumeToken(b, AS);
+    return true;
+  }
+
+  /* ********************************************************** */
   // reference_expression
   //     | input_parameter_expression
   //     | case_expression
@@ -267,7 +286,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // DELETE FROM identifier [[AS] identifier]
+  // DELETE FROM identifier [alias_declaration]
   public static boolean delete_clause(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "delete_clause")) return false;
     if (!nextTokenIs(b, DELETE)) return false;
@@ -280,28 +299,10 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // [[AS] identifier]
+  // [alias_declaration]
   private static boolean delete_clause_3(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "delete_clause_3")) return false;
-    delete_clause_3_0(b, l + 1);
-    return true;
-  }
-
-  // [AS] identifier
-  private static boolean delete_clause_3_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "delete_clause_3_0")) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = delete_clause_3_0_0(b, l + 1);
-    r = r && identifier(b, l + 1);
-    exit_section_(b, m, null, r);
-    return r;
-  }
-
-  // [AS]
-  private static boolean delete_clause_3_0_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "delete_clause_3_0_0")) return false;
-    consumeToken(b, AS);
+    alias_declaration(b, l + 1);
     return true;
   }
 
@@ -1008,7 +1009,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // identifier [[AS] identifier]
+  // identifier [alias_declaration]
   public static boolean range_variable_declaration(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "range_variable_declaration")) return false;
     boolean r;
@@ -1019,28 +1020,10 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // [[AS] identifier]
+  // [alias_declaration]
   private static boolean range_variable_declaration_1(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "range_variable_declaration_1")) return false;
-    range_variable_declaration_1_0(b, l + 1);
-    return true;
-  }
-
-  // [AS] identifier
-  private static boolean range_variable_declaration_1_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "range_variable_declaration_1_0")) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = range_variable_declaration_1_0_0(b, l + 1);
-    r = r && identifier(b, l + 1);
-    exit_section_(b, m, null, r);
-    return r;
-  }
-
-  // [AS]
-  private static boolean range_variable_declaration_1_0_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "range_variable_declaration_1_0_0")) return false;
-    consumeToken(b, AS);
+    alias_declaration(b, l + 1);
     return true;
   }
 
@@ -1146,7 +1129,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // select_expression [[AS] identifier]
+  // select_expression [alias_declaration]
   public static boolean select_item(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "select_item")) return false;
     boolean r;
@@ -1157,28 +1140,10 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // [[AS] identifier]
+  // [alias_declaration]
   private static boolean select_item_1(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "select_item_1")) return false;
-    select_item_1_0(b, l + 1);
-    return true;
-  }
-
-  // [AS] identifier
-  private static boolean select_item_1_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "select_item_1_0")) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = select_item_1_0_0(b, l + 1);
-    r = r && identifier(b, l + 1);
-    exit_section_(b, m, null, r);
-    return r;
-  }
-
-  // [AS]
-  private static boolean select_item_1_0_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "select_item_1_0_0")) return false;
-    consumeToken(b, AS);
+    alias_declaration(b, l + 1);
     return true;
   }
 
@@ -1700,7 +1665,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // UPDATE identifier [[AS] identifier] SET update_item {',' update_item}*
+  // UPDATE identifier [alias_declaration] SET update_item {',' update_item}*
   public static boolean update_clause(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "update_clause")) return false;
     if (!nextTokenIs(b, UPDATE)) return false;
@@ -1716,28 +1681,10 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // [[AS] identifier]
+  // [alias_declaration]
   private static boolean update_clause_2(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "update_clause_2")) return false;
-    update_clause_2_0(b, l + 1);
-    return true;
-  }
-
-  // [AS] identifier
-  private static boolean update_clause_2_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "update_clause_2_0")) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = update_clause_2_0_0(b, l + 1);
-    r = r && identifier(b, l + 1);
-    exit_section_(b, m, null, r);
-    return r;
-  }
-
-  // [AS]
-  private static boolean update_clause_2_0_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "update_clause_2_0_0")) return false;
-    consumeToken(b, AS);
+    alias_declaration(b, l + 1);
     return true;
   }
 

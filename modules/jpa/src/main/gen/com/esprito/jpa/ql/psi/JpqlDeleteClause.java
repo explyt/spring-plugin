@@ -7,7 +7,10 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlDeleteClause extends PsiElement {
 
+  @Nullable
+  JpqlAliasDeclaration getAliasDeclaration();
+
   @NotNull
-  List<JpqlIdentifier> getIdentifierList();
+  JpqlIdentifier getIdentifier();
 
 }

@@ -8,18 +8,16 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
-import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
-import com.intellij.psi.PsiPolyVariantReference;
 
-public class JpqlIdentifierImpl extends ASTWrapperPsiElement implements JpqlIdentifier {
+public class JpqlAliasDeclarationImpl extends JpqlNamedElementImpl implements JpqlAliasDeclaration {
 
-  public JpqlIdentifierImpl(@NotNull ASTNode node) {
+  public JpqlAliasDeclarationImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitIdentifier(this);
+    visitor.visitAliasDeclaration(this);
   }
 
   @Override
@@ -29,15 +27,21 @@ public class JpqlIdentifierImpl extends ASTWrapperPsiElement implements JpqlIden
   }
 
   @Override
-  @Nullable
-  public PsiElement getId() {
-    return findChildByType(ID);
+  @NotNull
+  public JpqlIdentifier getIdentifier() {
+    return findNotNullChildByClass(JpqlIdentifier.class);
   }
 
   @Override
-  @Nullable
-  public PsiPolyVariantReference getReference() {
-    return JpqlPsiImplUtil.getReference(this);
+  @NotNull
+  public PsiElement setName(@NotNull String newName) {
+    return JpqlPsiImplUtil.setName(this, newName);
+  }
+
+  @Override
+  @NotNull
+  public String getName() {
+    return JpqlPsiImplUtil.getName(this);
   }
 
 }

@@ -19,6 +19,10 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitExpression(o);
   }
 
+  public void visitAliasDeclaration(@NotNull JpqlAliasDeclaration o) {
+    visitNamedElement(o);
+  }
+
   public void visitAllOrAnyExpression(@NotNull JpqlAllOrAnyExpression o) {
     visitExpression(o);
   }
@@ -336,6 +340,10 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitWhereClause(@NotNull JpqlWhereClause o) {
+    visitPsiElement(o);
+  }
+
+  public void visitNamedElement(@NotNull JpqlNamedElement o) {
     visitPsiElement(o);
   }
 

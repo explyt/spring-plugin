@@ -10,6 +10,7 @@ public interface JpqlTypes {
 
   IElementType ADDITIVE_EXPRESSION = new JpqlElementType("ADDITIVE_EXPRESSION");
   IElementType AGGREGATE_EXPRESSION = new JpqlElementType("AGGREGATE_EXPRESSION");
+  IElementType ALIAS_DECLARATION = new JpqlElementType("ALIAS_DECLARATION");
   IElementType ALL_OR_ANY_EXPRESSION = new JpqlElementType("ALL_OR_ANY_EXPRESSION");
   IElementType BETWEEN_EXPRESSION = new JpqlElementType("BETWEEN_EXPRESSION");
   IElementType BOOLEAN_LITERAL = new JpqlElementType("BOOLEAN_LITERAL");
@@ -209,6 +210,9 @@ public interface JpqlTypes {
       }
       else if (type == AGGREGATE_EXPRESSION) {
         return new JpqlAggregateExpressionImpl(node);
+      }
+      else if (type == ALIAS_DECLARATION) {
+        return new JpqlAliasDeclarationImpl(node);
       }
       else if (type == ALL_OR_ANY_EXPRESSION) {
         return new JpqlAllOrAnyExpressionImpl(node);

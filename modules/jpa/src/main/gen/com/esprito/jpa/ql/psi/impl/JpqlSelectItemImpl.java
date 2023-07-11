@@ -28,15 +28,15 @@ public class JpqlSelectItemImpl extends ASTWrapperPsiElement implements JpqlSele
   }
 
   @Override
-  @NotNull
-  public JpqlExpression getExpression() {
-    return findNotNullChildByClass(JpqlExpression.class);
+  @Nullable
+  public JpqlAliasDeclaration getAliasDeclaration() {
+    return findChildByClass(JpqlAliasDeclaration.class);
   }
 
   @Override
-  @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
+  @NotNull
+  public JpqlExpression getExpression() {
+    return findNotNullChildByClass(JpqlExpression.class);
   }
 
 }

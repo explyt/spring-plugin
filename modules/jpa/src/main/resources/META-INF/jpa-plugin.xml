@@ -18,6 +18,9 @@
         <lang.syntaxHighlighterFactory
                 language="JPQL"
                 implementationClass="com.esprito.jpa.ql.highlight.JpqlSyntaxHighlighterFactory"/>
+
+        <languageInjector
+                implementation="com.esprito.jpa.ql.injection.JpqlLanguageInjector"/>
     </extensions>
 
     <actions>

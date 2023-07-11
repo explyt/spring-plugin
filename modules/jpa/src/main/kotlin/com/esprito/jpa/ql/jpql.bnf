@@ -81,7 +81,13 @@ from_clause ::= FROM identification_variable_declaration {',' {identification_va
 
 identification_variable_declaration ::= range_variable_declaration { join_expression | fetch_join }*
 
-range_variable_declaration ::= identifier [[AS] identifier]
+range_variable_declaration ::= identifier [alias_declaration]
+
+alias_declaration ::= [AS] identifier {
+    mixin = "com.esprito.jpa.ql.psi.impl.JpqlNamedElementImpl"
+    implements = "com.esprito.jpa.ql.psi.JpqlNamedElement"
+    methods = [setName getName]
+}
 
 join_expression ::= join_spec reference_expression AS? identifier [join_condition]
 
@@ -115,16 +121,16 @@ private literal_group ::= string_literal
 
 collection_member_declaration ::= IN reference_expression AS? identifier
 
-update_clause ::= UPDATE identifier [[AS] identifier] SET update_item {',' update_item}*
+update_clause ::= UPDATE identifier [alias_declaration] SET update_item {',' update_item}*
 update_item ::= reference_expression '=' new_value
 private new_value ::= scalar_expression | NULL
 
-delete_clause ::= DELETE FROM identifier [[AS] identifier]
+delete_clause ::= DELETE FROM identifier [alias_declaration]
 
 select_clause ::= SELECT [DISTINCT] select_item {',' select_item}* {
     pin = SELECT
 }
-select_item ::= select_expression [[AS] identifier]
+select_item ::= select_expression [alias_declaration]
 
 private select_expression ::=
     reference_expression |
@@ -383,7 +389,9 @@ private identifier_like_keyword ::= VALUE
     | TIMESTAMP
     | ORDER
 
-identifier ::= id | identifier_like_keyword
+identifier ::= id | identifier_like_keyword {
+    methods=[getReference]
+}
 
 boolean_literal ::= boolean {
     extends = expression

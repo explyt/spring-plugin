@@ -7,7 +7,10 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlRangeVariableDeclaration extends PsiElement {
 
+  @Nullable
+  JpqlAliasDeclaration getAliasDeclaration();
+
   @NotNull
-  List<JpqlIdentifier> getIdentifierList();
+  JpqlIdentifier getIdentifier();
 
 }

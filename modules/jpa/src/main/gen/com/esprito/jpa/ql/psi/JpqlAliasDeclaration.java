@@ -5,15 +5,15 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlUpdateClause extends PsiElement {
-
-  @Nullable
-  JpqlAliasDeclaration getAliasDeclaration();
+public interface JpqlAliasDeclaration extends JpqlNamedElement {
 
   @NotNull
   JpqlIdentifier getIdentifier();
 
   @NotNull
-  List<JpqlUpdateItem> getUpdateItemList();
+  PsiElement setName(@NotNull String newName);
+
+  @NotNull
+  String getName();
 
 }
