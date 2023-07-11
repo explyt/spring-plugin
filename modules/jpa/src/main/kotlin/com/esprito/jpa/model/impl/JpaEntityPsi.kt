@@ -3,7 +3,6 @@ package com.esprito.jpa.model.impl
 import com.esprito.jpa.model.JpaEntity
 import com.esprito.jpa.model.JpaEntityAttribute
 import com.intellij.openapi.components.service
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.util.CachedValueProvider
@@ -20,6 +19,9 @@ class JpaEntityPsi private constructor(
 
     override val psiElement: PsiElement?
         get() = psiElementPointer.element
+
+    override val isValid: Boolean
+        get() = psiElementPointer.element != null
 
     override val name: String?
         get() {

@@ -5,7 +5,7 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlAliasDeclaration extends JpqlNamedElement {
+public interface JpqlAliasDeclaration extends JpqlNameIdentifierOwner {
 
   @NotNull
   JpqlIdentifier getIdentifier();
@@ -15,5 +15,11 @@ public interface JpqlAliasDeclaration extends JpqlNamedElement {
 
   @NotNull
   String getName();
+
+  @Nullable
+  PsiElement getReferencedElement();
+
+  @Nullable
+  PsiElement getNameIdentifier();
 
 }

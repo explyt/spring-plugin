@@ -10,7 +10,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import com.esprito.jpa.ql.psi.*;
 
-public class JpqlAliasDeclarationImpl extends JpqlNamedElementImpl implements JpqlAliasDeclaration {
+public class JpqlAliasDeclarationImpl extends JpqlNameIdentifierOwnerImpl implements JpqlAliasDeclaration {
 
   public JpqlAliasDeclarationImpl(@NotNull ASTNode node) {
     super(node);
@@ -42,6 +42,18 @@ public class JpqlAliasDeclarationImpl extends JpqlNamedElementImpl implements Jp
   @NotNull
   public String getName() {
     return JpqlPsiImplUtil.getName(this);
+  }
+
+  @Override
+  @Nullable
+  public PsiElement getReferencedElement() {
+    return JpqlPsiImplUtil.getReferencedElement(this);
+  }
+
+  @Override
+  @Nullable
+  public PsiElement getNameIdentifier() {
+    return JpqlPsiImplUtil.getNameIdentifier(this);
   }
 
 }

@@ -6,6 +6,8 @@ import com.intellij.psi.PsiType
 interface JpaEntityAttribute {
     val psiElement: PsiElement?
 
+    val isValid: Boolean
+
     val name: String?
 
     val type: PsiType

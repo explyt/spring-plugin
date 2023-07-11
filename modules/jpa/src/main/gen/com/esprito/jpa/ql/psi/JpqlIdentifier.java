@@ -6,10 +6,16 @@ import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiPolyVariantReference;
 
-public interface JpqlIdentifier extends PsiElement {
+public interface JpqlIdentifier extends JpqlNamedElement {
 
   @Nullable
   PsiElement getId();
+
+  @NotNull
+  PsiElement setName(@NotNull String newName);
+
+  @NotNull
+  String getName();
 
   @Nullable
   PsiPolyVariantReference getReference();

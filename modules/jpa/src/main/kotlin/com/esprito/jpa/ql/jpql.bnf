@@ -84,9 +84,9 @@ identification_variable_declaration ::= range_variable_declaration { join_expres
 range_variable_declaration ::= identifier [alias_declaration]
 
 alias_declaration ::= [AS] identifier {
-    mixin = "com.esprito.jpa.ql.psi.impl.JpqlNamedElementImpl"
-    implements = "com.esprito.jpa.ql.psi.JpqlNamedElement"
-    methods = [setName getName]
+    mixin = "com.esprito.jpa.ql.psi.impl.JpqlNameIdentifierOwnerImpl"
+    implements = "com.esprito.jpa.ql.psi.JpqlNameIdentifierOwner"
+    methods = [setName getName getReferencedElement getNameIdentifier]
 }
 
 join_expression ::= join_spec reference_expression alias_declaration [join_condition]
@@ -366,7 +366,10 @@ nullif_expression::= NULLIF'('scalar_expression',' scalar_expression')'
 private reference_or_parameter ::= reference_expression | input_parameter_expression
 
 
-reference_expression ::= identifier {'.' identifier}* | map_based_reference_expression
+reference_expression ::= path_reference_expression | map_based_reference_expression
+path_reference_expression ::= identifier {'.' identifier}* {
+    extends = reference_expression
+}
 map_based_reference_expression ::= KEY'('reference_expression')'
     | VALUE'('reference_expression')'
     | ENTRY'('reference_expression')' {
@@ -388,9 +391,12 @@ private identifier_like_keyword ::= VALUE
     | TIME
     | TIMESTAMP
     | ORDER
+    | OF
 
 identifier ::= id | identifier_like_keyword {
-    methods=[getReference]
+    mixin = "com.esprito.jpa.ql.psi.impl.JpqlNamedElementImpl"
+    implements = "com.esprito.jpa.ql.psi.JpqlNamedElement"
+    methods = [setName getName getReference]
 }
 
 boolean_literal ::= boolean {

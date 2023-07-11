@@ -110,9 +110,9 @@ object JpqlTokensSets {
     @JvmField
     val COMMENTS = TokenSet.create()
 
-    val STRING_LITERALS = TokenSet.create(JpqlTypes.STRING_LITERAL)
+    val STRING_LITERALS = TokenSet.create(JpqlTypes.STRING)
 
-    val NUMERIC_LITERALS = TokenSet.create(JpqlTypes.NUMERIC_LITERAL)
+    val NUMERIC_LITERALS = TokenSet.create(JpqlTypes.NUMERIC)
 
-    val DATETIME_LITERALS = TokenSet.create(JpqlTypes.DATETIME_LITERAL)
+    val DATETIME_LITERALS = TokenSet.create(JpqlTypes.DATETIME)
 }

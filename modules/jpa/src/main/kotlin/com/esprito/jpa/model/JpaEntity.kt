@@ -9,5 +9,7 @@ interface JpaEntity {
 
     val attributes: List<JpaEntityAttribute>
 
+    val isValid: Boolean
+
     fun findAttribute(name: String): JpaEntityAttribute? = attributes.firstOrNull { it.name == name }
 }

@@ -20,7 +20,7 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitAliasDeclaration(@NotNull JpqlAliasDeclaration o) {
-    visitNamedElement(o);
+    visitNameIdentifierOwner(o);
   }
 
   public void visitAllOrAnyExpression(@NotNull JpqlAllOrAnyExpression o) {
@@ -172,7 +172,7 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitIdentifier(@NotNull JpqlIdentifier o) {
-    visitPsiElement(o);
+    visitNamedElement(o);
   }
 
   public void visitInExpression(@NotNull JpqlInExpression o) {
@@ -245,6 +245,10 @@ public class JpqlVisitor extends PsiElementVisitor {
 
   public void visitParenExpression(@NotNull JpqlParenExpression o) {
     visitExpression(o);
+  }
+
+  public void visitPathReferenceExpression(@NotNull JpqlPathReferenceExpression o) {
+    visitReferenceExpression(o);
   }
 
   public void visitRangeVariableDeclaration(@NotNull JpqlRangeVariableDeclaration o) {
@@ -340,6 +344,10 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitWhereClause(@NotNull JpqlWhereClause o) {
+    visitPsiElement(o);
+  }
+
+  public void visitNameIdentifierOwner(@NotNull JpqlNameIdentifierOwner o) {
     visitPsiElement(o);
   }
 

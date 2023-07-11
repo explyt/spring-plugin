@@ -16,6 +16,9 @@ class JpaEntityAttributePsi private constructor(
     override val psiElement: PsiElement?
         get() = psiElementPointer.element
 
+    override val isValid: Boolean
+        get() = psiElement != null
+
     override val name: String?
         get() {
             @Suppress("UElementAsPsi")

@@ -28,3 +28,10 @@ TODO:
 - CAST
 - FUNCTION('TRUNC', CURRENT_DATE)
 - TREAT(_ as TYPE)
+
+
+Quickfixes:
+- Replace `==` with `=`
+
+Inspections:
+- enums in jpql

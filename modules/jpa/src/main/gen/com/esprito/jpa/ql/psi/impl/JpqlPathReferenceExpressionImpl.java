@@ -9,16 +9,16 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import com.esprito.jpa.ql.psi.*;
-import com.intellij.psi.PsiPolyVariantReference;
 
-public class JpqlIdentifierImpl extends JpqlNamedElementImpl implements JpqlIdentifier {
+public class JpqlPathReferenceExpressionImpl extends JpqlReferenceExpressionImpl implements JpqlPathReferenceExpression {
 
-  public JpqlIdentifierImpl(@NotNull ASTNode node) {
+  public JpqlPathReferenceExpressionImpl(@NotNull ASTNode node) {
     super(node);
   }
 
+  @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitIdentifier(this);
+    visitor.visitPathReferenceExpression(this);
   }
 
   @Override
@@ -28,27 +28,9 @@ public class JpqlIdentifierImpl extends JpqlNamedElementImpl implements JpqlIden
   }
 
   @Override
-  @Nullable
-  public PsiElement getId() {
-    return findChildByType(ID);
-  }
-
-  @Override
   @NotNull
-  public PsiElement setName(@NotNull String newName) {
-    return JpqlPsiImplUtil.setName(this, newName);
-  }
-
-  @Override
-  @NotNull
-  public String getName() {
-    return JpqlPsiImplUtil.getName(this);
-  }
-
-  @Override
-  @Nullable
-  public PsiPolyVariantReference getReference() {
-    return JpqlPsiImplUtil.getReference(this);
+  public List<JpqlIdentifier> getIdentifierList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlIdentifier.class);
   }
 
 }

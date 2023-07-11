@@ -44,9 +44,9 @@ public class JpqlParser implements PsiParser, LightPsiParser {
       FUNCTION_INVOCATION_EXPRESSION, GENERAL_CASE_EXPRESSION, INPUT_PARAMETER_EXPRESSION, IN_EXPRESSION,
       JOIN_EXPRESSION, LIKE_EXPRESSION, MAP_BASED_REFERENCE_EXPRESSION, MULTIPLICATIVE_EXPRESSION,
       NULLIF_EXPRESSION, NULL_COMPARISON_EXPRESSION, NUMERIC_LITERAL, OBJECT_EXPRESSION,
-      PAREN_EXPRESSION, REFERENCE_EXPRESSION, SIMPLE_CASE_EXPRESSION, SIMPLE_ENTITY_OR_VALUE_EXPRESSION,
-      STRING_FUNCTION_EXPRESSION, STRING_LITERAL, SUBQUERY_EXPRESSION, TYPE_EXPRESSION,
-      UNARY_ARITHMETIC_EXPRESSION),
+      PAREN_EXPRESSION, PATH_REFERENCE_EXPRESSION, REFERENCE_EXPRESSION, SIMPLE_CASE_EXPRESSION,
+      SIMPLE_ENTITY_OR_VALUE_EXPRESSION, STRING_FUNCTION_EXPRESSION, STRING_LITERAL, SUBQUERY_EXPRESSION,
+      TYPE_EXPRESSION, UNARY_ARITHMETIC_EXPRESSION),
   };
 
   /* ********************************************************** */
@@ -655,6 +655,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   //     | TIME
   //     | TIMESTAMP
   //     | ORDER
+  //     | OF
   static boolean identifier_like_keyword(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "identifier_like_keyword")) return false;
     boolean r;
@@ -669,6 +670,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     if (!r) r = consumeToken(b, TIME);
     if (!r) r = consumeToken(b, TIMESTAMP);
     if (!r) r = consumeToken(b, ORDER);
+    if (!r) r = consumeToken(b, OF);
     return r;
   }
 
@@ -982,6 +984,40 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     boolean r;
     r = consumeToken(b, ASC);
     if (!r) r = consumeToken(b, DESC);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // identifier {'.' identifier}*
+  public static boolean path_reference_expression(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "path_reference_expression")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, PATH_REFERENCE_EXPRESSION, "<path reference expression>");
+    r = identifier(b, l + 1);
+    r = r && path_reference_expression_1(b, l + 1);
+    exit_section_(b, l, m, r, false, null);
+    return r;
+  }
+
+  // {'.' identifier}*
+  private static boolean path_reference_expression_1(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "path_reference_expression_1")) return false;
+    while (true) {
+      int c = current_position_(b);
+      if (!path_reference_expression_1_0(b, l + 1)) break;
+      if (!empty_element_parsed_guard_(b, "path_reference_expression_1", c)) break;
+    }
+    return true;
+  }
+
+  // '.' identifier
+  private static boolean path_reference_expression_1_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "path_reference_expression_1_0")) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeToken(b, DOT);
+    r = r && identifier(b, l + 1);
+    exit_section_(b, m, null, r);
     return r;
   }
 
@@ -2369,47 +2405,14 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // identifier {'.' identifier}* | map_based_reference_expression
+  // path_reference_expression | map_based_reference_expression
   public static boolean reference_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "reference_expression")) return false;
     boolean r;
     Marker m = enter_section_(b, l, _COLLAPSE_, REFERENCE_EXPRESSION, "<reference expression>");
-    r = reference_expression_0(b, l + 1);
+    r = path_reference_expression(b, l + 1);
     if (!r) r = map_based_reference_expression(b, l + 1);
     exit_section_(b, l, m, r, false, null);
-    return r;
-  }
-
-  // identifier {'.' identifier}*
-  private static boolean reference_expression_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "reference_expression_0")) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = identifier(b, l + 1);
-    r = r && reference_expression_0_1(b, l + 1);
-    exit_section_(b, m, null, r);
-    return r;
-  }
-
-  // {'.' identifier}*
-  private static boolean reference_expression_0_1(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "reference_expression_0_1")) return false;
-    while (true) {
-      int c = current_position_(b);
-      if (!reference_expression_0_1_0(b, l + 1)) break;
-      if (!empty_element_parsed_guard_(b, "reference_expression_0_1", c)) break;
-    }
-    return true;
-  }
-
-  // '.' identifier
-  private static boolean reference_expression_0_1_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "reference_expression_0_1_0")) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = consumeTokenSmart(b, DOT);
-    r = r && identifier(b, l + 1);
-    exit_section_(b, m, null, r);
     return r;
   }
 

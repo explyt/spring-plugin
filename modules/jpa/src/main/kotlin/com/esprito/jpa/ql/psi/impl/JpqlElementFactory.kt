@@ -4,6 +4,7 @@ import com.esprito.jpa.ql.JpqlFileType
 import com.esprito.jpa.ql.psi.JpqlFile
 import com.esprito.jpa.ql.psi.JpqlIdentifier
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.util.PsiTreeUtil
@@ -15,7 +16,7 @@ class JpqlElementFactory(
 ) {
     fun createIdentifier(name: String): JpqlIdentifier {
         val file: JpqlFile = createFile("FROM $name")
-        return PsiTreeUtil.findChildOfType(file, JpqlIdentifier::class.java, false)!!
+        return PsiTreeUtil.findChildOfType(file, JpqlIdentifier::class.java, false) ?: throw ProcessCanceledException()
     }
 
     fun createFile(text: String): JpqlFile {

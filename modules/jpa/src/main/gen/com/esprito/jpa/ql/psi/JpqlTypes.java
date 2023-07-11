@@ -66,6 +66,7 @@ public interface JpqlTypes {
   IElementType ORDERBY_CLAUSE = new JpqlElementType("ORDERBY_CLAUSE");
   IElementType ORDERBY_ITEM = new JpqlElementType("ORDERBY_ITEM");
   IElementType PAREN_EXPRESSION = new JpqlElementType("PAREN_EXPRESSION");
+  IElementType PATH_REFERENCE_EXPRESSION = new JpqlElementType("PATH_REFERENCE_EXPRESSION");
   IElementType QL_STATEMENT = new JpqlElementType("QL_STATEMENT");
   IElementType RANGE_VARIABLE_DECLARATION = new JpqlElementType("RANGE_VARIABLE_DECLARATION");
   IElementType REFERENCE_EXPRESSION = new JpqlElementType("REFERENCE_EXPRESSION");
@@ -370,14 +371,14 @@ public interface JpqlTypes {
       else if (type == PAREN_EXPRESSION) {
         return new JpqlParenExpressionImpl(node);
       }
+      else if (type == PATH_REFERENCE_EXPRESSION) {
+        return new JpqlPathReferenceExpressionImpl(node);
+      }
       else if (type == QL_STATEMENT) {
         return new JpqlQLStatementImpl(node);
       }
       else if (type == RANGE_VARIABLE_DECLARATION) {
         return new JpqlRangeVariableDeclarationImpl(node);
-      }
-      else if (type == REFERENCE_EXPRESSION) {
-        return new JpqlReferenceExpressionImpl(node);
       }
       else if (type == SELECT_CLAUSE) {
         return new JpqlSelectClauseImpl(node);
