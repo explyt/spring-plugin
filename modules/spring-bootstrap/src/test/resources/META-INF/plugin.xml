@@ -1,0 +1,12 @@
+<idea-plugin>
+    <vendor>esprito</vendor>
+    <name>Spring Tool Tests</name>
+    <id>com.esprito.spring-test</id>
+    <description>Overriding services and components for tests.</description>
+
+    <depends>com.esprito.spring</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+    </extensions>
+</idea-plugin>

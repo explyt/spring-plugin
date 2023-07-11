@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij'
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+ext.intellijPlugins = ['com.intellij.java']
+
+sourceCompatibility = JavaVersion.VERSION_17
+
+intellij {
+    plugins.set(intellijPlugins)
+    version.set(defaultIdeaVersion)
+    downloadSources.set(true)
+    buildSearchableOptions {
+        enabled false
+    }
+}
+
+runIde.enabled = false
+publishPlugin.enabled = false
+verifyPlugin.enabled = false

@@ -14,6 +14,7 @@ includeProject('spring-integration', 'modules/spring-integration')
 includeProject('spring-messaging', 'modules/spring-messaging')
 includeProject('spring-bootstrap', 'modules/spring-bootstrap')
 includeProject('jpa', 'modules/jpa')
+includeProject('test-framework', 'modules/test-framework')
 
 void includeProject(String name, String path, boolean changeBuildFileName = true, boolean ktScript = false) {
     include ":$name"
