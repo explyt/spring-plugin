@@ -13,6 +13,7 @@ evaluationDependsOn(":spring-initializr")
 evaluationDependsOn(":spring-integration")
 evaluationDependsOn(":spring-messaging")
 evaluationDependsOn(":jpa")
+evaluationDependsOn(":test-framework")
 
 ext.pluginVersion = '2023.1'
 
@@ -46,6 +47,7 @@ def springIntegrationProject = project(':spring-integration')
 def springMessagingProject = project(':spring-messaging')
 def jpqlProject = project(':jpa')
 def springBootstrapModule = project(':spring-bootstrap')
+def testFramework = project(':test-framework')
 
 repositories {
     mavenCentral()
@@ -61,6 +63,7 @@ dependencies {
     implementation springIntegrationProject
     implementation springMessagingProject
     implementation jpqlProject
+    testImplementation testFramework
 }
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
@@ -118,28 +121,3 @@ runIde {
 buildPlugin {
     archiveFileName = buildArchiveName
 }
-
-//TODO try to remove extra logic
-test {
-    scanForTestClasses false
-
-    include "**/*Test.class"
-
-    ['java.security.egd'].each {
-        def propertyValue = System.getProperty(it)
-        if (propertyValue) {
-            systemProperties[it] = propertyValue
-        }
-    }
-}
-
-// TODO Figure out how to configure existing tasks for local testing instead of creating new ones
-task testFromIdea(type: Test) {
-    setGroup("verification")
-    scanForTestClasses false
-    include "**/*Test.class"
-}
-
-//sourceSets {
-//    main.kotlin.srcDirs += 'src/main/kotlin'
-//}
