@@ -5,6 +5,13 @@
 rootProject.name = 'esprito-studio'
 
 includeProject('spring-core', 'modules/spring-core')
+includeProject('spring-data', 'modules/spring-data')
+includeProject('spring-security', 'modules/spring-security')
+includeProject('spring-web', 'modules/spring-web')
+includeProject('spring-cloud', 'modules/spring-cloud')
+includeProject('spring-initializr', 'modules/spring-initializr')
+includeProject('spring-integration', 'modules/spring-integration')
+includeProject('spring-messaging', 'modules/spring-messaging')
 includeProject('spring-bootstrap', 'modules/spring-bootstrap')
 includeProject('jpa', 'modules/jpa')
 
