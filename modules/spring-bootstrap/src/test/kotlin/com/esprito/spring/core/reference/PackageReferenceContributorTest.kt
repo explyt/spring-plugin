@@ -9,7 +9,7 @@ class PackageReferenceContributorTest : EspritoJavaLightTestCase() {
 
     override fun getTestDataPath(): String = "testdata/reference"
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext6)
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     fun testComponentScanProjectVariants() {
         val vf = myFixture.copyFileToProject("ComponentScanProjectVariants.java", "com/example/TestConfiguration.java")

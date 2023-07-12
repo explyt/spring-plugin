@@ -8,7 +8,7 @@ class SpringImplicitUsageProviderTest : EspritoInspectionTestCase() {
 
     override fun getTestDataPath(): String = "testdata/inspection/suppresses"
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext6)
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     fun testTestConfiguration() = doTest(UnusedDeclarationInspection())
 }

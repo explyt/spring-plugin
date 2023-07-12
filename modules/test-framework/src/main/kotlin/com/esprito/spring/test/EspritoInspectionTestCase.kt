@@ -18,14 +18,9 @@ abstract class EspritoInspectionTestCase : JavaInspectionTestCase() {
 
     open val libraries: Array<TestLibrary> = arrayOf()
 
-    open fun getTestLibsPath(): String {
-        return PathUtil.toSystemIndependentName(File("../test-framework/testlibs").canonicalPath)!!
-    }
-
     override fun getProjectDescriptor(): LightProjectDescriptor {
         return EspritoProjectDescriptor()
     }
-
 
     fun doTest(tool: GlobalInspectionTool) {
         doTest(getTestName(true), tool)
@@ -35,17 +30,14 @@ abstract class EspritoInspectionTestCase : JavaInspectionTestCase() {
         doTest(getTestName(true), tool)
     }
 
-    protected inner class EspritoProjectDescriptor(): ProjectDescriptor(languageLevel) {
+    protected inner class EspritoProjectDescriptor: ProjectDescriptor(languageLevel) {
 
         override fun configureModule(module: Module, model: ModifiableRootModel, contentEntry: ContentEntry) {
             super.configureModule(module, model, contentEntry)
 
-            addLibraries(model)
-        }
-
-        private fun addLibraries(rootModel: ModifiableRootModel) = libraries.forEach {
-            PsiTestUtil.addLibrary(rootModel, it.name, getTestLibsPath(), it.jar)
+            libraries.forEach {
+                addFromMaven(model, it.mavenCoordinates, it.includeTransitiveDependencies)
+            }
         }
     }
-
 }
