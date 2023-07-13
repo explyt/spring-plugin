@@ -39,10 +39,13 @@
 
 
     boolean = 'regexp:(TRUE|FALSE)'
-    id = 'regexp:[a-zA-Z][a-zA-Z0-9]*'
+    id = 'regexp:[a-zA-Z_][a-zA-Z0-9_]*'
     numeric = 'regexp:[0-9]+(\.[0-9]+)*'
     string = "regexp:'([^']|'')*'"
     datetime = "regexp:\{\s*[dt]s?\s+'([^']|'')*'\s*\}"
+
+    named_input_parameter = 'regexp::[a-zA-Z_][a-zA-Z0-9_]*'
+    numeric_input_parameter = 'regexp:\?[0-9]+'
   ]
 }
 
@@ -377,7 +380,9 @@ map_based_reference_expression ::= KEY'('reference_expression')'
     methods = [getMapOperationType]
 }
 
-input_parameter_expression ::= ':'identifier
+input_parameter_expression ::= named_input_parameter | numeric_input_parameter {
+    methods=[getReference]
+}
 
 // todo support keywords as a parameter or an identifier
 private identifier_like_keyword ::= VALUE

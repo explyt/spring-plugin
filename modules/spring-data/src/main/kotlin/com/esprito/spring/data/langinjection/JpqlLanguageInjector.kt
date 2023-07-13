@@ -20,7 +20,7 @@ class JpqlLanguageInjector : LanguageInjector {
             ?: return
 
         val parentAnnotation = uInjectionHost.getParentOfType<UAnnotation>()
-            ?.takeIf { it.qualifiedName == SpringDataClasses.query }
+            ?.takeIf { it.qualifiedName == SpringDataClasses.QUERY }
             ?: return
 
         if (

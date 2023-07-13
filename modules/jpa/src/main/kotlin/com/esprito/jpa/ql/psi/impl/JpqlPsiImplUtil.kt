@@ -1,6 +1,7 @@
 package com.esprito.jpa.ql.psi.impl
 
 import com.esprito.jpa.ql.psi.*
+import com.esprito.jpa.ql.reference.JpqlInputParameterReference
 import com.esprito.jpa.ql.reference.JpqlReference
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
@@ -72,5 +73,10 @@ object JpqlPsiImplUtil {
         }
 
         return PsiTreeUtil.skipSiblingsBackward(element, PsiWhiteSpace::class.java)
+    }
+
+    @JvmStatic
+    fun getReference(element: JpqlInputParameterExpression): PsiPolyVariantReference {
+        return JpqlInputParameterReference(element)
     }
 }

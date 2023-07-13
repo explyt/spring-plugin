@@ -3,6 +3,14 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
 
+
+    <extensionPoints>
+        <extensionPoint
+                qualifiedName="com.esprito.jpa.ql.reference.inputParameterReferenceResolver"
+                interface="com.esprito.jpa.ql.reference.InputParameterReferenceResolver"
+                area="IDEA_PROJECT"/>
+    </extensionPoints>
+
     <extensions defaultExtensionNs="com.intellij">
         <fileType
                 name="JPA QL"

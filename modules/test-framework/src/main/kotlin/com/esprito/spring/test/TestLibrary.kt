@@ -11,6 +11,7 @@ import org.jetbrains.idea.maven.utils.library.RepositoryLibraryProperties
 data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDependencies: Boolean = true) {
     companion object {
         val springContext_6_0_7 = TestLibrary("org.springframework:spring-context:6.0.7")
+        val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
     }
 }
 
