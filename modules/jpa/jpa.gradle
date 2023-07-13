@@ -11,6 +11,8 @@ plugins {
 
 ext.intellijPlugins = ['com.intellij.java']
 
+evaluationDependsOn(":base")
+
 sourceCompatibility = JavaVersion.VERSION_17
 
 intellij {
@@ -35,8 +37,10 @@ runIde.enabled = false
 publishPlugin.enabled = false
 verifyPlugin.enabled = false
 
-dependencies {
+def baseProject = project(':base')
 
+dependencies {
+    implementation baseProject
 }
 
 repositories {

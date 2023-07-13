@@ -4,6 +4,7 @@
  */
 rootProject.name = 'esprito-studio'
 
+includeProject('base', 'modules/base')
 includeProject('spring-core', 'modules/spring-core')
 includeProject('spring-data', 'modules/spring-data')
 includeProject('spring-security', 'modules/spring-security')
