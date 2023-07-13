@@ -26,6 +26,7 @@
 
     </extensions>
 
+    <xi:include href="base-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="spring-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="spring-data-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="spring-security-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
