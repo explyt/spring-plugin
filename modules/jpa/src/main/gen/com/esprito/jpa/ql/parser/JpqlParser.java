@@ -373,7 +373,6 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   // numeric_or_input_parameter [PERCENT]
   public static boolean fetchCountOrPercent(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "fetchCountOrPercent")) return false;
-    if (!nextTokenIs(b, "<fetch count or percent>", COLON, NUMERIC)) return false;
     boolean r;
     Marker m = enter_section_(b, l, _NONE_, FETCH_COUNT_OR_PERCENT, "<fetch count or percent>");
     r = numeric_or_input_parameter(b, l + 1);
@@ -890,7 +889,6 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   // numeric_literal | input_parameter_expression
   static boolean numeric_or_input_parameter(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "numeric_or_input_parameter")) return false;
-    if (!nextTokenIs(b, "", COLON, NUMERIC)) return false;
     boolean r;
     r = numeric_literal(b, l + 1);
     if (!r) r = input_parameter_expression(b, l + 1);
@@ -2444,15 +2442,15 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // ':'identifier
+  // named_input_parameter | numeric_input_parameter
   public static boolean input_parameter_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "input_parameter_expression")) return false;
-    if (!nextTokenIsSmart(b, COLON)) return false;
+    if (!nextTokenIsSmart(b, NAMED_INPUT_PARAMETER, NUMERIC_INPUT_PARAMETER)) return false;
     boolean r;
-    Marker m = enter_section_(b);
-    r = consumeTokenSmart(b, COLON);
-    r = r && identifier(b, l + 1);
-    exit_section_(b, m, INPUT_PARAMETER_EXPRESSION, r);
+    Marker m = enter_section_(b, l, _NONE_, INPUT_PARAMETER_EXPRESSION, "<input parameter expression>");
+    r = consumeTokenSmart(b, NAMED_INPUT_PARAMETER);
+    if (!r) r = consumeTokenSmart(b, NUMERIC_INPUT_PARAMETER);
+    exit_section_(b, l, m, r, false, null);
     return r;
   }
 

@@ -159,6 +159,7 @@ public interface JpqlTypes {
   IElementType MINUS = new JpqlTokenType("-");
   IElementType MOD = new JpqlTokenType("MOD");
   IElementType MUL = new JpqlTokenType("*");
+  IElementType NAMED_INPUT_PARAMETER = new JpqlTokenType("named_input_parameter");
   IElementType NEQ = new JpqlTokenType("<>");
   IElementType NEW = new JpqlTokenType("NEW");
   IElementType NEXT = new JpqlTokenType("NEXT");
@@ -166,6 +167,7 @@ public interface JpqlTypes {
   IElementType NULL = new JpqlTokenType("NULL");
   IElementType NULLIF = new JpqlTokenType("NULLIF");
   IElementType NUMERIC = new JpqlTokenType("numeric");
+  IElementType NUMERIC_INPUT_PARAMETER = new JpqlTokenType("numeric_input_parameter");
   IElementType OBJECT = new JpqlTokenType("OBJECT");
   IElementType OF = new JpqlTokenType("OF");
   IElementType OFFSET = new JpqlTokenType("OFFSET");

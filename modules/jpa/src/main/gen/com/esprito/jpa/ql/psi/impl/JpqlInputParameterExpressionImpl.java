@@ -9,6 +9,7 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import com.esprito.jpa.ql.psi.*;
+import com.intellij.psi.PsiPolyVariantReference;
 
 public class JpqlInputParameterExpressionImpl extends JpqlExpressionImpl implements JpqlInputParameterExpression {
 
@@ -28,9 +29,21 @@ public class JpqlInputParameterExpressionImpl extends JpqlExpressionImpl impleme
   }
 
   @Override
+  @Nullable
+  public PsiElement getNamedInputParameter() {
+    return findChildByType(NAMED_INPUT_PARAMETER);
+  }
+
+  @Override
+  @Nullable
+  public PsiElement getNumericInputParameter() {
+    return findChildByType(NUMERIC_INPUT_PARAMETER);
+  }
+
+  @Override
   @NotNull
-  public JpqlIdentifier getIdentifier() {
-    return findNotNullChildByClass(JpqlIdentifier.class);
+  public PsiPolyVariantReference getReference() {
+    return JpqlPsiImplUtil.getReference(this);
   }
 
 }

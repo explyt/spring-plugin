@@ -10,6 +10,7 @@ evaluationDependsOn(":jpa")
 ext.intellijPlugins = []
 def springCoreProject = project(':spring-core')
 def jpaProject = project(':jpa')
+def testFramework = project(':test-framework')
 
 sourceCompatibility = JavaVersion.VERSION_17
 
@@ -30,6 +31,8 @@ verifyPlugin.enabled = false
 dependencies {
     implementation springCoreProject
     implementation jpaProject
+
+    testImplementation testFramework
 }
 
 repositories {

@@ -4,6 +4,11 @@
                 implementation="com.esprito.spring.data.langinjection.JpqlLanguageInjector"/>
     </extensions>
 
+    <extensions defaultExtensionNs="com.esprito">
+        <jpa.ql.reference.inputParameterReferenceResolver
+                implementation="com.esprito.spring.data.reference.RepositoryQueryInputParameterReferenceResolver"/>
+    </extensions>
+
     <actions>
 
     </actions>
