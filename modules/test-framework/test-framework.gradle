@@ -15,6 +15,7 @@ intellij {
     buildSearchableOptions {
         enabled false
     }
+    instrumentCode.set(false)
 }
 
 runIde.enabled = false

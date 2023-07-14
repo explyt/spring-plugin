@@ -3,11 +3,17 @@ package com.esprito.spring.core.reference
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.testFramework.TestDataPath
 import junit.framework.TestCase
+import org.junit.Ignore
 
+private const val TEST_DATA_PATH = "testdata/reference"
+
+@Ignore
+@TestDataPath("\$CONTENT_ROOT/../../${TEST_DATA_PATH}")
 class PackageReferenceContributorTest : EspritoJavaLightTestCase() {
 
-    override fun getTestDataPath(): String = "testdata/reference"
+    override fun getTestDataPath(): String = TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 

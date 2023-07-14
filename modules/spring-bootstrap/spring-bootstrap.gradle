@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.tasks.RunPluginVerifierTask.FailureLevel
+
 plugins {
     id 'java'
     id 'org.jetbrains.intellij'
@@ -25,7 +27,7 @@ if (!hasProperty('snapshotVersion')) {
 version = {
     if (rootProject.hasProperty('buildVersion')) {
         def bv = rootProject.property('buildVersion') as String
-        return bv.startsWith("spring.v.") ? bv.substring(7) : (bv.startsWith("v.") ? bv.substring(2) : bv)
+        return bv.startsWith("spring.v.") ? bv.substring(9) : (bv.startsWith("v.") ? bv.substring(2) : bv)
     }
     def sincePostfix = "${sinceVersion}".substring(0, 3)
     return "${pluginVersion}.${snapshotVersion}-${sincePostfix}".toString()
@@ -100,15 +102,28 @@ runIde {
     }
 }
 
-//TODO
-//runPluginVerifier {
-//    ideVersions = [pluginVerifierIdeVersion]
-//    failureLevel.set(EnumSet.copyOf([FailureLevel.INVALID_PLUGIN, FailureLevel.COMPATIBILITY_PROBLEMS, FailureLevel.COMPATIBILITY_WARNINGS]))
-//
-//    def buildDir = project.getBuildDir()
-//    def buildArchivePath = "${buildDir}/distributions/${buildArchiveName}"
-//    distributionFile.set(new File(buildArchivePath))
-//}
+runPluginVerifier {
+    ideVersions = [pluginVerifierIdeVersion]
+    failureLevel.set(EnumSet.copyOf([FailureLevel.INVALID_PLUGIN, FailureLevel.COMPATIBILITY_PROBLEMS, FailureLevel.COMPATIBILITY_WARNINGS]))
+
+    def buildDir = project.getBuildDir()
+    def buildArchivePath = "${buildDir}/distributions/${buildArchiveName}"
+    distributionFile.set(new File(buildArchivePath))
+}
+
+test {
+    dependsOn(
+            springCoreProject.test,
+            springDataProject.test,
+            springSecurityProject.test,
+            springWebProject.test,
+            springCloudProject.test,
+            springInitializrProject.test,
+            springIntegrationProject.test,
+            springMessagingProject.test,
+            jpqlProject.test
+    )
+}
 
 //TODO
 //if (rootProject.hasProperty('pluginRepoToken') && rootProject.hasProperty('pluginRepoChannel')) {

@@ -33,6 +33,7 @@ def baseProject = project(':base')
 
 dependencies {
     implementation baseProject
+    testImplementation project(':test-framework')
 }
 
 repositories {
