@@ -5,7 +5,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <notificationGroup displayType="BALLOON" id="com.esprito.spring.notification"
-                           bundle="messages.MainBundle" key="esprito.spring.common.notifications"/>
+                           bundle="messages.SpringCoreBundle" key="esprito.spring.common.notifications"/>
 
     </extensions>
 
