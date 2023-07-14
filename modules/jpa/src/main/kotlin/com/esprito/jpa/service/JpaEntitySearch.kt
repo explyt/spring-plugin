@@ -12,20 +12,17 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.util.CommonProcessors.CollectProcessor
+import com.intellij.util.EmptyQuery
 import com.intellij.util.MergeQuery
 import com.intellij.util.Processor
 import com.intellij.util.UniqueResultsQuery
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.toUElementOfType
 
 
 @Service(Service.Level.PROJECT)
 class JpaEntitySearch(
     private val project: Project
 ) {
-    private val javaPsiFacade by lazy {
-        project.service<JavaPsiFacade>()
-    }
+    private val javaPsiFacade by lazy { JavaPsiFacade.getInstance(project) }
 
     fun loadEntities(module: Module): List<JpaEntity> {
         val processor = CollectProcessor<JpaEntity>()
@@ -44,7 +41,7 @@ class JpaEntitySearch(
     ) {
         val allScope = GlobalSearchScope.allScope(project)
 
-        val psiClassQuery = listOf(
+        val queries = listOf(
             JpaClasses.entity,
             JpaClasses.mappedSuperclass,
             JpaClasses.embeddable
@@ -54,16 +51,18 @@ class JpaEntitySearch(
             javaPsiFacade.findClass(it, allScope)
         }.map {
             AnnotatedElementsSearch.searchPsiClasses(it, searchScope)
-        }.reduce { acc, query ->
-            MergeQuery(acc, query)
+        }
+
+        val psiClassQuery = if (queries.isEmpty()) {
+            EmptyQuery()
+        } else {
+            queries.reduce { acc, query ->
+                MergeQuery(acc, query)
+            }
         }
 
         val myProcessor = Processor<PsiClass> {
-            val uClass = it.toUElementOfType<UClass>()
-                ?: return@Processor true
-
-            val jpaEntity = JpaEntityPsi(uClass)
-                ?: return@Processor true
+            val jpaEntity = JpaEntityPsi(it)
 
             processor.process(jpaEntity)
         }
@@ -73,5 +72,9 @@ class JpaEntitySearch(
         }.forEach(
             myProcessor
         )
+    }
+
+    companion object {
+        fun getInstance(project: Project): JpaEntitySearch = project.service()
     }
 }

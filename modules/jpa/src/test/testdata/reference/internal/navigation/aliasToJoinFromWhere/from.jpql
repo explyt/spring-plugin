@@ -1,0 +1,1 @@
+SELECT f.user FROM ScheduledFlight s JOIN s.flightRegistrations f WHERE f<caret>.user is NOT NULL

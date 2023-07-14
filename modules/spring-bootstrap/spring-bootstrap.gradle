@@ -49,7 +49,7 @@ def springCloudProject = project(':spring-cloud')
 def springInitializrProject = project(':spring-initializr')
 def springIntegrationProject = project(':spring-integration')
 def springMessagingProject = project(':spring-messaging')
-def jpqlProject = project(':jpa')
+def jpaProject = project(':jpa')
 def springBootstrapModule = project(':spring-bootstrap')
 def testFramework = project(':test-framework')
 
@@ -67,7 +67,7 @@ dependencies {
     implementation springInitializrProject
     implementation springIntegrationProject
     implementation springMessagingProject
-    implementation jpqlProject
+    implementation jpaProject
     testImplementation testFramework
 }
 
@@ -121,7 +121,7 @@ test {
             springInitializrProject.test,
             springIntegrationProject.test,
             springMessagingProject.test,
-            jpqlProject.test
+            jpaProject.test
     )
 }
 

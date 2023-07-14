@@ -1,7 +1,7 @@
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
     <vendor>esprito</vendor>
     <name>Spring Data Tests</name>
-    <id>com.esprito.spring-test</id>
+    <id>com.esprito.spring-data-test</id>
     <description>Overriding services and components for tests.</description>
 
     <xi:include href="spring-data-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>

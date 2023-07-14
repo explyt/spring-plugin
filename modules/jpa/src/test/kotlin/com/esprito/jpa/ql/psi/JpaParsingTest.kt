@@ -2,7 +2,7 @@ package com.esprito.jpa.ql.psi
 
 import com.intellij.testFramework.ParsingTestCase
 
-class JpaParsingTest : ParsingTestCase("", "jpql", JpqlParserDefinition()) {
+class JpaParsingTest : ParsingTestCase("psi", "jpql", JpqlParserDefinition()) {
     fun testSimpleSelect() = doTest(true)
 
     fun testUpdate() = doTest(true)
@@ -21,7 +21,7 @@ class JpaParsingTest : ParsingTestCase("", "jpql", JpqlParserDefinition()) {
 
     fun testJoin() = doTest(true)
 
-    override fun getTestDataPath(): String = "src/test/testData"
+    override fun getTestDataPath(): String = "src/test/testdata"
 
     override fun skipSpaces(): Boolean = true
 

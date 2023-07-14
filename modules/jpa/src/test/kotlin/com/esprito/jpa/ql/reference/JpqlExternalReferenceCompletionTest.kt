@@ -1,0 +1,78 @@
+package com.esprito.jpa.ql.reference
+
+import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.TestLibrary
+import com.intellij.codeInsight.TargetElementUtil
+import com.intellij.codeInsight.TargetElementUtilBase
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.testFramework.TestDataPath
+import org.junit.Assert
+import org.junit.Ignore
+import java.io.File
+import java.util.*
+
+private const val TEST_DATA_PATH = "src/test/testdata/reference/external"
+
+/**
+ * Tests references completion
+ */
+@TestDataPath(TEST_DATA_PATH)
+@Ignore
+abstract class JpqlExternalReferenceCompletionTest : EspritoJavaLightTestCase() {
+    class Jakarta : JpqlExternalReferenceCompletionTest() {
+        override val libraries = arrayOf(
+            TestLibrary.jakarta_persistence_3_1_0
+        )
+    }
+
+    class Javax : JpqlExternalReferenceCompletionTest() {
+        override val libraries = arrayOf(
+            TestLibrary.javax_persistence_2_2
+        )
+    }
+
+    override fun getTestDataPath() = TEST_DATA_PATH
+
+    fun testEntityFrom() = doTest()
+    fun testFieldWhere() = doTest()
+    fun testSubField() = doTest()
+    fun testSuperClassField() = doTest()
+    fun testFieldGroupBy() = doTest()
+    fun testFieldJoin() = doTest()
+
+    @Suppress("UnstableApiUsage")
+    private fun doTest() {
+        myFixture.copyDirectoryToProject(
+            "../model",
+            "com/example"
+        )
+
+        val name = getTestName(true)
+        var vf = myFixture.copyFileToProject(
+            "$name.jpql",
+            "$name.jpql"
+        )
+        myFixture.configureFromExistingVirtualFile(vf)
+
+
+        val reference = TargetElementUtil.findTargetElement(editor, TargetElementUtilBase.ELEMENT_NAME_ACCEPTED)
+            ?.reference
+        assertNotNull(reference)
+        reference!!
+
+        val actualVariants = reference.variants.mapTo(TreeSet()) {
+            if (it is LookupElement) {
+                it.lookupString
+            } else {
+                it.toString()
+            }
+        }.toArray()
+
+        val resultFilePath = "$testDataPath/${name}_variants.txt"
+        val expectedVariants = TreeSet(
+            File(resultFilePath).readLines()
+        ).toArray()
+
+        Assert.assertArrayEquals(expectedVariants, actualVariants)
+    }
+}

@@ -3,21 +3,19 @@ package com.esprito.jpa.model.impl
 import com.esprito.jpa.model.JpaEntity
 import com.esprito.jpa.model.JpaEntityAttribute
 import com.intellij.openapi.components.service
-import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiClass
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import org.jetbrains.uast.UClass
 
 class JpaEntityPsi private constructor(
-    psiElement: PsiElement
+    psiClass: PsiClass
 ) : JpaEntity {
-    private val cacheProvider = psiElement.project
-        .service<JpaEntityPsiCacheProvider>()
+    private val psiElementPointer = SmartPointerManager.createPointer(psiClass)
 
-    private val psiElementPointer = SmartPointerManager.createPointer(psiElement)
+    private val psiParseService = JpaEntityPsiParseService.getInstance(psiElementPointer.project)
 
-    override val psiElement: PsiElement?
+    override val psiElement: PsiClass?
         get() = psiElementPointer.element
 
     override val isValid: Boolean
@@ -26,25 +24,37 @@ class JpaEntityPsi private constructor(
     override val name: String?
         get() {
             val psiElement = psiElement ?: return null
-            return cacheProvider.computeName(psiElement)
+            return psiParseService.computeName(psiElement)
         }
 
     override val attributes: List<JpaEntityAttribute>
         get() {
             val psiElement = psiElement ?: return emptyList()
 
-            return cacheProvider.computeAttributes(psiElement)
+            return psiParseService.computeAttributes(psiElement)
         }
 
-    companion object {
-        operator fun invoke(uClass: UClass): JpaEntityPsi? {
-            val sourcePsi = uClass.sourcePsi
-                ?: return null
+    override val isPersistent: Boolean
+        get() {
+            val psiElement = psiElement ?: return false
 
-            return CachedValuesManager.getCachedValue(sourcePsi) {
+            return psiParseService.isPersistent(psiElement)
+        }
+
+    override fun toString(): String {
+        if (isValid) {
+            return "${psiElement?.qualifiedName}: $name"
+        }
+
+        return "--outdated--"
+    }
+
+    companion object {
+        operator fun invoke(psiClass: PsiClass): JpaEntityPsi {
+            return CachedValuesManager.getCachedValue(psiClass) {
                 CachedValueProvider.Result(
-                    JpaEntityPsi(sourcePsi),
-                    sourcePsi
+                    JpaEntityPsi(psiClass),
+                    psiClass
                 )
             }
         }

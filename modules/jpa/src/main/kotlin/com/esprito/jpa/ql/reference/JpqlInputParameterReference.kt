@@ -1,7 +1,10 @@
 package com.esprito.jpa.ql.reference
 
 import com.esprito.jpa.ql.psi.JpqlInputParameterExpression
+import com.esprito.jpa.ql.psi.impl.JpqlElementFactory
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.ResolveResult
 
@@ -12,6 +15,16 @@ class JpqlInputParameterReference(
         expression,
         TextRange(0, expression.textLength)
     ) {
+
+    override fun handleElementRename(newElementName: String): PsiElement {
+        if (element.text.startsWith('?'))
+            return element
+
+        val newInputParameterExpression = JpqlElementFactory.getInstance(element.project)
+            .createNamedInputParameter(newElementName)
+
+        return element.replace(newInputParameterExpression)
+    }
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         return InputParameterReferenceResolver.EP

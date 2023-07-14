@@ -38,9 +38,11 @@ publishPlugin.enabled = false
 verifyPlugin.enabled = false
 
 def baseProject = project(':base')
+def testFramework = project(':test-framework')
 
 dependencies {
     implementation baseProject
+    testImplementation testFramework
 }
 
 repositories {

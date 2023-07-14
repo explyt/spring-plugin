@@ -27,7 +27,7 @@ object JpqlPsiImplUtil {
         val oldIdentifier = element.node.findChildByType(JpqlTypes.IDENTIFIER)
             ?: return element
 
-        val jpqlElementFactory = element.project.service<JpqlElementFactory>()
+        val jpqlElementFactory = JpqlElementFactory.getInstance(element.project)
 
         val newIdentifier = jpqlElementFactory.createIdentifier(newName)
 
@@ -43,7 +43,7 @@ object JpqlPsiImplUtil {
 
     @JvmStatic
     fun setName(element: JpqlIdentifier, newName: String): PsiElement {
-        val jpqlElementFactory = element.project.service<JpqlElementFactory>()
+        val jpqlElementFactory = JpqlElementFactory.getInstance(element.project)
 
         val newIdentifier = jpqlElementFactory.createIdentifier(newName)
 
