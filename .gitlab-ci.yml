@@ -1,0 +1,29 @@
+image: amazoncorretto:17.0.7
+
+variables:
+  BRANCH_NAME: $CI_COMMIT_REF_NAME
+  BUILD_NUMBER: $CI_PIPELINE_ID
+
+stages:
+  - test
+  - release
+
+test:
+  stage: test
+  script:
+    - ./gradlew :spring-bootstrap:test -Dfile.encoding=UTF8
+  artifacts:
+    reports:
+      junit: modules/**/build/test-results/test/TEST-*.xml
+
+release:
+  stage: release
+  when: manual
+  script:
+    - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|/|_|g')"
+    - ./gradlew :spring-bootstrap:buildPlugin -PsnapshotVersion=SNAPSHOT$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion
+    - ./gradlew :spring-bootstrap:runPluginVerifier
+  artifacts:
+    paths:
+      - modules/spring-bootstrap/build/reports/pluginVerifier
+      - modules/spring-bootstrap/build/distributions/*.zip
