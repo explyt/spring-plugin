@@ -3,7 +3,9 @@ package com.esprito.jpa.model.impl
 import com.esprito.jpa.JpaClasses
 import com.esprito.jpa.model.JpaEntityAttribute
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
@@ -11,7 +13,7 @@ import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.toUElementOfType
 
 @Service(Service.Level.PROJECT)
-class JpaEntityPsiCacheProvider(
+class JpaEntityPsiParseService(
     private val project: Project
 ) {
     fun computeName(psiElement: PsiElement): String? {
@@ -33,7 +35,7 @@ class JpaEntityPsiCacheProvider(
         val uClass = psiElement.toUElementOfType<UClass>()
             ?: return emptyList()
 
-        return uClass.fields
+        return loadPossibleEntityAttributeFields(uClass)
             .asSequence()
             .filter { !it.isStatic }
             .filter { isEntityAttribute(it) }
@@ -41,9 +43,35 @@ class JpaEntityPsiCacheProvider(
             .toList()
     }
 
+    private fun loadPossibleEntityAttributeFields(
+        uClass: UClass?,
+        visited: MutableSet<UClass> = mutableSetOf()
+    ): Array<UField> {
+        if (uClass == null)
+            return emptyArray()
+
+        if (uClass in visited)
+            return emptyArray()
+
+        visited.add(uClass)
+
+        val superClass = uClass.javaPsi.superClass
+            ?.toUElementOfType<UClass>()
+
+        return uClass.fields + loadPossibleEntityAttributeFields(superClass, visited)
+    }
+
     private fun isEntityAttribute(uField: UField): Boolean {
         //todo
         return true
+    }
+
+    fun isPersistent(psiElement: PsiClass): Boolean = JpaClasses.entity.allFqns.any {
+        psiElement.hasAnnotation(it)
+    }
+
+    companion object {
+        fun getInstance(project: Project): JpaEntityPsiParseService = project.service()
     }
 
 }

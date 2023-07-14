@@ -1,0 +1,1 @@
+SELECT e FROM Employee e JOIN e.department<caret> d WHERE d.name = :departmentName

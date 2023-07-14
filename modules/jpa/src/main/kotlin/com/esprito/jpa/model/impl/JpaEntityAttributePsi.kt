@@ -1,8 +1,9 @@
 package com.esprito.jpa.model.impl
 
 import com.esprito.jpa.model.JpaEntityAttribute
+import com.esprito.jpa.model.JpaEntityAttributeType
+import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiType
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -13,6 +14,9 @@ class JpaEntityAttributePsi private constructor(
     psiElement: PsiElement
 ) : JpaEntityAttribute {
     private val psiElementPointer = SmartPointerManager.createPointer(psiElement)
+
+    private val psiParseService = JpaEntityAttributePsiParseService.getInstance(psiElementPointer.project)
+
     override val psiElement: PsiElement?
         get() = psiElementPointer.element
 
@@ -25,8 +29,13 @@ class JpaEntityAttributePsi private constructor(
             return psiElement?.toUElementOfType<UField>()?.name
         }
 
-    override val type: PsiType
-        get() = TODO("Not yet implemented")
+    override val type: JpaEntityAttributeType
+        get() {
+            val uField = (psiElement?.toUElementOfType<UField>()
+                ?: return JpaEntityAttributeType.Unknown)
+
+            return psiParseService.computeAttributeType(uField)
+        }
 
     companion object {
         operator fun invoke(uField: UField): JpaEntityAttributePsi? {

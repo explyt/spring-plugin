@@ -14,7 +14,7 @@ import org.jetbrains.uast.*
 class RepositoryQueryInputParameterReferenceResolver(
     project: Project
 ) : InputParameterReferenceResolver {
-    private val injectedLanguageManager = project.service<InjectedLanguageManager>()
+    private val injectedLanguageManager = InjectedLanguageManager.getInstance(project)
     override fun resolve(identifier: JpqlInputParameterExpression): List<ResolveResult> {
         val namedInputParameter = identifier.namedInputParameter
         if (namedInputParameter != null) {

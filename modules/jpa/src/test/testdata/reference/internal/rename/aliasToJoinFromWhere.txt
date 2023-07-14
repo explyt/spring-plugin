@@ -1,0 +1,1 @@
+SELECT newName.user FROM ScheduledFlight s JOIN s.flightRegistrations newName WHERE newName.user is NOT NULL

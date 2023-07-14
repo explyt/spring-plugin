@@ -12,6 +12,8 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
     companion object {
         val springContext_6_0_7 = TestLibrary("org.springframework:spring-context:6.0.7")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
+        val jakarta_persistence_3_1_0 = TestLibrary("jakarta.persistence:jakarta.persistence-api:3.1.0", true)
+        val javax_persistence_2_2 = TestLibrary("javax.persistence:javax.persistence-api:2.2", true)
     }
 }
 

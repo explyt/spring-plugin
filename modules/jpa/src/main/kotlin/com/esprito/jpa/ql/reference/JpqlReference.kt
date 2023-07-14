@@ -1,10 +1,13 @@
 package com.esprito.jpa.ql.reference
 
+import com.esprito.jpa.model.JpaEntity
+import com.esprito.jpa.model.JpaEntityAttributeType
 import com.esprito.jpa.model.impl.JpaEntityPsi
 import com.esprito.jpa.ql.psi.*
 import com.esprito.jpa.ql.psi.impl.JpqlElementFactory
 import com.esprito.jpa.service.JpaEntitySearch
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
@@ -19,32 +22,71 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
     identifier,
     TextRange(0, identifier.textLength)
 ) {
-    private val jpaEntitySearch by lazy { element.project.service<JpaEntitySearch>() }
+    private val jpaEntitySearch by lazy { JpaEntitySearch.getInstance(element.project) }
 
     override fun handleElementRename(newElementName: String): PsiElement {
-        val newIdentifier = element.project.service<JpqlElementFactory>()
+        val newIdentifier = JpqlElementFactory.getInstance(element.project)
             .createIdentifier(newElementName)
 
         return element.replace(newIdentifier)
     }
 
     override fun getVariants(): Array<Any> {
-        if (element.previousIdentifierInPath() == null) {
-            val module = ModuleUtilCore.findModuleForPsiElement(element)
-                ?: return emptyArray()
+        val previousIdentifier = element.previousIdentifierInPath()
+        if (element.parent is JpqlEntityAccess && previousIdentifier == null) {
+            return getEntityVariants()
+        }
 
-            return jpaEntitySearch.loadEntities(module)
-                .mapNotNull { it.name }
-                .map { LookupElementBuilder.create(it) }
+        if (previousIdentifier != null) {
+            return previousIdentifier
+                .multiResolve(true)
+                .flatMap(::loadSubVariants)
                 .toTypedArray()
         }
 
-        // todo
-        return arrayOf(
-            LookupElementBuilder.create("foo"),
-            LookupElementBuilder.create("bar"),
-            LookupElementBuilder.create("user"),
-        )
+        return emptyArray()
+    }
+
+    private val JpaEntity.variants
+        get() = attributes.mapNotNull { it.name }.map {
+            LookupElementBuilder.create(it)
+                .withIcon(AllIcons.Nodes.Field)
+        }
+
+    private fun loadSubVariants(resolveResult: ResolveResult): List<Any> = when (resolveResult) {
+        is JpaEntityResolveResult -> resolveResult.entity.variants
+
+        is JpaEntityAttributeResolveResult -> {
+            val type = resolveResult.entityAttribute.type
+
+            if (type is JpaEntityAttributeType.Entity) {
+                type.jpaEntity.variants
+            } else {
+                emptyList()
+            }
+        }
+
+        is JpqlAliasResolveResult -> {
+            resolveResult.alias.referencedElement.multiResolve(true)
+                .flatMap { loadSubVariants(it) }
+        }
+
+        else -> emptyList()
+    }
+
+    private fun getEntityVariants(): Array<Any> {
+        val module = ModuleUtilCore.findModuleForPsiElement(element)
+            ?: return emptyArray()
+
+        return jpaEntitySearch.loadEntities(module)
+            .filter { it.isPersistent }
+            .mapNotNull { it.name }
+            .sorted()
+            .map {
+                LookupElementBuilder.create(it)
+                    .withIcon(AllIcons.Nodes.ModelClass)
+            }
+            .toTypedArray()
     }
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
@@ -68,9 +110,11 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             val parentReference = previousIdentifier.reference
                 ?: return emptyArray()
 
-            return parentReference.deepResolve(incompleteCode)
-                .mapNotNull { resolveChild(it) }
-                .toTypedArray()
+            val resolveResults = parentReference.multiResolve(incompleteCode)
+
+            return resolveResults.flatMap {
+                subResolve(it, incompleteCode)
+            }.toTypedArray()
         }
     }
 
@@ -88,22 +132,43 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
         return null
     }
 
-    private fun PsiPolyVariantReference.deepResolve(incompleteCode: Boolean): Array<PsiElement> {
-        return multiResolve(incompleteCode)
-            .asSequence()
-            .mapNotNull { it.element }
-            .flatMap { element ->
-                when {
-                    element.parent is JpqlAliasDeclaration -> {
-                        ((element.parent as JpqlAliasDeclaration).referencedElement?.reference as? PsiPolyVariantReference)
-                            ?.deepResolve(incompleteCode)
-                            ?.asSequence() ?: sequenceOf()
-                    }
+    private fun subResolve(resolveResult: ResolveResult, incompleteCode: Boolean): List<ResolveResult> {
+        when (resolveResult) {
+            is JpaEntityResolveResult -> {
+                val entity = resolveResult.entity
 
-                    element.toUElementOfType<UClass>() != null -> sequenceOf(element)
-                    else -> sequenceOf(element)
+                return resolveEntityAttributes(entity)
+            }
+
+            is JpaEntityAttributeResolveResult -> {
+                val entityAttributeType = resolveResult
+                    .entityAttribute.type
+
+                if (entityAttributeType is JpaEntityAttributeType.Entity) {
+                    return resolveEntityAttributes(entityAttributeType.jpaEntity)
                 }
-            }.toList().toTypedArray()
+
+
+                return emptyList()
+            }
+
+            is JpqlAliasResolveResult -> {
+                return resolveResult.alias.referencedElement
+                    .multiResolve(incompleteCode)
+                    .flatMap { subResolve(it, incompleteCode) }
+            }
+        }
+
+        return emptyList()
+    }
+
+    private fun resolveEntityAttributes(entity: JpaEntity): List<JpaEntityAttributeResolveResult> {
+        val entityAttributeResult = entity
+            .attributes
+            .firstOrNull { it.name == element.text }
+            ?.let { JpaEntityAttributeResolveResult(it) }
+
+        return listOfNotNull(entityAttributeResult)
     }
 
     private fun resolveChild(parent: PsiElement): ResolveResult? {
@@ -111,7 +176,6 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             ?: return null
 
         val entityPsi = JpaEntityPsi(uClass)
-            ?: return null
 
         return entityPsi.attributes
             .firstOrNull { it.name == element.text }
@@ -147,6 +211,22 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
         return emptyArray()
     }
 
+    private fun PsiElement?.multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
+        if (this == null)
+            return emptyArray()
+
+        val reference = reference ?: return emptyArray()
+
+        if (reference is PsiPolyVariantReference) {
+            return reference.multiResolve(incompleteCode)
+        }
+
+        val singleResolveResult = reference.resolve()
+            ?.let(::PsiElementResolveResult)
+            ?: return emptyArray()
+        return arrayOf(singleResolveResult)
+    }
+
     private fun resolveAliasFromUpdate(updateClause: JpqlUpdateClause): Array<ResolveResult> = sequence {
         val aliasDeclaration = updateClause.entityAccess
             .aliasDeclaration
@@ -155,7 +235,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             yield(aliasDeclaration)
         }
     }.filter { it.name == element.text }
-        .map { PsiElementResolveResult(it.identifier) }
+        .map { JpqlAliasResolveResult(it) }
         .toList()
         .toTypedArray()
 
@@ -167,7 +247,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             yield(aliasDeclaration)
         }
     }.filter { it.name == element.text }
-        .map { PsiElementResolveResult(it.identifier) }
+        .map { JpqlAliasResolveResult(it) }
         .toList()
         .toTypedArray()
 
@@ -190,7 +270,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
                 .map { it.aliasDeclaration }
                 .let { yieldAll(it) }
         }.filter { it.name == element.text }
-            .map { PsiElementResolveResult(it.identifier) }
+            .map { JpqlAliasResolveResult(it) }
             .toList()
             .toTypedArray()
 
@@ -203,8 +283,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
         return entities
             .asSequence()
             .filter { it.name == element.text }
-            .mapNotNull { it.psiElement }
-            .map { PsiElementResolveResult(it) }
+            .map { JpaEntityResolveResult(it) }
             .toList()
             .toTypedArray()
     }
