@@ -1,0 +1,33 @@
+<html>
+<body>
+
+<p>The <code>@EventListener</code> inspection checks two conditions:</p>
+<ol>
+    <li>Method accessibility: It ensures that methods annotated with <code>@EventListener</code> are public for proper
+        event handling.
+    </li>
+    <li>Parameter count: It verifies that annotated methods have a maximum of one parameter, conforming to the event
+        handling requirements.
+    </li>
+</ol>
+
+<P>Example:</P>
+
+<pre><code>
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ExampleListener {
+
+    @EventListener // Method annotated with @EventListener must be public
+    private void handleEvent(Object event) {
+    }
+
+    @EventListener // Method must have maximum one parameter
+    public void processEvent(Object event, String additionalData) {
+    }
+}
+</code></pre>
+</body>
+</html>

@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2008-2020 Haulmont. All rights reserved.
- * Use is subject to license terms, see http://www.cuba-platform.com/commercial-software-license for details.
- */
-
 buildscript {
     ext.kotlin_version = kotlin_version
     ext.gradle_intellij_plugin_version = gradle_intellij_plugin_version
