@@ -4,7 +4,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
 }
 
-ext.intellijPlugins = []
+ext.intellijPlugins = ['com.intellij.java']
 
 sourceCompatibility = JavaVersion.VERSION_17
 

@@ -22,4 +22,6 @@ object SpringCoreClasses {
     val CONFIGURATION_METHOD_ANNOTATIONS = setOf(BEAN)
     val TYPE_ANNOTATIONS = setOf(COMPONENT)
     val CONTROLLER_METHOD_ANNOTATIONS = setOf(REQUEST_MAPPING, INIT_BINDER, MODEL_ATTRIBUTE)
+
+    const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
 }

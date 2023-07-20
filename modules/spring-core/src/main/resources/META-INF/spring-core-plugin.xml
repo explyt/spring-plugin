@@ -2,11 +2,30 @@
 <idea-plugin>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.properties</depends>
+
+    <extensionPoints>
+        <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader"
+                        interface="com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader"
+                        area="IDEA_PROJECT"/>
+    </extensionPoints>
+
+    <extensions defaultExtensionNs="com.esprito.spring.core">
+        <configurationPropertiesLoader
+                implementation="com.esprito.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
+        <configurationPropertiesLoader
+                implementation="com.esprito.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
+<!--        <configurationPropertiesLoader-->
+<!--                implementation="com.esprito.spring.core.completion.properties.SpringMetadataProjectConfigurationPropertiesLoader"/>-->
+    </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
         <notificationGroup displayType="BALLOON" id="com.esprito.spring.notification"
                            bundle="messages.SpringCoreBundle" key="esprito.spring.common.notifications"/>
 
+        <completion.contributor language="any"
+                                id="com.esprito.spring.core.propertiesCompletionContributor"
+                                implementationClass="com.esprito.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
         <implicitUsageProvider implementation="com.esprito.providers.SpringImplicitUsageProvider"/>
 
         <localInspection language="UAST" shortName="SpringEventListenerInspection"
