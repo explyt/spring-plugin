@@ -7,7 +7,4 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlDatetimeFunctionExpression extends JpqlExpression {
 
-  @NotNull
-  JpqlDatetimeFunction getDatetimeFunction();
-
 }

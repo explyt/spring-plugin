@@ -11,14 +11,14 @@ import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public class JpqlQLStatementImpl extends ASTWrapperPsiElement implements JpqlQLStatement {
+public class JpqlInsertStatementImpl extends ASTWrapperPsiElement implements JpqlInsertStatement {
 
-  public JpqlQLStatementImpl(@NotNull ASTNode node) {
+  public JpqlInsertStatementImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitQLStatement(this);
+    visitor.visitInsertStatement(this);
   }
 
   @Override
@@ -28,21 +28,27 @@ public class JpqlQLStatementImpl extends ASTWrapperPsiElement implements JpqlQLS
   }
 
   @Override
-  @Nullable
-  public JpqlDeleteStatement getDeleteStatement() {
-    return findChildByClass(JpqlDeleteStatement.class);
+  @NotNull
+  public JpqlEntityAccess getEntityAccess() {
+    return findNotNullChildByClass(JpqlEntityAccess.class);
+  }
+
+  @Override
+  @NotNull
+  public JpqlInsertFields getInsertFields() {
+    return findNotNullChildByClass(JpqlInsertFields.class);
+  }
+
+  @Override
+  @NotNull
+  public List<JpqlInsertValue> getInsertValueList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlInsertValue.class);
   }
 
   @Override
   @Nullable
   public JpqlSelectStatement getSelectStatement() {
     return findChildByClass(JpqlSelectStatement.class);
-  }
-
-  @Override
-  @Nullable
-  public JpqlUpdateStatement getUpdateStatement() {
-    return findChildByClass(JpqlUpdateStatement.class);
   }
 
 }

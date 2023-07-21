@@ -33,4 +33,9 @@ public class JpqlBooleanLiteralImpl extends JpqlExpressionImpl implements JpqlBo
     return findNotNullChildByType(BOOLEAN);
   }
 
+  @Override
+  public boolean getValue() {
+    return JpqlPsiImplUtil.getValue(this);
+  }
+
 }

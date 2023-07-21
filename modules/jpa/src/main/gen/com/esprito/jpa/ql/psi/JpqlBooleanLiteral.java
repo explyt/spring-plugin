@@ -10,4 +10,6 @@ public interface JpqlBooleanLiteral extends JpqlExpression {
   @NotNull
   PsiElement getBoolean();
 
+  boolean getValue();
+
 }

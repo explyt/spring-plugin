@@ -10,4 +10,7 @@ public interface JpqlCollectionMemberExpression extends JpqlExpression {
   @NotNull
   List<JpqlExpression> getExpressionList();
 
+  @Nullable
+  JpqlIdentifier getIdentifier();
+
 }

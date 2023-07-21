@@ -1,0 +1,2 @@
+SELECT AVG(e.salary), MAX(e.salary), MIN(e.salary), SUM(e.salary), COUNT(e) FROM Employee e GROUP BY e.department.id;
+SELECT AVG(DISTINCT e.salary), MAX(DISTINCT e.salary), MIN(DISTINCT e.salary), SUM(DISTINCT e.salary), COUNT(DISTINCT e) FROM Employee e GROUP BY e.department.id;

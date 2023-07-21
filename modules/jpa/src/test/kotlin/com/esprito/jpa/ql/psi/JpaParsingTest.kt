@@ -21,6 +21,25 @@ class JpaParsingTest : ParsingTestCase("psi", "jpql", JpqlParserDefinition()) {
 
     fun testJoin() = doTest(true)
 
+    fun testConditional() = doTest(true)
+
+    fun testTrim() = doTest(true)
+
+    fun testConstructor() = doTest(true)
+
+    fun testMisc() = doTest(true)
+
+    fun testAggregate() = doTest(true)
+
+    fun testFunction() = doTest(true)
+
+    fun testType() = doTest(true)
+
+    fun testDelete() = doTest(true)
+
+    fun testInsert() = doTest(true)
+
+
     override fun getTestDataPath(): String = "src/test/testdata"
 
     override fun skipSpaces(): Boolean = true

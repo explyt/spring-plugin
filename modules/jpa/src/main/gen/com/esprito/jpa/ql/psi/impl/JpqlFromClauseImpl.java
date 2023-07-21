@@ -8,15 +8,15 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
-import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public class JpqlFromClauseImpl extends ASTWrapperPsiElement implements JpqlFromClause {
+public class JpqlFromClauseImpl extends JpqlAliasHostImpl implements JpqlFromClause {
 
   public JpqlFromClauseImpl(@NotNull ASTNode node) {
     super(node);
   }
 
+  @Override
   public void accept(@NotNull JpqlVisitor visitor) {
     visitor.visitFromClause(this);
   }

@@ -18,6 +18,7 @@ class JpqlInternalReferenceRenameTest : EspritoJavaLightTestCase() {
     fun testAliasInJoin() = doTest()
     fun testAliasToJoinFromWhere() = doTest()
     fun testAliasToJoinFromSelect() = doTest()
+    fun testAliasInSubqueryWithShadowing() = doTest()
 
     @Suppress("UnstableApiUsage")
     private fun doTest() {

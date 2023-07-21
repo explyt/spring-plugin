@@ -8,17 +8,17 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public abstract class JpqlCaseExpressionImpl extends JpqlExpressionImpl implements JpqlCaseExpression {
+public class JpqlAliasHostImpl extends ASTWrapperPsiElement implements JpqlAliasHost {
 
-  public JpqlCaseExpressionImpl(@NotNull ASTNode node) {
+  public JpqlAliasHostImpl(@NotNull ASTNode node) {
     super(node);
   }
 
-  @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitCaseExpression(this);
+    visitor.visitAliasHost(this);
   }
 
   @Override

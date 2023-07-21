@@ -7,10 +7,6 @@ import com.intellij.psi.PsiElement;
 
 public class JpqlVisitor extends PsiElementVisitor {
 
-  public void visitQLStatement(@NotNull JpqlQLStatement o) {
-    visitPsiElement(o);
-  }
-
   public void visitAdditiveExpression(@NotNull JpqlAdditiveExpression o) {
     visitBinaryExpression(o);
   }
@@ -21,6 +17,10 @@ public class JpqlVisitor extends PsiElementVisitor {
 
   public void visitAliasDeclaration(@NotNull JpqlAliasDeclaration o) {
     visitNameIdentifierOwner(o);
+  }
+
+  public void visitAliasHost(@NotNull JpqlAliasHost o) {
+    visitPsiElement(o);
   }
 
   public void visitAllOrAnyExpression(@NotNull JpqlAllOrAnyExpression o) {
@@ -36,10 +36,6 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitBooleanLiteral(@NotNull JpqlBooleanLiteral o) {
-    visitExpression(o);
-  }
-
-  public void visitCaseExpression(@NotNull JpqlCaseExpression o) {
     visitExpression(o);
   }
 
@@ -83,10 +79,6 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitExpression(o);
   }
 
-  public void visitDatetimeFunction(@NotNull JpqlDatetimeFunction o) {
-    visitPsiElement(o);
-  }
-
   public void visitDatetimeFunctionExpression(@NotNull JpqlDatetimeFunctionExpression o) {
     visitExpression(o);
   }
@@ -115,10 +107,6 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
-  public void visitEntityOrValueExpression(@NotNull JpqlEntityOrValueExpression o) {
-    visitExpression(o);
-  }
-
   public void visitExistsExpression(@NotNull JpqlExistsExpression o) {
     visitExpression(o);
   }
@@ -140,7 +128,7 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitFromClause(@NotNull JpqlFromClause o) {
-    visitPsiElement(o);
+    visitAliasHost(o);
   }
 
   public void visitFunctionArg(@NotNull JpqlFunctionArg o) {
@@ -189,6 +177,18 @@ public class JpqlVisitor extends PsiElementVisitor {
 
   public void visitInputParameterExpression(@NotNull JpqlInputParameterExpression o) {
     visitExpression(o);
+  }
+
+  public void visitInsertFields(@NotNull JpqlInsertFields o) {
+    visitPsiElement(o);
+  }
+
+  public void visitInsertStatement(@NotNull JpqlInsertStatement o) {
+    visitPsiElement(o);
+  }
+
+  public void visitInsertValue(@NotNull JpqlInsertValue o) {
+    visitPsiElement(o);
   }
 
   public void visitJoinCondition(@NotNull JpqlJoinCondition o) {
@@ -275,15 +275,15 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitExpression(o);
   }
 
-  public void visitSimpleEntityOrValueExpression(@NotNull JpqlSimpleEntityOrValueExpression o) {
-    visitExpression(o);
-  }
-
   public void visitSimpleSelectClause(@NotNull JpqlSimpleSelectClause o) {
     visitPsiElement(o);
   }
 
   public void visitSimpleWhenClause(@NotNull JpqlSimpleWhenClause o) {
+    visitPsiElement(o);
+  }
+
+  public void visitStatement(@NotNull JpqlStatement o) {
     visitPsiElement(o);
   }
 
@@ -304,11 +304,7 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitSubqueryFromClause(@NotNull JpqlSubqueryFromClause o) {
-    visitPsiElement(o);
-  }
-
-  public void visitSubselectIdentificationVariableDeclaration(@NotNull JpqlSubselectIdentificationVariableDeclaration o) {
-    visitPsiElement(o);
+    visitAliasHost(o);
   }
 
   public void visitTrimSpecification(@NotNull JpqlTrimSpecification o) {

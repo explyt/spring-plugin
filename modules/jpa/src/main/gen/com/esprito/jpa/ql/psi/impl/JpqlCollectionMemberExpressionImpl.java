@@ -33,4 +33,10 @@ public class JpqlCollectionMemberExpressionImpl extends JpqlExpressionImpl imple
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
   }
 
+  @Override
+  @Nullable
+  public JpqlIdentifier getIdentifier() {
+    return findChildByClass(JpqlIdentifier.class);
+  }
+
 }

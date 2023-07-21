@@ -5,7 +5,7 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlFromClause extends PsiElement {
+public interface JpqlFromClause extends JpqlAliasHost {
 
   @NotNull
   List<JpqlCollectionMemberDeclaration> getCollectionMemberDeclarationList();

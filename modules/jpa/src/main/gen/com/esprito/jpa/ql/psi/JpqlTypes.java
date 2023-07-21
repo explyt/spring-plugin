@@ -14,7 +14,6 @@ public interface JpqlTypes {
   IElementType ALL_OR_ANY_EXPRESSION = new JpqlElementType("ALL_OR_ANY_EXPRESSION");
   IElementType BETWEEN_EXPRESSION = new JpqlElementType("BETWEEN_EXPRESSION");
   IElementType BOOLEAN_LITERAL = new JpqlElementType("BOOLEAN_LITERAL");
-  IElementType CASE_EXPRESSION = new JpqlElementType("CASE_EXPRESSION");
   IElementType CASE_OPERAND = new JpqlElementType("CASE_OPERAND");
   IElementType COALESCE_EXPRESSION = new JpqlElementType("COALESCE_EXPRESSION");
   IElementType COLLECTION_MEMBER_DECLARATION = new JpqlElementType("COLLECTION_MEMBER_DECLARATION");
@@ -25,7 +24,6 @@ public interface JpqlTypes {
   IElementType CONDITIONAL_OR_EXPRESSION = new JpqlElementType("CONDITIONAL_OR_EXPRESSION");
   IElementType CONSTRUCTOR_ARGUMENTS_LIST = new JpqlElementType("CONSTRUCTOR_ARGUMENTS_LIST");
   IElementType CONSTRUCTOR_EXPRESSION = new JpqlElementType("CONSTRUCTOR_EXPRESSION");
-  IElementType DATETIME_FUNCTION = new JpqlElementType("DATETIME_FUNCTION");
   IElementType DATETIME_FUNCTION_EXPRESSION = new JpqlElementType("DATETIME_FUNCTION_EXPRESSION");
   IElementType DATETIME_LITERAL = new JpqlElementType("DATETIME_LITERAL");
   IElementType DELETE_CLAUSE = new JpqlElementType("DELETE_CLAUSE");
@@ -33,7 +31,6 @@ public interface JpqlTypes {
   IElementType DERIVED_COLLECTION_MEMBER_DECLARATION = new JpqlElementType("DERIVED_COLLECTION_MEMBER_DECLARATION");
   IElementType EMPTY_COLLECTION_COMPARISON_EXPRESSION = new JpqlElementType("EMPTY_COLLECTION_COMPARISON_EXPRESSION");
   IElementType ENTITY_ACCESS = new JpqlElementType("ENTITY_ACCESS");
-  IElementType ENTITY_OR_VALUE_EXPRESSION = new JpqlElementType("ENTITY_OR_VALUE_EXPRESSION");
   IElementType EXISTS_EXPRESSION = new JpqlElementType("EXISTS_EXPRESSION");
   IElementType EXPRESSION = new JpqlElementType("EXPRESSION");
   IElementType FETCH_CLAUSE = new JpqlElementType("FETCH_CLAUSE");
@@ -50,6 +47,9 @@ public interface JpqlTypes {
   IElementType IDENTIFICATION_VARIABLE_DECLARATION = new JpqlElementType("IDENTIFICATION_VARIABLE_DECLARATION");
   IElementType IDENTIFIER = new JpqlElementType("IDENTIFIER");
   IElementType INPUT_PARAMETER_EXPRESSION = new JpqlElementType("INPUT_PARAMETER_EXPRESSION");
+  IElementType INSERT_FIELDS = new JpqlElementType("INSERT_FIELDS");
+  IElementType INSERT_STATEMENT = new JpqlElementType("INSERT_STATEMENT");
+  IElementType INSERT_VALUE = new JpqlElementType("INSERT_VALUE");
   IElementType IN_EXPRESSION = new JpqlElementType("IN_EXPRESSION");
   IElementType IN_ITEM = new JpqlElementType("IN_ITEM");
   IElementType JOIN_CONDITION = new JpqlElementType("JOIN_CONDITION");
@@ -68,21 +68,19 @@ public interface JpqlTypes {
   IElementType ORDERBY_ITEM = new JpqlElementType("ORDERBY_ITEM");
   IElementType PAREN_EXPRESSION = new JpqlElementType("PAREN_EXPRESSION");
   IElementType PATH_REFERENCE_EXPRESSION = new JpqlElementType("PATH_REFERENCE_EXPRESSION");
-  IElementType QL_STATEMENT = new JpqlElementType("QL_STATEMENT");
   IElementType REFERENCE_EXPRESSION = new JpqlElementType("REFERENCE_EXPRESSION");
   IElementType SELECT_CLAUSE = new JpqlElementType("SELECT_CLAUSE");
   IElementType SELECT_ITEM = new JpqlElementType("SELECT_ITEM");
   IElementType SELECT_STATEMENT = new JpqlElementType("SELECT_STATEMENT");
   IElementType SIMPLE_CASE_EXPRESSION = new JpqlElementType("SIMPLE_CASE_EXPRESSION");
-  IElementType SIMPLE_ENTITY_OR_VALUE_EXPRESSION = new JpqlElementType("SIMPLE_ENTITY_OR_VALUE_EXPRESSION");
   IElementType SIMPLE_SELECT_CLAUSE = new JpqlElementType("SIMPLE_SELECT_CLAUSE");
   IElementType SIMPLE_WHEN_CLAUSE = new JpqlElementType("SIMPLE_WHEN_CLAUSE");
+  IElementType STATEMENT = new JpqlElementType("STATEMENT");
   IElementType STRING_FUNCTION_EXPRESSION = new JpqlElementType("STRING_FUNCTION_EXPRESSION");
   IElementType STRING_LITERAL = new JpqlElementType("STRING_LITERAL");
   IElementType SUBQUERY = new JpqlElementType("SUBQUERY");
   IElementType SUBQUERY_EXPRESSION = new JpqlElementType("SUBQUERY_EXPRESSION");
   IElementType SUBQUERY_FROM_CLAUSE = new JpqlElementType("SUBQUERY_FROM_CLAUSE");
-  IElementType SUBSELECT_IDENTIFICATION_VARIABLE_DECLARATION = new JpqlElementType("SUBSELECT_IDENTIFICATION_VARIABLE_DECLARATION");
   IElementType TRIM_SPECIFICATION = new JpqlElementType("TRIM_SPECIFICATION");
   IElementType TYPE_EXPRESSION = new JpqlElementType("TYPE_EXPRESSION");
   IElementType TYPE_LITERAL = new JpqlElementType("TYPE_LITERAL");
@@ -139,7 +137,9 @@ public interface JpqlTypes {
   IElementType IN = new JpqlTokenType("IN");
   IElementType INDEX = new JpqlTokenType("INDEX");
   IElementType INNER = new JpqlTokenType("INNER");
+  IElementType INSERT = new JpqlTokenType("INSERT");
   IElementType INTEGER = new JpqlTokenType("INTEGER");
+  IElementType INTO = new JpqlTokenType("INTO");
   IElementType IS = new JpqlTokenType("IS");
   IElementType JOIN = new JpqlTokenType("JOIN");
   IElementType KEY = new JpqlTokenType("KEY");
@@ -201,6 +201,7 @@ public interface JpqlTypes {
   IElementType UPDATE = new JpqlTokenType("UPDATE");
   IElementType UPPER = new JpqlTokenType("UPPER");
   IElementType VALUE = new JpqlTokenType("VALUE");
+  IElementType VALUES = new JpqlTokenType("VALUES");
   IElementType WHEN = new JpqlTokenType("WHEN");
   IElementType WHERE = new JpqlTokenType("WHERE");
   IElementType WITH = new JpqlTokenType("WITH");
@@ -255,9 +256,6 @@ public interface JpqlTypes {
       }
       else if (type == CONSTRUCTOR_EXPRESSION) {
         return new JpqlConstructorExpressionImpl(node);
-      }
-      else if (type == DATETIME_FUNCTION) {
-        return new JpqlDatetimeFunctionImpl(node);
       }
       else if (type == DATETIME_FUNCTION_EXPRESSION) {
         return new JpqlDatetimeFunctionExpressionImpl(node);
@@ -325,6 +323,15 @@ public interface JpqlTypes {
       else if (type == INPUT_PARAMETER_EXPRESSION) {
         return new JpqlInputParameterExpressionImpl(node);
       }
+      else if (type == INSERT_FIELDS) {
+        return new JpqlInsertFieldsImpl(node);
+      }
+      else if (type == INSERT_STATEMENT) {
+        return new JpqlInsertStatementImpl(node);
+      }
+      else if (type == INSERT_VALUE) {
+        return new JpqlInsertValueImpl(node);
+      }
       else if (type == IN_EXPRESSION) {
         return new JpqlInExpressionImpl(node);
       }
@@ -379,9 +386,6 @@ public interface JpqlTypes {
       else if (type == PATH_REFERENCE_EXPRESSION) {
         return new JpqlPathReferenceExpressionImpl(node);
       }
-      else if (type == QL_STATEMENT) {
-        return new JpqlQLStatementImpl(node);
-      }
       else if (type == SELECT_CLAUSE) {
         return new JpqlSelectClauseImpl(node);
       }
@@ -394,14 +398,14 @@ public interface JpqlTypes {
       else if (type == SIMPLE_CASE_EXPRESSION) {
         return new JpqlSimpleCaseExpressionImpl(node);
       }
-      else if (type == SIMPLE_ENTITY_OR_VALUE_EXPRESSION) {
-        return new JpqlSimpleEntityOrValueExpressionImpl(node);
-      }
       else if (type == SIMPLE_SELECT_CLAUSE) {
         return new JpqlSimpleSelectClauseImpl(node);
       }
       else if (type == SIMPLE_WHEN_CLAUSE) {
         return new JpqlSimpleWhenClauseImpl(node);
+      }
+      else if (type == STATEMENT) {
+        return new JpqlStatementImpl(node);
       }
       else if (type == STRING_FUNCTION_EXPRESSION) {
         return new JpqlStringFunctionExpressionImpl(node);
@@ -417,9 +421,6 @@ public interface JpqlTypes {
       }
       else if (type == SUBQUERY_FROM_CLAUSE) {
         return new JpqlSubqueryFromClauseImpl(node);
-      }
-      else if (type == SUBSELECT_IDENTIFICATION_VARIABLE_DECLARATION) {
-        return new JpqlSubselectIdentificationVariableDeclarationImpl(node);
       }
       else if (type == TRIM_SPECIFICATION) {
         return new JpqlTrimSpecificationImpl(node);

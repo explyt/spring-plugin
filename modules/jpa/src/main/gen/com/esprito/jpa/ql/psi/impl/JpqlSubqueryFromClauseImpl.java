@@ -8,15 +8,15 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
-import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public class JpqlSubqueryFromClauseImpl extends ASTWrapperPsiElement implements JpqlSubqueryFromClause {
+public class JpqlSubqueryFromClauseImpl extends JpqlAliasHostImpl implements JpqlSubqueryFromClause {
 
   public JpqlSubqueryFromClauseImpl(@NotNull ASTNode node) {
     super(node);
   }
 
+  @Override
   public void accept(@NotNull JpqlVisitor visitor) {
     visitor.visitSubqueryFromClause(this);
   }
@@ -29,14 +29,32 @@ public class JpqlSubqueryFromClauseImpl extends ASTWrapperPsiElement implements 
 
   @Override
   @NotNull
+  public List<JpqlAliasDeclaration> getAliasDeclarationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlAliasDeclaration.class);
+  }
+
+  @Override
+  @NotNull
   public List<JpqlCollectionMemberDeclaration> getCollectionMemberDeclarationList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlCollectionMemberDeclaration.class);
   }
 
   @Override
   @NotNull
-  public List<JpqlSubselectIdentificationVariableDeclaration> getSubselectIdentificationVariableDeclarationList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlSubselectIdentificationVariableDeclaration.class);
+  public List<JpqlDerivedCollectionMemberDeclaration> getDerivedCollectionMemberDeclarationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlDerivedCollectionMemberDeclaration.class);
+  }
+
+  @Override
+  @NotNull
+  public List<JpqlExpression> getExpressionList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
+  }
+
+  @Override
+  @NotNull
+  public List<JpqlIdentificationVariableDeclaration> getIdentificationVariableDeclarationList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlIdentificationVariableDeclaration.class);
   }
 
 }

@@ -11,6 +11,16 @@ object JpqlTokensSets {
     )
 
     @JvmField
+    val OPERATORS = TokenSet.create(
+        JpqlTypes.LT,
+        JpqlTypes.LTE,
+        JpqlTypes.GT,
+        JpqlTypes.GTE,
+        JpqlTypes.EQ,
+        JpqlTypes.NEQ,
+    )
+
+    @JvmField
     val SEPARATORS = TokenSet.create(
         JpqlTypes.LPAREN,
         JpqlTypes.RPAREN,
@@ -64,12 +74,15 @@ object JpqlTokensSets {
         JpqlTypes.IN,
         JpqlTypes.INDEX,
         JpqlTypes.INNER,
+        JpqlTypes.INSERT,
+        JpqlTypes.INTO,
         JpqlTypes.IS,
         JpqlTypes.JOIN,
         JpqlTypes.KEY,
         JpqlTypes.LEADING,
         JpqlTypes.LEFT,
         JpqlTypes.LENGTH,
+        JpqlTypes.LIMIT,
         JpqlTypes.LIKE,
         JpqlTypes.LOCATE,
         JpqlTypes.LOWER,
@@ -83,8 +96,9 @@ object JpqlTokensSets {
         JpqlTypes.NULLIF,
         JpqlTypes.OBJECT,
         JpqlTypes.OF,
-        JpqlTypes.OR,
+        JpqlTypes.OFFSET,
         JpqlTypes.ON,
+        JpqlTypes.OR,
         JpqlTypes.ORDER,
         JpqlTypes.OUTER,
         JpqlTypes.SELECT,
@@ -101,10 +115,10 @@ object JpqlTokensSets {
         JpqlTypes.UPDATE,
         JpqlTypes.UPPER,
         JpqlTypes.VALUE,
+        JpqlTypes.VALUES,
+        JpqlTypes.WITH,
         JpqlTypes.WHEN,
         JpqlTypes.WHERE,
-        JpqlTypes.LIMIT,
-        JpqlTypes.OFFSET,
     )
 
     @JvmField
