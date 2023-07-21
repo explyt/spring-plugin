@@ -3,11 +3,11 @@ package com.esprito.jpa.ql.psi.impl
 import com.esprito.jpa.ql.psi.*
 import com.esprito.jpa.ql.reference.JpqlInputParameterReference
 import com.esprito.jpa.ql.reference.JpqlReference
-import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.elementType
 import com.intellij.psi.util.parentOfType
 
 
@@ -78,5 +78,17 @@ object JpqlPsiImplUtil {
     @JvmStatic
     fun getReference(element: JpqlInputParameterExpression): PsiPolyVariantReference {
         return JpqlInputParameterReference(element)
+    }
+
+    @JvmStatic
+    fun getValue(element: JpqlBooleanLiteral): Boolean {
+        return element.text.equals("true", ignoreCase = true)
+    }
+
+    @JvmStatic
+    fun getOperator(element: JpqlComparisonExpression): JpqlTokenType {
+        return element.children.first {
+            JpqlTokensSets.OPERATORS.contains(it.elementType)
+        }.elementType as JpqlTokenType
     }
 }

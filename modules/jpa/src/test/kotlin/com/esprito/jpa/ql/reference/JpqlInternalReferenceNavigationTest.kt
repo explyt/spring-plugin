@@ -19,6 +19,8 @@ class JpqlInternalReferenceNavigationTest : EspritoJavaLightTestCase() {
     fun testAliasInJoin() = doTest()
     fun testAliasToJoinFromWhere() = doTest()
     fun testAliasToJoinFromSelect() = doTest()
+    fun testAliasInSubqueryWithShadowing() = doTest()
+    fun testSubqueryAliasUnavailableInParent() = doTest()
 
     @Suppress("UnstableApiUsage")
     private fun doTest() {
@@ -34,9 +36,7 @@ class JpqlInternalReferenceNavigationTest : EspritoJavaLightTestCase() {
         assertNotNull(reference)
         reference!!
 
-        val resolvedTo = reference.resolve()
-        assertNotNull(resolvedTo)
-        resolvedTo!!
+        val resolvedTo = reference.resolve() ?: reference.element
 
         vf = myFixture.copyFileToProject(
             "$name/to.jpql",

@@ -27,4 +27,10 @@ public class JpqlFunctionArgImpl extends ASTWrapperPsiElement implements JpqlFun
     else super.accept(visitor);
   }
 
+  @Override
+  @NotNull
+  public JpqlExpression getExpression() {
+    return findNotNullChildByClass(JpqlExpression.class);
+  }
+
 }

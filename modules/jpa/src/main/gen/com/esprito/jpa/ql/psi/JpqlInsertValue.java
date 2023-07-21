@@ -5,6 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlCaseExpression extends JpqlExpression {
+public interface JpqlInsertValue extends PsiElement {
+
+  @Nullable
+  JpqlExpression getExpression();
 
 }

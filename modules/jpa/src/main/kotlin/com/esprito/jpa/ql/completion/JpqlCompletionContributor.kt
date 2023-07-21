@@ -2,9 +2,7 @@ package com.esprito.jpa.ql.completion
 
 import com.esprito.jpa.ql.psi.*
 import com.esprito.jpa.ql.psi.impl.JpqlElementFactory
-import com.intellij.codeInsight.completion.CompletionContributor
-import com.intellij.codeInsight.completion.CompletionParameters
-import com.intellij.codeInsight.completion.CompletionResultSet
+import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.lang.parser.GeneratedParserUtilBase
 import com.intellij.openapi.util.text.StringUtil
@@ -62,7 +60,7 @@ class JpqlCompletionContributor : CompletionContributor() {
                         return super.convertItem(item)
                     }
 
-                    if (item in listOf(JpqlTypes.STRING, JpqlTypes.NUMERIC, JpqlTypes.DATETIME, JpqlTypes.ID)) {
+                    if (item in LITERAL_TERMINALS) {
                         return null
                     }
 
@@ -86,5 +84,31 @@ class JpqlCompletionContributor : CompletionContributor() {
             abbreviation.append(word[0].lowercase())
         }
         return abbreviation.toString()
+    }
+
+    override fun beforeCompletion(context: CompletionInitializationContext) {
+        if (context.completionType != CompletionType.SMART) {
+            val file = context.file
+            if (file is JpqlFile) {
+                val offset = context.startOffset
+                val element = file.findElementAt(offset)
+                if (element != null) {
+                    if (element.parent is JpqlIdentifier) {
+                        context.dummyIdentifier = ""
+                    }
+                }
+            }
+        }
+    }
+
+    companion object {
+        private val LITERAL_TERMINALS = listOf(
+            JpqlTypes.STRING,
+            JpqlTypes.NUMERIC,
+            JpqlTypes.DATETIME,
+            JpqlTypes.ID,
+            JpqlTypes.NAMED_INPUT_PARAMETER,
+            JpqlTypes.NUMERIC_INPUT_PARAMETER
+        )
     }
 }

@@ -1,0 +1,5 @@
+SELECT e FROM Employee e WHERE TRIM(e.name) = :name;
+SELECT e FROM Employee e WHERE TRIM(LEADING ' ' FROM e.name) = :name;
+SELECT e FROM Employee e WHERE TRIM(TRAILING ' ' FROM e.name) = :name;
+SELECT e FROM Employee e WHERE TRIM(BOTH ' ' FROM e.name) = :name;
+SELECT TRIM(e.name) FROM Employee e;

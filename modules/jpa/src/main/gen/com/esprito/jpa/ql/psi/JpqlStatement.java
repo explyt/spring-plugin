@@ -5,10 +5,13 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlQLStatement extends PsiElement {
+public interface JpqlStatement extends PsiElement {
 
   @Nullable
   JpqlDeleteStatement getDeleteStatement();
+
+  @Nullable
+  JpqlInsertStatement getInsertStatement();
 
   @Nullable
   JpqlSelectStatement getSelectStatement();

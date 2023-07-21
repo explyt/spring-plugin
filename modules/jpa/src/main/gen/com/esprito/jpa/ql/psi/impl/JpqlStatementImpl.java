@@ -8,17 +8,17 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public class JpqlSimpleEntityOrValueExpressionImpl extends JpqlExpressionImpl implements JpqlSimpleEntityOrValueExpression {
+public class JpqlStatementImpl extends ASTWrapperPsiElement implements JpqlStatement {
 
-  public JpqlSimpleEntityOrValueExpressionImpl(@NotNull ASTNode node) {
+  public JpqlStatementImpl(@NotNull ASTNode node) {
     super(node);
   }
 
-  @Override
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitSimpleEntityOrValueExpression(this);
+    visitor.visitStatement(this);
   }
 
   @Override
@@ -29,14 +29,26 @@ public class JpqlSimpleEntityOrValueExpressionImpl extends JpqlExpressionImpl im
 
   @Override
   @Nullable
-  public JpqlExpression getExpression() {
-    return findChildByClass(JpqlExpression.class);
+  public JpqlDeleteStatement getDeleteStatement() {
+    return findChildByClass(JpqlDeleteStatement.class);
   }
 
   @Override
   @Nullable
-  public JpqlIdentifier getIdentifier() {
-    return findChildByClass(JpqlIdentifier.class);
+  public JpqlInsertStatement getInsertStatement() {
+    return findChildByClass(JpqlInsertStatement.class);
+  }
+
+  @Override
+  @Nullable
+  public JpqlSelectStatement getSelectStatement() {
+    return findChildByClass(JpqlSelectStatement.class);
+  }
+
+  @Override
+  @Nullable
+  public JpqlUpdateStatement getUpdateStatement() {
+    return findChildByClass(JpqlUpdateStatement.class);
   }
 
 }

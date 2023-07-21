@@ -33,4 +33,10 @@ public class JpqlComparisonExpressionImpl extends JpqlExpressionImpl implements 
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlExpression.class);
   }
 
+  @Override
+  @NotNull
+  public JpqlTokenType getOperator() {
+    return JpqlPsiImplUtil.getOperator(this);
+  }
+
 }

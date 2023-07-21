@@ -15,6 +15,7 @@
   tokenTypeClass="com.esprito.jpa.ql.psi.JpqlTokenType"
 
   extends(".*expression")=expression
+//  consumeTokenMethod(".*_expression|expression")="consumeTokenFast"
 
   tokens = [
     WHITESPACE='regexp:[ \n\r\t\f]'
@@ -49,13 +50,13 @@
   ]
 }
 
-QL_file ::= semicolon_delimited_statements | QL_statement
+file ::= semicolon_delimited_statements | statement
 
-private semicolon_delimited_statements ::= <<isUnitTestMode>> QL_statement { [';'] QL_statement }* [';']
+private semicolon_delimited_statements ::= <<isUnitTestMode>> statement { [';'] statement }* [';']
 
 private statement_recover ::= !{';' | 'SELECT' | 'UPDATE' | 'DELETE' }
 
-QL_statement ::= select_statement | update_statement | delete_statement {
+statement ::= select_statement | update_statement | delete_statement | insert_statement {
     recoverWhile = "statement_recover"
 }
 
@@ -78,9 +79,21 @@ delete_statement ::= delete_clause [where_clause] {
     pin = 'DELETE'
 }
 
+insert_statement ::= INSERT [INTO] entity_access insert_fields (select_statement | values_list)
+
+insert_fields ::= '(' identifier {',' identifier}* ')'
+
+private values_list ::= VALUES insert_value_list {',' insert_value_list }*
+private insert_value_list ::= '(' insert_value { ',' insert_value }* ')'
+
+insert_value ::= new_value
+
 from_clause ::= FROM identification_variable_declaration {',' {identification_variable_declaration | collection_member_declaration}}* {
+    extends = alias_host
     pin = FROM
 }
+
+fake alias_host ::=
 
 entity_access ::= identifier [alias_declaration]
 
@@ -94,7 +107,7 @@ alias_declaration ::= [AS] identifier {
 
 join_expression ::= join_spec reference_expression alias_declaration [join_condition]
 
-join_condition ::= ON conditional_group
+join_condition ::= { <<isHql>> WITH | ON} conditional_group
 
 fetch_join ::= join_spec FETCH reference_expression alias_declaration
 
@@ -104,7 +117,6 @@ expression ::= conditional_group
     | comparison_group
     | arithmetic_expression
     | all_or_any_expression
-    | reference_expression
     | literal_group
     | input_parameter_expression
     | subquery_expression
@@ -113,6 +125,8 @@ expression ::= conditional_group
     | case_expression
     | datetime_function_expression
     | function_invocation_expression
+    | type_expression
+    | reference_expression
     | paren_expression
 
 subquery_expression ::= '(' subquery ')'
@@ -120,8 +134,9 @@ subquery_expression ::= '(' subquery ')'
 private literal_group ::= string_literal
     | boolean_literal
     | datetime_literal
-    |numeric_literal
+    | numeric_literal
 
+// todo reference_expression only collection
 collection_member_declaration ::= IN '(' reference_expression ')' alias_declaration
 
 update_clause ::= UPDATE entity_access SET update_item {',' update_item}*
@@ -153,15 +168,9 @@ aggregate_expression ::= { AVG | MAX | MIN | SUM | COUNT } '('[DISTINCT] referen
 
 function_invocation_expression ::= FUNCTION '(' string_literal {',' function_arg}* ')'
 function_arg ::= literal_group
-    | reference_expression
-    | input_parameter_expression
-    | scalar_expression {
-    methods = [
-        expression = "/expression"
-    ]
-}
+    | scalar_expression
 
-where_clause ::= WHERE { conditional_group | comparison_expression }
+where_clause ::= WHERE { conditional_group | comparison_group }
 
 groupby_clause ::= GROUP BY groupby_item {',' groupby_item}*
 groupby_item ::= reference_expression | identifier
@@ -171,9 +180,9 @@ having_clause ::= HAVING expression
 orderby_clause ::= ORDER BY orderby_item {',' orderby_item}*
 orderby_item ::= { reference_expression | general_case_expression | simple_case_expression } [ ASC | DESC ]
 
-limit_clause ::= LIMIT numeric_or_input_parameter
-offset_clause ::= OFFSET numeric_or_input_parameter
-fetch_clause ::= FETCH (FIRST | NEXT) fetchCountOrPercent (ROW | ROWS) (ONLY | WITH TIES)
+limit_clause ::= <<isHql>> LIMIT numeric_or_input_parameter
+offset_clause ::= <<isHql>> OFFSET numeric_or_input_parameter
+fetch_clause ::= <<isHql>> FETCH (FIRST | NEXT) fetchCountOrPercent (ROW | ROWS) (ONLY | WITH TIES)
 fetchCountOrPercent ::= numeric_or_input_parameter [PERCENT]
 
 private numeric_or_input_parameter ::= numeric_literal | input_parameter_expression
@@ -182,9 +191,11 @@ subquery ::= simple_select_clause subquery_from_clause [where_clause] [groupby_c
 subquery_from_clause ::=
     FROM subselect_identification_variable_declaration
     {',' subselect_identification_variable_declaration |
-     collection_member_declaration}*
+     collection_member_declaration}* {
+    extends = alias_host
+}
 
-subselect_identification_variable_declaration ::=
+private subselect_identification_variable_declaration ::=
     identification_variable_declaration |
     reference_expression alias_declaration {join_expression}*|
     derived_collection_member_declaration
@@ -200,13 +211,13 @@ private simple_select_expression::=
 
 private scalar_expression ::= simple_arithmetic_expression
     | string_expression
-    | reference_expression
     | input_parameter_expression
     | case_expression
     | datetime_expression
     | literal_group
     | boolean_expression
-    | entity_type_expression
+    | type_expression
+    | reference_expression
 
 fake binary_expression ::= expression + {
   methods = [
@@ -240,8 +251,10 @@ private comparison_group ::= comparison_expression
     | exists_expression
 
 in_expression ::=
-    {reference_expression | type_expression} [NOT] IN
-    { '(' in_item {',' in_item}* ')' | '('subquery')' | input_parameter_expression }
+    { type_expression | reference_expression } [NOT] IN
+    {in_collection | '('subquery')' | input_parameter_expression}
+
+private in_collection ::= '(' in_item {',' in_item}* ')'
 
 in_item ::= literal | input_parameter_expression
 
@@ -249,25 +262,25 @@ like_expression ::= expression [NOT] LIKE
     {reference_or_parameter | string_literal | string_function_expression }
     [ESCAPE {string_literal | string_function_expression | input_parameter_expression}]
 
-null_comparison_expression ::= {reference_or_parameter} IS [NOT] NULL
+null_comparison_expression ::= reference_or_parameter IS [NOT] NULL
 
 empty_collection_comparison_expression ::=
-    reference_expression IS [NOT] EMPTY
+    {reference_expression} IS [NOT] EMPTY
 
 collection_member_expression ::= entity_or_value_expression
     [NOT] MEMBER [OF] reference_expression
 
-entity_or_value_expression ::= reference_expression
-    | simple_entity_or_value_expression
-
-simple_entity_or_value_expression ::= identifier
+private entity_or_value_expression ::= reference_expression
+    | identifier
     | input_parameter_expression
     | literal
 
 exists_expression::= [NOT] EXISTS '('subquery')'
 all_or_any_expression ::= { ALL | ANY | SOME} '('subquery')'
 
-comparison_expression ::= expression comparison_operator expression
+comparison_expression ::= expression comparison_operator expression {
+    methods=[getOperator]
+}
 
 between_expression ::= expression [NOT] BETWEEN expression AND expression
 
@@ -288,35 +301,31 @@ multiplicative_expression ::= expression { '*' | '/' } expression {
 }
 unary_arithmetic_expression ::= { '+' | '-' } expression
 
-private string_expression ::= reference_expression
-    | string_literal
+private string_expression ::=  string_literal
     | input_parameter_expression
     | string_function_expression
     | aggregate_expression
     | case_expression
     | function_invocation_expression
+    | reference_expression
 
-private datetime_expression ::= reference_expression
-    | input_parameter_expression
+private datetime_expression ::= input_parameter_expression
     | datetime_function_expression
     | aggregate_expression
     | case_expression
     | datetime_literal
     | function_invocation_expression
+    | reference_expression
 
-private boolean_expression ::= reference_expression
-    | input_parameter_expression
+private boolean_expression ::= input_parameter_expression
     | case_expression
     | boolean_literal
     | function_invocation_expression
-
-private entity_type_expression ::= type_expression
     | reference_expression
-    | input_parameter_expression
 
 type_literal ::= INTEGER | STRING | DATE | TIME | TIMESTAMP | BOOLEAN
 
-type_expression ::= TYPE'('reference_expression | input_parameter_expression')' | type_literal
+type_expression ::= TYPE'('{ reference_expression | input_parameter_expression }')' | type_literal
 
 functions_returning_numerics_expression ::= LENGTH'('string_expression')'
     | LOCATE'('string_expression',' string_expression[',' simple_arithmetic_expression]')'
@@ -330,10 +339,9 @@ private simple_arithmetic_expression ::= expression
 
 datetime_function_expression ::= datetime_function
 
-datetime_function ::=
-    CURRENT_DATE |
-    CURRENT_TIME |
-    CURRENT_TIMESTAMP
+private datetime_function ::= CURRENT_DATE
+    | CURRENT_TIME
+    | CURRENT_TIMESTAMP
 
 string_function_expression ::= CONCAT'('string_expression',' string_expression {',' string_expression}*')'
     | SUBSTRING'('string_expression',' arithmetic_expression [',' arithmetic_expression]')'
@@ -343,7 +351,7 @@ string_function_expression ::= CONCAT'('string_expression',' string_expression {
 
 trim_specification ::= LEADING | TRAILING | BOTH
 
-case_expression ::= general_case_expression
+private case_expression ::= general_case_expression
     | simple_case_expression
     | coalesce_expression
     | nullif_expression
@@ -406,6 +414,7 @@ identifier ::= id | identifier_like_keyword {
 
 boolean_literal ::= boolean {
     extends = expression
+    methods=[getValue]
 }
 
 numeric_literal ::= numeric {

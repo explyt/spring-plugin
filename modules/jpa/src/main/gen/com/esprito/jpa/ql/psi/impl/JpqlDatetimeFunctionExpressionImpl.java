@@ -27,10 +27,4 @@ public class JpqlDatetimeFunctionExpressionImpl extends JpqlExpressionImpl imple
     else super.accept(visitor);
   }
 
-  @Override
-  @NotNull
-  public JpqlDatetimeFunction getDatetimeFunction() {
-    return findNotNullChildByClass(JpqlDatetimeFunction.class);
-  }
-
 }

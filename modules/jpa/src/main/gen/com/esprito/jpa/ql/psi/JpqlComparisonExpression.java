@@ -10,4 +10,7 @@ public interface JpqlComparisonExpression extends JpqlExpression {
   @NotNull
   List<JpqlExpression> getExpressionList();
 
+  @NotNull
+  JpqlTokenType getOperator();
+
 }

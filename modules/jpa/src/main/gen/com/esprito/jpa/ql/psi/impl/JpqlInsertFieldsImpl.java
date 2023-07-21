@@ -11,20 +11,26 @@ import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public class JpqlDatetimeFunctionImpl extends ASTWrapperPsiElement implements JpqlDatetimeFunction {
+public class JpqlInsertFieldsImpl extends ASTWrapperPsiElement implements JpqlInsertFields {
 
-  public JpqlDatetimeFunctionImpl(@NotNull ASTNode node) {
+  public JpqlInsertFieldsImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitDatetimeFunction(this);
+    visitor.visitInsertFields(this);
   }
 
   @Override
   public void accept(@NotNull PsiElementVisitor visitor) {
     if (visitor instanceof JpqlVisitor) accept((JpqlVisitor)visitor);
     else super.accept(visitor);
+  }
+
+  @Override
+  @NotNull
+  public List<JpqlIdentifier> getIdentifierList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlIdentifier.class);
   }
 
 }

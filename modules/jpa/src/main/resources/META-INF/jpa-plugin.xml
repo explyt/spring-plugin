@@ -30,6 +30,10 @@
         <completion.contributor
                 language="JPQL"
                 implementationClass="com.esprito.jpa.ql.completion.JpqlCompletionContributor"/>
+
+        <lang.braceMatcher
+                language="JPQL"
+                implementationClass="com.esprito.jpa.ql.psi.JpqlBraceMatcher"/>
     </extensions>
 
     <actions>

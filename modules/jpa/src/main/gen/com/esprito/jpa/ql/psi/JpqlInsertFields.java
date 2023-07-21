@@ -5,12 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlSimpleEntityOrValueExpression extends JpqlExpression {
+public interface JpqlInsertFields extends PsiElement {
 
-  @Nullable
-  JpqlExpression getExpression();
-
-  @Nullable
-  JpqlIdentifier getIdentifier();
+  @NotNull
+  List<JpqlIdentifier> getIdentifierList();
 
 }
