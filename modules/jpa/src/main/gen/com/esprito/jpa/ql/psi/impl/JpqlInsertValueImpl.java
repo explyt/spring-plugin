@@ -28,9 +28,9 @@ public class JpqlInsertValueImpl extends ASTWrapperPsiElement implements JpqlIns
   }
 
   @Override
-  @Nullable
+  @NotNull
   public JpqlExpression getExpression() {
-    return findChildByClass(JpqlExpression.class);
+    return findNotNullChildByClass(JpqlExpression.class);
   }
 
 }

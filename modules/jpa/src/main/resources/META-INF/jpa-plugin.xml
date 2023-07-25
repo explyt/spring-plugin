@@ -35,6 +35,13 @@
                 language="JPQL"
                 implementationClass="com.esprito.jpa.ql.psi.JpqlBraceMatcher"/>
 
+        <localInspection language="JPQL"
+                         shortName="JpqlInsertStatementInspection"
+                         groupBundle="messages.JpaBundle" groupKey="esprito.jpa.inspection.group"
+                         bundle="messages.JpaBundle" key="esprito.jpa.inspection.insert.statement"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.esprito.jpa.ql.inspection.JpqlInsertStatementInspection"/>
+
         <multiHostInjector implementation="com.esprito.jpa.langinjection.JpqlEntityManagerLanguageInjector"/>
         <multiHostInjector implementation="com.esprito.jpa.langinjection.JpqNamedQueryLanguageInjector"/>
 

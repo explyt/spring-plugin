@@ -86,6 +86,11 @@ object JpqlPsiImplUtil {
     }
 
     @JvmStatic
+    fun getType(element: JpqlExpression): JpqlType {
+        return JpqlTypeResolver.getInstance(element.project).resolveType(element)
+    }
+
+    @JvmStatic
     fun getOperator(element: JpqlComparisonExpression): JpqlTokenType {
         return element.children.first {
             JpqlTokensSets.OPERATORS.contains(it.elementType)

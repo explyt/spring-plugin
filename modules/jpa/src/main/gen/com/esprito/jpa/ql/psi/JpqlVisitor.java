@@ -183,6 +183,10 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitInsertTuple(@NotNull JpqlInsertTuple o) {
+    visitPsiElement(o);
+  }
+
   public void visitInsertValue(@NotNull JpqlInsertValue o) {
     visitPsiElement(o);
   }
@@ -216,6 +220,10 @@ public class JpqlVisitor extends PsiElementVisitor {
   }
 
   public void visitNullComparisonExpression(@NotNull JpqlNullComparisonExpression o) {
+    visitExpression(o);
+  }
+
+  public void visitNullExpression(@NotNull JpqlNullExpression o) {
     visitExpression(o);
   }
 

@@ -48,6 +48,7 @@ public interface JpqlTypes {
   IElementType INPUT_PARAMETER_EXPRESSION = new JpqlElementType("INPUT_PARAMETER_EXPRESSION");
   IElementType INSERT_FIELDS = new JpqlElementType("INSERT_FIELDS");
   IElementType INSERT_STATEMENT = new JpqlElementType("INSERT_STATEMENT");
+  IElementType INSERT_TUPLE = new JpqlElementType("INSERT_TUPLE");
   IElementType INSERT_VALUE = new JpqlElementType("INSERT_VALUE");
   IElementType IN_EXPRESSION = new JpqlElementType("IN_EXPRESSION");
   IElementType IN_ITEM = new JpqlElementType("IN_ITEM");
@@ -60,6 +61,7 @@ public interface JpqlTypes {
   IElementType MULTIPLICATIVE_EXPRESSION = new JpqlElementType("MULTIPLICATIVE_EXPRESSION");
   IElementType NULLIF_EXPRESSION = new JpqlElementType("NULLIF_EXPRESSION");
   IElementType NULL_COMPARISON_EXPRESSION = new JpqlElementType("NULL_COMPARISON_EXPRESSION");
+  IElementType NULL_EXPRESSION = new JpqlElementType("NULL_EXPRESSION");
   IElementType NUMERIC_LITERAL = new JpqlElementType("NUMERIC_LITERAL");
   IElementType OBJECT_EXPRESSION = new JpqlElementType("OBJECT_EXPRESSION");
   IElementType OFFSET_CLAUSE = new JpqlElementType("OFFSET_CLAUSE");
@@ -325,6 +327,9 @@ public interface JpqlTypes {
       else if (type == INSERT_STATEMENT) {
         return new JpqlInsertStatementImpl(node);
       }
+      else if (type == INSERT_TUPLE) {
+        return new JpqlInsertTupleImpl(node);
+      }
       else if (type == INSERT_VALUE) {
         return new JpqlInsertValueImpl(node);
       }
@@ -360,6 +365,9 @@ public interface JpqlTypes {
       }
       else if (type == NULL_COMPARISON_EXPRESSION) {
         return new JpqlNullComparisonExpressionImpl(node);
+      }
+      else if (type == NULL_EXPRESSION) {
+        return new JpqlNullExpressionImpl(node);
       }
       else if (type == NUMERIC_LITERAL) {
         return new JpqlNumericLiteralImpl(node);

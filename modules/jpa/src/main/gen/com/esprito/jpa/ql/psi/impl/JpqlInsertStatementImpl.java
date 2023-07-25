@@ -41,8 +41,8 @@ public class JpqlInsertStatementImpl extends ASTWrapperPsiElement implements Jpq
 
   @Override
   @NotNull
-  public List<JpqlInsertValue> getInsertValueList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlInsertValue.class);
+  public List<JpqlInsertTuple> getInsertTupleList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlInsertTuple.class);
   }
 
   @Override
