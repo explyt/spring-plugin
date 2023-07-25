@@ -10,6 +10,8 @@ import org.jetbrains.idea.maven.utils.library.RepositoryLibraryProperties
 
 data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDependencies: Boolean = true) {
     companion object {
+        val springBoot_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.1.1")
+        val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
         val springContext_6_0_7 = TestLibrary("org.springframework:spring-context:6.0.7")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
         val jakarta_persistence_3_1_0 = TestLibrary("jakarta.persistence:jakarta.persistence-api:3.1.0", true)
