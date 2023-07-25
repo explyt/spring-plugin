@@ -355,20 +355,6 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // join_spec FETCH reference_expression alias_declaration
-  public static boolean fetch_join(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "fetch_join")) return false;
-    boolean r;
-    Marker m = enter_section_(b, l, _NONE_, FETCH_JOIN, "<fetch join>");
-    r = join_spec(b, l + 1);
-    r = r && consumeToken(b, FETCH);
-    r = r && reference_expression(b, l + 1);
-    r = r && alias_declaration(b, l + 1);
-    exit_section_(b, l, m, r, false, null);
-    return r;
-  }
-
-  /* ********************************************************** */
   // semicolon_delimited_statements | statement
   static boolean file(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "file")) return false;
@@ -501,7 +487,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // entity_access { join_expression | fetch_join }*
+  // entity_access { join_expression }*
   public static boolean identification_variable_declaration(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "identification_variable_declaration")) return false;
     boolean r;
@@ -512,7 +498,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // { join_expression | fetch_join }*
+  // { join_expression }*
   private static boolean identification_variable_declaration_1(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "identification_variable_declaration_1")) return false;
     while (true) {
@@ -523,12 +509,13 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // join_expression | fetch_join
+  // { join_expression }
   private static boolean identification_variable_declaration_1_0(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "identification_variable_declaration_1_0")) return false;
     boolean r;
+    Marker m = enter_section_(b);
     r = join_expression(b, l + 1);
-    if (!r) r = fetch_join(b, l + 1);
+    exit_section_(b, m, null, r);
     return r;
   }
 
@@ -776,24 +763,106 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // join_spec reference_expression alias_declaration [join_condition]
+  // join_spec [FETCH <<facedToken 'FETCH'>>] reference_expression alias_declaration [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition] <<resetToken 'FETCH'>>
   public static boolean join_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "join_expression")) return false;
-    boolean r;
+    boolean r, p;
     Marker m = enter_section_(b, l, _NONE_, JOIN_EXPRESSION, "<join expression>");
     r = join_spec(b, l + 1);
-    r = r && reference_expression(b, l + 1);
-    r = r && alias_declaration(b, l + 1);
-    r = r && join_expression_3(b, l + 1);
+    p = r; // pin = join_spec
+    r = r && report_error_(b, join_expression_1(b, l + 1));
+    r = p && report_error_(b, reference_expression(b, l + 1)) && r;
+    r = p && report_error_(b, alias_declaration(b, l + 1)) && r;
+    r = p && report_error_(b, join_expression_4(b, l + 1)) && r;
+    r = p && resetToken(b, l + 1, FETCH) && r;
+    exit_section_(b, l, m, r, p, JpqlParser::join_expression_recovery);
+    return r || p;
+  }
+
+  // [FETCH <<facedToken 'FETCH'>>]
+  private static boolean join_expression_1(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_1")) return false;
+    join_expression_1_0(b, l + 1);
+    return true;
+  }
+
+  // FETCH <<facedToken 'FETCH'>>
+  private static boolean join_expression_1_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_1_0")) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeToken(b, FETCH);
+    r = r && facedToken(b, l + 1, FETCH);
+    exit_section_(b, m, null, r);
+    return r;
+  }
+
+  // [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition]
+  private static boolean join_expression_4(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_4")) return false;
+    join_expression_4_0(b, l + 1);
+    return true;
+  }
+
+  // {<<notFaced 'FETCH'>> | <<isHql>>} join_condition
+  private static boolean join_expression_4_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_4_0")) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = join_expression_4_0_0(b, l + 1);
+    r = r && join_condition(b, l + 1);
+    exit_section_(b, m, null, r);
+    return r;
+  }
+
+  // <<notFaced 'FETCH'>> | <<isHql>>
+  private static boolean join_expression_4_0_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_4_0_0")) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = notFaced(b, l + 1, FETCH);
+    if (!r) r = isHql(b, l + 1);
+    exit_section_(b, m, null, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // ! {LEFT | OUTER | INNER | JOIN | WHERE | GROUP | HAVING | <<isUnitTestMode>> ';'}
+  static boolean join_expression_recovery(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_recovery")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NOT_);
+    r = !join_expression_recovery_0(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
   }
 
-  // [join_condition]
-  private static boolean join_expression_3(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "join_expression_3")) return false;
-    join_condition(b, l + 1);
-    return true;
+  // LEFT | OUTER | INNER | JOIN | WHERE | GROUP | HAVING | <<isUnitTestMode>> ';'
+  private static boolean join_expression_recovery_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_recovery_0")) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeToken(b, LEFT);
+    if (!r) r = consumeToken(b, OUTER);
+    if (!r) r = consumeToken(b, INNER);
+    if (!r) r = consumeToken(b, JOIN);
+    if (!r) r = consumeToken(b, WHERE);
+    if (!r) r = consumeToken(b, GROUP);
+    if (!r) r = consumeToken(b, HAVING);
+    if (!r) r = join_expression_recovery_0_7(b, l + 1);
+    exit_section_(b, m, null, r);
+    return r;
+  }
+
+  // <<isUnitTestMode>> ';'
+  private static boolean join_expression_recovery_0_7(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "join_expression_recovery_0_7")) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = isUnitTestMode(b, l + 1);
+    r = r && consumeToken(b, SEMICOLON);
+    exit_section_(b, m, null, r);
+    return r;
   }
 
   /* ********************************************************** */
@@ -2341,26 +2410,27 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // { ALL | ANY | SOME} '('subquery')'
+  // { ALL'(' | ANY'(' | SOME'('} subquery')'
   public static boolean all_or_any_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "all_or_any_expression")) return false;
     boolean r;
     Marker m = enter_section_(b, l, _NONE_, ALL_OR_ANY_EXPRESSION, "<all or any expression>");
     r = all_or_any_expression_0(b, l + 1);
-    r = r && consumeToken(b, LPAREN);
     r = r && subquery(b, l + 1);
     r = r && consumeToken(b, RPAREN);
     exit_section_(b, l, m, r, false, null);
     return r;
   }
 
-  // ALL | ANY | SOME
+  // ALL'(' | ANY'(' | SOME'('
   private static boolean all_or_any_expression_0(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "all_or_any_expression_0")) return false;
     boolean r;
-    r = consumeTokenSmart(b, ALL);
-    if (!r) r = consumeTokenSmart(b, ANY);
-    if (!r) r = consumeTokenSmart(b, SOME);
+    Marker m = enter_section_(b);
+    r = parseTokensSmart(b, 0, ALL, LPAREN);
+    if (!r) r = parseTokensSmart(b, 0, ANY, LPAREN);
+    if (!r) r = parseTokensSmart(b, 0, SOME, LPAREN);
+    exit_section_(b, m, null, r);
     return r;
   }
 
@@ -2591,7 +2661,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // { AVG | MAX | MIN | SUM | COUNT } '('[DISTINCT] reference_expression')' | function_invocation_expression
+  // { AVG'(' | MAX'(' | MIN'(' | SUM'(' | COUNT'(' } [DISTINCT] reference_expression')' | function_invocation_expression
   public static boolean aggregate_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "aggregate_expression")) return false;
     boolean r;
@@ -2602,35 +2672,36 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return r;
   }
 
-  // { AVG | MAX | MIN | SUM | COUNT } '('[DISTINCT] reference_expression')'
+  // { AVG'(' | MAX'(' | MIN'(' | SUM'(' | COUNT'(' } [DISTINCT] reference_expression')'
   private static boolean aggregate_expression_0(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "aggregate_expression_0")) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = aggregate_expression_0_0(b, l + 1);
-    r = r && consumeToken(b, LPAREN);
-    r = r && aggregate_expression_0_2(b, l + 1);
+    r = r && aggregate_expression_0_1(b, l + 1);
     r = r && reference_expression(b, l + 1);
     r = r && consumeToken(b, RPAREN);
     exit_section_(b, m, null, r);
     return r;
   }
 
-  // AVG | MAX | MIN | SUM | COUNT
+  // AVG'(' | MAX'(' | MIN'(' | SUM'(' | COUNT'('
   private static boolean aggregate_expression_0_0(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "aggregate_expression_0_0")) return false;
     boolean r;
-    r = consumeTokenSmart(b, AVG);
-    if (!r) r = consumeTokenSmart(b, MAX);
-    if (!r) r = consumeTokenSmart(b, MIN);
-    if (!r) r = consumeTokenSmart(b, SUM);
-    if (!r) r = consumeTokenSmart(b, COUNT);
+    Marker m = enter_section_(b);
+    r = parseTokensSmart(b, 0, AVG, LPAREN);
+    if (!r) r = parseTokensSmart(b, 0, MAX, LPAREN);
+    if (!r) r = parseTokensSmart(b, 0, MIN, LPAREN);
+    if (!r) r = parseTokensSmart(b, 0, SUM, LPAREN);
+    if (!r) r = parseTokensSmart(b, 0, COUNT, LPAREN);
+    exit_section_(b, m, null, r);
     return r;
   }
 
   // [DISTINCT]
-  private static boolean aggregate_expression_0_2(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "aggregate_expression_0_2")) return false;
+  private static boolean aggregate_expression_0_1(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "aggregate_expression_0_1")) return false;
     consumeTokenSmart(b, DISTINCT);
     return true;
   }

@@ -2,6 +2,7 @@ package com.esprito.jpa.ql.highlight
 
 import com.esprito.jpa.ql.psi.JpqlLexerAdapter
 import com.esprito.jpa.ql.psi.JpqlTokensSets
+import com.esprito.jpa.ql.psi.JpqlTypes
 import com.intellij.lexer.Lexer
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
@@ -42,6 +43,10 @@ class JpqlSyntaxHighlighter : SyntaxHighlighterBase() {
 
         if (tokenType in JpqlTokensSets.DATETIME_LITERALS) {
             return DATETIME_LITERAL_KEYS
+        }
+
+        if (tokenType == JpqlTypes.BOOLEAN) {
+            return BOOLEAN_LITERAL_KEYS
         }
 
         return EMPTY_KEYS
@@ -87,6 +92,7 @@ class JpqlSyntaxHighlighter : SyntaxHighlighterBase() {
         private val KEY_KEYS = arrayOf(KEY)
         private val STRING_LITERAL_KEYS = arrayOf(STRING_LITERAL)
         private val NUMERIC_LITERAL_KEYS = arrayOf(NUMERIC_LITERAL)
+        private val BOOLEAN_LITERAL_KEYS = arrayOf(NUMERIC_LITERAL)
         private val DATETIME_LITERAL_KEYS = arrayOf(DATETIME_LITERAL)
         private val COMMENT_KEYS = arrayOf(COMMENT)
         private val EMPTY_KEYS = arrayOf<TextAttributesKey>()

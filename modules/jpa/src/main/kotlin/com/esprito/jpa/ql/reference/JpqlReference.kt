@@ -1,5 +1,6 @@
 package com.esprito.jpa.ql.reference
 
+import com.esprito.jpa.JpaIcons
 import com.esprito.jpa.model.JpaEntity
 import com.esprito.jpa.model.JpaEntityAttributeType
 import com.esprito.jpa.ql.psi.*
@@ -8,9 +9,11 @@ import com.esprito.jpa.service.JpaEntitySearch
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.RecursionManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
+import com.intellij.psi.impl.FakePsiElement
 import com.intellij.psi.impl.source.resolve.ResolveCache
 import com.intellij.psi.impl.source.resolve.ResolveCache.PolyVariantResolver
 import com.intellij.psi.util.PsiTreeUtil
@@ -51,6 +54,23 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
         }
 
         return loadAllAvailableAliases(element)
+            .flatMap {
+                if (it is EmptyJpqlAliasDeclaration) {
+                    getSubReferenceVariants(it.referencedElement).asSequence()
+                } else {
+                    var lookupElementBuilder = LookupElementBuilder.create(it)
+                        .withIcon(JpaIcons.Alias)
+
+                    val referencedElement = it.referencedElement
+                    if (referencedElement != null) {
+                        lookupElementBuilder = lookupElementBuilder
+                            .withTypeText(referencedElement.text, true)
+                    }
+
+                    sequenceOf(lookupElementBuilder)
+                }
+            }
+
             .toList()
             .toTypedArray()
     }
@@ -71,10 +91,18 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
     }
 
     private val JpaEntity.variants
-        get() = attributes.mapNotNull { it.name }.map {
-            LookupElementBuilder.create(it)
+        get() = attributes.mapNotNull {
+            val name = it.name ?: return@mapNotNull null
+            LookupElementBuilder.create(name)
                 .withIcon(AllIcons.Nodes.Field)
+                .withTypeText(createAttributeTypeText(it.type), true)
         }
+
+    private fun createAttributeTypeText(type: JpaEntityAttributeType): String? = when (type) {
+        is JpaEntityAttributeType.Entity -> type.jpaEntity.name
+        is JpaEntityAttributeType.Scalar -> type.psiType.presentableText
+        JpaEntityAttributeType.Unknown -> null
+    }
 
     private fun loadSubVariants(resolveResult: ResolveResult): List<Any> = when (resolveResult) {
         is JpaEntityResolveResult -> resolveResult.entity.variants
@@ -155,7 +183,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
         if (element.parent is JpqlInsertFields) {
             return resolveToInsertFields(incompleteCode)
         } else {
-            return resolveToAliases()
+            return resolveToAliasesOrNoAliasFields()
         }
     }
 
@@ -240,14 +268,17 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
         return listOfNotNull(entityAttributeResult)
     }
 
-    private fun resolveToAliases(): Array<ResolveResult> {
+    private fun resolveToAliasesOrNoAliasFields(): Array<ResolveResult> {
         val visited = mutableSetOf<String>() // names shadowing support
 
         val myName = element.text
 
-        return loadAllAvailableAliases(element)
-            .filter { it.name == myName }
+        val aliases = loadAllAvailableAliases(element)
+            .filter { it is EmptyJpqlAliasDeclaration || it.name == myName }
             .filter {
+                if (it is EmptyJpqlAliasDeclaration) {
+                    return@filter true
+                }
                 val aliasName = it.name
 
                 if (aliasName in visited) {
@@ -256,11 +287,18 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
                     visited.add(aliasName)
                     true
                 }
-            }.map {
-                JpqlAliasResolveResult(it)
             }
-            .toList()
-            .toTypedArray()
+
+        val result = mutableListOf<ResolveResult>()
+        for (alias in aliases) {
+            if (alias is EmptyJpqlAliasDeclaration) {
+                result.addAll(resolveToSubReferenceField(alias.referencedElement, false))
+            } else {
+                result.add(JpqlAliasResolveResult(alias))
+            }
+        }
+
+        return result.toTypedArray()
     }
 
     private fun loadAllAvailableAliases(element: PsiElement): Sequence<JpqlAliasDeclaration> = sequence {
@@ -357,7 +395,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             fromClause.identificationVariableDeclarationList
                 .asSequence()
                 .map { it.entityAccess }
-                .mapNotNull { it.aliasDeclaration }
+                .map { it.aliasDeclaration ?: EmptyJpqlAliasDeclaration(it) }
                 .let { yieldAll(it) }
 
             fromClause.collectionMemberDeclarationList
@@ -368,16 +406,16 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             fromClause.identificationVariableDeclarationList
                 .asSequence()
                 .flatMap { it.joinExpressionList }
-                .map { it.aliasDeclaration }
+                .mapNotNull { it.aliasDeclaration /*do not use EmptyJpqlAliasDeclaration for join*/ }
                 .let { yieldAll(it) }
         }
 
 
-    private fun loadAliasesInFromClause(fromClause: JpqlFromClause) = sequence {
+    private fun loadAliasesInFromClause(fromClause: JpqlFromClause): Sequence<JpqlAliasDeclaration> = sequence {
         fromClause.identificationVariableDeclarationList
             .asSequence()
             .map { it.entityAccess }
-            .mapNotNull { it.aliasDeclaration }
+            .map { it.aliasDeclaration ?: EmptyJpqlAliasDeclaration(it) }
             .let { yieldAll(it) }
 
         fromClause.collectionMemberDeclarationList
@@ -388,7 +426,7 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
         fromClause.identificationVariableDeclarationList
             .asSequence()
             .flatMap { it.joinExpressionList }
-            .map { it.aliasDeclaration }
+            .mapNotNull { it.aliasDeclaration  /*do not use EmptyJpqlAliasDeclaration for join */ }
             .let { yieldAll(it) }
     }
 
@@ -404,5 +442,21 @@ class JpqlReference(identifier: JpqlIdentifier) : PsiPolyVariantReferenceBase<Jp
             .map { JpaEntityResolveResult(it) }
             .toList()
             .toTypedArray()
+    }
+}
+
+private class EmptyJpqlAliasDeclaration(private val parent: JpqlEntityAccess) : FakePsiElement(), JpqlAliasDeclaration {
+    override fun getParent(): PsiElement = parent
+
+    override fun getName(): String = ""
+
+    override fun getNameIdentifier(): PsiElement? = null
+
+    override fun getIdentifier(): JpqlIdentifier {
+        throw ProcessCanceledException()
+    }
+
+    override fun getReferencedElement(): JpqlIdentifier {
+        return parent.identifier
     }
 }

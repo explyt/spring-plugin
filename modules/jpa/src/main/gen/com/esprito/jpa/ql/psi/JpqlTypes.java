@@ -35,7 +35,6 @@ public interface JpqlTypes {
   IElementType EXPRESSION = new JpqlElementType("EXPRESSION");
   IElementType FETCH_CLAUSE = new JpqlElementType("FETCH_CLAUSE");
   IElementType FETCH_COUNT_OR_PERCENT = new JpqlElementType("FETCH_COUNT_OR_PERCENT");
-  IElementType FETCH_JOIN = new JpqlElementType("FETCH_JOIN");
   IElementType FROM_CLAUSE = new JpqlElementType("FROM_CLAUSE");
   IElementType FUNCTIONS_RETURNING_NUMERICS_EXPRESSION = new JpqlElementType("FUNCTIONS_RETURNING_NUMERICS_EXPRESSION");
   IElementType FUNCTION_ARG = new JpqlElementType("FUNCTION_ARG");
@@ -286,9 +285,6 @@ public interface JpqlTypes {
       }
       else if (type == FETCH_COUNT_OR_PERCENT) {
         return new JpqlFetchCountOrPercentImpl(node);
-      }
-      else if (type == FETCH_JOIN) {
-        return new JpqlFetchJoinImpl(node);
       }
       else if (type == FROM_CLAUSE) {
         return new JpqlFromClauseImpl(node);

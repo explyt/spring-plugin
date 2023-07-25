@@ -11,9 +11,6 @@ public interface JpqlIdentificationVariableDeclaration extends PsiElement {
   JpqlEntityAccess getEntityAccess();
 
   @NotNull
-  List<JpqlFetchJoin> getFetchJoinList();
-
-  @NotNull
   List<JpqlJoinExpression> getJoinExpressionList();
 
 }

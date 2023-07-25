@@ -123,10 +123,6 @@ public class JpqlVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
-  public void visitFetchJoin(@NotNull JpqlFetchJoin o) {
-    visitPsiElement(o);
-  }
-
   public void visitFromClause(@NotNull JpqlFromClause o) {
     visitAliasHost(o);
   }
