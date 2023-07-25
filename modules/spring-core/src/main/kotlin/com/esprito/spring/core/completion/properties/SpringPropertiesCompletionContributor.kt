@@ -21,8 +21,7 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             result: CompletionResultSet
         ) {
             val position = parameters.position as? PropertyKeyImpl ?: return
-            if (position.parent !is IProperty
-                || !SpringCoreUtil.isPropertyFile(position.containingFile)
+            if (position.parent !is IProperty || !SpringCoreUtil.isConfigurationPropertyFile(parameters.originalFile)
             ) {
                 return
             }
