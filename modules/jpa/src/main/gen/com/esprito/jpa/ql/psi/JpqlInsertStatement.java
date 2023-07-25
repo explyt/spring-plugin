@@ -14,7 +14,7 @@ public interface JpqlInsertStatement extends PsiElement {
   JpqlInsertFields getInsertFields();
 
   @NotNull
-  List<JpqlInsertValue> getInsertValueList();
+  List<JpqlInsertTuple> getInsertTupleList();
 
   @Nullable
   JpqlSelectStatement getSelectStatement();

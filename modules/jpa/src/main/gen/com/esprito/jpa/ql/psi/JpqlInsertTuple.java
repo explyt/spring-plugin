@@ -5,9 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface JpqlInsertValue extends PsiElement {
+public interface JpqlInsertTuple extends PsiElement {
 
   @NotNull
-  JpqlExpression getExpression();
+  List<JpqlInsertValue> getInsertValueList();
 
 }

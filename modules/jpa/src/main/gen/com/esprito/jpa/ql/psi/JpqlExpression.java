@@ -7,4 +7,7 @@ import com.intellij.psi.PsiElement;
 
 public interface JpqlExpression extends PsiElement {
 
+  @NotNull
+  JpqlType getType();
+
 }

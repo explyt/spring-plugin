@@ -11,14 +11,14 @@ import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.esprito.jpa.ql.psi.*;
 
-public abstract class JpqlExpressionImpl extends ASTWrapperPsiElement implements JpqlExpression {
+public class JpqlInsertTupleImpl extends ASTWrapperPsiElement implements JpqlInsertTuple {
 
-  public JpqlExpressionImpl(@NotNull ASTNode node) {
+  public JpqlInsertTupleImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull JpqlVisitor visitor) {
-    visitor.visitExpression(this);
+    visitor.visitInsertTuple(this);
   }
 
   @Override
@@ -29,8 +29,8 @@ public abstract class JpqlExpressionImpl extends ASTWrapperPsiElement implements
 
   @Override
   @NotNull
-  public JpqlType getType() {
-    return JpqlPsiImplUtil.getType(this);
+  public List<JpqlInsertValue> getInsertValueList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlInsertValue.class);
   }
 
 }

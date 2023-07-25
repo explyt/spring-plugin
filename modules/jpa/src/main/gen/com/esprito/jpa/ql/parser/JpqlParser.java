@@ -44,9 +44,9 @@ public class JpqlParser implements PsiParser, LightPsiParser {
       EXPRESSION, FUNCTIONS_RETURNING_NUMERICS_EXPRESSION, FUNCTION_INVOCATION_EXPRESSION, GENERAL_CASE_EXPRESSION,
       INPUT_PARAMETER_EXPRESSION, IN_EXPRESSION, JOIN_EXPRESSION, LIKE_EXPRESSION,
       MAP_BASED_REFERENCE_EXPRESSION, MULTIPLICATIVE_EXPRESSION, NULLIF_EXPRESSION, NULL_COMPARISON_EXPRESSION,
-      NUMERIC_LITERAL, OBJECT_EXPRESSION, PAREN_EXPRESSION, PATH_REFERENCE_EXPRESSION,
-      REFERENCE_EXPRESSION, SIMPLE_CASE_EXPRESSION, STRING_FUNCTION_EXPRESSION, STRING_LITERAL,
-      SUBQUERY_EXPRESSION, TYPE_EXPRESSION, UNARY_ARITHMETIC_EXPRESSION),
+      NULL_EXPRESSION, NUMERIC_LITERAL, OBJECT_EXPRESSION, PAREN_EXPRESSION,
+      PATH_REFERENCE_EXPRESSION, REFERENCE_EXPRESSION, SIMPLE_CASE_EXPRESSION, STRING_FUNCTION_EXPRESSION,
+      STRING_LITERAL, SUBQUERY_EXPRESSION, TYPE_EXPRESSION, UNARY_ARITHMETIC_EXPRESSION),
   };
 
   /* ********************************************************** */
@@ -681,6 +681,43 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
+  // '(' insert_value { ',' insert_value }* ')'
+  public static boolean insert_tuple(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "insert_tuple")) return false;
+    if (!nextTokenIs(b, LPAREN)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeToken(b, LPAREN);
+    r = r && insert_value(b, l + 1);
+    r = r && insert_tuple_2(b, l + 1);
+    r = r && consumeToken(b, RPAREN);
+    exit_section_(b, m, INSERT_TUPLE, r);
+    return r;
+  }
+
+  // { ',' insert_value }*
+  private static boolean insert_tuple_2(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "insert_tuple_2")) return false;
+    while (true) {
+      int c = current_position_(b);
+      if (!insert_tuple_2_0(b, l + 1)) break;
+      if (!empty_element_parsed_guard_(b, "insert_tuple_2", c)) break;
+    }
+    return true;
+  }
+
+  // ',' insert_value
+  private static boolean insert_tuple_2_0(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "insert_tuple_2_0")) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeToken(b, COMMA);
+    r = r && insert_value(b, l + 1);
+    exit_section_(b, m, null, r);
+    return r;
+  }
+
+  /* ********************************************************** */
   // new_value
   public static boolean insert_value(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "insert_value")) return false;
@@ -688,43 +725,6 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     Marker m = enter_section_(b, l, _NONE_, INSERT_VALUE, "<insert value>");
     r = new_value(b, l + 1);
     exit_section_(b, l, m, r, false, null);
-    return r;
-  }
-
-  /* ********************************************************** */
-  // '(' insert_value { ',' insert_value }* ')'
-  static boolean insert_value_list(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "insert_value_list")) return false;
-    if (!nextTokenIs(b, LPAREN)) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = consumeToken(b, LPAREN);
-    r = r && insert_value(b, l + 1);
-    r = r && insert_value_list_2(b, l + 1);
-    r = r && consumeToken(b, RPAREN);
-    exit_section_(b, m, null, r);
-    return r;
-  }
-
-  // { ',' insert_value }*
-  private static boolean insert_value_list_2(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "insert_value_list_2")) return false;
-    while (true) {
-      int c = current_position_(b);
-      if (!insert_value_list_2_0(b, l + 1)) break;
-      if (!empty_element_parsed_guard_(b, "insert_value_list_2", c)) break;
-    }
-    return true;
-  }
-
-  // ',' insert_value
-  private static boolean insert_value_list_2_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "insert_value_list_2_0")) return false;
-    boolean r;
-    Marker m = enter_section_(b);
-    r = consumeToken(b, COMMA);
-    r = r && insert_value(b, l + 1);
-    exit_section_(b, m, null, r);
     return r;
   }
 
@@ -995,12 +995,24 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // scalar_expression | NULL
+  // scalar_expression | null_expression
   static boolean new_value(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "new_value")) return false;
     boolean r;
     r = scalar_expression(b, l + 1);
-    if (!r) r = consumeToken(b, NULL);
+    if (!r) r = null_expression(b, l + 1);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // NULL
+  public static boolean null_expression(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "null_expression")) return false;
+    if (!nextTokenIs(b, NULL)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeToken(b, NULL);
+    exit_section_(b, m, NULL_EXPRESSION, r);
     return r;
   }
 
@@ -1773,20 +1785,20 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // VALUES insert_value_list {',' insert_value_list }*
+  // VALUES insert_tuple {',' insert_tuple }*
   static boolean values_list(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "values_list")) return false;
     if (!nextTokenIs(b, VALUES)) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = consumeToken(b, VALUES);
-    r = r && insert_value_list(b, l + 1);
+    r = r && insert_tuple(b, l + 1);
     r = r && values_list_2(b, l + 1);
     exit_section_(b, m, null, r);
     return r;
   }
 
-  // {',' insert_value_list }*
+  // {',' insert_tuple }*
   private static boolean values_list_2(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "values_list_2")) return false;
     while (true) {
@@ -1797,13 +1809,13 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     return true;
   }
 
-  // ',' insert_value_list
+  // ',' insert_tuple
   private static boolean values_list_2_0(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "values_list_2_0")) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = consumeToken(b, COMMA);
-    r = r && insert_value_list(b, l + 1);
+    r = r && insert_tuple(b, l + 1);
     exit_section_(b, m, null, r);
     return r;
   }
