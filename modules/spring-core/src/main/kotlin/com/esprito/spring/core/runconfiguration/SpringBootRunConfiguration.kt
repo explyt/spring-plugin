@@ -1,0 +1,52 @@
+package com.esprito.spring.core.runconfiguration
+
+import com.esprito.spring.core.runconfiguration.edit.SpringBootConfigurationEditor
+import com.intellij.execution.Executor
+import com.intellij.execution.application.ApplicationConfiguration
+import com.intellij.execution.configurations.*
+import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.openapi.options.SettingsEditor
+import com.intellij.openapi.project.Project
+
+class SpringBootRunConfiguration(
+    project: Project,
+    factory: ConfigurationFactory
+) : ApplicationConfiguration(
+    "Spring Boot",
+    project,
+    factory
+) {
+    private val myOptions: SpringBootConfigurationOptions
+        get() = options as SpringBootConfigurationOptions
+
+    var springProfiles: String?
+        get() {
+            return myOptions.springProfiles
+        }
+        set(value) {
+            myOptions.springProfiles = value
+        }
+
+
+    override fun getType(): ConfigurationType = SpringBootConfigurationType.getInstance()
+
+    override fun getState(executor: Executor, env: ExecutionEnvironment): RunProfileState {
+        val state = SpringBootRunConfigurationState(this, env)
+        state.consoleBuilder = TextConsoleBuilderFactory.getInstance()
+            .createBuilder(project, configurationModule.searchScope)
+        return state
+    }
+
+    fun modifyJavaParams(params: JavaParameters) {
+        with(myOptions) {
+            if (!springProfiles.isNullOrEmpty()) {
+                params.vmParametersList.add("-Dspring.profiles.active=$springProfiles")
+            }
+        }
+    }
+
+    override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> {
+        return SpringBootConfigurationEditor(this)
+    }
+}

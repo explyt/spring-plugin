@@ -1,8 +1,10 @@
 package com.esprito.spring.core.util
 
+import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.util.ModuleUtil
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.psi.PsiFile
 
@@ -17,5 +19,12 @@ object SpringCoreUtil {
 
     fun isSpringProject(module: Module): Boolean {
         return ModuleUtil.isClassAvailableInLibraries(module, SpringCoreClasses.COMPONENT)
+    }
+
+    fun isSpringBootProject(project: Project): Boolean {
+        return LibraryClassCache.searchForLibraryClass(
+            project,
+            SpringCoreClasses.SPRING_BOOT_APPLICATION
+        ) != null
     }
 }

@@ -1,6 +1,12 @@
 package com.esprito.spring.core
 
 object SpringCoreClasses {
+    const val SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication"
+    const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
+
+    const val PROFILE = "org.springframework.context.annotation.Profile"
+    const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
+
     const val INJECT = "javax.inject.Inject"
 
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
