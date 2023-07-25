@@ -16,6 +16,14 @@ class JpqlInputParameterReference(
         TextRange(0, expression.textLength)
     ) {
 
+    override fun getVariants(): Array<Any> {
+        return InputParameterReferenceResolver.EP
+            .getExtensions(element.project)
+            .flatMap {
+                it.getVariants(element)
+            }.toTypedArray()
+    }
+
     override fun handleElementRename(newElementName: String): PsiElement {
         if (element.text.startsWith('?'))
             return element

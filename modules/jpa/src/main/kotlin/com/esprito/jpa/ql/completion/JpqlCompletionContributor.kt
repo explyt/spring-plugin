@@ -114,6 +114,9 @@ class JpqlCompletionContributor : CompletionContributor() {
                     if (element.parent is JpqlIdentifier) {
                         context.dummyIdentifier = ""
                     }
+                } else if (offset > 1 && file.findElementAt(offset - 1)?.text == "?") {
+                    // for numeric input parameter completion
+                    context.dummyIdentifier = "1"
                 }
             }
         }
