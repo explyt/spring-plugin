@@ -1,8 +1,10 @@
 package com.esprito.jpa.ql.completion
 
+import com.esprito.jpa.JpaIcons
 import com.esprito.jpa.ql.psi.*
 import com.esprito.jpa.ql.psi.impl.JpqlElementFactory
 import com.intellij.codeInsight.completion.*
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.lang.parser.GeneratedParserUtilBase
 import com.intellij.openapi.util.text.StringUtil
@@ -25,7 +27,11 @@ class JpqlCompletionContributor : CompletionContributor() {
                 result.addElement(LookupElementBuilder.create("AS "))
             }
 
-            val elementName = (aliasDeclaration.referencedElement as? JpqlIdentifier?)?.name
+            val elementName = when (val referencedElement = aliasDeclaration.referencedElement) {
+                is JpqlIdentifier -> referencedElement.name
+                is JpqlPathReferenceExpression -> referencedElement.identifierList.lastOrNull()?.name
+                else -> null
+            }
 
             if (elementName != null) {
                 linkedSetOf(
@@ -33,7 +39,11 @@ class JpqlCompletionContributor : CompletionContributor() {
                     convertToAbbreviation(elementName),
                     elementName.replaceFirstChar { it.lowercase() },
                 ).forEach {
-                    result.addElement(LookupElementBuilder.create(it))
+                    result.addElement(
+                        LookupElementBuilder.create(it)
+                            .withTypeText("new alias", true)
+                            .withIcon(JpaIcons.Alias)
+                    )
                 }
             }
         }
@@ -57,6 +67,10 @@ class JpqlCompletionContributor : CompletionContributor() {
             object : GeneratedParserUtilBase.CompletionState(completionOffset) {
                 override fun convertItem(item: Any): String? {
                     if (item is Array<*> && item.isArrayOf<IElementType>()) {
+                        if (item.lastOrNull() == JpqlTypes.LPAREN) {
+                            return listOf(*item, JpqlTypes.RPAREN).joinToString(separator = "")
+                        }
+
                         return super.convertItem(item)
                     }
 
@@ -71,7 +85,11 @@ class JpqlCompletionContributor : CompletionContributor() {
         TreeUtil.ensureParsed(file.node)
 
         for (item in state.items) {
-            result.addElement(LookupElementBuilder.create(item))
+            result.addElement(
+                LookupElementBuilder.create(item)
+                    .withCaseSensitivity(false)
+                    .withInsertHandler(JpqlCompletionInsertHandler)
+            )
         }
     }
 
@@ -111,4 +129,14 @@ class JpqlCompletionContributor : CompletionContributor() {
             JpqlTypes.NUMERIC_INPUT_PARAMETER
         )
     }
+}
+
+private object JpqlCompletionInsertHandler : InsertHandler<LookupElement> {
+    override fun handleInsert(context: InsertionContext, item: LookupElement) {
+        if (item.lookupString.endsWith(')')) {
+            val caretModel = context.editor.caretModel
+            caretModel.moveToOffset(caretModel.offset - 1)
+        }
+    }
+
 }

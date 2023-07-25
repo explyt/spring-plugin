@@ -39,6 +39,7 @@ abstract class JpqlExternalReferenceNavigationTest : EspritoJavaLightTestCase() 
     fun testFieldJoin() = doTest()
     fun testEntityInsert() = doTest()
     fun testFieldInsert() = doTest()
+    fun testNoAlias() = doTest()
 
     @Suppress("UnstableApiUsage")
     private fun doTest() {

@@ -28,9 +28,9 @@ public class JpqlJoinExpressionImpl extends JpqlExpressionImpl implements JpqlJo
   }
 
   @Override
-  @NotNull
+  @Nullable
   public JpqlAliasDeclaration getAliasDeclaration() {
-    return findNotNullChildByClass(JpqlAliasDeclaration.class);
+    return findChildByClass(JpqlAliasDeclaration.class);
   }
 
   @Override
@@ -46,9 +46,9 @@ public class JpqlJoinExpressionImpl extends JpqlExpressionImpl implements JpqlJo
   }
 
   @Override
-  @NotNull
+  @Nullable
   public JpqlReferenceExpression getReferenceExpression() {
-    return findNotNullChildByClass(JpqlReferenceExpression.class);
+    return findChildByClass(JpqlReferenceExpression.class);
   }
 
 }

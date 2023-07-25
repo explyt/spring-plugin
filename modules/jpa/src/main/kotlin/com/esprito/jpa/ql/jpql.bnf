@@ -97,7 +97,7 @@ fake alias_host ::=
 
 entity_access ::= identifier [alias_declaration]
 
-identification_variable_declaration ::= entity_access { join_expression | fetch_join }*
+identification_variable_declaration ::= entity_access { join_expression }*
 
 alias_declaration ::= [AS] identifier {
     mixin = "com.esprito.jpa.ql.psi.impl.JpqlNameIdentifierOwnerImpl"
@@ -105,11 +105,14 @@ alias_declaration ::= [AS] identifier {
     methods = [setName getName getReferencedElement getNameIdentifier]
 }
 
-join_expression ::= join_spec reference_expression alias_declaration [join_condition]
+join_expression ::= join_spec [FETCH <<facedToken 'FETCH'>>] reference_expression alias_declaration [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition] <<resetToken 'FETCH'>> {
+    pin = join_spec
+    recoverWhile = join_expression_recovery
+}
+
+private join_expression_recovery ::= ! {LEFT | OUTER | INNER | JOIN | WHERE | GROUP | HAVING | <<isUnitTestMode>> ';'}
 
 join_condition ::= { <<isHql>> WITH | ON} conditional_group
-
-fetch_join ::= join_spec FETCH reference_expression alias_declaration
 
 join_spec::= [ LEFT [OUTER] | INNER ] JOIN
 
@@ -164,7 +167,7 @@ object_expression ::= OBJECT'('identifier')'
 constructor_expression ::= NEW reference_expression '(' constructor_arguments_list ')'
 constructor_arguments_list ::= expression {',' expression}*
 
-aggregate_expression ::= { AVG | MAX | MIN | SUM | COUNT } '('[DISTINCT] reference_expression')' | function_invocation_expression
+aggregate_expression ::= { AVG'(' | MAX'(' | MIN'(' | SUM'(' | COUNT'(' } [DISTINCT] reference_expression')' | function_invocation_expression
 
 function_invocation_expression ::= FUNCTION '(' string_literal {',' function_arg}* ')'
 function_arg ::= literal_group
@@ -276,7 +279,7 @@ private entity_or_value_expression ::= reference_expression
     | literal
 
 exists_expression::= [NOT] EXISTS '('subquery')'
-all_or_any_expression ::= { ALL | ANY | SOME} '('subquery')'
+all_or_any_expression ::= { ALL'(' | ANY'(' | SOME'('} subquery')'
 
 comparison_expression ::= expression comparison_operator expression {
     methods=[getOperator]

@@ -7,28 +7,21 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.psi.CommonClassNames
-import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.util.InheritanceUtil
-import com.intellij.psi.util.TypeConversionUtil
 import org.jetbrains.uast.UField
 
 @Service(Service.Level.PROJECT)
 class JpaEntityAttributePsiParseService(
     private val project: Project
 ) {
-    private val jpaService by lazy { JpaService.getInstance(project) }
-    private val javaPsiFacade by lazy { JavaPsiFacade.getInstance(project) }
+    private val jpaService by lazy {
+        JpaService.getInstance(project)
+    }
 
     fun computeAttributeType(uField: UField): JpaEntityAttributeType {
         @Suppress("UElementAsPsi")
         val psiType = uField.type
-
-        if (TypeConversionUtil.isPrimitiveAndNotNull(psiType) ||
-            TypeConversionUtil.isPrimitiveWrapper(psiType)
-        ) {
-            return JpaEntityAttributeType.Scalar(psiType)
-        }
 
         if (psiType is PsiClassType) {
             val aClass = psiType.resolve()
@@ -45,7 +38,7 @@ class JpaEntityAttributePsiParseService(
             }
         }
 
-        return Unknown
+        return JpaEntityAttributeType.Scalar(psiType)
     }
 
     private fun resolveCollectionClass(psiType: PsiClassType): JpaEntityAttributeType {

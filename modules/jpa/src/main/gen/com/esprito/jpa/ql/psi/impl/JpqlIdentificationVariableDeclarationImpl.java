@@ -35,12 +35,6 @@ public class JpqlIdentificationVariableDeclarationImpl extends ASTWrapperPsiElem
 
   @Override
   @NotNull
-  public List<JpqlFetchJoin> getFetchJoinList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlFetchJoin.class);
-  }
-
-  @Override
-  @NotNull
   public List<JpqlJoinExpression> getJoinExpressionList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlJoinExpression.class);
   }
