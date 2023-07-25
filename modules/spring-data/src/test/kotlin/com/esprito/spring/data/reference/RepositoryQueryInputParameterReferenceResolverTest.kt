@@ -8,9 +8,7 @@ import com.intellij.psi.PsiParameter
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 
-private const val TEST_DATA_PATH = "testdata/reference"
-
-@TestDataPath("\$CONTENT_ROOT/../../$TEST_DATA_PATH")
+@TestDataPath(RepositoryQueryInputParameterReferenceResolverTest.TEST_DATA_PATH)
 class RepositoryQueryInputParameterReferenceResolverTest : EspritoJavaLightTestCase() {
 
     override fun getTestDataPath(): String = TEST_DATA_PATH
@@ -117,6 +115,10 @@ class RepositoryQueryInputParameterReferenceResolverTest : EspritoJavaLightTestC
                 PsiLanguageInjectionHost::class.java
             )!!.textOffset + 1
         )
+    }
+
+    companion object {
+        const val TEST_DATA_PATH = "src/test/testdata/reference"
     }
 }
 
