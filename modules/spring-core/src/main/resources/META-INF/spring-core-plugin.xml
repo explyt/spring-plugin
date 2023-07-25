@@ -8,6 +8,10 @@
         <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader"
                         interface="com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader"
                         area="IDEA_PROJECT"/>
+
+        <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher"
+                        interface="com.esprito.spring.core.profile.ProfileSearcher"
+                        area="IDEA_PROJECT"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.esprito.spring.core">
@@ -15,13 +19,18 @@
                 implementation="com.esprito.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
         <configurationPropertiesLoader
                 implementation="com.esprito.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
-<!--        <configurationPropertiesLoader-->
-<!--                implementation="com.esprito.spring.core.completion.properties.SpringMetadataProjectConfigurationPropertiesLoader"/>-->
+        <!--        <configurationPropertiesLoader-->
+        <!--                implementation="com.esprito.spring.core.completion.properties.SpringMetadataProjectConfigurationPropertiesLoader"/>-->
+
+        <profileSearcher implementation="com.esprito.spring.core.profile.AnnotationProfileSearcher"/>
+        <profileSearcher implementation="com.esprito.spring.core.profile.AdditionalProfileSearcher"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <notificationGroup displayType="BALLOON" id="com.esprito.spring.notification"
-                           bundle="messages.SpringCoreBundle" key="esprito.spring.common.notifications"/>
+        <notificationGroup id="com.esprito.spring.notification"
+                           displayType="BALLOON"
+                           bundle="messages.SpringCoreBundle"
+                           key="esprito.spring.common.notifications"/>
 
         <completion.contributor language="any"
                                 id="com.esprito.spring.core.propertiesCompletionContributor"
@@ -33,6 +42,28 @@
                          bundle="messages.SpringCoreBundle" key="esprito.spring.inspection.method.eventListener"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.inspections.SpringEventListenerInspection"/>
+
+        <postStartupActivity
+                implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
+
+        <configurationType
+                id="Spring Boot"
+                implementation="com.esprito.spring.core.runconfiguration.SpringBootConfigurationType"/>
+
+        <runConfigurationProducer
+                order="first"
+                implementation="com.esprito.spring.core.runconfiguration.SpringBootConfigurationProducer"/>
+
+        <groupConfigurable id="com.esprito.spring.group"
+                           parentId="tools"
+                           displayNameKey="configurable.group.com.esprito.spring.group.settings.display.name"
+                           descriptionKey="configurable.group.com.esprito.spring.group.settings.description"
+                           bundle="messages.SpringCoreBundle"/>
+
+        <applicationConfigurable id="com.esprito.spring.runConfigurations"
+                                 groupId="com.esprito.spring.group"
+                                 instance="com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
+                                 groupWeight="85"/>
     </extensions>
 
     <actions>

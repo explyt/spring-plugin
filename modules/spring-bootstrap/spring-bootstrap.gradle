@@ -8,6 +8,7 @@ plugins {
 
 evaluationDependsOn(":base")
 evaluationDependsOn(":spring-core")
+evaluationDependsOn(":spring-gradle")
 evaluationDependsOn(":spring-data")
 evaluationDependsOn(":spring-security")
 evaluationDependsOn(":spring-web")
@@ -42,6 +43,7 @@ def launchUltimate = rootProject.hasProperty("launchUltimate")
 
 def baseProject = project(':base')
 def springCoreProject = project(':spring-core')
+def springGradleProject = project(':spring-gradle')
 def springDataProject = project(':spring-data')
 def springSecurityProject = project(':spring-security')
 def springWebProject = project(':spring-web')
@@ -60,6 +62,7 @@ repositories {
 dependencies {
     implementation baseProject
     implementation springCoreProject
+    implementation springGradleProject
     implementation springDataProject
     implementation springSecurityProject
     implementation springWebProject
@@ -114,6 +117,7 @@ runPluginVerifier {
 test {
     dependsOn(
             springCoreProject.test,
+            springGradleProject.test,
             springDataProject.test,
             springSecurityProject.test,
             springWebProject.test,

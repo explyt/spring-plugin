@@ -4,9 +4,10 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
 }
 
-ext.intellijPlugins = ['com.intellij.java']
+ext.intellijPlugins = ['com.intellij.gradle', 'com.intellij.java']
 
 evaluationDependsOn(":base")
+evaluationDependsOn(":spring-core")
 
 sourceCompatibility = JavaVersion.VERSION_17
 
@@ -20,23 +21,15 @@ intellij {
     instrumentCode.set(false)
 }
 
-sourceSets {
-    main {
-        java {
-            srcDirs("src/main/gen")
-        }
-    }
-}
-
 runIde.enabled = false
 publishPlugin.enabled = false
 verifyPlugin.enabled = false
 
-def baseProject = project(':base')
+def springCore = project(':spring-core')
 def testFramework = project(':test-framework')
 
 dependencies {
-    implementation baseProject
+    implementation springCore
     testImplementation testFramework
 }
 
@@ -47,7 +40,3 @@ repositories {
 kotlin {
     jvmToolchain(17)
 }
-
-//sourceSets {
-//    main.kotlin.srcDirs += 'src/main/kotlin'
-//}

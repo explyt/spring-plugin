@@ -36,4 +36,5 @@
     <xi:include href="spring-integration-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="spring-messaging-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="jpa-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-gradle-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
 </idea-plugin>
