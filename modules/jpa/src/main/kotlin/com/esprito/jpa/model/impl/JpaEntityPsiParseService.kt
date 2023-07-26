@@ -2,11 +2,13 @@ package com.esprito.jpa.model.impl
 
 import com.esprito.jpa.JpaClasses
 import com.esprito.jpa.model.JpaEntityAttribute
+import com.esprito.jpa.service.JpaService
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiField
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.evaluateString
@@ -16,6 +18,8 @@ import org.jetbrains.uast.toUElementOfType
 class JpaEntityPsiParseService(
     private val project: Project
 ) {
+    private val jpaService = JpaService.getInstance(project)
+
     fun computeName(psiElement: PsiElement): String? {
         val uClass = psiElement.toUElementOfType<UClass>()
             ?: return null
@@ -37,7 +41,6 @@ class JpaEntityPsiParseService(
 
         return loadPossibleEntityAttributeFields(uClass)
             .asSequence()
-            .filter { !it.isStatic }
             .filter { isEntityAttribute(it) }
             .mapNotNull { JpaEntityAttributePsi(it) }
             .toList()
@@ -62,8 +65,9 @@ class JpaEntityPsiParseService(
     }
 
     private fun isEntityAttribute(uField: UField): Boolean {
-        //todo
-        return true
+        val psiField = uField.javaPsi as? PsiField ?: return false
+
+        return jpaService.isJpaEntityAttribute(psiField)
     }
 
     fun isPersistent(psiElement: PsiClass): Boolean = JpaClasses.entity.allFqns.any {

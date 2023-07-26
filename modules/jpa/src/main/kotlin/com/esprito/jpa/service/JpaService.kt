@@ -5,6 +5,8 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiModifier
 
 @Service(Service.Level.PROJECT)
 class JpaService {
@@ -18,6 +20,18 @@ class JpaService {
         }
 
         return psiClass.annotations.any { it.qualifiedName in jpaAnnotations }
+    }
+
+    fun isJpaEntityAttribute(psiField: PsiField): Boolean {
+        if(psiField.hasModifierProperty(PsiModifier.STATIC))
+            return false
+
+        if (psiField.hasModifierProperty(PsiModifier.TRANSIENT))
+            return false
+
+        val psiClass = psiField.containingClass ?: return false
+
+        return isJpaEntity(psiClass)
     }
 
     companion object {
