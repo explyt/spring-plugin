@@ -3,6 +3,7 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>com.intellij.properties</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader"
@@ -35,6 +36,11 @@
         <completion.contributor language="any"
                                 id="com.esprito.spring.core.propertiesCompletionContributor"
                                 implementationClass="com.esprito.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
+
+        <completion.contributor language="yaml"
+                                id="com.esprito.spring.core.yamlCompletionContributor"
+                                implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
+
         <implicitUsageProvider implementation="com.esprito.providers.SpringImplicitUsageProvider"/>
 
         <properties.implicitPropertyUsageProvider
