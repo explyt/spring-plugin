@@ -2,15 +2,19 @@ package com.esprito.spring.core.util
 
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.util.ModuleUtil
 import com.esprito.util.runReadNonBlocking
+import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiFile
+import com.intellij.psi.impl.source.resolve.FileContextUtil
+import org.jetbrains.uast.toUElement
 
 object SpringCoreUtil {
 
@@ -19,6 +23,15 @@ object SpringCoreUtil {
         if (!isSpringProject(module)) {
             return false
         }
+
+        if (psiFile is PropertiesFile) {
+            val contextElement = FileContextUtil.getFileContext(psiFile)
+            val uElement = contextElement?.toUElement()
+            if (uElement != null) {
+                return ConfigurationPropertiesInjector.isValidPlace(uElement)
+            }
+        }
+
 
         val fileExtension = FileUtilRt.getExtension(psiFile.name)
         if (!arrayOf("properties", "yaml", "yml").contains(fileExtension)) {
