@@ -27,9 +27,6 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             }
 
             val module = ModuleUtilCore.findModuleForPsiElement(position) ?: return
-            if (!SpringCoreUtil.isSpringProject(module)) {
-                return
-            }
 
             val cursor = parameters.offset
             val keyStart = position.textOffset
