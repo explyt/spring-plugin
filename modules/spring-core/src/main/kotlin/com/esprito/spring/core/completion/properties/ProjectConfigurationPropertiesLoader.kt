@@ -99,7 +99,15 @@ class ProjectConfigurationPropertiesLoader : ConfigurationPropertiesLoader {
                 }
             }
 
-            result.add(ConfigurationProperty("$prefix.$propertyName", propertyWrapper.type, null, null))
+            result.add(
+                ConfigurationProperty(
+                    "$prefix.$propertyName",
+                    propertyWrapper.type,
+                    propertyWrapper.sourceType,
+                    null,
+                    null
+                )
+            )
         }
     }
 
@@ -132,6 +140,12 @@ private abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
     open val type: String
         get() {
             return psiType.canonicalText
+        }
+
+    open val sourceType: String?
+        get() {
+            val containingClass = psiMember.containingClass ?: return null
+            return "${containingClass.qualifiedName}#${psiMember.name}"
         }
 
     abstract val psiType: PsiType

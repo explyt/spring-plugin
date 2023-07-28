@@ -22,7 +22,7 @@ class SpringPropertySourceSearch(private val project: Project) {
     fun findPropertySourceFilePaths(targetElement: PsiElement): Set<String> {
         val module = ModuleUtilCore.findModuleForPsiElement(targetElement) ?: return emptySet()
         val externalSystemModule = ExternalSystemModule.of(module)
-        val moduleProductionSourceScope = externalSystemModule.mainModule?.moduleProductionSourceScope ?: return emptySet()
+        val moduleProductionSourceScope = externalSystemModule.mainModule?.moduleWithDependenciesScope ?: return emptySet()
 
         val librariesSearchScope = externalSystemModule.librariesSearchScope
         val javaPsiFacade = JavaPsiFacade.getInstance(project)

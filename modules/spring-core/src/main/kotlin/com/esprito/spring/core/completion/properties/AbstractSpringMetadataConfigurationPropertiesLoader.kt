@@ -50,6 +50,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
                 ConfigurationProperty(
                     name = propertyName,
                     type = it.type,
+                    sourceType = it.sourceType,
                     description = it.description,
                     defaultValue = it.defaultValue
                 )

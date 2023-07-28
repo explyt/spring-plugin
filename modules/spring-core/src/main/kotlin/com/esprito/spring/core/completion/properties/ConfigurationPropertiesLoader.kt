@@ -14,6 +14,7 @@ interface ConfigurationPropertiesLoader {
 
 data class ConfigurationProperty(val name: String,
                                  val type: String?,
+                                 val sourceType: String?,
                                  val description: String?,
                                  val defaultValue: Any?) {
 

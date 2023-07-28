@@ -182,7 +182,7 @@ spring:
         return LookupManager.getActiveLookup(myFixture.editor) as LookupImpl
     }
 
-    class TestModel {
+    private class TestModel {
         lateinit var initSource: String
         lateinit var sourceAfterComplete: String
         lateinit var expectedLookupElements: Set<String>
