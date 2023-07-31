@@ -41,6 +41,11 @@
                                 id="com.esprito.spring.core.yamlCompletionContributor"
                                 implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
+        <psi.referenceContributor language="Properties"
+                                  implementation="com.esprito.spring.core.properties.SpringConfigurationPropertiesReferenceContributor"/>
+        <psi.referenceContributor language="yaml"
+                                  implementation="com.esprito.spring.core.completion.yaml.SpringYamlConfigurationPropertiesReferenceContributor"/>
+
         <implicitUsageProvider implementation="com.esprito.providers.SpringImplicitUsageProvider"/>
 
         <properties.implicitPropertyUsageProvider

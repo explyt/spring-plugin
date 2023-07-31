@@ -6,7 +6,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 
 @Service(Service.Level.PROJECT)
-class SpringConfigurationPropertiesSearch(private val project: Project) {
+class SpringConfigurationPropertiesSearch {
 
     companion object {
         fun getInstance(project: Project): SpringConfigurationPropertiesSearch = project.service()
@@ -17,5 +17,9 @@ class SpringConfigurationPropertiesSearch(private val project: Project) {
             .asSequence().flatMap {
                 it.loadProperties(module)
             }.toList()
+    }
+
+    fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {
+        return getAllProperties(module).find { it.name == propertyName}
     }
 }
