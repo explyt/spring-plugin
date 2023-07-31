@@ -81,6 +81,8 @@
                                  groupId="com.esprito.spring.group"
                                  instance="com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
                                  groupWeight="85"/>
+
+        <psi.referenceContributor implementation="com.esprito.references.PackageReferenceContributor" language="UAST"/>
     </extensions>
 
     <actions>
