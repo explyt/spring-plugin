@@ -46,6 +46,9 @@
         <properties.implicitPropertyUsageProvider
                 implementation="com.esprito.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>
 
+        <languageInjectionContributor language="UAST"
+                                      implementationClass="com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector"/>
+
         <localInspection language="UAST" shortName="SpringEventListenerInspection"
                          groupBundle="messages.SpringCoreBundle" groupKey="esprito.spring.common.notifications"
                          bundle="messages.SpringCoreBundle" key="esprito.spring.inspection.method.eventListener"

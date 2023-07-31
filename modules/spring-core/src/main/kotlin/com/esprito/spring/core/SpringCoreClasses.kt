@@ -32,4 +32,8 @@ object SpringCoreClasses {
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"
     const val PROPERTY_SOURCE = "org.springframework.context.annotation.PropertySource"
+
+    const val SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest"
+    const val TEST_PROPERTY_SOURCE = "org.springframework.test.context.TestPropertySource"
+    const val TEST_PROPERTY_VALUES = "org.springframework.boot.test.util.TestPropertyValues"
 }
