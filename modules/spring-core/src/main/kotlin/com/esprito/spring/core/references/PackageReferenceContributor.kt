@@ -1,4 +1,4 @@
-package com.esprito.references
+package com.esprito.spring.core.references
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns

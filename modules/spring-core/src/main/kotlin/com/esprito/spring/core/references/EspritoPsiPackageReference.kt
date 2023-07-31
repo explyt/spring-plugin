@@ -1,4 +1,4 @@
-package com.esprito.references
+package com.esprito.spring.core.references
 
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.codeInsight.lookup.LookupElementBuilder

@@ -1,9 +1,9 @@
-package com.esprito.inspections
+package com.esprito.spring.core.inspections
 
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.EVENT_LISTENER
-import com.esprito.util.PsiMethodUtils.getAnnotationByParentAnnotationNameInHierarchy
-import com.esprito.util.PsiModifierListOwnerUtils.isPublic
+import com.esprito.spring.core.util.PsiMethodUtils.getAnnotationByParentAnnotationNameInHierarchy
+import com.esprito.spring.core.util.PsiModifierListOwnerUtils.isPublic
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.*
 import com.intellij.psi.PsiMethod

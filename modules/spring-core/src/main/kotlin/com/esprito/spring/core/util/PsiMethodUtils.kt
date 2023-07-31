@@ -1,11 +1,11 @@
-package com.esprito.util
+package com.esprito.spring.core.util
 
 import com.esprito.spring.core.SpringCoreClasses.CONFIGURATION
 import com.esprito.spring.core.SpringCoreClasses.CONFIGURATION_METHOD_ANNOTATIONS
 import com.esprito.spring.core.SpringCoreClasses.CONTROLLER
 import com.esprito.spring.core.SpringCoreClasses.CONTROLLER_METHOD_ANNOTATIONS
-import com.esprito.util.PsiModifierListOwnerUtils.isAnnotatedBy
-import com.esprito.util.PsiModifierListOwnerUtils.isNonStatic
+import com.esprito.spring.core.util.PsiModifierListOwnerUtils.isAnnotatedBy
+import com.esprito.spring.core.util.PsiModifierListOwnerUtils.isNonStatic
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiMethod

@@ -1,10 +1,10 @@
-package com.esprito.providers
+package com.esprito.spring.core.providers
 
 import com.esprito.spring.core.SpringCoreClasses.FIELD_ANNOTATIONS
 import com.esprito.spring.core.SpringCoreClasses.TYPE_ANNOTATIONS
-import com.esprito.util.PsiModifierListOwnerUtils.isAnnotatedBy
-import com.esprito.util.PsiMethodUtils.isConfigurationMethods
-import com.esprito.util.PsiMethodUtils.isControllerMethods
+import com.esprito.spring.core.util.PsiModifierListOwnerUtils.isAnnotatedBy
+import com.esprito.spring.core.util.PsiMethodUtils.isConfigurationMethods
+import com.esprito.spring.core.util.PsiMethodUtils.isControllerMethods
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.*

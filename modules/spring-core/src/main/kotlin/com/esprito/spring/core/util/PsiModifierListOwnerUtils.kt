@@ -1,4 +1,4 @@
-package com.esprito.util
+package com.esprito.spring.core.util
 
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.psi.PsiModifier

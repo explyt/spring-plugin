@@ -1,6 +1,6 @@
 package com.esprito.spring.core.inspections
 
-import com.esprito.inspections.SpringEventListenerInspection
+import com.esprito.spring.core.inspections.SpringEventListenerInspection
 import com.esprito.spring.test.EspritoInspectionTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
