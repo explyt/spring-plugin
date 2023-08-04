@@ -104,7 +104,7 @@ class ProjectConfigurationPropertiesLoader : ConfigurationPropertiesLoader {
                     "$prefix.$propertyName",
                     propertyWrapper.type,
                     propertyWrapper.sourceType,
-                    null,
+                    propertyWrapper.description,
                     null
                 )
             )
@@ -146,6 +146,11 @@ private abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
         get() {
             val containingClass = psiMember.containingClass ?: return null
             return "${containingClass.qualifiedName}#${psiMember.name}"
+        }
+
+    open val description: String?
+        get() {
+            return (psiMember as? PsiJavaDocumentedElement)?.docComment?.text
         }
 
     abstract val psiType: PsiType

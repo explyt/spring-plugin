@@ -45,6 +45,12 @@
                                   implementation="com.esprito.spring.core.properties.SpringConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="yaml"
                                   implementation="com.esprito.spring.core.completion.yaml.SpringYamlConfigurationPropertiesReferenceContributor"/>
+        <lang.documentationProvider language="Properties"
+                                    order="first"
+                                    implementationClass="com.esprito.spring.core.properties.SpringPropertiesDocumentationProvider"/>
+        <lang.documentationProvider language="yaml"
+                                    order="first"
+                                    implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlDocumentationProvider"/>
 
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringImplicitUsageProvider"/>
 
