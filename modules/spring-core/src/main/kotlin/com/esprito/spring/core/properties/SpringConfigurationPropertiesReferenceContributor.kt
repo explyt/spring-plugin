@@ -3,10 +3,12 @@ package com.esprito.spring.core.properties
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
+import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.*
+import com.intellij.psi.impl.FakePsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
@@ -41,7 +43,7 @@ open class ConfigurationPropertyKeyReference(element: PsiElement, private val pr
         val sourceType = foundProperty.sourceType ?: return emptyArray()
         val sourceMember = findSourceMember(project, sourceType)
         if (sourceMember != null) {
-            return PsiElementResolveResult.createResults(sourceMember)
+            return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         }
         return emptyArray()
     }
@@ -73,5 +75,31 @@ open class ConfigurationPropertyKeyReference(element: PsiElement, private val pr
         return (foundClass.findMethodsByName(setterName, true).firstOrNull()
             ?: foundClass.findFieldByName(fieldName, true))
     }
+}
 
+class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
+
+    override fun getParent(): PsiElement = member
+
+    override fun getNavigationElement(): PsiElement = member.navigationElement
+
+    override fun navigate(requestFocus: Boolean) {
+        member.navigate(requestFocus)
+    }
+
+    override fun canNavigate(): Boolean {
+        return member.canNavigate()
+    }
+
+    override fun canNavigateToSource(): Boolean {
+        return member.canNavigateToSource()
+    }
+
+    override fun getPresentation(): ItemPresentation? {
+        return member.presentation
+    }
+
+    override fun getPresentableText(): String? {
+        return member.presentation?.presentableText
+    }
 }

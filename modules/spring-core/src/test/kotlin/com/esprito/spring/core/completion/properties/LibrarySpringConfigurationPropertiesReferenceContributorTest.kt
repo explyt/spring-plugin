@@ -1,5 +1,6 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.properties.ConfigKeyPsiElement
 import com.esprito.spring.core.properties.ConfigurationPropertyKeyReference
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
@@ -56,7 +57,7 @@ class LibrarySpringConfigurationPropertiesReferenceContributorTest : EspritoJava
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
         val resolveResult = multiResolve[0]
-        val resolvedElement = resolveResult.element as? PsiMember
+        val resolvedElement = (resolveResult.element as? ConfigKeyPsiElement)?.parent as? PsiMember
         assertNotNull(resolvedElement)
         val memberName = resolvedElement!!.name
         val classFqn = resolvedElement.containingClass?.qualifiedName
