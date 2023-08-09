@@ -22,4 +22,15 @@ class SpringConfigurationPropertiesSearch {
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {
         return getAllProperties(module).find { it.name == propertyName}
     }
+
+    fun findHint(module: Module, propertyName: String): PropertyHint? {
+        return getAllHints(module).find { it.name == propertyName }
+    }
+
+    fun getAllHints(module: Module): List<PropertyHint> {
+        return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
+            .asSequence().flatMap {
+                it.loadPropertyHints(module)
+            }.toList()
+    }
 }

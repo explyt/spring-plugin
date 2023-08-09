@@ -23,7 +23,7 @@ class ProjectConfigurationPropertiesLoader : ConfigurationPropertiesLoader {
 
         val annotatedElements = AnnotatedElementsSearch.searchElements(
             configurationPropertiesClass,
-            module.moduleProductionSourceScope,
+            module.moduleWithDependenciesScope,
             PsiClass::class.java, PsiMethod::class.java
         )
 
@@ -48,6 +48,9 @@ class ProjectConfigurationPropertiesLoader : ConfigurationPropertiesLoader {
         result
     }
 
+    override fun loadPropertyHints(module: Module): List<PropertyHint> {
+        return emptyList()
+    }
 
     private fun extractConfigurationPropertyPrefix(annotatedElement: PsiModifierListOwner): String? {
         val configurationPropsAnn = annotatedElement.toUElementOfType<UAnnotated>()
