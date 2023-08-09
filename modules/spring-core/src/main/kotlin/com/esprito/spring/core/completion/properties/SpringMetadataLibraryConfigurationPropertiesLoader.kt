@@ -1,10 +1,10 @@
 package com.esprito.spring.core.completion.properties
 
-import com.esprito.module.ExternalSystemModule
 import com.esprito.util.CacheKeyStore
 import com.intellij.codeInsight.JavaLibraryModificationTracker
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.impl.LibraryScopeCache
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.FilenameIndex
@@ -22,8 +22,23 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
         return CachedValuesManager
             .getManager(project)
             .getCachedValue(module, key, {
+                val result = mutableMapOf<String, ConfigurationProperty>()
+                findMetadataFiles(module).forEach {
+                    collectConfigurationProperties(it.text, it.virtualFile.path, result)
+                }
+                CachedValueProvider.Result.create(result.values.toList(), JavaLibraryModificationTracker.getInstance(project))
+            }, false)
+    }
+
+    override fun loadPropertyHints(module: Module): List<PropertyHint> {
+        val project = module.project
+        val key = CacheKeyStore.getInstance(project).getKey<List<PropertyHint>>(
+            "SpringMetadataConfigurationPropertyHintsLoaderCache(${module.name})")
+        return CachedValuesManager
+            .getManager(project)
+            .getCachedValue(module, key, {
                 val result = findMetadataFiles(module).flatMap {
-                    collectConfigurationProperties(it.text, it.virtualFile.path)
+                    collectPropertyHints(it.text, it.virtualFile.path)
                 }
                 CachedValueProvider.Result.create(result, JavaLibraryModificationTracker.getInstance(project))
             }, false)
@@ -38,7 +53,7 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
                 ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
             ),
             true,
-            ExternalSystemModule.of(module).librariesSearchScope,
+            LibraryScopeCache.getInstance(module.project).librariesOnlyScope,
             null,
             collectProcessor
         )

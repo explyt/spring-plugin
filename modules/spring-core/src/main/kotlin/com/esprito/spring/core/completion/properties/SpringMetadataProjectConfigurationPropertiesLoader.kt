@@ -24,12 +24,18 @@ class SpringMetadataProjectConfigurationPropertiesLoader(project: Project)
         return CachedValuesManager
             .getManager(module.project)
             .getCachedValue(module, CACHE_KEY, {
-                val result = findMetadataFiles(module).flatMap {
-                    collectConfigurationProperties(FileUtil.loadFile(it), it.absolutePath)
+                val result = mutableMapOf<String, ConfigurationProperty>()
+                findMetadataFiles(module).forEach {
+                    collectConfigurationProperties(FileUtil.loadFile(it), it.absolutePath, result)
                 }
+
                 //TODO check ProjectRootModificationTracker
-                CachedValueProvider.Result.create(result, ProjectRootModificationTracker.getInstance(module.project))
+                CachedValueProvider.Result.create(result.values.toList(), ProjectRootModificationTracker.getInstance(module.project))
             }, false)
+    }
+
+    override fun loadPropertyHints(module: Module): List<PropertyHint> {
+        return emptyList()
     }
 
     private fun findMetadataFiles(module: Module): Array<File> {

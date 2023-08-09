@@ -3,6 +3,7 @@ package com.esprito.spring.core.completion.properties
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.codeInsight.lookup.LookupElementRenderer
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.JBColor
 import org.apache.commons.lang3.StringUtils
@@ -14,22 +15,27 @@ class PropertyRenderer : LookupElementRenderer<LookupElement>() {
     private val packageRemovalPattern = Pattern.compile("[a-zA-Z_][a-zA-Z_0-9]*\\.")
 
     override fun renderElement(element: LookupElement, presentation: LookupElementPresentation) {
-        val availableProperty = element.`object` as ConfigurationProperty
+        val configurationProperty = element.`object` as ConfigurationProperty
         val lookupString = element.lookupString
         presentation.itemText = lookupString
-        val defaultValue: Any? = availableProperty.defaultValue
+        val defaultValue: Any? = configurationProperty.defaultValue
         if (defaultValue != null) {
             val shortDescription = StringUtil.shortenTextWithEllipsis(defaultValue.toString(), 60, 0, true)
             presentation.setTailText("=$shortDescription", JBColor.GREEN)
         }
 
-        if(availableProperty.type != null) {
-            presentation.typeText = shortenedType(availableProperty.type)
+        if (configurationProperty.type != null) {
+            presentation.typeText = shortenedType(configurationProperty.type)
         }
 
-        if (availableProperty.description != null) {
-            presentation.appendTailText(" (" + getFirstSentenceWithoutDot(availableProperty.description) + ")", true)
+        configurationProperty.description?.let {
+            presentation.appendTailText(" (" + getFirstSentenceWithoutDot(it) + ")", true)
         }
+
+        presentation.icon = if (configurationProperty.type?.startsWith("java.util.Map") == true)
+            AllIcons.Nodes.PropertyWrite
+        else
+            AllIcons.Nodes.Property
     }
 
     private fun getFirstSentenceWithoutDot(fullSentence: String): String {

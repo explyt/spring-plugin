@@ -25,29 +25,39 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
         private val logger = logger<AbstractSpringMetadataConfigurationPropertiesLoader>()
     }
 
-    protected fun collectConfigurationProperties(
-        metaDataFileText: String,
-        metaDataFilePath: String
-    ): List<ConfigurationProperty> {
-        val metadata = try {
-            mapper.readValue(
-                metaDataFileText,
-                SpringConfigurationMetadata::class.java
-            )
-        } catch (e: Exception) {
-            if (e !is ControlFlowException) {
-                logger.warn(
-                    "Exception during parsing spring configuration metadata json file: ${metaDataFilePath}", e
-                )
-            }
-            return emptyList()
-        }
+    protected fun collectPropertyHints(metaDataFileText: String,
+                                       metaDataFilePath: String): List<PropertyHint> {
+        val metadata = loadMetadata(metaDataFileText, metaDataFilePath, SpringConfigurationHintsMetadata::class.java)
+            ?: return emptyList()
 
         val processedPropertyKeys = mutableSetOf<String>()
-        return metadata.properties.mapNotNull {
+        return metadata.hints?.mapNotNull {
             val propertyName = it.name
             if (processedPropertyKeys.add(propertyName)) {
-                ConfigurationProperty(
+                PropertyHint(
+                    name = propertyName,
+                    values = it.values ?: emptyList(),
+                    providers = it.providers ?: emptyList()
+                )
+            } else {
+                null
+            }
+        } ?: emptyList()
+    }
+
+    protected fun collectConfigurationProperties(
+        metaDataFileText: String,
+        metaDataFilePath: String,
+        configurationProperties: MutableMap<String, ConfigurationProperty>
+    ) {
+        val metadata = loadMetadata(metaDataFileText, metaDataFilePath, SpringConfigurationPropertiesMetadata::class.java)
+            ?: return
+
+        metadata.properties.forEach {
+            val propertyName = it.name
+            val existProperty = configurationProperties[propertyName]
+            if (existProperty == null) {
+                configurationProperties[propertyName] = ConfigurationProperty(
                     name = propertyName,
                     type = it.type,
                     sourceType = it.sourceType,
@@ -55,17 +65,52 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
                     defaultValue = it.defaultValue
                 )
             } else {
-                null
+                if (existProperty.type.isNullOrEmpty()) {
+                    existProperty.type = it.type
+                }
+                if (existProperty.sourceType.isNullOrEmpty()) {
+                    existProperty.sourceType = it.sourceType
+                }
+                if (existProperty.description.isNullOrEmpty()) {
+                    existProperty.description = it.description
+                }
+                if (existProperty.defaultValue == null) {
+                    existProperty.defaultValue = it.defaultValue
+                }
             }
+        }
+    }
+
+    private fun <T> loadMetadata(
+        metaDataFileText: String,
+        metaDataFilePath: String,
+        clazz: Class<T>
+    ): T? {
+        return try {
+            mapper.readValue(
+                metaDataFileText,
+                clazz
+            )
+        } catch (e: Exception) {
+            if (e !is ControlFlowException) {
+                logger.warn(
+                    "Exception during parsing spring configuration metadata json file: $metaDataFilePath", e
+                )
+            }
+            null
         }
     }
 }
 
-data class SpringConfigurationMetadata @JsonCreator constructor(
+
+data class SpringConfigurationPropertiesMetadata @JsonCreator constructor(
     @JsonProperty("properties")
     val properties: List<SpringConfigurationMetadataProperty> = mutableListOf(),
+)
+
+data class SpringConfigurationHintsMetadata @JsonCreator constructor(
     @JsonProperty("hints")
-    val hints: List<SpringConfigurationMetadataHint>?
+    val hints: List<SpringConfigurationMetadataHint>? = mutableListOf()
 )
 
 data class SpringConfigurationMetadataProperty @JsonCreator constructor(
@@ -87,7 +132,21 @@ class SpringConfigurationMetadataHint @JsonCreator constructor(
     @JsonProperty("name")
     val name: String,
     @JsonProperty("values")
-    val values: List<ValueHint>?
+    val values: List<ValueHint>?,
+    @JsonProperty("providers")
+    val providers: List<ProviderHint>?
+)
+
+class ProviderHint @JsonCreator constructor(
+    @JsonProperty("name")
+    val name: String,
+    @JsonProperty("parameters")
+    val parameters: ProviderParameters?
+)
+
+class ProviderParameters @JsonCreator constructor(
+    @JsonProperty("target")
+    val target: String?
 )
 
 class ValueHint @JsonCreator constructor(
