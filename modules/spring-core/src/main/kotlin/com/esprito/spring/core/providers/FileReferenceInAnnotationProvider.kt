@@ -1,0 +1,129 @@
+package com.esprito.spring.core.providers
+
+import com.esprito.spring.core.SpringCoreClasses.CLASSPATH_PREFIX
+import com.esprito.spring.core.SpringCoreClasses.FILE_PREFIX
+import com.esprito.spring.core.references.MyFileReferenceSet
+import com.esprito.spring.core.references.REFERENCE_TYPE
+import com.esprito.util.ModuleUtil
+import com.intellij.codeInsight.daemon.quickFix.FileReferenceQuickFixProvider
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.*
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.PsiFileReferenceHelper
+import com.intellij.psi.util.parentOfType
+import com.intellij.util.ProcessingContext
+
+class FileReferenceInAnnotationProvider(val suitableAnnotations: Set<String>) : PsiReferenceProvider() {
+
+    constructor(suitableAnnotations: Set<String>, suitableFileTypes: Array<FileType>) : this(suitableAnnotations) {
+        this.suitableFileTypes = suitableFileTypes
+    }
+
+    private var suitableFileTypes: Array<FileType> = emptyArray()
+    override fun getReferencesByElement(
+        psiElement: PsiElement,
+        context: ProcessingContext
+    ): Array<PsiReference> {
+        if (!acceptPsiElement(psiElement)) return arrayOf()
+
+        val references = mutableListOf<PsiReference>()
+
+        var range = ElementManipulators.getValueTextRange(psiElement)
+        val text = range.substring(psiElement.text)
+
+        val referenceType: REFERENCE_TYPE
+        //("file:./application.properties") or ("file:application.properties") is right link to content root
+        // if start with "/" like here @PropertySource("file:/application.properties") - it mean absolute path
+        if (text.startsWith(FILE_PREFIX)) {
+            val textWithoutFilePrefix = text.substring(FILE_PREFIX.length)
+            // if start with "/" it mean that it is absolute path
+            if (textWithoutFilePrefix.startsWith("/")) {
+                referenceType = REFERENCE_TYPE.ABSOLUTE_PATH
+
+                val basePath = ModuleUtil.getContentRootFile(psiElement)?.path + "/"
+                if (textWithoutFilePrefix.startsWith(basePath)) {
+                    val lengthOfPrefix = FILE_PREFIX.length + basePath.length
+                    range = TextRange(
+                        range.startOffset + lengthOfPrefix,
+                        range.endOffset
+                    )
+                }
+            } else {
+                // file: can start with "./" or ""
+                referenceType = REFERENCE_TYPE.FILE
+
+                val lengthOfPrefix = FILE_PREFIX.length +
+                        (if (textWithoutFilePrefix.startsWith("./")) "./".length else 0)
+                range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+            }
+        } else {
+            // classpath: can start with "./"  or "/" or ""
+            referenceType = REFERENCE_TYPE.CLASSPATH
+
+            if (text.startsWith(CLASSPATH_PREFIX)) {
+                val textWithoutClassPathPrefix = text.substring(CLASSPATH_PREFIX.length)
+                val lengthOfPrefix = CLASSPATH_PREFIX.length +
+                        (if (textWithoutClassPathPrefix.startsWith("/")) "/".length else 0) +
+                        (if (textWithoutClassPathPrefix.startsWith("./")) "./".length else 0)
+                range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+            } else {
+                val lengthOfPrefix =
+                    (if (text.startsWith("/")) "/".length else 0) +
+                            (if (text.startsWith("./")) "./".length else 0)
+                range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+            }
+        }
+
+        val fileReferenceSet = MyFileReferenceSet(
+            range.substring(psiElement.text),
+            psiElement,
+            range.startOffset,
+            provider = this,
+            isCaseSensitive = false,
+            endingSlashNotAllowed = false,
+            if (suitableFileTypes.isNotEmpty()) suitableFileTypes else null,
+            init = true,
+            referenceType,
+            needHardFileTypeFilter = false
+        )
+
+        // TODO - add quickFix
+        //fileReferenceSet.allReferences.forEach { fileReference ->
+        //  PsiFileReferenceHelper.getInstance().registerFixes(fileReference)
+        //}
+
+        references.addAll(fileReferenceSet.allReferences)//.filter { it?.resolve() != null })
+
+        return references.toTypedArray()
+    }
+
+    private fun acceptPsiElement(psiElement: PsiElement): Boolean {
+        return checkAnnotationIsPossibleAndStructureIsCorrect(psiElement) ||
+                checkAnnotationIsPossibleAndStructureWithArrayInitializerIsCorrect(psiElement)
+    }
+
+    private fun checkAnnotationIsPossibleAndStructureIsCorrect(psiElement: PsiElement): Boolean {
+        return (psiElement is PsiLiteralExpression) &&
+                suitableAnnotations.contains(
+                    psiElement
+                        .parentOfType<PsiNameValuePair>()
+                        ?.parentOfType<PsiAnnotationParameterList>()
+                        ?.parentOfType<PsiAnnotation>()
+                        ?.qualifiedName
+                )
+    }
+
+    private fun checkAnnotationIsPossibleAndStructureWithArrayInitializerIsCorrect(psiElement: PsiElement): Boolean {
+        return (psiElement is PsiLiteralExpression) &&
+                suitableAnnotations.contains(
+                    psiElement
+                        .parentOfType<PsiArrayInitializerMemberValue>()
+                        ?.parentOfType<PsiNameValuePair>()
+                        ?.parentOfType<PsiAnnotationParameterList>()
+                        ?.parentOfType<PsiAnnotation>()
+                        ?.qualifiedName
+                )
+    }
+
+
+}

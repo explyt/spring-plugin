@@ -3,14 +3,14 @@ package com.esprito.spring.core.reference
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
-import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.psi.PsiPackage
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.findAllReferencesByText
 import com.jetbrains.rd.util.string.printToString
 import junit.framework.TestCase
 
-private const val TEST_DATA_PATH = "testdata/reference"
+private const val TEST_DATA_PATH = "testdata/reference/package"
 
 @TestDataPath("\$CONTENT_ROOT/../../${TEST_DATA_PATH}")
 class PackageReferenceContributorTest : EspritoJavaLightTestCase() {
@@ -86,7 +86,7 @@ class PackageReferenceContributorTest : EspritoJavaLightTestCase() {
                 "pack1.pack2.pack3_2",
                 "pack1.pack2_2.pack3_2"
             ),
-            ref?.variants?.map { ((it as LookupElementBuilder).psiElement as PsiPackage).qualifiedName }
+            ref?.variants?.map { ((it as LookupElement).psiElement as PsiPackage).qualifiedName }
         )
     }
 }
