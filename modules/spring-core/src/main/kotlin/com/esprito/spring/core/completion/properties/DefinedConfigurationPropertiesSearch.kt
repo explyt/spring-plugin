@@ -1,0 +1,111 @@
+package com.esprito.spring.core.completion.properties
+
+import com.esprito.spring.core.util.SpringCoreUtil
+import com.intellij.lang.properties.PropertiesLanguage
+import com.intellij.lang.properties.psi.PropertiesFile
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.fileTypes.LanguageFileType
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.search.FileTypeIndex
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.util.Processor
+import org.jetbrains.yaml.YAMLLanguage
+import org.jetbrains.yaml.psi.YAMLFile
+import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl
+
+@Service(Service.Level.PROJECT)
+class DefinedConfigurationPropertiesSearch(val project: Project) {
+
+    companion object {
+        fun getInstance(project: Project): DefinedConfigurationPropertiesSearch = project.service()
+    }
+
+    private val psiManager = PsiManager.getInstance(project)
+
+    fun findProperties(module: Module, key: String): List<DefinedConfigurationProperty> {
+        return getAllProperties(module).filter { it.key == key }
+    }
+
+    fun getAllProperties(module: Module): List<DefinedConfigurationProperty> {
+        return loadPropertySources(module).flatMap { it.properties }
+    }
+
+    private fun loadPropertySources(module: Module): Set<PropertySource> {
+        val propertiesFileType = PropertiesLanguage.INSTANCE.associatedFileType ?: return emptySet()
+        val yamlFileType = YAMLLanguage.INSTANCE.associatedFileType ?: return emptySet()
+
+        val sources = mutableSetOf<PropertySource>()
+        collectPropertySources(propertiesFileType, sources, module.getModuleScope(false))
+        collectPropertySources(yamlFileType, sources, module.getModuleScope(false))
+
+        return sources
+    }
+
+    private fun collectPropertySources(
+        fileType: LanguageFileType,
+        sources: MutableSet<PropertySource>,
+        scope: GlobalSearchScope
+    ) {
+        FileTypeIndex.processFiles(
+            fileType,
+            Processor {
+                val foundPsiFile = psiManager.findFile(it)
+                if (foundPsiFile != null && SpringCoreUtil.isConfigurationPropertyFile(foundPsiFile)) {
+                    if (foundPsiFile is PropertiesFile) {
+                        sources.add(PropertiesPropertySource(foundPsiFile))
+                    } else if (foundPsiFile is YAMLFile) {
+                        sources.add(YamlPropertySource(foundPsiFile))
+                    }
+                }
+                return@Processor true
+            },
+            scope
+        )
+    }
+}
+
+interface PropertySource {
+    val properties: List<DefinedConfigurationProperty>
+}
+
+class PropertiesPropertySource(propertiesFile: PropertiesFile) : FilePropertySource(propertiesFile.containingFile) {
+
+    override val properties: List<DefinedConfigurationProperty>
+        get() {
+            return (file as PropertiesFile).properties.map { PropertyDefinedConfigurationProperty(it) }
+        }
+}
+
+class YamlPropertySource(yamlFile: YAMLFile) : FilePropertySource(yamlFile) {
+
+    override val properties: List<DefinedConfigurationProperty>
+        get() {
+            return (file as YAMLFile).documents.flatMap { document ->
+                val result = mutableListOf<DefinedConfigurationProperty>()
+                PsiTreeUtil.processElements(document, YAMLKeyValue::class.java) { keyValue ->
+                    if (keyValue.value is YAMLPlainTextImpl) {
+                        result.add(YamlDefinedConfigurationProperty(keyValue))
+                    }
+                    true
+                }
+                result
+            }
+        }
+}
+
+abstract class FilePropertySource(file: PsiFile) : PropertySource {
+
+    private val filePointer = SmartPointerManager.createPointer<PsiFile>(file)
+
+    val file: PsiFile?
+        get() = filePointer.element
+
+}
+
