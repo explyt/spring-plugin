@@ -4,6 +4,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
 import com.intellij.util.ProcessingContext
 
 class PackageReferenceContributor : PsiReferenceContributor() {

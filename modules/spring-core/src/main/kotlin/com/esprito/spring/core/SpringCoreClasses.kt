@@ -36,4 +36,15 @@ object SpringCoreClasses {
     const val SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest"
     const val TEST_PROPERTY_SOURCE = "org.springframework.test.context.TestPropertySource"
     const val TEST_PROPERTY_VALUES = "org.springframework.boot.test.util.TestPropertyValues"
+
+    const val CONTEXT_CONFIGURATION = "org.springframework.test.context.ContextConfiguration"
+    const val IMPORT_RESOURCE = "org.springframework.context.annotation.ImportResource"
+    const val CONTEXT_SQL = "org.springframework.test.context.jdbc.SQL"
+
+    val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
+    val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
+    val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
+
+    const val CLASSPATH_PREFIX = "classpath:"
+    const val FILE_PREFIX = "file:"
 }

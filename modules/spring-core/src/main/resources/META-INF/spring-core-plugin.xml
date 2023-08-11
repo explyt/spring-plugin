@@ -89,6 +89,7 @@
                                  groupWeight="85"/>
 
         <psi.referenceContributor implementation="com.esprito.spring.core.references.PackageReferenceContributor" language="UAST"/>
+        <psi.referenceContributor implementation="com.esprito.spring.core.references.FileReferenceContributor" language="UAST"/>
     </extensions>
 
     <actions>
