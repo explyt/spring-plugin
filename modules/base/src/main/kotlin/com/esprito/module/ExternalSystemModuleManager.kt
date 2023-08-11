@@ -105,7 +105,7 @@ class ExternalSystemModuleManager(private val project: Project) {
         return GradleModule(rootModule, mainModule, testModule)
     }
 
-    fun getHModule(ideaModule: Module): ExternalSystemModule {
+    fun getExternalSystemModuleModule(ideaModule: Module): ExternalSystemModule {
         ideaModule.getUserData(MODULE_KEY)?.let {
             return it
         }

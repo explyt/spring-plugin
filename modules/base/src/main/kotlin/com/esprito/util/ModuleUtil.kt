@@ -1,15 +1,11 @@
 package com.esprito.util
 
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.guessProjectDir
-import com.intellij.openapi.project.modules
 import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.PsiFileReferenceHelper
 
 object ModuleUtil {
 

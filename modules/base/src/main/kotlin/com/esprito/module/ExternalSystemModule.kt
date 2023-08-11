@@ -44,7 +44,7 @@ interface ExternalSystemModule {
     val librariesSearchScope: GlobalSearchScope
 
     companion object {
-        fun of(ideaModule: Module): ExternalSystemModule = ExternalSystemModuleManager.getInstance(ideaModule.project).getHModule(ideaModule)
+        fun of(ideaModule: Module): ExternalSystemModule = ExternalSystemModuleManager.getInstance(ideaModule.project).getExternalSystemModuleModule(ideaModule)
     }
 }
 
