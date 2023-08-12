@@ -1,40 +1,35 @@
-package org.springframework.samples.petclinic.vlad;
+package com.event.listener;
 
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class TestEventListenerWithRecursive {
-
+public class TestEventListener {
 	@EventListener
-	public @interface CustomEventListener {
-	}
-
-	@CustomEventListener
 	void test0() {
 	}
 
-	@CustomEventListener
+	@EventListener
 	protected void test1() {
 	}
 
-	@CustomEventListener
+	@EventListener
 	private void test2() {
 	}
 
-	@CustomEventListener
+	@EventListener
 	public void test3() {
 	}
 
-	@CustomEventListener
+	@EventListener
 	public void test4(String param1, String param2) {
 	}
 
-	@CustomEventListener
+	@EventListener
 	private void test5(String param1, String param2) {
 	}
 
-	@CustomEventListener
+	@EventListener
 	public void test6(String param1) {
 	}
 }

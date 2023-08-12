@@ -1,24 +1,24 @@
 package com.esprito.util
 
-import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.PsiAnnotationMemberValue
-import com.intellij.psi.PsiArrayInitializerMemberValue
-import com.intellij.psi.PsiLiteral
+import com.intellij.psi.*
 import org.apache.commons.lang.StringUtils
 
 object EspritoAnnotationUtil {
 
-    fun getArrayAttributeValue(annotation: PsiAnnotation, attributeName: String?): Collection<String> {
+    fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributesName: Collection<String>): Collection<PsiLiteral> {
+        return attributesName.flatMap { getArrayAttributeAsPsiLiteral(annotation, it) }
+    }
+
+    fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributeName: String?): Collection<PsiLiteral> {
         return when (val attributeValue = annotation.findAttributeValue(attributeName)) {
-            is PsiArrayInitializerMemberValue -> getArrayAttributeValue(attributeValue)
-            is PsiLiteral -> processLiteralValue(attributeValue)
+            is PsiArrayInitializerMemberValue -> getArrayAttributeAsPsiLiteral(attributeValue)
+            is PsiLiteral -> listOf( attributeValue)
             else -> emptyList()
         }
     }
 
-    fun getArrayAttributeValue(attributeValue: PsiAnnotationMemberValue): List<String> {
-        return (attributeValue as? PsiArrayInitializerMemberValue)?.initializers
-            ?.flatMap { processLiteralValue(it) } ?: emptyList()
+    fun getArrayAttributeAsPsiLiteral(attributeValue: PsiAnnotationMemberValue): List<PsiLiteral> {
+        return (attributeValue as? PsiArrayInitializerMemberValue)?.initializers?.filterIsInstance<PsiLiteral>()?.toList() ?: emptyList()
     }
 
     fun getArrayValueAnnotations(
@@ -28,7 +28,7 @@ object EspritoAnnotationUtil {
         return getArrayValueAnnotations(annotation, attrName, null)
     }
 
-    fun getArrayValueAnnotations(
+     fun getArrayValueAnnotations(
         annotation: PsiAnnotation,
         attrName: String,
         annotationFqn: String?
@@ -72,4 +72,22 @@ object EspritoAnnotationUtil {
         }
         return result
     }
+
+    fun getArrayAttributeValue(annotation: PsiAnnotation, attributesName: Collection<String>): Collection<String> {
+        return attributesName.flatMap { getArrayAttributeValue(annotation, it) }
+    }
+
+    fun getArrayAttributeValue(annotation: PsiAnnotation, attributeName: String?): Collection<String> {
+        return when (val attributeValue = annotation.findAttributeValue(attributeName)) {
+            is PsiArrayInitializerMemberValue -> getArrayAttributeValue(attributeValue)
+            is PsiLiteral -> processLiteralValue(attributeValue)
+            else -> emptyList()
+        }
+    }
+
+    fun getArrayAttributeValue(attributeValue: PsiAnnotationMemberValue): List<String> {
+        return (attributeValue as? PsiArrayInitializerMemberValue)?.initializers
+            ?.flatMap { processLiteralValue(it) } ?: emptyList()
+    }
+
 }

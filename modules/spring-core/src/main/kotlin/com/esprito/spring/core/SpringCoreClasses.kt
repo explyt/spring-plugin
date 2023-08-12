@@ -47,4 +47,7 @@ object SpringCoreClasses {
 
     const val CLASSPATH_PREFIX = "classpath:"
     const val FILE_PREFIX = "file:"
+
+    const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
+
 }

@@ -5,8 +5,8 @@
         <file>TestEventListener.java</file>
         <line>8</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListener void test0()" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test0()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@EventListener</highlighted_element>
@@ -19,8 +19,8 @@
         <file>TestEventListener.java</file>
         <line>12</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListener void test1()" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test1()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@EventListener</highlighted_element>
@@ -33,8 +33,8 @@
         <file>TestEventListener.java</file>
         <line>16</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListener void test2()" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test2()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@EventListener</highlighted_element>
@@ -47,8 +47,8 @@
         <file>TestEventListener.java</file>
         <line>24</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListener void test4(String param1, String param2)" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test4(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must have maximum 1 parameter</description>
         <highlighted_element>@EventListener</highlighted_element>
@@ -61,8 +61,8 @@
         <file>TestEventListener.java</file>
         <line>28</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListener void test5(String param1, String param2)" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test5(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@EventListener</highlighted_element>
@@ -75,8 +75,8 @@
         <file>TestEventListener.java</file>
         <line>28</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListener void test5(String param1, String param2)" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test5(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must have maximum 1 parameter</description>
         <highlighted_element>@EventListener</highlighted_element>
@@ -89,8 +89,8 @@
         <file>TestEventListenerWithRecursive.java</file>
         <line>13</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListenerWithRecursive void test0()" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test0()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
@@ -103,8 +103,8 @@
         <file>TestEventListenerWithRecursive.java</file>
         <line>17</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListenerWithRecursive void test1()" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test1()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
@@ -117,8 +117,8 @@
         <file>TestEventListenerWithRecursive.java</file>
         <line>21</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListenerWithRecursive void test2()" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test2()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
@@ -131,8 +131,8 @@
         <file>TestEventListenerWithRecursive.java</file>
         <line>29</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListenerWithRecursive void test4(String param1, String param2)" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test4(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must have maximum 1 parameter</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
@@ -145,8 +145,8 @@
         <file>TestEventListenerWithRecursive.java</file>
         <line>33</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListenerWithRecursive void test5(String param1, String param2)" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test5(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must be public</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
@@ -159,8 +159,8 @@
         <file>TestEventListenerWithRecursive.java</file>
         <line>33</line>
         <module>light_idea_test_case</module>
-        <package>org.springframework.samples.petclinic.vlad</package>
-        <entry_point TYPE="method" FQNAME="org.springframework.samples.petclinic.vlad.TestEventListenerWithRecursive void test5(String param1, String param2)" />
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test5(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
         <description>Method annotated with @EventListener must have maximum 1 parameter</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
