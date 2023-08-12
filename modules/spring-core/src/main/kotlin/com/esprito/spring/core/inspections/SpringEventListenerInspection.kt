@@ -30,12 +30,11 @@ class SpringEventListenerInspection : AbstractBaseJavaLocalInspectionTool() {
                     )
             }
             if (method.parameterList.parameters.size > 1) {
-                val nullFix: LocalQuickFix? = null
                 problems +=
                     manager.createProblemDescriptor(
                         eventListenerAnnotation,
                         SpringCoreBundle.message("esprito.spring.inspection.method.eventListener.parameters"),
-                        nullFix,
+                        null as LocalQuickFix?,
                         ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                         true
                     )

@@ -66,7 +66,13 @@
                          groupBundle="messages.SpringCoreBundle" groupKey="esprito.spring.common.notifications"
                          bundle="messages.SpringCoreBundle" key="esprito.spring.inspection.method.eventListener"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringEventListenerInspection"/>
+                         implementationClass="com.esprito.spring.core.inspections.SpringEventListenerInspection"/>>
+
+        <localInspection language="UAST" shortName="SpringComponentScanInspection"
+                         groupBundle="messages.SpringCoreBundle" groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle" key="esprito.spring.inspection.method.componentScan"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringComponentScanInvalidPackageInspection"/>
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>

@@ -1,0 +1,24 @@
+package com.component.scan;
+
+import org.springframework.context.annotation.ComponentScan;
+
+@ComponentScan(basePackages = "a.1.3")
+@ComponentScan(basePackages = "com.1.3")
+@ComponentScan(basePackages = "com.1.4")
+@ComponentScan(basePackages = "com.1.3.")
+@ComponentScan(basePackages = "com.1.3.3")
+@ComponentScan(basePackages = "com.?.3")
+@ComponentScan(basePackages = "com.?.?")
+@ComponentScan(basePackages = "*.?.?")
+@ComponentScan(basePackages = "*.1.3")
+@ComponentScan(basePackages = "*.1.3.")
+@ComponentScan(basePackages = "com.2.*")
+@ComponentScan(basePackages = "com.2.??")
+@ComponentScan(basePackages = "com.2.a")
+@ComponentScan(basePackages = "com.?.4")
+@ComponentScan("com.1.3")
+@ComponentScan(basePackages = "com.?7.?")
+@ComponentScan({"com.2.4","com.?.?","com.2.6" })
+@ComponentScan(basePackages = {"com.2.4","com.?.?","com.2.6" })
+public class TestComponentScan {
+}

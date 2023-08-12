@@ -1,5 +1,6 @@
 package com.esprito.spring.core.references
 
+import com.esprito.spring.core.util.PsiPackagesSearcher
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.util.TextRange
@@ -18,7 +19,7 @@ class EspritoPsiPackageReference(element: PsiElement, range: TextRange?) :
             ?: return emptyArray()
 
         val textWithoutLastWord = if (text.contains(".")) text.substringBeforeLast(".") + ".*" else "*"
-        val prefilteredPackages = getFilteredPackages(textWithoutLastWord)
+        val prefilteredPackages = PsiPackagesSearcher.getFilteredPackages(element.project, element.resolveScope, textWithoutLastWord)
 
         val lastWord = if (textWithoutLastWord == "*") text else text.substringAfterLast(".")
 
@@ -30,9 +31,10 @@ class EspritoPsiPackageReference(element: PsiElement, range: TextRange?) :
             else
                 prefilteredPackages.filter { it.name?.contains(lastWord) ?: false }
 
+        val countOfDistinctParentPackages = filteredPackages.map { it.parent as PsiPackage }.map { it.qualifiedName }.distinct().count()
         return filteredPackages
             .map {
-                if (filteredPackages.size == 1)
+                if (countOfDistinctParentPackages == 1)
                     LookupElementBuilder.create(it)
                 else
                 // if more than one variant show in popup full path of possible packages
@@ -47,7 +49,7 @@ class EspritoPsiPackageReference(element: PsiElement, range: TextRange?) :
             rangeInElement.endOffset
         ).substring(element.text)
 
-        val packages = getFilteredPackages(text)
+        val packages = PsiPackagesSearcher.getFilteredPackages(element.project, element.resolveScope, text)
             .filter { it.parent != null }
             .map { NavigatablePackage(it) }
 
@@ -63,43 +65,6 @@ class EspritoPsiPackageReference(element: PsiElement, range: TextRange?) :
             }
         }
         return false
-    }
-
-    private fun getFilteredPackages(text: String): List<PsiPackage> {
-        val rootPackage = JavaPsiFacade.getInstance(element.project)
-            .findPackage("")
-            ?: return emptyList()
-
-        val parts = text.split(".")
-        return collectPackages(rootPackage, parts)
-    }
-
-    private fun collectPackages(parentPackage: PsiPackage, rest: List<String>): List<PsiPackage> {
-        val currentPart = rest.firstOrNull()
-            ?: return listOf(parentPackage)
-
-        val childParts = rest.drop(1)
-
-        val subPackages = parentPackage.getSubPackages(element.resolveScope)
-
-        return subPackages
-            .filter { matches(it, currentPart) }
-            .flatMap {
-                collectPackages(it, childParts)
-            }
-    }
-
-    private fun matches(psiPackage: PsiPackage, namePattern: String): Boolean {
-        if (namePattern == "*")
-            return true
-
-        val name = psiPackage.name ?: return false
-
-        if (!namePattern.contains('?')) {
-            return name == namePattern
-        }
-
-        return Regex(namePattern.replace("?", "\\w{1}")).matches(name)
     }
 
     private class NavigatablePackage(
