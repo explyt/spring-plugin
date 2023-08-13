@@ -45,9 +45,12 @@ object SpringCoreClasses {
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
 
-    const val CLASSPATH_PREFIX = "classpath:"
-    const val FILE_PREFIX = "file:"
-
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
+
+    val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN)
+
+    const val CLASSPATH_PREFIX = "classpath:"
+
+    const val FILE_PREFIX = "file:"
 
 }

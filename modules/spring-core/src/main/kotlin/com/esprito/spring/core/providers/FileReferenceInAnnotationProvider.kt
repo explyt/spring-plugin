@@ -2,34 +2,33 @@ package com.esprito.spring.core.providers
 
 import com.esprito.spring.core.SpringCoreClasses.CLASSPATH_PREFIX
 import com.esprito.spring.core.SpringCoreClasses.FILE_PREFIX
-import com.esprito.spring.core.references.MyFileReferenceSet
+import com.esprito.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.esprito.spring.core.references.REFERENCE_TYPE
+import com.esprito.spring.core.util.PsiAnnotationUtils.getParentAnnotationForPsiLiteralParameter
 import com.esprito.util.ModuleUtil
-import com.intellij.codeInsight.daemon.quickFix.FileReferenceQuickFixProvider
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.PsiFileReferenceHelper
-import com.intellij.psi.util.parentOfType
 import com.intellij.util.ProcessingContext
 
-class FileReferenceInAnnotationProvider(val suitableAnnotations: Set<String>) : PsiReferenceProvider() {
+class FileReferenceInAnnotationProvider(private val possibleAnnotations: Set<String>) : PsiReferenceProvider() {
 
-    constructor(suitableAnnotations: Set<String>, suitableFileTypes: Array<FileType>) : this(suitableAnnotations) {
-        this.suitableFileTypes = suitableFileTypes
+    constructor(possibleAnnotations: Set<String>, possibleFileTypes: Array<FileType>) : this(possibleAnnotations) {
+        this.possibleFileTypes = possibleFileTypes
     }
 
-    private var suitableFileTypes: Array<FileType> = emptyArray()
+    private var possibleFileTypes: Array<FileType> = emptyArray()
     override fun getReferencesByElement(
         psiElement: PsiElement,
         context: ProcessingContext
     ): Array<PsiReference> {
-        if (!acceptPsiElement(psiElement)) return arrayOf()
+        if (!acceptPsiElement(psiElement)) return PsiReference.EMPTY_ARRAY
+        if (psiElement !is PsiLiteral) return PsiReference.EMPTY_ARRAY
 
         val references = mutableListOf<PsiReference>()
 
         var range = ElementManipulators.getValueTextRange(psiElement)
-        val text = range.substring(psiElement.text)
+        val text = psiElement.value.toString()
 
         val referenceType: REFERENCE_TYPE
         //("file:./application.properties") or ("file:application.properties") is right link to content root
@@ -74,14 +73,14 @@ class FileReferenceInAnnotationProvider(val suitableAnnotations: Set<String>) : 
             }
         }
 
-        val fileReferenceSet = MyFileReferenceSet(
+        val fileReferenceSet = FileReferenceSetWithPrefixSupport(
             range.substring(psiElement.text),
             psiElement,
             range.startOffset,
             provider = this,
             isCaseSensitive = false,
             endingSlashNotAllowed = false,
-            if (suitableFileTypes.isNotEmpty()) suitableFileTypes else null,
+            if (possibleFileTypes.isNotEmpty()) possibleFileTypes else null,
             init = true,
             referenceType,
             needHardFileTypeFilter = false
@@ -98,32 +97,7 @@ class FileReferenceInAnnotationProvider(val suitableAnnotations: Set<String>) : 
     }
 
     private fun acceptPsiElement(psiElement: PsiElement): Boolean {
-        return checkAnnotationIsPossibleAndStructureIsCorrect(psiElement) ||
-                checkAnnotationIsPossibleAndStructureWithArrayInitializerIsCorrect(psiElement)
+        return possibleAnnotations.contains(getParentAnnotationForPsiLiteralParameter(psiElement)?.qualifiedName)
     }
-
-    private fun checkAnnotationIsPossibleAndStructureIsCorrect(psiElement: PsiElement): Boolean {
-        return (psiElement is PsiLiteralExpression) &&
-                suitableAnnotations.contains(
-                    psiElement
-                        .parentOfType<PsiNameValuePair>()
-                        ?.parentOfType<PsiAnnotationParameterList>()
-                        ?.parentOfType<PsiAnnotation>()
-                        ?.qualifiedName
-                )
-    }
-
-    private fun checkAnnotationIsPossibleAndStructureWithArrayInitializerIsCorrect(psiElement: PsiElement): Boolean {
-        return (psiElement is PsiLiteralExpression) &&
-                suitableAnnotations.contains(
-                    psiElement
-                        .parentOfType<PsiArrayInitializerMemberValue>()
-                        ?.parentOfType<PsiNameValuePair>()
-                        ?.parentOfType<PsiAnnotationParameterList>()
-                        ?.parentOfType<PsiAnnotation>()
-                        ?.qualifiedName
-                )
-    }
-
 
 }

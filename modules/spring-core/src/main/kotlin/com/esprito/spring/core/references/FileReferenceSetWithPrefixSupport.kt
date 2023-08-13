@@ -1,17 +1,14 @@
 package com.esprito.spring.core.references
 
 import com.esprito.util.ModuleUtil
-import com.intellij.codeInsight.daemon.quickFix.FileReferenceQuickFixProvider
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.util.Condition
-import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
 
 enum class REFERENCE_TYPE { FILE, ABSOLUTE_PATH, CLASSPATH }
 
-class MyFileReferenceSet(
+class FileReferenceSetWithPrefixSupport(
     str: String,
     element: PsiElement,
     startInElement: Int,

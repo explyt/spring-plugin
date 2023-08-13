@@ -8,7 +8,7 @@ import com.intellij.pom.Navigatable
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
 
-class EspritoPsiPackageReference(element: PsiElement, range: TextRange?) :
+class InAnnotationPackageAntReference(element: PsiElement, range: TextRange?) :
     PsiReferenceBase.Poly<PsiElement>(element, range, false) {
 
     override fun getVariants(): Array<Any> {
