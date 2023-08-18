@@ -27,6 +27,7 @@ verifyPlugin.enabled = false
 
 dependencies {
     implementation springCoreProject
+    testImplementation project(':test-framework')
 }
 
 repositories {

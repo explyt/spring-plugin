@@ -13,8 +13,15 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springBoot_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.1.1")
         val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
         val springContext_6_0_7 = TestLibrary("org.springframework:spring-context:6.0.7")
+        val springTest_6_0_7 = TestLibrary("org.springframework:spring-test:6.0.7")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
+        val springWeb_6_0_7 = TestLibrary("org.springframework:spring-web:6.0.7", true)
+        val springGraphQl_1_0_4 = TestLibrary("org.springframework.graphql:spring-graphql:1.0.4", true)
+        val jakarta_annotation_2_1_1 = TestLibrary("jakarta.annotation:jakarta.annotation-api:2.1.1", true)
+        val jakarta_inject_2_0_1 = TestLibrary("jakarta.inject:jakarta.inject-api:2.0.1", true)
         val jakarta_persistence_3_1_0 = TestLibrary("jakarta.persistence:jakarta.persistence-api:3.1.0", true)
+        val javax_annotation_1_3_2 = TestLibrary("javax.annotation:javax.annotation-api:1.3.2", true)
+        val javax_inject_1 = TestLibrary("javax.inject:javax.inject:1", true)
         val javax_persistence_2_2 = TestLibrary("javax.persistence:javax.persistence-api:2.2", true)
     }
 }

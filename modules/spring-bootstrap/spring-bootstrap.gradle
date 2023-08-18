@@ -16,6 +16,7 @@ evaluationDependsOn(":spring-cloud")
 evaluationDependsOn(":spring-initializr")
 evaluationDependsOn(":spring-integration")
 evaluationDependsOn(":spring-messaging")
+evaluationDependsOn(":spring-aop")
 evaluationDependsOn(":jpa")
 evaluationDependsOn(":test-framework")
 
@@ -51,6 +52,7 @@ def springCloudProject = project(':spring-cloud')
 def springInitializrProject = project(':spring-initializr')
 def springIntegrationProject = project(':spring-integration')
 def springMessagingProject = project(':spring-messaging')
+def springAopProject = project(':spring-aop')
 def jpaProject = project(':jpa')
 def springBootstrapModule = project(':spring-bootstrap')
 def testFramework = project(':test-framework')
@@ -70,6 +72,7 @@ dependencies {
     implementation springInitializrProject
     implementation springIntegrationProject
     implementation springMessagingProject
+    implementation springAopProject
     implementation jpaProject
     testImplementation testFramework
 }
@@ -125,6 +128,7 @@ test {
             springInitializrProject.test,
             springIntegrationProject.test,
             springMessagingProject.test,
+            springAopProject.test,
             jpaProject.test
     )
 }

@@ -2,8 +2,8 @@ package com.esprito.spring.core.inspections
 
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.EVENT_LISTENER
-import com.esprito.spring.core.util.PsiMethodUtils.getAnnotationByParentAnnotationNameInHierarchy
-import com.esprito.spring.core.util.PsiModifierListOwnerUtils.isPublic
+import com.esprito.util.EspritoPsiUtil.getAnnotationByParentAnnotationNameInHierarchy
+import com.esprito.util.EspritoPsiUtil.isPublic
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.*
 import com.intellij.psi.PsiMethod
@@ -19,7 +19,7 @@ class SpringEventListenerInspection : AbstractBaseJavaLocalInspectionTool() {
         if (MetaAnnotationUtil.isMetaAnnotatedInHierarchy(method, setOf(EVENT_LISTENER))) {
             var problems = emptyArray<ProblemDescriptor>()
             val eventListenerAnnotation = method.getAnnotationByParentAnnotationNameInHierarchy(EVENT_LISTENER) ?: return null
-            if (!method.isPublic()) {
+            if (!method.isPublic) {
                 problems +=
                     manager.createProblemDescriptor(
                         eventListenerAnnotation,
