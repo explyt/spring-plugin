@@ -12,8 +12,12 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiModifier
+import com.intellij.psi.PsiTypeParameter
 import com.intellij.psi.impl.source.resolve.FileContextUtil
+import com.intellij.psi.util.PsiUtil
 import org.jetbrains.uast.toUElement
 
 object SpringCoreUtil {
@@ -81,4 +85,21 @@ object SpringCoreUtil {
             SpringCoreClasses.SPRING_BOOT_APPLICATION
         ) != null
     }
+
+    /**
+     * Returns whether the given PsiClass (or its inheritors) could possibly be mapped as Spring Bean.
+     *
+     * @param psiClass PsiClass to check.
+     * @return `true` if yes.
+     */
+    fun isSpringBeanCandidateClass(psiClass: PsiClass): Boolean {
+        return psiClass.isValid
+                && psiClass !is PsiTypeParameter
+                && !psiClass.hasModifierProperty(PsiModifier.PRIVATE)
+                && !psiClass.isAnnotationType
+                && psiClass.qualifiedName != null
+                && !PsiUtil.isLocalOrAnonymousClass(psiClass)
+    }
+
+
 }

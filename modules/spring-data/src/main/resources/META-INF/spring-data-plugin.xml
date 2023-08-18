@@ -1,5 +1,6 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
+        <implicitUsageProvider implementation="com.esprito.spring.data.providers.SpringDataImplicitUsageProvider"/>
         <multiHostInjector
                 implementation="com.esprito.spring.data.langinjection.JpqlSpringDataQueryLanguageInjector"/>
     </extensions>

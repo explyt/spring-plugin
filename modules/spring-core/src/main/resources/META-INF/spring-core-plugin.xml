@@ -55,6 +55,7 @@
                                     implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlDocumentationProvider"/>
 
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringAopImplicitUsageProvider"/>
 
         <properties.implicitPropertyUsageProvider
                 implementation="com.esprito.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>

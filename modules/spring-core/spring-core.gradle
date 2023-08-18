@@ -27,7 +27,7 @@ verifyPlugin.enabled = false
 def baseProject = project(':base')
 
 dependencies {
-    implementation baseProject
+    api baseProject
     testImplementation project(':test-framework')
 }
 

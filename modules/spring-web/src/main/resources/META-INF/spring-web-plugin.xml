@@ -1,6 +1,6 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
-
+        <implicitUsageProvider implementation="com.esprito.spring.web.providers.SpringWebImplicitUsageProvider"/>
     </extensions>
 
     <actions>

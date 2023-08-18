@@ -1,4 +1,4 @@
-package com.esprito.spring.core.providers
+package com.esprito.spring.web.providers
 
 import com.esprito.spring.test.EspritoInspectionTestCase
 import com.esprito.spring.test.TestLibrary
@@ -8,18 +8,15 @@ import com.intellij.testFramework.TestDataPath
 private const val TEST_DATA_PATH = "testdata/inspection/suppresses"
 
 @TestDataPath("\$CONTENT_ROOT/../../$TEST_DATA_PATH")
-class SpringImplicitUsageProviderTest : EspritoInspectionTestCase() {
+class SpringWebImplicitUsageProviderTest : EspritoInspectionTestCase() {
 
     override fun getTestDataPath(): String = TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springContext_6_0_7,
-        TestLibrary.springTest_6_0_7,
-        TestLibrary.javax_inject_1,
-        TestLibrary.javax_annotation_1_3_2,
-        TestLibrary.jakarta_inject_2_0_1,
-        TestLibrary.jakarta_annotation_2_1_1,
+        TestLibrary.springWeb_6_0_7,
+        TestLibrary.springGraphQl_1_0_4
     )
 
-    fun testTestConfiguration() = doTest(UnusedDeclarationInspection())
+    fun testTestGraphQl() = doTest(UnusedDeclarationInspection())
 }
