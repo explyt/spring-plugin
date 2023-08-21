@@ -2,7 +2,6 @@ package com.esprito.jpa.model.impl
 
 import com.esprito.jpa.model.JpaEntityAttribute
 import com.esprito.jpa.model.JpaEntityAttributeType
-import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.util.CachedValueProvider

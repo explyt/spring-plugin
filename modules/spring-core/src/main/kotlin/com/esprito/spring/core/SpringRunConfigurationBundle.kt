@@ -12,9 +12,9 @@ object SpringRunConfigurationBundle : AbstractBundle(BUNDLE) {
         getMessage(key, *params)
 
     fun plural(key: @PropertyKey(resourceBundle = BUNDLE) String, amount: Int, vararg params: Any): String {
-        return if(amount == 1) {
+        return if (amount == 1) {
             message("$key.one", *params)
-        }  else {
+        } else {
             message("$key.many", *params)
         }
     }

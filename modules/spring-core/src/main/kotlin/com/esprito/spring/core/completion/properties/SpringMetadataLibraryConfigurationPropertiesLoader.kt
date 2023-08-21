@@ -18,7 +18,8 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
     override fun loadProperties(module: Module): List<ConfigurationProperty> {
         val project = module.project
         val key = CacheKeyStore.getInstance(project).getKey<List<ConfigurationProperty>>(
-            "SpringMetadataConfigurationPropertiesLoaderCache(${module.name})")
+            "SpringMetadataConfigurationPropertiesLoaderCache(${module.name})"
+        )
         return CachedValuesManager
             .getManager(project)
             .getCachedValue(module, key, {
@@ -33,7 +34,8 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
     override fun loadPropertyHints(module: Module): List<PropertyHint> {
         val project = module.project
         val key = CacheKeyStore.getInstance(project).getKey<List<PropertyHint>>(
-            "SpringMetadataConfigurationPropertyHintsLoaderCache(${module.name})")
+            "SpringMetadataConfigurationPropertyHintsLoaderCache(${module.name})"
+        )
         return CachedValuesManager
             .getManager(project)
             .getCachedValue(module, key, {

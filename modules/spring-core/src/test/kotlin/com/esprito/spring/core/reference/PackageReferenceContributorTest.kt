@@ -6,8 +6,6 @@ import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.psi.PsiPackage
 import com.intellij.testFramework.TestDataPath
-import com.intellij.testFramework.findAllReferencesByText
-import com.jetbrains.rd.util.string.printToString
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "testdata/reference/package"

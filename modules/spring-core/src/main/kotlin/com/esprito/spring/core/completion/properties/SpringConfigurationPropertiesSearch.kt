@@ -20,7 +20,7 @@ class SpringConfigurationPropertiesSearch {
     }
 
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {
-        return getAllProperties(module).find { it.name == propertyName}
+        return getAllProperties(module).find { it.name == propertyName }
     }
 
     fun findHint(module: Module, propertyName: String): PropertyHint? {

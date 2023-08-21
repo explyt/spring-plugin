@@ -3,7 +3,10 @@ package com.esprito.spring.core.references
 import com.esprito.util.ModuleUtil
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.util.Condition
-import com.intellij.psi.*
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileSystemItem
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
 
 enum class REFERENCE_TYPE { FILE, ABSOLUTE_PATH, CLASSPATH }

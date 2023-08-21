@@ -21,7 +21,7 @@ abstract class EspritoJavaLightTestCase : LightJavaCodeInsightFixtureTestCase() 
         return EspritoProjectDescriptor()
     }
 
-    protected inner class EspritoProjectDescriptor: ProjectDescriptor(languageLevel) {
+    protected inner class EspritoProjectDescriptor : ProjectDescriptor(languageLevel) {
 
         override fun configureModule(module: Module, model: ModifiableRootModel, contentEntry: ContentEntry) {
             super.configureModule(module, model, contentEntry)

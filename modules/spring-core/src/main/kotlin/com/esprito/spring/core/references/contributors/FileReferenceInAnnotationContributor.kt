@@ -5,7 +5,8 @@ import com.esprito.spring.core.providers.FileReferenceInAnnotationProvider
 import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.patterns.PlatformPatterns
-import com.intellij.psi.*
+import com.intellij.psi.PsiReferenceContributor
+import com.intellij.psi.PsiReferenceRegistrar
 import org.jetbrains.yaml.YAMLFileType
 
 class FileReferenceInAnnotationContributor : PsiReferenceContributor() {

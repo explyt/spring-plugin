@@ -46,11 +46,11 @@ object EspritoPsiUtil {
         this.annotations.first { psiAnnotation ->
             psiAnnotation.qualifiedName == parentAnnotationNameInHierarchy
                     || psiAnnotation.resolveAnnotationType()?.let { psiClass ->
-                        MetaAnnotationUtil.isMetaAnnotatedInHierarchy(
-                            psiClass,
-                            setOf(parentAnnotationNameInHierarchy)
-                        )
-                    } ?: false
+                MetaAnnotationUtil.isMetaAnnotatedInHierarchy(
+                    psiClass,
+                    setOf(parentAnnotationNameInHierarchy)
+                )
+            } ?: false
         }
 
     val PsiClass.isOrdinaryClass: Boolean

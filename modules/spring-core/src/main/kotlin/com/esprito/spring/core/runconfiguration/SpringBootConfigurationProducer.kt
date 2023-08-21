@@ -16,7 +16,7 @@ class SpringBootConfigurationProducer : AbstractApplicationConfigurationProducer
         sourceElement: Ref<PsiElement>
     ): Boolean {
 
-        if(!SpringCoreUtil.isSpringBootProject(context.project)) {
+        if (!SpringCoreUtil.isSpringBootProject(context.project)) {
             return false
         }
 

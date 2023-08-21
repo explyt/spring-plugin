@@ -5,7 +5,6 @@ import com.esprito.spring.core.SpringIcons
 import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.ConfigurationType
 import com.intellij.execution.configurations.ConfigurationTypeUtil.findConfigurationType
-import com.intellij.icons.AllIcons
 import javax.swing.Icon
 
 class SpringBootConfigurationType : ConfigurationType {

@@ -5,7 +5,7 @@ import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 
-class SpringAopImplicitUsageProvider: ImplicitUsageProvider {
+class SpringAopImplicitUsageProvider : ImplicitUsageProvider {
     override fun isImplicitUsage(element: PsiElement): Boolean {
         if (element is PsiMethod) {
             return !element.isConstructor

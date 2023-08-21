@@ -2,7 +2,6 @@ package com.esprito.spring.core.profile
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.intellij.codeInsight.MetaAnnotationUtil
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade

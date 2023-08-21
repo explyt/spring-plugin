@@ -5,6 +5,7 @@ import com.esprito.spring.test.TestLibrary
 import com.intellij.testFramework.TestDataPath
 
 private const val TEST_DATA_PATH = "testdata/inspection"
+
 @TestDataPath("\$CONTENT_ROOT/../../$TEST_DATA_PATH")
 class SpringComponentScanInspectionTest : EspritoInspectionTestCase() {
 

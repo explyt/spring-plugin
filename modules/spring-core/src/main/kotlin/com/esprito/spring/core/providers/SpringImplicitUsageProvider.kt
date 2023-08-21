@@ -6,7 +6,10 @@ import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isOrdinaryClass
 import com.esprito.util.EspritoPsiUtil.isStatic
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
-import com.intellij.psi.*
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiMethod
 
 // TODO: add statemachine annotations
 // TODO: add jackson annotations

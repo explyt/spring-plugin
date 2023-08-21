@@ -2,7 +2,6 @@ package com.esprito.jpa.ql.reference
 
 import com.esprito.jpa.ql.psi.JpqlInputParameterExpression
 import com.esprito.jpa.ql.psi.impl.JpqlElementFactory
-import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiPolyVariantReferenceBase

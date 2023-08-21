@@ -16,7 +16,7 @@ object JpaClasses {
 
         val allFqns by lazy { listOf(javax, jakarta) }
 
-        fun check(fqn: String?) : Boolean = fqn in allFqns
+        fun check(fqn: String?): Boolean = fqn in allFqns
     }
 
     private operator fun String.getValue(jpaClasses: JpaClasses, property: KProperty<*>): MultiVendorClass {

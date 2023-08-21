@@ -25,8 +25,10 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
         private val logger = logger<AbstractSpringMetadataConfigurationPropertiesLoader>()
     }
 
-    protected fun collectPropertyHints(metaDataFileText: String,
-                                       metaDataFilePath: String): List<PropertyHint> {
+    protected fun collectPropertyHints(
+        metaDataFileText: String,
+        metaDataFilePath: String
+    ): List<PropertyHint> {
         val metadata = loadMetadata(metaDataFileText, metaDataFilePath, SpringConfigurationHintsMetadata::class.java)
             ?: return emptyList()
 

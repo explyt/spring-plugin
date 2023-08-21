@@ -2,7 +2,6 @@ package com.esprito.jpa.ql.psi
 
 import com.esprito.jpa.ql.JpqlLanguage
 import com.esprito.jpa.ql.parser.JpqlParser
-import com.esprito.jpa.ql.psi.JpqlTypes
 import com.intellij.lang.ASTNode
 import com.intellij.lang.ParserDefinition
 import com.intellij.lang.PsiParser

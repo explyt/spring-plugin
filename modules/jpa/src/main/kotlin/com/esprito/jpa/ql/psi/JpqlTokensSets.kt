@@ -1,6 +1,5 @@
 package com.esprito.jpa.ql.psi
 
-import com.esprito.jpa.ql.psi.JpqlTypes
 import com.intellij.psi.tree.TokenSet
 
 object JpqlTokensSets {

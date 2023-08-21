@@ -12,8 +12,7 @@ import com.intellij.psi.util.CachedValuesManager
 import java.io.File
 import java.io.FileFilter
 
-class SpringMetadataProjectConfigurationPropertiesLoader(project: Project)
-    : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
+class SpringMetadataProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
     companion object {
         private val CACHE_KEY =

@@ -1,11 +1,10 @@
 package com.esprito.jpa.ql.reference
 
 import com.esprito.spring.test.EspritoJavaLightTestCase
-import com.intellij.codeInsight.TargetElementUtil
-import com.intellij.codeInsight.TargetElementUtilBase
 import com.intellij.testFramework.TestDataPath
 
 private const val TEST_DATA_PATH = "src/test/testdata/reference/internal/rename"
+
 /**
  * Tests references from jpql to itself
  */

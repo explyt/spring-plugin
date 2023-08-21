@@ -23,7 +23,7 @@ class JpaService {
     }
 
     fun isJpaEntityAttribute(psiField: PsiField): Boolean {
-        if(psiField.hasModifierProperty(PsiModifier.STATIC))
+        if (psiField.hasModifierProperty(PsiModifier.STATIC))
             return false
 
         if (psiField.hasModifierProperty(PsiModifier.TRANSIENT))

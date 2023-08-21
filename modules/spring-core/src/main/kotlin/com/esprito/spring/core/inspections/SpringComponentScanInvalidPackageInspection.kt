@@ -4,9 +4,13 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.util.PsiPackagesSearcher
 import com.esprito.util.EspritoAnnotationUtil
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.*
+import com.intellij.psi.ElementManipulators
+import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 
 class SpringComponentScanInvalidPackageInspection : AbstractBaseJavaLocalInspectionTool() {

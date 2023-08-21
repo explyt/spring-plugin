@@ -115,16 +115,19 @@ class ValueHintReference(
                     LookupElementBuilder.create(it)
                 }
             }
+
             "java.nio.charset.Charset" -> {
                 Charset.availableCharsets().map {
                     LookupElementBuilder.create(it.key)
                 }
             }
+
             "org.springframework.util.MimeType" -> {
                 MimeTypeDictionary.HTML_CONTENT_TYPES.map {
                     LookupElementBuilder.create(it)
                 }
             }
+
             else -> {
                 val project = element.project
                 val propertyTypeClass = JavaPsiFacade.getInstance(project)

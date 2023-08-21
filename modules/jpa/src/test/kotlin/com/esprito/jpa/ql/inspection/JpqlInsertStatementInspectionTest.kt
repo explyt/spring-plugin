@@ -2,7 +2,6 @@ package com.esprito.jpa.ql.inspection
 
 import com.esprito.spring.test.EspritoInspectionTestCase
 import com.esprito.spring.test.TestLibrary
-import com.intellij.testFramework.LightProjectDescriptor
 import com.intellij.testFramework.TestDataPath
 
 @TestDataPath(JpqlInsertStatementInspectionTest.TEST_DATA_PATH)

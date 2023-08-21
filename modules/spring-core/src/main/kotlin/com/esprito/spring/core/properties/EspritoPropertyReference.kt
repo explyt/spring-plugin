@@ -2,7 +2,6 @@ package com.esprito.spring.core.properties
 
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.intellij.codeInsight.highlighting.HighlightedReference
-import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore

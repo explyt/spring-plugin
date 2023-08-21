@@ -4,7 +4,6 @@ import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.codeInsight.TargetElementUtilBase
-import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.testFramework.TestDataPath
 import org.junit.Assert

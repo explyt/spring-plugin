@@ -58,7 +58,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
 
         text = text.replace("#base_dir", "", false)
 
-        myFixture.configureByText("TestPropertySourceReferences.java",text)
+        myFixture.configureByText("TestPropertySourceReferences.java", text)
 
         setOf(
             "1/application2.properties",

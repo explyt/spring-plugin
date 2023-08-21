@@ -103,7 +103,7 @@ class SpringRunConfigurationDetectService(
             runManager.addConfiguration(it)
         }
 
-        if(runManager.selectedConfiguration == null) {
+        if (runManager.selectedConfiguration == null) {
             runManager.selectedConfiguration = configurationsToCreate.first()
         }
 

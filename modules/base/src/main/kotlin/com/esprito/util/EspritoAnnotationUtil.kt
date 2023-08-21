@@ -1,6 +1,9 @@
 package com.esprito.util
 
-import com.intellij.psi.*
+import com.intellij.psi.PsiAnnotation
+import com.intellij.psi.PsiAnnotationMemberValue
+import com.intellij.psi.PsiArrayInitializerMemberValue
+import com.intellij.psi.PsiLiteral
 import org.apache.commons.lang.StringUtils
 
 object EspritoAnnotationUtil {
@@ -12,7 +15,7 @@ object EspritoAnnotationUtil {
     fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributeName: String?): Collection<PsiLiteral> {
         return when (val attributeValue = annotation.findAttributeValue(attributeName)) {
             is PsiArrayInitializerMemberValue -> getArrayAttributeAsPsiLiteral(attributeValue)
-            is PsiLiteral -> listOf( attributeValue)
+            is PsiLiteral -> listOf(attributeValue)
             else -> emptyList()
         }
     }
@@ -28,7 +31,7 @@ object EspritoAnnotationUtil {
         return getArrayValueAnnotations(annotation, attrName, null)
     }
 
-     fun getArrayValueAnnotations(
+    fun getArrayValueAnnotations(
         annotation: PsiAnnotation,
         attrName: String,
         annotationFqn: String?

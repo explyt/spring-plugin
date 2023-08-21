@@ -1,6 +1,5 @@
 package com.esprito.jpa.ql.psi.impl
 
-import com.esprito.jpa.ql.JpqlFileType
 import com.esprito.jpa.ql.JpqlLanguage
 import com.esprito.jpa.ql.psi.JpqlFile
 import com.esprito.jpa.ql.psi.JpqlIdentifier

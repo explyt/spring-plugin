@@ -1,10 +1,7 @@
 package com.esprito.spring.core.inspections
 
-import com.esprito.spring.core.inspections.SpringEventListenerInspection
 import com.esprito.spring.test.EspritoInspectionTestCase
 import com.esprito.spring.test.TestLibrary
-import com.intellij.codeInsight.completion.CompletionType
-import com.intellij.codeInspection.deadCode.UnusedDeclarationInspection
 import com.intellij.testFramework.TestDataPath
 
 private const val TEST_DATA_PATH = "testdata/inspection"

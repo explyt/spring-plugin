@@ -2,7 +2,6 @@ package com.esprito.jpa.ql.usage
 
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
-import org.intellij.lang.annotations.Language
 
 abstract class JpaEntityAttributeUsageSearchTest : EspritoJavaLightTestCase() {
     class Jakarta : JpaEntityAttributeUsageSearchTest() {

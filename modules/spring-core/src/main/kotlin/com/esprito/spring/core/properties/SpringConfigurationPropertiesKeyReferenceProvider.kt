@@ -44,7 +44,8 @@ class SpringConfigurationPropertiesKeyReferenceProvider : PsiReferenceProvider()
 
         val prefix = keyHint.name.substringBefore(".keys")
         return if (propertyKey.startsWith("$prefix.")
-            && keyHint.providers.any { it.name == "logger-name" }) {
+            && keyHint.providers.any { it.name == "logger-name" }
+        ) {
             val prefixLength = prefix.length
 
             val result = mutableListOf<PsiReference>(
@@ -70,9 +71,11 @@ class SpringConfigurationPropertiesKeyReferenceProvider : PsiReferenceProvider()
     }
 }
 
-open class ConfigurationPropertyKeyReference(element: PsiElement,
-                                             private val propertyKey: String,
-                                             textRange: TextRange? = null) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
+open class ConfigurationPropertyKeyReference(
+    element: PsiElement,
+    private val propertyKey: String,
+    textRange: TextRange? = null
+) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()

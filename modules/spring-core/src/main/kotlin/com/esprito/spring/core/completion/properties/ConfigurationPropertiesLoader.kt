@@ -14,12 +14,16 @@ interface ConfigurationPropertiesLoader {
     }
 }
 
-data class ConfigurationProperty(val name: String,
-                                 var type: String?,
-                                 var sourceType: String?,
-                                 var description: String?,
-                                 var defaultValue: Any?)
+data class ConfigurationProperty(
+    val name: String,
+    var type: String?,
+    var sourceType: String?,
+    var description: String?,
+    var defaultValue: Any?
+)
 
-data class PropertyHint(val name: String,
-                        val values: List<ValueHint>,
-                        val providers: List<ProviderHint>)
+data class PropertyHint(
+    val name: String,
+    val values: List<ValueHint>,
+    val providers: List<ProviderHint>
+)

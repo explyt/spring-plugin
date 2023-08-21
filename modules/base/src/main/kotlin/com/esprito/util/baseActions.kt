@@ -17,5 +17,5 @@ fun <T, S> NonBlockingReadAction<T>.then(function: (T) -> S): NonBlockingReadAct
 
 
 inline fun <T> runReadNonBlocking(crossinline runnable: () -> T): T {
-    return nonBlocking{runnable()}.executeSynchronously()
+    return nonBlocking { runnable() }.executeSynchronously()
 }
