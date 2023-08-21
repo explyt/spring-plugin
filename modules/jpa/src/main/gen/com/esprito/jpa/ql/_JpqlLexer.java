@@ -28,7 +28,7 @@ public class _JpqlLexer implements FlexLexer {
    *                  at the beginning of a line
    * l is of the form l = 2*k, k a non negative integer
    */
-  private static final int ZZ_LEXSTATE[] = {
+  private static final int[] ZZ_LEXSTATE = {
      0, 0
   };
 
@@ -605,7 +605,7 @@ public class _JpqlLexer implements FlexLexer {
   }
 
   /** the input device */
-  private java.io.Reader zzReader;
+  private final java.io.Reader zzReader;
 
   /** the current state of the DFA */
   private int zzState;
@@ -655,7 +655,7 @@ public class _JpqlLexer implements FlexLexer {
 
   /* user code: */
   public _JpqlLexer() {
-    this((java.io.Reader)null);
+    this(null);
   }
 
 

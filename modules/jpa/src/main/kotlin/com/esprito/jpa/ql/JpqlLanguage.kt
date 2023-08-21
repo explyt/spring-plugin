@@ -6,6 +6,6 @@ class JpqlLanguage : Language("JPQL") {
 
     companion object {
         @JvmField
-        val INSTANCE = JpqlLanguage();
+        val INSTANCE = JpqlLanguage()
     }
 }

@@ -21,8 +21,4 @@ object SpringBootConfigurationFactory :
 
     override fun getOptionsClass(): Class<out BaseState> = SpringBootConfigurationOptions::class.java
 
-    override fun getType(): ConfigurationType {
-        return super.getType()
-    }
-
 }

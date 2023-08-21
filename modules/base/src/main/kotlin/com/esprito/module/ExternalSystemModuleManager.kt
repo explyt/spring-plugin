@@ -131,6 +131,6 @@ class ExternalSystemModuleManager(private val project: Project) {
 
         private val log = logger<ExternalSystemModuleManager>()
 
-        private val MODULE_KEY = Key.create<ExternalSystemModule>("external_system_module");
+        private val MODULE_KEY = Key.create<ExternalSystemModule>("external_system_module")
     }
 }

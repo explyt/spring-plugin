@@ -36,7 +36,7 @@ class FileReferenceSetWithPrefixSupport(
             val psiDirectory = PsiManager.getInstance(element.project).findDirectory(root) ?: return mutableListOf()
             return mutableListOf(psiDirectory)
         }
-        return super.computeDefaultContexts();
+        return super.computeDefaultContexts()
     }
 
     override fun getReferenceCompletionFilter(): Condition<PsiFileSystemItem> {
