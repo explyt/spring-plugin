@@ -99,6 +99,9 @@
 
         <psi.referenceContributor implementation="com.esprito.spring.core.references.contributors.PackageAntReferenceInAnnotationContributor" language="UAST"/>
         <psi.referenceContributor implementation="com.esprito.spring.core.references.contributors.FileReferenceInAnnotationContributor" language="UAST"/>
+
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.core.providers.SpringBeanLineMarkerProvider"/>
     </extensions>
 
     <actions>
