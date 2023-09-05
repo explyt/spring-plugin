@@ -76,4 +76,10 @@ object LibraryClassCache {
                 false
             )
     }
+
+    fun searchForLibraryClasses(
+        module: Module,
+        fqns: Collection<String>
+    ): Collection<PsiClass> =
+        fqns.mapNotNull { searchForLibraryClass(module, it) }
 }

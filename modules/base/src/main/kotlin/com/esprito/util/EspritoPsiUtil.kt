@@ -3,6 +3,7 @@ package com.esprito.util
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.psi.*
+import com.intellij.psi.util.childrenOfType
 
 object EspritoPsiUtil {
     val PsiModifierListOwner.isStatic: Boolean
@@ -55,5 +56,13 @@ object EspritoPsiUtil {
 
     val PsiClass.isOrdinaryClass: Boolean
         get() = !isInterface && !isEnum && !isAnnotationType
+
+
+    val PsiType.resolvedPsiClass: PsiClass?
+        get() = (this as? PsiClassType)?.resolve()
+
+    val PsiMember.returnPsiClass: PsiClass?
+        get() = this.childrenOfType<PsiTypeElement>().firstOrNull()?.type?.resolvedPsiClass
+
 
 }
