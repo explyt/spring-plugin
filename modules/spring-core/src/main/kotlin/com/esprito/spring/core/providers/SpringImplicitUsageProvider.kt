@@ -1,5 +1,6 @@
 package com.esprito.spring.core.providers
 
+import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -52,24 +53,20 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
 
     companion object {
         private val IMPLICIT_CLASS_ANNOTATIONS = setOf(
-            SpringCoreClasses.COMPONENT, // meta
-            "jakarta.annotation.Resource",
-            "javax.annotation.Resource",
-        )
+            SpringCoreClasses.COMPONENT, // meta: + annotation_type
+        ) + JavaEeClasses.RESOURCE.allFqns
+
         private val IMPLICIT_FIELD_ANNOTATIONS = setOf(
-            "jakarta.annotation.Resource",
-            "jakarta.inject.Inject",
-            "javax.annotation.Resource",
-            "javax.inject.Inject",
             SpringCoreClasses.AUTOWIRED, // meta: + annotation_type
             SpringCoreClasses.VALUE, // meta: + annotation_type
             // "org.springframework.beans.factory.annotation.Required", // deprecated
-        )
+        ) + JavaEeClasses.INJECT.allFqns +
+                JavaEeClasses.RESOURCE.allFqns
+
         private val IMPLICIT_CONSTRUCTOR_ANNOTATIONS = setOf(
-            "org.springframework.beans.factory.annotation.Autowired",
-            "jakarta.inject.Inject",
-            "javax.inject.Inject",
-        )
+            SpringCoreClasses.AUTOWIRED,
+        ) + JavaEeClasses.INJECT.allFqns
+
         private val IMPLICIT_METHOD_ANNOTATIONS = setOf(
             SpringCoreClasses.BEAN, // meta: + annotation_type
             SpringCoreClasses.AUTOWIRED, // meta: + annotation_type
@@ -79,18 +76,12 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
             "org.springframework.jmx.export.annotation.ManagedAttribute",
             "org.springframework.scheduling.annotation.Scheduled", // meta: + annotation_type
             "org.springframework.scheduling.annotation.Schedules", // meta: + annotation_type
-            //"org.springframework.transaction.event.TransactionalEventListener", // covered by EventListener
             "org.springframework.test.context.transaction.BeforeTransaction", // meta: + annotation_type
             "org.springframework.test.context.transaction.AfterTransaction", // meta: + annotation_type
-            "jakarta.annotation.PostConstruct",
-            "jakarta.annotation.PreDestroy",
-            "jakarta.annotation.Resource",
-            "jakarta.inject.Inject",
-            "javax.annotation.PostConstruct",
-            "javax.annotation.PreDestroy",
-            "javax.annotation.Resource",
-            "javax.inject.Inject",
-        )
+        ) + JavaEeClasses.INJECT.allFqns +
+                JavaEeClasses.RESOURCE.allFqns +
+                JavaEeClasses.POST_CONSTRUCT.allFqns +
+                JavaEeClasses.PRE_DESTROY.allFqns
     }
 
 }

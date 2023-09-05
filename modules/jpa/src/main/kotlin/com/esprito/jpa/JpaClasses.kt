@@ -1,5 +1,6 @@
 package com.esprito.jpa
 
+import com.esprito.util.MultiVendorClass
 import kotlin.reflect.KProperty
 
 object JpaClasses {
@@ -9,15 +10,6 @@ object JpaClasses {
 
     val entityManager by "persistence.EntityManager"
     val namedQuery by "persistence.NamedQuery"
-
-    class MultiVendorClass(subFqn: String) {
-        val javax: String = "javax.$subFqn"
-        val jakarta: String = "jakarta.$subFqn"
-
-        val allFqns by lazy { listOf(javax, jakarta) }
-
-        fun check(fqn: String?): Boolean = fqn in allFqns
-    }
 
     private operator fun String.getValue(jpaClasses: JpaClasses, property: KProperty<*>): MultiVendorClass {
         return MultiVendorClass(this)
