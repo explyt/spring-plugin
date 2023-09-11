@@ -99,6 +99,6 @@ object SpringCoreUtil {
     }
 
     // TODO: value or basePackages
-    fun existComponentScan(module: Module): Boolean = SpringSearchUtil.findAllComponentScanFromCache(module).isNotEmpty()
+    fun existComponentScan(module: Module): Boolean = SpringSearchUtil.getAllComponentScanBeans(module).isNotEmpty()
 
 }

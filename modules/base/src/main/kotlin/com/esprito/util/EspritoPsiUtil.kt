@@ -2,6 +2,7 @@ package com.esprito.util
 
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
+import com.intellij.codeInspection.isInheritorOf
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 
@@ -60,6 +61,21 @@ object EspritoPsiUtil {
 
     val PsiType.resolvedPsiClass: PsiClass?
         get() = (this as? PsiClassType)?.resolve()
+
+    val PsiType.resolvedDeepPsiClass: PsiClass?
+        get() = (this.deepComponentType as? PsiClassType)?.resolve()
+
+    val PsiType.isCollection : Boolean
+        get() = this.isInheritorOf(java.util.Collection::class.java.canonicalName)
+
+    val PsiType.isMap : Boolean
+        get() = this.isInheritorOf(java.util.Map::class.java.canonicalName)
+
+    val PsiType.isOptional : Boolean
+        get() = this.isInheritorOf(java.util.Optional::class.java.canonicalName)
+
+    val PsiType.isString : Boolean
+        get() = this.isInheritorOf(java.lang.String::class.java.canonicalName)
 
     val PsiMember.returnPsiClass: PsiClass?
         get() = this.childrenOfType<PsiTypeElement>().firstOrNull()?.type?.resolvedPsiClass

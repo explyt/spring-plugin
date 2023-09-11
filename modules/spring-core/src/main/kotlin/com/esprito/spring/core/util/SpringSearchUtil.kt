@@ -16,24 +16,42 @@ import com.intellij.uast.UastModificationTracker
 
 object SpringSearchUtil {
 
-    fun findAllBeanClasses(module: Module): Set<PsiClass> {
-        val allAnnotatedByComponentClasses = getComponentPsiClasses(module)
+    private fun searchAllBeanClasses(module: Module): Set<PsiClass> {
+        val allPsiClassesAnnotatedByComponent = getBeanPsiClassesAnnotatedByComponent(module)
         val methodsAnnotatedByBeanReturnTypes =
-            getComponentPsiClassesByBeanMethods(allAnnotatedByComponentClasses)
-        return allAnnotatedByComponentClasses + methodsAnnotatedByBeanReturnTypes
+            searchComponentPsiClassesByBeanMethods(allPsiClassesAnnotatedByComponent)
+        return allPsiClassesAnnotatedByComponent + methodsAnnotatedByBeanReturnTypes
     }
 
-    fun getComponentPsiClasses(module: Module): Set<PsiClass> {
-        val project = module.project
-        return CachedValuesManager.getManager(project).getCachedValue(project) {
+    fun getAllBeansClasses(module: Module): Set<PsiClass> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result(
-                getComponentPsiClasses(module, getComponentClassAnnotations(module)),
-                UastModificationTracker.getInstance(project)
+                searchAllBeanClasses(module),
+                UastModificationTracker.getInstance(module.project)
             )
         }
     }
 
-    fun getComponentPsiClassesByBeanMethods(allAnnotatedByComponentClasses: Set<PsiClass>): Set<PsiClass> {
+    fun getAllBeansClassesWithInheritors(module: Module): Set<PsiClass> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                getAllBeansClasses(module).asSequence().flatMap { it.supers.asSequence() + it }.toSet(),
+                UastModificationTracker.getInstance(module.project)
+            )
+        }
+    }
+
+
+    fun getBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiClass> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                searchBeanPsiClassesByAnnotations(module, getComponentClassAnnotations(module)),
+                UastModificationTracker.getInstance(module.project)
+            )
+        }
+    }
+
+    private fun searchComponentPsiClassesByBeanMethods(allAnnotatedByComponentClasses: Set<PsiClass>): Set<PsiClass> {
         return allAnnotatedByComponentClasses
             .asSequence()
             .flatMap { it.allMethods.asSequence() }
@@ -43,7 +61,7 @@ object SpringSearchUtil {
             .toSet()
     }
 
-    private fun getComponentPsiClasses(module: Module, annotationPsiClasses: Collection<PsiClass>): Set<PsiClass> {
+    private fun searchBeanPsiClassesByAnnotations(module: Module, annotationPsiClasses: Collection<PsiClass>): Set<PsiClass> {
         val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
         return annotationPsiClasses.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
@@ -51,30 +69,32 @@ object SpringSearchUtil {
             .toSet()
     }
 
-    private fun getComponentClassAnnotations(module: Module): Collection<PsiClass> {
-        // TODO: cache result
-        val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
-        annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
-        return annotations
+    private fun searchBeanPsiClassesByAnnotation(module: Module, annotationName: String): Set<PsiClass> {
+        val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, annotationName, false)
+        return searchBeanPsiClassesByAnnotations(module, annotations)
     }
 
-    fun findAllComponentScanFromCache(module: Module): Set<PsiClass> {
-        val project = module.project
-        return CachedValuesManager.getManager(project).getCachedValue(project) {
+    private fun getComponentClassAnnotations(module: Module): Collection<PsiClass> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result(
-                getPsiClassesByAnnotation(module, SpringCoreClasses.COMPONENT_SCAN),
-                UastModificationTracker.getInstance(project)
+                run {
+                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
+                    annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
+                    return@run annotations
+                },
+                UastModificationTracker.getInstance(module.project)
             )
         }
     }
 
-    private fun getPsiClassesByAnnotation(module: Module, annotationName: String): Set<PsiClass> {
-        val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, annotationName, false)
-        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-        return annotations.asSequence()
-            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
-            .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
-            .toSet()
+    fun getAllComponentScanBeans(module: Module): Set<PsiClass> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                searchBeanPsiClassesByAnnotation(module, SpringCoreClasses.COMPONENT_SCAN),
+                UastModificationTracker.getInstance(module.project)
+            )
+        }
     }
+
 
 }
