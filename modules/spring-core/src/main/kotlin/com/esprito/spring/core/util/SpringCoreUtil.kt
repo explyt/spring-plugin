@@ -12,10 +12,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VfsUtil
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiModifier
-import com.intellij.psi.PsiTypeParameter
+import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.uast.toUElement
@@ -75,7 +72,7 @@ object SpringCoreUtil {
         }
     }
 
-    fun isSpringProject(module: Module): Boolean {
+    private fun isSpringProject(module: Module): Boolean {
         return LibraryClassCache.searchForLibraryClass(module, SpringCoreClasses.COMPONENT) != null
     }
 
@@ -101,5 +98,7 @@ object SpringCoreUtil {
                 && !PsiUtil.isLocalOrAnonymousClass(psiClass)
     }
 
+    // TODO: value or basePackages
+    fun existComponentScan(module: Module): Boolean = SpringSearchUtil.findAllComponentScanFromCache(module).isNotEmpty()
 
 }

@@ -6,6 +6,7 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.esprito.spring.core.util.SpringSearchUtil
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
@@ -19,8 +20,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.*
-import com.intellij.psi.search.GlobalSearchScope.moduleWithDependenciesAndLibrariesScope
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.parentOfType
@@ -66,7 +65,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return false
         if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
             val isComponentExpression = uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-            return isComponentExpression || findTargetClass(element) in findAllBeanClasses(module)
+            return isComponentExpression || findTargetClass(element) in SpringSearchUtil.findAllBeanClasses(module)
         }
         if (uParent is UMethod) {
             return uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)
@@ -86,13 +85,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
     }
 
-    private fun getComponentClassAnnotations(module: Module): Collection<PsiClass> {
-        // TODO: cache result
-        val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
-        annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
-        return annotations
-    }
-
     private fun getAutowiredFieldAnnotations(module: Module): Collection<PsiClass> {
         // TODO: cache result
         val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
@@ -100,26 +92,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return annotations
     }
 
-    private fun getComponentPsiClasses(module: Module, annotationPsiClasses: Collection<PsiClass>): Set<PsiClass> {
-        val scope = moduleWithDependenciesAndLibrariesScope(module)
-        return annotationPsiClasses.asSequence().flatMap {
-            AnnotatedElementsSearch.searchPsiClasses(it, scope)
-        }.filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }.toSet()
-    }
-
-    private fun getComponentPsiClasses(module: Module): Set<PsiClass> {
-        val project = module.project
-        return CachedValuesManager.getManager(project).getCachedValue(project) {
-            CachedValueProvider.Result(
-                getComponentPsiClasses(module, getComponentClassAnnotations(module)),
-                UastModificationTracker.getInstance(project)
-            )
-        }
-    }
-
     private fun getBeanComponentsTargets(element: PsiElement): Collection<PsiElement> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
-        val componentPsiClasses = getComponentPsiClasses(module)
+        val componentPsiClasses = SpringSearchUtil.getComponentPsiClasses(module)
         if (componentPsiClasses.isEmpty()) {
             return emptyList()
         }
@@ -144,26 +119,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val project = module.project
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
-                findAllBeanClasses(module),
+                SpringSearchUtil.findAllBeanClasses(module),
                 UastModificationTracker.getInstance(project)
             )
         }
-    }
-
-    private fun getComponentPsiClassesByBeanMethods(allAnnotatedByComponentClasses: Set<PsiClass>): Set<PsiClass> {
-        return allAnnotatedByComponentClasses
-            .asSequence()
-            .flatMap { it.allMethods.asSequence() }
-            .filter { it.isAnnotatedBy(SpringCoreClasses.BEAN) }
-            .mapNotNull { it.returnType?.resolvedPsiClass }
-            .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
-            .toSet()
-    }
-
-    private fun findAllBeanClasses(module: Module): Set<PsiClass> {
-        val allAnnotatedByComponentClasses = getComponentPsiClasses(module)
-        val methodsAnnotatedByBeanReturnTypes = getComponentPsiClassesByBeanMethods(allAnnotatedByComponentClasses)
-        return allAnnotatedByComponentClasses + methodsAnnotatedByBeanReturnTypes
     }
 
     private fun findFieldsWithAutowired(element: PsiElement): Collection<PsiElement> {
@@ -185,7 +144,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val allMethodsWithAutowired = allBeans.asSequence().flatMap { bean ->
             bean.allMethods.asSequence()
                 .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames)
-                        || it.isConstructor && bean in getComponentPsiClasses(module) }
+                        || it.isConstructor && bean in SpringSearchUtil.getComponentPsiClasses(module) }
                 .flatMap { it.parameterList.parameters.asSequence() }
                 .filter { it.type.resolvedPsiClass in targetClasses }
         }.toSet()
