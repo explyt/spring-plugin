@@ -6,7 +6,7 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.esprito.spring.core.util.SpringSearchUtil
+import com.esprito.spring.core.util.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isCollection
 import com.esprito.util.EspritoPsiUtil.isMap
@@ -29,35 +29,27 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.parentOfType
 import com.intellij.uast.UastModificationTracker
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.UField
-import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.getUParentForIdentifier
+import org.jetbrains.uast.*
 
 class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        val uParent = getUParentForIdentifier(element)
-        if (isComponentClassOrBeanMethod(element)) {
+        val processor = getLineMarkerElementProcessor(element) ?: return
+
+        if (processor.isComponentClassOrBeanMethod()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(element) })
+                .setTargets(NotNullLazyValue.lazy { processor.findFieldsAndMethodsWithAutowired() })
                 .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.autowired.candidate"))
             result.add(builder.createLineMarkerInfo(element))
-        } else if (uParent is UField
-                && uParent.javaPsi?.let { it is PsiField && isAutowiredFieldExpression(it) } == true
-            || uParent is UMethod
-            && uParent.javaPsi.let { it is PsiMethod && it.isConstructor && isAutowiredConstructorExpression(it) }
-        ) {
-            // Add Line Marker for publishEvent(event) expressions
+        } else if (processor.isFieldOrAutowiredParameter()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                // Example of Lazy marker evaluation
-                .setTargets(NotNullLazyValue.lazy { getBeanComponentsTargets(element) })
+                .setTargets(NotNullLazyValue.lazy { processor.getBeanComponentsTargets() })
                 .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
@@ -66,116 +58,132 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
     }
 
-    // Is Component class or Bean method
-    private fun isComponentClassOrBeanMethod(element: PsiElement): Boolean {
-        val uParent = getUParentForIdentifier(element) ?: return false
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return false
-        if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
-            val isComponentExpression = uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-            return isComponentExpression || findTargetClass(element) in SpringSearchUtil.getAllBeansClassesWithInheritors(module)
-        }
-        if (uParent is UMethod) {
-            return uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)
-        }
-        return false
+    private fun getLineMarkerElementProcessor(element: PsiElement): LineMarkerElementProcessor? {
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
+        val uParent = getUParentForIdentifier(element) ?: return null
+        return LineMarkerElementProcessor(element, module, uParent)
     }
 
+    class LineMarkerElementProcessor(
+        private val element: PsiElement,
+        private val module: Module,
+        private val uParent: UElement,
+    ) {
+        private val springSearchService = SpringSearchService.getInstance(module.project)
 
-    private fun isAutowiredFieldExpression(javaPsi: PsiField): Boolean {
-        return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
-                || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
-                || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
-    }
-
-    private fun isAutowiredConstructorExpression(javaPsi: PsiMethod): Boolean {
-        return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
-                || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
-    }
-
-    private fun getAutowiredFieldAnnotations(module: Module): Collection<PsiClass> {
-        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
-            CachedValueProvider.Result(
-                run {
-                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
-                    annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns)
-                    return@run annotations
-                },
-                UastModificationTracker.getInstance(module.project)
-            )
-        }
-    }
-
-    private fun getBeanComponentsTargets(element: PsiElement): Collection<PsiElement> {
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
-        val componentPsiClasses = SpringSearchUtil.getBeanPsiClassesAnnotatedByComponent(module)
-        if (componentPsiClasses.isEmpty()) {
-            return emptyList()
-        }
-        val resolvedPsiClass = element.parentOfType<PsiField>()?.returnPsiClass ?: return emptyList()
-
-        return componentPsiClasses.filter { it == resolvedPsiClass }
-    }
-
-
-    private fun findTargetClass(element: PsiElement): PsiClass? {
-        // todo? cache?
-        if (element !is PsiIdentifier) {
-            return null
-        }
-
-        return element.parentOfType<PsiMethod>()?.returnPsiClass ?:
-            element.parentOfType<PsiClass>()
-
-    }
-
-    private fun PsiType.matchesTarget(targetClasses: Set<PsiClass>): Boolean {
-        if (resolvedDeepPsiClass in targetClasses) {
-            return true
-        }
-        if (this !is PsiClassType) {
+        fun isComponentClassOrBeanMethod(): Boolean {
+            if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
+                val isComponentExpression = uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
+                return isComponentExpression || findTargetClass() in springSearchService.getAllBeansClassesWithInheritors(module)
+            }
+            if (uParent is UMethod) {
+                return uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)
+            }
             return false
         }
-        if (isCollection || isOptional) {
-            val genericPsiClass = parameters.firstOrNull()?.resolvedPsiClass ?: return false
-            return genericPsiClass in targetClasses
+
+        private fun isAutowiredFieldExpression(javaPsi: PsiField): Boolean {
+            return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
         }
-        if (isMap && parameterCount == 2) {
-            if (parameters[0].isString) {
+
+        private fun isAutowiredConstructorExpression(javaPsi: PsiMethod): Boolean {
+            return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
+        }
+
+        fun isFieldOrAutowiredParameter(): Boolean =
+            uParent is UField
+                    && uParent.javaPsi?.let { it is PsiField && isAutowiredFieldExpression(it) } == true
+                    || uParent is UMethod
+                    && uParent.javaPsi.let { it is PsiMethod && it.isConstructor && isAutowiredConstructorExpression(it) }
+
+        private fun getAutowiredFieldAnnotations(): Collection<PsiClass> {
+            return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+                CachedValueProvider.Result(
+                    run {
+                        val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
+                        annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns)
+                        return@run annotations
+                    },
+                    UastModificationTracker.getInstance(module.project)
+                )
+            }
+        }
+
+        fun getBeanComponentsTargets(): Collection<PsiElement> {
+            val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
+            val componentPsiClasses = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+            if (componentPsiClasses.isEmpty()) {
+                return emptyList()
+            }
+            val resolvedPsiClass = element.parentOfType<PsiField>()?.returnPsiClass ?: return emptyList()
+
+            return componentPsiClasses.filter { it == resolvedPsiClass }
+        }
+
+
+        private fun findTargetClass(): PsiClass? {
+            if (element !is PsiIdentifier) {
+                return null
+            }
+
+            return element.parentOfType<PsiMethod>()?.returnPsiClass  // method annotated by Bean
+                ?: element.parentOfType<PsiClass>() // class annotated as Component
+        }
+
+        private fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean {
+            if (resolvedDeepPsiClass in targetClasses) {
+                // Bean[]
+                // Bean
+                return true
+            }
+            if (this !is PsiClassType) {
+                return false
+            }
+            if (isCollection || isOptional) {
+                // Collection<Bean>
+                // Optional<Bean>
+                val genericPsiClass = parameters.firstOrNull()?.resolvedPsiClass ?: return false
+                return genericPsiClass in targetClasses
+            }
+            if (isMap && parameterCount == 2 && parameters[0].isString) {
+                // Map<String, Bean>
                 val genericPsiClass = parameters[1].resolvedPsiClass ?: return false
                 return genericPsiClass in targetClasses
             }
+            return false
         }
-        return false
-    }
 
-    private fun findFieldsAndMethodsWithAutowired(element: PsiElement): Collection<PsiElement> {
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
-        val targetClass = findTargetClass(element) ?: return emptyList()
-        val targetClasses = targetClass.supers.toSet() + targetClass
+        fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
+            val targetClass = findTargetClass() ?: return emptyList()
+            val targetClasses = targetClass.supers.toSet() + targetClass
 
-        val allAutowiredAnnotations = getAutowiredFieldAnnotations(module)
-        val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
+            val allAutowiredAnnotations = getAutowiredFieldAnnotations()
+            val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
-        val allBeans = SpringSearchUtil.getAllBeansClasses(module)
+            val allBeans = springSearchService.getAllBeansClasses(module)
 
-        val allFieldsWithAutowired = allBeans.asSequence().flatMap {
-            it.allFields.asSequence()
-                .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                .filter { it.type.matchesTarget(targetClasses) }
-        }.toSet()
+            val allFieldsWithAutowired = allBeans.asSequence().flatMap {
+                it.allFields.asSequence()
+                    .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
+                    .filter { it.type.canResolveBeanClass(targetClasses) }
+            }.toSet()
 
-        val allMethodsWithAutowired = allBeans.asSequence().flatMap { bean ->
-            bean.allMethods.asSequence()
-                .filter {
-                    it.isAnnotatedBy(allAutowiredAnnotationsNames)
-                        || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                        || it.isConstructor && bean in SpringSearchUtil.getBeanPsiClassesAnnotatedByComponent(module)
-                }
-                .flatMap { it.parameterList.parameters.asSequence() }
-                .filter { it.type.matchesTarget(targetClasses) }
-        }.toSet()
+            val allMethodsWithAutowired = allBeans.asSequence().flatMap { bean ->
+                bean.allMethods.asSequence()
+                    .filter {
+                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                                || it.isAnnotatedBy(SpringCoreClasses.BEAN)
+                                || it.isConstructor && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                    }
+                    .flatMap { it.parameterList.parameters.asSequence() }
+                    .filter { it.type.canResolveBeanClass(targetClasses) }
+            }.toSet()
 
-        return allFieldsWithAutowired + allMethodsWithAutowired
+            return allFieldsWithAutowired + allMethodsWithAutowired
+        }
     }
 
 }
