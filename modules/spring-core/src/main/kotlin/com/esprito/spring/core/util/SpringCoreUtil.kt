@@ -1,11 +1,20 @@
 package com.esprito.spring.core.util
 
 import com.esprito.base.LibraryClassCache
+import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
+import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.util.EspritoPsiUtil.isCollection
+import com.esprito.util.EspritoPsiUtil.isMap
+import com.esprito.util.EspritoPsiUtil.isOptional
+import com.esprito.util.EspritoPsiUtil.isString
+import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
+import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.ModuleUtil
 import com.esprito.util.runReadNonBlocking
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -16,6 +25,7 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.uast.toUElement
+import java.util.*
 
 object SpringCoreUtil {
 
@@ -100,5 +110,78 @@ object SpringCoreUtil {
 
     // TODO: value or basePackages
     fun existComponentScan(module: Module): Boolean = SpringSearchService.getInstance(module.project).getAllComponentScanBeans(module).isNotEmpty()
+
+    fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
+        return resolveBeanNameByAnnotationNames(annotationPsiClasses.mapNotNull { it.qualifiedName })
+    }
+
+    fun PsiClass.resolveBeanNameByAnnotationNames(annotationNames: Collection<String>): String {
+        // TODO: add search for Qualifier, Named, Resource
+        return this.resolveBeanNameByAnnotations(annotationNames)
+            ?: name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
+            ?: throw IllegalArgumentException("Illegal bean $this")
+    }
+
+    val PsiMethod.resolveBeanName
+        get() = this.resolveBeanNameByAnnotations(listOf(SpringCoreClasses.BEAN))
+            ?: name
+
+    val PsiVariable.resolveBeanName: String?
+        get() = this.resolveBeanNameByAnnotations(JavaEeClasses.NAMED.allFqns + SpringCoreClasses.QUALIFIER)
+
+    val PsiType.resolveBeanPsiClass: PsiClass?
+        get() {
+            if (this is PsiArrayType) {
+                return resolvedDeepPsiClass
+            }
+            if (this !is PsiClassType) {
+                return null
+            }
+            if (isCollection || isOptional) {
+                // Collection<Bean>
+                // Optional<Bean>
+                return parameters.firstOrNull()?.resolvedPsiClass
+            }
+            if (isMap && parameterCount == 2 && parameters[0].isString) {
+                // Map<String, Bean>
+                return parameters[1].resolvedPsiClass
+            }
+            return resolvedDeepPsiClass
+        }
+
+    private fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
+        val annotation = annotations.firstOrNull { it.qualifiedName in annotationNames } ?: return null
+        val value = AnnotationUtil.getStringAttributeValue(annotation, "value")
+        if (value.isNullOrEmpty()) {
+            return null
+        }
+        return value
+    }
+
+
+    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean {
+        if (resolvedDeepPsiClass in targetClasses) {
+            // Bean[]
+            // Bean
+            return true
+        }
+        if (this !is PsiClassType) {
+            return false
+        }
+        if (isCollection || isOptional) {
+            // Collection<Bean>
+            // Optional<Bean>
+            val genericPsiClass = parameters.firstOrNull()?.resolvedPsiClass ?: return false
+            return genericPsiClass in targetClasses
+        }
+        if (isMap && parameterCount == 2 && parameters[0].isString) {
+            // Map<String, Bean>
+            val genericPsiClass = parameters[1].resolvedPsiClass ?: return false
+            return genericPsiClass in targetClasses
+        }
+        return false
+    }
+
+
 
 }

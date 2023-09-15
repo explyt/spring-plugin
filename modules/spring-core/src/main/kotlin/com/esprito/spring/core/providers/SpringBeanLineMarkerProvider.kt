@@ -1,22 +1,20 @@
 package com.esprito.spring.core.providers
 
-import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
+import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.esprito.spring.core.util.SpringSearchService
+import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
+import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
+import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanNameByPsiAnnotations
+import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isCollection
-import com.esprito.util.EspritoPsiUtil.isMap
+import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isOptional
-import com.esprito.util.EspritoPsiUtil.isString
-import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
-import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -25,10 +23,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.*
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.parentOfType
-import com.intellij.uast.UastModificationTracker
 import org.jetbrains.uast.*
 
 class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
@@ -77,7 +72,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 return isComponentExpression || findTargetClass() in springSearchService.getAllBeansClassesWithInheritors(module)
             }
             if (uParent is UMethod) {
-                return uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)
+                return isBeanMethodExpression(uParent.javaPsi)
             }
             return false
         }
@@ -88,39 +83,101 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
         }
 
-        private fun isAutowiredConstructorExpression(javaPsi: PsiMethod): Boolean {
+        private fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {
             return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
         }
 
-        fun isFieldOrAutowiredParameter(): Boolean =
-            uParent is UField
-                    && uParent.javaPsi?.let { it is PsiField && isAutowiredFieldExpression(it) } == true
-                    || uParent is UMethod
-                    && uParent.javaPsi.let { it is PsiMethod && it.isConstructor && isAutowiredConstructorExpression(it) }
+        private fun isBeanMethodExpression(javaPsi: PsiMethod): Boolean {
+            return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)
+        }
 
-        private fun getAutowiredFieldAnnotations(): Collection<PsiClass> {
-            return CachedValuesManager.getManager(module.project).getCachedValue(module) {
-                CachedValueProvider.Result(
-                    run {
-                        val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
-                        annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns)
-                        return@run annotations
-                    },
-                    UastModificationTracker.getInstance(module.project)
-                )
+        fun isFieldOrAutowiredParameter(): Boolean {
+            fun checkParam(psiVariable: PsiVariable): Boolean {
+                val psiClass = psiVariable.parentOfType<PsiClass>() ?: return false
+                val isClassIsComponentConstructed = springSearchService.getBeanPsiClassesAnnotatedByComponent(module).any { it.psiClass == psiClass }
+                if (!isClassIsComponentConstructed) {
+                    return false
+                }
+                val hasResolvableBeanType = psiVariable.type.canResolveBeanClass(springSearchService.getAllBeansClassesWithInheritors(module))
+                if (!hasResolvableBeanType) {
+                    return false
+                }
+                return true
             }
+
+            if (uParent is UField) {
+                val psiField = uParent.javaPsi.takeIf { it is PsiField }?.let { it as PsiField } ?: return false
+                if (!checkParam(psiField)) {
+                    return false
+                }
+                return isAutowiredFieldExpression(psiField)
+            }
+            if (uParent is UParameter) {
+                val uParameterParent = uParent.parent?.parent ?: return false
+                if (uParameterParent is PsiMethod) {
+                    val psiParameter = uParent.javaPsi.takeIf { it is PsiParameter }?.let { it as PsiParameter } ?: return false
+                    if (!checkParam(psiParameter)) {
+                        return false
+                    }
+                    return uParameterParent.isConstructor || isAutowiredMethodExpression(uParameterParent) || isBeanMethodExpression(uParameterParent)
+                }
+            }
+            return false
         }
 
         fun getBeanComponentsTargets(): Collection<PsiElement> {
-            val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
-            val componentPsiClasses = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
-            if (componentPsiClasses.isEmpty()) {
-                return emptyList()
-            }
-            val resolvedPsiClass = element.parentOfType<PsiField>()?.returnPsiClass ?: return emptyList()
+            val psiField = element.parentOfType<PsiField>()
+            if (psiField != null) {
+                val strongBeanName = psiField.resolveBeanName
+                val beanName = strongBeanName ?: psiField.name
+                val beanPsiClass = psiField.type.resolveBeanPsiClass
 
-            return componentPsiClasses.filter { it == resolvedPsiClass }
+                return resolvedBeanTargets(strongBeanName, beanName, beanPsiClass)
+            }
+            val psiParameter = element.parentOfType<PsiParameter>() ?: return emptyList()
+            val strongBeanName = psiParameter.resolveBeanName
+            val beanName = strongBeanName ?: psiParameter.name
+            val beanPsiClass = psiParameter.type.resolveBeanPsiClass
+
+            return resolvedBeanTargets(strongBeanName, beanName, beanPsiClass)
+        }
+
+        private fun resolvedBeanTargets(strongBeanName: String?, beanName: String, beanPsiClass: PsiClass?): List<PsiElement> {
+            val componentPsiBeans = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+            val methodsPsiBeans = springSearchService.getComponentBeanPsiMethods(module)
+
+            val byNameBeanMethods = methodsPsiBeans.filter { it.resolveBeanName == beanName }
+            val byNameComponents = componentPsiBeans.filter { it.name == beanName }.map { it.psiClass }
+            val resultByName = (byNameBeanMethods + byNameComponents).filter {
+                if (beanPsiClass == null) {
+                    return@filter true
+                }
+                val targetClass = when (it) {
+                    is PsiMethod -> it.returnType?.resolvedPsiClass
+                    is PsiClass -> it
+                    else -> null
+                } ?: return@filter true
+
+                return@filter targetClass.isEqualOrInheritor(beanPsiClass)
+            }
+            if (strongBeanName != null || resultByName.size == 1) {
+                return resultByName
+            }
+
+            if (beanPsiClass == null) {
+                return resultByName
+            }
+
+            val byTypeBeanMethods = methodsPsiBeans.filter { it.returnPsiClass?.isEqualOrInheritor(beanPsiClass) == true }
+            val byTypeComponents = componentPsiBeans.filter { it.psiClass.isEqualOrInheritor(beanPsiClass) }.map { it.psiClass }
+            val resultByType = byTypeBeanMethods + byTypeComponents
+
+            if (resultByName.isNotEmpty()) {
+                return resultByName.filter { it in resultByType }
+            }
+            return resultByType
         }
 
 
@@ -133,46 +190,35 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 ?: element.parentOfType<PsiClass>() // class annotated as Component
         }
 
-        private fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean {
-            if (resolvedDeepPsiClass in targetClasses) {
-                // Bean[]
-                // Bean
-                return true
+        private fun findTargetBeanName(): String? {
+            if (element !is PsiIdentifier) {
+                return null
             }
-            if (this !is PsiClassType) {
-                return false
-            }
-            if (isCollection || isOptional) {
-                // Collection<Bean>
-                // Optional<Bean>
-                val genericPsiClass = parameters.firstOrNull()?.resolvedPsiClass ?: return false
-                return genericPsiClass in targetClasses
-            }
-            if (isMap && parameterCount == 2 && parameters[0].isString) {
-                // Map<String, Bean>
-                val genericPsiClass = parameters[1].resolvedPsiClass ?: return false
-                return genericPsiClass in targetClasses
-            }
-            return false
+
+            return element.parentOfType<PsiMethod>()?.resolveBeanName  // method annotated by Bean
+                ?: element.parentOfType<PsiClass>()?.resolveBeanNameByPsiAnnotations(
+                    SpringSearchService.getInstance(module.project).getComponentClassAnnotations(module)
+                ) // class annotated as Component
         }
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             val targetClass = findTargetClass() ?: return emptyList()
             val targetClasses = targetClass.supers.toSet() + targetClass
+            val targetBeanName = findTargetBeanName()
 
-            val allAutowiredAnnotations = getAutowiredFieldAnnotations()
+            val allAutowiredAnnotations = springSearchService.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
             val allBeans = springSearchService.getAllBeansClasses(module)
 
             val allFieldsWithAutowired = allBeans.asSequence().flatMap {
-                it.allFields.asSequence()
+                it.psiClass.allFields.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
                     .filter { it.type.canResolveBeanClass(targetClasses) }
             }.toSet()
 
-            val allMethodsWithAutowired = allBeans.asSequence().flatMap { bean ->
-                bean.allMethods.asSequence()
+            val allParametersWithAutowired = allBeans.asSequence().flatMap { bean ->
+                bean.psiClass.allMethods.asSequence()
                     .filter {
                         it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
@@ -182,7 +228,21 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     .filter { it.type.canResolveBeanClass(targetClasses) }
             }.toSet()
 
-            return allFieldsWithAutowired + allMethodsWithAutowired
+            val allByType = allFieldsWithAutowired + allParametersWithAutowired
+            val filteredByName = allByType.filter {
+                val strongBeanName = it.resolveBeanName
+                val beanName = strongBeanName ?: (it as PsiNamedElement).name
+                val beanPsiClass = it.type.resolveBeanPsiClass
+                if (beanName == null) {
+                    return@filter true
+                }
+                val resolvedBeanTargets = resolvedBeanTargets(strongBeanName, beanName, beanPsiClass)
+                return@filter uParent.javaPsi in resolvedBeanTargets
+            }
+
+            return filteredByName.ifEmpty {
+                allByType
+            }
         }
     }
 
