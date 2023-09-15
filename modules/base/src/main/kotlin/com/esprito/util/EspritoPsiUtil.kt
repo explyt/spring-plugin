@@ -55,6 +55,10 @@ object EspritoPsiUtil {
             } ?: false
         }
 
+    fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
+        return this == baseClass || this.isInheritor(baseClass, checkDeep)
+    }
+
     val PsiClass.isOrdinaryClass: Boolean
         get() = !isInterface && !isEnum && !isAnnotationType
 

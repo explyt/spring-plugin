@@ -8,6 +8,7 @@ object JavaEeClasses {
     val RESOURCE by "annotation.Resource"
     val POST_CONSTRUCT by "annotation.PostConstruct"
     val PRE_DESTROY by "annotation.PreDestroy"
+    val NAMED by "inject.Named"
 
     private operator fun String.getValue(jpaClasses: JavaEeClasses, property: KProperty<*>): MultiVendorClass {
         return MultiVendorClass(this)

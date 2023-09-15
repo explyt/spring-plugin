@@ -14,6 +14,7 @@ object SpringCoreClasses {
     const val CONFIGURATION = "org.springframework.context.annotation.Configuration"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
+    const val QUALIFIER = "org.springframework.beans.factory.annotation.Qualifier"
 
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"
