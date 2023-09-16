@@ -1,0 +1,17 @@
+<html>
+<head>
+  <title>DependsOn Inspection</title></head>
+<body>
+<p>
+    The <b><code>@DependsOn</code></b> inspection identifies incorrect bean reference.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code>
+  @Component
+  @DependsOn("unknown")  // reports "Cannot resolve bean 'unknown'"
+  public class MyComponent {
+  }
+</code></pre>
+</body>
+</html>

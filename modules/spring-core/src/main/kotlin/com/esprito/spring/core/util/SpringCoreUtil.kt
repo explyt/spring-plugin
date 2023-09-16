@@ -5,6 +5,7 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
+import com.esprito.spring.core.service.PsiBean
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.isCollection
 import com.esprito.util.EspritoPsiUtil.isMap
@@ -25,7 +26,6 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.uast.toUElement
-import java.util.*
 
 object SpringCoreUtil {
 
@@ -118,7 +118,7 @@ object SpringCoreUtil {
     fun PsiClass.resolveBeanNameByAnnotationNames(annotationNames: Collection<String>): String {
         // TODO: add search for Qualifier, Named, Resource
         return this.resolveBeanNameByAnnotations(annotationNames)
-            ?: name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
+            ?: PsiBean.getBeanName(name)
             ?: throw IllegalArgumentException("Illegal bean $this")
     }
 

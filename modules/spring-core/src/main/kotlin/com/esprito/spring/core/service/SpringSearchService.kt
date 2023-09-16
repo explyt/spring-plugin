@@ -41,7 +41,16 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getAllBeansClassesWithInheritors(module: Module): Set<PsiClass> {
+    fun getAllBeanNames(module: Module): Set<String> {
+        return cachedValuesManager.getCachedValue(module) {
+            CachedValueProvider.Result(
+                searchAllBeanClasses(module).map { it.name }.toSet(),
+                UastModificationTracker.getInstance(project)
+            )
+        }
+    }
+
+    fun getAllBeansClassesWithAncestors(module: Module): Set<PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
                 getAllBeansClasses(module).asSequence().flatMap { it.psiClass.supers.asSequence() + it.psiClass }.toSet(),
