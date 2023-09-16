@@ -69,7 +69,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         fun isComponentClassOrBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
                 val isComponentExpression = uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-                return isComponentExpression || findTargetClass() in springSearchService.getAllBeansClassesWithInheritors(module)
+                return isComponentExpression || findTargetClass() in springSearchService.getAllBeansClassesWithAncestors(module)
             }
             if (uParent is UMethod) {
                 return isBeanMethodExpression(uParent.javaPsi)
@@ -100,7 +100,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 if (!isClassIsComponentConstructed) {
                     return false
                 }
-                val hasResolvableBeanType = psiVariable.type.canResolveBeanClass(springSearchService.getAllBeansClassesWithInheritors(module))
+                val hasResolvableBeanType = psiVariable.type.canResolveBeanClass(springSearchService.getAllBeansClassesWithAncestors(module))
                 if (!hasResolvableBeanType) {
                     return false
                 }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>DependsOnConfiguration.java</file>
+        <line>22</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnConfiguration I bDependentOnWrong()" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>&quot;wrongBeanNameAtMethod&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>15</offset>
+        <length>23</length>
+    </problem>
+
+
+    <problem>
+        <file>DependsOnConfiguration.java</file>
+        <line>38</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.DependentOnABeanErr" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>&quot;wrongBeanNameAtClass&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>11</offset>
+        <length>22</length>
+    </problem>
+
+
+    <problem>
+        <file>DependsOnConfiguration.java</file>
+        <line>42</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.DependentOnMultipleBeansErr" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>&quot;wrongBeanNameListedAtClass&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>12</offset>
+        <length>28</length>
+    </problem>
+
+    <problem>
+        <file>DependsOnConfiguration.java</file>
+        <line>42</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.DependentOnMultipleBeansErr" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>CONST_TO_NON_EXISTING_BEAN</highlighted_element>
+        <language>JAVA</language>
+        <offset>47</offset>
+        <length>26</length>
+    </problem>
+
+</problems>

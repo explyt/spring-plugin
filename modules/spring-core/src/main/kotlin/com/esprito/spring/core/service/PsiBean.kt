@@ -8,7 +8,14 @@ data class PsiBean(
     val psiClass: PsiClass
 ) {
     constructor(psiClass: PsiClass) : this(
-        psiClass.name?.replaceFirstChar { it.lowercase(Locale.getDefault()) } ?: ""
-        , psiClass
+        getBeanName(psiClass) ?: "",
+        psiClass
     )
+
+    companion object {
+        fun getBeanName(psiClass: PsiClass): String? = getBeanName(psiClass.name)
+        fun getBeanName(className: String?): String? =
+            className?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
+    }
+
 }

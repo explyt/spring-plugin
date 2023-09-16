@@ -9,11 +9,19 @@ import org.apache.commons.lang.StringUtils
 object EspritoAnnotationUtil {
 
     fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributesName: Collection<String>): Collection<PsiLiteral> {
-        return attributesName.flatMap { getArrayAttributeAsPsiLiteral(annotation, it) }
+        return attributesName.flatMap { annotation.getArrayAttributeAsPsiLiteral(it) }
     }
 
-    fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributeName: String?): Collection<PsiLiteral> {
-        return when (val attributeValue = annotation.findAttributeValue(attributeName)) {
+    fun PsiAnnotation?.getMemberValues(attributeName: String?): Collection<PsiAnnotationMemberValue> {
+        return when (val attributeValue = this?.findAttributeValue(attributeName)) {
+            is PsiArrayInitializerMemberValue -> attributeValue.initializers.toList()
+            is PsiLiteral -> listOf(attributeValue)
+            else -> emptyList()
+        }
+    }
+
+    fun PsiAnnotation?.getArrayAttributeAsPsiLiteral(attributeName: String?): Collection<PsiLiteral> {
+        return when (val attributeValue = this?.findAttributeValue(attributeName)) {
             is PsiArrayInitializerMemberValue -> getArrayAttributeAsPsiLiteral(attributeValue)
             is PsiLiteral -> listOf(attributeValue)
             else -> emptyList()
