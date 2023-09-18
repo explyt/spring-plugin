@@ -4,9 +4,9 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.DEPENDS_ON
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getMemberValues
-import com.esprito.util.EspritoPsiUtil.getAnnotationByParentAnnotationNameInHierarchy
+import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
+import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -44,8 +44,8 @@ class SpringDependsOnBeanInspection : AbstractBaseJavaLocalInspectionTool() {
         val service = SpringSearchService.getInstance(module.project)
         val beanNames = service.getAllBeanNames(module)
 
-        return if (MetaAnnotationUtil.isMetaAnnotated(member, setOf(DEPENDS_ON))) {
-            member.getAnnotationByParentAnnotationNameInHierarchy(DEPENDS_ON)
+        return if (member.isMetaAnnotatedBy(DEPENDS_ON)) {
+            member.getMetaAnnotation(DEPENDS_ON)
                 .getMemberValues("value").asSequence()
                 .filter {
                     !beanNames.contains(
