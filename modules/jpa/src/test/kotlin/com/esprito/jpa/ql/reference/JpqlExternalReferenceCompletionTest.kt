@@ -5,18 +5,18 @@ import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.codeInsight.TargetElementUtilBase
 import com.intellij.codeInsight.lookup.LookupElement
-import com.intellij.testFramework.TestDataPath
+import org.jetbrains.kotlin.test.TestMetadata
 import org.junit.Assert
 import org.junit.Ignore
 import java.io.File
 import java.util.*
 
-private const val TEST_DATA_PATH = "src/test/testdata/reference/external"
+private const val TEST_DATA_PATH = "reference/external"
 
 /**
  * Tests references completion
  */
-@TestDataPath(TEST_DATA_PATH)
+@TestMetadata(TEST_DATA_PATH)
 @Ignore
 abstract class JpqlExternalReferenceCompletionTest : EspritoJavaLightTestCase() {
     class Jakarta : JpqlExternalReferenceCompletionTest() {
@@ -31,7 +31,7 @@ abstract class JpqlExternalReferenceCompletionTest : EspritoJavaLightTestCase() 
         )
     }
 
-    override fun getTestDataPath() = TEST_DATA_PATH
+    override fun getTestDataPath() = super.getTestDataPath() + TEST_DATA_PATH
 
     fun testEntityFrom() = doTest()
     fun testFieldWhere() = doTest()

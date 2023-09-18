@@ -5,8 +5,12 @@ import com.intellij.openapi.roots.ContentEntry
 import com.intellij.openapi.roots.ModifiableRootModel
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.testFramework.LightProjectDescriptor
+import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 
+private const val TEST_DATA_PATH = "testdata/"
+
+@TestDataPath("\$CONTENT_ROOT/../../$TEST_DATA_PATH")
 abstract class EspritoJavaLightTestCase : LightJavaCodeInsightFixtureTestCase() {
 
     open val languageLevel = LanguageLevel.JDK_17

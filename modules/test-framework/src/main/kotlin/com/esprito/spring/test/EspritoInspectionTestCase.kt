@@ -11,7 +11,11 @@ import com.intellij.pom.java.LanguageLevel
 import com.intellij.testFramework.IdeaTestUtil
 import com.intellij.testFramework.JavaInspectionTestCase
 import com.intellij.testFramework.LightProjectDescriptor
+import com.intellij.testFramework.TestDataPath
 
+private const val TEST_DATA_PATH = "testdata/inspection/"
+
+@TestDataPath("\$CONTENT_ROOT/../../$TEST_DATA_PATH")
 abstract class EspritoInspectionTestCase : JavaInspectionTestCase() {
 
     open val languageLevel = LanguageLevel.JDK_17
@@ -30,6 +34,10 @@ abstract class EspritoInspectionTestCase : JavaInspectionTestCase() {
 
     fun doTest(tool: LocalInspectionTool) {
         doTest(getTestName(true), tool)
+    }
+
+    override fun getTestDataPath(): String {
+        return TEST_DATA_PATH
     }
 
     protected inner class EspritoProjectDescriptor : ProjectDescriptor(languageLevel) {

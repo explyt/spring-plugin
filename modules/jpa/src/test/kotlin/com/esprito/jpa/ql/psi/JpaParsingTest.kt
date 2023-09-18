@@ -40,7 +40,7 @@ class JpaParsingTest : ParsingTestCase("psi", "jpql", JpqlParserDefinition()) {
     fun testInsert() = doTest(true)
 
 
-    override fun getTestDataPath(): String = "src/test/testdata"
+    override fun getTestDataPath(): String = "testdata"
 
     override fun skipSpaces(): Boolean = true
 

@@ -3,16 +3,16 @@ package com.esprito.jpa.ql.reference
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.codeInsight.TargetElementUtilBase
-import com.intellij.testFramework.TestDataPath
+import org.jetbrains.kotlin.test.TestMetadata
 
-private const val TEST_DATA_PATH = "src/test/testdata/reference/internal/navigation"
+private const val TEST_DATA_PATH = "reference/internal/navigation"
 
 /**
  * Tests references from jpql to itself
  */
-@TestDataPath(TEST_DATA_PATH)
+@TestMetadata(TEST_DATA_PATH)
 class JpqlInternalReferenceNavigationTest : EspritoJavaLightTestCase() {
-    override fun getTestDataPath() = TEST_DATA_PATH
+    override fun getTestDataPath() = super.getTestDataPath() + TEST_DATA_PATH
 
     fun testAliasInSelect() = doTest()
     fun testAliasInWhere() = doTest()

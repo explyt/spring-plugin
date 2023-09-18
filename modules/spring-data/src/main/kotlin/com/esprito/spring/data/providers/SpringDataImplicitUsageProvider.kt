@@ -47,6 +47,7 @@ class SpringDataImplicitUsageProvider : ImplicitUsageProvider {
 
     override fun isImplicitRead(element: PsiElement): Boolean {
         if (element is PsiField) {
+            element.containingClass
             return element.isAnnotatedBy(IMPLICIT_FIELD_ANNOTATIONS)
         }
         return false

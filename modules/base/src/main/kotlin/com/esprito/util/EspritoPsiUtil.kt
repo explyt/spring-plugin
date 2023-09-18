@@ -44,15 +44,9 @@ object EspritoPsiUtil {
             it.qualifiedName != null && it.isMetaAnnotatedBy(annotation)
         } ?: false
 
-    fun PsiMember.getAnnotationByParentAnnotationNameInHierarchy(parentAnnotationNameInHierarchy: String): PsiAnnotation? =
-        this.annotations.first { psiAnnotation ->
-            psiAnnotation.qualifiedName == parentAnnotationNameInHierarchy
-                    || psiAnnotation.resolveAnnotationType()?.let { psiClass ->
-                MetaAnnotationUtil.isMetaAnnotatedInHierarchy(
-                    psiClass,
-                    setOf(parentAnnotationNameInHierarchy)
-                )
-            } ?: false
+    fun PsiMember.getMetaAnnotation(annotation: String): PsiAnnotation? =
+        this.annotations.first {
+            it.qualifiedName == annotation || it.resolveAnnotationType()?.isMetaAnnotatedBy(annotation) ?: false
         }
 
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {

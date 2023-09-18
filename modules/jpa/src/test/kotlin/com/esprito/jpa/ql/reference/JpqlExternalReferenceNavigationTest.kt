@@ -7,15 +7,15 @@ import com.intellij.codeInsight.TargetElementUtilBase
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiField
 import com.intellij.psi.util.elementType
-import com.intellij.testFramework.TestDataPath
+import org.jetbrains.kotlin.test.TestMetadata
 import java.io.File
 
-private const val TEST_DATA_PATH = "src/test/testdata/reference/external"
+private const val TEST_DATA_PATH = "reference/external"
 
 /**
  * Tests references from jpql to jpa entities
  */
-@TestDataPath(TEST_DATA_PATH)
+@TestMetadata(TEST_DATA_PATH)
 abstract class JpqlExternalReferenceNavigationTest : EspritoJavaLightTestCase() {
     class Jakarta : JpqlExternalReferenceNavigationTest() {
         override val libraries = arrayOf(
@@ -29,7 +29,7 @@ abstract class JpqlExternalReferenceNavigationTest : EspritoJavaLightTestCase() 
         )
     }
 
-    override fun getTestDataPath() = TEST_DATA_PATH
+    override fun getTestDataPath() = super.getTestDataPath() + TEST_DATA_PATH
 
     fun testEntityFrom() = doTest()
     fun testFieldWhere() = doTest()
