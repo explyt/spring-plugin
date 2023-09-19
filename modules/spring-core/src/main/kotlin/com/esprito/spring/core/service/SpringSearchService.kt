@@ -125,10 +125,10 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getAllComponentScanBeans(module: Module): Set<PsiClass> {
+    fun getAllComponentScanBeans(module: Module, annotation: String): Set<PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
-                searchBeanPsiClassesByAnnotation(module, SpringCoreClasses.COMPONENT_SCAN),
+                searchBeanPsiClassesByAnnotation(module, annotation),
                 UastModificationTracker.getInstance(project)
             )
         }

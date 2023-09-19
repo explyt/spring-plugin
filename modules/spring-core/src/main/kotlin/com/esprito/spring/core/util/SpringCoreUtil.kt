@@ -109,7 +109,11 @@ object SpringCoreUtil {
     }
 
     // TODO: value or basePackages
-    fun existComponentScan(module: Module): Boolean = SpringSearchService.getInstance(module.project).getAllComponentScanBeans(module).isNotEmpty()
+    fun existComponentScan(module: Module): Boolean =
+        SpringSearchService.getInstance(module.project)
+            .getAllComponentScanBeans(module, SpringCoreClasses.COMPONENT_SCAN)
+            .filter { !it.isAnnotationType }
+            .isNotEmpty()
 
     fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
         return resolveBeanNameByAnnotationNames(annotationPsiClasses.mapNotNull { it.qualifiedName })
@@ -158,30 +162,24 @@ object SpringCoreUtil {
         return value
     }
 
-
-    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean {
-        if (resolvedDeepPsiClass in targetClasses) {
-            // Bean[]
-            // Bean
-            return true
-        }
+    fun PsiType.resolveBeanClass(): PsiClass? {
         if (this !is PsiClassType) {
-            return false
+            // Bean[]
+            return resolvedDeepPsiClass
         }
         if (isCollection || isOptional) {
             // Collection<Bean>
             // Optional<Bean>
-            val genericPsiClass = parameters.firstOrNull()?.resolvedPsiClass ?: return false
-            return genericPsiClass in targetClasses
+            return parameters.firstOrNull()?.resolvedPsiClass
         }
-        if (isMap && parameterCount == 2 && parameters[0].isString) {
+        if (isMap && parameters.size == 2 && parameters[0].isString) {
             // Map<String, Bean>
-            val genericPsiClass = parameters[1].resolvedPsiClass ?: return false
-            return genericPsiClass in targetClasses
+            return parameters[1].resolvedPsiClass
         }
-        return false
+        // Bean
+        return resolve()
     }
 
-
+    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolvedPsiClass in targetClasses
 
 }

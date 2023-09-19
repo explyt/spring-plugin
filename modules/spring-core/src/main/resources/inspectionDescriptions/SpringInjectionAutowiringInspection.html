@@ -1,0 +1,57 @@
+<html>
+<body>
+<p>Reports autowiring problems on injection points of Spring beans
+    <a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/stereotype/Component.html">@Component</a>,
+    <a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/stereotype/Service.html">@Service</a>,
+    and so on.</p>
+
+<ul>
+    <li>More than one bean of 'concrete' type</li>
+    <li>No beans of 'concrete' type</li>
+    <li>No bean with qualifier</li>
+    <li>Incorrect usages of <code>@Autowired</code> on Spring bean constructors</li>
+    <li>Injected or autowired fields/methods in classes that are not valid Spring beans</li>
+</ul>
+
+<p><b>Example:</b></p>
+<pre>
+public interface FooInterface {...}
+  @Component public class FooBean implements FooInterface {...}
+  @Component public class OtherBean implements FooInterface {...}
+
+@Component
+public class MyComponent {
+	@Autowired
+	FooInterface foo;  // "Could not autowire. There is more than one bean of 'FooInterface' type.
+                     // Beans: fooBean(FooBean.java), otherBean(OtherBean.java)"
+}
+</pre>
+
+<p><b>Example:</b></p>
+<pre><code>
+@Component
+public class MyComponent {
+	@Autowired
+	public MyComponent(BarBean bean) {...} // reports 'Only one @Autowired constructor is allowed'
+
+	@Autowired
+	public MyComponent(FooBean bean) {...} // reports 'Only one @Autowired constructor is allowed'
+}
+
+@Component
+public class MyFactory {  // reports ' No matching @Autowired constructor'
+	public MyFactory(String str) {...}
+	public MyFactory(int count) {...}
+}
+</code></pre>
+
+<p><b>Example:</b></p>
+<pre><code>
+public class FooBeanClass {
+  @Autowired   // reports 'Autowired members must be defined in valid Spring beans: @Component, @Service, and so on'
+  ServiceBean bean;
+  }
+</code></pre>
+
+</body>
+</html>

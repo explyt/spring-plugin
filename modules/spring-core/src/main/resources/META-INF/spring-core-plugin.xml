@@ -63,16 +63,34 @@
         <languageInjectionContributor language="UAST"
                                       implementationClass="com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector"/>
 
-        <localInspection language="UAST" shortName="SpringEventListenerInspection"
-                         groupBundle="messages.SpringCoreBundle" groupKey="esprito.spring.common.notifications"
-                         bundle="messages.SpringCoreBundle" key="esprito.spring.inspection.method.eventListener"
-                         enabledByDefault="true" level="WARNING"
+        <localInspection language="UAST"
+                         shortName="SpringInjectionAutowiringInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.bean.autowired"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>>
+
+        <localInspection language="UAST"
+                         shortName="SpringEventListenerInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.method.eventListener"
+                         enabledByDefault="true"
+                         level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringEventListenerInspection"/>>
 
-        <localInspection language="UAST" shortName="SpringComponentScanInspection"
-                         groupBundle="messages.SpringCoreBundle" groupKey="esprito.spring.common.notifications"
-                         bundle="messages.SpringCoreBundle" key="esprito.spring.inspection.method.componentScan"
-                         enabledByDefault="true" level="WARNING"
+        <localInspection language="UAST"
+                         shortName="SpringComponentScanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.method.componentScan"
+                         enabledByDefault="true"
+                         level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringComponentScanInvalidPackageInspection"/>
 
         <localInspection language="UAST"
