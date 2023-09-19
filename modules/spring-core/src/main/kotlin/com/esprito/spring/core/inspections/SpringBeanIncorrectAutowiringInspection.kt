@@ -26,11 +26,7 @@ import java.util.*
 
 class SpringBeanIncorrectAutowiringInspection: AbstractBaseJavaLocalInspectionTool() {
 
-    private val stringQualifiers = listOf(
-        SpringCoreClasses.QUALIFIER,
-        SpringCoreClasses.JAKARTA_NAMED,
-        SpringCoreClasses.JAVAX_NAMED
-    )
+    private val stringQualifiers = listOf(SpringCoreClasses.QUALIFIER) + JavaEeClasses.NAMED.allFqns
 
     private val stringInjects = listOf(
         JavaEeClasses.INJECT.allFqns,
@@ -217,8 +213,8 @@ class SpringBeanIncorrectAutowiringInspection: AbstractBaseJavaLocalInspectionTo
 
         val psiLiteralInheritors =
             getAnnotationValue(classInheritors, SpringCoreClasses.QUALIFIER) +
-                    getAnnotationValue(classInheritors, SpringCoreClasses.JAKARTA_NAMED) +
-                    getAnnotationValue(classInheritors, SpringCoreClasses.JAVAX_NAMED) +
+                    getAnnotationValue(classInheritors, JavaEeClasses.NAMED.jakarta) +
+                    getAnnotationValue(classInheritors, JavaEeClasses.NAMED.javax) +
                     getAnnotationValue(classInheritors, SpringCoreClasses.COMPONENT) +
                     getBeanName(classInheritors)
 
@@ -259,7 +255,7 @@ class SpringBeanIncorrectAutowiringInspection: AbstractBaseJavaLocalInspectionTo
         .mapNotNull { AnnotationUtil.getStringAttributeValue(it, "value") }
         .filter { it.isNotBlank() }
         .toSet()
-}
+    }
 
     private fun getBeanName(classInheritors: List<PsiClass>): Set<String> =
         classInheritors

@@ -19,14 +19,6 @@ object SpringCoreClasses {
 
     const val COMPONENT = "org.springframework.stereotype.Component"
 
-    const val JAKARTA_RESOURCE = "jakarta.annotation.Resource"
-    const val JAKARTA_INJECT = "jakarta.inject.Inject"
-    const val JAKARTA_NAMED = "jakarta.inject.Named"
-
-    const val JAVAX_RESOURCE = "javax.annotation.Resource"
-    const val JAVAX_INJECT = "javax.inject.Inject"
-    const val JAVAX_NAMED = "javax.inject.Named"
-
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"
     const val PROPERTY_SOURCE = "org.springframework.context.annotation.PropertySource"
