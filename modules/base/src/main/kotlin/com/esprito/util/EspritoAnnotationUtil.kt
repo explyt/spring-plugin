@@ -1,15 +1,23 @@
 package com.esprito.util
 
-import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.PsiAnnotationMemberValue
-import com.intellij.psi.PsiArrayInitializerMemberValue
-import com.intellij.psi.PsiLiteral
+import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
+import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.intellij.psi.*
 import org.apache.commons.lang.StringUtils
 
 object EspritoAnnotationUtil {
 
     fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributesName: Collection<String>): Collection<PsiLiteral> {
         return attributesName.flatMap { annotation.getArrayAttributeAsPsiLiteral(it) }
+    }
+
+    fun getAnnotationMemberValues(member: PsiMember?, targetAnnotation: String): Collection<PsiAnnotationMemberValue>? {
+        if (member == null || !member.isMetaAnnotatedBy(targetAnnotation)) {
+            return null
+        }
+
+        return member.getMetaAnnotation(targetAnnotation)
+            .getMemberValues("value")
     }
 
     fun PsiAnnotation?.getMemberValues(attributeName: String?): Collection<PsiAnnotationMemberValue> {

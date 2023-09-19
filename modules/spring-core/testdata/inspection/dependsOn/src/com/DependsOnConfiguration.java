@@ -29,7 +29,7 @@ public class DependsOnConfiguration {
 class DependentOnABean {}
 
 @Component
-@DependsOn({"a", "b"})//TODO:, E.CONST_TO_VALID_BEAN})
+@DependsOn({"a", "b", E.CONST_TO_VALID_BEAN})
 class DependentOnMultipleBeans {}
 //endregion
 
@@ -45,7 +45,7 @@ class DependentOnMultipleBeansErr {}
 
 @Component
 class E implements I {
-    public static final String CONST_TO_VALID_BEAN = "b";
-    public static final String CONST_TO_NON_EXISTING_BEAN = "nope";
+    public static final java.lang.String CONST_TO_VALID_BEAN = "b";
+    public static final java.lang.String CONST_TO_NON_EXISTING_BEAN = "nope";
 }
 
