@@ -9,13 +9,23 @@ object SpringCoreClasses {
 
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val BEAN = "org.springframework.context.annotation.Bean"
-    const val VALUE = "org.springframework.beans.factory.annotation.Value"
-    const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
     const val CONFIGURATION = "org.springframework.context.annotation.Configuration"
     const val DEPENDS_ON = "org.springframework.context.annotation.DependsOn"
+    const val PRIMARY = "org.springframework.context.annotation.Primary"
+
+    const val VALUE = "org.springframework.beans.factory.annotation.Value"
+    const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
+    const val QUALIFIER = "org.springframework.beans.factory.annotation.Qualifier"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
-    const val QUALIFIER = "org.springframework.beans.factory.annotation.Qualifier"
+
+    const val JAKARTA_RESOURCE = "jakarta.annotation.Resource"
+    const val JAKARTA_INJECT = "jakarta.inject.Inject"
+    const val JAKARTA_NAMED = "jakarta.inject.Named"
+
+    const val JAVAX_RESOURCE = "javax.annotation.Resource"
+    const val JAVAX_INJECT = "javax.inject.Inject"
+    const val JAVAX_NAMED = "javax.inject.Named"
 
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"

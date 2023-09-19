@@ -34,6 +34,11 @@ object EspritoPsiUtil {
     fun PsiModifierListOwner.isMetaAnnotatedBy(annotation: String) =
         MetaAnnotationUtil.isMetaAnnotated(this, listOf(annotation))
 
+    fun PsiModifierListOwner.getMetaAnnotation(annotation: String): PsiAnnotation? =
+        this.annotations.first {
+            it.qualifiedName == annotation || it.resolveAnnotationType()?.isMetaAnnotatedBy(annotation) ?: false
+        }
+
     fun PsiMember.inClassAnnotatedBy(annotation: String, flags: Int = 0) =
         this.containingClass?.let {
             it.qualifiedName != null && it.isAnnotatedBy(annotation, flags)
@@ -43,11 +48,6 @@ object EspritoPsiUtil {
         this.containingClass?.let {
             it.qualifiedName != null && it.isMetaAnnotatedBy(annotation)
         } ?: false
-
-    fun PsiMember.getMetaAnnotation(annotation: String): PsiAnnotation? =
-        this.annotations.first {
-            it.qualifiedName == annotation || it.resolveAnnotationType()?.isMetaAnnotatedBy(annotation) ?: false
-        }
 
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
         return this == baseClass || this.isInheritor(baseClass, checkDeep)
@@ -77,6 +77,5 @@ object EspritoPsiUtil {
 
     val PsiMember.returnPsiClass: PsiClass?
         get() = this.childrenOfType<PsiTypeElement>().firstOrNull()?.type?.resolvedPsiClass
-
 
 }

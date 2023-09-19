@@ -3,6 +3,7 @@ package com.esprito.util
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.psi.*
+import com.intellij.psi.util.childrenOfType
 import org.apache.commons.lang.StringUtils
 
 object EspritoAnnotationUtil {
@@ -32,6 +33,7 @@ object EspritoAnnotationUtil {
         return when (val attributeValue = this?.findAttributeValue(attributeName)) {
             is PsiArrayInitializerMemberValue -> getArrayAttributeAsPsiLiteral(attributeValue)
             is PsiLiteral -> listOf(attributeValue)
+            is PsiReferenceExpression -> getReferenceValue(attributeValue)
             else -> emptyList()
         }
     }
@@ -109,4 +111,7 @@ object EspritoAnnotationUtil {
             ?.flatMap { processLiteralValue(it) } ?: emptyList()
     }
 
+    fun getReferenceValue(attributeValue: PsiReferenceExpression): Collection<PsiLiteral> {
+       return attributeValue.reference?.resolve()?.childrenOfType() ?: emptyList()
+    }
 }
