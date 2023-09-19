@@ -3,9 +3,7 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.DEPENDS_ON
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.util.EspritoAnnotationUtil.getMemberValues
-import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
@@ -44,26 +42,21 @@ class SpringDependsOnBeanInspection : AbstractBaseJavaLocalInspectionTool() {
         val service = SpringSearchService.getInstance(module.project)
         val beanNames = service.getAllBeanNames(module)
 
-        return if (member.isMetaAnnotatedBy(DEPENDS_ON)) {
-            member.getMetaAnnotation(DEPENDS_ON)
-                .getMemberValues("value").asSequence()
-                .filter {
-                    !beanNames.contains(
-                        AnnotationUtil.getStringAttributeValue(it)
-                    )
-                }
-                .map {
-                    manager.createProblemDescriptor(
-                        it,
-                        it.textRangeInParent.shiftLeft(it.textRangeInParent.startOffset),
-                        SpringCoreBundle.message("esprito.spring.inspection.bean.dependsOn"),
-                        ProblemHighlightType.ERROR,
-                        isOnTheFly
-                    )
-                }.toList().toTypedArray()
-        } else {
-            null
-        }
+        return getAnnotationMemberValues(member, DEPENDS_ON)?.asSequence()
+            ?.filter {
+                !beanNames.contains(
+                    AnnotationUtil.getStringAttributeValue(it)
+                )
+            }
+            ?.map {
+                manager.createProblemDescriptor(
+                    it,
+                    it.textRangeInParent.shiftLeft(it.textRangeInParent.startOffset),
+                    SpringCoreBundle.message("esprito.spring.inspection.bean.dependsOn"),
+                    ProblemHighlightType.GENERIC_ERROR,
+                    isOnTheFly
+                )
+            }?.toList()?.toTypedArray()
     }
 
 }
