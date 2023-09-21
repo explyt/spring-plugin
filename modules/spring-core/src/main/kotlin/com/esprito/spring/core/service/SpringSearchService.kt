@@ -14,9 +14,12 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiReference
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.uast.UastModificationTracker
@@ -120,6 +123,15 @@ class SpringSearchService(private val project: Project) {
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
                     return@run annotations
                 },
+                UastModificationTracker.getInstance(project)
+            )
+        }
+    }
+
+    fun getAllReferencesToElement(element: PsiElement): Set<PsiReference> {
+        return cachedValuesManager.getCachedValue(element) {
+            CachedValueProvider.Result(
+                ReferencesSearch.search(element).toSet(),
                 UastModificationTracker.getInstance(project)
             )
         }

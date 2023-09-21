@@ -1,6 +1,7 @@
 package com.esprito.spring.core.references
 
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
+import com.esprito.util.EspritoPsiUtil
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -21,6 +22,7 @@ class EspritoMethodReference(element: PsiElement, private val methodName: String
         val aClass = getRelatedClass() ?: return null
 
         return aClass.allMethods.asSequence()
+            .filter { EspritoPsiUtil.fitsForReference(it) }
             .filter { it.name == methodName }
             .firstOrNull()
     }
@@ -28,12 +30,13 @@ class EspritoMethodReference(element: PsiElement, private val methodName: String
     override fun getVariants(): Array<Any> {
         val aClass = getRelatedClass() ?: return emptyArray()
 
-        return aClass.allMethods
+        return aClass.allMethods.asSequence()
+            .filter { EspritoPsiUtil.fitsForReference(it) }
             .map { method ->
                 LookupElementBuilder.create(method.name)
                     .withIcon(AllIcons.Nodes.MethodReference)
                     .withTypeText(method.containingFile?.name)
-            }.toTypedArray()
+            }.toList().toTypedArray()
     }
 
     private fun getRelatedClass(): PsiClass? {

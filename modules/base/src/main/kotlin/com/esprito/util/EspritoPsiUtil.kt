@@ -50,12 +50,12 @@ object EspritoPsiUtil {
             it.qualifiedName != null && it.isMetaAnnotatedBy(annotation)
         } ?: false
 
+    fun fitsForReference(method: PsiMethod) =
+        !method.hasParameters()
+                && (method.containingFile?.name != "Object.class")
+
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
         return this == baseClass || this.isInheritor(baseClass, checkDeep)
-    }
-
-    fun PsiClass.addLast(newMethod: PsiMethod): PsiMethod {
-        return addAfter(newMethod, methods.lastOrNull()) as PsiMethod
     }
 
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
