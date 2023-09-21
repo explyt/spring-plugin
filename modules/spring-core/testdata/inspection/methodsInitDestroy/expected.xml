@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>MethodsInitDestroyConfiguration.java</file>
+        <line>30</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.MethodsInitDestroyConfiguration com.I i6()" />
+        <problem_class id="SpringUnknownBeanMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find method</description>
+        <highlighted_element>NOT_EXISTING_METHOD</highlighted_element>
+        <language>JAVA</language>
+        <offset>24</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>MethodsInitDestroyConfiguration.java</file>
+        <line>34</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.MethodsInitDestroyConfiguration com.B b2()" />
+        <problem_class id="SpringUnknownBeanMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find method</description>
+        <highlighted_element>NOT_EXISTING_METHOD</highlighted_element>
+        <language>JAVA</language>
+        <offset>21</offset>
+        <length>19</length>
+    </problem>
+
+    <problem>
+        <file>MethodsInitDestroyConfiguration.java</file>
+        <line>35</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.MethodsInitDestroyConfiguration com.B b3()" />
+        <problem_class id="SpringUnknownBeanMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find method</description>
+        <highlighted_element>&quot;foo&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>24</offset>
+        <length>5</length>
+    </problem>
+
+</problems>

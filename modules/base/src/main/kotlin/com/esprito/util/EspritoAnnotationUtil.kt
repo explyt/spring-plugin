@@ -12,13 +12,17 @@ object EspritoAnnotationUtil {
         return attributesName.flatMap { annotation.getArrayAttributeAsPsiLiteral(it) }
     }
 
-    fun getAnnotationMemberValues(member: PsiMember?, targetAnnotation: String): Collection<PsiAnnotationMemberValue>? {
+    fun getAnnotationMemberValues(
+        member: PsiMember?,
+        targetAnnotation: String,
+        attributeName: String = "value"
+    ): Collection<PsiAnnotationMemberValue>? {
         if (member == null || !member.isMetaAnnotatedBy(targetAnnotation)) {
             return null
         }
 
         return member.getMetaAnnotation(targetAnnotation)
-            .getMemberValues("value")
+            .getMemberValues(attributeName)
     }
 
     fun PsiAnnotation?.getMemberValues(attributeName: String?): Collection<PsiAnnotationMemberValue> {

@@ -4,6 +4,7 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.DEPENDS_ON
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
+import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
@@ -51,7 +52,7 @@ class SpringDependsOnBeanInspection : AbstractBaseJavaLocalInspectionTool() {
             ?.map {
                 manager.createProblemDescriptor(
                     it,
-                    it.textRangeInParent.shiftLeft(it.textRangeInParent.startOffset),
+                    it.getHighlightRange(),
                     SpringCoreBundle.message("esprito.spring.inspection.bean.dependsOn"),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly

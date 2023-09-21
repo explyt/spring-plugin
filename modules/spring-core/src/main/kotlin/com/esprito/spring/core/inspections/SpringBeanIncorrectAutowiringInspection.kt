@@ -3,7 +3,7 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.inspections.quick_fix.AddQualifierQuickFix
+import com.esprito.spring.core.inspections.quickfix.AddQualifierQuickFix
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanClass
