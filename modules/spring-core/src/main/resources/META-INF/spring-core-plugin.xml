@@ -47,6 +47,8 @@
                                   implementation="com.esprito.spring.core.completion.yaml.SpringYamlConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.core.properties.UastConfigurationPropertyReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.core.references.contributors.UastMethodReferenceContributor"/>
         <lang.documentationProvider language="Properties"
                                     order="first"
                                     implementationClass="com.esprito.spring.core.properties.SpringPropertiesDocumentationProvider"/>
@@ -102,6 +104,16 @@
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.esprito.spring.core.inspections.SpringDependsOnBeanInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringUnknownBeanMethodInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.bean.method"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.SpringUnknownBeanMethodInspection"/>
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>

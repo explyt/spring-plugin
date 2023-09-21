@@ -3,6 +3,7 @@ package com.esprito.util
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.isInheritorOf
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 
@@ -52,6 +53,12 @@ object EspritoPsiUtil {
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
         return this == baseClass || this.isInheritor(baseClass, checkDeep)
     }
+
+    fun PsiClass.addLast(newMethod: PsiMethod): PsiMethod {
+        return addAfter(newMethod, methods.lastOrNull()) as PsiMethod
+    }
+
+    fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
 
     val PsiClass.isOrdinaryClass: Boolean
         get() = !isInterface && !isEnum && !isAnnotationType
