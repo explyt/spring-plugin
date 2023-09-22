@@ -8,13 +8,10 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
-import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanNameByPsiAnnotations
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -46,7 +43,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         } else if (processor.isFieldOrAutowiredParameter()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                .setTargets(NotNullLazyValue.lazy { processor.getBeanComponentsTargets() })
+                .setTargets(NotNullLazyValue.lazy { processor.getBeanDeclarations() })
                 .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
@@ -144,59 +141,22 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return false
         }
 
-        fun getBeanComponentsTargets(): Collection<PsiElement> {
+        fun getBeanDeclarations(): Collection<PsiElement> {
             val psiField = element.parentOfType<PsiField>()
             if (psiField != null) {
                 val strongBeanName = psiField.resolveBeanName
                 val beanName = strongBeanName ?: psiField.name
                 val beanPsiClass = psiField.type.resolveBeanPsiClass
 
-                return resolvedBeanTargets(strongBeanName, beanName, beanPsiClass)
+                return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass)
             }
             val psiParameter = element.parentOfType<PsiParameter>() ?: return emptyList()
             val strongBeanName = psiParameter.resolveBeanName
             val beanName = strongBeanName ?: psiParameter.name
             val beanPsiClass = psiParameter.type.resolveBeanPsiClass
 
-            return resolvedBeanTargets(strongBeanName, beanName, beanPsiClass)
+            return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass)
         }
-
-        private fun resolvedBeanTargets(strongBeanName: String?, beanName: String, beanPsiClass: PsiClass?): List<PsiElement> {
-            val componentPsiBeans = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
-            val methodsPsiBeans = springSearchService.getComponentBeanPsiMethods(module)
-
-            val byNameBeanMethods = methodsPsiBeans.filter { it.resolveBeanName == beanName }
-            val byNameComponents = componentPsiBeans.filter { it.name == beanName }.map { it.psiClass }
-            val resultByName = (byNameBeanMethods + byNameComponents).filter {
-                if (beanPsiClass == null) {
-                    return@filter true
-                }
-                val targetClass = when (it) {
-                    is PsiMethod -> it.returnType?.resolvedPsiClass
-                    is PsiClass -> it
-                    else -> null
-                } ?: return@filter true
-
-                return@filter targetClass.isEqualOrInheritor(beanPsiClass)
-            }
-            if (strongBeanName != null || resultByName.size == 1) {
-                return resultByName
-            }
-
-            if (beanPsiClass == null) {
-                return resultByName
-            }
-
-            val byTypeBeanMethods = methodsPsiBeans.filter { it.returnPsiClass?.isEqualOrInheritor(beanPsiClass) == true }
-            val byTypeComponents = componentPsiBeans.filter { it.psiClass.isEqualOrInheritor(beanPsiClass) }.map { it.psiClass }
-            val resultByType = byTypeBeanMethods + byTypeComponents
-
-            if (resultByName.isNotEmpty()) {
-                return resultByName.filter { it in resultByType }
-            }
-            return resultByType
-        }
-
 
         private fun findTargetClass(): PsiClass? {
             if (element !is PsiIdentifier) {
@@ -213,15 +173,12 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             }
 
             return element.parentOfType<PsiMethod>()?.resolveBeanName  // method annotated by Bean
-                ?: element.parentOfType<PsiClass>()?.resolveBeanNameByPsiAnnotations(
-                    SpringSearchService.getInstance(module.project).getComponentClassAnnotations(module)
-                ) // class annotated as Component
+                ?: element.parentOfType<PsiClass>()?.resolveBeanName(module) // class annotated as Component
         }
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             val targetClass = findTargetClass() ?: return emptyList()
             val targetClasses = targetClass.supers.toSet() + targetClass
-            val targetBeanName = findTargetBeanName()
 
             val allAutowiredAnnotations = springSearchService.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
@@ -253,7 +210,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 if (beanName == null) {
                     return@filter true
                 }
-                val resolvedBeanTargets = resolvedBeanTargets(strongBeanName, beanName, beanPsiClass)
+                val resolvedBeanTargets = springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass)
                 return@filter uParent.javaPsi in resolvedBeanTargets
             }
 

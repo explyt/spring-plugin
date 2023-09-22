@@ -25,7 +25,7 @@ object EspritoAnnotationUtil {
             .getMemberValues(attributeName)
     }
 
-    fun PsiAnnotation?.getMemberValues(attributeName: String?): Collection<PsiAnnotationMemberValue> {
+    fun PsiAnnotation?.getMemberValues(attributeName: String): Collection<PsiAnnotationMemberValue> {
         return when (val attributeValue = this?.findAttributeValue(attributeName)) {
             is PsiArrayInitializerMemberValue -> attributeValue.initializers.toList()
             is PsiAnnotationMemberValue -> listOf(attributeValue)

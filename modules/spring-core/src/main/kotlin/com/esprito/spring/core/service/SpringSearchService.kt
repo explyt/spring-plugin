@@ -5,9 +5,10 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
-import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanNameByPsiAnnotations
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -104,7 +105,7 @@ class SpringSearchService(private val project: Project) {
         return annotationPsiClasses.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
-            .map { PsiBean(it.resolveBeanNameByPsiAnnotations(annotationPsiClasses), it) }
+            .map { PsiBean(it.resolveBeanName(module), it) }
             .toSet()
     }
 
@@ -122,7 +123,7 @@ class SpringSearchService(private val project: Project) {
                     val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
                     return@run annotations
-                },
+                }.toSet(),
                 UastModificationTracker.getInstance(project)
             )
         }
@@ -158,6 +159,43 @@ class SpringSearchService(private val project: Project) {
             )
         }
     }
+
+    fun findBeanDeclarations(module: Module, byBeanName: String, forcedBeanName: String? = byBeanName, byBeanType: PsiClass? = null): List<PsiElement> {
+        val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
+        val methodsPsiBeans = getComponentBeanPsiMethods(module)
+
+        val byNameBeanMethods = methodsPsiBeans.filter { it.resolveBeanName == byBeanName }
+        val byNameComponents = componentPsiBeans.filter { it.name == byBeanName }.map { it.psiClass }
+        val resultByName = (byNameBeanMethods + byNameComponents).filter {
+            if (byBeanType == null) {
+                return@filter true
+            }
+            val targetClass = when (it) {
+                is PsiMethod -> it.returnType?.resolvedPsiClass
+                is PsiClass -> it
+                else -> null
+            } ?: return@filter true
+
+            return@filter targetClass.isEqualOrInheritor(byBeanType)
+        }
+        if (forcedBeanName != null || resultByName.size == 1) {
+            return resultByName
+        }
+
+        if (byBeanType == null) {
+            return resultByName
+        }
+
+        val byTypeBeanMethods = methodsPsiBeans.filter { it.returnPsiClass?.isEqualOrInheritor(byBeanType) == true }
+        val byTypeComponents = componentPsiBeans.filter { it.psiClass.isEqualOrInheritor(byBeanType) }.map { it.psiClass }
+        val resultByType = byTypeBeanMethods + byTypeComponents
+
+        if (resultByName.isNotEmpty()) {
+            return resultByName.filter { it in resultByType }
+        }
+        return resultByType
+    }
+
 
     companion object {
         fun getInstance(project: Project): SpringSearchService = project.service()
