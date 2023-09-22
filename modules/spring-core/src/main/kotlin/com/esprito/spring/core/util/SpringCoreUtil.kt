@@ -5,8 +5,8 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
-import com.esprito.spring.core.service.PsiBean
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isCollection
 import com.esprito.util.EspritoPsiUtil.isMap
 import com.esprito.util.EspritoPsiUtil.isOptional
@@ -26,6 +26,7 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.uast.toUElement
+import java.util.*
 
 object SpringCoreUtil {
 
@@ -115,14 +116,20 @@ object SpringCoreUtil {
             .filter { !it.isAnnotationType }
             .isNotEmpty()
 
-    fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
-        return resolveBeanNameByAnnotationNames(annotationPsiClasses.mapNotNull { it.qualifiedName })
+    fun PsiClass.getBeanName(): String? =
+        name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
+
+    fun PsiClass.resolveBeanName(module: Module): String {
+        return resolveBeanNameByPsiAnnotations(
+            SpringSearchService.getInstance(module.project).getComponentClassAnnotations(module)
+        )
     }
 
-    fun PsiClass.resolveBeanNameByAnnotationNames(annotationNames: Collection<String>): String {
+    fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
+        val annotationNames = annotationPsiClasses.mapNotNull { it.qualifiedName }
         // TODO: add search for Qualifier, Named, Resource
         return this.resolveBeanNameByAnnotations(annotationNames)
-            ?: PsiBean.getBeanName(name)
+            ?: getBeanName()
             ?: throw IllegalArgumentException("Illegal bean $this")
     }
 
@@ -154,12 +161,8 @@ object SpringCoreUtil {
         }
 
     private fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
-        val annotation = annotations.firstOrNull { it.qualifiedName in annotationNames } ?: return null
-        val value = AnnotationUtil.getStringAttributeValue(annotation, "value")
-        if (value.isNullOrEmpty()) {
-            return null
-        }
-        return value
+        val annotation = getMetaAnnotation(annotationNames) ?: return null
+        return AnnotationUtil.getStringAttributeValue(annotation, "value")?.takeIf { it.isNotEmpty() }
     }
 
     fun PsiType.resolveBeanClass(): PsiClass? {

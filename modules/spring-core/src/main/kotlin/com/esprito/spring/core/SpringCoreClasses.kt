@@ -16,8 +16,13 @@ object SpringCoreClasses {
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
     const val QUALIFIER = "org.springframework.beans.factory.annotation.Qualifier"
+    const val LOOKUP = "org.springframework.beans.factory.annotation.Lookup"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
+
+    const val CACHEABLE = "org.springframework.cache.annotation.Cacheable"
+
+    const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
 
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"

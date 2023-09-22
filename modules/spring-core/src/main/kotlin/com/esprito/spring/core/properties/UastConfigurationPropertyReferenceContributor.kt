@@ -26,7 +26,7 @@ class ConfigurationPropertyReferenceProvider : UastInjectionHostReferenceProvide
     ): Array<PsiReference> {
         val expression = uExpression as? ULiteralExpression ?: return PsiReference.EMPTY_ARRAY
         val uAnnotation = expression.getParentOfType<UAnnotation>() ?: return PsiReference.EMPTY_ARRAY
-        if (SpringCoreClasses.VALUE != uAnnotation.qualifiedName) {
+        if (SpringCoreClasses.VALUE != uAnnotation.qualifiedName) { //TODO: search for meta annotations
             return PsiReference.EMPTY_ARRAY
         }
         val valueText = uAnnotation.findDeclaredAttributeValue("value")?.evaluateString()
