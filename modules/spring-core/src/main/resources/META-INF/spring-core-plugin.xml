@@ -99,6 +99,16 @@
                          implementationClass="com.esprito.spring.core.inspections.SpringComponentScanInvalidPackageInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringLookupBeanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.bean.lookup"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.SpringLookupBeanInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringDependsOnBeanInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupKey="esprito.spring.common.notifications"

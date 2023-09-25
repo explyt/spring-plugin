@@ -45,10 +45,11 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getAllBeanNames(module: Module): Set<String> {
+    fun getAllBeanByNames(module: Module): Map<String, List<PsiBean>> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
-                searchAllBeanClasses(module).map { it.name }.toSet(),
+                searchAllBeanClasses(module)
+                    .groupBy { it.name },
                 UastModificationTracker.getInstance(project)
             )
         }

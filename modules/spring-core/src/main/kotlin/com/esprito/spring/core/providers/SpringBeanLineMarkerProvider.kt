@@ -80,7 +80,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         private fun dependsOnIncorrectBean(member: PsiMember?): Boolean {
-            val beanNames = springSearchService.getAllBeanNames(module)
+            val beanNames = springSearchService.getAllBeanByNames(module)
 
             return getAnnotationMemberValues(member, SpringCoreClasses.DEPENDS_ON)
                 ?.any {

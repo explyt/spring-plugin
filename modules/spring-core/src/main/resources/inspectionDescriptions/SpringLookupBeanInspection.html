@@ -1,0 +1,25 @@
+<html>
+<head>
+    <title>Lookup Inspection</title></head>
+<body>
+<p>Reports incorrect bean references in the <code>value</code> parameter of the
+    <code>@Lookup</code>annotation.</p>
+
+<p><b>Example:</b></p>
+<pre><code>
+  @Component public class FooBean {...}
+  @Component public class OtherBean {...}
+
+  @Component public class MyComponent {
+  @Lookup("fooBean")
+  public FooBean fooBean() {...}
+
+  @Lookup("fooBean") // reports "reports "Expected bean of 'OtherBean' type but found 'FooBean'"
+  public OtherBean otherBean() {...}
+
+  @Lookup("unknown") // reports "Cannot resolve bean 'unknown'"
+  public OtherBean fooBean() {...}
+  }
+</code></pre>
+</body>
+</html>
