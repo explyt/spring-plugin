@@ -41,7 +41,7 @@ class SpringDependsOnBeanInspection : AbstractBaseJavaLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val module = ModuleUtilCore.findModuleForPsiElement(member) ?: return null
         val service = SpringSearchService.getInstance(module.project)
-        val beanNames = service.getAllBeanNames(module)
+        val beanNames = service.getAllBeanByNames(module)
 
         return getAnnotationMemberValues(member, DEPENDS_ON)?.asSequence()
             ?.filter {
@@ -53,7 +53,7 @@ class SpringDependsOnBeanInspection : AbstractBaseJavaLocalInspectionTool() {
                 manager.createProblemDescriptor(
                     it,
                     it.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.bean.dependsOn"),
+                    SpringCoreBundle.message("esprito.spring.inspection.bean.dependsOn.incorrect"),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly
                 )
