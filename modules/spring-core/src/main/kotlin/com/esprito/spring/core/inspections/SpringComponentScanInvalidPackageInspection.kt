@@ -1,13 +1,17 @@
 package com.esprito.spring.core.inspections
 
 import com.esprito.spring.core.SpringCoreBundle
+import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
+import com.esprito.spring.core.util.PsiAnnotationUtils
 import com.esprito.spring.core.util.PsiPackagesSearcher
 import com.esprito.util.EspritoAnnotationUtil
 import com.intellij.codeInspection.*
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 
 class SpringComponentScanInvalidPackageInspection : AbstractBaseJavaLocalInspectionTool() {
@@ -16,15 +20,34 @@ class SpringComponentScanInvalidPackageInspection : AbstractBaseJavaLocalInspect
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        if (!aClass.hasAnnotation(COMPONENT_SCAN)) return null
+        if (ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES.stream().noneMatch { aClass.hasAnnotation(it) }) return null
 
         val problems = mutableListOf<ProblemDescriptor>()
 
         aClass.annotations
-            .filter { annotation -> annotation.hasQualifiedName(COMPONENT_SCAN) }
+            .filter { annotation -> ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES.contains(annotation.qualifiedName) }
             .forEach { annotation ->
+                val attributesName =
+                    when (annotation.qualifiedName) {
+                        COMPONENT_SCAN -> {
+                            setOf(
+                                "value",
+                                "basePackages",
+                            )
+                        }
+
+                        SpringCoreClasses.SPRING_BOOT_APPLICATION -> {
+                            setOf(
+                                "scanBasePackages"
+                            )
+                        }
+
+                        else -> {
+                            emptySet()
+                        }
+                    }
                 val attributesAsPsiLiteral =
-                    EspritoAnnotationUtil.getArrayAttributeAsPsiLiteral(annotation, setOf("value", "basePackages"))
+                    EspritoAnnotationUtil.getArrayAttributeAsPsiLiteral(annotation, attributesName)
 
                 // if countOfPackagesFound = 0 than we create only 1 problem
                 var countOfPackagesFound = 0
@@ -83,12 +106,8 @@ class SpringComponentScanInvalidPackageInspection : AbstractBaseJavaLocalInspect
                     } else {
                         problems += currentProblems
                     }
-
                 }
-
-
             }
-
 
         return problems.toTypedArray()
     }

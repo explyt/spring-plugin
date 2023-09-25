@@ -42,7 +42,7 @@ object SpringCoreClasses {
 
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
 
-    val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN)
+    val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN, SPRING_BOOT_APPLICATION)
 
     const val CLASSPATH_PREFIX = "classpath:"
 

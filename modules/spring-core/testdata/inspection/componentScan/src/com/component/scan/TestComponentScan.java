@@ -1,7 +1,25 @@
 package com.component.scan;
 
 import org.springframework.context.annotation.ComponentScan;
-
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+@SpringBootApplication(scanBasePackages = "a.1.3")
+@SpringBootApplication(scanBasePackages = "com.1.3")
+@SpringBootApplication(scanBasePackages = "com.1.4")
+@SpringBootApplication(scanBasePackages = "com.1.3.")
+@SpringBootApplication(scanBasePackages = "com.1.3.3")
+@SpringBootApplication(scanBasePackages = "com.?.3")
+@SpringBootApplication(scanBasePackages = "com.?.?")
+@SpringBootApplication(scanBasePackages = "*.?.?")
+@SpringBootApplication(scanBasePackages = "*.1.3")
+@SpringBootApplication(scanBasePackages = "*.1.3.")
+@SpringBootApplication(scanBasePackages = "com.2.*")
+@SpringBootApplication(scanBasePackages = "com.2.??")
+@SpringBootApplication(scanBasePackages = "com.2.a")
+@SpringBootApplication(scanBasePackages = "com.?.4")
+@SpringBootApplication("com.1.3")
+@SpringBootApplication(scanBasePackages = "com.?7.?")
+@SpringBootApplication({"com.2.4", "com.?.?", "com.2.6"})
+@SpringBootApplication(scanBasePackages = {"com.2.4", "com.?.?", "com.2.6"})
 @ComponentScan(basePackages = "a.1.3")
 @ComponentScan(basePackages = "com.1.3")
 @ComponentScan(basePackages = "com.1.4")
@@ -18,7 +36,7 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan(basePackages = "com.?.4")
 @ComponentScan("com.1.3")
 @ComponentScan(basePackages = "com.?7.?")
-@ComponentScan({"com.2.4","com.?.?","com.2.6" })
-@ComponentScan(basePackages = {"com.2.4","com.?.?","com.2.6" })
+@ComponentScan({"com.2.4", "com.?.?", "com.2.6"})
+@ComponentScan(basePackages = {"com.2.4", "com.?.?", "com.2.6"})
 public class TestComponentScan {
 }
