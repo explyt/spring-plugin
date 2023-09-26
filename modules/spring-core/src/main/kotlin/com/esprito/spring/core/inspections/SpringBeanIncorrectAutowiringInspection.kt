@@ -7,8 +7,8 @@ import com.esprito.spring.core.inspections.quickfix.AddQualifierQuickFix
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.getBeanName
-import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanClass
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
+import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoAnnotationUtil.getArrayAttributeAsPsiLiteral
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
@@ -132,7 +132,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
         if (element is PsiVariable) {
             val psiType = element.type
-            val resolvedPsiClass = psiType.resolveBeanClass() ?: return ProblemDescriptor.EMPTY_ARRAY
+            val resolvedPsiClass = psiType.resolveBeanPsiClass ?: return ProblemDescriptor.EMPTY_ARRAY
             val nameClass = resolvedPsiClass.name ?: return ProblemDescriptor.EMPTY_ARRAY
             val problemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
 
@@ -201,7 +201,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         if (element !is PsiVariable) return ProblemDescriptor.EMPTY_ARRAY
-        val resolvedPsiClass = element.type.resolveBeanClass() ?: return ProblemDescriptor.EMPTY_ARRAY
+        val resolvedPsiClass = element.type.resolveBeanPsiClass ?: return ProblemDescriptor.EMPTY_ARRAY
 
         var problems = emptyArray<ProblemDescriptor>()
         val elementLiterals = getLiteralQualifier(element)

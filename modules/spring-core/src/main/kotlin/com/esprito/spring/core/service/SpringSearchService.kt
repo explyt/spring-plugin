@@ -4,6 +4,7 @@ import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
@@ -14,10 +15,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiReference
+import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.ReferencesSearch
@@ -91,11 +89,12 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanPsiMethods(module)
             .asSequence()
             .mapNotNull { method -> method.returnType?.resolvedPsiClass
-                ?.let { PsiBean(method.resolveBeanName, it) }
+                ?.let { PsiBean(method.resolveBeanName, it, method.getQualifierAnnotation()) }
             }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it.psiClass) }
             .toSet()
@@ -106,7 +105,7 @@ class SpringSearchService(private val project: Project) {
         return annotationPsiClasses.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
-            .map { PsiBean(it.resolveBeanName(module), it) }
+            .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation()) }
             .toSet()
     }
 
@@ -161,7 +160,7 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun findBeanDeclarations(module: Module, byBeanName: String, forcedBeanName: String? = byBeanName, byBeanType: PsiClass? = null): List<PsiElement> {
+    fun findBeanDeclarations(module: Module, byBeanName: String, forcedBeanName: String? = byBeanName, byBeanType: PsiClass? = null, qualifier: PsiAnnotation? = null): List<PsiElement> {
         val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
         val methodsPsiBeans = getComponentBeanPsiMethods(module)
 
@@ -191,10 +190,16 @@ class SpringSearchService(private val project: Project) {
         val byTypeComponents = componentPsiBeans.filter { it.psiClass.isEqualOrInheritor(byBeanType) }.map { it.psiClass }
         val resultByType = byTypeBeanMethods + byTypeComponents
 
-        if (resultByName.isNotEmpty()) {
-            return resultByName.filter { it in resultByType }
+        val resultList = if (resultByName.isNotEmpty()) {
+            resultByName.filter { it in resultByType }
+        } else {
+            resultByType
         }
-        return resultByType
+        // TODO:
+        //resultList.any { it.isA}
+
+        val byPrimary = resultList.filter { it.isAnnotatedBy(SpringCoreClasses.PRIMARY) }
+        return byPrimary.takeIf { it.isNotEmpty() } ?: resultList
     }
 
 

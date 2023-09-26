@@ -165,24 +165,11 @@ object SpringCoreUtil {
         return AnnotationUtil.getStringAttributeValue(annotation, "value")?.takeIf { it.isNotEmpty() }
     }
 
-    fun PsiType.resolveBeanClass(): PsiClass? {
-        if (this !is PsiClassType) {
-            // Bean[]
-            return resolvedDeepPsiClass
-        }
-        if (isCollection || isOptional) {
-            // Collection<Bean>
-            // Optional<Bean>
-            return parameters.firstOrNull()?.resolvedPsiClass
-        }
-        if (isMap && parameters.size == 2 && parameters[0].isString) {
-            // Map<String, Bean>
-            return parameters[1].resolvedPsiClass
-        }
-        // Bean
-        return resolve()
+    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolveBeanPsiClass in targetClasses
+
+    fun PsiModifierListOwner.getQualifierAnnotation(): PsiAnnotation? {
+        return this.getMetaAnnotation(JavaEeClasses.NAMED.allFqns + SpringCoreClasses.QUALIFIER)
     }
 
-    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolvedPsiClass in targetClasses
 
 }

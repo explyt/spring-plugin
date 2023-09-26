@@ -7,6 +7,7 @@ import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
+import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
@@ -148,14 +149,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val beanName = strongBeanName ?: psiField.name
                 val beanPsiClass = psiField.type.resolveBeanPsiClass
 
-                return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass)
+                return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass, psiField.getQualifierAnnotation())
             }
             val psiParameter = element.parentOfType<PsiParameter>() ?: return emptyList()
             val strongBeanName = psiParameter.resolveBeanName
             val beanName = strongBeanName ?: psiParameter.name
             val beanPsiClass = psiParameter.type.resolveBeanPsiClass
 
-            return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass)
+            return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass, psiParameter.getQualifierAnnotation())
         }
 
         private fun findTargetClass(): PsiClass? {
@@ -210,7 +211,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 if (beanName == null) {
                     return@filter true
                 }
-                val resolvedBeanTargets = springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass)
+                val resolvedBeanTargets = springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass, it.getQualifierAnnotation())
                 return@filter uParent.javaPsi in resolvedBeanTargets
             }
 
