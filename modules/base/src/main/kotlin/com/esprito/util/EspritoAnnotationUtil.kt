@@ -33,6 +33,14 @@ object EspritoAnnotationUtil {
         }
     }
 
+    fun PsiAnnotationMemberValue?.getBooleanValue(): Boolean? {
+        return this?.project
+            ?.let { project ->
+                JavaPsiFacade.getInstance(project)
+                    .constantEvaluationHelper.computeConstantExpression(this)
+            } as? Boolean
+    }
+
     fun PsiAnnotation?.getArrayAttributeAsPsiLiteral(attributeName: String?): Collection<PsiLiteral> {
         return when (val attributeValue = this?.findAttributeValue(attributeName)) {
             is PsiArrayInitializerMemberValue -> getArrayAttributeAsPsiLiteral(attributeValue)
