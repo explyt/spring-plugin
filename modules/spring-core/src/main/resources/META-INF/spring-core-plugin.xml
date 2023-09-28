@@ -128,6 +128,16 @@
                          level="ERROR"
                          implementationClass="com.esprito.spring.core.inspections.SpringUnknownBeanMethodInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringConfigurationProxyMethodsInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.configuration"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.SpringConfigurationProxyMethodsInspection"/>
+
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
 

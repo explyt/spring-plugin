@@ -65,6 +65,21 @@ object EspritoPsiUtil {
 
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
 
+    inline fun <reified T: PsiElement> PsiElement.findChildrenOfType(): List<T> {
+        val found = mutableListOf<T>()
+        val queue = mutableListOf(*this.children)
+
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            if (current is T) {
+                found.add(current)
+            }
+            queue.addAll(current.children)
+        }
+
+        return found
+    }
+
     val PsiClass.isOrdinaryClass: Boolean
         get() = !isInterface && !isEnum && !isAnnotationType
 
