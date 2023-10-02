@@ -8,6 +8,6 @@ class SpringBeanIncorrectAutowiringInspectionTest : EspritoInspectionTestCase() 
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
-    @TestMetadata("componentScan")
+    @TestMetadata("autowired")
     fun testAutowired() = doTest(SpringBeanIncorrectAutowiringInspection())
 }

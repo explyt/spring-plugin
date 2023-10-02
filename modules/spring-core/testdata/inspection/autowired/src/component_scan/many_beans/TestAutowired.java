@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 @Configuration
-public class MyComponent {
+class MyComponent {
     @Autowired
     FooInterface one;
 
@@ -16,11 +16,6 @@ public class MyComponent {
 
     @Autowired
     BarInterface primer;
-
-    @Autowired
-    Foo13A foo13A;
-
-    @Autowired Foo13B foo13B;
 }
 
 @Component
@@ -29,24 +24,24 @@ class FooBeanComponent {
     @Autowired FooBeanInterface fooBeanInterface;
     @Autowired FooBean2 fooBean2;
 }
-public interface FooInterface {}
+interface FooInterface {}
 
 @Component
-public class FooBean implements FooInterface {}
+class FooBean implements FooInterface {}
 @Component
-public class OtherBean implements FooInterface {}
+class OtherBean implements FooInterface {}
 @Component("nameComponent")
-public class ThreeBean implements FooInterface {}
+class ThreeBean implements FooInterface {}
 
-public interface BarInterface {}
+interface BarInterface {}
 @Component
-public class BarImpl implements BarInterface {}
+class BarImpl implements BarInterface {}
 @Component
 @Primary
-public class PrimerBarImpl implements BarInterface {}
+class PrimerBarImpl implements BarInterface {}
 
 @Configuration
-public class TestConfiguration {
+class TestConfiguration {
     @Bean FooBean1 createBean1() {
         return new FooBean1();
     }

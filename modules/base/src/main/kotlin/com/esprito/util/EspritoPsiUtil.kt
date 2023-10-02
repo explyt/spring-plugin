@@ -63,6 +63,12 @@ object EspritoPsiUtil {
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
+    fun PsiClass.isGeneric(psiType: PsiType): Boolean {
+        return (psiType is PsiClassType && this.typeParameters.isNotEmpty() &&
+                (psiType.parameterCount == this.typeParameters.size) &&
+                this.typeParameters.asSequence().all { it.references.isEmpty() })
+    }
+
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
 
     inline fun <reified T: PsiElement> PsiElement.findChildrenOfType(): List<T> {
@@ -82,7 +88,6 @@ object EspritoPsiUtil {
 
     val PsiClass.isOrdinaryClass: Boolean
         get() = !isInterface && !isEnum && !isAnnotationType
-
 
     val PsiType.resolvedPsiClass: PsiClass?
         get() = (this as? PsiClassType)?.resolve()

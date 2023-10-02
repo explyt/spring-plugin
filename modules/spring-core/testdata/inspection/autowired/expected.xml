@@ -144,6 +144,34 @@
 
     <problem>
         <file>TestAutowired.java</file>
+        <line>52</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.FooBeanClass bean" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Must be defined in valid Spring bean (@Component|@Service|...)</description>
+        <highlighted_element>@Autowired</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>10</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.java</file>
+        <line>53</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.FooBeanClass bean" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Must be defined in valid Spring bean (@Component|@Service|...)</description>
+        <highlighted_element>@Autowired</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>10</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.java</file>
         <line>14</line>
         <module>light_idea_test_case</module>
         <package>component_scan.qualifier</package>
