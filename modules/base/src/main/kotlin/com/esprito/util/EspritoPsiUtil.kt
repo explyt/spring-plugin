@@ -60,7 +60,7 @@ object EspritoPsiUtil {
                 && (method.containingFile?.name != "Object.class")
 
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
-        return this == baseClass || this.isInheritor(baseClass, checkDeep)
+        return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)

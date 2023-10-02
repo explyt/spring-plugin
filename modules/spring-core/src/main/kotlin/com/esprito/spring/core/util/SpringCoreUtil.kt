@@ -1,8 +1,8 @@
 package com.esprito.spring.core.util
 
 import com.esprito.base.LibraryClassCache
-import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
@@ -13,6 +13,7 @@ import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.isString
 import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
 import com.esprito.util.runReadNonBlocking
 import com.intellij.codeInsight.AnnotationUtil
@@ -138,7 +139,7 @@ object SpringCoreUtil {
             ?: name
 
     val PsiVariable.resolveBeanName: String?
-        get() = this.resolveBeanNameByAnnotations(JavaEeClasses.NAMED.allFqns + SpringCoreClasses.QUALIFIER)
+        get() = this.resolveBeanNameByAnnotations(SpringProperties.stringQualifiers)
 
     val PsiType.resolveBeanPsiClass: PsiClass?
         get() {
@@ -167,8 +168,15 @@ object SpringCoreUtil {
 
     fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolveBeanPsiClass in targetClasses
 
+    val PsiModifierListOwner.resolvePsiClass: PsiClass?
+        get() {
+            if (this is PsiClass) return this
+            if (this is PsiMethod) return this.returnPsiClass
+            return null
+        }
+
     fun PsiModifierListOwner.getQualifierAnnotation(): PsiAnnotation? {
-        return this.getMetaAnnotation(JavaEeClasses.NAMED.allFqns + SpringCoreClasses.QUALIFIER)
+        return this.getMetaAnnotation(SpringProperties.stringQualifiers)
     }
 
 

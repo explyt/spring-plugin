@@ -1,7 +1,7 @@
-package com.esprito.spring.core.references
+package com.esprito.spring.core.references.contributors
 
-import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.references.EspritoBeanReference
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.uast.injectionHostUExpression
@@ -30,10 +30,10 @@ class BeanReferenceProvider : UastInjectionHostReferenceProvider() {
 
         // check if an expression within right place
         annotationToBeanProperties
-            .filter { (annotation, beanProperties) ->
+            .filter { (annotation, _) ->
                 annotation == uAnnotation.qualifiedName || psiAnnotationClass.isMetaAnnotatedBy(annotation)
             }
-            .flatMap { (annotation, beanProperties) -> beanProperties }
+            .flatMap { (_, beanProperties) -> beanProperties }
             .firstOrNull { it == uNamedExpression.name || uNamedExpression.name == null && it == "value" }
             ?: return PsiReference.EMPTY_ARRAY
 
@@ -52,10 +52,7 @@ class BeanReferenceProvider : UastInjectionHostReferenceProvider() {
             SpringCoreClasses.LOOKUP to listOf("value"),
             SpringCoreClasses.CACHEABLE to listOf("value", "cacheNames", "keyGenerator", "cacheManager", "cacheResolver"),
             SpringCoreClasses.CONDITIONAL_ON_BEAN to listOf("name"),
-            SpringCoreClasses.BEAN to listOf("value", "name"),
-            SpringCoreClasses.QUALIFIER to listOf("value"),
-            JavaEeClasses.NAMED.jakarta to listOf("value"),
-            JavaEeClasses.NAMED.javax to listOf("value"),
+            SpringCoreClasses.BEAN to listOf("value", "name")
         )
 
     }

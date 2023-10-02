@@ -6,8 +6,8 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
+import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.MetaAnnotationUtil
@@ -18,6 +18,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -80,7 +81,7 @@ class SpringSearchService(private val project: Project) {
                 .map { it.psiClass }
                 .filter { it.isValid }
                 .flatMap { it.allMethods.asSequence() }
-                .filter { it.isAnnotatedBy(SpringCoreClasses.BEAN) }
+                .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
                 .toSet()
             CachedValueProvider.Result(
                 psiMethods,
@@ -198,10 +199,23 @@ class SpringSearchService(private val project: Project) {
         // TODO:
         //resultList.any { it.isA}
 
-        val byPrimary = resultList.filter { it.isAnnotatedBy(SpringCoreClasses.PRIMARY) }
+        val byPrimary = resultList.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
         return byPrimary.takeIf { it.isNotEmpty() } ?: resultList
     }
 
+    fun searchClassInheritors(psiClass: PsiClass): Set<PsiClass> {
+        return cachedValuesManager.getCachedValue(psiClass)
+        {
+            CachedValueProvider.Result(
+                ClassInheritorsSearch.search(psiClass).findAll()
+                    .asSequence()
+                    .filterNotNull()
+                    .filter { it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
+                    .toSet(),
+                UastModificationTracker.getInstance(project)
+            )
+        }
+    }
 
     companion object {
         fun getInstance(project: Project): SpringSearchService = project.service()

@@ -3,6 +3,7 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.inspections.quickfix.AddQualifierQuickFix
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
@@ -26,13 +27,6 @@ import com.intellij.psi.search.searches.ClassInheritorsSearch
 
 
 class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionTool() {
-
-    private val stringQualifiers = listOf(SpringCoreClasses.QUALIFIER) + JavaEeClasses.NAMED.allFqns
-
-    private val stringInjects = listOf(
-        JavaEeClasses.INJECT.allFqns,
-        JavaEeClasses.RESOURCE.allFqns
-    )
 
     override fun checkField(
         field: PsiField,
@@ -271,7 +265,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             if (valueMethod != null) return valueMethod
         }
 
-        return stringQualifiers
+        return SpringProperties.stringQualifiers
             .asSequence()
             .map { getAnnotationAttributeValue(element, it) }
             .firstOrNull { it != null }
@@ -285,7 +279,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             if (valueMethod != null) return valueMethod
         }
 
-        return stringQualifiers
+        return SpringProperties.stringQualifiers
             .asSequence()
             .map { element.getPsiAnnotationByAnnotationName(it) }
             .firstOrNull { it != null }
@@ -299,7 +293,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             if (psiLiterals.isNotEmpty()) return psiLiterals
         }
 
-        return stringQualifiers
+        return SpringProperties.stringQualifiers
             .asSequence()
             .map { getLiteralValueByAnnotationName(element, it) }
             .firstOrNull { it.isNotEmpty() }
@@ -400,6 +394,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 .flatMap { it.getArrayAttributeAsPsiLiteral("required") }
                 .any { (it.value as Boolean) }
 
-        return stringInjects.any { owner.isMetaAnnotatedBy(it) }
+        return SpringProperties.stringInjects
+            .any { owner.isMetaAnnotatedBy(it) }
     }
 }

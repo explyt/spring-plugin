@@ -50,7 +50,9 @@
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.core.references.contributors.UastMethodReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.references.UastBeanReferenceContributor"/>
+                                  implementation="com.esprito.spring.core.references.contributors.UastBeanReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.core.references.contributors.QualifierReferenceContributor"/>
         <lang.documentationProvider language="Properties"
                                     order="first"
                                     implementationClass="com.esprito.spring.core.properties.SpringPropertiesDocumentationProvider"/>
