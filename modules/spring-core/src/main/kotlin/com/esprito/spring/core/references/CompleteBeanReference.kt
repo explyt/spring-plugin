@@ -2,14 +2,13 @@ package com.esprito.spring.core.references
 
 import com.esprito.spring.core.service.SpringBeanService
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
-import org.jetbrains.uast.*
+import com.intellij.psi.util.parentOfType
 
 class CompleteBeanReference(element: PsiElement, private val beanName: String, textRange: TextRange) :
     PsiReferenceBase<PsiElement>(element, textRange), PsiReference , HighlightedReference {
@@ -26,8 +25,8 @@ class CompleteBeanReference(element: PsiElement, private val beanName: String, t
         val variants = HashSet<Any>()
 
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-        val resolvedPsiClass = getResolvePsiClass() ?: return emptyArray()
-        val beanCandidates = SpringBeanService.getInstance(module.project).getBeanCandidates(resolvedPsiClass, module)
+        val psiType = getPsiType() ?: return emptyArray()
+        val beanCandidates = SpringBeanService.getInstance(module.project).getBeanCandidates(psiType, module)
 
         beanCandidates.mapTo(variants) {
             LookupElementBuilder.create(it.name)
@@ -38,16 +37,11 @@ class CompleteBeanReference(element: PsiElement, private val beanName: String, t
         return variants.toTypedArray()
     }
 
-    private fun getResolvePsiClass(): PsiClass? {
-        val uastParent = element
-            .getUastParentOfType<UAnnotation>()
-            ?.uastParent ?: return null
-
-        return when (uastParent) {
-            is UField -> uastParent.type.resolveBeanPsiClass
-            is UParameter -> uastParent.type.resolveBeanPsiClass
+    private fun getPsiType(): PsiType? {
+        return when (val psiElement = element.parentOfType<PsiAnnotation>()?.parent?.parent) {
+            is PsiField -> psiElement.type
+            is PsiParameter -> psiElement.type
             else -> null
         }
     }
-
 }

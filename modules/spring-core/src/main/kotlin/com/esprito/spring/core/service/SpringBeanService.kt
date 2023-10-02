@@ -4,11 +4,10 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.util.SpringCoreUtil.getBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
+import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.spring.core.util.SpringCoreUtil.resolvePsiClass
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
-import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -17,23 +16,25 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifierListOwner
+import com.intellij.psi.PsiType
 
 @Service(Service.Level.PROJECT)
 class SpringBeanService {
 
     fun getBeanCandidates(
-        resolvedPsiClass: PsiClass,
+        psiType: PsiType,
         module: Module
     ): Set<PsiBean> {
+        val resolvedPsiBeanClass: PsiClass = psiType.resolveBeanPsiClass ?: return emptySet()
         val searchService = SpringSearchService.getInstance(module.project)
-        val classInheritors = searchService.searchClassInheritors(resolvedPsiClass)
-        val methodsPsiBeans = searchService.getComponentBeanPsiMethods(module)
-            .filter { it.returnPsiClass?.isEqualOrInheritor(resolvedPsiClass) == true }.toSet()
+        val classInheritors = searchService.searchClassInheritors(resolvedPsiBeanClass)
+        val allBeansPsiMethods = searchService.getComponentBeanPsiMethods(module)
+        val beansPsiMethods = searchService.getBeansPsiMethods(psiType, allBeansPsiMethods, resolvedPsiBeanClass).toSet()
 
         val beanCandidates = getBeanCandidatesInPsiModifierListOwner(classInheritors, SpringCoreClasses.COMPONENT)
-        beanCandidates += getBeanCandidatesInPsiModifierListOwner(methodsPsiBeans, SpringCoreClasses.BEAN)
-        if (resolvedPsiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) {
-            beanCandidates += getBeanCandidatesInPsiModifierListOwner(setOf(resolvedPsiClass), SpringCoreClasses.COMPONENT)
+        beanCandidates += getBeanCandidatesInPsiModifierListOwner(beansPsiMethods, SpringCoreClasses.BEAN)
+        if (resolvedPsiBeanClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) {
+            beanCandidates += getBeanCandidatesInPsiModifierListOwner(setOf(resolvedPsiBeanClass), SpringCoreClasses.COMPONENT)
         }
 
         return beanCandidates
