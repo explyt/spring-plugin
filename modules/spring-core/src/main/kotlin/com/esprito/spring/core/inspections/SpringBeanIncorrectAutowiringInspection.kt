@@ -145,16 +145,16 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
             val searchService = SpringSearchService.getInstance(module.project)
             val classInheritors = searchService.searchClassInheritors(resolvedPsiBeanClass).toMutableSet()
-            val allMethodPsiBeans = searchService.getComponentBeanPsiMethods(module)
-            val methodsPsiBeans = searchService.getPsiBeanMethods(psiType, allMethodPsiBeans, resolvedPsiBeanClass)
+            val allBeansPsiMethods = searchService.getComponentBeanPsiMethods(module)
+            val beansPsiMethods = searchService.getBeansPsiMethods(psiType, allBeansPsiMethods, resolvedPsiBeanClass)
 
-            if (psiType.isOptional && classInheritors.isEmpty() && methodsPsiBeans.isEmpty()) {
+            if (psiType.isOptional && classInheritors.isEmpty() && beansPsiMethods.isEmpty()) {
                 return ProblemDescriptor.EMPTY_ARRAY
             }
 
             if (!resolvedPsiBeanClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
                 && !isBeanExist(element, resolvedPsiBeanClass)
-                && classInheritors.isEmpty() && methodsPsiBeans.isEmpty()
+                && classInheritors.isEmpty() && beansPsiMethods.isEmpty()
             ) {
                 return arrayOf(
                     manager.createProblemDescriptor(
@@ -166,15 +166,15 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             }
 
             if (resolvedPsiBeanClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) &&
-                (!resolvedPsiBeanClass.isGeneric(psiType) || methodsPsiBeans.isEmpty())) {
+                (!resolvedPsiBeanClass.isGeneric(psiType) || beansPsiMethods.isEmpty())) {
                 classInheritors += resolvedPsiBeanClass
             }
 
             val nameElement = getElementName(element)
             when {
-                checkBeans(classInheritors, methodsPsiBeans, nameElement) -> return ProblemDescriptor.EMPTY_ARRAY
+                checkBeans(classInheritors, beansPsiMethods, nameElement) -> return ProblemDescriptor.EMPTY_ARRAY
 
-                (classInheritors + methodsPsiBeans).isEmpty() -> {
+                (classInheritors + beansPsiMethods).isEmpty() -> {
                     problems += manager.createProblemDescriptor(
                         problemElement,
                         SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.type.none", psiType.presentableText),
@@ -187,7 +187,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                         problems += getProblemQualifier(module, element, manager, isOnTheFly)
                     } else {
                          if (!psiType.canBeMoreThanOneBean(classInheritors)) {
-                             val beanCandidates = classInheritors.toList() + methodsPsiBeans
+                             val beanCandidates = classInheritors.toList() + beansPsiMethods
                              problems += manager.createProblemDescriptor(
                                  problemElement,
                                  getWarningMessageInheritor(nameClass, beanCandidates),
@@ -215,7 +215,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         var problems = emptyArray<ProblemDescriptor>()
         val elementLiterals = getLiteralQualifier(element)
 
-        val beanCandidates = SpringBeanService.getInstance(module.project).getBeanCandidates(resolvedPsiClass, module)
+        val beanCandidates = SpringBeanService.getInstance(module.project).getBeanCandidates(element.type, module)
         val elementPsiBean = elementLiterals?.let { PsiBean(it, resolvedPsiClass, null) }
 
         if (!beanCandidates.any { it.name == elementPsiBean?.name }) {

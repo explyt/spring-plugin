@@ -191,7 +191,7 @@ class SpringSearchService(private val project: Project) {
             return resultByName
         }
 
-        val byTypeBeanMethods = getPsiBeanMethods(byBeanPsiType, methodsPsiBeans, byBeanPsiClass)
+        val byTypeBeanMethods = getBeansPsiMethods(byBeanPsiType, methodsPsiBeans, byBeanPsiClass)
 
         val byTypeComponents = componentPsiBeans
             .filter { it.psiClass.isEqualOrInheritor(byBeanPsiClass) }.map { it.psiClass }
@@ -224,20 +224,18 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getPsiBeanMethods(psiType: PsiType, allMethodPsiBeans: Set<PsiMethod>, resolvedPsiBeanClass: PsiClass): List<PsiMethod> {
-        val methodsPsiBeans =
-            if (psiType.equalsByReturnType()) {
-                allMethodPsiBeans.filter { it.returnType == psiType }
-            } else {
-                var methods =
-                    allMethodPsiBeans.filter { it.returnPsiClass?.isEqualOrInheritor(resolvedPsiBeanClass) == true }
-                val resolvedPsiClass = psiType.resolvedPsiClass
-                if (resolvedPsiClass != null && methods.isEmpty() && searchClassInheritors(resolvedPsiBeanClass).isEmpty()) {
-                    methods = getInheritorMethods(allMethodPsiBeans, psiType, resolvedPsiClass)
-                }
-                methods
+    fun getBeansPsiMethods(psiType: PsiType, allBeansPsiMethods: Set<PsiMethod>, resolvedPsiBeanClass: PsiClass): List<PsiMethod> {
+        return if (psiType.equalsByReturnType()) {
+            allBeansPsiMethods.filter { it.returnType == psiType }
+        } else {
+            var methods =
+                allBeansPsiMethods.filter { it.returnPsiClass?.isEqualOrInheritor(resolvedPsiBeanClass) == true }
+            val resolvedPsiClass = psiType.resolvedPsiClass
+            if (resolvedPsiClass != null && methods.isEmpty() && searchClassInheritors(resolvedPsiBeanClass).isEmpty()) {
+                methods = getInheritorMethods(allBeansPsiMethods, psiType, resolvedPsiClass)
             }
-        return methodsPsiBeans
+            methods
+        }
     }
 
     private fun getInheritorMethods(methodsPsiBeans: Set<PsiMethod>, psiType: PsiType, resolvedPsiClass: PsiClass): List<PsiMethod> {
