@@ -7,7 +7,7 @@ import com.intellij.psi.PsiClass
 data class PsiBean(
     val name: String,
     val psiClass: PsiClass,
-    val psiQualifier: PsiAnnotation?
+    val psiQualifier: PsiAnnotation? = null
 ) {
     constructor(psiClass: PsiClass) : this(
         psiClass.getBeanName() ?: "",
