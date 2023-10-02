@@ -114,8 +114,7 @@ object SpringCoreUtil {
     fun existComponentScan(module: Module): Boolean =
         SpringSearchService.getInstance(module.project)
             .getAllComponentScanBeans(module, SpringCoreClasses.COMPONENT_SCAN)
-            .filter { !it.isAnnotationType }
-            .isNotEmpty()
+            .any { !it.isAnnotationType }
 
     fun PsiClass.getBeanName(): String? =
         name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
@@ -161,19 +160,43 @@ object SpringCoreUtil {
             return resolvedDeepPsiClass
         }
 
+    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolveBeanPsiClass in targetClasses
+
+    fun PsiType.equalsByReturnType(): Boolean =
+        if (this is PsiArrayType) {
+            true
+        }
+        else {
+            this is PsiClassType && isMap && parameterCount == 2 && !parameters[0].isString
+        }
+
+    fun PsiType.canBeMoreThanOneBean(beanCandidates: Set<PsiClass>): Boolean {
+        if (this is PsiArrayType) {
+            return true
+        }
+        if (this !is PsiClassType) {
+            return false
+        }
+        if (isCollection && beanCandidates.isNotEmpty()) {
+            return true
+        }
+        if (isMap && parameterCount == 2 && parameters[0].isString) {
+            return true
+        }
+        return false
+    }
+
     private fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
         val annotation = getMetaAnnotation(annotationNames) ?: return null
         return AnnotationUtil.getStringAttributeValue(annotation, "value")?.takeIf { it.isNotEmpty() }
     }
 
-    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolveBeanPsiClass in targetClasses
-
     val PsiModifierListOwner.resolvePsiClass: PsiClass?
-        get() {
-            if (this is PsiClass) return this
-            if (this is PsiMethod) return this.returnPsiClass
-            return null
-        }
+            get() {
+                if (this is PsiClass) return this
+                if (this is PsiMethod) return this.returnPsiClass
+                return null
+            }
 
     fun PsiModifierListOwner.getQualifierAnnotation(): PsiAnnotation? {
         return this.getMetaAnnotation(SpringProperties.stringQualifiers)

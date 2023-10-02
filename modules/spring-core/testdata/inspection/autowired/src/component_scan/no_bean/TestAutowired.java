@@ -9,7 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-public class MyComponent {
+class MyComponent {
     @Autowired
     Optional<NotImplInterface> notOptional;
 
@@ -27,7 +27,7 @@ public class MyComponent {
     OtherBean other;
 
     @Autowired
-    public void setOther(OtherBean value) {
+    void setOther(OtherBean value) {
         other = value;
     }
 
@@ -35,20 +35,21 @@ public class MyComponent {
     MyBean beanA;
 }
 
-public class MyBean {
+class MyBean {
 }
 
-public interface NotImplInterface {
+interface NotImplInterface {
 }
 
-public class OtherBean {
+class OtherBean {
     @Bean
     public MyBean myBean() {
         return new MyBean();
     }
 }
 
-public class FooBeanClass {
+class FooBean {}
+class FooBeanClass {
     @Autowired
     FooBean bean;
 }

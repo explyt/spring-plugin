@@ -9,7 +9,6 @@ import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
-import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -116,7 +115,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 }
                 val hasResolvableBeanType = psiVariable.type.canResolveBeanClass(springSearchService.getAllBeansClassesWithAncestors(module))
                 if (!hasResolvableBeanType) {
-                    return false
+                    return springSearchService.getComponentBeanPsiMethods(module).any { it.returnType == psiVariable.type }
                 }
                 return true
             }
@@ -147,16 +146,16 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (psiField != null) {
                 val strongBeanName = psiField.resolveBeanName
                 val beanName = strongBeanName ?: psiField.name
-                val beanPsiClass = psiField.type.resolveBeanPsiClass
+                val beanPsiType = psiField.type
 
-                return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass, psiField.getQualifierAnnotation())
+                return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiType, psiField.getQualifierAnnotation())
             }
             val psiParameter = element.parentOfType<PsiParameter>() ?: return emptyList()
             val strongBeanName = psiParameter.resolveBeanName
             val beanName = strongBeanName ?: psiParameter.name
-            val beanPsiClass = psiParameter.type.resolveBeanPsiClass
+            val beanPsiType = psiParameter.type
 
-            return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass, psiParameter.getQualifierAnnotation())
+            return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiType, psiParameter.getQualifierAnnotation())
         }
 
         private fun findTargetClass(): PsiClass? {
@@ -207,11 +206,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val filteredByName = allByType.filter {
                 val strongBeanName = it.resolveBeanName
                 val beanName = strongBeanName ?: (it as PsiNamedElement).name
-                val beanPsiClass = it.type.resolveBeanPsiClass
+                val beanPsiType = it.type
                 if (beanName == null) {
                     return@filter true
                 }
-                val resolvedBeanTargets = springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiClass, it.getQualifierAnnotation())
+                val resolvedBeanTargets = springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiType, it.getQualifierAnnotation())
                 return@filter uParent.javaPsi in resolvedBeanTargets
             }
 
