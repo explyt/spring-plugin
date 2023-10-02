@@ -4,8 +4,8 @@ import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.equalsByReturnType
+import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
@@ -124,7 +124,7 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
                 run {
-                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
+                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false).toMutableSet()
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
                     return@run annotations
                 }.toSet(),
@@ -152,10 +152,10 @@ class SpringSearchService(private val project: Project) {
     }
 
     fun getAutowiredFieldAnnotations(module: Module): Collection<PsiClass> {
-        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+        return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
                 run {
-                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
+                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false).toMutableSet()
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns)
                     return@run annotations
                 },
