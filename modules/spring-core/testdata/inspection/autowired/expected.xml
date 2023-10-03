@@ -36,6 +36,20 @@
         <package>component_scan.constructor</package>
         <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent()" />
         <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. Method without parameters</description>
+        <highlighted_element>MyComponent</highlighted_element>
+        <language>JAVA</language>
+        <offset>11</offset>
+        <length>11</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.java</file>
+        <line>15</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent()" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
         <description>Only one constructor can have @Autowired annotation</description>
         <highlighted_element>MyComponent</highlighted_element>
         <language>JAVA</language>
