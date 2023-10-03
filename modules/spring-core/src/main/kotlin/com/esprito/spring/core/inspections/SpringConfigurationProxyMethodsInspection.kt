@@ -24,38 +24,43 @@ class SpringConfigurationProxyMethodsInspection : AbstractBaseJavaLocalInspectio
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        val surroundingClass = method.getUastParentOfType<UClass>()?.javaPsi ?: return null
+        val surroundingClass: PsiClass = method.getUastParentOfType<UClass>()?.javaPsi ?: return null
+        if (surroundingClass.hasModifierProperty(PsiModifier.STATIC)) return null
         if (!method.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
+        var topClass: PsiClass? = surroundingClass
 
-        val proxyBeanMethodsValue = getAnnotationMemberValues(
-            surroundingClass,
-            SpringCoreClasses.CONFIGURATION,
-            "proxyBeanMethods"
-        )?.firstOrNull()
-            .getBooleanValue()
+        while (topClass != null) {
+            val proxyBeanMethodsValue = getAnnotationMemberValues(
+                topClass,
+                SpringCoreClasses.CONFIGURATION,
+                "proxyBeanMethods"
+            )?.firstOrNull()
+                .getBooleanValue()
 
-        if (proxyBeanMethodsValue == false) {
-            return findCallsToLocalBeans(method, surroundingClass).asSequence()
-                .mapNotNull {
-                    createProblemDescriptor(
-                        manager,
-                        SpringCoreBundle.message("esprito.spring.inspection.configuration.proxy.incorrect"),
-                        it,
-                        isOnTheFly
-                    )
-                }.toList().toTypedArray()
-        } else if (proxyBeanMethodsValue == null //hot metaAnnotated by Configuration
-            && surroundingClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-        ) {
-            return findCallsToLocalBeans(method, surroundingClass).asSequence()
-                .mapNotNull {
-                    createProblemDescriptor(
-                        manager,
-                        SpringCoreBundle.message("esprito.spring.inspection.configuration.light-bean.incorrect"),
-                        it,
-                        isOnTheFly
-                    )
-                }.toList().toTypedArray()
+            if (proxyBeanMethodsValue == false) {
+                return findCallsToLocalBeans(method, topClass).asSequence()
+                    .mapNotNull {
+                        createProblemDescriptor(
+                            manager,
+                            SpringCoreBundle.message("esprito.spring.inspection.configuration.proxy.incorrect"),
+                            it,
+                            isOnTheFly
+                        )
+                    }.toList().toTypedArray()
+            } else if (proxyBeanMethodsValue == null //hot metaAnnotated by Configuration
+                && topClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
+            ) {
+                return findCallsToLocalBeans(method, topClass).asSequence()
+                    .mapNotNull {
+                        createProblemDescriptor(
+                            manager,
+                            SpringCoreBundle.message("esprito.spring.inspection.configuration.light-bean.incorrect"),
+                            it,
+                            isOnTheFly
+                        )
+                    }.toList().toTypedArray()
+            }
+            topClass = topClass.containingClass
         }
         return null
     }
