@@ -6,6 +6,7 @@ object SpringCoreClasses {
 
     const val PROFILE = "org.springframework.context.annotation.Profile"
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
+    const val ANNOTATION = "java.lang.annotation.Annotation"
 
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val BEAN = "org.springframework.context.annotation.Bean"

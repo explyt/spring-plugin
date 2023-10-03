@@ -18,6 +18,8 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
@@ -246,10 +248,21 @@ class SpringSearchService(private val project: Project) {
             }
         } else emptyList()
     }
+    
+    fun getMetaAnnotations(module: Module, annotationFqn: String): MetaAnnotationsHolder {
+        val dataHolderBase = UserDataHolderBase()
+        dataHolderBase.putUserData(Key(annotationFqn), annotationFqn)
+
+        return cachedValuesManager.getCachedValue(dataHolderBase) {
+            CachedValueProvider.Result(
+                MetaAnnotationsHolder.of(module, annotationFqn),
+                UastModificationTracker.getInstance(module.project)
+            )
+        }
+    }
 
     companion object {
         fun getInstance(project: Project): SpringSearchService = project.service()
     }
-
 
 }
