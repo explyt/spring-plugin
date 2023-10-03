@@ -78,12 +78,14 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 val methods = aClass.allMethods
                     .filter { isInjectOrAutowiredByRequiredTrue(it) }
                 for (method in methods) {
-                    for (parameter in method.parameterList.parameters.toList()) {
+                    val params = method.parameterList.parameters
+                    for (parameter in params.toList()) {
                         problems += getProblemAutowired(module, parameter, manager, isOnTheFly)
                     }
+                    problems += getProblemByMethodWithoutParams(method, params, manager, isOnTheFly)
                 }
             } else {
-                problems = getProblemByClassWithoutComponent(aClass, manager, isOnTheFly)
+                problems += getProblemByClassWithoutComponent(aClass, manager, isOnTheFly)
             }
         }
 
@@ -141,7 +143,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             val psiType = element.type
             val resolvedPsiBeanClass = psiType.resolveBeanPsiClass ?: return ProblemDescriptor.EMPTY_ARRAY
             val nameClass = resolvedPsiBeanClass.name ?: return ProblemDescriptor.EMPTY_ARRAY
-            val problemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
+            val problemElement = (element as? PsiNameIdentifierOwner)?.identifyingElement ?: return ProblemDescriptor.EMPTY_ARRAY
 
             val searchService = SpringSearchService.getInstance(module.project)
             val classInheritors = searchService.searchClassInheritors(resolvedPsiBeanClass).toMutableSet()
@@ -170,7 +172,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 classInheritors += resolvedPsiBeanClass
             }
 
-            val nameElement = getElementName(element)
+            val nameElement = (element as? PsiNamedElement)?.name ?: ""
             when {
                 checkBeans(classInheritors, beansPsiMethods, nameElement) -> return ProblemDescriptor.EMPTY_ARRAY
 
@@ -241,11 +243,6 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
         return problems
     }
-
-    private fun getIdentifyingElement(element: PsiElement): PsiElement? =
-        (element as? PsiNameIdentifierOwner)?.identifyingElement
-
-    private fun getElementName(element: PsiElement): String = (element as? PsiNamedElement)?.name ?: ""
 
     private fun getAnnotationValue(psiClassList: List<PsiClass>, annotationName: String): Set<String?> {
         return psiClassList
@@ -319,6 +316,26 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return false
         return SpringSearchService.getInstance(module.project).getAllBeansClasses(module)
             .any { it.psiClass == psiClass }
+    }
+
+    private fun getProblemByMethodWithoutParams(
+        method: PsiMethod,
+        params: Array<out PsiParameter>,
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): Array<ProblemDescriptor> {
+        var problems = emptyArray<ProblemDescriptor>()
+        val identifier = method.identifyingElement
+        if (params.isEmpty() && identifier != null) {
+            problems += manager.createProblemDescriptor(
+                identifier,
+                SpringCoreBundle.message("esprito.spring.inspection.method.without.autowiring"),
+                isOnTheFly,
+                emptyArray(),
+                ProblemHighlightType.GENERIC_ERROR
+            )
+        }
+        return problems
     }
 
     private fun getProblemByClassWithoutComponent(
