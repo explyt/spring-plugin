@@ -26,6 +26,7 @@ class BeanReferenceProvider : CommonAnnotationReferenceProvider(annotationToBean
             SpringCoreClasses.LOOKUP to setOf("value"),
             SpringCoreClasses.CACHEABLE to setOf("value", "cacheNames", "keyGenerator", "cacheManager", "cacheResolver"),
             SpringCoreClasses.CONDITIONAL_ON_BEAN to setOf("name"),
+            SpringCoreClasses.CONDITIONAL_ON_MISSING_BEAN to setOf("name"),
             SpringCoreClasses.BEAN to setOf("value", "name")
         )
     }

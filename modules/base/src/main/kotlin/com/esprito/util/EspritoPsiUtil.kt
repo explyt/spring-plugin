@@ -57,7 +57,7 @@ object EspritoPsiUtil {
 
     fun fitsForReference(method: PsiMethod) =
         !method.hasParameters()
-                && (method.containingFile?.name != "Object.class")
+                && (method.containingFile?.name !in setOf("Annotation.class", "Object.class"))
 
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)

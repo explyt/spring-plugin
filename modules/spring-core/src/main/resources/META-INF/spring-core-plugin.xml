@@ -48,6 +48,8 @@
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.core.properties.UastConfigurationPropertyReferenceContributor"/>
         <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.core.references.contributors.UastAliasMethodReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.core.references.contributors.UastMethodReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.core.references.contributors.UastBeanReferenceContributor"/>
