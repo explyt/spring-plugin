@@ -8,6 +8,7 @@ import com.esprito.spring.core.util.SpringCoreUtil.equalsByReturnType
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
+import com.esprito.util.CacheKeyStore
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isGeneric
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -18,8 +19,6 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Key
-import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
@@ -250,15 +249,14 @@ class SpringSearchService(private val project: Project) {
     }
     
     fun getMetaAnnotations(module: Module, annotationFqn: String): MetaAnnotationsHolder {
-        val dataHolderBase = UserDataHolderBase()
-        dataHolderBase.putUserData(Key(annotationFqn), annotationFqn)
+        val key = CacheKeyStore.getInstance(module.project).getKey<MetaAnnotationsHolder>(annotationFqn)
 
-        return cachedValuesManager.getCachedValue(dataHolderBase) {
+        return cachedValuesManager.getCachedValue(module, key, {
             CachedValueProvider.Result(
                 MetaAnnotationsHolder.of(module, annotationFqn),
                 UastModificationTracker.getInstance(module.project)
             )
-        }
+        }, false)
     }
 
     companion object {
