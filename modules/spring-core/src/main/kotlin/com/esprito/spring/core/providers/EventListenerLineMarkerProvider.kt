@@ -190,8 +190,8 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val eventPsiType = uCallExpression.valueArguments[0].getExpressionType() ?: return Collections.emptyList()
 
         val eventListenerMethods = mutableListOf<MethodArgumentClasses>()
-        eventListenerMethods += getMethodByApplicationEventCached(module)
-        eventListenerMethods += getMethodByEventListenerCached(module)
+        eventListenerMethods += getMethodsByApplicationEventCached(module)
+        eventListenerMethods += getMethodsByEventListenerCached(module)
 
         return eventListenerMethods.asSequence()
             .filter { isEqualsTypeOrClass(it, eventPsiType) }
@@ -199,42 +199,43 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .toList()
     }
 
-    private fun getMethodByApplicationEventCached(module: Module): Collection<MethodArgumentClasses> {
+    private fun getMethodsByApplicationEventCached(module: Module): Collection<MethodArgumentClasses> {
         val cacheManager = CachedValuesManager.getManager(module.project)
 
         return cacheManager.getCachedValue(module) {
             CachedValueProvider.Result.create(
-                getMethodArgumentClassesByApplicationEvent(module),
+                getMethodsByApplicationEvent(module),
                 UastModificationTracker.getInstance(module.project)
             )
         }
     }
 
-    private fun getMethodByEventListenerCached(module: Module): Collection<MethodArgumentClasses> {
+    private fun getMethodsByEventListenerCached(module: Module): Collection<MethodArgumentClasses> {
         val cacheManager = CachedValuesManager.getManager(module.project)
 
         return cacheManager.getCachedValue(module) {
             CachedValueProvider.Result.create(
-                getMethodArgumentClassesByEventListener(module),
+                getMethodsByEventListener(module),
                 UastModificationTracker.getInstance(module.project)
             )
         }
     }
 
-    private fun getMethodArgumentClassesByApplicationEvent(module: Module): List<MethodArgumentClasses> {
+    private fun getMethodsByApplicationEvent(module: Module): List<MethodArgumentClasses> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
         val listenerClass =
             SpringSearchService.getInstance(module.project).findClassesByQualifiedName(module, APPLICATION_LISTENER)
-        val publisherClass = listenerClass
+        val publisherClass = listenerClass.asSequence()
             .flatMap { ClassInheritorsSearch.search(it, scope, true).findAll() }
             .filterNotNull()
         return publisherClass
             .flatMap { it.findMethodsByName(ON_APPLICATION_EVENT, false).asSequence() }
             .filterNotNull()
             .map { MethodArgumentClasses(it) }
+            .toList()
     }
 
-    private fun getMethodArgumentClassesByEventListener(module: Module): List<MethodArgumentClasses> {
+    private fun getMethodsByEventListener(module: Module): List<MethodArgumentClasses> {
         val methodArguments = mutableListOf<MethodArgumentClasses>()
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
         val eventListenerClasses = SpringSearchService.getInstance(module.project).findClassesByQualifiedName(module, EVENT_LISTENER)
@@ -260,9 +261,8 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
     }
 
-    class MethodCallArgumentTypes(method: PsiCallExpression) {
+    class MethodCallArgumentTypes(val element: PsiCallExpression) {
         var argumentType: PsiType? = null
-        val element: PsiElement = method
 
         init {
             if (element is PsiMethodCallExpression) {
@@ -274,10 +274,9 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
     }
 
-    class MethodArgumentClasses(method: PsiMethod, psiClassesFromAnnotation: Set<PsiClass>? = null) {
+    class MethodArgumentClasses(val element: PsiMethod, psiClassesFromAnnotation: Set<PsiClass>? = null) {
         var argumentClasses: Set<PsiClass> = emptySet()
         var argumentType: PsiType? = null
-        val element: PsiElement = method
 
         init {
             if (element is PsiMethod) {
