@@ -1,7 +1,7 @@
 package com.esprito.spring.core.providers
 
-import com.esprito.spring.core.SpringCoreClasses.CLASSPATH_PREFIX
-import com.esprito.spring.core.SpringCoreClasses.FILE_PREFIX
+import com.esprito.spring.core.SpringProperties.CLASSPATH_PREFIX
+import com.esprito.spring.core.SpringProperties.FILE_PREFIX
 import com.esprito.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.esprito.spring.core.references.REFERENCE_TYPE
 import com.esprito.spring.core.util.PsiAnnotationUtils.getParentAnnotationForPsiLiteralParameter

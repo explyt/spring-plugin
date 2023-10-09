@@ -169,6 +169,8 @@
 
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.core.providers.SpringBeanLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="JAVA"
+                                        implementationClass="com.esprito.spring.core.providers.EventListenerLineMarkerProvider"/>
     </extensions>
 
     <actions>

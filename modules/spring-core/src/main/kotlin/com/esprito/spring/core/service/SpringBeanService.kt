@@ -1,7 +1,6 @@
 package com.esprito.spring.core.service
 
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.util.SpringCoreUtil.getBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
@@ -48,7 +47,7 @@ class SpringBeanService {
         owners.forEach {
             val psiClass = it.resolvePsiClass
             if (psiClass != null) {
-                val values = SpringProperties.stringQualifiers
+                val values = SpringCoreClasses.STRING_QUALIFIERS
                     .asSequence()
                     .mapNotNull { annotation -> getAnnotationValue(it, annotation) }
                     .map { value -> PsiBean(value, psiClass, null) }

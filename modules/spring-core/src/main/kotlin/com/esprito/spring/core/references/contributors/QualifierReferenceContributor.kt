@@ -1,6 +1,6 @@
 package com.esprito.spring.core.references.contributors
 
-import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.references.CompleteBeanReference
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.util.TextRange
@@ -30,7 +30,7 @@ class QualifierReferenceProvider: UastInjectionHostReferenceProvider() {
         val psiAnnotation = uAnnotation.javaPsi ?: return PsiReference.EMPTY_ARRAY
         val psiAnnotationClass = psiAnnotation.resolveAnnotationType() ?: return PsiReference.EMPTY_ARRAY
 
-        if (SpringProperties.stringQualifiers.none { it == uAnnotation.qualifiedName || psiAnnotationClass.isMetaAnnotatedBy(it) }) {
+        if (SpringCoreClasses.STRING_QUALIFIERS.none { it == uAnnotation.qualifiedName || psiAnnotationClass.isMetaAnnotatedBy(it) }) {
             return PsiReference.EMPTY_ARRAY
         }
         val resolveAnnotationType = psiAnnotation.resolveAnnotationType() ?: return PsiReference.EMPTY_ARRAY

@@ -23,6 +23,7 @@ import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.ClassInheritorsSearch
+import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -94,6 +95,10 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun searchReferenceByMethod(module: Module, method: PsiMethod): Collection<PsiReference> {
+        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+        return MethodReferencesSearch.search(method, scope, true).findAll()
+    }
 
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanPsiMethods(module)
@@ -114,12 +119,10 @@ class SpringSearchService(private val project: Project) {
             .toSet()
     }
 
-
     private fun searchBeanPsiClassesByAnnotation(module: Module, annotationName: String): Set<PsiClass> {
         val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, annotationName, false)
         return searchBeanPsiClassesByAnnotations(module, annotations).map { it.psiClass }.toSet()
     }
-
 
     fun getComponentClassAnnotations(module: Module): Collection<PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
@@ -163,6 +166,18 @@ class SpringSearchService(private val project: Project) {
                 UastModificationTracker.getInstance(module.project)
             )
         }
+    }
+
+    fun findClassesByQualifiedName(module: Module, qualifiedName: String): Collection<PsiClass> {
+        val key = CacheKeyStore.getInstance(project).getKey<Collection<PsiClass>>(
+            "SpringClassesLoaderByQualifiedNameCache(${qualifiedName})"
+        )
+        return cachedValuesManager.getCachedValue(module, key, {
+            CachedValueProvider.Result(
+                LibraryClassCache.searchForLibraryClasses(module, listOf(qualifiedName)),
+                UastModificationTracker.getInstance(project)
+            )
+        }, false)
     }
 
     fun findBeanDeclarations(module: Module, byBeanName: String, forcedBeanName: String? = byBeanName, byBeanPsiType: PsiType? = null, qualifier: PsiAnnotation? = null): List<PsiElement> {

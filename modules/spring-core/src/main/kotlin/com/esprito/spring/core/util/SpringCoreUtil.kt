@@ -2,7 +2,6 @@ package com.esprito.spring.core.util
 
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
@@ -138,7 +137,7 @@ object SpringCoreUtil {
             ?: name
 
     val PsiVariable.resolveBeanName: String?
-        get() = this.resolveBeanNameByAnnotations(SpringProperties.stringQualifiers)
+        get() = this.resolveBeanNameByAnnotations(SpringCoreClasses.STRING_QUALIFIERS)
 
     val PsiType.resolveBeanPsiClass: PsiClass?
         get() {
@@ -199,7 +198,7 @@ object SpringCoreUtil {
             }
 
     fun PsiModifierListOwner.getQualifierAnnotation(): PsiAnnotation? {
-        return this.getMetaAnnotation(SpringProperties.stringQualifiers)
+        return this.getMetaAnnotation(SpringCoreClasses.STRING_QUALIFIERS)
     }
 
 
