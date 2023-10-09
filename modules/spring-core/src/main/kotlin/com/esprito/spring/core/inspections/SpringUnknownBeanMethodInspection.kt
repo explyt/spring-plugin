@@ -5,14 +5,12 @@ import com.esprito.spring.core.SpringCoreClasses.BEAN
 import com.esprito.spring.core.inspections.quickfix.AddMethodQuickFix
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.esprito.util.EspritoAnnotationUtil.getMemberValues
 import com.esprito.util.EspritoPsiUtil.fitsForReference
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isAbstract
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.*
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiMethod
 import java.util.regex.Pattern
 
@@ -28,26 +26,7 @@ class SpringUnknownBeanMethodInspection : AbstractBaseJavaLocalInspectionTool() 
         val searchService = SpringSearchService.getInstance(method.project)
 
         val metaHolder = searchService.getMetaAnnotations(module, BEAN)
-        val targetMethods = setOf("initMethod", "destroyMethod")
-
-        val initDestroyMethodValues = mutableListOf<PsiAnnotationMemberValue>()
-
-        for (annotation in method.annotations) {
-            val annotationFqn = annotation.qualifiedName ?: continue
-            if (!metaHolder.contains(annotation)) continue
-
-            initDestroyMethodValues +=
-                annotation.attributes.asSequence()
-                .filter {
-                    metaHolder.isAttributeRelatedWith(
-                        annotationFqn,
-                        it.attributeName,
-                        BEAN,
-                        targetMethods
-                    )
-                }
-                .flatMap { annotation.getMemberValues(it.attributeName) }
-        }
+        val initDestroyMethodValues = metaHolder.getAnnotationMemberValues(method, setOf("initMethod", "destroyMethod"))
 
         val problems: MutableList<ProblemDescriptor> = mutableListOf()
 

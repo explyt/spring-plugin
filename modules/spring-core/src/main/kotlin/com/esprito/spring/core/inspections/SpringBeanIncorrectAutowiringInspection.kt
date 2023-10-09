@@ -3,7 +3,6 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.inspections.quickfix.AddQualifierQuickFix
 import com.esprito.spring.core.service.PsiBean
 import com.esprito.spring.core.service.SpringBeanService
@@ -185,7 +184,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 }
 
                 else -> {
-                    if (SpringProperties.stringQualifiers.any { element.isMetaAnnotatedBy(it) }) {
+                    if (SpringCoreClasses.STRING_QUALIFIERS.any { element.isMetaAnnotatedBy(it) }) {
                         problems += getProblemQualifier(module, element, manager, isOnTheFly)
                     } else {
                          if (!psiType.canBeMoreThanOneBean(classInheritors)) {
@@ -262,7 +261,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             if (valueMethod != null) return valueMethod
         }
 
-        return SpringProperties.stringQualifiers
+        return SpringCoreClasses.STRING_QUALIFIERS
             .asSequence()
             .map { getAnnotationAttributeValue(element, it) }
             .firstOrNull { it != null }
@@ -276,7 +275,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             if (psiLiterals.isNotEmpty()) return psiLiterals
         }
 
-        return SpringProperties.stringQualifiers
+        return SpringCoreClasses.STRING_QUALIFIERS
             .asSequence()
             .map { getLiteralValueByAnnotationName(element, it) }
             .firstOrNull { it.isNotEmpty() }
@@ -405,7 +404,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 .flatMap { it.getArrayAttributeAsPsiLiteral("required") }
                 .any { (it.value as Boolean) }
 
-        return SpringProperties.stringInjects
+        return SpringCoreClasses.STRING_QUALIFIERS
             .any { owner.isMetaAnnotatedBy(it) }
     }
 

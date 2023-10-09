@@ -1,6 +1,7 @@
 package com.esprito.spring.core.service
 
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.util.EspritoAnnotationUtil.getMemberValues
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
@@ -10,6 +11,7 @@ import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 
 class MetaAnnotationsHolder private constructor(
+    private val parentFqn: String,
     private val annotationByFqn: Map<String, AnnotationInfo>
 ) {
 
@@ -43,6 +45,26 @@ class MetaAnnotationsHolder private constructor(
         )
     }
 
+    fun getAnnotationMemberValues(psiMember: PsiMember, targetMethods: Set<String>): Set<PsiAnnotationMemberValue> {
+        val annotationMemberValues = mutableListOf<PsiAnnotationMemberValue>()
+        for (annotation in psiMember.annotations) {
+            val annotationFqn = annotation.qualifiedName ?: continue
+            if (!this.contains(annotation)) continue
+
+            annotationMemberValues += annotation.attributes.asSequence()
+                .filter {
+                    this.isAttributeRelatedWith(
+                        annotationFqn,
+                        it.attributeName,
+                        parentFqn,
+                        targetMethods
+                    )
+                }
+                .flatMap { annotation.getMemberValues(it.attributeName) }
+        }
+        return annotationMemberValues.toSet()
+    }
+
     companion object {
         fun of(module: Module, parentFqn: String): MetaAnnotationsHolder {
             val annotationsToProceed = mutableListOf(parentFqn)
@@ -70,7 +92,7 @@ class MetaAnnotationsHolder private constructor(
                 annotationByFqn[annotationToProceed] = annotationInfo
 
             }
-            return MetaAnnotationsHolder(annotationByFqn)
+            return MetaAnnotationsHolder(parentFqn, annotationByFqn)
         }
     }
 

@@ -1,6 +1,9 @@
 package com.esprito.spring.core
 
 object SpringProperties {
-    val stringQualifiers = listOf(SpringCoreClasses.QUALIFIER) + JavaEeClasses.NAMED.allFqns
-    val stringInjects = listOf(JavaEeClasses.INJECT.allFqns, JavaEeClasses.RESOURCE.allFqns)
+    const val CLASSPATH_PREFIX = "classpath:"
+    const val FILE_PREFIX = "file:"
+
+    const val PUBLISH_EVENT_METHOD = "publishEvent"
+    const val ON_APPLICATION_EVENT = "onApplicationEvent"
 }

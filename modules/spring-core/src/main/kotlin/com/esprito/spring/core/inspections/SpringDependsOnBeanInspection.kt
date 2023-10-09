@@ -3,7 +3,6 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.DEPENDS_ON
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.util.EspritoAnnotationUtil.getMemberValues
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
@@ -11,7 +10,6 @@ import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
@@ -45,25 +43,7 @@ class SpringDependsOnBeanInspection : AbstractBaseJavaLocalInspectionTool() {
         val beanNames = service.getAllBeanByNames(module)
 
         val metaHolder = service.getMetaAnnotations(module, DEPENDS_ON)
-        val targetMethods = setOf("value")
-
-        val annotationMemberValues = mutableListOf<PsiAnnotationMemberValue>()
-        for (annotation in member.annotations) {
-            val annotationFqn = annotation.qualifiedName ?: continue
-            if (!metaHolder.contains(annotation)) continue
-
-            annotationMemberValues +=
-                annotation.attributes.asSequence()
-                    .filter {
-                        metaHolder.isAttributeRelatedWith(
-                            annotationFqn,
-                            it.attributeName,
-                            DEPENDS_ON,
-                            targetMethods
-                        )
-                    }
-                    .flatMap { annotation.getMemberValues(it.attributeName) }
-        }
+        val annotationMemberValues = metaHolder.getAnnotationMemberValues(member, setOf("value"))
 
         return annotationMemberValues.asSequence()
             .filter {
