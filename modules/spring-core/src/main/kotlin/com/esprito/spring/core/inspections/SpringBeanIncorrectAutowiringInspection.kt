@@ -38,7 +38,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         val module = ModuleUtilCore.findModuleForPsiElement(field) ?: return ProblemDescriptor.EMPTY_ARRAY
 
         var problems = emptyArray<ProblemDescriptor>()
-        if (isInjectOrAutowiredByRequiredTrue(field)) {
+        if (field.isInjectOrAutowiredByRequiredTrue()) {
             if (isAnnotationComponentContainingClass(field)) {
                 if (SpringCoreUtil.existComponentScan(module)) {
                     problems += getProblemAutowired(module, field, manager, isOnTheFly)
@@ -75,7 +75,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 problems += getProblemConstructors(aClass, manager, isOnTheFly)
 
                 val methods = aClass.allMethods
-                    .filter { isInjectOrAutowiredByRequiredTrue(it) }
+                    .filter { it.isInjectOrAutowiredByRequiredTrue() }
                 for (method in methods) {
                     val params = method.parameterList.parameters
                     for (parameter in params.toList()) {
@@ -325,7 +325,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
     ): Array<ProblemDescriptor> {
         var problems = emptyArray<ProblemDescriptor>()
         val identifier = method.identifyingElement
-        if (params.isEmpty() && identifier != null) {
+        if (method.isAutowiredByRequiredTrue() && params.isEmpty() && identifier != null) {
             problems += manager.createProblemDescriptor(
                 identifier,
                 SpringCoreBundle.message("esprito.spring.inspection.method.without.autowiring"),
@@ -345,10 +345,10 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         var problems = emptyArray<ProblemDescriptor>()
 
         val fields = aClass.allFields
-            .filter { isInjectOrAutowiredByRequiredTrue(it) }
+            .filter { it.isInjectOrAutowiredByRequiredTrue() }
             .map { it as PsiElement }.toSet()
         val methods = aClass.allMethods
-            .filter { isInjectOrAutowiredByRequiredTrue(it) }
+            .filter { it.isInjectOrAutowiredByRequiredTrue() }
             .map { it as PsiElement }.toSet()
         val elements = fields + methods
 
@@ -398,14 +398,20 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         return false
     }
 
-    private fun isInjectOrAutowiredByRequiredTrue(owner: PsiModifierListOwner): Boolean {
-        if (owner.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED))
-            return owner.annotations
+    private fun PsiModifierListOwner.isInjectOrAutowiredByRequiredTrue(): Boolean {
+        if (this.isAutowiredByRequiredTrue()) {
+            return true
+        }
+        return SpringCoreClasses.STRING_QUALIFIERS
+            .any { this.isMetaAnnotatedBy(it) }
+    }
+
+    private fun PsiModifierListOwner.isAutowiredByRequiredTrue(): Boolean {
+        if (this.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED))
+            return this.annotations
                 .flatMap { it.getArrayAttributeAsPsiLiteral("required") }
                 .any { (it.value as Boolean) }
-
-        return SpringCoreClasses.STRING_QUALIFIERS
-            .any { owner.isMetaAnnotatedBy(it) }
+        return false
     }
 
     private fun getMessageTypeNone(psiType: PsiType, className: String): String {
