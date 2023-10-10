@@ -148,14 +148,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val beanName = strongBeanName ?: psiField.name
                 val beanPsiType = psiField.type
 
-                return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiType, psiField.getQualifierAnnotation())
+                return springSearchService.findActiveBeanDeclarations(module, beanName, strongBeanName, beanPsiType, psiField.getQualifierAnnotation())
             }
             val psiParameter = element.parentOfType<PsiParameter>() ?: return emptyList()
             val strongBeanName = psiParameter.resolveBeanName
             val beanName = strongBeanName ?: psiParameter.name
             val beanPsiType = psiParameter.type
 
-            return springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiType, psiParameter.getQualifierAnnotation())
+            return springSearchService.findActiveBeanDeclarations(module, beanName, strongBeanName, beanPsiType, psiParameter.getQualifierAnnotation())
         }
 
         private fun findTargetClass(): PsiClass? {
@@ -183,7 +183,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allAutowiredAnnotations = springSearchService.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
-            val allBeans = springSearchService.getAllBeansClasses(module)
+            val allBeans = springSearchService.getActiveBeansClasses(module)
 
             val allFieldsWithAutowired = allBeans.asSequence().flatMap {
                 it.psiClass.allFields.asSequence()
@@ -210,7 +210,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 if (beanName == null) {
                     return@filter true
                 }
-                val resolvedBeanTargets = springSearchService.findBeanDeclarations(module, beanName, strongBeanName, beanPsiType, it.getQualifierAnnotation())
+                val resolvedBeanTargets = springSearchService.findActiveBeanDeclarations(module, beanName, strongBeanName, beanPsiType, it.getQualifierAnnotation())
                 return@filter uParent.javaPsi in resolvedBeanTargets
             }
 

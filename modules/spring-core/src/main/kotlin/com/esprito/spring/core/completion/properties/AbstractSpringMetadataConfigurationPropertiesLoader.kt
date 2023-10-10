@@ -21,6 +21,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
     companion object {
         const val CONFIGURATION_METADATA_FILE_NAME = "spring-configuration-metadata.json"
         const val ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME = "additional-spring-configuration-metadata.json"
+        const val SPRING_FACTORIES_FILE_NAME = "spring.factories"
 
         private val logger = logger<AbstractSpringMetadataConfigurationPropertiesLoader>()
     }

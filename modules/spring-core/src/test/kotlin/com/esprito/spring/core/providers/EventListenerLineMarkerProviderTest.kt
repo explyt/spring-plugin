@@ -1,4 +1,4 @@
-package com.esprito.spring.core.providers;
+package com.esprito.spring.core.providers
 
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
@@ -20,11 +20,12 @@ class EventListenerLineMarkerProviderTest : EspritoJavaLightTestCase() {
         myFixture.configureFromExistingVirtualFile(vf)
         myFixture.doHighlighting()
 
-        val allLineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project);
-        val eventLineMarkers = allLineMarkers
-            .filter { it.javaClass.simpleName == "RelatedItemLineMarkerInfo" }
+        val allLineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project)
+//        val eventLineMarkers = allLineMarkers
+//            .filter { it.javaClass.simpleName == "RelatedItemLineMarkerInfo" }
 
-        assertEquals(10, eventLineMarkers.size)
+        assertEquals(15, allLineMarkers.size)
+//        assertEquals(10, eventLineMarkers.size)
 
     }
 

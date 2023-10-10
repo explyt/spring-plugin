@@ -16,7 +16,7 @@ class CompleteBeanReference(element: PsiElement, private val beanName: String, t
     override fun resolve(): PsiElement? {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
         val springSearchService = SpringSearchService.getInstance(element.project)
-        val foundBeanDeclarations = springSearchService.findBeanDeclarations(module, beanName)
+        val foundBeanDeclarations = springSearchService.findActiveBeanDeclarations(module, beanName)
         val resolveResults = foundBeanDeclarations.map { PsiElementResolveResult(it) }.toTypedArray()
         return if (resolveResults.size == 1) resolveResults[0].element else null
     }
