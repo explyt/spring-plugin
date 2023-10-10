@@ -18,7 +18,7 @@ class EspritoBeanReference(
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val springSearchService = SpringSearchService.getInstance(element.project)
-        val foundBeanDeclarations = springSearchService.findBeanDeclarations(module, beanName)
+        val foundBeanDeclarations = springSearchService.findActiveBeanDeclarations(module, beanName)
         return foundBeanDeclarations.map { PsiElementResolveResult(it) }.toTypedArray()
     }
 
@@ -30,7 +30,7 @@ class EspritoBeanReference(
     override fun getVariants(): Array<Any> {
         val project: Project = myElement.project
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-        val allBeans = SpringSearchService.getInstance(project).getAllBeansClasses(module)
+        val allBeans = SpringSearchService.getInstance(project).getActiveBeansClasses(module)
         return allBeans.map { bean ->
             LookupElementBuilder.create(bean.name)
                 .withIcon(AllIcons.Nodes.Class)

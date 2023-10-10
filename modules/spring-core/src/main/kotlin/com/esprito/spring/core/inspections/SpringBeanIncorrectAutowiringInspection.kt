@@ -145,8 +145,12 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             val problemElement = (element as? PsiNameIdentifierOwner)?.identifyingElement ?: return ProblemDescriptor.EMPTY_ARRAY
 
             val searchService = SpringSearchService.getInstance(module.project)
-            val classInheritors = searchService.searchClassInheritors(resolvedPsiBeanClass).toMutableSet()
+            val excludedBeans = searchService.getExcludedBeansClasses(module)
+
+            val classInheritors = searchService.searchClassInheritors(resolvedPsiBeanClass)
+                .filter { inheritor -> excludedBeans.none { it.psiMember == inheritor } }.toMutableSet()
             val allBeansPsiMethods = searchService.getComponentBeanPsiMethods(module)
+                .filter { psiMethod -> excludedBeans.none { it.psiMember == psiMethod } }.toSet()
             val beansPsiMethods = searchService.getBeansPsiMethods(psiType, allBeansPsiMethods, resolvedPsiBeanClass)
 
             if (psiType.isOptional && classInheritors.isEmpty() && beansPsiMethods.isEmpty()) {
@@ -217,7 +221,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         val elementLiterals = getLiteralQualifier(element)
 
         val beanCandidates = SpringBeanService.getInstance(module.project).getBeanCandidates(element.type, module)
-        val elementPsiBean = elementLiterals?.let { PsiBean(it, resolvedPsiClass, null) }
+        val elementPsiBean = elementLiterals?.let { PsiBean(it, resolvedPsiClass, null, element) }
 
         if (!beanCandidates.any { it.name == elementPsiBean?.name }) {
             val psiLiteralList = getPsiLiteralList(element)
@@ -313,7 +317,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
     private fun isBeanExist(element: PsiElement, psiClass: PsiClass): Boolean {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return false
-        return SpringSearchService.getInstance(module.project).getAllBeansClasses(module)
+        return SpringSearchService.getInstance(module.project).getActiveBeansClasses(module)
             .any { it.psiClass == psiClass }
     }
 

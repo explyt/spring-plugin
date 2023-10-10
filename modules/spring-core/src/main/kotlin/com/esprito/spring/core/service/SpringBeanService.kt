@@ -50,19 +50,19 @@ class SpringBeanService {
                 val values = SpringCoreClasses.STRING_QUALIFIERS
                     .asSequence()
                     .mapNotNull { annotation -> getAnnotationValue(it, annotation) }
-                    .map { value -> PsiBean(value, psiClass, null) }
+                    .map { value -> PsiBean(value, psiClass, null, it) }
                     .toMutableSet()
                 beanCandidates += values
 
                 val beanNameAnnotationValue = getAnnotationValue(it, annotationName)
                 if (values.isEmpty() && !beanNameAnnotationValue.isNullOrBlank()) {
-                    beanCandidates += PsiBean(beanNameAnnotationValue, psiClass, null)
+                    beanCandidates += PsiBean(beanNameAnnotationValue, psiClass, null, it)
                 }
                 if (values.isEmpty() && beanNameAnnotationValue.isNullOrBlank()) {
 
                     val beanName = if (it is PsiClass) it.getBeanName() else if (it is PsiMethod) it.resolveBeanName else null
                     if (beanName != null) {
-                        beanCandidates += PsiBean(beanName, psiClass, null)
+                        beanCandidates += PsiBean(beanName, psiClass, null, it)
                     }
                 }
             }
