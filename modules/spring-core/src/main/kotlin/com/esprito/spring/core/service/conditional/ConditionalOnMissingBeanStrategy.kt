@@ -20,14 +20,14 @@ class ConditionalOnMissingBeanStrategy(module: Module) : ExclusionStrategy {
         }
 
         val names = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
-            .map { AnnotationUtil.getStringAttributeValue(it) }
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
         if (names.isNotEmpty() && foundBeans.any { names.contains(it.name) }) {
             return true
         }
 
         val types = annotationHolder.getAnnotationMemberValues(dependant, setOf("type"))
-            .map { AnnotationUtil.getStringAttributeValue(it) }
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
         if (types.isNotEmpty() && foundBeans.any { types.contains(it.psiClass.qualifiedName) }) {
             return true
@@ -41,7 +41,7 @@ class ConditionalOnMissingBeanStrategy(module: Module) : ExclusionStrategy {
                 .flatMap { it.childrenOfType<PsiTypeElement>() }
                 .map { it.type }
                 .mapNotNull { it.resolveBeanPsiClass }
-                .map { it.qualifiedName }
+                .mapNotNull { it.qualifiedName }
                 .toSet()
         }
         return classesQn.isNotEmpty() && foundBeans.any { classesQn.contains(it.psiClass.qualifiedName) }
