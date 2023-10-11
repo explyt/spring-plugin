@@ -2,7 +2,7 @@ package com.esprito.base
 
 import com.esprito.module.ExternalSystemModule
 import com.esprito.util.CacheKeyStore
-import com.intellij.codeInsight.JavaLibraryModificationTracker
+import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project

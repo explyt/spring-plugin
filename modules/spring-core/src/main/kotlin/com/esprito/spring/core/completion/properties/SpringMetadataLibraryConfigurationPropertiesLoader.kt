@@ -1,7 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.util.CacheKeyStore
-import com.intellij.codeInsight.JavaLibraryModificationTracker
+import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.impl.LibraryScopeCache
