@@ -13,12 +13,13 @@ import com.esprito.spring.core.util.SpringCoreUtil.getBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoAnnotationUtil.getArrayAttributeAsPsiLiteral
+import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationValue
+import com.esprito.util.EspritoAnnotationUtil.getValue
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isGeneric
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -252,8 +253,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             .asSequence()
             .filter { it.isMetaAnnotatedBy(annotationName) }
             .mapNotNull { it.getMetaAnnotation(annotationName) }
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it, "value") }
-            .filter { it.isNotBlank() }
+            .mapNotNull { it.getValue() }
             .toSet()
     }
 
@@ -267,7 +267,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
         return SpringCoreClasses.STRING_QUALIFIERS
             .asSequence()
-            .map { getAnnotationAttributeValue(element, it) }
+            .map { element.getMetaAnnotationValue(it) }
             .firstOrNull { it != null }
     }
 
@@ -284,18 +284,6 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             .map { getLiteralValueByAnnotationName(element, it) }
             .firstOrNull { it.isNotEmpty() }
             ?: emptyList()
-    }
-
-    private fun PsiModifierListOwner.getPsiAnnotationByAnnotationName(annotationName: String): PsiAnnotation? {
-        if (isMetaAnnotatedBy(annotationName)) {
-            return getMetaAnnotation(annotationName)
-        }
-        return null
-    }
-
-    private fun getAnnotationAttributeValue(element: PsiModifierListOwner, annotationName: String): String? {
-        val annotation = element.getPsiAnnotationByAnnotationName(annotationName) ?: return null
-        return AnnotationUtil.getStringAttributeValue(annotation, "value")
     }
 
     private fun getLiteralValueByAnnotationName(
@@ -377,7 +365,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         message.append("<html><table><tr><td>")
         message.append(SpringCoreBundle.message("esprito.spring.inspection.bean.class.autowired.type", name))
         message.append("</td></tr><tr><td><table><tr><td valign='top'> Beans: </td><td>")
-        beanCandidates.forEach { message.append(getName(it) + " <br>") }
+        beanCandidates.map { getName(it) }.sorted().joinTo(message, " <br>")
         message.append("</td></tr></table></td></tr></table></html>")
         return message.toString()
     }
@@ -431,14 +419,8 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
     private fun getName(value: PsiModifierListOwner): String {
         return when (value) {
-            is PsiClass -> {
-                value.name.toString()
-            }
-
-            is PsiMethod -> {
-                value.name
-            }
-
+            is PsiClass -> value.name.toString()
+            is PsiMethod -> value.name
             else -> ""
         }
     }

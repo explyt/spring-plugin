@@ -121,7 +121,7 @@
         <package>component_scan.many_beans</package>
         <entry_point TYPE="field" FQNAME="component_scan.many_beans.MyComponent one" />
         <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
-        <description>&lt;html&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Autowire failed. There is more than one bean of 'FooInterface'&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;table&gt;&lt;tr&gt;&lt;td valign='top'&gt; Beans: &lt;/td&gt;&lt;td&gt;ThreeBean &lt;br&gt;OtherBean &lt;br&gt;FooBean &lt;br&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/html&gt;</description>
+        <description>&lt;html&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Autowire failed. There is more than one bean of 'FooInterface'&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;table&gt;&lt;tr&gt;&lt;td valign='top'&gt; Beans: &lt;/td&gt;&lt;td&gt;FooBean &lt;br&gt;OtherBean &lt;br&gt;ThreeBean&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/html&gt;</description>
         <highlighted_element>one</highlighted_element>
         <language>JAVA</language>
         <offset>17</offset>

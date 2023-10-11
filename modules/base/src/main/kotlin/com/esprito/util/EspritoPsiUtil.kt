@@ -45,6 +45,11 @@ object EspritoPsiUtil {
             it.qualifiedName in annotationNames || it.resolveAnnotationType()?.isMetaAnnotatedBy(annotationNames) ?: false
         }
 
+    fun PsiModifierListOwner.getAnnotation(annotationNames: Collection<String>): PsiAnnotation? =
+        this.annotations.firstOrNull {
+            it.qualifiedName in annotationNames || it.resolveAnnotationType()?.isAnnotatedBy(annotationNames) ?: false
+        }
+
     fun PsiMember.inClassAnnotatedBy(annotation: String, flags: Int = 0) =
         this.containingClass?.let {
             it.qualifiedName != null && it.isAnnotatedBy(annotation, flags)
