@@ -18,18 +18,20 @@ class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
         if (dependant.annotations.none { annotationHolder.contains(it) }) {
             return false
         }
+        val foundBeanNames = foundBeans.map { it.name }.toSet()
+        val foundBeanClassQn = foundBeans.mapNotNull { it.psiClass.qualifiedName }.toSet()
 
         val names = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
-            .map { AnnotationUtil.getStringAttributeValue(it) }
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
-        if (names.isNotEmpty() && foundBeans.none { names.contains(it.name) }) {
+        if (names.isNotEmpty() && names.any { !foundBeanNames.contains(it) }) {
             return true
         }
 
         val types = annotationHolder.getAnnotationMemberValues(dependant, setOf("type"))
-            .map { AnnotationUtil.getStringAttributeValue(it) }
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
-        if (types.isNotEmpty() && foundBeans.none { types.contains(it.psiClass.qualifiedName) }) {
+        if (types.isNotEmpty() && types.any { !foundBeanClassQn.contains(it) }) {
             return true
         }
 
@@ -41,10 +43,10 @@ class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
                 .flatMap { it.childrenOfType<PsiTypeElement>() }
                 .map { it.type }
                 .mapNotNull { it.resolveBeanPsiClass }
-                .map { it.qualifiedName }
+                .mapNotNull { it.qualifiedName }
                 .toSet()
         }
-        return classesQn.isNotEmpty() && foundBeans.none { classesQn.contains(it.psiClass.qualifiedName) }
+        return classesQn.isNotEmpty() && classesQn.any { !foundBeanClassQn.contains(it) }
     }
 
 }
