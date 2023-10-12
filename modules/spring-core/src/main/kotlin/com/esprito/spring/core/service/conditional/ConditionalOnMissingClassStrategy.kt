@@ -7,7 +7,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.searches.AllClassesSearch
+import com.intellij.psi.search.PsiShortNamesCache
 
 class ConditionalOnMissingClassStrategy(private val module: Module) : ExclusionStrategy {
     private val annotationHolder = MetaAnnotationsHolder.of(module, SpringCoreClasses.CONDITIONAL_ON_MISSING_CLASS)
@@ -18,19 +18,21 @@ class ConditionalOnMissingClassStrategy(private val module: Module) : ExclusionS
         }
 
         val types = annotationHolder.getAnnotationMemberValues(dependant, setOf("value"))
+            .asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
 
-        if (types.isNotEmpty()) {
-            val allClassesQn = AllClassesSearch.search(
-                GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module),
-                module.project
-            )
-                .mapNotNull { it.qualifiedName }
-                .toSet()
+        for (typeQn in types) {
+            val className = typeQn.split('.').lastOrNull() ?: continue
 
-            return types.any { allClassesQn.contains(it) }
+            val classFound = PsiShortNamesCache.getInstance(module.project)
+                .getClassesByName(
+                    className,
+                    GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+                )
+                .any { it.qualifiedName == typeQn }
 
+            if (classFound) return true
         }
 
         return false

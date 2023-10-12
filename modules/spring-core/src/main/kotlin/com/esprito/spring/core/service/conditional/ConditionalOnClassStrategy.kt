@@ -9,7 +9,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiTypeElement
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.searches.AllClassesSearch
+import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.childrenOfType
 
 class ConditionalOnClassStrategy(private val module: Module) : ExclusionStrategy {
@@ -28,21 +28,29 @@ class ConditionalOnClassStrategy(private val module: Module) : ExclusionStrategy
             .toSet()
 
         val typesQn = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
+            .asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
+
 
         if (classAttributesQn.isEmpty() && typesQn.isEmpty()) {
             return false
         }
 
-        val allClassesQn = AllClassesSearch.search(
-            GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module),
-            module.project
-        )
-            .mapNotNull { it.qualifiedName }
-            .toSet()
+        for (typeQn in (classAttributesQn + typesQn)) {
+            val className = typeQn.split('.').lastOrNull() ?: continue
 
-        return (classAttributesQn + typesQn).any { !allClassesQn.contains(it) }
+            val classNotFound = PsiShortNamesCache.getInstance(module.project)
+                .getClassesByName(
+                    className,
+                    GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+                )
+                .none { it.qualifiedName == typeQn }
+
+            if (classNotFound) return true
+        }
+
+        return false
     }
 
 }
