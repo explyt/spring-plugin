@@ -24,11 +24,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.searches.AllClassesSearch
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
-import com.intellij.psi.search.searches.ClassInheritorsSearch
-import com.intellij.psi.search.searches.MethodReferencesSearch
-import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.search.searches.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
@@ -332,11 +328,12 @@ class SpringSearchService(private val project: Project) {
             ConditionalOnMissingClassStrategy(module)
         )
 
-        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-        val dependants: List<PsiMember> = AllClassesSearch.search(scope, project)
-            .filter {
-                autoConfigurationsFqn.contains(it.qualifiedName)
-            }
+        val dependants = foundBeans.asSequence()
+            .filter { it.psiMember is PsiClass }
+            .filter { autoConfigurationsFqn.contains(it.psiClass.qualifiedName) }
+            .map { it.psiClass }
+            .toList()
+
 
         var changed: Boolean
         do {
