@@ -10,6 +10,10 @@
                         interface="com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader"
                         area="IDEA_PROJECT"/>
 
+        <extensionPoint qualifiedName="com.esprito.spring.core.configurationFactoriesNamesLoader"
+                        interface="com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader"
+                        area="IDEA_PROJECT"/>
+
         <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher"
                         interface="com.esprito.spring.core.profile.ProfileSearcher"
                         area="IDEA_PROJECT"/>
@@ -20,10 +24,13 @@
                 implementation="com.esprito.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
         <configurationPropertiesLoader
                 implementation="com.esprito.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
-        <configurationPropertiesLoader
-                implementation="com.esprito.spring.core.completion.properties.SpringFactoriesConfigurationPropertiesLoader"/>
         <!--        <configurationPropertiesLoader-->
         <!--                implementation="com.esprito.spring.core.completion.properties.SpringMetadataProjectConfigurationPropertiesLoader"/>-->
+
+        <configurationFactoriesNamesLoader
+                implementation="com.esprito.spring.core.completion.properties.AutoConfigurationImportsPropertiesLoader"/>
+        <configurationFactoriesNamesLoader
+                implementation="com.esprito.spring.core.completion.properties.SpringFactoriesConfigurationPropertiesLoader"/>
 
         <profileSearcher implementation="com.esprito.spring.core.profile.AnnotationProfileSearcher"/>
         <profileSearcher implementation="com.esprito.spring.core.profile.AdditionalProfileSearcher"/>
@@ -178,7 +185,7 @@
 
         <fileType name="Factories Configuration"
                   language="Properties"
-                  extensions="factories"
+                  extensions="factories;imports"
                   implementationClass="com.esprito.spring.core.language.FactoriesFileType"/>
 
     </extensions>

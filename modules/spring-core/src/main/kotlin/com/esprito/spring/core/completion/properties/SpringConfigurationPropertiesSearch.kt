@@ -33,4 +33,13 @@ class SpringConfigurationPropertiesSearch {
                 it.loadPropertyHints(module)
             }.toList()
     }
+
+    fun getAllFactoriesNames(module: Module): Set<String> {
+        return ConfigurationFactoriesNamesLoader.EP_NAME.getExtensions(module.project)
+            .asSequence()
+            .flatMap {
+                it.loadFactories(module)
+            }.toSet()
+    }
+
 }

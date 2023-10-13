@@ -13,12 +13,12 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.CommonProcessors
 
-class SpringFactoriesConfigurationPropertiesLoader :
+class AutoConfigurationImportsPropertiesLoader :
     ConfigurationFactoriesNamesLoader {
 
     override fun loadFactories(module: Module): Set<String> {
         val key = CacheKeyStore.getInstance(module.project).getKey<Set<String>>(
-            "SpringFactoriesConfigurationPropertiesLoader"
+            "AutoConfigurationImportsPropertiesLoader"
         )
         return CachedValuesManager.getManager(module.project)
             .getCachedValue(module, key, {
@@ -37,12 +37,12 @@ class SpringFactoriesConfigurationPropertiesLoader :
         if (file !is PropertiesFile) return setOf()
 
         return file
-            .findPropertyByKey(TARGET_PROPERTY)
-            ?.unescapedValue
-            ?.split(Regexes.whitespace)
-            ?.asSequence()
-            ?.filter { it.isNotBlank() }
-            ?.toSet() ?: setOf()
+            .properties
+            .asSequence()
+            .mapNotNull { it.unescapedKey }
+            .flatMap { it.split(Regexes.whitespace) }
+            .filter { it.isNotBlank() }
+            .toSet()
     }
 
     private fun findMetadataFiles(module: Module): List<PsiFile> {
@@ -51,7 +51,7 @@ class SpringFactoriesConfigurationPropertiesLoader :
         val psiManager = PsiManager.getInstance(module.project)
 
         FilenameIndex.processFilesByNames(
-            setOf(SPRING_FACTORIES),
+            setOf(AUTOCONFIGURATION_IMPORTS),
             true,
             scope,
             null,
@@ -60,10 +60,11 @@ class SpringFactoriesConfigurationPropertiesLoader :
 
         return collectProcessor.results.asSequence()
             .filter {
-                it.parent?.name == "META-INF"
+                it.parent?.name == "spring" && it.parent?.parent?.name == "META-INF"
             }.mapNotNull {
                 psiManager.findFile(it)
             }.toList()
+
     }
 
     private object Regexes {
@@ -71,8 +72,7 @@ class SpringFactoriesConfigurationPropertiesLoader :
     }
 
     private companion object {
-        private const val SPRING_FACTORIES = "spring.factories"
-        private const val TARGET_PROPERTY = "org.springframework.boot.autoconfigure.EnableAutoConfiguration"
+        private const val AUTOCONFIGURATION_IMPORTS = "org.springframework.boot.autoconfigure.AutoConfiguration.imports"
     }
 
 }

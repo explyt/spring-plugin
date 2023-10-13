@@ -40,14 +40,14 @@ class ConditionalOnClassStrategy(private val module: Module) : ExclusionStrategy
         for (typeQn in (classAttributesQn + typesQn)) {
             val className = typeQn.split('.').lastOrNull() ?: continue
 
-            val classNotFound = PsiShortNamesCache.getInstance(module.project)
+            val classFound = PsiShortNamesCache.getInstance(module.project)
                 .getClassesByName(
                     className,
                     GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
                 )
-                .none { it.qualifiedName == typeQn }
+                .any { it.qualifiedName == typeQn }
 
-            if (classNotFound) return true
+            if (!classFound) return true
         }
 
         return false

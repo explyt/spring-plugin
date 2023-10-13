@@ -16,7 +16,7 @@ class FactoriesFileType : LanguageFileType(PropertiesLanguage.INSTANCE) {
     }
 
     override fun getDefaultExtension(): String {
-        return "factories"
+        return "factories;imports"
     }
 
     override fun getIcon(): Icon {
