@@ -24,7 +24,10 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.searches.*
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.psi.search.searches.ClassInheritorsSearch
+import com.intellij.psi.search.searches.MethodReferencesSearch
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
@@ -311,14 +314,9 @@ class SpringSearchService(private val project: Project) {
         val active = foundBeans.toMutableSet()
         val excluded = mutableSetOf<PsiBean>()
 
-        val autoConfigurationsProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
-            .findProperty(module,
-                "org.springframework.boot.autoconfigure.EnableAutoConfiguration"
-            )?.defaultValue ?: return FoundBeans(active, excluded)
-        val autoConfigurationsFqn = autoConfigurationsProperty.toString()
-            .split(whitespaceRegex)
-            .filter { it.isNotBlank() }
-            .toSet()
+        val autoConfigurationsFqn =
+            SpringConfigurationPropertiesSearch.getInstance(module.project)
+                .getAllFactoriesNames(module)
         if (autoConfigurationsFqn.isEmpty()) return FoundBeans(active, excluded)
 
         val exclusionStrategies = listOf(
@@ -388,7 +386,6 @@ class SpringSearchService(private val project: Project) {
     }
 
     companion object {
-        val whitespaceRegex = Regex("\\s")
         fun getInstance(project: Project): SpringSearchService = project.service()
     }
 
