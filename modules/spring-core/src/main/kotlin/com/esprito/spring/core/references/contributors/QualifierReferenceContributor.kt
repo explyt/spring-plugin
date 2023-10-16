@@ -30,7 +30,7 @@ class QualifierReferenceProvider: UastInjectionHostReferenceProvider() {
         val psiAnnotation = uAnnotation.javaPsi ?: return PsiReference.EMPTY_ARRAY
         val psiAnnotationClass = psiAnnotation.resolveAnnotationType() ?: return PsiReference.EMPTY_ARRAY
 
-        if (SpringCoreClasses.STRING_QUALIFIERS.none { it == uAnnotation.qualifiedName || psiAnnotationClass.isMetaAnnotatedBy(it) }) {
+        if (SpringCoreClasses.QUALIFIERS.none { it == uAnnotation.qualifiedName || psiAnnotationClass.isMetaAnnotatedBy(it) }) {
             return PsiReference.EMPTY_ARRAY
         }
         val resolveAnnotationType = psiAnnotation.resolveAnnotationType() ?: return PsiReference.EMPTY_ARRAY
