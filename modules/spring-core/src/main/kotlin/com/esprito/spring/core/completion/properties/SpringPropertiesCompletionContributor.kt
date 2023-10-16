@@ -20,12 +20,23 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             context: ProcessingContext,
             result: CompletionResultSet
         ) {
-            val position = parameters.position as? PropertyKeyImpl ?: return
-            if (position.parent !is IProperty || !SpringCoreUtil.isConfigurationPropertyFile(parameters.originalFile)
+            val propertyPosition = parameters.position
+            if (propertyPosition.parent !is IProperty || !SpringCoreUtil.isConfigurationPropertyFile(parameters.originalFile)
             ) {
                 return
             }
 
+            if (propertyPosition is PropertyKeyImpl) {
+                completePropertyKey(propertyPosition, parameters, result)
+            }
+            // completion of key value you can find in SpringConfigurationPropertiesValueReferenceProvider
+        }
+
+        private fun completePropertyKey(
+            position: PropertyKeyImpl,
+            parameters: CompletionParameters,
+            result: CompletionResultSet
+        ) {
             val module = ModuleUtilCore.findModuleForPsiElement(position) ?: return
 
             val cursor = parameters.offset
@@ -36,7 +47,14 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllProperties(module)
 
-            for (property in properties) {
+            val reducedProperties = properties
+                .groupBy { it.name }
+                .map {
+                    it.value
+                        .reduce { first, second -> if (first.description != null || first.defaultValue != null) first else second }
+                }
+
+            for (property in reducedProperties) {
                 result.withPrefixMatcher(key).addElement(
                     LookupElementBuilder.create(property, property.name).withRenderer(PropertyRenderer())
                 )

@@ -1,12 +1,11 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.module.ExternalSystemModule
+import com.esprito.util.CacheKeyStore
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
-import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import java.io.File
@@ -14,15 +13,14 @@ import java.io.FileFilter
 
 class SpringMetadataProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
-    companion object {
-        private val CACHE_KEY =
-            Key.create<CachedValue<List<ConfigurationProperty>>>("SpringMetadataProjectConfigurationPropertiesLoader")
-    }
-
     override fun loadProperties(module: Module): List<ConfigurationProperty> {
+        val project = module.project
+        val key = CacheKeyStore.getInstance(project).getKey<List<ConfigurationProperty>>(
+            "SpringMetadataProjectConfigurationPropertiesLoader(${module.name})"
+        )
         return CachedValuesManager
             .getManager(module.project)
-            .getCachedValue(module, CACHE_KEY, {
+            .getCachedValue(module, key, {
                 val result = mutableMapOf<String, ConfigurationProperty>()
                 findMetadataFiles(module).forEach {
                     collectConfigurationProperties(FileUtil.loadFile(it), it.absolutePath, result)
@@ -37,7 +35,23 @@ class SpringMetadataProjectConfigurationPropertiesLoader(project: Project) : Abs
     }
 
     override fun loadPropertyHints(module: Module): List<PropertyHint> {
-        return emptyList()
+        val project = module.project
+        val key = CacheKeyStore.getInstance(project).getKey<List<PropertyHint>>(
+            "SpringMetadataProjectConfigurationPropertiesLoaderHint(${module.name})"
+        )
+        return CachedValuesManager
+            .getManager(module.project)
+            .getCachedValue(module, key, {
+                val result = findMetadataFiles(module).flatMap {
+                    collectPropertyHints(FileUtil.loadFile(it), it.absolutePath)
+                }
+
+                // TODO check ProjectRootModificationTracker
+                CachedValueProvider.Result.create(
+                    result.toList(),
+                    ProjectRootModificationTracker.getInstance(module.project)
+                )
+            }, false)
     }
 
     private fun findMetadataFiles(module: Module): Array<File> {

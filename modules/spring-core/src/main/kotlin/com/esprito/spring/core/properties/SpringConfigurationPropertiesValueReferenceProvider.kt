@@ -1,7 +1,7 @@
 package com.esprito.spring.core.properties
 
-import com.esprito.spring.core.completion.properties.ConfigurationProperty
 import com.esprito.spring.core.completion.properties.PropertyHint
+import com.esprito.spring.core.completion.properties.PropertyValueRenderer
 import com.esprito.spring.core.completion.properties.ProviderHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.util.SpringCoreUtil
@@ -79,8 +79,8 @@ class ValueHintReference(
         }
 
         val configurationProperty = springConfigurationPropertiesSearch.findProperty(module, propertyKey)
-        if (configurationProperty != null) {
-            result.addAll(getVariantsByPropertyType(configurationProperty))
+        configurationProperty?.type?.replace('$', '.')?.let {
+            result.addAll(getVariantsByPropertyType(it))
         }
 
         return result.toTypedArray()
@@ -91,11 +91,7 @@ class ValueHintReference(
     ): List<Any> {
         val result = mutableListOf<Any>()
         result.addAll(propertyHint.values.map {
-            val lookupElementBuilder = LookupElementBuilder.create(it, it.value)
-            it.description?.let { description ->
-                lookupElementBuilder.withTailText(" (${description})", true)
-            }
-            lookupElementBuilder
+            LookupElementBuilder.create(it, it.value).withRenderer(PropertyValueRenderer())
         })
 
         propertyHint.providers.flatMapTo(result) { providerHint ->
@@ -104,8 +100,7 @@ class ValueHintReference(
         return result
     }
 
-    private fun getVariantsByPropertyType(configurationProperty: ConfigurationProperty): Collection<Any> {
-        val propertyType = configurationProperty.type?.replace('$', '.') ?: return emptyList()
+    private fun getVariantsByPropertyType(propertyType: String): List<Any> {
         return when (propertyType) {
             "java.util.Locale" -> {
                 DateFormat.getAvailableLocales().map {
@@ -128,6 +123,12 @@ class ValueHintReference(
                 }
             }
 
+            "java.lang.Boolean", "boolean" -> {
+                listOf("true", "false").map {
+                    LookupElementBuilder.create(it)
+                }
+            }
+
             else -> {
                 val project = element.project
                 val propertyTypeClass = JavaPsiFacade.getInstance(project)
@@ -144,13 +145,19 @@ class ValueHintReference(
 
     private fun processProviderHints(provider: ProviderHint): List<Any> {
         val providerName = provider.name
-        if (providerName == "class-reference") {
-            val targetClassFqn = provider.parameters?.target ?: return emptyList()
-            val resolveScope = element.resolveScope
-            val targetPsiClass = JavaPsiFacade.getInstance(element.project)
-                .findClass(targetClassFqn, resolveScope) ?: return emptyList()
-            return ClassInheritorsSearch.search(targetPsiClass, resolveScope, true).map {
-                JavaPsiClassReferenceElement(it)
+        when (providerName) {
+            "class-reference" -> {
+                val targetClassFqn = provider.parameters?.target ?: return emptyList()
+                val resolveScope = element.resolveScope
+                val targetPsiClass = JavaPsiFacade.getInstance(element.project)
+                    .findClass(targetClassFqn, resolveScope) ?: return emptyList()
+                return ClassInheritorsSearch.search(targetPsiClass, resolveScope, true).map {
+                    JavaPsiClassReferenceElement(it)
+                }
+            }
+            "handle-as" -> {
+                val targetClassFqn = provider.parameters?.target ?: return emptyList()
+                return getVariantsByPropertyType(targetClassFqn)
             }
         }
 

@@ -1,0 +1,23 @@
+package com.esprito.spring.core.completion.properties
+
+import com.esprito.spring.core.SpringIcons
+import com.esprito.util.EspritoTextUtil.getFirstSentenceWithoutDot
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementPresentation
+import com.intellij.codeInsight.lookup.LookupElementRenderer
+
+class PropertyValueRenderer : LookupElementRenderer<LookupElement>() {
+
+    override fun renderElement(element: LookupElement, presentation: LookupElementPresentation) {
+        val valueHint = element.`object` as ValueHint
+        val lookupString = element.lookupString
+        presentation.itemText = lookupString
+
+        valueHint.description?.let {
+            presentation.setTailText(" (" + getFirstSentenceWithoutDot(it) + ")", true)
+        }
+
+        presentation.icon = SpringIcons.Spring
+    }
+
+}

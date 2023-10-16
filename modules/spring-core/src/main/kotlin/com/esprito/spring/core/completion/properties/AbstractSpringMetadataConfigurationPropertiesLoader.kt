@@ -56,7 +56,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
         val metadata = loadMetadata(metaDataFileText, metaDataFilePath, SpringConfigurationPropertiesMetadata::class.java)
             ?: return
 
-        metadata.properties.forEach {
+        metadata.properties?.forEach {
             val propertyName = it.name
             val existProperty = configurationProperties[propertyName]
             if (existProperty == null) {
@@ -108,7 +108,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
 
 data class SpringConfigurationPropertiesMetadata @JsonCreator constructor(
     @JsonProperty("properties")
-    val properties: List<SpringConfigurationMetadataProperty> = mutableListOf(),
+    val properties: List<SpringConfigurationMetadataProperty>? = mutableListOf(),
 )
 
 data class SpringConfigurationHintsMetadata @JsonCreator constructor(
