@@ -4,6 +4,7 @@ import com.esprito.util.SourcesUtils
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiManager
@@ -105,8 +106,10 @@ class MavenModule(override val rootModule: Module) : ExternalSystemModule {
 
     override val buildMetaInfDirectory: File?
         get() {
-            val rootProjectPath = ExternalSystemModulePropertyManager.getInstance(rootModule).getRootProjectPath() ?: return null
-            val metaInfFile = File(rootProjectPath, "build/classes/META-INF")
+            val rootProjectPath = ExternalSystemModulePropertyManager.getInstance(rootModule).getRootProjectPath()
+                ?: rootModule.project.guessProjectDir()?.path
+                ?: return null
+            val metaInfFile = File(rootProjectPath, "target/classes/META-INF")
             if (metaInfFile.exists()) {
                 return metaInfFile
             }

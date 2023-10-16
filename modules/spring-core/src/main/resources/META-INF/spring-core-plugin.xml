@@ -24,8 +24,8 @@
                 implementation="com.esprito.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
         <configurationPropertiesLoader
                 implementation="com.esprito.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
-        <!--        <configurationPropertiesLoader-->
-        <!--                implementation="com.esprito.spring.core.completion.properties.SpringMetadataProjectConfigurationPropertiesLoader"/>-->
+        <configurationPropertiesLoader
+                implementation="com.esprito.spring.core.completion.properties.SpringMetadataProjectConfigurationPropertiesLoader"/>
 
         <configurationFactoriesNamesLoader
                 implementation="com.esprito.spring.core.completion.properties.AutoConfigurationImportsPropertiesLoader"/>

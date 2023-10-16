@@ -29,7 +29,10 @@ class SpringMetadataProjectConfigurationPropertiesLoader(project: Project) : Abs
                 }
 
                 //TODO check ProjectRootModificationTracker
-                CachedValueProvider.Result.create(result.values.toList(), ProjectRootModificationTracker.getInstance(module.project))
+                CachedValueProvider.Result.create(
+                    result.values.toList(),
+                    ProjectRootModificationTracker.getInstance(module.project)
+                )
             }, false)
     }
 
@@ -41,7 +44,8 @@ class SpringMetadataProjectConfigurationPropertiesLoader(project: Project) : Abs
         //TODO load additional-spring-configuration-metadata.json from module resource META-ING directory
         val buildMetaInfDirectory = ExternalSystemModule.of(module).buildMetaInfDirectory ?: return emptyArray()
         return buildMetaInfDirectory.listFiles(FileFilter {
-            CONFIGURATION_METADATA_FILE_NAME.equals(it.name, true) || ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME.equals(it.name, true)
+            CONFIGURATION_METADATA_FILE_NAME.equals(it.name, true)
+                    || ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME.equals(it.name, true)
         }) ?: emptyArray()
     }
 }
