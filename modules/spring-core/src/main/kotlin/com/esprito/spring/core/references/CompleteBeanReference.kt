@@ -1,7 +1,6 @@
 package com.esprito.spring.core.references
 
 import com.esprito.spring.core.service.SpringBeanService
-import com.esprito.spring.core.service.SpringSearchService
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -15,8 +14,11 @@ class CompleteBeanReference(element: PsiElement, private val beanName: String, t
 
     override fun resolve(): PsiElement? {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
-        val springSearchService = SpringSearchService.getInstance(element.project)
-        val foundBeanDeclarations = springSearchService.findActiveBeanDeclarations(module, beanName)
+        val psiType = getPsiType() ?: return null
+
+        val foundBeanDeclarations = SpringBeanService.getInstance(module.project).getBeanCandidates(module, psiType, beanName).asSequence()
+            .map { it.psiMember }
+            .toList()
         val resolveResults = foundBeanDeclarations.map { PsiElementResolveResult(it) }.toTypedArray()
         return if (resolveResults.size == 1) resolveResults[0].element else null
     }
@@ -26,7 +28,7 @@ class CompleteBeanReference(element: PsiElement, private val beanName: String, t
 
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val psiType = getPsiType() ?: return emptyArray()
-        val beanCandidates = SpringBeanService.getInstance(module.project).getBeanCandidates(psiType, module)
+        val beanCandidates = SpringBeanService.getInstance(module.project).getBeanCandidates(module, psiType, beanName)
 
         beanCandidates.mapTo(variants) {
             LookupElementBuilder.create(it.name)
