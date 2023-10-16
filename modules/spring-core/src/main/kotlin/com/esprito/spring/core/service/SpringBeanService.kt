@@ -58,7 +58,7 @@ class SpringBeanService {
             }
             if (psiClass != null) {
                 val isPrimary = owner.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY)
-                val beanQualifier = SpringCoreClasses.STRING_QUALIFIERS
+                val beanQualifier = SpringCoreClasses.QUALIFIERS
                     .asSequence()
                     .mapNotNull { owner.getAnnotationValue(module, it) }
                     .map { value -> PsiBean(value, psiClass, null, owner, isPrimary) }

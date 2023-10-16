@@ -26,6 +26,10 @@ object SpringCoreClasses {
     const val COMPONENT = "org.springframework.stereotype.Component"
 
     const val CACHEABLE = "org.springframework.cache.annotation.Cacheable"
+    const val CACHING = "org.springframework.cache.annotation.Caching"
+    const val CACHEEVICT = "org.springframework.cache.annotation.CacheEvict"
+    const val CACHEPUT = "org.springframework.cache.annotation.CachePut"
+    const val CACHECONFIG= "org.springframework.cache.annotation.CacheConfig"
 
     const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
     const val CONDITIONAL_ON_MISSING_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean"
@@ -36,6 +40,8 @@ object SpringCoreClasses {
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"
     const val PROPERTY_SOURCE = "org.springframework.context.annotation.PropertySource"
 
+    const val ASYNC = "org.springframework.scheduling.annotation.Async"
+
     const val SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest"
     const val TEST_PROPERTY_SOURCE = "org.springframework.test.context.TestPropertySource"
     const val TEST_PROPERTY_VALUES = "org.springframework.boot.test.util.TestPropertyValues"
@@ -44,11 +50,12 @@ object SpringCoreClasses {
     const val IMPORT_RESOURCE = "org.springframework.context.annotation.ImportResource"
     const val CONTEXT_SQL = "org.springframework.test.context.jdbc.SQL"
 
+    const val TRANSACTIONAL = "org.springframework.transaction.annotation.Transactional"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
     val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN, SPRING_BOOT_APPLICATION)
 
-    val STRING_QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.NAMED.allFqns
-    val STRING_INJECTS = listOf(JavaEeClasses.INJECT.allFqns, JavaEeClasses.RESOURCE.allFqns)
+    val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.NAMED.allFqns
 }

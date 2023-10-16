@@ -162,7 +162,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 return ProblemDescriptor.EMPTY_ARRAY
             }
 
-            if (SpringCoreClasses.STRING_QUALIFIERS.any { element.isMetaAnnotatedBy(it) }) {
+            if (SpringCoreClasses.QUALIFIERS.any { element.isMetaAnnotatedBy(it) }) {
                 problems += getProblemQualifier(module, element, manager, isOnTheFly)
             } else {
                 if (!psiType.canBeMoreThanOneBean(beanCandidates.asSequence().map { it.psiClass }.toSet())) {
@@ -227,7 +227,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             if (valueMethod != null) return valueMethod
         }
 
-        return SpringCoreClasses.STRING_QUALIFIERS
+        return SpringCoreClasses.QUALIFIERS
             .asSequence()
             .map { element.getMetaAnnotationValue(it) }
             .firstOrNull { it != null }
@@ -241,7 +241,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             if (psiLiterals.isNotEmpty()) return psiLiterals
         }
 
-        return SpringCoreClasses.STRING_QUALIFIERS
+        return SpringCoreClasses.QUALIFIERS
             .asSequence()
             .map { getLiteralValueByAnnotationName(element, it) }
             .firstOrNull { it.isNotEmpty() }
@@ -343,7 +343,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         if (this.isAutowiredByRequiredTrue()) {
             return true
         }
-        return SpringCoreClasses.STRING_QUALIFIERS
+        return SpringCoreClasses.QUALIFIERS
             .any { this.isMetaAnnotatedBy(it) }
     }
 

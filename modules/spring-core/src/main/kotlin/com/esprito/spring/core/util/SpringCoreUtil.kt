@@ -137,7 +137,7 @@ object SpringCoreUtil {
             ?: name
 
     val PsiVariable.resolveBeanName: String?
-        get() = this.resolveBeanNameByAnnotations(SpringCoreClasses.STRING_QUALIFIERS)
+        get() = this.resolveBeanNameByAnnotations(SpringCoreClasses.QUALIFIERS)
 
     val PsiType.resolveBeanPsiClass: PsiClass?
         get() {
@@ -198,7 +198,7 @@ object SpringCoreUtil {
             }
 
     fun PsiModifierListOwner.getQualifierAnnotation(): PsiAnnotation? {
-        return this.getMetaAnnotation(SpringCoreClasses.STRING_QUALIFIERS)
+        return this.getMetaAnnotation(SpringCoreClasses.QUALIFIERS)
     }
 
 
