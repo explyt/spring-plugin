@@ -9,7 +9,8 @@ data class PsiBean(
     val name: String,
     val psiClass: PsiClass,
     val psiQualifier: PsiAnnotation? = null,
-    val psiMember: PsiModifierListOwner = psiClass
+    val psiMember: PsiModifierListOwner = psiClass,
+    val isPrimary: Boolean = false,
 ) {
 
     constructor(psiClass: PsiClass) : this(

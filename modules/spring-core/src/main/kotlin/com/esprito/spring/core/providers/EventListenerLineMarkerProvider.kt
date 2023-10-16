@@ -195,7 +195,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         return eventListenerMethods.asSequence()
             .filter { isEqualsTypeOrClass(it, eventPsiType) }
-            .mapNotNull { it.element.navigationElement }
+            .map { it.element.navigationElement }
             .toList()
     }
 
@@ -279,12 +279,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         var argumentType: PsiType? = null
 
         init {
-            if (element is PsiMethod) {
-                if (element.parameterList.parametersCount == 1) {
-                    argumentType = element.parameterList.parameters[0].type
-                } else if (psiClassesFromAnnotation != null){
-                    argumentClasses += psiClassesFromAnnotation
-                }
+            if (element.parameterList.parametersCount == 1) {
+                argumentType = element.parameterList.parameters[0].type
+            } else if (psiClassesFromAnnotation != null) {
+                argumentClasses += psiClassesFromAnnotation
             }
         }
     }

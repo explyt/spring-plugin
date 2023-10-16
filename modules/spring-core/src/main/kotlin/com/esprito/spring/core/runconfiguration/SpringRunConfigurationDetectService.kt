@@ -39,7 +39,7 @@ class SpringRunConfigurationDetectService(
             searchForRunConfigurations()
         })
             .inSmartMode(project)
-            .finishOnUiThread(ModalityState.NON_MODAL) { configurations ->
+            .finishOnUiThread(ModalityState.nonModal()) { configurations ->
                 if (configurations.isEmpty())
                     return@finishOnUiThread
 
