@@ -9,6 +9,7 @@ import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
+import com.intellij.psi.util.parentOfType
 
 class MetaAnnotationsHolder private constructor(
     private val parentFqn: String,
@@ -105,32 +106,16 @@ class MetaAnnotationsHolder private constructor(
 
         companion object {
             fun of(psiMethod: PsiMethod, annotationFqn: String): AttributeInfo {
-                if (!psiMethod.isAnnotatedBy(SpringCoreClasses.ALIAS_FOR)) {
-                    return AttributeInfo(psiMethod.name)
-                }
-
                 val alias = psiMethod.getAnnotation(SpringCoreClasses.ALIAS_FOR)
-                val aliasedMethod = listOf(
-                    alias?.findAttributeValue("value"),
-                    alias?.findAttributeValue("attribute")
-                ).asSequence()
-                    .filterNotNull()
-                    .map { AnnotationUtil.getStringAttributeValue(it) }
-                    .filter { !it.isNullOrBlank() }
-                    .firstOrNull() ?: psiMethod.name
+                    ?: return AttributeInfo(psiMethod.name)
 
-                val aliasedClassFqn = alias?.findAttributeValue("annotation")
-                    ?.childrenOfType<PsiTypeElement>()
-                    ?.firstOrNull()
-                    ?.type
-                    ?.resolvedPsiClass
+                val aliasedMethod = AliasUtils.getAliasedMethodName(alias)
+                    ?: psiMethod.name
+                val aliasedClassFqn = AliasUtils.getAliasedClass(alias)
                     ?.qualifiedName
                     ?: annotationFqn
 
-                val aliasInfo = AliasInfo(
-                    aliasedMethod,
-                    if (aliasedClassFqn == SpringCoreClasses.ANNOTATION) annotationFqn else aliasedClassFqn
-                )
+                val aliasInfo = AliasInfo(aliasedMethod, aliasedClassFqn)
                 return AttributeInfo(psiMethod.name, aliasInfo)
             }
         }
@@ -138,4 +123,28 @@ class MetaAnnotationsHolder private constructor(
     }
 
     class AliasInfo(val methodName: String, val annotationFqn: String)
+}
+
+object AliasUtils {
+
+    fun getAliasedClass(alias: PsiAnnotation): PsiClass? {
+        return alias.findAttributeValue("annotation")
+            ?.childrenOfType<PsiTypeElement>()
+            ?.firstOrNull { it.type.resolvedPsiClass?.qualifiedName != SpringCoreClasses.ANNOTATION }
+            ?.type
+            ?.resolvedPsiClass
+            ?: alias.parentOfType<PsiClass>()
+    }
+
+    fun getAliasedMethodName(alias: PsiAnnotation): String? {
+        return listOf(
+            alias.findAttributeValue("value"),
+            alias.findAttributeValue("attribute")
+        ).asSequence()
+            .filterNotNull()
+            .map { AnnotationUtil.getStringAttributeValue(it) }
+            .filter { !it.isNullOrBlank() }
+            .firstOrNull()
+    }
+
 }

@@ -132,6 +132,16 @@
                          implementationClass="com.esprito.spring.core.inspections.SpringDependsOnBeanInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringUnknownAliasMethodInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.alias.attribute"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.SpringUnknownAliasMethodInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringUnknownBeanMethodInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupKey="esprito.spring.common.notifications"
