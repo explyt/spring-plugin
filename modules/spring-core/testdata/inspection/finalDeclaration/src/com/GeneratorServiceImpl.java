@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.swing.text.html.parser.Entity;
 
@@ -14,9 +13,8 @@ public final class GeneratorServiceImpl implements GeneratorService {
     @Override
     public void GeneratorService(final Entity entity) {}
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public final void key(){
-    }
+    @org.springframework.transaction.annotation.Transactional
+    public final void key(){}
 }
 
 interface GeneratorService {

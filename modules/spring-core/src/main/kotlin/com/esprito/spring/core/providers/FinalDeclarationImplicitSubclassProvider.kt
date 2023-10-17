@@ -114,14 +114,14 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
         }
     }
 
-    private fun getOverridingInfoForTransactional(method: PsiMethod): OverridingInfo {
+    private fun getOverridingInfoForTransactional(method: PsiMethod): OverridingInfo? {
         val acceptedModifiers: Array<JvmModifier> = getModifiersForTransactional(method)
         val annotation = transactionalAnnotations.asSequence()
             .map { method.getMetaAnnotation(it) }
             .filterNotNull()
-            .firstOrNull()
+            .firstOrNull() ?: return null
 
-        val shotName = annotation?.qualifiedName?.split(".")?.last() ?: ""
+        val shotName = annotation.qualifiedName?.split(".")?.last() ?: ""
         return OverridingInfo(SpringCoreBundle.message("esprito.implicit.inspection.forMethod.annotated", shotName), acceptedModifiers)
     }
 

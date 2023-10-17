@@ -3,7 +3,7 @@
 
     <problem>
         <file>GeneratorServiceImpl.java</file>
-        <line>13</line>
+        <line>12</line>
         <module>light_idea_test_case</module>
         <package>com</package>
         <entry_point TYPE="class" FQNAME="com.GeneratorServiceImpl" />
@@ -17,12 +17,12 @@
 
     <problem>
         <file>GeneratorServiceImpl.java</file>
-        <line>18</line>
+        <line>17</line>
         <module>light_idea_test_case</module>
         <package>com</package>
         <entry_point TYPE="method" FQNAME="com.GeneratorServiceImpl void key()" />
         <problem_class id="ImplicitSubclass" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Methods annotated with '@' must be overridable</description>
+        <description>Methods annotated with '@Transactional' must be overridable</description>
         <highlighted_element>final</highlighted_element>
         <language>JAVA</language>
         <offset>11</offset>
@@ -31,7 +31,7 @@
 
     <problem>
         <file>GeneratorServiceImpl.java</file>
-        <line>28</line>
+        <line>26</line>
         <module>light_idea_test_case</module>
         <package>com</package>
         <entry_point TYPE="method" FQNAME="com.CachingService void caching()" />
@@ -45,7 +45,7 @@
 
     <problem>
         <file>GeneratorServiceImpl.java</file>
-        <line>35</line>
+        <line>33</line>
         <module>light_idea_test_case</module>
         <package>com</package>
         <entry_point TYPE="method" FQNAME="com.FinalConfiguration com.FinalObject getObj()" />
