@@ -36,7 +36,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
         var problems = emptyArray<ProblemDescriptor>()
         if (field.isInjectOrAutowiredByRequiredTrue()) {
-            if (isAnnotationComponentContainingClass(field)) {
+            if (isAnnotationComponentContainingClass(field.containingClass)) {
                 if (SpringCoreUtil.existComponentScan(module)) {
                     problems += getProblemAutowired(module, field, manager, isOnTheFly)
                 }
@@ -67,7 +67,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         if (!SpringCoreUtil.existComponentScan(module as Module)) return ProblemDescriptor.EMPTY_ARRAY
 
         if (SpringCoreUtil.isSpringBeanCandidateClass(aClass)) {
-            if (aClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) {
+            if (isAnnotationComponentContainingClass(aClass)) {
 
                 problems += getProblemConstructors(aClass, manager, isOnTheFly)
 
@@ -261,8 +261,10 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         return emptyList()
     }
 
-    private fun isAnnotationComponentContainingClass(field: PsiField): Boolean {
-        return field.containingClass?.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) ?: false
+    private fun isAnnotationComponentContainingClass(containingClass: PsiClass?): Boolean {
+        if (containingClass == null) return false
+        if (containingClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) return true
+        return isAnnotationComponentContainingClass(containingClass.containingClass)
     }
 
     private fun getProblemByMethodWithoutParams(
