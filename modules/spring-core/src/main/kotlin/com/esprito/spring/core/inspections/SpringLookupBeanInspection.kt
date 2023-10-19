@@ -35,26 +35,22 @@ class SpringLookupBeanInspection : AbstractBaseJavaLocalInspectionTool() {
 
             if (lookupValue.isNullOrBlank()) return@forEach
             if (psiBeans.isNullOrEmpty()) {
-                problems.add(
-                    manager.createProblemDescriptor(
-                        it,
-                        it.getHighlightRange(),
-                        SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.unknown", lookupValue),
-                        ProblemHighlightType.GENERIC_ERROR,
-                        isOnTheFly
-                    )
+                problems += manager.createProblemDescriptor(
+                    it,
+                    it.getHighlightRange(),
+                    SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.unknown", lookupValue),
+                    ProblemHighlightType.GENERIC_ERROR,
+                    isOnTheFly
                 )
             } else if (!psiBeans.any { bean -> bean.psiClass.qualifiedName == returnClassQN }) {
-                problems.add(
-                    manager.createProblemDescriptor(
-                        it,
-                        it.getHighlightRange(),
-                        SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.wrongType",
-                            returnClassQN,
-                            psiBeans[0].psiClass.qualifiedName.toString()),
-                        ProblemHighlightType.GENERIC_ERROR,
-                        isOnTheFly
-                    )
+                problems += manager.createProblemDescriptor(
+                    it,
+                    it.getHighlightRange(),
+                    SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.wrongType",
+                        returnClassQN,
+                        psiBeans[0].psiClass.qualifiedName.toString()),
+                    ProblemHighlightType.GENERIC_ERROR,
+                    isOnTheFly
                 )
             }
         }

@@ -44,15 +44,13 @@ class SpringUnknownBeanMethodInspection : AbstractBaseJavaLocalInspectionTool() 
                 fixes += createVoidMethodFixes(returnTypeClass, methodName, JvmModifier.PRIVATE)
             }
 
-            problems.add(
-                manager.createProblemDescriptor(
-                    member,
-                    member.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.bean.method"),
-                    ProblemHighlightType.GENERIC_ERROR,
-                    isOnTheFly,
-                    *fixes.toTypedArray()
-                )
+            problems += manager.createProblemDescriptor(
+                member,
+                member.getHighlightRange(),
+                SpringCoreBundle.message("esprito.spring.inspection.bean.method"),
+                ProblemHighlightType.GENERIC_ERROR,
+                isOnTheFly,
+                *fixes.toTypedArray()
             )
         }
 
