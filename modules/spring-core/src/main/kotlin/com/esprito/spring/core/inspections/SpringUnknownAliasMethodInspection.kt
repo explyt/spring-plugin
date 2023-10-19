@@ -48,9 +48,7 @@ class SpringUnknownAliasMethodInspection : AbstractBaseJavaLocalInspectionTool()
                             && it.name == methodName
                 }
             ) {
-                problems.add(
-                    problemDescriptor(manager, member, isOnTheFly)
-                )
+                problems += problemDescriptor(manager, member, isOnTheFly)
             }
         }
 
