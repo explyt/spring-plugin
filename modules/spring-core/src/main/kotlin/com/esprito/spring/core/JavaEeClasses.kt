@@ -9,6 +9,7 @@ object JavaEeClasses {
     val POST_CONSTRUCT by "annotation.PostConstruct"
     val PRE_DESTROY by "annotation.PreDestroy"
     val NAMED by "inject.Named"
+    val QUALIFIER by "inject.Qualifier"
     val TRANSACTIONAL by "transaction.Transactional"
 
     private operator fun String.getValue(jpaClasses: JavaEeClasses, property: KProperty<*>): MultiVendorClass {

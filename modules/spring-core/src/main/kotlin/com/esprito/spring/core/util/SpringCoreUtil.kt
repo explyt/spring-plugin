@@ -1,13 +1,16 @@
 package com.esprito.spring.core.util
 
 import com.esprito.base.LibraryClassCache
+import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.util.EspritoAnnotationUtil.getValue
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isCollection
 import com.esprito.util.EspritoPsiUtil.isMap
+import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.isString
 import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
@@ -15,7 +18,6 @@ import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
 import com.esprito.util.runReadNonBlocking
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -126,18 +128,34 @@ object SpringCoreUtil {
 
     fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
         val annotationNames = annotationPsiClasses.mapNotNull { it.qualifiedName }
-        // TODO: add search for Qualifier, Named, Resource
         return this.resolveBeanNameByAnnotations(annotationNames)
             ?: getBeanName()
             ?: throw IllegalArgumentException("Illegal bean $this")
     }
 
     val PsiMethod.resolveBeanName
-        get() = this.resolveBeanNameByAnnotations(listOf(SpringCoreClasses.BEAN))
+        get() = this.resolveBeanNameByAnnotation(SpringCoreClasses.BEAN)
             ?: name
 
+    fun PsiMember.resolveBeanName(module: Module): String? {
+        return when (this) {
+            is PsiMethod -> this.resolveBeanName
+            is PsiClass -> this.resolveBeanName(module)
+            else -> null
+        }
+    }
+
+    val PsiMember.targetClass
+        get() = when (this) {
+            is PsiMethod -> returnType?.resolvedPsiClass
+            is PsiClass -> this
+            else -> null
+        }
+
+
     val PsiVariable.resolveBeanName: String?
-        get() = this.resolveBeanNameByAnnotations(SpringCoreClasses.QUALIFIERS)
+        get() = this.resolveBeanNameByQualifier()
+            ?: name
 
     val PsiType.resolveBeanPsiClass: PsiClass?
         get() {
@@ -161,22 +179,21 @@ object SpringCoreUtil {
 
     fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolveBeanPsiClass in targetClasses
 
-    fun PsiType.equalsByReturnType(): Boolean =
+    fun PsiType.isEligibleBeanMethodType(): Boolean =
         if (this is PsiArrayType) {
             true
-        }
-        else {
+        } else {
             this is PsiClassType && isMap && parameterCount == 2 && !parameters[0].isString
         }
 
-    fun PsiType.canBeMoreThanOneBean(beanCandidates: Set<PsiClass>): Boolean {
+    fun PsiType.canBeMoreThanOneBean(beanDeclarations: Collection<*>): Boolean {
         if (this is PsiArrayType) {
             return true
         }
         if (this !is PsiClassType) {
             return false
         }
-        if (isCollection && beanCandidates.isNotEmpty()) {
+        if (isCollection && beanDeclarations.isNotEmpty()) {
             return true
         }
         if (isMap && parameterCount == 2 && parameters[0].isString) {
@@ -185,9 +202,29 @@ object SpringCoreUtil {
         return false
     }
 
-    private fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
-        val annotation = getMetaAnnotation(annotationNames) ?: return null
-        return AnnotationUtil.getStringAttributeValue(annotation, "value")?.takeIf { it.isNotEmpty() }
+    fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
+        return getMetaAnnotation(annotationNames)?.getValue()
+    }
+
+    fun PsiModifierListOwner.resolveBeanNameByAnnotation(annotation: String): String? {
+        return getMetaAnnotation(annotation)?.getValue()
+    }
+
+    fun PsiAnnotation.resolveBeanName(): String? {
+        if (isMetaAnnotatedByOrSelf(SpringCoreClasses.QUALIFIER)) {
+            if (resolveAnnotationType()?.methods?.size == 1) {
+                return getValue()
+            }
+            return null
+        }
+        if (isMetaAnnotatedByOrSelf(JavaEeClasses.QUALIFIER.allFqns)) {
+            return getValue()
+        }
+        return null
+    }
+
+    fun PsiModifierListOwner.resolveBeanNameByQualifier(): String? {
+        return getMetaAnnotation(SpringCoreClasses.QUALIFIERS)?.resolveBeanName()
     }
 
     val PsiModifierListOwner.resolvePsiClass: PsiClass?

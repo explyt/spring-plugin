@@ -46,7 +46,7 @@ class SpringBeanService {
 
     private fun getBeanCandidatesInPsiModifierListOwner(
         module: Module,
-        owners: Set<PsiModifierListOwner>,
+        owners: Set<PsiMember>,
         annotationName: String
     ): Set<PsiBean> {
         val beanCandidates = mutableSetOf<PsiBean>()
@@ -131,7 +131,7 @@ class SpringBeanService {
         return beanCandidatesByComponent + beanCandidatesByMethod
     }
 
-    private fun PsiModifierListOwner.getAnnotationValue( module: Module, annotationName: String): String? {
+    private fun PsiModifierListOwner.getAnnotationValue(module: Module, annotationName: String): String? {
         if (this is PsiMember) {
             val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, annotationName)
             val annotationValue = metaHolder.getAnnotationMemberValues(this, setOf("value")).firstOrNull()

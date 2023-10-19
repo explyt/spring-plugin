@@ -35,14 +35,20 @@ object EspritoPsiUtil {
     fun PsiModifierListOwner.isMetaAnnotatedBy(annotation: String) =
         MetaAnnotationUtil.isMetaAnnotated(this, listOf(annotation))
 
+    fun PsiAnnotation.isMetaAnnotatedByOrSelf(annotationNames: Collection<String>) =
+        qualifiedName in annotationNames || resolveAnnotationType()?.isMetaAnnotatedBy(annotationNames) ?: false
+
+    fun PsiAnnotation.isMetaAnnotatedByOrSelf(annotation: String) =
+        qualifiedName == annotation || resolveAnnotationType()?.isMetaAnnotatedBy(annotation) ?: false
+
     fun PsiModifierListOwner.getMetaAnnotation(annotation: String): PsiAnnotation? =
         this.annotations.firstOrNull {
-            it.qualifiedName == annotation || it.resolveAnnotationType()?.isMetaAnnotatedBy(annotation) ?: false
+            it.isMetaAnnotatedByOrSelf(annotation) ?: false
         }
 
     fun PsiModifierListOwner.getMetaAnnotation(annotationNames: Collection<String>): PsiAnnotation? =
         this.annotations.firstOrNull {
-            it.qualifiedName in annotationNames || it.resolveAnnotationType()?.isMetaAnnotatedBy(annotationNames) ?: false
+            it.isMetaAnnotatedByOrSelf(annotationNames) ?: false
         }
 
     fun PsiModifierListOwner.getAnnotation(annotationNames: Collection<String>): PsiAnnotation? =

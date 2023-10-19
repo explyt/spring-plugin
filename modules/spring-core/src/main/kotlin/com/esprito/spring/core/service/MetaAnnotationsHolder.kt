@@ -54,7 +54,7 @@ class MetaAnnotationsHolder private constructor(
 
             annotationMemberValues += annotation.attributes.asSequence()
                 .filter {
-                    this.isAttributeRelatedWith(
+                    isAttributeRelatedWith(
                         annotationFqn,
                         it.attributeName,
                         parentFqn,
@@ -81,6 +81,7 @@ class MetaAnnotationsHolder private constructor(
                 val annotation = annotationTypes.remove(annotationToProceed) ?: continue
 
                 annotationsToProceed += annotationTypes.values.asSequence()
+                    .filter { it.isValid }
                     .filter { it.isAnnotatedBy(annotationToProceed) }
                     .mapNotNull { it.qualifiedName }
 

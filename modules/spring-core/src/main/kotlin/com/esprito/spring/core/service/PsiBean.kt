@@ -3,13 +3,13 @@ package com.esprito.spring.core.service
 import com.esprito.spring.core.util.SpringCoreUtil.getBeanName
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiModifierListOwner
+import com.intellij.psi.PsiMember
 
 data class PsiBean(
     val name: String,
     val psiClass: PsiClass,
     val psiQualifier: PsiAnnotation? = null,
-    val psiMember: PsiModifierListOwner = psiClass,
+    val psiMember: PsiMember = psiClass,
     val isPrimary: Boolean = false,
 ) {
 
