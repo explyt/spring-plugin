@@ -4,10 +4,13 @@ import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.PropertyValueRenderer
 import com.esprito.spring.core.completion.properties.ProviderHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.completion.JavaPsiClassReferenceElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.icons.AllIcons
 import com.intellij.lang.properties.psi.impl.PropertyImpl
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
@@ -32,27 +35,32 @@ class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider
 class ValueHintReference(
     element: PsiElement,
     private val propertyKey: String
-) : PsiReferenceBase<PsiElement>(element) {
+) : PsiReferenceBase.Poly<PsiElement>(element) {
 
-    override fun resolve(): PsiElement? {
-        val propertyValue = element.text ?: return null
-        val project = element.project
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
-        val resolvedClass = javaPsiFacade.findClass(propertyValue, element.resolveScope)
-        if (resolvedClass != null) {
-            return resolvedClass
+    override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
+        val propertyValue = element.text ?: return emptyArray()
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
+
+        val beanReference = getSpringBeanReference(module, propertyValue)
+        if (beanReference.isNotEmpty()) {
+            return beanReference.map { PsiElementResolveResult(it) }.toTypedArray()
         }
 
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
-        val configurationProperty = SpringConfigurationPropertiesSearch.getInstance(project)
-            .findProperty(module, propertyKey) ?: return null
-        val propertyType = configurationProperty.type?.replace('$', '.') ?: return null
-        val propertyTypeClass = javaPsiFacade.findClass(propertyType, GlobalSearchScope.allScope(project))
+        val javaPsiFacade = JavaPsiFacade.getInstance(module.project)
+        val configurationProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
+            .findProperty(module, propertyKey) ?: return emptyArray()
+        val propertyType = configurationProperty.type?.replace('$', '.') ?: return emptyArray()
+        val propertyTypeClass = javaPsiFacade.findClass(propertyType, GlobalSearchScope.allScope(module.project))
         if (propertyTypeClass?.isEnum == true) {
-            return propertyTypeClass.findFieldByName(propertyValue, true)
+            val field = propertyTypeClass.findFieldByName(propertyValue, true) ?: return emptyArray()
+            return arrayOf(PsiElementResolveResult(field))
         }
+        return emptyArray()
+    }
 
-        return null
+    private fun getSpringBeanReference(module: Module, propertyValue: String): Collection<PsiElement> {
+        val springSearchService = SpringSearchService.getInstance(element.project)
+        return springSearchService.findActiveBeanDeclarations(module, propertyValue)
     }
 
     override fun getVariants(): Array<Any> {
@@ -60,18 +68,7 @@ class ValueHintReference(
 
         val springConfigurationPropertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
 
-        val propertyHint = springConfigurationPropertiesSearch
-            .getAllHints(module).find { hint ->
-                val hintName = hint.name
-                if (hintName == propertyKey) {
-                    return@find true
-                }
-                val valuesIdx = hintName.lastIndexOf(".values")
-                if (valuesIdx == -1) {
-                    return@find false
-                }
-                propertyKey.startsWith(hintName.substring(0, valuesIdx))
-            }
+        val propertyHint = getPropertyHint(springConfigurationPropertiesSearch, module)
 
         val result = mutableListOf<Any>()
         if (propertyHint != null) {
@@ -84,6 +81,25 @@ class ValueHintReference(
         }
 
         return result.toTypedArray()
+    }
+
+    private fun getPropertyHint(
+        springConfigurationPropertiesSearch: SpringConfigurationPropertiesSearch,
+        module: Module
+    ): PropertyHint? {
+        val propertyHint = springConfigurationPropertiesSearch
+            .getAllHints(module).find { hint ->
+                val hintName = hint.name
+                if (hintName == propertyKey) {
+                    return@find true
+                }
+                val valuesIdx = hintName.lastIndexOf(".values")
+                if (valuesIdx == -1) {
+                    return@find false
+                }
+                propertyKey.startsWith(hintName.substring(0, valuesIdx))
+            }
+        return propertyHint
     }
 
     private fun getVariantsByHint(
@@ -159,8 +175,27 @@ class ValueHintReference(
                 val targetClassFqn = provider.parameters?.target ?: return emptyList()
                 return getVariantsByPropertyType(targetClassFqn)
             }
+
+            "spring-bean-reference" -> {
+                return getBeanReferences(provider.parameters?.target)
+            }
         }
 
         return emptyList()
     }
+
+    private fun getBeanReferences(targetClassFqn: String?): List<Any> {
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
+        val springSearchService = SpringSearchService.getInstance(module.project)
+        val foundActiveBeans = springSearchService.getActiveBeansClasses(module)
+        return foundActiveBeans.asSequence()
+            .filter { targetClassFqn.isNullOrBlank() || it.psiClass.qualifiedName == targetClassFqn }
+            .map {
+                LookupElementBuilder.create(it.name)
+                    .withIcon(AllIcons.Nodes.Class)
+                    .withTailText(" (${it.psiMember.containingFile?.name})")
+                    .withTypeText(it.psiClass.name)
+            }.toList()
+    }
+
 }
