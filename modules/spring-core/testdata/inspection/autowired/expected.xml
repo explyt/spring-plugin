@@ -144,7 +144,7 @@
 
     <problem>
         <file>TestAutowired.java</file>
-        <line>52</line>
+        <line>54</line>
         <module>light_idea_test_case</module>
         <package>component_scan.no_bean</package>
         <entry_point TYPE="field" FQNAME="component_scan.no_bean.FooBeanClass bean" />
@@ -158,15 +158,15 @@
 
     <problem>
         <file>TestAutowired.java</file>
-        <line>53</line>
+        <line>67</line>
         <module>light_idea_test_case</module>
         <package>component_scan.no_bean</package>
-        <entry_point TYPE="field" FQNAME="component_scan.no_bean.FooBeanClass bean" />
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.ClassNotBeanExist injectBean" />
         <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
         <description>Must be defined in valid Spring bean (@Component|@Service|...)</description>
-        <highlighted_element>@Autowired</highlighted_element>
+        <highlighted_element>injectBean</highlighted_element>
         <language>JAVA</language>
-        <offset>4</offset>
+        <offset>15</offset>
         <length>10</length>
     </problem>
 

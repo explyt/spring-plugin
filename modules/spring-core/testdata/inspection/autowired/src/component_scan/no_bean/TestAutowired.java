@@ -1,8 +1,8 @@
 package component_scan.no_bean;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Bean;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -52,4 +52,22 @@ class FooBean {}
 class FooBeanClass {
     @Autowired
     FooBean bean;
+}
+
+@Configuration
+class ConfigurationBean {
+    @Bean
+    ClassBeanExist createBean() {
+        return new ClassBeanExist();
+    }
+}
+
+class ClassNotBeanExist {
+    @Autowired
+    InjectBean injectBean;
+}
+
+class ClassBeanExist {
+    @Autowired
+    InjectBean injectBean;
 }
