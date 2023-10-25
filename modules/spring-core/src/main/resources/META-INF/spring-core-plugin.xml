@@ -34,6 +34,8 @@
 
         <profileSearcher implementation="com.esprito.spring.core.profile.AnnotationProfileSearcher"/>
         <profileSearcher implementation="com.esprito.spring.core.profile.AdditionalProfileSearcher"/>
+        <profileSearcher implementation="com.esprito.spring.core.profile.PropertyNameProfileSearcher"/>
+        <profileSearcher implementation="com.esprito.spring.core.profile.MavenProfileSearcher"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
