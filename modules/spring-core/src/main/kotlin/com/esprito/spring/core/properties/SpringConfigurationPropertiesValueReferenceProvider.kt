@@ -1,12 +1,11 @@
 package com.esprito.spring.core.properties
 
-import com.esprito.spring.core.completion.properties.PropertyHint
-import com.esprito.spring.core.completion.properties.PropertyValueRenderer
-import com.esprito.spring.core.completion.properties.ProviderHint
-import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.SpringProperties.CLASS_REFERENCE
+import com.esprito.spring.core.SpringProperties.HANDLE_AS
+import com.esprito.spring.core.SpringProperties.SPRING_BEAN_REFERENCE
+import com.esprito.spring.core.completion.properties.*
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.intellij.codeInsight.completion.JavaPsiClassReferenceElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.lang.properties.psi.impl.PropertyImpl
@@ -41,9 +40,18 @@ class ValueHintReference(
         val propertyValue = element.text ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
-        val beanReference = getSpringBeanReference(module, propertyValue)
-        if (beanReference.isNotEmpty()) {
-            return beanReference.map { PsiElementResolveResult(it) }.toTypedArray()
+        val springConfigurationPropertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        val propertyHint = getPropertyHint(springConfigurationPropertiesSearch, module)
+        val resolveResults = propertyHint?.providers?.flatMap {
+            when (it.name) {
+                CLASS_REFERENCE -> getClassReference(module, propertyValue)
+                SPRING_BEAN_REFERENCE -> getSpringBeanReference(module, propertyValue)
+                else -> emptyList()
+            }
+        } ?: emptyList()
+
+        if (resolveResults.isNotEmpty()) {
+            return resolveResults.map { PsiElementResolveResult(it) }.toTypedArray()
         }
 
         val javaPsiFacade = JavaPsiFacade.getInstance(module.project)
@@ -58,9 +66,16 @@ class ValueHintReference(
         return emptyArray()
     }
 
-    private fun getSpringBeanReference(module: Module, propertyValue: String): Collection<PsiElement> {
+    private fun getSpringBeanReference(module: Module, propertyValue: String): List<PsiElement> {
         val springSearchService = SpringSearchService.getInstance(element.project)
         return springSearchService.findActiveBeanDeclarations(module, propertyValue)
+    }
+
+    private fun getClassReference(module: Module, propertyValue: String): List<PsiElement> {
+        val project = module.project
+        val findClass = JavaPsiFacade.getInstance(project)
+            .findClass(propertyValue, GlobalSearchScope.allScope(project)) ?: return emptyList()
+        return listOf(findClass)
     }
 
     override fun getVariants(): Array<Any> {
@@ -161,35 +176,44 @@ class ValueHintReference(
 
     private fun processProviderHints(provider: ProviderHint): List<Any> {
         val providerName = provider.name
+        val targetClassFqn = provider.parameters?.target ?: return emptyList()
         when (providerName) {
-            "class-reference" -> {
-                val targetClassFqn = provider.parameters?.target ?: return emptyList()
-                val resolveScope = element.resolveScope
-                val targetPsiClass = JavaPsiFacade.getInstance(element.project)
-                    .findClass(targetClassFqn, resolveScope) ?: return emptyList()
-                return ClassInheritorsSearch.search(targetPsiClass, resolveScope, true).map {
-                    JavaPsiClassReferenceElement(it)
-                }
+            CLASS_REFERENCE -> {
+                return getClassReferences(targetClassFqn)
             }
-            "handle-as" -> {
-                val targetClassFqn = provider.parameters?.target ?: return emptyList()
+
+            HANDLE_AS -> {
                 return getVariantsByPropertyType(targetClassFqn)
             }
 
-            "spring-bean-reference" -> {
-                return getBeanReferences(provider.parameters?.target)
+            SPRING_BEAN_REFERENCE -> {
+                return getBeanReferences(targetClassFqn)
             }
         }
 
         return emptyList()
     }
 
-    private fun getBeanReferences(targetClassFqn: String?): List<Any> {
+    private fun getClassReferences(targetClassFqn: String): List<Any> {
+        val resolveScope = element.resolveScope
+        val targetPsiClass =
+            JavaPsiFacade.getInstance(element.project).findClass(targetClassFqn, resolveScope) ?: return emptyList()
+        return ClassInheritorsSearch.search(targetPsiClass, resolveScope, true).asSequence()
+            .map { psiClass ->
+                psiClass?.qualifiedName?.let {
+                    LookupElementBuilder.create(psiClass, it)
+                        .withRenderer(ClassReferencePropertyRenderer())
+
+                }
+            }.filterNotNull().toList()
+    }
+
+    private fun getBeanReferences(targetClassFqn: String): List<Any> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
         val springSearchService = SpringSearchService.getInstance(module.project)
         val foundActiveBeans = springSearchService.getActiveBeansClasses(module)
         return foundActiveBeans.asSequence()
-            .filter { targetClassFqn.isNullOrBlank() || it.psiClass.qualifiedName == targetClassFqn }
+            .filter { targetClassFqn.isBlank() || it.psiClass.qualifiedName == targetClassFqn }
             .map {
                 LookupElementBuilder.create(it.name)
                     .withIcon(AllIcons.Nodes.Class)

@@ -6,4 +6,8 @@ object SpringProperties {
 
     const val PUBLISH_EVENT_METHOD = "publishEvent"
     const val ON_APPLICATION_EVENT = "onApplicationEvent"
+
+    const val CLASS_REFERENCE = "class-reference"
+    const val HANDLE_AS = "handle-as"
+    const val SPRING_BEAN_REFERENCE = "spring-bean-reference"
 }
