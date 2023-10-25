@@ -1,0 +1,64 @@
+<html>
+<body>
+<p>
+  Reports unresolved and deprecated configuration keys and invalid values in Spring Boot application <code>.properties</code> configuration files,
+  which can lead to runtime errors.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code>
+server.port=invalid # Reports 'Cannot convert 'invalid' to java.lang.Integer'
+</code></pre>
+
+<p>If a deprecated configuration key has a replacement key, you can apply the 'Use replacement key' quick-fix.</p>
+
+<p><b>Example:</b></p>
+<pre><code>
+logging.path=${path} # Reports 'Deprecated configuration property 'logging.path''
+</code></pre>
+
+<p>After the quick-fix is applied:</p>
+<pre><code>
+logging.file.path=${path}
+</code></pre>
+
+<p>
+  If a configuration key is not defined in <code>spring-configuration-metadata.json</code>, you can apply the 'Define configuration key' quick-fix
+  that creates the <code>META-INF/spring-additional-configuration-metadata.json</code> file and defines the necessary key.</p>
+
+<p><b>Example:</b></p>
+<pre><code>
+new.key=value #Reports 'Cannot resolve configuration property 'new.key''
+</code></pre>
+
+<p>After the quick-fix is applied, the following is added to <code>META-INF/spring-additional-configuration-metadata.json</code>:</p>
+<pre><code>
+{
+  "properties": [
+    {
+      "name": "new.key",
+      "type": "java.lang.String",
+      "description": "Description for new.key."
+  }
+] }
+</code></pre>
+
+<p>The inspection also highlights index notation errors in list and map configuration keys.</p>
+<p><b>Example:</b></p>
+<pre><code>
+spring.datasource.schema[]=${schema} #Reports 'Missing index value'
+</code></pre>
+<!-- tooltip end -->
+
+<p>
+  Use the <b>Replacement tokens</b> option to define tokens used for value placeholders in configuration files.
+  These tokens are specified in the form <code>beginToken*endToken</code>.
+  Without the <code>*</code>, the token is assumed to be the same for start and end.
+</p>
+<p>
+  For example, the default is <code>@</code> for both start and end token,
+  which enables you to define placeholders, such as <code>some.property=@another.property@</code>.
+</p>
+<p>Values inside the replacement token (<code>@property.key@</code>) will not be highlighted.</p>
+</body>
+</html>
