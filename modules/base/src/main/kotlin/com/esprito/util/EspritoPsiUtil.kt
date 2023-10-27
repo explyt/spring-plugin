@@ -109,6 +109,9 @@ object EspritoPsiUtil {
     val PsiType.isCollection : Boolean
         get() = this.isInheritorOf(java.util.Collection::class.java.canonicalName)
 
+    val PsiType.isInterface : Boolean
+        get() = resolvedPsiClass?.isInterface ?: false
+
     val PsiType.isMap : Boolean
         get() = this.isInheritorOf(java.util.Map::class.java.canonicalName)
 

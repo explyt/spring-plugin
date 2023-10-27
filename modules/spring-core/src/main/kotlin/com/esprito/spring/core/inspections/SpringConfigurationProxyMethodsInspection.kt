@@ -3,8 +3,8 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddAsMethodArgQuickFix
-import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
 import com.esprito.util.EspritoAnnotationUtil.getBooleanValue
+import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -30,12 +30,11 @@ class SpringConfigurationProxyMethodsInspection : AbstractBaseJavaLocalInspectio
         var topClass: PsiClass? = surroundingClass
 
         while (topClass != null) {
-            val proxyBeanMethodsValue = getAnnotationMemberValues(
-                topClass,
+            val proxyBeanMethodsValue = topClass.getMetaAnnotationMemberValues(
                 SpringCoreClasses.CONFIGURATION,
                 "proxyBeanMethods"
             )?.firstOrNull()
-                .getBooleanValue()
+                ?.getBooleanValue()
 
             if (proxyBeanMethodsValue == false) {
                 return findCallsToLocalBeans(method, topClass).asSequence()

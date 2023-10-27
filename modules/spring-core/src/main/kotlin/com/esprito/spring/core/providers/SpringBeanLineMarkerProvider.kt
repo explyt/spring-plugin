@@ -8,7 +8,7 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
-import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
+import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
@@ -81,7 +81,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private fun dependsOnIncorrectBean(member: PsiMember?): Boolean {
             val beanNames = springSearchService.getAllBeanByNames(module)
 
-            return getAnnotationMemberValues(member, SpringCoreClasses.DEPENDS_ON)
+            return member?.getMetaAnnotationMemberValues(SpringCoreClasses.DEPENDS_ON)
                 ?.any {
                     !beanNames.contains(
                         AnnotationUtil.getStringAttributeValue(it)

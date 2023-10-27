@@ -8,6 +8,7 @@ object JavaEeClasses {
     val RESOURCE by "annotation.Resource"
     val POST_CONSTRUCT by "annotation.PostConstruct"
     val PRE_DESTROY by "annotation.PreDestroy"
+    val PRIORITY by "annotation.Priority"
     val NAMED by "inject.Named"
     val QUALIFIER by "inject.Qualifier"
     val TRANSACTIONAL by "transaction.Transactional"

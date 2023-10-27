@@ -6,6 +6,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.esprito.spring.core.util.SpringCoreUtil.canBeMoreThanOneBean
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.isEligibleBeanMethodType
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
@@ -13,6 +14,7 @@ import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.spring.core.util.SpringCoreUtil.targetClass
 import com.esprito.util.CacheKeyStore
 import com.esprito.util.EspritoAnnotationUtil
+import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationValue
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isGeneric
@@ -134,8 +136,11 @@ class SpringSearchService(private val project: Project) {
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanPsiMethods(module)
             .asSequence()
-            .mapNotNull { method -> method.returnType?.resolvedPsiClass
-                ?.let { PsiBean(method.resolveBeanName, it, method.getQualifierAnnotation(), method) }
+            .flatMap { method -> method.returnType?.resolvedPsiClass
+                ?.let { psiClass ->
+                    method.resolveBeanName.asSequence()
+                        .map { PsiBean(it, psiClass, method.getQualifierAnnotation(), method) }
+                } ?: emptySequence()
             }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it.psiClass) }
             .toSet()
@@ -230,55 +235,56 @@ class SpringSearchService(private val project: Project) {
         val methodsPsiBeans = getComponentBeanPsiMethods(module)
         val beanNameFromQualifier = qualifier?.resolveBeanName()
 
-        if (qualifier == null) {
-            val byNameBeanMethods = methodsPsiBeans
-                .filter { it.resolveBeanName == byBeanName }
-                .filter { it.targetBeanTypeIsSuitable(byBeanPsiClass) }
-            if (byNameBeanMethods.isNotEmpty()) {
-                return byNameBeanMethods
-            }
-            val byNameComponents = componentPsiBeans
-                .filter { it.name == byBeanName }
-                .filter { it.psiClass.targetBeanTypeIsSuitable(byBeanPsiClass) }
+        val resultByType: List<PsiMember> = if (byBeanPsiClass != null) {
+            val byTypeBeanMethods = getBeansPsiMethods(byBeanPsiType, methodsPsiBeans, byBeanPsiClass)
+
+            val byTypeComponents = componentPsiBeans.asSequence()
+                .filter { it.psiClass.isEqualOrInheritor(byBeanPsiClass) }
                 .map { it.psiClass }
-            if (byNameComponents.isNotEmpty()) {
-                return byNameComponents
+                .filter { !it.isGeneric(byBeanPsiType) || byTypeBeanMethods.isEmpty() }
+                .toSet()
+            val aResultByType: List<PsiMember> = byTypeBeanMethods + byTypeComponents
+
+            if (aResultByType.isEmpty()) {
+                return emptyList()
             }
+            if (aResultByType.size > 1) {
+                val byPrimary = aResultByType.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
+                if (byPrimary.isNotEmpty()) {
+                    return byPrimary
+                }
+                val byPriority = aResultByType
+                    .filter { it.isMetaAnnotatedBy(JavaEeClasses.PRIORITY.allFqns) }
+                    .groupBy { it.getMetaAnnotationValue(JavaEeClasses.PRIORITY.allFqns)?.toIntOrNull() ?: Int.MAX_VALUE }
+                if (byPriority.isNotEmpty()) {
+                    val highestPriority = byPriority.minOf { it.key }
+                    return byPriority[highestPriority] ?: emptyList()
+                }
+            }
+            aResultByType
         } else {
-            val byNameFromQualifierBeanMethods = methodsPsiBeans
-                .filter { beanNameFromQualifier != null && it.resolveBeanName == beanNameFromQualifier || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
+            (methodsPsiBeans + (componentPsiBeans.map { it.psiClass }.toSet())).toList()
+        }
+
+        if (resultByType.size == 1) {
+            return resultByType
+        }
+
+        if (qualifier == null) {
+            if (byBeanPsiClass != null && byBeanPsiType.canBeMoreThanOneBean(listOf(byBeanPsiClass))) {
+                return resultByType
+            }
+
+            return resultByType
+                .filter { byBeanName in it.resolveBeanName(module) }
                 .filter { it.targetBeanTypeIsSuitable(byBeanPsiClass) }
-            if (byNameFromQualifierBeanMethods.isNotEmpty()) {
-                return byNameFromQualifierBeanMethods
-                    .filter { it.resolveBeanName == byBeanName }
-                    .ifEmpty { byNameFromQualifierBeanMethods }
-            }
-            val byNameFromQualifierComponent = componentPsiBeans
-                .filter { beanNameFromQualifier != null && it.name == beanNameFromQualifier || EspritoAnnotationUtil.equal(qualifier, it.psiClass.getAnnotation(qualifier.qualifiedName!!))}
-                .filter { it.psiClass.targetBeanTypeIsSuitable(byBeanPsiClass) }
-            if (byNameFromQualifierComponent.isNotEmpty()) {
-                return byNameFromQualifierComponent
-                    .filter { it.name == byBeanName }
-                    .map { it.psiClass }
-                    .ifEmpty { byNameFromQualifierComponent.map { it.psiClass } }
-            }
-            return emptyList()
         }
-        if (byBeanPsiClass == null) {
-            return emptyList()
-        }
-
-        val byTypeBeanMethods = getBeansPsiMethods(byBeanPsiType, methodsPsiBeans, byBeanPsiClass)
-
-        val byTypeComponents = componentPsiBeans.asSequence()
-            .filter { it.psiClass.isEqualOrInheritor(byBeanPsiClass) }
-            .map { it.psiClass }
-            .filter { !it.isGeneric(byBeanPsiType) || byTypeBeanMethods.isEmpty() }
-            .toSet()
-        val resultByType = byTypeBeanMethods + byTypeComponents
-
-        val byPrimary = resultByType.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
-        return byPrimary.takeIf { it.isNotEmpty() } ?: resultByType
+        val byNameFromQualifierBean = resultByType
+            .filter { beanNameFromQualifier != null && beanNameFromQualifier in it.resolveBeanName(module) || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
+            .filter { it.targetBeanTypeIsSuitable(byBeanPsiClass) }
+        return byNameFromQualifierBean
+            .filter { byBeanName in it.resolveBeanName(module) }
+            .ifEmpty { byNameFromQualifierBean }
     }
 
     fun findActiveBeanDeclarations(

@@ -3,7 +3,7 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.LOOKUP
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.util.EspritoAnnotationUtil.getAnnotationMemberValues
+import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
@@ -29,7 +29,7 @@ class SpringLookupBeanInspection : AbstractBaseJavaLocalInspectionTool() {
 
         val problems = mutableListOf<ProblemDescriptor>()
 
-        getAnnotationMemberValues(method, LOOKUP)?.forEach {
+        method.getMetaAnnotationMemberValues(LOOKUP)?.forEach {
             val lookupValue = AnnotationUtil.getStringAttributeValue(it)
             val psiBeans = beanByNames[lookupValue]
 

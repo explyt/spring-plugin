@@ -71,9 +71,13 @@ class SpringBeanService {
                 }
 
                 if (beanQualifier.isEmpty() && beanNameAnnotationValue.isNullOrBlank()) {
-                    val beanName = if (owner is PsiClass) owner.getBeanName() else if (owner is PsiMethod) owner.resolveBeanName else null
-                    if (beanName != null) {
-                        beanCandidates += PsiBean(beanName, psiClass, null, owner, isPrimary)
+                    val beanNames = when (owner) {
+                        is PsiClass -> owner.getBeanName()?.let { setOf(it) }
+                        is PsiMethod -> owner.resolveBeanName
+                        else -> null
+                    }
+                    if (beanNames != null) {
+                        beanCandidates += beanNames.map { PsiBean(it, psiClass, null, owner, isPrimary) }
                     }
                 }
             }

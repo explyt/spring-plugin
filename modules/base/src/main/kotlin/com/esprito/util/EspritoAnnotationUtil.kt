@@ -13,16 +13,15 @@ object EspritoAnnotationUtil {
         return attributesName.flatMap { annotation.getArrayAttributeAsPsiLiteral(it) }
     }
 
-    fun getAnnotationMemberValues(
-        member: PsiMember?,
+    fun PsiMember.getMetaAnnotationMemberValues(
         targetAnnotation: String,
         attributeName: String = "value"
     ): Collection<PsiAnnotationMemberValue>? {
-        if (member == null || !member.isMetaAnnotatedBy(targetAnnotation)) {
+        if (!isMetaAnnotatedBy(targetAnnotation)) {
             return null
         }
 
-        return member.getMetaAnnotation(targetAnnotation)
+        return getMetaAnnotation(targetAnnotation)
             .getMemberValues(attributeName)
     }
 
@@ -34,15 +33,24 @@ object EspritoAnnotationUtil {
         }
     }
 
-    fun PsiAnnotationMemberValue?.getBooleanValue(): Boolean? {
-        return this?.project
-            ?.let { project ->
-                JavaPsiFacade.getInstance(project)
-                    .constantEvaluationHelper.computeConstantExpression(this)
-            } as? Boolean
+    fun PsiAnnotation?.getStringMemberValues(attributeName: String = "value"): Collection<String?> {
+        return getMemberValues("value").map { it.computeConstantExpression() as? String }
     }
 
-    fun PsiAnnotation?.getArrayAttributeAsPsiLiteral(attributeName: String?): Collection<PsiLiteral> {
+    fun PsiAnnotationMemberValue.computeConstantExpression(): Any? {
+        return JavaPsiFacade.getInstance(project)
+            .constantEvaluationHelper.computeConstantExpression(this)
+    }
+
+    fun PsiAnnotationMemberValue.getBooleanValue(): Boolean? {
+        return computeConstantExpression() as? Boolean
+    }
+
+    fun PsiAnnotationMemberValue.getStringValue(): String? {
+        return computeConstantExpression() as? String
+    }
+
+    private fun PsiAnnotation?.getArrayAttributeAsPsiLiteral(attributeName: String?): Collection<PsiLiteral> {
         return when (val attributeValue = this?.findAttributeValue(attributeName)) {
             is PsiArrayInitializerMemberValue -> getArrayAttributeAsPsiLiteral(attributeValue)
             is PsiLiteral -> listOf(attributeValue)
@@ -135,6 +143,13 @@ object EspritoAnnotationUtil {
     fun PsiModifierListOwner.getMetaAnnotationValue(annotationName: String): String? {
         if (isMetaAnnotatedBy(annotationName)) {
             return getMetaAnnotation(annotationName)?.getValue()
+        }
+        return null
+    }
+
+    fun PsiModifierListOwner.getMetaAnnotationValue(annotationNames: Collection<String>): String? {
+        if (isMetaAnnotatedBy(annotationNames)) {
+            return getMetaAnnotation(annotationNames)?.getValue()
         }
         return null
     }

@@ -6,9 +6,11 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
 import com.esprito.util.EspritoAnnotationUtil.getValue
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isCollection
+import com.esprito.util.EspritoPsiUtil.isInterface
 import com.esprito.util.EspritoPsiUtil.isMap
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isOptional
@@ -134,14 +136,14 @@ object SpringCoreUtil {
     }
 
     val PsiMethod.resolveBeanName
-        get() = this.resolveBeanNameByAnnotation(SpringCoreClasses.BEAN)
-            ?: name
+        get() = this.resolveBeanNameByAnnotation()
+            ?: setOf(name)
 
-    fun PsiMember.resolveBeanName(module: Module): String? {
+    fun PsiMember.resolveBeanName(module: Module): Set<String> {
         return when (this) {
             is PsiMethod -> this.resolveBeanName
-            is PsiClass -> this.resolveBeanName(module)
-            else -> null
+            is PsiClass -> setOf(this.resolveBeanName(module))
+            else -> emptySet()
         }
     }
 
@@ -165,12 +167,12 @@ object SpringCoreUtil {
             if (this !is PsiClassType) {
                 return null
             }
-            if (isCollection || isOptional) {
+            if (isCollection && isInterface || isOptional) {
                 // Collection<Bean>
                 // Optional<Bean>
                 return parameters.firstOrNull()?.resolvedPsiClass
             }
-            if (isMap && parameterCount == 2 && parameters[0].isString) {
+            if (isMap && isInterface && parameterCount == 2 && parameters[0].isString) {
                 // Map<String, Bean>
                 return parameters[1].resolvedPsiClass
             }
@@ -193,10 +195,10 @@ object SpringCoreUtil {
         if (this !is PsiClassType) {
             return false
         }
-        if (isCollection && beanDeclarations.isNotEmpty()) {
+        if (isCollection && isInterface && beanDeclarations.isNotEmpty()) {
             return true
         }
-        if (isMap && parameterCount == 2 && parameters[0].isString) {
+        if (isMap && isInterface && parameterCount == 2 && parameters[0].isString) {
             return true
         }
         return false
@@ -206,8 +208,8 @@ object SpringCoreUtil {
         return getMetaAnnotation(annotationNames)?.getValue()
     }
 
-    fun PsiModifierListOwner.resolveBeanNameByAnnotation(annotation: String): String? {
-        return getMetaAnnotation(annotation)?.getValue()
+    fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? {
+        return getMetaAnnotation(SpringCoreClasses.BEAN)?.getStringMemberValues()?.filterNotNull()?.ifEmpty { null }?.toSet()
     }
 
     fun PsiAnnotation.resolveBeanName(): String? {
