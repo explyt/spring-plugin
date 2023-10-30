@@ -231,6 +231,7 @@ class SpringSearchService(private val project: Project) {
         qualifier: PsiAnnotation?
     ): List<PsiMember> {
         val byBeanPsiClass = byBeanPsiType?.resolveBeanPsiClass
+        var isMultipleBean = byBeanPsiType?.canBeMoreThanOneBean(listOf(byBeanPsiClass))
         val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
         val methodsPsiBeans = getComponentBeanPsiMethods(module)
         val beanNameFromQualifier = qualifier?.resolveBeanName()
@@ -238,22 +239,29 @@ class SpringSearchService(private val project: Project) {
         val resultByType: List<PsiMember> = if (byBeanPsiClass != null) {
             val byTypeBeanMethods = getBeansPsiMethods(byBeanPsiType, methodsPsiBeans, byBeanPsiClass)
 
+            // Check if multiple bean has exact match
+            if (isMultipleBean == true && byTypeBeanMethods.isNotEmpty()) {
+                isMultipleBean = false
+            }
+
             val byTypeComponents = componentPsiBeans.asSequence()
                 .filter { it.psiClass.isEqualOrInheritor(byBeanPsiClass) }
                 .map { it.psiClass }
                 .filter { !it.isGeneric(byBeanPsiType) || byTypeBeanMethods.isEmpty() }
                 .toSet()
-            val aResultByType: List<PsiMember> = byTypeBeanMethods + byTypeComponents
+            val aResultByTypeAndQualifier: List<PsiMember> = (byTypeBeanMethods + byTypeComponents)
+                .filter { qualifier == null || beanNameFromQualifier != null && beanNameFromQualifier in it.resolveBeanName(module) || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
 
-            if (aResultByType.isEmpty()) {
+            if (aResultByTypeAndQualifier.isEmpty()) {
                 return emptyList()
             }
-            if (aResultByType.size > 1) {
-                val byPrimary = aResultByType.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
+
+            if (aResultByTypeAndQualifier.size > 1) {
+                val byPrimary = aResultByTypeAndQualifier.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
                 if (byPrimary.isNotEmpty()) {
                     return byPrimary
                 }
-                val byPriority = aResultByType
+                val byPriority = aResultByTypeAndQualifier
                     .filter { it.isMetaAnnotatedBy(JavaEeClasses.PRIORITY.allFqns) }
                     .groupBy { it.getMetaAnnotationValue(JavaEeClasses.PRIORITY.allFqns)?.toIntOrNull() ?: Int.MAX_VALUE }
                 if (byPriority.isNotEmpty()) {
@@ -261,9 +269,11 @@ class SpringSearchService(private val project: Project) {
                     return byPriority[highestPriority] ?: emptyList()
                 }
             }
-            aResultByType
+            aResultByTypeAndQualifier
         } else {
-            (methodsPsiBeans + (componentPsiBeans.map { it.psiClass }.toSet())).toList()
+            (methodsPsiBeans + (componentPsiBeans.map { it.psiClass }.toSet()))
+                .filter { qualifier == null || beanNameFromQualifier != null && beanNameFromQualifier in it.resolveBeanName(module) || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
+                .toList()
         }
 
         if (resultByType.size == 1) {
@@ -271,17 +281,16 @@ class SpringSearchService(private val project: Project) {
         }
 
         if (qualifier == null) {
-            if (byBeanPsiClass != null && byBeanPsiType.canBeMoreThanOneBean(listOf(byBeanPsiClass))) {
+            if (byBeanPsiClass != null && isMultipleBean == true) {
                 return resultByType
             }
 
-            return resultByType
+            val filteredByBeanName = resultByType
                 .filter { byBeanName in it.resolveBeanName(module) }
-                .filter { it.targetBeanTypeIsSuitable(byBeanPsiClass) }
+            return filteredByBeanName.ifEmpty { resultByType }
         }
         val byNameFromQualifierBean = resultByType
             .filter { beanNameFromQualifier != null && beanNameFromQualifier in it.resolveBeanName(module) || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
-            .filter { it.targetBeanTypeIsSuitable(byBeanPsiClass) }
         return byNameFromQualifierBean
             .filter { byBeanName in it.resolveBeanName(module) }
             .ifEmpty { byNameFromQualifierBean }

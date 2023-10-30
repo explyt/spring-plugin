@@ -269,7 +269,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         message.append("<html><table><tr><td>")
         message.append(SpringCoreBundle.message("esprito.spring.inspection.bean.class.autowired.type", name))
         message.append("</td></tr><tr><td><table><tr><td valign='top'> Beans: </td><td>")
-        beanCandidates.map { bean -> "${bean.resolveBeanName(module)} ({@link ${bean.targetClass?.name}${(bean as? PsiMethod)?.name?.let { "#$it" }}})" }.sorted().joinTo(message, " <br>")
+        beanCandidates.map { bean -> "${bean.resolveBeanName(module)} ({@link ${bean.targetClass?.name}${(bean as? PsiMethod)?.name?.let { "#$it" } ?: ""}})" }.sorted().joinTo(message, " <br>")
         message.append("</td></tr></table></td></tr></table></html>")
         return message.toString()
     }

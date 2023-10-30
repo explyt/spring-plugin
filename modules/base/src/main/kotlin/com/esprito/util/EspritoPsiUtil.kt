@@ -75,9 +75,10 @@ object EspritoPsiUtil {
     }
 
     fun PsiClass.isGeneric(psiType: PsiType): Boolean {
-        return (psiType is PsiClassType && this.typeParameters.isNotEmpty() &&
-                (psiType.parameterCount == this.typeParameters.size) &&
-                this.typeParameters.asSequence().all { it.references.isEmpty() })
+        return psiType is PsiClassType
+                && this.typeParameters.isNotEmpty()
+                && (psiType.parameterCount == this.typeParameters.size)
+                && this.typeParameters.all { it.references.isEmpty() }
     }
 
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
