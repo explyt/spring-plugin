@@ -1,6 +1,6 @@
 package com.esprito.spring.core.profile
 
-import com.intellij.lang.properties.psi.PropertiesFile
+import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -12,8 +12,6 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.uast.UastModificationTracker
 import com.intellij.util.CommonProcessors
-import org.jetbrains.yaml.YAMLUtil
-import org.jetbrains.yaml.psi.YAMLFile
 
 class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
 
@@ -24,9 +22,10 @@ class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
 
         return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
-                findPropertyFiles(module)
-                    .flatMap { getProfiles(it) }
-                    .plus("default"),
+                getProfilesFromProperties(module)
+                        +
+                        findPropertyFiles(module)
+                            .flatMap { getProfiles(it) },
                 UastModificationTracker.getInstance(project)
             )
         }
@@ -35,12 +34,6 @@ class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
 
     private fun getProfiles(psiFile: PsiFile): List<String> {
         val filename = psiFile.name
-        if (filename == "application.properties") {
-            return getProfilesFromProperties(psiFile)
-        }
-        if (setOf("application.yaml", "application.yml").contains(filename)) {
-            return getProfilesFromYaml(psiFile)
-        }
         return listOfNotNull(
             fileMask.find(filename)
                 ?.groups
@@ -50,26 +43,11 @@ class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
         )
     }
 
-    private fun getProfilesFromYaml(psiFile: PsiFile): List<String> {
-        if (psiFile !is YAMLFile) return listOf()
-
-        return YAMLUtil.getQualifiedKeyInFile(psiFile, "spring", "profiles", "active")
-            ?.valueText
-            ?.split(',')
-            ?.asSequence()
-            ?.map { it.trim() }
-            ?.filter { it.isNotBlank() }
-            ?.toList() ?: listOf()
-    }
-
-    private fun getProfilesFromProperties(psiFile: PsiFile): List<String> {
-        if (psiFile !is PropertiesFile) return listOf()
-
-        return psiFile
-            .properties
+    private fun getProfilesFromProperties(module: Module): List<String> {
+        val propertiesSearch = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+        return propertiesSearch.findProperties(module, "spring.profiles.active")
             .asSequence()
-            .filter { "spring.profiles.active" == it.unescapedKey }
-            .mapNotNull { it.unescapedValue }
+            .mapNotNull { it.value }
             .flatMap { it.split(',') }
             .map { it.trim() }
             .filter { it.isNotBlank() }
