@@ -21,7 +21,9 @@ class SpringProfilesService(
                 modules.flatMap { module ->
                     it.searchProfiles(module)
                 }
-            }.toSet()
+            }
+            .plus("default")
+            .toSet()
             .sorted()
     }
 
