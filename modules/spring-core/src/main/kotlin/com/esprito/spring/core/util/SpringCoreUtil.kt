@@ -7,7 +7,7 @@ import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjecto
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
-import com.esprito.util.EspritoAnnotationUtil.getValue
+import com.esprito.util.EspritoAnnotationUtil.getStringValue
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isCollection
 import com.esprito.util.EspritoPsiUtil.isInterface
@@ -205,7 +205,7 @@ object SpringCoreUtil {
     }
 
     fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
-        return getMetaAnnotation(annotationNames)?.getValue()
+        return getMetaAnnotation(annotationNames)?.getStringValue()
     }
 
     fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? {
@@ -215,12 +215,12 @@ object SpringCoreUtil {
     fun PsiAnnotation.resolveBeanName(): String? {
         if (isMetaAnnotatedByOrSelf(SpringCoreClasses.QUALIFIER)) {
             if (resolveAnnotationType()?.methods?.size == 1) {
-                return getValue()
+                return getStringValue()
             }
             return null
         }
         if (isMetaAnnotatedByOrSelf(JavaEeClasses.QUALIFIER.allFqns)) {
-            return getValue()
+            return getStringValue()
         }
         return null
     }

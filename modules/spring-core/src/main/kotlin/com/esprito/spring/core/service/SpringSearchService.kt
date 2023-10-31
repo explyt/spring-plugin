@@ -14,8 +14,9 @@ import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.spring.core.util.SpringCoreUtil.targetClass
 import com.esprito.util.CacheKeyStore
 import com.esprito.util.EspritoAnnotationUtil
-import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationValue
+import com.esprito.util.EspritoAnnotationUtil.getLongValue
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
+import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isGeneric
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -263,7 +264,7 @@ class SpringSearchService(private val project: Project) {
                 }
                 val byPriority = aResultByTypeAndQualifier
                     .filter { it.isMetaAnnotatedBy(JavaEeClasses.PRIORITY.allFqns) }
-                    .groupBy { it.getMetaAnnotationValue(JavaEeClasses.PRIORITY.allFqns)?.toIntOrNull() ?: Int.MAX_VALUE }
+                    .groupBy { it.getMetaAnnotation(JavaEeClasses.PRIORITY.allFqns)?.getLongValue()?.toInt() ?: Int.MAX_VALUE }
                 if (byPriority.isNotEmpty()) {
                     val highestPriority = byPriority.minOf { it.key }
                     return byPriority[highestPriority] ?: emptyList()

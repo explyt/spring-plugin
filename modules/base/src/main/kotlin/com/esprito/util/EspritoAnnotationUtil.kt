@@ -136,20 +136,24 @@ object EspritoAnnotationUtil {
        return attributeValue.reference?.resolve()?.childrenOfType() ?: emptyList()
     }
 
-    fun PsiAnnotation.getValue(): String? {
+    fun PsiAnnotation.getStringValue(): String? {
         return AnnotationUtil.getStringAttributeValue(this, "value")?.takeIf { it.isNotEmpty() }
+    }
+
+    fun PsiAnnotation.getLongValue(): Long? {
+        return AnnotationUtil.getLongAttributeValue(this, "value")
     }
 
     fun PsiModifierListOwner.getMetaAnnotationValue(annotationName: String): String? {
         if (isMetaAnnotatedBy(annotationName)) {
-            return getMetaAnnotation(annotationName)?.getValue()
+            return getMetaAnnotation(annotationName)?.getStringValue()
         }
         return null
     }
 
     fun PsiModifierListOwner.getMetaAnnotationValue(annotationNames: Collection<String>): String? {
         if (isMetaAnnotatedBy(annotationNames)) {
-            return getMetaAnnotation(annotationNames)?.getValue()
+            return getMetaAnnotation(annotationNames)?.getStringValue()
         }
         return null
     }
