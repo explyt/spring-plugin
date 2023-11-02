@@ -30,6 +30,13 @@ class PropertyRenderer : LookupElementRenderer<LookupElement>() {
         configurationProperty.description?.let {
             presentation.appendTailText(" (" + getFirstSentenceWithoutDot(it) + ")", true)
         }
+        val deprecation = configurationProperty.deprecation
+        if (deprecation!= null) {
+            presentation.setStrikeout(true)
+            if (deprecation.level === DeprecationInfoLevel.ERROR) {
+                presentation.setItemTextForeground(JBColor.RED)
+            }
+        }
 
         presentation.icon = if (configurationProperty.type?.startsWith("java.util.Map") == true)
             AllIcons.Nodes.PropertyWrite

@@ -53,8 +53,9 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
         metaDataFilePath: String,
         configurationProperties: MutableMap<String, ConfigurationProperty>
     ) {
-        val metadata = loadMetadata(metaDataFileText, metaDataFilePath, SpringConfigurationPropertiesMetadata::class.java)
-            ?: return
+        val metadata =
+            loadMetadata(metaDataFileText, metaDataFilePath, SpringConfigurationPropertiesMetadata::class.java)
+                ?: return
 
         metadata.properties?.forEach {
             val propertyName = it.name
@@ -65,7 +66,8 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
                     type = it.type,
                     sourceType = it.sourceType,
                     description = it.description,
-                    defaultValue = it.defaultValue
+                    defaultValue = it.defaultValue,
+                    deprecation = deprecationInfo(it.deprecation)
                 )
             } else {
                 if (existProperty.type.isNullOrEmpty()) {
@@ -80,8 +82,27 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
                 if (existProperty.defaultValue == null) {
                     existProperty.defaultValue = it.defaultValue
                 }
+                if (existProperty.deprecation == null) {
+                    existProperty.deprecation = deprecationInfo(it.deprecation)
+                }
             }
         }
+    }
+
+    private fun deprecationInfo(deprecation: SpringConfigurationMetadataDeprecation?) : DeprecationInfo? {
+        if (deprecation == null) return null
+
+        val level = deprecation.level
+        val deprecationLevel = if (level == null) {
+            DeprecationInfoLevel.WARNING
+        } else {
+            DeprecationInfoLevel.valueOf(level.uppercase())
+        }
+        return DeprecationInfo(
+            deprecationLevel,
+            deprecation.replacement,
+            deprecation.reason
+        )
     }
 
     private fun <T> loadMetadata(
@@ -123,12 +144,21 @@ data class SpringConfigurationMetadataProperty @JsonCreator constructor(
     val type: String?,
     @JsonProperty("description")
     val description: String?,
-    @JsonProperty("deprecated")
-    val deprecated: Boolean?,
     @JsonProperty("sourceType")
     val sourceType: String?,
     @JsonProperty("defaultValue")
-    val defaultValue: Any?
+    val defaultValue: Any?,
+    @JsonProperty("deprecation")
+    val deprecation: SpringConfigurationMetadataDeprecation?
+)
+
+data class SpringConfigurationMetadataDeprecation @JsonCreator constructor(
+    @JsonProperty("level")
+    val level: String?,
+    @JsonProperty("reason")
+    val reason: String?,
+    @JsonProperty("replacement")
+    val replacement: String?,
 )
 
 class SpringConfigurationMetadataHint @JsonCreator constructor(

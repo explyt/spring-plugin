@@ -3,6 +3,8 @@ package com.esprito.spring.core.properties.inspections
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringProperties.CLASS_REFERENCE
 import com.esprito.spring.core.SpringProperties.SPRING_BEAN_REFERENCE
+import com.esprito.spring.core.completion.properties.ConfigurationProperty
+import com.esprito.spring.core.completion.properties.DeprecationInfoLevel
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.SpringSearchService
@@ -23,7 +25,8 @@ import com.intellij.psi.util.childrenOfType
 
 class SpringPropertiesInspection : LocalInspectionTool() {
 
-    private var properties = listOf<IProperty>()
+    private var fileProperties = listOf<IProperty>()
+    private var configurationProperties = listOf<ConfigurationProperty>()
     private var hints = listOf<PropertyHint>()
 
     override fun checkFile(
@@ -34,23 +37,75 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         if (!SpringCoreUtil.isConfigurationPropertyFile(file)) {
             return ProblemDescriptor.EMPTY_ARRAY
         }
-        properties = (file as PropertiesFile).properties
-        if (properties.isEmpty()) {
+        fileProperties = (file as PropertiesFile).properties
+        if (fileProperties.isEmpty()) {
             return ProblemDescriptor.EMPTY_ARRAY
         }
 
         val module = ModuleUtilCore.findModuleForFile(file) ?: return ProblemDescriptor.EMPTY_ARRAY
-        hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllHints(module)
-        if (hints.isEmpty()) {
-            return ProblemDescriptor.EMPTY_ARRAY
+
+        val problems = mutableListOf<ProblemDescriptor>()
+        problems += checkKey(module, manager, isOnTheFly)
+        problems += checkValue(module, manager, isOnTheFly)
+        return problems.toTypedArray()
+    }
+
+    private fun checkKey(
+        module: Module,
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): MutableList<ProblemDescriptor> {
+        configurationProperties = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
+        if (configurationProperties.isEmpty()) {
+            return mutableListOf()
         }
+        val problems = mutableListOf<ProblemDescriptor>()
+        problems += getProblemPropertyDeprecated(manager, isOnTheFly)
+        return problems
+    }
+
+    private fun checkValue(
+        module: Module,
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): MutableList<ProblemDescriptor> {
+        hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllHints(module)
 
         val problems = mutableListOf<ProblemDescriptor>()
         problems += getProblemClassReference(module, manager, isOnTheFly)
         problems += getProblemBeanReferenceProperties(module, manager, isOnTheFly)
         problems += getProblemPropertyType(module, manager, isOnTheFly)
+        return problems
+    }
 
-        return problems.toTypedArray()
+    private fun getProblemPropertyDeprecated(
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): MutableList<ProblemDescriptor> {
+        val problems = mutableListOf<ProblemDescriptor>()
+        val deprecationProperties = configurationProperties.filter { property ->
+            fileProperties.any { fileProperty -> fileProperty.key == property.name && property.deprecation != null }
+        }
+        if (deprecationProperties.isEmpty()) {
+            return problems
+        }
+        for (property in deprecationProperties) {
+            val psiElement = fileProperties.firstOrNull { it.key==property.name }?.psiElement
+            val level = property.deprecation?.level ?: continue
+            val reason = property.deprecation?.reason ?: " "
+            val replacement = property.deprecation?.replacement ?: " "
+            if (psiElement != null) {
+                problems += manager.createProblemDescriptor(
+                    psiElement,
+                    SpringCoreBundle.message("esprito.spring.inspection.properties.key.deprecated", reason),
+                    ReplacementKeyQuickFix(replacement, psiElement),
+                    if (level == DeprecationInfoLevel.ERROR) ProblemHighlightType.GENERIC_ERROR else ProblemHighlightType.LIKE_DEPRECATED,
+                    isOnTheFly
+                )
+            }
+        }
+
+        return problems
     }
 
     private fun getProblemClassReference(
@@ -59,7 +114,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         isOnTheFly: Boolean
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        val classReferenceProperties = properties.filter { property ->
+        val classReferenceProperties = fileProperties.filter { property ->
             hints.any { hint -> property.key == hint.name && hint.providers.any { it.name == CLASS_REFERENCE } }
         }
         if (classReferenceProperties.isEmpty()) {
@@ -122,7 +177,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         isOnTheFly: Boolean
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        val springBeanReferenceProperties = properties.filter { property ->
+        val springBeanReferenceProperties = fileProperties.filter { property ->
             hints.any { hint -> property.key == hint.name && hint.providers.any { it.name == SPRING_BEAN_REFERENCE } }
         }
         if (springBeanReferenceProperties.isEmpty()) {
@@ -155,7 +210,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val propertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
-        for(property in properties) {
+        for (property in fileProperties) {
             val psiValue = property.psiElement.childrenOfType<PropertyValueImpl>().firstOrNull() ?: continue
             val key = property.key
             val value = property.value
@@ -164,15 +219,23 @@ class SpringPropertiesInspection : LocalInspectionTool() {
             val configurationProperty = propertiesSearch.findProperty(module, key) ?: continue
             val propertyType = configurationProperty.type?.replace('$', '.') ?: continue
             val result = when (propertyType) {
-                "java.lang.Boolean" -> !(value.contains("true") || value.contains("false"))
-                "java.lang.Integer" -> value.toIntOrNull() == null
-                "java.lang.Double" -> value.toDoubleOrNull() == null
+                "java.lang.Boolean", "boolean" -> !(value == "true" || value == "false")
+                "java.lang.Byte", "byte"  -> value.toByteOrNull() == null
+                "java.lang.Integer", "int"  -> value.toIntOrNull() == null
+                "java.lang.Long", "long"  -> value.toLongOrNull() == null
+                "java.lang.Short", "short"  -> value.toShortOrNull() == null
+                "java.lang.Double", "double", "java.lang.Number"  -> value.toDoubleOrNull() == null
+                "java.lang.Float", "float"  -> value.toFloatOrNull() == null
                 else -> false
             }
             if (result) {
                 problems += manager.createProblemDescriptor(
                     psiValue,
-                    SpringCoreBundle.message("esprito.spring.inspection.properties.spring.convert", value, propertyType),
+                    SpringCoreBundle.message(
+                        "esprito.spring.inspection.properties.spring.convert",
+                        value,
+                        propertyType
+                    ),
                     isOnTheFly,
                     emptyArray(),
                     ProblemHighlightType.ERROR

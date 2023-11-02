@@ -19,7 +19,8 @@ data class ConfigurationProperty(
     var type: String?,
     var sourceType: String?,
     var description: String?,
-    var defaultValue: Any?
+    var defaultValue: Any?,
+    var deprecation: DeprecationInfo?
 )
 
 data class PropertyHint(
