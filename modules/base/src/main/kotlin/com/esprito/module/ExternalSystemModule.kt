@@ -34,6 +34,12 @@ interface ExternalSystemModule {
 
     val buildMetaInfDirectory: File?
 
+    val sourceMetaInfDirectory: PsiDirectory?
+        get() {
+            val rootProjectPath = resourceRoots.firstOrNull() ?: return null
+            return rootProjectPath.subdirectories.asSequence().filter { it.name == "META-INF" }.firstOrNull() ?: return null
+        }
+
     val sourceRoots: List<PsiDirectory>
 
     val resourceRoots: List<PsiDirectory>
@@ -54,7 +60,8 @@ class GradleModule(override val rootModule: Module, override val mainModule: Mod
 
     override val buildMetaInfDirectory: File?
         get() {
-            val rootProjectPath = ExternalSystemModulePropertyManager.getInstance(rootModule).getRootProjectPath() ?: return null
+            val rootProjectPath =
+                ExternalSystemModulePropertyManager.getInstance(rootModule).getRootProjectPath() ?: return null
             val classesDir = Paths.get(rootProjectPath, "build", "classes")
             if (!classesDir.exists()) {
                 return null

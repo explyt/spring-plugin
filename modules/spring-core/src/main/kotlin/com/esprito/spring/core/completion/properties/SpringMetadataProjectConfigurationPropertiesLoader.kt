@@ -1,57 +1,27 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.module.ExternalSystemModule
-import com.esprito.util.CacheKeyStore
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectRootModificationTracker
-import com.intellij.openapi.util.io.FileUtil
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 import java.io.File
 import java.io.FileFilter
 
 class SpringMetadataProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
     override fun loadProperties(module: Module): List<ConfigurationProperty> {
-        val project = module.project
-        val key = CacheKeyStore.getInstance(project).getKey<List<ConfigurationProperty>>(
-            "SpringMetadataProjectConfigurationPropertiesLoader(${module.name})"
-        )
-        return CachedValuesManager
-            .getManager(module.project)
-            .getCachedValue(module, key, {
-                val result = mutableMapOf<String, ConfigurationProperty>()
-                findMetadataFiles(module).forEach {
-                    collectConfigurationProperties(FileUtil.loadFile(it), it.absolutePath, result)
-                }
+        // TODO: not load from resource directory META-INF
+        //  additional-spring-configuration-metadata.json
+        //  spring-configuration-metadata.json
 
-                //TODO check ProjectRootModificationTracker
-                CachedValueProvider.Result.create(
-                    result.values.toList(),
-                    ProjectRootModificationTracker.getInstance(module.project)
-                )
-            }, false)
+        return emptyList()
     }
 
     override fun loadPropertyHints(module: Module): List<PropertyHint> {
-        val project = module.project
-        val key = CacheKeyStore.getInstance(project).getKey<List<PropertyHint>>(
-            "SpringMetadataProjectConfigurationPropertiesLoaderHint(${module.name})"
-        )
-        return CachedValuesManager
-            .getManager(module.project)
-            .getCachedValue(module, key, {
-                val result = findMetadataFiles(module).flatMap {
-                    collectPropertyHints(FileUtil.loadFile(it), it.absolutePath)
-                }
+        // TODO: not load from resource directory META-INF
+        //  additional-spring-configuration-metadata.json
+        //  spring-configuration-metadata.json
 
-                // TODO check ProjectRootModificationTracker
-                CachedValueProvider.Result.create(
-                    result.toList(),
-                    ProjectRootModificationTracker.getInstance(module.project)
-                )
-            }, false)
+        return emptyList()
     }
 
     private fun findMetadataFiles(module: Module): Array<File> {
