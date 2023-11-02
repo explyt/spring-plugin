@@ -16,3 +16,5 @@ modules/buildsystem/gradle/build
 .sbs
 .jpb
 .ampicode
+/jflex-1.9.1.jar
+/idea-flex.skeleton

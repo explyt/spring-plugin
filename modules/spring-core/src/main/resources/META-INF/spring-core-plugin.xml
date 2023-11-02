@@ -230,6 +230,26 @@
                   extensions="factories;imports"
                   implementationClass="com.esprito.spring.core.language.FactoriesFileType"/>
 
+        <fileType name="Profiles File"
+                  implementationClass="com.esprito.spring.core.language.profiles.ProfilesFileType"
+                  fieldName="INSTANCE"
+                  language="Profiles"
+                  extensions="profiles"/>
+
+        <lang.parserDefinition
+                language="Profiles"
+                implementationClass="com.esprito.spring.core.language.profiles.ProfilesParserDefinition"/>
+
+        <lang.syntaxHighlighterFactory
+                language="Profiles"
+                implementationClass="com.esprito.spring.core.language.profiles.ProfilesSyntaxHighlighterFactory"/>
+
+        <multiHostInjector implementation="com.esprito.spring.core.language.profiles.injection.ProfilesToProfileAnnotationInjector"/>
+
+        <completion.contributor
+                language="Profiles"
+                implementationClass="com.esprito.spring.core.language.profiles.ProfilesCompletionContributor"/>
+
     </extensions>
 
     <actions>
