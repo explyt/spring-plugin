@@ -20,6 +20,14 @@ intellij {
     instrumentCode.set(false)
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs("src/main/gen")
+        }
+    }
+}
+
 runIde.enabled = false
 publishPlugin.enabled = false
 verifyPlugin.enabled = false
