@@ -33,8 +33,8 @@ object EspritoAnnotationUtil {
         }
     }
 
-    fun PsiAnnotation?.getStringMemberValues(attributeName: String = "value"): Collection<String?> {
-        return getMemberValues("value").map { it.computeConstantExpression() as? String }
+    fun PsiAnnotation?.getStringMemberValues(attributeName: String = "value"): Collection<String> {
+        return getMemberValues(attributeName).mapNotNull { it.computeConstantExpression() as? String }
     }
 
     fun PsiAnnotationMemberValue.computeConstantExpression(): Any? {

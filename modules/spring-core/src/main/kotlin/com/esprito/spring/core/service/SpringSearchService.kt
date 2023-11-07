@@ -6,12 +6,15 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.esprito.spring.core.util.SpringCoreUtil.canBeMoreThanOneBean
+import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
+import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
-import com.esprito.spring.core.util.SpringCoreUtil.isEligibleBeanMethodType
+import com.esprito.spring.core.util.SpringCoreUtil.isBounded
+import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
+import com.esprito.spring.core.util.SpringCoreUtil.matchesWildcardType
+import com.esprito.spring.core.util.SpringCoreUtil.possibleMultipleBean
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.esprito.spring.core.util.SpringCoreUtil.targetClass
 import com.esprito.util.CacheKeyStore
 import com.esprito.util.EspritoAnnotationUtil
 import com.esprito.util.EspritoAnnotationUtil.getLongValue
@@ -20,8 +23,10 @@ import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isGeneric
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiType
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
@@ -137,8 +142,9 @@ class SpringSearchService(private val project: Project) {
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanPsiMethods(module)
             .asSequence()
-            .flatMap { method -> method.returnType?.resolvedPsiClass
-                ?.let { psiClass ->
+            .flatMap { method ->
+                // fixme: because of resolvedPsiClass - the method takes only classes, not arrays
+                method.returnType?.resolvedPsiClass?.let { psiClass ->
                     method.resolveBeanName.asSequence()
                         .map { PsiBean(it, psiClass, method.getQualifierAnnotation(), method) }
                 } ?: emptySequence()
@@ -217,52 +223,88 @@ class SpringSearchService(private val project: Project) {
         }, false)
     }
 
-    private fun PsiMember.targetBeanTypeIsSuitable(byBeanPsiClass: PsiClass?): Boolean {
-        if (byBeanPsiClass == null) {
-            return true
-        }
-
-        return targetClass?.isEqualOrInheritor(byBeanPsiClass) ?: true
+    private fun PsiMember.filterByQualifier(module: Module, qualifier: PsiAnnotation?, beanNameFromQualifier: String?): Boolean {
+        return qualifier == null
+                || beanNameFromQualifier != null && beanNameFromQualifier in this.resolveBeanName(module)
+                || EspritoAnnotationUtil.equal(qualifier, this.getAnnotation(qualifier.qualifiedName!!))
     }
+
+    // warning: such methods are not pure!! Do not check twice!
+    fun <T> Sequence<T>.isEmpty() = this.firstOrNull() == null
+    fun <T> Sequence<T>.isNotEmpty() = !isEmpty()
+
+    fun PsiType.isMultipleBean(module: Module): Boolean {
+        if (!possibleMultipleBean()) return false
+        val beanPsiType = beanPsiType ?: return true
+        val methodsPsiBeans = getComponentBeanPsiMethods(module)
+
+        val byExactMatch = methodsPsiBeans.filterByExactMatch(this)
+        if (byExactMatch.isEmpty()) return true
+
+        val byTypeBeanMethods = methodsPsiBeans.filterByBeanPsiType(this, beanPsiType)
+        if (byTypeBeanMethods.isNotEmpty()) return true
+
+        val byTypeComponents = getPsiClassesByComponents(module, this, beanPsiType, true)
+        if (byTypeComponents.isNotEmpty()) return true
+        return false
+    }
+
+    private fun getPsiClassesByComponents(
+        module: Module,
+        sourcePsiType: PsiType,
+        beanPsiType: PsiType,
+        byTypeBeanMethodsIsEmpty: Boolean
+    ): Sequence<PsiClass> {
+        val beanPsiClass = beanPsiType.resolvedPsiClass
+        val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
+        val byTypeComponents = componentPsiBeans.asSequence()
+            .map { it.psiClass }
+            .filter { beanPsiClass != null && it.isEqualOrInheritor(beanPsiClass) || beanPsiType is PsiWildcardType && it.matchesWildcardType(beanPsiType) }
+            .filter { !it.isGeneric(sourcePsiType) || !byTypeBeanMethodsIsEmpty } //TODO: check why we are checking against byTypeBeanMethods
+        return byTypeComponents
+    }
+
 
     private fun findBeanDeclarations(
         module: Module,
         byBeanName: String,
-        byBeanPsiType: PsiType?,
+        sourcePsiType: PsiType?,
         qualifier: PsiAnnotation?
     ): List<PsiMember> {
-        val byBeanPsiClass = byBeanPsiType?.resolveBeanPsiClass
-        var isMultipleBean = byBeanPsiType?.canBeMoreThanOneBean(listOf(byBeanPsiClass))
-        val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
+        val beanPsiType = sourcePsiType?.beanPsiType
+        val beanPsiClass = sourcePsiType?.resolveBeanPsiClass
+        var isMultipleBean = sourcePsiType?.possibleMultipleBean() ?: false
         val methodsPsiBeans = getComponentBeanPsiMethods(module)
         val beanNameFromQualifier = qualifier?.resolveBeanName()
 
-        val resultByType: List<PsiMember> = if (byBeanPsiClass != null) {
-            val byTypeBeanMethods = getBeansPsiMethods(byBeanPsiType, methodsPsiBeans, byBeanPsiClass)
-
-            // Check if multiple bean has exact match
-            if (isMultipleBean == true && byTypeBeanMethods.isNotEmpty()) {
-                isMultipleBean = false
+        val resultByType: List<PsiMember> = if (beanPsiType != null) {
+            val byExactMatch = methodsPsiBeans.filterByExactMatch(sourcePsiType).toSet()
+            var byTypeBeanMethods = byExactMatch
+            if (isMultipleBean || byExactMatch.isEmpty()) {
+                byTypeBeanMethods = methodsPsiBeans.filterByBeanPsiType(sourcePsiType, beanPsiType).toSet()
             }
 
-            val byTypeComponents = componentPsiBeans.asSequence()
-                .filter { it.psiClass.isEqualOrInheritor(byBeanPsiClass) }
-                .map { it.psiClass }
-                .filter { !it.isGeneric(byBeanPsiType) || byTypeBeanMethods.isEmpty() }
-                .toSet()
+            val byTypeComponents = getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
+
+            if (isMultipleBean && byExactMatch.isNotEmpty() && byTypeBeanMethods.isEmpty() && byTypeComponents.isEmpty()) {
+                // Check if multiple bean has exact type match
+                isMultipleBean = false
+                byTypeBeanMethods = byExactMatch
+            }
+
             val aResultByTypeAndQualifier: List<PsiMember> = (byTypeBeanMethods + byTypeComponents)
-                .filter { qualifier == null || beanNameFromQualifier != null && beanNameFromQualifier in it.resolveBeanName(module) || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
+                .filter { it.filterByQualifier(module, qualifier, beanNameFromQualifier) }
 
             if (aResultByTypeAndQualifier.isEmpty()) {
                 return emptyList()
             }
 
-            if (aResultByTypeAndQualifier.size > 1) {
+            if (aResultByTypeAndQualifier.size > 1 && !isMultipleBean)  {
                 val byPrimary = aResultByTypeAndQualifier.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
                 if (byPrimary.isNotEmpty()) {
                     return byPrimary
                 }
-                val byPriority = aResultByTypeAndQualifier
+                val byPriority = aResultByTypeAndQualifier.asSequence()
                     .filter { it.isMetaAnnotatedBy(JavaEeClasses.PRIORITY.allFqns) }
                     .groupBy { it.getMetaAnnotation(JavaEeClasses.PRIORITY.allFqns)?.getLongValue()?.toInt() ?: Int.MAX_VALUE }
                 if (byPriority.isNotEmpty()) {
@@ -272,9 +314,9 @@ class SpringSearchService(private val project: Project) {
             }
             aResultByTypeAndQualifier
         } else {
-            (methodsPsiBeans + (componentPsiBeans.map { it.psiClass }.toSet()))
-                .filter { qualifier == null || beanNameFromQualifier != null && beanNameFromQualifier in it.resolveBeanName(module) || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
-                .toList()
+            val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
+            (methodsPsiBeans + componentPsiBeans.mapTo(mutableSetOf()) {it.psiClass })
+                .filter { it.filterByQualifier(module, qualifier, beanNameFromQualifier) }
         }
 
         if (resultByType.size == 1) {
@@ -282,7 +324,7 @@ class SpringSearchService(private val project: Project) {
         }
 
         if (qualifier == null) {
-            if (byBeanPsiClass != null && isMultipleBean == true) {
+            if (beanPsiClass != null && isMultipleBean) {
                 return resultByType
             }
 
@@ -291,7 +333,7 @@ class SpringSearchService(private val project: Project) {
             return filteredByBeanName.ifEmpty { resultByType }
         }
         val byNameFromQualifierBean = resultByType
-            .filter { beanNameFromQualifier != null && beanNameFromQualifier in it.resolveBeanName(module) || EspritoAnnotationUtil.equal(qualifier, it.getAnnotation(qualifier.qualifiedName!!)) }
+            .filter { it.filterByQualifier(module, qualifier, beanNameFromQualifier) }
         return byNameFromQualifierBean
             .filter { byBeanName in it.resolveBeanName(module) }
             .ifEmpty { byNameFromQualifierBean }
@@ -315,35 +357,45 @@ class SpringSearchService(private val project: Project) {
                 ClassInheritorsSearch.search(psiClass).findAll()
                     .asSequence()
                     .filterNotNull()
-                    .filter { it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
                     .toSet(),
                 UastModificationTracker.getInstance(project)
             )
         }
     }
 
-    fun getBeansPsiMethods(psiType: PsiType, allBeansPsiMethods: Set<PsiMethod>, resolvedPsiBeanClass: PsiClass): Collection<PsiMethod> {
-        return if (psiType.isEligibleBeanMethodType()) {
-            allBeansPsiMethods
-                .filter { it.returnType == psiType }
-        } else {
-            var methods = allBeansPsiMethods
-                .filter { it.returnPsiClass?.isEqualOrInheritor(resolvedPsiBeanClass) == true }
-            val resolvedPsiClass = psiType.resolvedPsiClass
-            if (resolvedPsiClass != null && methods.isEmpty() && searchClassInheritors(resolvedPsiBeanClass).isEmpty()) {
-                methods = getInheritorMethods(allBeansPsiMethods, psiType, resolvedPsiClass)
-            }
-            methods
+    fun Collection<PsiMethod>.filterByExactMatch(sourcePsiType: PsiType): Sequence<PsiMethod> {
+        val isSourcePsiTypeHasParameters = sourcePsiType.psiClassType?.let { it.parameterCount > 0 } == true
+        val isSourcePsiTypeHasSingleUnboundedWildcardType = sourcePsiType.psiClassType?.let {
+            it.parameterCount == 1 && !it.parameters[0].isBounded()
+        } == true
+
+        val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
+        return this.asSequence().filter { it.returnType == sourcePsiType
+                || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
+                || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
+                    && resolvedSourcePsiClass != null && it.returnPsiClass == resolvedSourcePsiClass
         }
     }
 
-    private fun getInheritorMethods(methodsPsiBeans: Set<PsiMethod>, psiType: PsiType, resolvedPsiClass: PsiClass): List<PsiMethod> {
-        return if (psiType is PsiClassType) {
-            methodsPsiBeans.filter {
-                it.returnPsiClass?.isEqualOrInheritor(resolvedPsiClass) == true &&
-                        (it.returnType as? PsiClassType)?.parameters.contentEquals(psiType.parameters)
-            }
-        } else emptyList()
+    fun Collection<PsiMethod>.filterByBeanPsiType(sourcePsiType: PsiType, beanPsiType: PsiType): Sequence<PsiMethod> {
+        val inheritedPsiMethods = this.asSequence().filter {
+            it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
+        }
+        val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
+        return inheritedPsiMethods + filterByInheritedTypes
+    }
+
+    fun getBeansPsiMethodsCheckMultipleBean(possibleMultipleBeanPsiType: PsiType, allBeansPsiMethods: Set<PsiMethod>, beanPsiType: PsiType): Collection<PsiMethod> {
+        val isMultipleBean = possibleMultipleBeanPsiType.possibleMultipleBean()
+
+        val byExactMatch = allBeansPsiMethods.filterByExactMatch(possibleMultipleBeanPsiType).toSet()
+        val byTypeBeanMethods = allBeansPsiMethods.filterByBeanPsiType(possibleMultipleBeanPsiType, beanPsiType).toSet()
+
+        if (isMultipleBean && byExactMatch.isNotEmpty() && byTypeBeanMethods.isEmpty()) {
+            // Check if multiple bean has exact type match
+            return byExactMatch
+        }
+        return byTypeBeanMethods
     }
 
     private fun filterByConditionals(module: Module, foundBeans: Set<PsiBean>): FoundBeans {

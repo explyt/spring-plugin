@@ -8,14 +8,16 @@ import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
 import com.esprito.util.EspritoAnnotationUtil.getStringValue
+import com.esprito.util.EspritoPsiUtil.deepPsiClassType
+import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isCollection
+import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isInterface
 import com.esprito.util.EspritoPsiUtil.isMap
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.isString
-import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
@@ -149,7 +151,7 @@ object SpringCoreUtil {
 
     val PsiMember.targetClass
         get() = when (this) {
-            is PsiMethod -> returnType?.resolvedPsiClass
+            is PsiMethod -> returnPsiClass
             is PsiClass -> this
             else -> null
         }
@@ -161,44 +163,71 @@ object SpringCoreUtil {
 
     val PsiType.resolveBeanPsiClass: PsiClass?
         get() {
+            return beanPsiType?.resolvedPsiClass
+        }
+
+    val PsiType.beanPsiType: PsiType?
+        get() {
             if (this is PsiArrayType) {
-                return resolvedDeepPsiClass
+                return deepPsiClassType
             }
             if (this !is PsiClassType) {
                 return null
             }
-            if (isCollection && isInterface || isOptional) {
+            if (isCollection && isInterface) {
                 // Collection<Bean>
+                return parameters.firstOrNull() ?: this
+            }
+            if (isOptional) {
                 // Optional<Bean>
-                return parameters.firstOrNull()?.resolvedPsiClass
+                val firstParam = parameters.firstOrNull() ?: return this
+                if (firstParam.isOptional) {
+                    return firstParam
+                }
+                return firstParam.beanPsiType
             }
             if (isMap && isInterface && parameterCount == 2 && parameters[0].isString) {
                 // Map<String, Bean>
-                return parameters[1].resolvedPsiClass
+                return parameters[1]
             }
-            return resolvedDeepPsiClass
+            return this
         }
 
-    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean = resolveBeanPsiClass in targetClasses
+    fun PsiClass?.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean =
+        this != null && targetClasses.any { it == this }
 
-    fun PsiType.isEligibleBeanMethodType(): Boolean =
-        if (this is PsiArrayType) {
-            true
-        } else {
-            this is PsiClassType && isMap && parameterCount == 2 && !parameters[0].isString
+    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean {
+        val beanPsiType = beanPsiType
+        return when (beanPsiType) {
+            is PsiClassType -> beanPsiType.resolvedPsiClass.canResolveBeanClass(targetClasses)
+            is PsiWildcardType -> {
+                if (!beanPsiType.isBounded) {
+                    return true
+                }
+                targetClasses.any { it.matchesWildcardType(beanPsiType) }
+            }
+            else -> false
         }
+    }
 
-    fun PsiType.canBeMoreThanOneBean(beanDeclarations: Collection<*>): Boolean {
+    fun PsiType.isBounded(): Boolean {
+        if (this is PsiWildcardType) {
+            return this.isBounded
+        }
+        return true
+    }
+
+    fun PsiType.possibleMultipleBean(): Boolean {
         if (this is PsiArrayType) {
             return true
         }
         if (this !is PsiClassType) {
             return false
         }
-        if (isCollection && isInterface && beanDeclarations.isNotEmpty()) {
+        if (isCollection && isInterface && parameterCount == 1 && parameters[0].isBounded()) {
             return true
         }
-        if (isMap && isInterface && parameterCount == 2 && parameters[0].isString) {
+        if (isMap && isInterface && parameterCount == 2 && parameters[0].isString && parameters[1].isBounded()) {
             return true
         }
         return false
@@ -209,7 +238,7 @@ object SpringCoreUtil {
     }
 
     fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? {
-        return getMetaAnnotation(SpringCoreClasses.BEAN)?.getStringMemberValues()?.filterNotNull()?.ifEmpty { null }?.toSet()
+        return getMetaAnnotation(SpringCoreClasses.BEAN)?.getStringMemberValues()?.ifEmpty { null }?.toSet()
     }
 
     fun PsiAnnotation.resolveBeanName(): String? {
@@ -240,5 +269,76 @@ object SpringCoreUtil {
         return this.getMetaAnnotation(SpringCoreClasses.QUALIFIERS)
     }
 
+    fun PsiType.isEqualOrInheritorBeanType(beanPsiType: PsiType): Boolean {
+        if (this == beanPsiType) {
+            return true
+        }
+        if (this !is PsiClassType) {
+            return false
+        }
+        if (beanPsiType is PsiClassType) {
+            return this.isEqualOrInheritor(beanPsiType)
+                    && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType))
+        }
+        if (beanPsiType is PsiWildcardType) {
+            return this.resolvedPsiClass?.matchesWildcardType(beanPsiType) ?: return false
+        }
+        return false
+    }
+
+    fun PsiClassType.equalParamsWithBound(otherPsiType: PsiClassType): Boolean {
+        if (parameters.size != otherPsiType.parameters.size) {
+            return false
+        }
+        return this.parameters.withIndex().all { (index, value) ->
+            otherPsiType.parameters[index].let { it == value || !it.isBounded() }
+        }
+    }
+
+    fun PsiClass.matchesWildcardType(beanPsiType: PsiWildcardType): Boolean {
+        if (beanPsiType.isExtends) {
+            val extendsBeanPsiClass = beanPsiType.extendsBound.resolvedPsiClass
+            if (extendsBeanPsiClass != null) {
+                return this.isEqualOrInheritor(extendsBeanPsiClass)
+            }
+        }
+        if (beanPsiType.isSuper) {
+            val superBeanPsiClass = beanPsiType.superBound.resolvedPsiClass
+            if (superBeanPsiClass != null) {
+                return superBeanPsiClass == this
+            }
+        }
+        return false
+    }
+
+    fun Collection<PsiMethod>.filterByInheritedTypes(sourcePsiType: PsiType, beanPsiType: PsiType?): Sequence<PsiMethod> {
+        var sequence = this.asSequence()
+        if (this.isEmpty()) {
+            return sequence
+        }
+        val beanPsiClass = beanPsiType?.resolvedPsiClass
+        if (beanPsiClass != null && beanPsiType != sourcePsiType) {
+            val possibleCustomInheritors = SpringSearchService.getInstance(this.first().project).searchClassInheritors(beanPsiClass)
+            if (possibleCustomInheritors.isNotEmpty()) {
+                sequence = sequence.filter {
+                    it.returnPsiClass?.let {
+                        it in possibleCustomInheritors || possibleCustomInheritors.any { inheritorClass -> inheritorClass.isEqualOrInheritor(it) }
+                    } == true
+                }
+            }
+        }
+
+        return sequence.filter { psiMethod ->
+            val psiMethodReturnType = psiMethod.returnType
+            psiMethod.findChildrenOfType<PsiReturnStatement>().any {
+                it.returnValue?.type?.let {
+                    it != psiMethodReturnType && (
+                        it.isEqualOrInheritorBeanType(sourcePsiType)
+                                || beanPsiType != null && beanPsiType != sourcePsiType && it.isEqualOrInheritorBeanType(beanPsiType)
+                    )
+                } == true
+            }
+        }
+    }
 
 }
