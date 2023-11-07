@@ -1,6 +1,7 @@
 package com.esprito.spring.core.service
 
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.getBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
@@ -22,23 +23,27 @@ class SpringBeanService {
         psiType: PsiType,
         beanName: String
     ): Set<PsiBean> {
-        val resolvedPsiBeanClass: PsiClass = psiType.resolveBeanPsiClass ?: return emptySet()
+        val beanPsiType = psiType.beanPsiType ?: return emptySet()
+        val beanPsiClass = psiType.resolveBeanPsiClass ?: return emptySet() // TODO: recheck the code here
         val searchService = SpringSearchService.getInstance(module.project)
 
         val excludedBeans = searchService.getExcludedBeansClasses(module)
-        val classInheritors = searchService.searchClassInheritors(resolvedPsiBeanClass)
-            .filter { inheritor -> excludedBeans.none { it.psiMember == inheritor } }.toSet()
+        val classInheritors = searchService.searchClassInheritors(beanPsiClass)
+            .asSequence()
+            .filter { it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
+            .filter { inheritor -> excludedBeans.none { it.psiMember == inheritor } }
+            .toSet()
         val allBeansPsiMethods = searchService.getComponentBeanPsiMethods(module)
-            .filter { psiMethod -> excludedBeans.none { it.psiMember == psiMethod } }.toSet()
-        val beansPsiMethods = searchService.getBeansPsiMethods(psiType, allBeansPsiMethods, resolvedPsiBeanClass).toSet()
+            .filterTo(mutableSetOf()) { psiMethod -> excludedBeans.none { it.psiMember == psiMethod } }
+        val beansPsiMethods = searchService.getBeansPsiMethodsCheckMultipleBean(psiType, allBeansPsiMethods, beanPsiType).toSet()
 
         val beanCandidatesByComponent = getBeanCandidatesInPsiModifierListOwner(module, classInheritors, SpringCoreClasses.COMPONENT)
         val beanCandidatesByMethod = getBeanCandidatesInPsiModifierListOwner(module, beansPsiMethods, SpringCoreClasses.BEAN)
 
         var beanCandidatesByResolveClass: Set<PsiBean> = setOf()
-        if (resolvedPsiBeanClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-            && (!resolvedPsiBeanClass.isGeneric(psiType) || beansPsiMethods.isEmpty())) {
-            beanCandidatesByResolveClass = getBeanCandidatesInPsiModifierListOwner(module, setOf(resolvedPsiBeanClass), SpringCoreClasses.COMPONENT)
+        if (beanPsiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
+            && (!beanPsiClass.isGeneric(psiType) || beansPsiMethods.isEmpty())) {
+            beanCandidatesByResolveClass = getBeanCandidatesInPsiModifierListOwner(module, setOf(beanPsiClass), SpringCoreClasses.COMPONENT)
         }
         return filterBeanCandidates(module, beanName,
             beanCandidatesByComponent + beanCandidatesByResolveClass, beanCandidatesByMethod)
@@ -96,11 +101,7 @@ class SpringBeanService {
         val isComponentPrimary = beanCandidatesByComponent.any { it.isPrimary }
         val isMethodPrimary = beanCandidatesByMethod.any { it.isPrimary }
         val isExistComponentName = beanCandidatesByComponent.any {
-            if (it.psiMember is PsiMember) {
-                metaHolder.getAnnotationMemberValues(it.psiMember, setOf("value")).isNotEmpty()
-            } else {
-                false
-            }
+            metaHolder.getAnnotationMemberValues(it.psiMember, setOf("value")).isNotEmpty()
         }
 
         if (isComponentPrimary) {

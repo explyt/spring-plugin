@@ -5,7 +5,7 @@ import com.esprito.spring.core.SpringCoreClasses.LOOKUP
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
@@ -23,7 +23,7 @@ class SpringLookupBeanInspection : AbstractBaseJavaLocalInspectionTool() {
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
         val module = ModuleUtilCore.findModuleForPsiElement(method) ?: return null
-        val returnClassQN = method.returnType?.resolvedPsiClass?.qualifiedName ?: return null
+        val returnClassQN = method.returnPsiClass?.qualifiedName ?: return null
         val service = SpringSearchService.getInstance(module.project)
         val beanByNames = service.getAllBeanByNames(module)
 

@@ -6,12 +6,17 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
+import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
+import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiType
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -106,17 +111,32 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         fun isFieldOrAutowiredParameter(): Boolean {
-            fun checkParam(psiVariable: PsiVariable): Boolean {
+            fun checkParam(psiVariable: PsiVariable): Boolean = with(springSearchService) {
                 val psiClass = psiVariable.parentOfType<PsiClass>() ?: return false
-                val isClassIsComponentConstructed = springSearchService.getBeanPsiClassesAnnotatedByComponent(module).any { it.psiClass == psiClass }
+                val isClassIsComponentConstructed = getBeanPsiClassesAnnotatedByComponent(module).any { it.psiClass == psiClass }
                 if (!isClassIsComponentConstructed) {
                     return false
                 }
-                val hasResolvableBeanType = psiVariable.type.canResolveBeanClass(springSearchService.getAllBeansClassesWithAncestors(module))
-                if (!hasResolvableBeanType) {
-                    return springSearchService.getComponentBeanPsiMethods(module).any { it.returnType == psiVariable.type }
+                val allBeansClassesWithAncestors = getAllBeansClassesWithAncestors(module)
+                if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors)) {
+                    return true
                 }
-                return true
+                val componentBeanPsiMethods = getComponentBeanPsiMethods(module)
+                val hasExactType = componentBeanPsiMethods.filterByExactMatch(psiVariable.type).isNotEmpty()
+                if (hasExactType) {
+                    return true
+                }
+                val beanPsiType = psiVariable.type.beanPsiType
+                val foundInheritedTypes = if (beanPsiType != null) {
+                    componentBeanPsiMethods.filterByBeanPsiType(psiVariable.type, beanPsiType).isNotEmpty()
+                } else {
+                    componentBeanPsiMethods.filterByInheritedTypes(psiVariable.type, null).isNotEmpty()
+                }
+                if (foundInheritedTypes) {
+                    return true
+                }
+
+                return false
             }
 
             if (uParent is UField) {
@@ -159,9 +179,19 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 ?: element.parentOfType<PsiClass>() // class annotated as Component
         }
 
+        private fun findTargetType(): PsiType? {
+            if (element !is PsiIdentifier) {
+                return null
+            }
+
+            return element.parentOfType<PsiMethod>()?.returnPsiType  // method annotated by Bean
+                ?: element.parentOfType<PsiClass>()?.returnPsiType // class annotated as Component
+        }
+
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             val targetClass = findTargetClass() ?: return emptyList()
             val targetClasses = targetClass.supers.toSet() + targetClass
+            val targetType = findTargetType()
 
             val allAutowiredAnnotations = springSearchService.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
@@ -171,7 +201,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allFieldsWithAutowired = allBeans.asSequence().flatMap {
                 it.psiClass.allFields.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                    .filter { it.type.canResolveBeanClass(targetClasses) }
+                    .filter { targetType == it.type
+                            || it.type.canResolveBeanClass(targetClasses)
+                            && (targetType !is PsiClassType || it.type.beanPsiType!!.psiClassType?.isEqualOrInheritorBeanType(targetType) == true)
+                    }
             }.toSet()
 
             val allParametersWithAutowired = allBeans.asSequence().flatMap { bean ->
@@ -182,7 +215,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                                 || it.isConstructor && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
-                    .filter { it.type.canResolveBeanClass(targetClasses) }
+                    .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses) }
             }.toSet()
 
             val allByType = allFieldsWithAutowired + allParametersWithAutowired

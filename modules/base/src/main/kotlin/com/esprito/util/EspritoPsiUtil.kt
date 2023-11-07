@@ -74,6 +74,10 @@ object EspritoPsiUtil {
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
+    fun PsiClassType.isEqualOrInheritor(baseType: PsiClassType): Boolean {
+        return baseType.resolve()?.qualifiedName?.let { className -> this.isInheritorOf(className) } ?: false
+    }
+
     fun PsiClass.isGeneric(psiType: PsiType): Boolean {
         return psiType is PsiClassType
                 && this.typeParameters.isNotEmpty()
@@ -102,10 +106,16 @@ object EspritoPsiUtil {
         get() = !isInterface && !isEnum && !isAnnotationType
 
     val PsiType.resolvedPsiClass: PsiClass?
-        get() = (this as? PsiClassType)?.resolve()
+        get() = psiClassType?.resolve()
+
+    val PsiType.psiClassType: PsiClassType?
+        get() = this as? PsiClassType
 
     val PsiType.resolvedDeepPsiClass: PsiClass?
-        get() = (this.deepComponentType as? PsiClassType)?.resolve()
+        get() = deepPsiClassType?.resolve()
+
+    val PsiType.deepPsiClassType: PsiClassType?
+        get() = this.deepComponentType as? PsiClassType
 
     val PsiType.isCollection : Boolean
         get() = this.isInheritorOf(java.util.Collection::class.java.canonicalName)
@@ -122,7 +132,17 @@ object EspritoPsiUtil {
     val PsiType.isString : Boolean
         get() = this.isInheritorOf(java.lang.String::class.java.canonicalName)
 
+    val PsiMember.returnPsiType: PsiType?
+        get() = if (this is PsiMethod) {
+            returnType
+        } else {
+            this.childrenOfType<PsiTypeElement>().firstOrNull()?.type
+        }
+
     val PsiMember.returnPsiClass: PsiClass?
-        get() = this.childrenOfType<PsiTypeElement>().firstOrNull()?.type?.resolvedPsiClass
+        get() = returnPsiType?.resolvedPsiClass
+
+    val PsiMember.returnPsiClassType: PsiClassType?
+        get() = returnPsiType?.psiClassType
 
 }

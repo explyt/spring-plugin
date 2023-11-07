@@ -5,6 +5,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.runReadNonBlocking
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
@@ -19,7 +20,6 @@ import com.intellij.psi.util.childrenOfType
 import com.intellij.uast.UastModificationTracker
 import com.intellij.util.Query
 import java.util.*
-import kotlin.collections.HashMap
 
 
 class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
@@ -44,7 +44,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             val prefix = extractConfigurationPropertyPrefix(module, annotatedElement) ?: continue
             val configurationPropertiesType = when (annotatedElement) {
                 is PsiClass -> annotatedElement
-                is PsiMethod -> (annotatedElement.returnType as? PsiClassType)?.resolve()
+                is PsiMethod -> annotatedElement.returnPsiClass
                 else -> null
             } ?: continue
 
@@ -205,7 +205,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
                     && it.parameterList.parametersCount == 1
                     && isPrefixedJavaIdentifier(it.name, "set")
                     && it.parameterList.parameters[0].type !in nestedFields.map { field -> field.psiType }
-                    && it.returnType?.resolvedPsiClass == null
+                    && it.returnPsiClass == null
         }.filterNotNull()
     }
 

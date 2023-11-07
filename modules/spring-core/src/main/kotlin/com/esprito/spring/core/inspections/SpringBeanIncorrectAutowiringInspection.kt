@@ -6,7 +6,6 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddQualifierQuickFix
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.esprito.spring.core.util.SpringCoreUtil.canBeMoreThanOneBean
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
@@ -24,6 +23,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
+import com.intellij.util.applyIf
 
 
 class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionTool() {
@@ -34,7 +34,8 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor> {
         val module = ModuleUtilCore.findModuleForPsiElement(field) ?: return ProblemDescriptor.EMPTY_ARRAY
-        if (!field.isInjectOrAutowiredByRequiredTrue()) return ProblemDescriptor.EMPTY_ARRAY
+        if (!field.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)) return ProblemDescriptor.EMPTY_ARRAY
+        //if (!field.isInjectOrAutowiredByRequiredTrue()) return ProblemDescriptor.EMPTY_ARRAY
 
         if (isBeanExist(module, field.containingClass) && SpringCoreUtil.existComponentScan(module)) {
             return getProblemAutowired(module, field, manager, isOnTheFly)
@@ -109,6 +110,10 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         return problems
     }
 
+    private fun PsiType.isMultipleBean(module: Module): Boolean {
+        return SpringSearchService.getInstance(module.project).run { isMultipleBean(module) }
+    }
+
     private fun getProblemAutowired(
         module: Module,
         element: PsiJvmModifiersOwner,
@@ -118,17 +123,35 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         if (element !is PsiVariable) return ProblemDescriptor.EMPTY_ARRAY
 
         val psiType = element.type
-        val nameClass = psiType.resolveBeanPsiClass?.name ?: return ProblemDescriptor.EMPTY_ARRAY
+        val nameClass = (psiType.resolveBeanPsiClass ?: psiType.resolvedPsiClass)?.name ?: return ProblemDescriptor.EMPTY_ARRAY
         val problemElement =
             (element as? PsiNameIdentifierOwner)?.identifyingElement ?: return ProblemDescriptor.EMPTY_ARRAY
 
-        val beanDeclarations = SpringSearchService.getInstance(module.project)
-            .findActiveBeanDeclarations(module, element.name ?: "", element.type, element.getQualifierAnnotation())
+        val springSearchService = SpringSearchService.getInstance(module.project)
+        val beanDeclarations = springSearchService
+            .findActiveBeanDeclarations(module, element.name ?: "", psiType, element.getQualifierAnnotation())
+
+        if (psiType.isOptional || element.isAutowiredByRequiredTrue() == false) {
+            if (beanDeclarations.size > 1) {
+                val actualPsiType = psiType.applyIf(psiType.isOptional) { (psiType as PsiClassType).parameters.firstOrNull() ?: PsiTypes.nullType() }
+                if (!actualPsiType.isMultipleBean(module)) {
+                    return arrayOf(
+                        manager.createProblemDescriptor(
+                            problemElement,
+                            getWarningMessageInheritor(module, beanDeclarations,
+                                SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.optional.too-many", nameClass)
+                            ),
+                            isOnTheFly,
+                            emptyArray(),
+                            ProblemHighlightType.WARNING
+                        )
+                    )
+                }
+            }
+            return ProblemDescriptor.EMPTY_ARRAY
+        }
 
         if (beanDeclarations.isEmpty()) {
-            if (psiType.isOptional || element.isAutowiredByRequiredTrue() == false) {
-                return ProblemDescriptor.EMPTY_ARRAY
-            }
             return arrayOf(
                 manager.createProblemDescriptor(
                     problemElement,
@@ -138,7 +161,9 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             )
         }
 
-        if (checkBeans(beanDeclarations)) {
+        if (beanDeclarations.size == 1
+            || beanDeclarations.count { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) } == 1
+        ) {
             return ProblemDescriptor.EMPTY_ARRAY
         }
 
@@ -146,10 +171,12 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             return getProblemQualifier(module, element, manager, isOnTheFly)
         }
         var problems = emptyArray<ProblemDescriptor>()
-        if (!psiType.canBeMoreThanOneBean(beanDeclarations)) {
+        if (beanDeclarations.isEmpty() || !psiType.isMultipleBean(module)) {
             problems += manager.createProblemDescriptor(
                 problemElement,
-                getWarningMessageInheritor(nameClass, beanDeclarations, module),
+                getWarningMessageInheritor(module, beanDeclarations,
+                    SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.too-many", nameClass)
+                ),
                 AddQualifierQuickFix(SpringCoreClasses.QUALIFIER, problemElement),
                 ProblemHighlightType.GENERIC_ERROR, isOnTheFly
             )
@@ -261,23 +288,23 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
     }
 
     private fun getWarningMessageInheritor(
-        name: String,
+        module: Module,
         beanCandidates: List<PsiMember>,
-        module: Module
+        errorText: String
     ): String {
         val message = StringBuilder()
         message.append("<html><table><tr><td>")
-        message.append(SpringCoreBundle.message("esprito.spring.inspection.bean.class.autowired.type", name))
+        message.append(errorText)
         message.append("</td></tr><tr><td><table><tr><td valign='top'> Beans: </td><td>")
-        beanCandidates.map { bean -> "${bean.resolveBeanName(module)} ({@link ${bean.targetClass?.name}${(bean as? PsiMethod)?.name?.let { "#$it" } ?: ""}})" }.sorted().joinTo(message, " <br>")
+        beanCandidates.map { bean -> "${bean.resolveBeanName(module)} {@link ${bean.targetClass?.name}${(bean as? PsiMethod)?.name?.let { "#$it" } ?: ""}}" }.sorted().joinTo(message, " <br>")
         message.append("</td></tr></table></td></tr></table></html>")
         return message.toString()
     }
 
-    private fun checkBeans(beanCandidates: List<PsiMember>): Boolean {
+    private fun checkBeans(beanDeclarations: List<PsiMember>): Boolean {
         when {
-            beanCandidates.size == 1 -> return true
-            beanCandidates.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }.size == 1 -> return true
+            beanDeclarations.size == 1 -> return true
+            beanDeclarations.count { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) } == 1 -> return true
         }
         return false
     }
