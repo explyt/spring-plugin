@@ -221,8 +221,6 @@
                                         implementationClass="com.esprito.spring.core.providers.SpringBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="JAVA"
                                         implementationClass="com.esprito.spring.core.providers.EventListenerLineMarkerProvider"/>
-        <codeInsight.lineMarkerProvider language="JAVA"
-                                        implementationClass="com.esprito.spring.core.providers.EventListenerLineMarkerProvider"/>
         <codeInsight.implicitSubclassProvider implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
         <fileType name="Factories Configuration"

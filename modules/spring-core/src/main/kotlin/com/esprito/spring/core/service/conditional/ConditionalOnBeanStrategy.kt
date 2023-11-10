@@ -18,8 +18,7 @@ class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
         if (dependant.annotations.none { annotationHolder.contains(it) }) {
             return false
         }
-        val foundBeanNames = foundBeans.map { it.name }.toSet()
-        val foundBeanClassQn = foundBeans.mapNotNull { it.psiClass.qualifiedName }.toSet()
+        val foundBeanNames = foundBeans.mapTo(mutableSetOf()) { it.name }
 
         val names = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
@@ -28,6 +27,7 @@ class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
             return true
         }
 
+        val foundBeanClassQn = foundBeans.mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
         val types = annotationHolder.getAnnotationMemberValues(dependant, setOf("type"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
