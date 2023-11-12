@@ -1,5 +1,6 @@
 package com.esprito.spring.core.profile
 
+import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -45,7 +46,7 @@ class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
 
     private fun getProfilesFromProperties(module: Module): List<String> {
         val propertiesSearch = DefinedConfigurationPropertiesSearch.getInstance(module.project)
-        return propertiesSearch.findProperties(module, "spring.profiles.active")
+        return propertiesSearch.findProperties(module, SPRING_PROFILES_ACTIVE)
             .asSequence()
             .mapNotNull { it.value }
             .flatMap { it.split(',') }

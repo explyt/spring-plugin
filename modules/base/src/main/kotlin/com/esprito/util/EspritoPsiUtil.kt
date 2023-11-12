@@ -5,6 +5,7 @@ import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
 
 object EspritoPsiUtil {
@@ -88,18 +89,7 @@ object EspritoPsiUtil {
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
 
     inline fun <reified T: PsiElement> PsiElement.findChildrenOfType(): List<T> {
-        val found = mutableListOf<T>()
-        val queue = mutableListOf(*this.children)
-
-        while (queue.isNotEmpty()) {
-            val current = queue.removeFirst()
-            if (current is T) {
-                found.add(current)
-            }
-            queue.addAll(current.children)
-        }
-
-        return found
+        return PsiTreeUtil.findChildrenOfType(this, T::class.java).toList()
     }
 
     val PsiClass.isOrdinaryClass: Boolean

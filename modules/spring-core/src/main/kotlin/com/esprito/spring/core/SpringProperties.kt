@@ -10,4 +10,6 @@ object SpringProperties {
     const val CLASS_REFERENCE = "class-reference"
     const val HANDLE_AS = "handle-as"
     const val SPRING_BEAN_REFERENCE = "spring-bean-reference"
+
+    const val SPRING_PROFILES_ACTIVE = "spring.profiles.active"
 }

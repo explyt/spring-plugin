@@ -231,8 +231,7 @@
         <fileType name="Profiles File"
                   implementationClass="com.esprito.spring.core.language.profiles.ProfilesFileType"
                   fieldName="INSTANCE"
-                  language="Profiles"
-                  extensions="profiles"/>
+                  language="Profiles"/>
 
         <lang.parserDefinition
                 language="Profiles"
@@ -247,6 +246,22 @@
         <completion.contributor
                 language="Profiles"
                 implementationClass="com.esprito.spring.core.language.profiles.ProfilesCompletionContributor"/>
+
+        <psi.referenceContributor
+                language="yaml"
+                implementation="com.esprito.spring.core.language.profiles.YamlProfilesReferenceContributor"/>
+
+        <psi.referenceContributor
+                language="Properties"
+                implementation="com.esprito.spring.core.language.profiles.PropertiesProfilesReferenceContributor"/>
+
+        <psi.referenceContributor
+                language="XML"
+                implementation="com.esprito.spring.core.language.profiles.XmlProfilesReferenceContributor"/>
+
+        <lang.braceMatcher
+                language="Profiles"
+                implementationClass="com.esprito.spring.core.language.profiles.psi.ProfilesBraceMatcher"/>
 
     </extensions>
 
