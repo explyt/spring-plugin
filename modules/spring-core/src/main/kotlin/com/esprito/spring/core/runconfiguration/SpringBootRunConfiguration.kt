@@ -1,5 +1,6 @@
 package com.esprito.spring.core.runconfiguration
 
+import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
 import com.esprito.spring.core.runconfiguration.edit.SpringBootConfigurationEditor
 import com.intellij.execution.Executor
 import com.intellij.execution.application.ApplicationConfiguration
@@ -41,7 +42,7 @@ class SpringBootRunConfiguration(
     fun modifyJavaParams(params: JavaParameters) {
         with(myOptions) {
             if (!springProfiles.isNullOrEmpty()) {
-                params.vmParametersList.add("-Dspring.profiles.active=$springProfiles")
+                params.vmParametersList.add("-D$SPRING_PROFILES_ACTIVE=$springProfiles")
             }
         }
     }

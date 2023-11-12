@@ -1,5 +1,6 @@
 package com.esprito.spring.core.profile
 
+import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -54,7 +55,7 @@ class MavenProfileSearcher(project: Project) : ProfileSearcher {
             .findSubTags("profiles").asSequence()
             .flatMap { it.findSubTags("profile").asSequence() }
             .flatMap { it.findSubTags("properties").asSequence() }
-            .flatMap { it.findSubTags("spring.profiles.active").asSequence() }
+            .flatMap { it.findSubTags(SPRING_PROFILES_ACTIVE).asSequence() }
             .flatMap { it.value.text.split(',').asSequence() }
             .map { it.trim() }
             .filter { it.isNotBlank() }
