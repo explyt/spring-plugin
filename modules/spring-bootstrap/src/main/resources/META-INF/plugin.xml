@@ -5,17 +5,28 @@
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-    <name>Spring Tool</name>
+    <name>Esprito Spring Tools</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="support@esprito.com" url="https://esprito.com/">Esprito</vendor>
+    <vendor email="support@esprito.com" url="https://esprito.tech/">Esprito Tech</vendor>
 
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
-    IDEA plugin for Spring framework (Web, Security, Data, JPA and other...)
-  ]]></description>
+<p><strong>Esprito Spring Tools: Elevate Your Spring Boot Projects</strong></p>
+<p>Esprito Spring Tools is the IntelliJ IDEA plugin that simplifies your workflow with Spring Boot. Key features include:</p>
+<ul>
+  <li><strong>Swift Autocompletion</strong>: Seamlessly autocomplete bean names and navigate through annotations with class and file references.</li>
+  <li><strong>Configuration Simplified</strong>: Effortlessly complete and navigate properties in both .properties and .yaml files.</li>
+  <li><strong>Intelligent Code Navigation</strong>: Instantly visualize connections within your Spring architecture.</li>
+  <li><strong>Proactive Inspections</strong>: Prevent common issues with insightful checks on your Spring configuration and annotations.</li>
+  <li><strong>JPQL Proficiency</strong>: Harness the power of JPQL with integrated syntax highlighting and advanced navigation.</li>
+  <li><strong>Spring Profile Management</strong>: Directly manage and search for Spring profiles within your configuration files.</li>
+</ul>
+<p>With Esprito Spring Tools, dodge the common traps and speed up your coding with a tool that's built to boost productivity.</p>
+<p><strong>Get Esprito Spring Tools now and transform the way you build Spring Boot applications.</strong></p>
+]]></description>
 
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
