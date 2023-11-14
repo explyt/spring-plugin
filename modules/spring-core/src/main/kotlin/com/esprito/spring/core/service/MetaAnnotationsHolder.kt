@@ -1,5 +1,6 @@
 package com.esprito.spring.core.service
 
+import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.util.EspritoAnnotationUtil.getMemberValues
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
@@ -131,7 +132,7 @@ object AliasUtils {
     fun getAliasedClass(alias: PsiAnnotation): PsiClass? {
         return alias.findAttributeValue("annotation")
             ?.childrenOfType<PsiTypeElement>()
-            ?.firstOrNull { it.type.resolvedPsiClass?.qualifiedName != SpringCoreClasses.ANNOTATION }
+            ?.firstOrNull { it.type.resolvedPsiClass?.qualifiedName != JavaCoreClasses.ANNOTATION }
             ?.type
             ?.resolvedPsiClass
             ?: alias.parentOfType<PsiClass>()

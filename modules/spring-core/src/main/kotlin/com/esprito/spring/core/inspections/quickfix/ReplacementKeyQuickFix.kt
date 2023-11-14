@@ -1,4 +1,4 @@
-package com.esprito.spring.core.properties.inspections;
+package com.esprito.spring.core.inspections.quickfix;
 
 import com.esprito.spring.core.SpringCoreBundle
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement

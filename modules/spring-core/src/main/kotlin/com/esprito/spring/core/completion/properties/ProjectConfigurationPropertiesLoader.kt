@@ -13,26 +13,31 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocToken
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PropertyUtil
 import com.intellij.psi.util.childrenOfType
-import com.intellij.uast.UastModificationTracker
 import com.intellij.util.Query
 import java.util.*
+import kotlin.collections.HashMap
 
 
 class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
     override fun loadProperties(module: Module): List<ConfigurationProperty> = runReadNonBlocking {
-        val properties = mutableListOf<ConfigurationProperty>()
         val projectProperties = loadPropertiesFromConfiguration(module)
+        val properties = mutableListOf<ConfigurationProperty>()
         properties += projectProperties.asSequence().map { it.value }
         properties += loadPropertiesFromMetadata(module).asSequence()
             .filter { it.key !in  projectProperties.keys }
             .map { it.value }
+            .toList()
 
-        return@runReadNonBlocking properties
+        return@runReadNonBlocking properties.toList()
+    }
+
+    override fun loadPropertyHints(module: Module): List<PropertyHint> {
+        return findMetadataFiles(module).flatMap {
+            collectPropertyHints(it.text, it.virtualFile.path)
+        }
     }
 
     private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> = runReadNonBlocking {
@@ -61,20 +66,11 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     }
 
     private fun loadPropertiesFromMetadata(module: Module): HashMap<String, ConfigurationProperty> {
-        val project = module.project
-        return CachedValuesManager.getManager(project).getCachedValue(module) {
-            val result = hashMapOf<String, ConfigurationProperty>()
-            findMetadataFiles(module).forEach {
-                collectConfigurationProperties(it.text, it.virtualFile.path, result)
-            }
-            CachedValueProvider.Result(result, UastModificationTracker.getInstance(project))
+        val result = hashMapOf<String, ConfigurationProperty>()
+        findMetadataFiles(module).forEach {
+            collectConfigurationProperties(it.text, it.virtualFile.path, result)
         }
-    }
-
-    override fun loadPropertyHints(module: Module): List<PropertyHint> {
-        // TODO: load from additional-spring-configuration-metadata.json and Configuration Metadata Project
-
-        return emptyList()
+        return result
     }
 
     private fun getAnnotatedElements(module: Module): Query<out PsiModifierListOwner>? {

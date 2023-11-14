@@ -9,32 +9,29 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
 
-enum class REFERENCE_TYPE { FILE, ABSOLUTE_PATH, CLASSPATH }
+enum class ReferenceType { FILE, ABSOLUTE_PATH, CLASSPATH }
 
 class FileReferenceSetWithPrefixSupport(
     str: String,
     element: PsiElement,
     startInElement: Int,
     provider: PsiReferenceProvider?,
-    isCaseSensitive: Boolean,
-    endingSlashNotAllowed: Boolean,
     suitableFileTypes: Array<FileType>?,
-    init: Boolean,
-    private val type: REFERENCE_TYPE,
+    private val type: ReferenceType?,
     private val needHardFileTypeFilter: Boolean
 ) : FileReferenceSet(
     str,
     element,
     startInElement,
     provider,
-    isCaseSensitive,
-    endingSlashNotAllowed,
+    false,
+    false,
     suitableFileTypes,
-    init
+    true
 ) {
 
     override fun computeDefaultContexts(): MutableCollection<PsiFileSystemItem> {
-        if (type == REFERENCE_TYPE.FILE || type == REFERENCE_TYPE.ABSOLUTE_PATH) {
+        if (type == ReferenceType.FILE || type == ReferenceType.ABSOLUTE_PATH) {
             val root = ModuleUtil.getContentRootFile(element) ?: return mutableListOf()
             val psiDirectory = PsiManager.getInstance(element.project).findDirectory(root) ?: return mutableListOf()
             return mutableListOf(psiDirectory)

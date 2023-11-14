@@ -27,7 +27,10 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
                 findMetadataFiles(module).forEach {
                     collectConfigurationProperties(it.text, it.virtualFile.path, result)
                 }
-                CachedValueProvider.Result.create(result.values.toList(), JavaLibraryModificationTracker.getInstance(project))
+                CachedValueProvider.Result.create(
+                    result.values.toList(),
+                    JavaLibraryModificationTracker.getInstance(project)
+                )
             }, false)
     }
 
@@ -42,7 +45,10 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
                 val result = findMetadataFiles(module).flatMap {
                     collectPropertyHints(it.text, it.virtualFile.path)
                 }
-                CachedValueProvider.Result.create(result, JavaLibraryModificationTracker.getInstance(project))
+                CachedValueProvider.Result.create(
+                    result,
+                    JavaLibraryModificationTracker.getInstance(project)
+                )
             }, false)
     }
 

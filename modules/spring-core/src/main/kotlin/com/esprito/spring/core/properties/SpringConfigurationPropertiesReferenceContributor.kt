@@ -11,5 +11,6 @@ class SpringConfigurationPropertiesReferenceContributor : PsiReferenceContributo
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(PlatformPatterns.psiElement(PropertyKeyImpl::class.java), SpringConfigurationPropertiesKeyReferenceProvider())
         registrar.registerReferenceProvider(PlatformPatterns.psiElement(PropertyValueImpl::class.java), SpringConfigurationPropertiesValueReferenceProvider())
+        registrar.registerReferenceProvider(PlatformPatterns.psiElement(PropertyValueImpl::class.java), SpringConfigurationPropertiesValueResourceReferenceProvider())
     }
 }

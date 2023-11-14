@@ -24,9 +24,6 @@
                 implementation="com.esprito.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
         <configurationPropertiesLoader
                 implementation="com.esprito.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
-        <configurationPropertiesLoader
-                implementation="com.esprito.spring.core.completion.properties.SpringMetadataProjectConfigurationPropertiesLoader"/>
-
         <configurationFactoriesNamesLoader
                 implementation="com.esprito.spring.core.completion.properties.AutoConfigurationImportsPropertiesLoader"/>
         <configurationFactoriesNamesLoader
@@ -190,7 +187,7 @@
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.properties.key"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.core.properties.inspections.SpringPropertiesInspection"/>
+                         implementationClass="com.esprito.spring.core.inspections.SpringPropertiesInspection"/>
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>

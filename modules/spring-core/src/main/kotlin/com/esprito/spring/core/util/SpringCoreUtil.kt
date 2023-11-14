@@ -3,6 +3,7 @@ package com.esprito.spring.core.util
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
@@ -75,9 +76,9 @@ object SpringCoreUtil {
             val sourceRootVf = ModuleUtil.getSourceRootFile(psiFile) ?: return@runReadNonBlocking false
 
             return@runReadNonBlocking propertySourceFilePaths.any { propertyFilePath ->
-                val purePath = propertyFilePath.substringAfter("classpath*:")
-                    .substringAfter("classpath:")
-                    .substringAfter("file:")
+                val purePath = propertyFilePath.substringAfter(SpringProperties.PREFIX_CLASSPATH_STAR)
+                    .substringAfter(SpringProperties.PREFIX_CLASSPATH)
+                    .substringAfter(SpringProperties.PREFIX_FILE)
 
                 if (purePath.substringAfterLast("/") != psiFile.name) {
                     return@any false
