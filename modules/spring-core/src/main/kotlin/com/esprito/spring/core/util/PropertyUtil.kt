@@ -1,9 +1,16 @@
 package com.esprito.spring.core.util
 
+import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.completion.properties.PropertyHint
+import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.references.FileReferenceSetWithPrefixSupport
+import com.esprito.spring.core.references.ReferenceType
+import com.esprito.util.ModuleUtil
+import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiPackage
+import com.intellij.psi.*
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 
 object PropertyUtil {
     const val DOT = "."
@@ -45,4 +52,100 @@ object PropertyUtil {
         return infoPackages
     }
 
+    fun getPropertyHint(
+        module: Module,
+        propertyKey: String
+    ): PropertyHint? {
+        val propertyHint = SpringConfigurationPropertiesSearch.getInstance(module.project)
+            .getAllHints(module).find { hint ->
+                val hintName = hint.name
+                if (hintName == propertyKey) {
+                    return@find true
+                }
+                val valuesIdx = hintName.lastIndexOf(".values")
+                if (valuesIdx == -1) {
+                    return@find false
+                }
+                propertyKey.startsWith(hintName.substring(0, valuesIdx))
+            }
+        return propertyHint
+    }
+
+    fun getReferenceByFilePrefix(text: String,
+                                 element: PsiElement,
+                                 possibleFileTypes: Array<FileType>,
+                                 provider: PsiReferenceProvider): Array<FileReference> {
+        //("file:./application.properties") or ("file:application.properties") is right link to content root
+        // if start with "/" like here @PropertySource("file:/application.properties") - this means it is an absolute path
+        var range = ElementManipulators.getValueTextRange(element)
+        val referenceType = if (text.startsWith("/")) ReferenceType.ABSOLUTE_PATH else ReferenceType.FILE
+        val textWithoutFilePrefix = text.substring(SpringProperties.PREFIX_FILE.length)
+
+        // if start with "/" this means it is an absolute path
+        if (textWithoutFilePrefix.startsWith("/")) {
+            val basePath = ModuleUtil.getContentRootFile(element)?.path + "/"
+            if (textWithoutFilePrefix.startsWith(basePath)) {
+                val lengthOfPrefix = SpringProperties.PREFIX_FILE.length + basePath.length
+                range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+            }
+        } else {
+            // file: can start with "./" or ""
+            val lengthOfPrefix = SpringProperties.PREFIX_FILE.length + text.lengthPrefix("./")
+            range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+        }
+        return FileReferenceSetWithPrefixSupport(
+            textWithoutFilePrefix,
+            element,
+            range.startOffset,
+            provider = provider,
+            if (possibleFileTypes.isNotEmpty()) possibleFileTypes else null,
+            referenceType,
+            needHardFileTypeFilter = false
+        ).allReferences
+    }
+
+    fun getReferenceByClasspathPrefix(text: String,
+                                      prefix: String,
+                                      element: PsiElement,
+                                      possibleFileTypes: Array<FileType>,
+                                      provider: PsiReferenceProvider): Array<FileReference> {
+        var range = ElementManipulators.getValueTextRange(element)
+        val textWithoutClassPathPrefix = text.substring(prefix.length)
+
+        // classpath: can start with "./"  or "/" or ""
+        val lengthOfPrefix = prefix.length +
+                textWithoutClassPathPrefix.lengthPrefix("/") +
+                textWithoutClassPathPrefix.lengthPrefix("./")
+        range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+        return FileReferenceSetWithPrefixSupport(
+            textWithoutClassPathPrefix,
+            element,
+            range.startOffset,
+            provider = provider,
+            if (possibleFileTypes.isNotEmpty()) possibleFileTypes else null,
+            ReferenceType.CLASSPATH,
+            needHardFileTypeFilter = false
+        ).allReferences
+    }
+
+    fun getReferenceWithoutPrefix(text: String,
+                                  element: PsiElement,
+                                  possibleFileTypes: Array<FileType>,
+                                  provider: PsiReferenceProvider): Array<FileReference> {
+        var range = ElementManipulators.getValueTextRange(element)
+        val lengthOfPrefix = text.lengthPrefix("/") + text.lengthPrefix("./")
+        range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+
+        return FileReferenceSetWithPrefixSupport(
+            text,
+            element,
+            range.startOffset,
+            provider = provider,
+            if (possibleFileTypes.isNotEmpty()) possibleFileTypes else null,
+            ReferenceType.CLASSPATH,
+            needHardFileTypeFilter = false
+        ).allReferences
+    }
+
+    private fun String.lengthPrefix(prefix: String): Int = if (this.startsWith(prefix)) prefix.length else 0
 }

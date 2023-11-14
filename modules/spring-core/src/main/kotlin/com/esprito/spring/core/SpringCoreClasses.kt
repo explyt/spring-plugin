@@ -5,9 +5,6 @@ object SpringCoreClasses {
     const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
 
     const val PROFILE = "org.springframework.context.annotation.Profile"
-    const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
-    const val ANNOTATION = "java.lang.annotation.Annotation"
-
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val APPLICATION_LISTENER = "org.springframework.context.ApplicationListener"
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
@@ -24,6 +21,11 @@ object SpringCoreClasses {
     const val LOOKUP = "org.springframework.beans.factory.annotation.Lookup"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
+
+    const val IO_RESOURCE = "org.springframework.core.io.Resource"
+    const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
+
+    const val MIME_TYPE = "org.springframework.util.MimeType"
 
     const val CACHEABLE = "org.springframework.cache.annotation.Cacheable"
     const val CACHING = "org.springframework.cache.annotation.Caching"

@@ -1,10 +1,16 @@
 package com.esprito.spring.core.properties
 
+import com.esprito.spring.core.JavaCoreClasses
+import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.CLASS_REFERENCE
 import com.esprito.spring.core.SpringProperties.HANDLE_AS
 import com.esprito.spring.core.SpringProperties.SPRING_BEAN_REFERENCE
-import com.esprito.spring.core.completion.properties.*
+import com.esprito.spring.core.completion.properties.PropertyHint
+import com.esprito.spring.core.completion.properties.PropertyValueRenderer
+import com.esprito.spring.core.completion.properties.ProviderHint
+import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.util.PropertyUtil.getPropertyHint
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -40,8 +46,7 @@ class ValueHintReference(
         val propertyValue = element.text ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
-        val springConfigurationPropertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
-        val propertyHint = getPropertyHint(springConfigurationPropertiesSearch, module)
+        val propertyHint = getPropertyHint(module, propertyKey)
         val resolveResults = propertyHint?.providers?.flatMap {
             when (it.name) {
                 CLASS_REFERENCE -> getClassReference(module, propertyValue)
@@ -80,41 +85,19 @@ class ValueHintReference(
 
     override fun getVariants(): Array<Any> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-
-        val springConfigurationPropertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
-
-        val propertyHint = getPropertyHint(springConfigurationPropertiesSearch, module)
+        val propertyHint = getPropertyHint(module, propertyKey)
 
         val result = mutableListOf<Any>()
         if (propertyHint != null) {
             result.addAll(getVariantsByHint(propertyHint))
         }
 
-        val configurationProperty = springConfigurationPropertiesSearch.findProperty(module, propertyKey)
+        val configurationProperty = SpringConfigurationPropertiesSearch.getInstance(module.project).findProperty(module, propertyKey)
         configurationProperty?.type?.replace('$', '.')?.let {
             result.addAll(getVariantsByPropertyType(it))
         }
 
         return result.toTypedArray()
-    }
-
-    private fun getPropertyHint(
-        springConfigurationPropertiesSearch: SpringConfigurationPropertiesSearch,
-        module: Module
-    ): PropertyHint? {
-        val propertyHint = springConfigurationPropertiesSearch
-            .getAllHints(module).find { hint ->
-                val hintName = hint.name
-                if (hintName == propertyKey) {
-                    return@find true
-                }
-                val valuesIdx = hintName.lastIndexOf(".values")
-                if (valuesIdx == -1) {
-                    return@find false
-                }
-                propertyKey.startsWith(hintName.substring(0, valuesIdx))
-            }
-        return propertyHint
     }
 
     private fun getVariantsByHint(
@@ -133,7 +116,7 @@ class ValueHintReference(
 
     private fun getVariantsByPropertyType(propertyType: String): List<Any> {
         return when (propertyType) {
-            "java.util.Locale" -> {
+            JavaCoreClasses.LOCALE -> {
                 DateFormat.getAvailableLocales().map {
                     val country = it.country
                     it.language + if (country.isNullOrBlank()) "" else "_$country"
@@ -142,19 +125,19 @@ class ValueHintReference(
                 }
             }
 
-            "java.nio.charset.Charset" -> {
+            JavaCoreClasses.CHARSET -> {
                 Charset.availableCharsets().map {
                     LookupElementBuilder.create(it.key)
                 }
             }
 
-            "org.springframework.util.MimeType" -> {
+            SpringCoreClasses.MIME_TYPE -> {
                 MimeTypeDictionary.HTML_CONTENT_TYPES.map {
                     LookupElementBuilder.create(it)
                 }
             }
 
-            "java.lang.Boolean", "boolean" -> {
+            JavaCoreClasses.BOOLEAN, "boolean" -> {
                 listOf("true", "false").map {
                     LookupElementBuilder.create(it)
                 }

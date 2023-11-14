@@ -32,8 +32,8 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
         val ref = myFixture.getReferenceAtCaretPosition()
 
         assertEquals(
-            setOf("application2.properties", "application3.properties"),
-            ref?.variants?.map { ((it as LookupElement).psiElement as PropertiesFile).name }?.toSet(),
+            setOf("application2.properties", "application3.properties", "file:", "classpath:"),
+            ref?.variants?.map { (it as LookupElement).lookupString }?.toSet(),
         )
     }
 
