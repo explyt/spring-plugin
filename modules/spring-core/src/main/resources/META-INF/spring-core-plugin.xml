@@ -207,6 +207,7 @@
                            bundle="messages.SpringCoreBundle"/>
 
         <applicationConfigurable id="com.esprito.spring.runConfigurations"
+                                 key="run.configuration.spring.boot.display.name"
                                  groupId="com.esprito.spring.group"
                                  instance="com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
                                  groupWeight="85"/>
