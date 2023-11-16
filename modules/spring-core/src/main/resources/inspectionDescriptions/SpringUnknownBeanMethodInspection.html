@@ -2,13 +2,13 @@
 <head>
     <title>Bean Method Inspection</title></head>
 <body>
-<p>Reports unresolved method references on <code>initMethod</code> and <code>destroyMethod</code> parameters
-    of the <code>@Bean</code> annotation.</p>
+<p>Reports unresolved method references on <code lang="java">initMethod</code> and <code lang="java">destroyMethod</code> parameters
+    of the <code lang="java">@Bean</code> annotation.</p>
 
 <p><b>Example:</b></p>
 "Cannot resolve method" will be reported on 'doInit' expression if MyBean class doesn't contain 'public void
 'doInit'(){...}' method
-<pre><code>
+<pre><code lang="java">
   public class MyBean {...}
 
   @Component
@@ -18,8 +18,8 @@
   }
 </code></pre>
 
-<p>In this example, the inspection will report an unresolved method reference if <code>MyBean</code> doesn't define the
-    <code>doInit()</code> method.</p>
+<p>In this example, the inspection will report an unresolved method reference if <code lang="java">MyBean</code> doesn't define the
+    <code lang="java">doInit()</code> method.</p>
 </body>
 
 </html>

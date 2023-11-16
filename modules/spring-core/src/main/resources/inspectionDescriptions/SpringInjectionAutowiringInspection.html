@@ -9,7 +9,7 @@
     <li>More than one bean of 'concrete' type</li>
     <li>No beans of 'concrete' type</li>
     <li>No bean with qualifier</li>
-    <li>Incorrect usages of <code>@Autowired</code> on Spring bean constructors</li>
+    <li>Incorrect usages of <code lang="java">@Autowired</code> on Spring bean constructors</li>
     <li>Injected or autowired fields/methods in classes that are not valid Spring beans</li>
 </ul>
 
@@ -28,7 +28,7 @@ public class MyComponent {
 </pre>
 
 <p><b>Example:</b></p>
-<pre><code>
+<pre><code lang="java">
 @Component
 public class MyComponent {
 	@Autowired
@@ -46,7 +46,7 @@ public class MyFactory {  // reports ' No matching @Autowired constructor'
 </code></pre>
 
 <p><b>Example:</b></p>
-<pre><code>
+<pre><code lang="java">
 public class FooBeanClass {
   @Autowired   // reports 'Autowired members must be defined in valid Spring beans: @Component, @Service, and so on'
   ServiceBean bean;

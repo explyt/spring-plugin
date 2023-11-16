@@ -9,12 +9,12 @@ attribute
 @Configuration(proxyBeanMethods = false).
 <br><br>
 If you disable
-<pre><code>proxyBeanMethods</code></pre>
+<pre><code lang="java">proxyBeanMethods</code></pre>
 the proxy instances are no longer created and calling the method invokes it again (returning a new instance every time).
 As a result, you have no guarantee that you're actually injecting the corresponding bean in the context.
 <br><br>
 <strong>Incorrect bean method call example:</strong><br><br>
-<pre><code>
+<pre><code lang="java">
 @Configuration(proxyBeanMethods = false)
 class TestConfiguration {
   @Bean
@@ -32,9 +32,9 @@ class TestConfiguration {
 
 <hr>
 <strong>You can set
-    <pre><code>proxyBeanMethods</code></pre>
+    <pre><code lang="java">proxyBeanMethods</code></pre>
     to true or rewrite the code as follows:</strong><br><br>
-<pre><code>
+<pre><code lang="java">
 @Configuration(proxyBeanMethods = false)
 class TestConfiguration {
   @Bean
@@ -53,7 +53,7 @@ class TestConfiguration {
 <hr>
 <strong>Also, the inspection checks @Bean method calls in a class without the @Configuration stereotype (in "bean lite
     mode"):</strong><br><br>
-<pre><code>
+<pre><code lang="java">
 @Component
 class TestComponent {
   @Bean

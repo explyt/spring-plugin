@@ -32,7 +32,7 @@ new.key=value #Reports 'Cannot resolve configuration property 'new.key''
 </code></pre>
 
 <p>After the quick-fix is applied, the following is added to <code>META-INF/spring-additional-configuration-metadata.json</code>:</p>
-<pre><code>
+<pre><code lang="json">
 {
   "properties": [
     {
@@ -43,13 +43,14 @@ new.key=value #Reports 'Cannot resolve configuration property 'new.key''
 ] }
 </code></pre>
 
-<p>The inspection also highlights index notation errors in list and map configuration keys.</p>
-<p><b>Example:</b></p>
-<pre><code>
-spring.datasource.schema[]=${schema} #Reports 'Missing index value'
-</code></pre>
+<!--<p>The inspection also highlights index notation errors in list and map configuration keys.</p>-->
+<!--<p><b>Example:</b></p>-->
+<!--<pre><code>-->
+<!--spring.datasource.schema[]=${schema} #Reports 'Missing index value'-->
+<!--</code></pre>-->
 <!-- tooltip end -->
 
+<p>IDEA Community feature: from Maven plugin</p>
 <p>
   Use the <b>Replacement tokens</b> option to define tokens used for value placeholders in configuration files.
   These tokens are specified in the form <code>beginToken*endToken</code>.
