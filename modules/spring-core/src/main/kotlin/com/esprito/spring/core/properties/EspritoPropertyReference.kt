@@ -33,11 +33,12 @@ class EspritoPropertyReference(
         val project: Project = myElement.project
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val allProperties = DefinedConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
-        return allProperties.map { property ->
-            val psiElement = property.psiElement
-            LookupElementBuilder.create(property.key)
-                .withIcon(AllIcons.Nodes.Property)
-                .withTypeText(psiElement?.containingFile?.name)
-        }.toTypedArray()
+        return allProperties
+            .map() { property ->
+                val psiElement = property.psiElement
+                LookupElementBuilder.create(property.key)
+                    .withIcon(AllIcons.Nodes.Property)
+                    .withTypeText(psiElement?.containingFile?.name)
+            }.toTypedArray()
     }
 }

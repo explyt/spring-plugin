@@ -8,9 +8,12 @@ import com.esprito.spring.core.references.ReferenceType
 import com.esprito.util.ModuleUtil
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
+import com.intellij.psi.search.GlobalSearchScope
 
 object PropertyUtil {
     const val DOT = "."
@@ -148,4 +151,35 @@ object PropertyUtil {
     }
 
     private fun String.lengthPrefix(prefix: String): Int = if (this.startsWith(prefix)) prefix.length else 0
+
+    fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
+        val javaPsiFacade = JavaPsiFacade.getInstance(project)
+        var memberName = sourceType.substringAfterLast('#', "")
+        var setterName = memberName
+        if (memberName.isEmpty()) {
+            val splitPropsName = propertyKey.substringAfterLast('.').split(Regex("[_\\-]"))
+            val firstPropName = splitPropsName.firstOrNull() ?: return null
+            memberName = firstPropName + splitPropsName.subList(1, splitPropsName.size).joinToString(separator = "") {
+                StringUtil.capitalize(it.lowercase())
+            }
+            setterName = "set${StringUtil.capitalize(memberName)}"
+        }
+
+        @Suppress("NAME_SHADOWING")
+        val sourceType = sourceType.substringBeforeLast('#').replace('$', '.')
+        val foundClass = javaPsiFacade.findClass(sourceType, GlobalSearchScope.allScope(project)) ?: return null
+        return findMember(foundClass, memberName, setterName) ?: foundClass
+    }
+
+    private fun findMember(
+        foundClass: PsiClass,
+        fieldName: String,
+        setterName: String
+    ): PsiMember? {
+        return (foundClass.findMethodsByName(setterName, true).firstOrNull()
+            ?: foundClass.findFieldByName(fieldName, true))
+    }
+
+    val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
+
 }

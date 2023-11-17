@@ -2,16 +2,14 @@ package com.esprito.spring.core.properties
 
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 
@@ -83,39 +81,11 @@ open class ConfigurationPropertyKeyReference(
         val foundProperty = SpringConfigurationPropertiesSearch.getInstance(project)
             .findProperty(module, propertyKey) ?: return emptyArray()
         val sourceType = foundProperty.sourceType ?: return emptyArray()
-        val sourceMember = findSourceMember(project, sourceType)
+        val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project)
         if (sourceMember != null) {
             return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         }
         return emptyArray()
-    }
-
-    private fun findSourceMember(project: Project, sourceType: String): PsiMember? {
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
-        var memberName = sourceType.substringAfterLast('#', "")
-        var setterName = memberName
-        if (memberName.isEmpty()) {
-            val splitPropsName = propertyKey.substringAfterLast('.').split(Regex("[_\\-]"))
-            val firstPropName = splitPropsName.firstOrNull() ?: return null
-            memberName = firstPropName + splitPropsName.subList(1, splitPropsName.size).joinToString(separator = "") {
-                StringUtil.capitalize(it.lowercase())
-            }
-            setterName = "set${StringUtil.capitalize(memberName)}"
-        }
-
-        @Suppress("NAME_SHADOWING")
-        val sourceType = sourceType.substringBeforeLast('#').replace('$', '.')
-        val foundClass = javaPsiFacade.findClass(sourceType, GlobalSearchScope.allScope(project)) ?: return null
-        return findMember(foundClass, memberName, setterName) ?: foundClass
-    }
-
-    private fun findMember(
-        foundClass: PsiClass,
-        fieldName: String,
-        setterName: String
-    ): PsiMember? {
-        return (foundClass.findMethodsByName(setterName, true).firstOrNull()
-            ?: foundClass.findFieldByName(fieldName, true))
     }
 
 }

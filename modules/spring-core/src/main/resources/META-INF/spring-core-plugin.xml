@@ -49,6 +49,11 @@
                                 id="com.esprito.spring.core.yamlCompletionContributor"
                                 implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
+        <completion.contributor language="JAVA"
+                                order="first"
+                                id="com.esprito.spring.core.properties.ConditionalOnConfigurationPrefixCompletionContributor"
+                                implementationClass="com.esprito.spring.core.properties.ConditionalOnConfigurationPrefixCompletionContributor"/>
+
         <psi.referenceContributor language="Properties"
                                   implementation="com.esprito.spring.core.properties.SpringConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="yaml"
@@ -77,6 +82,10 @@
         <properties.implicitPropertyUsageProvider
                 implementation="com.esprito.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>
 
+        <lang.foldingBuilder
+            language="UAST"
+            implementationClass="com.esprito.spring.core.properties.ValueAnnotationFoldingBuilder"/>
+
         <languageInjectionContributor language="UAST"
                                       implementationClass="com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector"/>
 
@@ -88,7 +97,8 @@
                          key="esprito.spring.inspection.bean.autowired"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>>
+                         implementationClass="com.esprito.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
+        >
 
         <localInspection language="UAST"
                          shortName="SpringEventListenerInspection"
@@ -212,14 +222,19 @@
                                  instance="com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
                                  groupWeight="85"/>
 
-        <psi.referenceContributor implementation="com.esprito.spring.core.references.contributors.PackageAntReferenceInAnnotationContributor" language="UAST"/>
-        <psi.referenceContributor implementation="com.esprito.spring.core.references.contributors.FileReferenceInAnnotationContributor" language="UAST"/>
+        <psi.referenceContributor
+                implementation="com.esprito.spring.core.references.contributors.PackageAntReferenceInAnnotationContributor"
+                language="UAST"/>
+        <psi.referenceContributor
+                implementation="com.esprito.spring.core.references.contributors.FileReferenceInAnnotationContributor"
+                language="UAST"/>
 
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.core.providers.SpringBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="JAVA"
                                         implementationClass="com.esprito.spring.core.providers.EventListenerLineMarkerProvider"/>
-        <codeInsight.implicitSubclassProvider implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
+        <codeInsight.implicitSubclassProvider
+                implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
         <fileType name="Factories Configuration"
                   language="Properties"
@@ -239,7 +254,8 @@
                 language="Profiles"
                 implementationClass="com.esprito.spring.core.language.profiles.ProfilesSyntaxHighlighterFactory"/>
 
-        <multiHostInjector implementation="com.esprito.spring.core.language.profiles.injection.ProfilesToProfileAnnotationInjector"/>
+        <multiHostInjector
+                implementation="com.esprito.spring.core.language.profiles.injection.ProfilesToProfileAnnotationInjector"/>
 
         <completion.contributor
                 language="Profiles"
