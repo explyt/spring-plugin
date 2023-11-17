@@ -48,22 +48,30 @@ class MetaAnnotationsHolder private constructor(
     }
 
     fun getAnnotationMemberValues(psiMember: PsiMember, targetMethods: Set<String>): Set<PsiAnnotationMemberValue> {
-        val annotationMemberValues = mutableListOf<PsiAnnotationMemberValue>()
-        for (annotation in psiMember.annotations) {
-            val annotationFqn = annotation.qualifiedName ?: continue
-            if (!this.contains(annotation)) continue
+        return psiMember.annotations
+            .flatMapTo(mutableSetOf()) {
+                getAnnotationMemberValues(it,targetMethods) }
+    }
 
-            annotationMemberValues += annotation.attributes.asSequence()
-                .filter {
-                    isAttributeRelatedWith(
-                        annotationFqn,
-                        it.attributeName,
-                        parentFqn,
-                        targetMethods
-                    )
-                }
-                .flatMap { annotation.getMemberValues(it.attributeName) }
-        }
+    fun getAnnotationMemberValues(
+        psiAnnotation: PsiAnnotation,
+        targetMethods: Set<String>
+    ): Set<PsiAnnotationMemberValue> {
+        val annotationMemberValues = mutableListOf<PsiAnnotationMemberValue>()
+
+        val annotationFqn = psiAnnotation.qualifiedName ?: return setOf()
+        if (!this.contains(psiAnnotation)) return setOf()
+
+        annotationMemberValues += psiAnnotation.attributes.asSequence()
+            .filter {
+                isAttributeRelatedWith(
+                    annotationFqn,
+                    it.attributeName,
+                    parentFqn,
+                    targetMethods
+                )
+            }
+            .flatMap { psiAnnotation.getMemberValues(it.attributeName) }
         return annotationMemberValues.toSet()
     }
 
