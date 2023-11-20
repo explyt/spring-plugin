@@ -27,4 +27,48 @@ class ProjectSpringPropertiesCompletionContributorTest : AbstractSpringPropertie
             "mail.port"
         )
     }
+
+    fun testAllPropertiesExistedOne() {
+        myFixture.copyFileToProject("ExternalSettings.java")
+        myFixture.copyFileToProject("TestConfig.java")
+        myFixture.configureByText("application.properties",
+            """mail.from=me
+            mail.<caret>"""".trimMargin())
+        doTest(
+            "mail.ert",
+            "mail.external-settings",
+            "mail.form-and-port",
+            "mail.host-name",
+            "mail.nested-settings",
+            "mail.nested-settings.another-nested-settings",
+            "mail.nested-settings.another-nested-settings.camel-case-long-property-very-long-property",
+            "mail.nested-settings.another-nested-settings.property2",
+            "mail.nested-settings.another-nested-settings.property3",
+            "mail.nested-settings.f1",
+            "mail.new-property",
+            "mail.port"
+        )
+    }
+
+    fun testAllPropertiesOneAvailable() {
+        myFixture.copyFileToProject("ExternalSettings.java")
+        myFixture.copyFileToProject("TestConfig.java")
+        myFixture.configureByText("application.properties",
+            """mail.from=me
+            mail.ert=ert
+            mail.external-settings=ext
+            mail.form-and-port=port
+            mail.host-name=name
+            mail.nested-settings=nested
+            mail.nested-settings.another-nested-settings=another-nested
+            mail.nested-settings.another-nested-settings.camel-case-long-property-very-long-property=long
+            mail.nested-settings.another-nested-settings.property2=p2
+            mail.nested-settings.another-nested-settings.property3=p3
+            mail.nested-settings.f1=f1
+            mail.new-property=newp",
+            mail.<caret>"""".trimMargin())
+        doTest(
+            "mail.port"
+        )
+    }
 }
