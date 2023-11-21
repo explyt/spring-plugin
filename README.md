@@ -10,3 +10,8 @@
   <li><strong>Spring Profiles</strong>: Directly manage and search for Spring profiles within your configuration files.</li>
 </ul>
 <p>With Esprito Spring Tools built to boost productivity and speed up your coding Spring Boot applications.</p>
+
+You can use our plugin free for non-commercial use (see full [LICENSE](https://github.com/esprito-plugin/plugin/blob/main/LICENSE.md))
+
+Our plugin is currently in beta testing and is distributed through the custom repository mechanism for Intelij Idea plugins.
+See [Installation Guide](https://github.com/esprito-plugin/plugin/blob/main/Installation%20Guide.md)
