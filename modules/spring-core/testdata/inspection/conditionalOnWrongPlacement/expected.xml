@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>41</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnPropertyA</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>23</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>42</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnBean</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>18</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>43</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnClass</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>44</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnMissingBean</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>25</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>45</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnMissingClass</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>26</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>46</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnProperty</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>22</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>51</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnPropertyA</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>23</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>52</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnBean</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>18</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>53</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnClass</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>54</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnMissingBean</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>25</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>55</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnMissingClass</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>26</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPlacementConfiguration.java</file>
+        <line>56</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringConditionalOnWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Should annotate bean/component</description>
+        <highlighted_element>@ConditionalOnProperty</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>22</length>
+    </problem>
+
+</problems>
