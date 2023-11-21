@@ -72,7 +72,7 @@ Esprito Tech provides the Plugin on an "as is" and "as available" basis. Esprito
 Under no circumstances shall Esprito Tech be liable for any direct, indirect, incidental, or consequential damages arising out of the use or inability to use the Plugin. Esprito Tech's total liability under this EULA shall not exceed the amount You have paid for the Plugin, if any, in the three months preceding any claim.
 
 ### Commercial Use and Inquiries
-For any commercial usage of Esprito Spring Tools, a formal request must be submitted to Esprito Tech for the acquisition of appropriate licenses.
+For any commercial usage of Esprito Spring Tools, a formal request must be submitted to Esprito Tech sales team (sales@esprito.com) for the acquisition of appropriate licenses.
 
 ### Termination
 This EULA may be terminated unilaterally by Esprito Tech in the event of any breach by the User of its terms and conditions. Upon termination, the User may be required, under applicable law, to compensate Esprito Tech for any damages or pay statuary compensation for any breaches of the terms and conditions that constitute an infringement of Esprito Tech's exclusive rights to the Plugin.
