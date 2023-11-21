@@ -6,21 +6,21 @@
       version="2023.1.356-232">
     <idea-version since-build="232.9921.47" until-build="232.*"/>
     <name>Esprito Spring Tools</name>
-    <vendor email="support@esprito.com" url="https://esprito.tech/">Esprito Tech</vendor>
+    <vendor email="support@esprito.com" url="https://esprito.com">Esprito Tech</vendor>
     
 <description><![CDATA[
-<p><strong>Esprito Spring Tools: Elevate Your Spring Boot Projects</strong></p>
-<p>Esprito Spring Tools is the IntelliJ IDEA plugin that simplifies your workflow with Spring Boot. Key features include:</p>
+<p>Esprito Spring Tools: Elevate Your Spring Boot Projects</p>
+<p>Esprito Spring Tools is the IntelliJ IDEA plugin that simplifies your workflow with Spring Boot.</p>
+<p>Key features include:</p>
 <ul>
-  <li><strong>Swift Autocompletion</strong>: Seamlessly autocomplete bean names and navigate through annotations with class and file references.</li>
-  <li><strong>Configuration Simplified</strong>: Effortlessly complete and navigate properties in both .properties and .yaml files.</li>
+  <li><strong>Autocompletion</strong>: Autocomplete bean names and navigate through annotations with class and file references.</li>
+  <li><strong>Configuration Simplified</strong>: Autocomplete and navigate properties in .properties and .yaml files.</li>
   <li><strong>Intelligent Code Navigation</strong>: Instantly visualize connections within your Spring architecture.</li>
   <li><strong>Proactive Inspections</strong>: Prevent common issues with insightful checks on your Spring configuration and annotations.</li>
-  <li><strong>JPQL Proficiency</strong>: Harness the power of JPQL with integrated syntax highlighting and advanced navigation.</li>
-  <li><strong>Spring Profile Management</strong>: Directly manage and search for Spring profiles within your configuration files.</li>
+  <li><strong>JPQL</strong>: Harness the power of JPQL with integrated syntax highlighting and advanced navigation.</li>
+  <li><strong>Spring Profiles</strong>: Directly manage and search for Spring profiles within your configuration files.</li>
 </ul>
-<p>With Esprito Spring Tools, dodge the common traps and speed up your coding with a tool that's built to boost productivity.</p>
-<p><strong>Get Esprito Spring Tools now and transform the way you build Spring Boot applications.</strong></p>
+<p>With Esprito Spring Tools built to boost productivity and speed up your coding Spring Boot applications.</p>
 ]]></description>
 
   </plugin>
