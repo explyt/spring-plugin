@@ -1,17 +1,17 @@
 ## Esprito Spring Tools
 
-Esprito Spring Tools is the IntelliJ IDEA (Community Edition) plugin that simplifies your workf with Spring Framework.
+Esprito Spring Tools is an IntelliJ IDEA (Community Edition) plugin designed to enhance your experience with the Spring Framework.
 
 ### Key features include
-* **Autocompletion**: Autocomplete bean names and navigate through annotations with class and file references.
-* **Configuration Simplified**: Autocomplete and navigate properties in .properties and .yaml files.
-* **Intelligent Code Navigation**: Instantly visualize connections within your Spring architecture.
-* **Proactive Inspections**: Prevent common issues with insightful checks on your Spring configuration and annotations.
-* **JPQL**: Harness the power of JPQL with integrated syntax highlighting and advanced navigation.
-* **Spring Profiles**: Directly manage and search for Spring profiles within your configuration files.
+* **Autocompletion:** Autocomplete bean names and navigate through annotations, linking to relevant classes and files
+* **Simplified Configuration:** Make working with .properties and .yaml files more efficient through our advanced autocomplete and navigation features
+* **Intelligent Code Navigation:** Instantly understand the interconnections within your Spring architecture
+* **Proactive Inspections:** Identify and resolve common issues in your Spring configuration and annotations with smart, insightful checks
+* **JPQL Support:** Maximize your efficiency in JPQL with syntax highlighting and detailed navigation options
+* **Spring Profiles:** Easily manage and search for Spring profiles within your configuration files
 
-<p>With Esprito Spring Tools built to boost productivity and speed up your coding Spring Boot applications.</p>
+Esprito Spring Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.
 
-You can use our plugin free for non-commercial use (see full [LICENSE](https://github.com/esprito-plugin/plugin/blob/main/LICENSE.md))
+This plugin is available for free for non-commercial use (see our [LICENSE](https://github.com/esprito-plugin/plugin/blob/main/LICENSE.md))
 
-Our plugin is currently in beta testing and is distributed through the custom repository mechanism for Intelij Idea plugins (see [Installation Guide](https://github.com/esprito-plugin/plugin/blob/main/Installation%20Guide.md))
+Currently in beta, our plugin is accessible through a custom repository mechanism for IntelliJ IDEA plugins. (see [Installation Guide](https://github.com/esprito-plugin/plugin/blob/main/Installation%20Guide.md))
