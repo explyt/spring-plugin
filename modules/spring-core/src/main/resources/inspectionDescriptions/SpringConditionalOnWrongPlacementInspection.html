@@ -1,0 +1,39 @@
+<html>
+<head>
+    <title>ConditionalOn placement inspection</title>
+</head>
+<body>
+
+<p>Reports wrong placement for
+    <code lang="java">@ConditionalOnProperty</code>,
+    <code lang="java">@ConditionalOnClass</code>,
+    <code lang="java">@ConditionalOnMissingClass</code>,
+    <code lang="java">@ConditionalOnBean</code>,
+    <code lang="java">@ConditionalOnMissingBean</code>
+    annotations.</p>
+
+<p><b>Example:</b></p>
+"Should annotate bean/component" will be reported on '@ConditionalOnMissingBean'
+annotation if class is not annotated with '@Component'
+<pre><code lang="java">
+  //@Component
+  @ConditionalOnMissingBean
+  public class MyComponent {
+  }
+</code></pre>
+
+<p><b>Example:</b></p>
+"Should annotate bean/component" will be reported on '@ConditionalOnProperty'
+annotation if method is not annotated with '@Bean'
+<pre><code lang="java">
+  @Configuration
+  public class MyConfiguration {
+    //@Bean
+    @ConditionalOnProperty("some.property")
+    SomeClass notABean() { ... }
+  }
+</code></pre>
+
+
+</body>
+</html>
