@@ -1,6 +1,6 @@
 package com.esprito.spring.core.language
 
-import com.intellij.icons.AllIcons
+import com.esprito.spring.core.SpringIcons
 import com.intellij.lang.properties.PropertiesLanguage
 import com.intellij.openapi.fileTypes.LanguageFileType
 import javax.swing.Icon
@@ -20,6 +20,6 @@ class FactoriesFileType : LanguageFileType(PropertiesLanguage.INSTANCE) {
     }
 
     override fun getIcon(): Icon {
-        return AllIcons.FileTypes.Properties
+        return SpringIcons.SpringFactories
     }
 }

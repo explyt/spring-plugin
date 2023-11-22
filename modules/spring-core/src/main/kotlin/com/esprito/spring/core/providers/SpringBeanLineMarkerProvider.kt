@@ -4,6 +4,7 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
+import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
@@ -21,6 +22,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
+import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -29,12 +31,14 @@ import com.intellij.psi.*
 import com.intellij.psi.util.parentOfType
 import org.jetbrains.uast.*
 
+
 class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val processor = getLineMarkerElementProcessor(element) ?: return
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
 
         if (processor.isComponentClassOrBeanMethod()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
@@ -54,6 +58,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
             result.add(builder.createLineMarkerInfo(element))
         }
+        if (processor.isAutoConfigurationClass()) {
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringFactories)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { processor.findFactoriesMetadataFiles() })
+                .setTooltipText(SpringCoreBundle.message("esprito.spring.factories.gutter.tooltip"))
+                .setPopupTitle(SpringCoreBundle.message("esprito.spring.factories.gutter.popup.title"))
+            result.add(builder.createLineMarkerInfo(element))
+        }
     }
 
     private fun getLineMarkerElementProcessor(element: PsiElement): LineMarkerElementProcessor? {
@@ -68,11 +80,13 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private val uParent: UElement,
     ) {
         private val springSearchService = SpringSearchService.getInstance(module.project)
+        private val autoConfigureProperties = NotNullLazyValue.lazy { getAutoconfigureIPropertiesByStringKey() }
 
         fun isComponentClassOrBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
                 val isComponentExpression = uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-                return (isComponentExpression || findTargetClass() in springSearchService.getAllBeansClassesWithAncestors(module))
+                return (isComponentExpression
+                        || findTargetClass() in springSearchService.getAllBeansClassesWithAncestors(module))
                         && !dependsOnIncorrectBean(uParent.javaPsi)
             }
             if (uParent is UMethod) {
@@ -113,7 +127,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         fun isFieldOrAutowiredParameter(): Boolean {
             fun checkParam(psiVariable: PsiVariable): Boolean = with(springSearchService) {
                 val psiClass = psiVariable.parentOfType<PsiClass>() ?: return false
-                val isClassIsComponentConstructed = getBeanPsiClassesAnnotatedByComponent(module).any { it.psiClass == psiClass }
+                val isClassIsComponentConstructed =
+                    getBeanPsiClassesAnnotatedByComponent(module).any { it.psiClass == psiClass }
                 if (!isClassIsComponentConstructed) {
                     return false
                 }
@@ -149,11 +164,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (uParent is UParameter) {
                 val uParameterParent = uParent.parent?.parent ?: return false
                 if (uParameterParent is PsiMethod) {
-                    val psiParameter = uParent.javaPsi.takeIf { it is PsiParameter }?.let { it as PsiParameter } ?: return false
+                    val psiParameter =
+                        uParent.javaPsi.takeIf { it is PsiParameter }?.let { it as PsiParameter } ?: return false
                     if (!checkParam(psiParameter)) {
                         return false
                     }
-                    return ( uParameterParent.isConstructor || isAutowiredMethodExpression(uParameterParent) || isBeanMethodExpression(uParameterParent) )
+                    return (uParameterParent.isConstructor
+                            || isAutowiredMethodExpression(uParameterParent)
+                            || isBeanMethodExpression(uParameterParent))
                             && !dependsOnIncorrectBean(uParameterParent.containingClass)
                 }
             }
@@ -167,7 +185,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val beanName = psiVariable.name!!
             val beanPsiType = psiVariable.type
 
-            return springSearchService.findActiveBeanDeclarations(module, beanName, beanPsiType, psiVariable.getQualifierAnnotation())
+            return springSearchService.findActiveBeanDeclarations(
+                module, beanName, beanPsiType, psiVariable.getQualifierAnnotation()
+            )
         }
 
         private fun findTargetClass(): PsiClass? {
@@ -188,6 +208,30 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 ?: element.parentOfType<PsiClass>()?.returnPsiType // class annotated as Component
         }
 
+        private fun getAutoconfigureIPropertiesByStringKey(): List<Pair<String, IProperty>> {
+            return SpringConfigurationPropertiesSearch.getInstance(element.project)
+                .getAllFactoriesMetadataFiles(module)
+                .filter { it.key != null && it.value != null }
+                .map { (it.key ?: "") + (it.value ?: "") to it }
+        }
+
+        fun isAutoConfigurationClass(): Boolean {
+            if (uParent is UClass) {
+                val qualifiedName = uParent.qualifiedName ?: return false
+                return autoConfigureProperties.value.find { it.first.contains(qualifiedName) } != null
+            }
+            return false
+        }
+
+        fun findFactoriesMetadataFiles(): Collection<PsiElement> {
+            if (uParent !is UClass) return emptyList()
+            val qualifiedName = uParent.qualifiedName ?: return emptyList()
+            return autoConfigureProperties.value.asSequence()
+                .filter { it.first.contains(qualifiedName) }
+                .map { it.second.psiElement }
+                .toList()
+        }
+
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             val targetClass = findTargetClass() ?: return emptyList()
             val targetClasses = targetClass.supers.toSet() + targetClass
@@ -201,9 +245,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allFieldsWithAutowired = allBeans.asSequence().flatMap {
                 it.psiClass.allFields.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                    .filter { targetType == it.type
-                            || it.type.canResolveBeanClass(targetClasses)
-                            && (targetType !is PsiClassType || it.type.beanPsiType!!.psiClassType?.isEqualOrInheritorBeanType(targetType) == true)
+                    .filter {
+                        targetType == it.type
+                                || it.type.canResolveBeanClass(targetClasses)
+                                && (targetType !is PsiClassType
+                                || it.type.beanPsiType!!.psiClassType?.isEqualOrInheritorBeanType(targetType) == true)
                     }
             }.toSet()
 
@@ -212,7 +258,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     .filter {
                         it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                                || it.isConstructor
+                                && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses) }
@@ -222,7 +269,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val filteredByName = allByType.filter {
                 val beanName = (it as PsiNamedElement).name ?: return@filter true
                 val beanPsiType = it.type
-                val resolvedBeanTargets = springSearchService.findActiveBeanDeclarations(module, beanName, beanPsiType, it.getQualifierAnnotation())
+                val resolvedBeanTargets = springSearchService.findActiveBeanDeclarations(
+                    module, beanName, beanPsiType, it.getQualifierAnnotation()
+                )
                 return@filter uParent.javaPsi in resolvedBeanTargets
             }
 

@@ -15,4 +15,9 @@ object SpringProperties {
     const val SPRING_BEAN_REFERENCE = "spring-bean-reference"
 
     const val SPRING_PROFILES_ACTIVE = "spring.profiles.active"
+
+    const val SPRING_FACTORIES_FILE_NAME = "spring.factories"
+    const val AUTOCONFIGURATION_IMPORTS = "org.springframework.boot.autoconfigure.AutoConfiguration.imports"
+
+    const val META_INF = "META-INF"
 }
