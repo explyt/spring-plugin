@@ -2,68 +2,34 @@
 <head>
     <title>Configuration Proxy Methods Inspection</title></head>
 <body>
-Reports warnings on incorrectly used proxy methods.
+Reports errors when used proxy methods are used incorrectly.
 
-Spring Framework 5.2 has introduced an optimization for @Configuration class processing that can be enabled via an
-attribute
-@Configuration(proxyBeanMethods = false).
-<br><br>
-If you disable
-<pre><code lang="java">proxyBeanMethods</code></pre>
-the proxy instances are no longer created and calling the method invokes it again (returning a new instance every time).
-As a result, you have no guarantee that you're actually injecting the corresponding bean in the context.
-<br><br>
-<strong>Incorrect bean method call example:</strong><br><br>
+<hr>
+<strong>Configuration example:</strong><br>
 <pre><code lang="java">
 @Configuration(proxyBeanMethods = false)
-class TestConfiguration {
+class ProxyMethodsConfiguration {
   @Bean
-  public FirstBean firstBean() {
-    return new FirstBean();
-  }
+  BeanA beanA() {...}
 
   @Bean
-  public SecondBean secondBean() {
-    return new SecondBean(firstBean()); // -> <strong>incorrect call</strong>
+  public BeanB beanB() {
+    return new BeanB(beanA()); // Method annotated with @Bean is called directly in a @Configuration where proxyBeanMethods set to false
   }
 }</code>
 </pre>
-<br>
-
 <hr>
-<strong>You can set
-    <pre><code lang="java">proxyBeanMethods</code></pre>
-    to true or rewrite the code as follows:</strong><br><br>
-<pre><code lang="java">
-@Configuration(proxyBeanMethods = false)
-class TestConfiguration {
-  @Bean
-  public FirstBean firstBean() {
-    return new FirstBean();
-  }
 
-  @Bean
-  public SecondBean secondBean(FirstBean someBean) { // -> <strong>correct injected instance</strong>
-    return new SecondBean(someBean);
-  }
-}</code>
-</pre>
-<br>
-
-<hr>
-<strong>Also, the inspection checks @Bean method calls in a class without the @Configuration stereotype (in "bean lite
-    mode"):</strong><br><br>
+<strong>Bean light-mode example:</strong><br>
 <pre><code lang="java">
 @Component
-class TestComponent {
+class BeanLightComponent {
   @Bean
-  public FirstBean firstBean() {
-    return new FirstBean();
-  }
+  public BeanA beanA() {...}
 
   @Bean
-  public SecondBean secondBean() {
-    return new SecondBean(firstBean()); // -> <strong>incorrect call</strong>
+  public BeanB beanB() {
+    return new BeanB(beanA()); // Method annotated with @Bean is called directly
   }
 }</code>
 </pre>
