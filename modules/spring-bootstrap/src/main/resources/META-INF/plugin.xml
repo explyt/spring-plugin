@@ -14,18 +14,18 @@
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
-<p>Esprito Spring Tools: Elevate Your Spring Boot Projects</p>
-<p>Esprito Spring Tools is the IntelliJ IDEA plugin that simplifies your workflow with Spring Boot.</p>
-<p>Key features include:</p>
+<p>Esprito Spring Tools is an IntelliJ IDEA (Community Edition) plugin designed to enhance your experience with the Spring Framework.</p>
+<p>Key Features Include:</p>
 <ul>
-  <li><strong>Autocompletion</strong>: Autocomplete bean names and navigate through annotations with class and file references.</li>
-  <li><strong>Configuration Simplified</strong>: Autocomplete and navigate properties in .properties and .yaml files.</li>
-  <li><strong>Intelligent Code Navigation</strong>: Instantly visualize connections within your Spring architecture.</li>
-  <li><strong>Proactive Inspections</strong>: Prevent common issues with insightful checks on your Spring configuration and annotations.</li>
-  <li><strong>JPQL</strong>: Harness the power of JPQL with integrated syntax highlighting and advanced navigation.</li>
-  <li><strong>Spring Profiles</strong>: Directly manage and search for Spring profiles within your configuration files.</li>
+    <li><strong>Autocompletion:</strong> Autocomplete bean names and navigate through annotations, linking to relevant classes and files.</li>
+    <li><strong>Simplified Configuration:</strong> Make working with .properties and .yaml files more efficient through our advanced autocomplete and navigation features.</li>
+    <li><strong>Intelligent Code Navigation:</strong> Instantly understand the interconnections within your Spring architecture.</li>
+    <li><strong>Inspections:</strong> Identify and resolve common issues in your Spring configuration and annotations with smart checks.</li>
+    <li><strong>JPQL Support:</strong> Maximize your efficiency in JPQL with syntax highlighting and detailed navigation options.</li>
+    <li><strong>Spring Profiles:</strong> Easily manage and search for Spring profiles within your configuration files.</li>
 </ul>
-<p>With Esprito Spring Tools built to boost productivity and speed up your coding Spring Boot applications.</p>
+<p>Esprito Spring Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.</p>
+<p>This plugin is available for free for non-commercial use. For more details, see our <a href="https://github.com/esprito-plugin/plugin">homepage</a>.</p>
 ]]></description>
 
     <!-- Product and plugin compatibility requirements.
