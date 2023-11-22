@@ -1,5 +1,6 @@
 package com.esprito.spring.core.completion.properties
 
+import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
@@ -36,10 +37,12 @@ class SpringConfigurationPropertiesSearch {
 
     fun getAllFactoriesNames(module: Module): Set<String> {
         return ConfigurationFactoriesNamesLoader.EP_NAME.getExtensions(module.project)
-            .asSequence()
-            .flatMap {
-                it.loadFactories(module)
-            }.toSet()
+            .flatMapTo(HashSet()) { it.loadFactories(module) }
+    }
+
+    fun getAllFactoriesMetadataFiles(module: Module): List<IProperty> {
+        return ConfigurationFactoriesNamesLoader.EP_NAME.getExtensions(module.project)
+            .flatMap { it.findMetadataProperties(module) }
     }
 
 }

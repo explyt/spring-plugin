@@ -1,5 +1,6 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.SpringProperties.META_INF
 import com.esprito.util.CacheKeyStore
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
@@ -46,7 +47,7 @@ class SpringFactoriesConfigurationPropertiesLoader :
     }
 
     private fun findMetadataFiles(module: Module): List<PsiFile> {
-        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+        val scope = GlobalSearchScope.moduleScope(module)
         val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
         val psiManager = PsiManager.getInstance(module.project)
 
@@ -59,12 +60,14 @@ class SpringFactoriesConfigurationPropertiesLoader :
         )
 
         return collectProcessor.results.asSequence()
-            .filter {
-                it.parent?.name == "META-INF"
-            }.mapNotNull {
-                psiManager.findFile(it)
-            }.toList()
+            .filter { it.parent?.name == "META-INF" }
+            .mapNotNull { psiManager.findFile(it) }
+            .toList()
     }
+
+    override fun getFileName() = SPRING_FACTORIES
+
+    override fun getFileFilter(file: VirtualFile) = file.parent?.name == META_INF
 
     private object Regexes {
         val whitespace = Regex("\\s")

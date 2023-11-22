@@ -1,5 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.SpringProperties.AUTOCONFIGURATION_IMPORTS
+import com.esprito.spring.core.SpringProperties.META_INF
 import com.esprito.util.CacheKeyStore
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
@@ -13,8 +15,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.CommonProcessors
 
-class AutoConfigurationImportsPropertiesLoader :
-    ConfigurationFactoriesNamesLoader {
+class AutoConfigurationImportsPropertiesLoader : ConfigurationFactoriesNamesLoader {
 
     override fun loadFactories(module: Module): Set<String> {
         val key = CacheKeyStore.getInstance(module.project).getKey<Set<String>>(
@@ -46,7 +47,7 @@ class AutoConfigurationImportsPropertiesLoader :
     }
 
     private fun findMetadataFiles(module: Module): List<PsiFile> {
-        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+        val scope = GlobalSearchScope.moduleScope(module)
         val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
         val psiManager = PsiManager.getInstance(module.project)
 
@@ -59,20 +60,18 @@ class AutoConfigurationImportsPropertiesLoader :
         )
 
         return collectProcessor.results.asSequence()
-            .filter {
-                it.parent?.name == "spring" && it.parent?.parent?.name == "META-INF"
-            }.mapNotNull {
-                psiManager.findFile(it)
-            }.toList()
+            .filter { it.parent?.name == "spring" && it.parent?.parent?.name == META_INF }
+            .mapNotNull { psiManager.findFile(it) }
+            .toList()
+    }
 
+    override fun getFileName() = AUTOCONFIGURATION_IMPORTS
+
+    override fun getFileFilter(file: VirtualFile): Boolean {
+        return file.parent?.name == "spring" && file.parent?.parent?.name == META_INF
     }
 
     private object Regexes {
         val whitespace = Regex("\\s")
     }
-
-    private companion object {
-        private const val AUTOCONFIGURATION_IMPORTS = "org.springframework.boot.autoconfigure.AutoConfiguration.imports"
-    }
-
 }
