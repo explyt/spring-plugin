@@ -9,8 +9,8 @@
 <p><b>Example:</b></p>
 <pre><code lang="java">
   @Component
-  @DependsOn("unknown")  // reports "Cannot resolve bean 'unknown'"
-  public class MyComponent {
+  @DependsOn("beanNotFound")  // reports "Incorrect bean reference at @DependsOn"
+  class DependantComponent {
   }
 </code></pre>
 </body>
