@@ -40,11 +40,6 @@ class FileReferenceInAnnotationProvider(private val possibleAnnotations: Set<Str
             }
         }
         return references.toTypedArray()
-
-        // TODO - add quickFix
-        //fileReferenceSet.allReferences.forEach { fileReference ->
-        //  PsiFileReferenceHelper.getInstance().registerFixes(fileReference)
-        //}
     }
 
     private fun acceptPsiElement(psiElement: PsiElement): Boolean {
