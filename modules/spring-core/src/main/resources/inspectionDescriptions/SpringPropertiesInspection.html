@@ -1,65 +1,42 @@
 <html>
+<head>
+    <title>Resource inspection</title>
+</head>
 <body>
 <p>
-  Reports unresolved and deprecated configuration keys and invalid values in Spring Boot application <code>.properties</code> configuration files,
-  which can lead to runtime errors.
+    Reports in configuration files:
+    <li>unresolved configuration values</li>
+    <li>deprecated configuration key</li>
+    <li>invalid values</li>
 </p>
 
 <p><b>Example:</b></p>
-<pre><code>
-server.port=invalid # Reports 'Cannot convert 'invalid' to java.lang.Integer'
+<pre><code lang="java">
+my.main.foo-source-data=sourceFooProperties   # Cannot resolve bean 'sourceFooProperties'
 </code></pre>
-
-<p>If a deprecated configuration key has a replacement key, you can apply the 'Use replacement key' quick-fix.</p>
 
 <p><b>Example:</b></p>
-<pre><code>
-logging.path=${path} # Reports 'Deprecated configuration property 'logging.path''
+<pre><code lang="java">
+my.main.event-listener=org.springframework.boot.config.DelegatingApplicationListener
+                                              # Cannot resolve class or package 'config'
+                                              # Cannot resolve class 'DelegatingApplicationListener'
 </code></pre>
-
-<p>After the quick-fix is applied:</p>
-<pre><code>
-logging.file.path=${path}
-</code></pre>
-
-<p>
-  If a configuration key is not defined in <code>spring-configuration-metadata.json</code>, you can apply the 'Define configuration key' quick-fix
-  that creates the <code>META-INF/spring-additional-configuration-metadata.json</code> file and defines the necessary key.</p>
 
 <p><b>Example:</b></p>
-<pre><code>
-new.key=value #Reports 'Cannot resolve configuration property 'new.key''
+<pre><code lang="java">
+server.tomcat.accesslog.locale=enUS           # Unknown encoding: 'enUS'
 </code></pre>
 
-<p>After the quick-fix is applied, the following is added to <code>META-INF/spring-additional-configuration-metadata.json</code>:</p>
-<pre><code lang="json">
-{
-  "properties": [
-    {
-      "name": "new.key",
-      "type": "java.lang.String",
-      "description": "Description for new.key."
-  }
-] }
+<p>Deprecated configuration key.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+my.main.foo.max-connections=7                 # Deprecated: This method is no longer acceptable, use 'my.server.max.connections'
 </code></pre>
+<p>You can apply the 'Use replacement key' quick-fix, if has a replacement key.</p>
 
-<!--<p>The inspection also highlights index notation errors in list and map configuration keys.</p>-->
-<!--<p><b>Example:</b></p>-->
-<!--<pre><code>-->
-<!--spring.datasource.schema[]=${schema} #Reports 'Missing index value'-->
-<!--</code></pre>-->
-<!-- tooltip end -->
 
-<p>IDEA Community feature: from Maven plugin</p>
-<p>
-  Use the <b>Replacement tokens</b> option to define tokens used for value placeholders in configuration files.
-  These tokens are specified in the form <code>beginToken*endToken</code>.
-  Without the <code>*</code>, the token is assumed to be the same for start and end.
-</p>
-<p>
-  For example, the default is <code>@</code> for both start and end token,
-  which enables you to define placeholders, such as <code>some.property=@another.property@</code>.
-</p>
-<p>Values inside the replacement token (<code>@property.key@</code>) will not be highlighted.</p>
-</body>
-</html>
+<p><b>Example:</b></p>
+<pre><code lang="java">
+my.main.name=delete                           # Invalid value 'delete', must be one of [none, validate, update, create, create-drop]
+</code></pre>
