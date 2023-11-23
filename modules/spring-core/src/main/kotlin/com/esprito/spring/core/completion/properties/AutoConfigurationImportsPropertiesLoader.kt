@@ -2,6 +2,7 @@ package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.SpringProperties.AUTOCONFIGURATION_IMPORTS
 import com.esprito.spring.core.SpringProperties.META_INF
+import com.esprito.spring.core.SpringProperties.SPRING
 import com.esprito.util.CacheKeyStore
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
@@ -60,7 +61,7 @@ class AutoConfigurationImportsPropertiesLoader : ConfigurationFactoriesNamesLoad
         )
 
         return collectProcessor.results.asSequence()
-            .filter { it.parent?.name == "spring" && it.parent?.parent?.name == META_INF }
+            .filter { it.parent?.name == SPRING && it.parent?.parent?.name == META_INF }
             .mapNotNull { psiManager.findFile(it) }
             .toList()
     }
@@ -68,7 +69,7 @@ class AutoConfigurationImportsPropertiesLoader : ConfigurationFactoriesNamesLoad
     override fun getFileName() = AUTOCONFIGURATION_IMPORTS
 
     override fun getFileFilter(file: VirtualFile): Boolean {
-        return file.parent?.name == "spring" && file.parent?.parent?.name == META_INF
+        return file.parent?.name == SPRING && file.parent?.parent?.name == META_INF
     }
 
     private object Regexes {

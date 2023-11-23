@@ -20,6 +20,7 @@ object SpringProperties {
     const val AUTOCONFIGURATION_IMPORTS = "org.springframework.boot.autoconfigure.AutoConfiguration.imports"
 
     const val META_INF = "META-INF"
+    const val SPRING = "spring"
 
     const val SPRING_XML_TEMPLATE = "spring-beans.xml"
 
