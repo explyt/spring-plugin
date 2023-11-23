@@ -152,12 +152,22 @@ object PropertyUtil {
 
     private fun String.lengthPrefix(prefix: String): Int = if (this.startsWith(prefix)) prefix.length else 0
 
+    fun prefixValue(prefix: String?): String {
+        return when {
+            prefix.isNullOrBlank() -> ""
+            prefix.endsWith('.') -> prefix
+            else -> "$prefix."
+        }
+    }
+
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
         val javaPsiFacade = JavaPsiFacade.getInstance(project)
         var memberName = sourceType.substringAfterLast('#', "")
         var setterName = memberName
         if (memberName.isEmpty()) {
-            val splitPropsName = propertyKey.substringAfterLast('.').split(Regex("[_\\-]"))
+            val splitPropsName = propertyKey
+                .substringAfterLast('.')
+                .split(PROPERTY_WORDS_SEPARATOR_REGEX)
             val firstPropName = splitPropsName.firstOrNull() ?: return null
             memberName = firstPropName + splitPropsName.subList(1, splitPropsName.size).joinToString(separator = "") {
                 StringUtil.capitalize(it.lowercase())
@@ -165,9 +175,8 @@ object PropertyUtil {
             setterName = "set${StringUtil.capitalize(memberName)}"
         }
 
-        @Suppress("NAME_SHADOWING")
-        val sourceType = sourceType.substringBeforeLast('#').replace('$', '.')
-        val foundClass = javaPsiFacade.findClass(sourceType, GlobalSearchScope.allScope(project)) ?: return null
+        val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
+        val foundClass = javaPsiFacade.findClass(qualifiedName, GlobalSearchScope.allScope(project)) ?: return null
         return findMember(foundClass, memberName, setterName) ?: foundClass
     }
 
@@ -181,5 +190,6 @@ object PropertyUtil {
     }
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
+    private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()
 
 }

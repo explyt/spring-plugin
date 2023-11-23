@@ -411,7 +411,8 @@ class SpringSearchService(private val project: Project) {
             ConditionalOnBeanStrategy(module),
             ConditionalOnMissingBeanStrategy(module),
             ConditionalOnClassStrategy(module),
-            ConditionalOnMissingClassStrategy(module)
+            ConditionalOnMissingClassStrategy(module),
+            ConditionalOnPropertyStrategy(module) // TODO: не только для автоконфигураций
         )
 
         val dependants = foundBeans.asSequence()
