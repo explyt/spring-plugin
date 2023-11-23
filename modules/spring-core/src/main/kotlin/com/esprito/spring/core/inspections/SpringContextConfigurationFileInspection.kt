@@ -1,6 +1,6 @@
 package com.esprito.spring.core.inspections
 
-import com.esprito.spring.core.inspections.utils.ResourceFileUtil
+import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.util.ModuleUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
@@ -12,17 +12,21 @@ class SpringContextConfigurationFileInspection : AbstractBaseJavaLocalInspection
     override fun checkClass(
         aClass: PsiClass,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): Array<out ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        val propertySourceAnnotation = ResourceFileUtil.psiAnnotationContextConfigurationMembers(aClass)
+        val propertySourceAnnotation = ResourceFileInspectionUtil.psiAnnotationContextConfigurationMembers(aClass)
         for (member in propertySourceAnnotation) {
             val pathValue = AnnotationUtil.getStringAttributeValue(member) ?: continue
-            problems += ResourceFileUtil.getPathProblemsWithPrefixFile("XML", pathValue, member, manager, isOnTheFly)
+            problems += ResourceFileInspectionUtil.getPathProblemsWithPrefixFile(
+                "XML",
+                pathValue,
+                member,
+                manager,
+                isOnTheFly
+            )
             ModuleUtil.getContentRootFile(member)
         }
         return problems.toTypedArray()
     }
-
-
 }

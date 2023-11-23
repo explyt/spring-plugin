@@ -223,16 +223,6 @@
                          implementationClass="com.esprito.spring.core.inspections.SpringConditionalOnWrongPlacementInspection"/>
 
         <localInspection language="UAST"
-                         shortName="SpringProfileWrongPlacementInspection"
-                         groupBundle="messages.SpringCoreBundle"
-                         groupKey="esprito.spring.common.notifications"
-                         bundle="messages.SpringCoreBundle"
-                         key="esprito.spring.inspection.profile.wrongPlacement"
-                         enabledByDefault="true"
-                         level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringProfileWrongPlacementInspection"/>
-
-        <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
                          groupKey="esprito.spring.common.notifications"
                          bundle="messages.SpringCoreBundle"
@@ -267,6 +257,16 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringContextConfigurationClasspathInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringProfileWrongPlacementInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.profile.wrongPlacement"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringProfileWrongPlacementInspection"/>
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
