@@ -56,6 +56,8 @@
 
         <psi.referenceContributor language="Properties"
                                   implementation="com.esprito.spring.core.properties.SpringConfigurationPropertiesReferenceContributor"/>
+        <psi.referenceContributor language="Properties"
+                                  implementation="com.esprito.spring.core.autoconfigure.reference.AutoConfigureReferenceContributor"/>
         <psi.referenceContributor language="yaml"
                                   implementation="com.esprito.spring.core.completion.yaml.SpringYamlConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="UAST"
@@ -81,6 +83,8 @@
 
         <properties.implicitPropertyUsageProvider
                 implementation="com.esprito.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>
+        <properties.implicitPropertyUsageProvider
+                implementation="com.esprito.spring.core.autoconfigure.AutoConfigureImplicitPropertyUsageProvider"/>
 
         <lang.foldingBuilder
             language="UAST"
@@ -301,10 +305,12 @@
         <codeInsight.implicitSubclassProvider
                 implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
-        <fileType name="Factories Configuration"
-                  language="Properties"
-                  extensions="factories;imports"
-                  implementationClass="com.esprito.spring.core.language.FactoriesFileType"/>
+        <fileType name="spring.factories"
+                  fieldName="INSTANCE"
+                  implementationClass="com.esprito.spring.core.autoconfigure.language.FactoriesFileType"/>
+        <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports"
+                  fieldName="INSTANCE"
+                  implementationClass="com.esprito.spring.core.autoconfigure.language.AutoConfigurationImportsFileType"/>
 
         <fileType name="Profiles File"
                   implementationClass="com.esprito.spring.core.language.profiles.ProfilesFileType"
@@ -344,6 +350,8 @@
                 language="Profiles"
                 implementationClass="com.esprito.spring.core.language.profiles.psi.ProfilesBraceMatcher"/>
 
+        <lang.inspectionSuppressor language="Properties"
+                                   implementationClass="com.esprito.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
     </extensions>
 
     <actions>

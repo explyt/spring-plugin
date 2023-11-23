@@ -7,14 +7,13 @@ import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.util.SpringGutterTestUtil
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import junit.framework.TestCase
-import kotlin.io.path.Path
 
 
 class AutoConfigurationLineMarkerProviderTest : EspritoJavaLightTestCase() {
 
     fun testSpringFactories() {
         myFixture.addFileToProject(
-            Path("META-INF", SpringProperties.SPRING_FACTORIES_FILE_NAME).toString(),
+            "META-INF/" + SpringProperties.SPRING_FACTORIES_FILE_NAME,
             "org.springframework.boot.autoconfigure.EnableAutoConfiguration=MyAutoConfig"
         )
 
@@ -22,7 +21,7 @@ class AutoConfigurationLineMarkerProviderTest : EspritoJavaLightTestCase() {
             "MyAutoConfig.java",
             "@" + SpringCoreClasses.CONFIGURATION + " " +
                     "public class My<caret>AutoConfig {}"
-        );
+        )
         val gutterMarks = myFixture.findGuttersAtCaret()
         val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringFactories }
         TestCase.assertNotNull(gutterMark)
@@ -35,15 +34,14 @@ class AutoConfigurationLineMarkerProviderTest : EspritoJavaLightTestCase() {
 
     fun testSpringImports() {
         myFixture.addFileToProject(
-            Path("META-INF", "spring", SpringProperties.AUTOCONFIGURATION_IMPORTS).toString(),
-            "MyAutoConfig"
-        );
+            "META-INF/spring/" + SpringProperties.AUTOCONFIGURATION_IMPORTS, "MyAutoConfig"
+        )
 
         myFixture.configureByText(
             "MyAutoConfig.java",
             "@" + SpringCoreClasses.CONFIGURATION + " " +
                     "public class My<caret>AutoConfig {}"
-        );
+        )
         val gutterMarks = myFixture.findGuttersAtCaret()
         val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringFactories }
         TestCase.assertNotNull(gutterMark)
