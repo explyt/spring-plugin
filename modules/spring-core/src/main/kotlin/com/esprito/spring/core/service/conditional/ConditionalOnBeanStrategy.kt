@@ -3,13 +3,11 @@ package com.esprito.spring.core.service.conditional
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.service.PsiBean
-import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
+import com.esprito.spring.core.util.PsiAnnotationUtils
 import com.esprito.spring.core.util.SpringCoreUtil.resolvePsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
-import com.intellij.psi.PsiTypeElement
-import com.intellij.psi.util.childrenOfType
 
 class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
     private val annotationHolder = MetaAnnotationsHolder.of(module, SpringCoreClasses.CONDITIONAL_ON_BEAN)
@@ -39,12 +37,7 @@ class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
         val classesQn = if (names.isEmpty() && types.isEmpty() && classAttributes.isEmpty()) {
             setOfNotNull(dependant.resolvePsiClass?.qualifiedName)
         } else {
-            classAttributes.asSequence()
-                .flatMap { it.childrenOfType<PsiTypeElement>() }
-                .map { it.type }
-                .mapNotNull { it.resolveBeanPsiClass }
-                .mapNotNull { it.qualifiedName }
-                .toSet()
+            PsiAnnotationUtils.getTypeNames(classAttributes)
         }
         return classesQn.isNotEmpty() && classesQn.any { !foundBeanClassQn.contains(it) }
     }

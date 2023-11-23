@@ -1,6 +1,8 @@
 package com.esprito.spring.core.util
 
+import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.intellij.psi.*
+import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 
 object PsiAnnotationUtils {
@@ -28,6 +30,15 @@ object PsiAnnotationUtils {
             ?.parentOfType<PsiNameValuePair>()
             ?.parentOfType<PsiAnnotationParameterList>()
             ?.parentOfType<PsiAnnotation>()
+    }
+
+    fun getTypeNames(annotationMemberValues: Set<PsiAnnotationMemberValue>): Set<String> {
+        return annotationMemberValues.asSequence()
+            .flatMap { it.childrenOfType<PsiTypeElement>() }
+            .map { it.type }
+            .mapNotNull { it.resolveBeanPsiClass }
+            .mapNotNull { it.qualifiedName }
+            .toSet()
     }
 
 }

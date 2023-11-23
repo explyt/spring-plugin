@@ -2,6 +2,7 @@ package com.esprito.spring.core.properties
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.MetaAnnotationsHolder
+import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.ModuleUtilCore
@@ -44,11 +45,7 @@ class ConditionalOnConfigurationPropertyReferenceProvider : UastInjectionHostRef
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .firstOrNull()
 
-        val prefixValue = when {
-            prefix.isNullOrBlank() -> ""
-            prefix.endsWith('.') -> prefix
-            else -> "$prefix."
-        }
+        val prefixValue = PropertyUtil.prefixValue(prefix)
 
         return values
             .mapNotNull { value ->
