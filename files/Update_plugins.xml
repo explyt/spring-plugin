@@ -20,7 +20,7 @@
     <li><strong>Spring Profiles:</strong> Easily manage and search for Spring profiles within your configuration files.</li>
 </ul>
 <p>Esprito Spring Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.</p>
-<p>This plugin is available for free for non-commercial use. For more details, see our <a href="https://github.com/esprito-plugin/plugin">homepage</a>.</p>
+<p>This plugin is available for free for non-commercial use. For more details, see <a href="https://github.com/esprito-plugin/plugin">homepage</a>.</p>
 ]]></description>
 
   </plugin>
