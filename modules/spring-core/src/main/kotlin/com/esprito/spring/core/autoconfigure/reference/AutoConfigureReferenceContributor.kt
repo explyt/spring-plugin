@@ -1,5 +1,6 @@
 package com.esprito.spring.core.autoconfigure.reference
 
+import com.esprito.spring.core.SpringProperties.PROPERTY_VALUE_DELIMITERS
 import com.esprito.spring.core.autoconfigure.language.AutoConfigurationImportsFileType
 import com.esprito.spring.core.autoconfigure.language.FactoriesFileType
 import com.esprito.spring.core.providers.JavaSoftAllowDollarClassReferenceProvider
@@ -45,14 +46,12 @@ private class FactoriesPsiReferenceKeyProvider : PsiReferenceProvider() {
     }
 }
 
-private const val DELIMITERS = ",\\ "
-
 private object AutoConfigureReferenceProvider : PsiReferenceProvider() {
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         val text = element.text
         var result = PsiReference.EMPTY_ARRAY
-        object : DelimitedListProcessor(DELIMITERS) {
+        object : DelimitedListProcessor(PROPERTY_VALUE_DELIMITERS) {
             override fun processToken(start: Int, end: Int, delimitersOnly: Boolean) {
                 val substringText = text.substring(start, end)
                 val psiReferences =

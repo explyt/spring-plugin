@@ -3,6 +3,7 @@ package com.esprito.spring.core
 object SpringCoreClasses {
     const val SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication"
     const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
+    const val BOOT_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.AutoConfiguration"
 
     const val PROFILE = "org.springframework.context.annotation.Profile"
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
