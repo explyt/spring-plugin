@@ -1,0 +1,137 @@
+package com.esprito.spring.core.autoconfigure.inspection
+
+import com.esprito.base.LibraryClassCache
+import com.esprito.spring.core.SpringCoreBundle
+import com.esprito.spring.core.SpringCoreClasses.BOOT_AUTO_CONFIGURATION
+import com.esprito.spring.core.SpringIcons
+import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.FACTORIES_ENABLE_AUTO_CONFIGURATION
+import com.esprito.spring.core.autoconfigure.language.FactoriesFileType
+import com.intellij.codeInsight.daemon.quickFix.CreateFilePathFix
+import com.intellij.codeInsight.daemon.quickFix.NewFileLocation
+import com.intellij.codeInsight.daemon.quickFix.TargetDirectory
+import com.intellij.codeInspection.*
+import com.intellij.ide.actions.OpenFileAction
+import com.intellij.lang.properties.IProperty
+import com.intellij.lang.properties.RemovePropertyLocalFix
+import com.intellij.lang.properties.psi.PropertiesElementFactory
+import com.intellij.lang.properties.psi.PropertiesFile
+import com.intellij.lang.properties.psi.impl.PropertyImpl
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.DelimitedListProcessor
+import com.intellij.openapi.vfs.findDirectory
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
+import java.util.function.Supplier
+import javax.swing.Icon
+
+class EnableAutoConfigureSpringFactoryInspection : LocalInspectionTool() {
+
+    override fun checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor> {
+        if (!FactoriesFileType.isMyFileType(file.virtualFile)) return ProblemDescriptor.EMPTY_ARRAY
+        val propertiesFile = file as? PropertiesFile ?: return ProblemDescriptor.EMPTY_ARRAY
+        val module = ModuleUtilCore.findModuleForFile(file) ?: return ProblemDescriptor.EMPTY_ARRAY
+        LibraryClassCache.searchForLibraryClass(module, BOOT_AUTO_CONFIGURATION) ?: return ProblemDescriptor.EMPTY_ARRAY
+
+        val property = propertiesFile.findPropertyByKey(FACTORIES_ENABLE_AUTO_CONFIGURATION)
+            ?: return ProblemDescriptor.EMPTY_ARRAY
+        val values = getValues(property.value)
+
+        val problems = mutableListOf<ProblemDescriptor>()
+        if (values.isEmpty()) {
+            val removePropertyLocalFix = RemovePropertyLocalFix()
+            problems += manager.createProblemDescriptor(
+                property.psiElement,
+                removePropertyLocalFix.familyName,
+                isOnTheFly,
+                arrayOf(removePropertyLocalFix),
+                ProblemHighlightType.WARNING
+            )
+            return problems.toTypedArray()
+        }
+        val autoConfigurationImportsFile = propertiesFile.virtualFile.parent
+            .findDirectory(SpringProperties.SPRING)
+            ?.findChild(SpringProperties.AUTOCONFIGURATION_IMPORTS)
+
+        if (autoConfigurationImportsFile != null) {
+            val movePropertyFix = MovePropertyFix(values)
+            problems += manager.createProblemDescriptor(
+                property.psiElement,
+                SpringCoreBundle.message("esprito.spring.inspection.properties.auto.configuration.move.fix"),
+                isOnTheFly,
+                arrayOf(movePropertyFix),
+                ProblemHighlightType.WARNING
+            )
+            return problems.toTypedArray()
+        }
+
+        val content = values.joinToString(System.lineSeparator())
+        val directory = TargetDirectory(propertiesFile.parent, arrayOf(SpringProperties.SPRING))
+        val location = NewFileLocation(listOf(directory), SpringProperties.AUTOCONFIGURATION_IMPORTS)
+        val fix = CreateFilePathSpringFactoriesFix(property.psiElement, location) { content }
+
+        problems += manager.createProblemDescriptor(
+            property.psiElement,
+            SpringCoreBundle.message("esprito.spring.inspection.properties.auto.configuration.problem"),
+            isOnTheFly,
+            arrayOf(fix),
+            ProblemHighlightType.WARNING
+        )
+        return problems.toTypedArray()
+    }
+
+    private fun getValues(propertyValue: String?): List<String> {
+        propertyValue ?: return emptyList()
+        val values = ArrayList<String>()
+        object : DelimitedListProcessor(SpringProperties.PROPERTY_VALUE_DELIMITERS) {
+            override fun processToken(start: Int, end: Int, delimitersOnly: Boolean) {
+                values.add(propertyValue.substring(start, end))
+            }
+        }.processText(propertyValue)
+        return values.filter { it.isNotEmpty() }
+    }
+}
+
+private class CreateFilePathSpringFactoriesFix(
+    psiElement: PsiElement, newFileLocation: NewFileLocation, fileTextSupplier: Supplier<String>
+) : CreateFilePathFix(psiElement, newFileLocation, fileTextSupplier) {
+
+    init {
+        myIsAvailable = true
+    }
+
+    override fun invoke(
+        project: Project, file: PsiFile, editor: Editor?, startElement: PsiElement, endElement: PsiElement
+    ) {
+        super.invoke(project, file, editor, startElement, endElement)
+        if (startElement is PropertyImpl) startElement.delete()
+    }
+
+    override fun getDescription(itemIcon: Icon) = super.getDescription(SpringIcons.SpringFactories)
+}
+
+private class MovePropertyFix(private val movedValues: List<String>) : LocalQuickFix {
+    override fun getFamilyName(): String {
+        return SpringCoreBundle.message("esprito.spring.inspection.properties.auto.configuration.move.fix")
+    }
+
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val autoConfigurationImportsFile = descriptor.psiElement.containingFile.virtualFile.parent
+            .findDirectory(SpringProperties.SPRING)
+            ?.findChild(SpringProperties.AUTOCONFIGURATION_IMPORTS) ?: return
+        val autoConfigurationPropertyFile = PsiManager.getInstance(project)
+            .findFile(autoConfigurationImportsFile) as? PropertiesFile ?: return
+
+        val existedKeys = autoConfigurationPropertyFile.properties.asSequence().mapNotNull { it.key }.toSet()
+        val valuesToAdd = movedValues.filter { !existedKeys.contains(it) }.joinToString(System.lineSeparator())
+        val dummyPropertiesFile = PropertiesElementFactory.createPropertiesFile(project, valuesToAdd)
+        val lastProperty: IProperty? = if (autoConfigurationPropertyFile.properties.isEmpty()) null else
+            autoConfigurationPropertyFile.properties.last()
+        dummyPropertiesFile.properties.forEach { autoConfigurationPropertyFile.addPropertyAfter(it, lastProperty) }
+        OpenFileAction.openFile(autoConfigurationImportsFile, project)
+        if (descriptor.psiElement is PropertyImpl) descriptor.psiElement.delete()
+    }
+}

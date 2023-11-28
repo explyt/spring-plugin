@@ -17,6 +17,7 @@ object SpringProperties {
     const val SPRING_PROFILES_ACTIVE = "spring.profiles.active"
 
     const val SPRING_FACTORIES_FILE_NAME = "spring.factories"
+    const val FACTORIES_ENABLE_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.EnableAutoConfiguration"
     const val AUTOCONFIGURATION_IMPORTS = "org.springframework.boot.autoconfigure.AutoConfiguration.imports"
 
     const val META_INF = "META-INF"
@@ -24,4 +25,5 @@ object SpringProperties {
 
     const val SPRING_XML_TEMPLATE = "spring-beans.xml"
 
+    const val PROPERTY_VALUE_DELIMITERS = ",\\ "
 }
