@@ -59,6 +59,10 @@ object SpringCoreClasses {
 
     const val TRANSACTIONAL = "org.springframework.transaction.annotation.Transactional"
 
+    const val RESOURCE_LOADER = "org.springframework.core.io.ResourceLoader"
+    const val RESOURCE_LOADER_RESOLVER = "org.springframework.core.io.support.ResourcePatternResolver"
+    const val RESOURCE_UTILS = "org.springframework.util.ResourceUtils"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)

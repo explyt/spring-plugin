@@ -304,7 +304,7 @@
                 implementation="com.esprito.spring.core.references.contributors.PackageAntReferenceInAnnotationContributor"
                 language="UAST"/>
         <psi.referenceContributor
-                implementation="com.esprito.spring.core.references.contributors.FileReferenceInAnnotationContributor"
+                implementation="com.esprito.spring.core.references.contributors.FileReferenceContributor"
                 language="UAST"/>
 
         <codeInsight.lineMarkerProvider language="UAST"

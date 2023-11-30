@@ -38,7 +38,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val processor = getLineMarkerElementProcessor(element) ?: return
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
 
         if (processor.isComponentClassOrBeanMethod()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
