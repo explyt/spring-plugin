@@ -77,7 +77,7 @@ object PropertyUtil {
     fun getReferenceByFilePrefix(text: String,
                                  element: PsiElement,
                                  possibleFileTypes: Array<FileType>,
-                                 provider: PsiReferenceProvider): Array<FileReference> {
+                                 provider: PsiReferenceProvider?): Array<FileReference> {
         //("file:./application.properties") or ("file:application.properties") is right link to content root
         // if start with "/" like here @PropertySource("file:/application.properties") - this means it is an absolute path
         var range = ElementManipulators.getValueTextRange(element)
@@ -111,7 +111,7 @@ object PropertyUtil {
                                       prefix: String,
                                       element: PsiElement,
                                       possibleFileTypes: Array<FileType>,
-                                      provider: PsiReferenceProvider): Array<FileReference> {
+                                      provider: PsiReferenceProvider?): Array<FileReference> {
         var range = ElementManipulators.getValueTextRange(element)
         val textWithoutClassPathPrefix = text.substring(prefix.length)
 
@@ -134,7 +134,7 @@ object PropertyUtil {
     fun getReferenceWithoutPrefix(text: String,
                                   element: PsiElement,
                                   possibleFileTypes: Array<FileType>,
-                                  provider: PsiReferenceProvider): Array<FileReference> {
+                                  provider: PsiReferenceProvider?): Array<FileReference> {
         var range = ElementManipulators.getValueTextRange(element)
         val lengthOfPrefix = text.lengthPrefix("/") + text.lengthPrefix("./")
         range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)

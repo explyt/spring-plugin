@@ -1,9 +1,9 @@
 package com.esprito.spring.core.reference
 
+import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElement
-import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
@@ -86,5 +86,62 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
         ).forEach {
             assertEquals(it, 0, referencesToFile(it).size)
         }
+    }
+
+    fun testValueAnnotationResolve() {
+        myFixture.configureByText("TestClass.java",
+            """                
+                public class TestClass {
+                    @${SpringCoreClasses.VALUE}("<caret>")
+                    String field;                                        
+                }
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testResourceUtilsResolve() {
+        myFixture.configureByText("TestClass.java",
+            """                
+                public class TestClass {
+                    public static void main(String[] args) {
+                        org.springframework.util.ResourceUtils.getFile("<caret>")
+                    }                                      
+                }
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testGetResourceResolve() {
+        myFixture.configureByText("TestClass.java",
+            """                
+                public class TestClass {
+                    public static void main(String[] args) {
+                        org.springframework.context.ApplicationContext context = null;
+                        context.getResource("<caret>");                        
+                    }                                      
+                }
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
     }
 }
