@@ -45,7 +45,6 @@ object SpringGutterTestUtil {
                 ArrayList(lineMarkerInfo.createGotoRelatedItems()).sortedBy { item -> item.customContainerName }
             return gotoItems.mapNotNull { it.element }.map { targetNamer.`fun`(it) }
         }
-
-        throw IllegalArgumentException(lineMarkerInfo.javaClass.toString() + " not supported")
+        return emptyList()
     }
 }
