@@ -13,16 +13,19 @@ class BlockedListNotifier implements ApplicationListener<BlockedListStartedEvent
     }
 
     @Override
-    public void onApplicationEvent(BlockedListStartedEvent event) {}
+    public void onApplicationEvent(BlockedListStartedEvent event) {
+    }
 }
 
 class BlockedListNotifierExt extends BlockedListNotifier {
     @Override
-    public void  onApplicationEvent(BlockedListStartedEvent event) {}
+    public void onApplicationEvent(BlockedListStartedEvent event) {
+    }
 }
 
-class WithoutEvent{
-    public void onApplicationEvent(BlockedListStartedEvent event) {}
+class WithoutEvent {
+    public void onApplicationEvent(BlockedListStartedEvent event) {
+    }
 }
 
 class BlockedListStartedEvent extends ContextStartedEvent {
@@ -36,8 +39,9 @@ class BlockedListNotifierOther {
     public void processBlockedListEvent(BlockedListStartedEvent event) {
     }
 
-    @EventListener(value = {ContextStartedEvent.class, ContextRefreshedEvent.class})
-    public void  handleContextStart() {
+    @EventListener(value = {ContextStartedEvent.class, ContextRefreshedEvent.class,
+            ContextStoppedEvent.class, ContextClosedEvent.class})
+    public void handleContextStart() {
     }
 
     @EventListener(condition = "#blEvent.content == 'my-event'")
@@ -73,11 +77,11 @@ class EmailService implements ApplicationEventPublisherAware {
     }
 
     public void closedEvent() {
-        publisher.publishEvent(new ContextClosedEvent((ApplicationContext)this));
+        publisher.publishEvent(new ContextClosedEvent((ApplicationContext) this));
     }
 
     public void stoppedEvent() {
-        publisher.publishEvent(new ContextStoppedEvent((ApplicationContext)this));
+        publisher.publishEvent(new ContextStoppedEvent((ApplicationContext) this));
     }
 }
 

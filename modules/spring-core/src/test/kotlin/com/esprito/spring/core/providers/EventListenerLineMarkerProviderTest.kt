@@ -1,9 +1,11 @@
 package com.esprito.spring.core.providers
 
+import com.esprito.spring.core.SpringIcons
+import com.esprito.spring.core.util.SpringGutterTestUtil
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
-import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
 import com.intellij.testFramework.TestDataPath
+import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "testdata/providers/linemarkers"
 
@@ -20,13 +22,13 @@ class EventListenerLineMarkerProviderTest : EspritoJavaLightTestCase() {
         myFixture.configureFromExistingVirtualFile(vf)
         myFixture.doHighlighting()
 
-        val allLineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project)
-//        val eventLineMarkers = allLineMarkers
-//            .filter { it.javaClass.simpleName == "RelatedItemLineMarkerInfo" }
-
-        assertEquals(15, allLineMarkers.size)
-//        assertEquals(10, eventLineMarkers.size)
-
+        val allEventGutters = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.EventPublisher || it.icon == SpringIcons.EventListener }
+        val gutterTargetString = allEventGutters.map { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+        TestCase.assertTrue(allEventGutters.isNotEmpty())
+        for (targets in gutterTargetString) {
+            TestCase.assertTrue(targets.isNotEmpty())
+        }
     }
 
 }

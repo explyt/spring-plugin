@@ -178,14 +178,13 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         fun getBeanDeclarations(): Collection<PsiElement> {
-            val psiVariable: PsiVariable = element.parentOfType<PsiField>()
-                ?: element.parentOfType<PsiParameter>()
-                ?: return emptyList()
-            val beanName = psiVariable.name!!
-            val beanPsiType = psiVariable.type
+            val uField = element.toUElement()?.getParentOfType(UVariable::class.java) ?: return emptyList()
+            val beanPsiType = uField.type
+            val beanName = uField.name ?: return emptyList()
+            val qualifierAnnotation = uField.getQualifierAnnotation()
 
             return springSearchService.findActiveBeanDeclarations(
-                module, beanName, beanPsiType, psiVariable.getQualifierAnnotation()
+                module, beanName, beanPsiType, qualifierAnnotation
             )
         }
 
@@ -194,8 +193,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 return null
             }
 
-            return element.parentOfType<PsiMethod>()?.returnPsiClass  // method annotated by Bean
-                ?: element.parentOfType<PsiClass>() // class annotated as Component
+            return when (uParent) {
+                is UMethod -> uParent.returnPsiClass
+                is UClass -> uParent.javaPsi
+                else -> null
+            }
         }
 
         private fun findTargetType(): PsiType? {
