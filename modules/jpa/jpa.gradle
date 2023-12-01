@@ -1,10 +1,10 @@
 plugins {
-    id 'java'
-    id 'org.jetbrains.intellij'
-    id 'org.jetbrains.kotlin.jvm'
+    id "java"
+    id "org.jetbrains.intellij"
+    id "org.jetbrains.kotlin.jvm"
 }
 
-ext.intellijPlugins = ['com.intellij.java']
+ext.intellijPlugins = ["com.intellij.java"]
 
 evaluationDependsOn(":base")
 
@@ -32,8 +32,8 @@ runIde.enabled = false
 publishPlugin.enabled = false
 verifyPlugin.enabled = false
 
-def baseProject = project(':base')
-def testFramework = project(':test-framework')
+def baseProject = project(":base")
+def testFramework = project(":test-framework")
 
 dependencies {
     implementation baseProject
@@ -49,5 +49,5 @@ kotlin {
 }
 
 //sourceSets {
-//    main.kotlin.srcDirs += 'src/main/kotlin'
+//    main.kotlin.srcDirs += "src/main/kotlin"
 //}

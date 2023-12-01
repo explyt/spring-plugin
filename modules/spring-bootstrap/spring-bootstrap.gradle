@@ -1,9 +1,9 @@
 import org.jetbrains.intellij.tasks.RunPluginVerifierTask.FailureLevel
 
 plugins {
-    id 'java'
-    id 'org.jetbrains.intellij'
-    id 'org.jetbrains.kotlin.jvm'
+    id("java")
+    id("org.jetbrains.intellij")
+    id("org.jetbrains.kotlin.jvm")
 }
 
 evaluationDependsOn(":base")
@@ -19,41 +19,39 @@ evaluationDependsOn(":spring-messaging")
 evaluationDependsOn(":jpa")
 evaluationDependsOn(":test-framework")
 
-ext.pluginVersion = '2023.1'
-
-if (!hasProperty('snapshotVersion')) {
-    ext.snapshotVersion = 'SNAPSHOT'
+if (!hasProperty("snapshotVersion")) {
+    ext.snapshotVersion = "SNAPSHOT"
 }
 
 version = {
-    if (rootProject.hasProperty('buildVersion')) {
-        def bv = rootProject.property('buildVersion') as String
+    if (rootProject.hasProperty("buildVersion")) {
+        def bv = rootProject.property("buildVersion") as String
         return bv.startsWith("spring.v.") ? bv.substring(9) : (bv.startsWith("v.") ? bv.substring(2) : bv)
     }
     def sincePostfix = "${sinceVersion}".substring(0, 3)
     return "${pluginVersion}.${snapshotVersion}-${sincePostfix}".toString()
 }()
 
-ext.springPluginName = 'spring-tool'
+ext.springPluginName = "spring-tool"
 ext.buildArchiveName = rootProject.hasProperty("distFilePostfix")
         ? "${springPluginName}-${rootProject.distFilePostfix}.zip" : "${springPluginName}-${version}.zip"
 
-//Add '-PlaunchUltimate' property to 'run jpa buddy' run/debug configuration in arguments
+//Add "-PlaunchUltimate" property to "run jpa buddy" run/debug configuration in arguments
 def launchUltimate = rootProject.hasProperty("launchUltimate")
 
-def baseProject = project(':base')
-def springCoreProject = project(':spring-core')
-def springGradleProject = project(':spring-gradle')
-def springDataProject = project(':spring-data')
-def springSecurityProject = project(':spring-security')
-def springWebProject = project(':spring-web')
-def springCloudProject = project(':spring-cloud')
-def springInitializrProject = project(':spring-initializr')
-def springIntegrationProject = project(':spring-integration')
-def springMessagingProject = project(':spring-messaging')
-def jpaProject = project(':jpa')
-def springBootstrapModule = project(':spring-bootstrap')
-def testFramework = project(':test-framework')
+def baseProject = project(":base")
+def springCoreProject = project(":spring-core")
+def springGradleProject = project(":spring-gradle")
+def springDataProject = project(":spring-data")
+def springSecurityProject = project(":spring-security")
+def springWebProject = project(":spring-web")
+def springCloudProject = project(":spring-cloud")
+def springInitializrProject = project(":spring-initializr")
+def springIntegrationProject = project(":spring-integration")
+def springMessagingProject = project(":spring-messaging")
+def jpaProject = project(":jpa")
+def springBootstrapModule = project(":spring-bootstrap")
+def testFramework = project(":test-framework")
 
 repositories {
     mavenCentral()
@@ -83,35 +81,36 @@ intellij {
     if (launchUltimate) {
         type.set("IU")
     }
-    buildSearchableOptions {
-        enabled false
-    }
+    buildSearchableOptions.enabled = false
     instrumentCode.set(false)
 }
 
 patchPluginXml {
     version.set(springBootstrapModule.version)
     sinceBuild.set(sinceVersion)
-    untilBuild.set(project.hasProperty('setUntilVersion') ? untilVersion : '')
+    untilBuild.set(project.hasProperty("setUntilVersion") ? untilVersion : "")
     changeNotes.set(springCoreProject.file("CHANGELOG.html").text)
 }
 
 runIde {
     // Customize in ~/.gradle/gradle.properties:
     // runIdeXmx=1600M
-    if (rootProject.hasProperty('runIdeXmx')) {
-        def xmx = rootProject['runIdeXmx']
+    if (rootProject.hasProperty("runIdeXmx")) {
+        def xmx = rootProject["runIdeXmx"]
         jvmArgs("-Xmx$xmx")
     }
 }
 
 runPluginVerifier {
     ideVersions = [pluginVerifierIdeVersion]
-    failureLevel.set(EnumSet.copyOf([FailureLevel.INVALID_PLUGIN, FailureLevel.COMPATIBILITY_PROBLEMS, FailureLevel.COMPATIBILITY_WARNINGS]))
+    failureLevel.set(EnumSet.copyOf([
+            FailureLevel.INVALID_PLUGIN,
+            FailureLevel.COMPATIBILITY_PROBLEMS,
+            FailureLevel.COMPATIBILITY_WARNINGS
+    ]))
 
-    def buildDir = project.getBuildDir()
-    def buildArchivePath = "${buildDir}/distributions/${buildArchiveName}"
-    distributionFile.set(new File(buildArchivePath))
+    def buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
+    distributionFile.set(buildArchivePath.get().asFile)
 }
 
 test {
@@ -130,11 +129,11 @@ test {
 }
 
 //TODO
-//if (rootProject.hasProperty('pluginRepoToken') && rootProject.hasProperty('pluginRepoChannel')) {
+//if (rootProject.hasProperty("pluginRepoToken") && rootProject.hasProperty("pluginRepoChannel")) {
 //    publishPlugin {
 //        token.set(pluginRepoToken)
 //        channels.set([pluginRepoChannel])
-//        if (rootProject.hasProperty('pluginDistributionFile')) {
+//        if (rootProject.hasProperty("pluginDistributionFile")) {
 //            distributionFile.set(pluginDistributionFile)
 //        }
 //    }
