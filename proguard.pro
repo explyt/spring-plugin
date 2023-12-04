@@ -6,9 +6,14 @@
 
 # required for kotlin
 -keep class kotlin.Metadata
+-keep class kotlin.reflect.**
 -keep class kotlin.reflect.jvm.internal.** { *; }
 -keepclassmembers enum * { public *; }
-#-keep class **$DefaultImpls { *; }
+-keep class **$DefaultImpls { *; }
+
+-dontwarn kotlin.**
+-dontwarn kotlinx.**
+
 
 -keep class com.esprito.jpa.ql.JpqlFileType$Companion { *; }
 -keep class com.esprito.sql.ql.SqlFileType$Companion { *; }
@@ -50,7 +55,7 @@
 
 # for stacktraces: todo: add mappings from retrace tool to mapping.txt file
 #-printmapping build/mapping.txt
--printmapping out.map
+#-printmapping out.map
 
 -dontwarn training.**
 -dontwarn com.jetbrains.performancePlugin.**

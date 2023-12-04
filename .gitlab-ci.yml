@@ -21,9 +21,10 @@ release:
   when: manual
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|/|_|g')"
-    - ./gradlew :spring-bootstrap:buildPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion
+    - ./gradlew :spring-bootstrap:buildPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
     - ./gradlew :spring-bootstrap:runPluginVerifier
   artifacts:
     paths:
       - modules/spring-bootstrap/build/reports/pluginVerifier
       - modules/spring-bootstrap/build/distributions/*.zip
+      - modules/spring-bootstrap/build/distributions/source.map

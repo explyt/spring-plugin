@@ -55,6 +55,8 @@ val buildArchiveName = "${springPluginName}-${distFilePostfix}.zip"
 
 //Add "-PlaunchUltimate" property to "run jpa buddy" run/debug configuration in arguments
 val launchUltimate = rootProject.hasProperty("launchUltimate")
+//Add "-Pobfuscate" to obfuscate
+val obfuscate = rootProject.hasProperty("obfuscate")
 
 val baseProject = project(":base")
 val springCoreProject = project(":spring-core")
@@ -137,10 +139,15 @@ val extractJar by tasks.registering(Copy::class) {
     from(zipFiles)
     into(outputDir)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    outputs.doNotCacheIf("Cache is disable") { true }
+    if (obfuscate) {
+        outputs.doNotCacheIf("Cache is disable") { true }
+    }
 }
 
-val proGuardTask = tasks.register<ProGuardTask>("proguard") {
+val proGuardTask by tasks.registering(ProGuardTask::class) {
+    if (!obfuscate) {
+        return@registering
+    }
     configuration(file("../../proguard.pro"))
 
     injars(extractJar.map { it.outputs.files.singleFile })
@@ -173,15 +180,18 @@ val proGuardTask = tasks.register<ProGuardTask>("proguard") {
     }
 
     outjars(layout.buildDirectory.file("libs/${springPluginName}-obfuscated.jar"))
+    printmapping(layout.buildDirectory.file("distributions/source.map"))
     //finalizedBy(copyObfuscatedClasses)
     doLast {
-        delete(extractedDirPath)
-        delete(sandboxLibPath)
-        copy {
-            from(obfuscatedJarPath)
-            into(sandboxLibPath)
+        if (obfuscate) {
+            delete(extractedDirPath)
+            delete(sandboxLibPath)
+            copy {
+                from(obfuscatedJarPath)
+                into(sandboxLibPath)
+            }
+            delete(obfuscatedJarPath)
         }
-        delete(obfuscatedJarPath)
     }
 }
 
@@ -233,6 +243,17 @@ tasks {
         )
     }
 
+    // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
+    signPlugin {
+        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
+        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
+        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
+    }
+
+    publishPlugin {
+        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
+    }
+
     //TODO
     //if (rootProject.hasProperty("pluginRepoToken") && rootProject.hasProperty("pluginRepoChannel")) {
     //    publishPlugin {
@@ -244,15 +265,13 @@ tasks {
     //    }
     //}
 
-    var executedFromBuildPlugin = false
 
     buildPlugin {
-        executedFromBuildPlugin = true
         archiveFileName = buildArchiveName
     }
 
     prepareSandbox {
-        if (executedFromBuildPlugin) {
+        if (obfuscate) {
             finalizedBy(extractJar, proGuardTask)
         }
     }
