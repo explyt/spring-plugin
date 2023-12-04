@@ -79,4 +79,43 @@
         <length>22</length>
     </problem>
 
+    <problem>
+        <file>main-config.properties</file>
+        <line>7</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/config/main-config.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'e3' to java.lang.Integer</description>
+        <highlighted_element>1, e3</highlighted_element>
+        <language>Properties</language>
+        <offset>19</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>main-config.properties</file>
+        <line>8</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/config/main-config.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'wrong' to java.lang.Integer</description>
+        <highlighted_element>wrong</highlighted_element>
+        <language>Properties</language>
+        <offset>22</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>main-config.properties</file>
+        <line>10</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/config/main-config.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'error' to java.lang.Integer</description>
+        <highlighted_element>error</highlighted_element>
+        <language>Properties</language>
+        <offset>25</offset>
+        <length>5</length>
+    </problem>
+
 </problems>

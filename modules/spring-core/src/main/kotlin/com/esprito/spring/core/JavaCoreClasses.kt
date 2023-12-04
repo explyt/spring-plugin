@@ -13,4 +13,7 @@ object JavaCoreClasses {
     const val SHORT = "java.lang.Short"
     const val DOUBLE = "java.lang.Double"
     const val FLOAT = "java.lang.Float"
+
+    const val MAP = "java.util.Map"
+    const val LIST = "java.util.List"
 }

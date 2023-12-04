@@ -1,5 +1,6 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.JavaCoreClasses
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
 
@@ -21,7 +22,19 @@ data class ConfigurationProperty(
     var description: String?,
     var defaultValue: Any?,
     var deprecation: DeprecationInfo?
-)
+) {
+    fun isMap(): Boolean {
+        return type?.startsWith(JavaCoreClasses.MAP) == true
+    }
+
+    fun isList(): Boolean {
+        return type?.startsWith(JavaCoreClasses.LIST) == true
+    }
+
+    fun isArray(): Boolean {
+        return type?.endsWith("[]") == true
+    }
+}
 
 data class PropertyHint(
     val name: String,

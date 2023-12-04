@@ -1,9 +1,15 @@
 package com.esprito.spring.core.properties
 
+import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.completion.properties.ValueHint
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.codeInsight.lookup.LookupElementPresentation
+import com.intellij.codeInsight.lookup.LookupElementRenderer
 import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
@@ -40,9 +46,23 @@ class SpringConfigurationPropertiesKeyReferenceProvider : PsiReferenceProvider()
             propertyKey.startsWith(hintName.substring(0, keysIdx))
         } ?: return arrayOf(ConfigurationPropertyKeyReference(element, propertyKey))
 
+        val referencesByPrefixKey = getPsiReferencesByPrefixKeys(propertyKey, keyHint, element)
+        if (referencesByPrefixKey.isNotEmpty()) {
+            return referencesByPrefixKey
+        }
+
+        return arrayOf(ConfigurationPropertyKeyReference(element, propertyKey))
+    }
+
+    private fun getPsiReferencesByPrefixKeys(
+        propertyKey: String,
+        keyHint: PropertyHint,
+        element: PsiElement
+    ): Array<PsiReference> {
         val prefix = keyHint.name.substringBefore(".keys")
-        return if (propertyKey.startsWith("$prefix.")
-            && keyHint.providers.any { it.name == "logger-name" }
+
+        if (propertyKey.startsWith("$prefix.")
+            && (keyHint.providers.any { it.name == "logger-name" } || keyHint.values.isNotEmpty())
         ) {
             val prefixLength = prefix.length
 
@@ -54,18 +74,23 @@ class SpringConfigurationPropertiesKeyReferenceProvider : PsiReferenceProvider()
                 )
             )
 
-            val javaClassReferenceSet = PropertiesJavaClassReferenceSet(
-                propertyKey.substringAfter("$prefix."),
-                element,
-                prefixLength + 1
-            )
+            val references: Array<PsiReference> = if (keyHint.values.isNotEmpty()) {
+                keyHint.values.asSequence()
+                    .map { KeyPsiReference(element, prefix, it) }
+                    .toList().toTypedArray()
+            } else {
+                PropertiesJavaClassReferenceSet(
+                    propertyKey.substringAfter("$prefix."),
+                    element,
+                    prefixLength + 1
+                ).references
+            }
+            result.addAll(references)
 
-            result.addAll(javaClassReferenceSet.references)
-
-            result.toTypedArray()
-        } else {
-            arrayOf(ConfigurationPropertyKeyReference(element, propertyKey))
+            return result.toTypedArray()
         }
+
+        return arrayOf(ConfigurationPropertyKeyReference(element, propertyKey))
     }
 }
 
@@ -114,5 +139,34 @@ class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
 
     override fun getPresentableText(): String? {
         return member.presentation?.presentableText
+    }
+}
+
+class KeyPsiReference(
+    element: PsiElement,
+    val prefix: String,
+    private val valueHint: ValueHint
+) : PsiReferenceBase<PsiElement>(element) {
+
+    override fun resolve(): PsiElement {
+        return this.element
+    }
+
+    override fun getVariants(): Array<Any> {
+        return arrayOf(
+            LookupElementBuilder.create("$prefix.${valueHint.value}")
+                .withRenderer(HintValuePropertyRenderer(valueHint))
+        )
+    }
+}
+
+class HintValuePropertyRenderer(private val valueHint: ValueHint) : LookupElementRenderer<LookupElement>() {
+    override fun renderElement(element: LookupElement, presentation: LookupElementPresentation) {
+        presentation.itemText = valueHint.value
+        val description = valueHint.description
+        if (!description.isNullOrBlank()) {
+            presentation.setTailText(" ($description)", true)
+        }
+        presentation.icon = SpringIcons.PropertyKey
     }
 }

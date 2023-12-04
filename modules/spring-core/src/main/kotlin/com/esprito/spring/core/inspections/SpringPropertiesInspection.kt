@@ -1,5 +1,7 @@
 package com.esprito.spring.core.inspections
 
+import ai.grazie.nlp.utils.dropLastWhitespaces
+import ai.grazie.nlp.utils.dropWhitespaces
 import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
@@ -17,9 +19,13 @@ import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.DOT
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.util.CacheKeyStore
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.properties.IProperty
 import com.intellij.lang.properties.psi.PropertiesFile
+import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -45,7 +51,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
     override fun checkFile(
         file: PsiFile,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): Array<ProblemDescriptor>? {
         if (!SpringCoreUtil.isConfigurationPropertyFile(file)) {
             return ProblemDescriptor.EMPTY_ARRAY
@@ -58,29 +64,76 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         val module = ModuleUtilCore.findModuleForFile(file) ?: return ProblemDescriptor.EMPTY_ARRAY
 
         val problems = mutableListOf<ProblemDescriptor>()
-        problems += checkKey(module, manager, isOnTheFly)
+        problems += checkKey(module, file, manager, isOnTheFly)
         problems += checkValue(module, manager, isOnTheFly)
         return problems.toTypedArray()
     }
 
     private fun checkKey(
         module: Module,
+        file: PsiFile,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         configurationProperties = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
         if (configurationProperties.isEmpty()) {
             return mutableListOf()
         }
         val problems = mutableListOf<ProblemDescriptor>()
+        problems += getProblemKey(manager, file, isOnTheFly)
         problems += getProblemPropertyDeprecated(manager, isOnTheFly)
+        return problems
+    }
+
+    private fun getProblemKey(
+        manager: InspectionManager,
+        file: PsiFile,
+        isOnTheFly: Boolean,
+    ): List<ProblemDescriptor> {
+        val problems = mutableListOf<ProblemDescriptor>()
+        val module = ModuleUtilCore.findModuleForPsiElement(file) ?: return emptyList()
+
+        val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
+            .getAllProperties(module)
+
+        for (fileProperty in fileProperties) {
+            val psiKey = fileProperty.psiElement.childrenOfType<PropertyKeyImpl>().firstOrNull() ?: continue
+            val findProperties = properties.filter { it.name == fileProperty.key }
+            if (findProperties.isEmpty() && !isPropertyMapKey(fileProperty, properties) && !isPropertyListKey(
+                    fileProperty,
+                    properties
+                )
+            ) {
+                val key = fileProperty.key ?: continue
+                problems += manager.createProblemDescriptor(
+                    psiKey,
+                    SpringCoreBundle.message("esprito.spring.inspection.properties.key.unresolved", key),
+                    isOnTheFly,
+                    emptyArray(),
+                    ProblemHighlightType.WARNING
+                )
+            } else {
+                for (it in findProperties) {
+                    if (it.isMap()) {
+                        problems += manager.createProblemDescriptor(
+                            psiKey,
+                            SpringCoreBundle.message("esprito.spring.inspection.properties.key.map.not.found.key"),
+                            isOnTheFly,
+                            emptyArray(),
+                            ProblemHighlightType.ERROR
+                        )
+
+                    }
+                }
+            }
+        }
         return problems
     }
 
     private fun checkValue(
         module: Module,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllHints(module)
         val problems = mutableListOf<ProblemDescriptor>()
@@ -96,7 +149,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
 
     private fun getProblemPropertyDeprecated(
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val deprecationProperties = configurationProperties.filter { property ->
@@ -126,21 +179,25 @@ class SpringPropertiesInspection : LocalInspectionTool() {
 
     private fun getProblemValues(
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        val hintProperties = fileProperties.filter { property ->
-            hints.any { hint -> property.key == hint.name && hint.values.isNotEmpty() && (hint.providers.isEmpty() || hint.providers.any { it.name != ANY })}
+        val findInFileProperties = fileProperties.filter { property ->
+            hints.any { hint ->
+                (property.key == hint.name || property.key?.substringBeforeLast(".") + ".keys" == hint.name)
+                        && hint.values.isNotEmpty()
+                        && (hint.providers.isEmpty() || hint.providers.any { it.name != ANY })
+            }
         }
-        if (hintProperties.isEmpty()) {
+        if (findInFileProperties.isEmpty()) {
             return problems
         }
-        for (hintProperty in hintProperties) {
-            val psiValue = hintProperty.psiElement.childrenOfType<PropertyValueImpl>().firstOrNull() ?: continue
-            val key = hintProperty.key ?: continue
-            val value = hintProperty.value ?: continue
+        for (fileProperty in findInFileProperties) {
+            val psiValue = fileProperty.psiElement.childrenOfType<PropertyValueImpl>().firstOrNull() ?: continue
+            val key = fileProperty.key?.dropLastWhitespaces() ?: continue
+            val value = fileProperty.value?.dropLastWhitespaces() ?: continue
             val hintValues = hints.asSequence()
-                .filter { it.name == key }
+                .filter { it.name == key || it.name == key.substringBeforeLast(".") + ".values" }
                 .distinctBy { it.name }
                 .flatMap { it.values }
                 .map { it.value }
@@ -162,7 +219,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
     private fun getProblemClassReference(
         module: Module,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val classReferenceProperties = fileProperties.filter { property ->
@@ -185,13 +242,15 @@ class SpringPropertiesInspection : LocalInspectionTool() {
                 val shortName = PropertyUtil.getClassNameByQualifiedName(qualifiedNameClass)
                 val range = TextRange(afterLastDotIndex, afterLastDotIndex + shortName.length)
                 problems += manager.createProblemDescriptor(
-                    psiValue, range,
+                    psiValue,
+                    range,
                     SpringCoreBundle.message(
                         "esprito.spring.inspection.properties.value.unresolved",
                         "class",
                         shortName
                     ),
-                    ProblemHighlightType.ERROR, isOnTheFly
+                    ProblemHighlightType.ERROR,
+                    isOnTheFly
                 )
             }
         }
@@ -203,20 +262,22 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         module: Module,
         manager: InspectionManager,
         psiValue: PropertyValueImpl,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): List<ProblemDescriptor> {
         val infoPackages = PropertyUtil.getPackages(module, qualifiedNameClass)
         return infoPackages.asSequence()
             .filter { it.psiPackage == null }
             .map {
                 manager.createProblemDescriptor(
-                    psiValue, it.range,
+                    psiValue,
+                    it.range,
                     SpringCoreBundle.message(
                         "esprito.spring.inspection.properties.value.unresolved",
                         "class or package",
                         it.name
                     ),
-                    ProblemHighlightType.ERROR, isOnTheFly
+                    ProblemHighlightType.ERROR,
+                    isOnTheFly
                 )
             }.toList()
     }
@@ -224,7 +285,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
     private fun getProblemHandleAs(
         module: Module,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val handleAsProperties = fileProperties.filter { property ->
@@ -237,8 +298,8 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         val propertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
         for (handleAsProperty in handleAsProperties) {
             val psiValue = handleAsProperty.psiElement.childrenOfType<PropertyValueImpl>().firstOrNull() ?: continue
-            val key = handleAsProperty.key ?: continue
-            val value = handleAsProperty.value ?: continue
+            val key = handleAsProperty.key?.dropLastWhitespaces() ?: continue
+            val value = handleAsProperty.value?.dropLastWhitespaces() ?: continue
             val providerHints = hints.asSequence()
                 .filter { it.name == key }
                 .distinctBy { it.name }
@@ -281,7 +342,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
     private fun getProblemBeanReferenceProperties(
         module: Module,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val springBeanReferenceProperties = fileProperties.filter { property ->
@@ -296,7 +357,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
 
         springBeanReferenceProperties.forEach { property ->
             val psiValue = property.psiElement.childrenOfType<PropertyValueImpl>().firstOrNull()
-            val value = property.value
+            val value = property.value?.dropLastWhitespaces()
             if (!foundActiveBeans.any { it.name == property.value } && psiValue != null && value != null) {
                 problems += manager.createProblemDescriptor(
                     psiValue,
@@ -313,52 +374,76 @@ class SpringPropertiesInspection : LocalInspectionTool() {
     private fun getProblemPropertyType(
         module: Module,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        val propertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
         for (property in fileProperties) {
             val psiValue = property.psiElement.childrenOfType<PropertyValueImpl>().firstOrNull() ?: continue
-            val key = property.key
-            val value = property.value
-            if (key.isNullOrBlank()) continue
-            if (value.isNullOrBlank()) continue
-            val configurationProperty = propertiesSearch.findProperty(module, key) ?: continue
-            val propertyType = configurationProperty.type?.replace('$', '.') ?: continue
-            val resultConvert = when (propertyType) {
-                JavaCoreClasses.BOOLEAN, "boolean" -> value.toBooleanStrictOrNull() == null
-                JavaCoreClasses.BYTE, "byte" -> value.toByteOrNull() == null
-                JavaCoreClasses.INTEGER, "int" -> value.toIntOrNull() == null
-                JavaCoreClasses.LONG, "long" -> value.toLongOrNull() == null
-                JavaCoreClasses.SHORT, "short" -> value.toShortOrNull() == null
-                JavaCoreClasses.DOUBLE, "double",
-                JavaCoreClasses.NUMBER -> value.toDoubleOrNull() == null
-                JavaCoreClasses.FLOAT, "float" -> value.toFloatOrNull() == null
-                else -> false
-            }
-            val resultEncoding = when (propertyType) {
-                JavaCoreClasses.LOCALE -> !getLocales().any { it == value }
-                JavaCoreClasses.CHARSET -> !Charset.availableCharsets().any { it.key == value }
-                SpringCoreClasses.MIME_TYPE -> !MimeTypeDictionary.HTML_CONTENT_TYPES.any { it == value }
-                else -> false
-            }
-            if (resultConvert || resultEncoding) {
-                problems += manager.createProblemDescriptor(
-                    psiValue,
-                    SpringCoreBundle.message(
-                        if (resultConvert) "esprito.spring.inspection.properties.value.spring.convert"
-                        else "esprito.spring.inspection.properties.value.unknown.encoding",
-                        value,
-                        propertyType
-                    ),
-                    isOnTheFly,
-                    emptyArray(),
-                    ProblemHighlightType.ERROR
-                )
+            val configurationProperty = getConfigurationProperty(module, property) ?: continue
+            val propertyType = getPropertyType(configurationProperty) ?: continue
+            val values = getPropertyValue(property, configurationProperty)
+            for (value in values) {
+                val resultConvert = tryConvert(propertyType, value)
+                val resultEncoding = tryEncoding(propertyType, value)
+                if (resultConvert || resultEncoding) {
+                    problems += manager.createProblemDescriptor(
+                        psiValue,
+                        SpringCoreBundle.message(
+                            if (resultConvert) {
+                                "esprito.spring.inspection.properties.value.spring.convert"
+                            } else {
+                                "esprito.spring.inspection.properties.value.unknown.encoding"
+                            },
+                            value,
+                            propertyType
+                        ),
+                        isOnTheFly,
+                        emptyArray(),
+                        ProblemHighlightType.ERROR
+                    )
+                }
             }
         }
         return problems
     }
+
+    private fun tryConvert(propertyType: String, value: String): Boolean {
+        return when (propertyType) {
+            JavaCoreClasses.BOOLEAN, "boolean" -> value.toBooleanStrictOrNull() == null
+            JavaCoreClasses.BYTE, "byte" -> value.toByteOrNull() == null
+            JavaCoreClasses.INTEGER, "int" -> value.toIntOrNull() == null
+            JavaCoreClasses.LONG, "long" -> value.toLongOrNull() == null
+            JavaCoreClasses.SHORT, "short" -> value.toShortOrNull() == null
+            JavaCoreClasses.DOUBLE, "double",
+            JavaCoreClasses.NUMBER,
+            -> value.toDoubleOrNull() == null
+
+            JavaCoreClasses.FLOAT, "float" -> value.toFloatOrNull() == null
+            else -> false
+        }
+    }
+
+    private fun tryEncoding(propertyType: String, value: String): Boolean {
+        val resultEncoding = when (propertyType) {
+            JavaCoreClasses.LOCALE -> !getLocales().any { it == value }
+            JavaCoreClasses.CHARSET -> !Charset.availableCharsets().any { it.key == value }
+            SpringCoreClasses.MIME_TYPE -> !MimeTypeDictionary.HTML_CONTENT_TYPES.any { it == value }
+            else -> false
+        }
+        return resultEncoding
+    }
+
+    private fun getPropertyType(configurationProperty: ConfigurationProperty): String? {
+        if (configurationProperty.isList()) {
+            return configurationProperty.type?.substringAfter("<")?.substringBefore(">") ?: ""
+        } else if (configurationProperty.isMap()) {
+            return configurationProperty.type?.substringAfter(",")?.substringBefore(">") ?: ""
+        } else if (configurationProperty.isArray()) {
+            return configurationProperty.type?.substringBefore("[]") ?: ""
+        }
+        return configurationProperty.type?.replace('$', '.')
+    }
+
 
     private fun isProblemPropertyType(propertyType: String, value: String): Boolean {
         return when (propertyType) {
@@ -368,6 +453,39 @@ class SpringPropertiesInspection : LocalInspectionTool() {
             JavaCoreClasses.BOOLEAN, "boolean" -> value.toBooleanStrictOrNull() == null
             else -> false
         }
+    }
+
+    private fun getPropertyValue(property: IProperty, configurationProperty: ConfigurationProperty): List<String> {
+        val value = property.value?.dropLastWhitespaces()
+        if (value.isNullOrBlank()) {
+            return emptyList()
+        }
+        return if (configurationProperty.isArray() || configurationProperty.isList()) {
+            value.split(",").map { it.dropWhitespaces() }
+        } else {
+            listOf(value)
+        }
+    }
+
+    private fun getConfigurationProperty(module: Module, property: IProperty): ConfigurationProperty? {
+        val key = property.key?.dropLastWhitespaces()
+        val propertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        if (key == null) {
+            return null
+        }
+
+        val findProperty = propertiesSearch.findProperty(module, key)
+        if (findProperty != null) {
+            return findProperty
+        }
+        val properties = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
+        if (isPropertyListKey(property, properties)) {
+            return getConfigurationListProperties(property, properties).firstOrNull()
+        }
+        if (isPropertyMapKey(property, properties)) {
+            return getConfigurationMapProperties(property, properties).firstOrNull()
+        }
+        return null
     }
 
     private fun isProblemEnum(module: Module, propertyType: String, value: String): Boolean {
@@ -384,11 +502,11 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         return CachedValuesManager
             .getManager(project)
             .getCachedValue(module, key, {
-            CachedValueProvider.Result.create(
-                JavaPsiFacade.getInstance(project).findClass(propertyType, GlobalSearchScope.allScope(project)),
-                UastModificationTracker.getInstance(module.project)
-            )
-        }, false)
+                CachedValueProvider.Result.create(
+                    JavaPsiFacade.getInstance(project).findClass(propertyType, GlobalSearchScope.allScope(project)),
+                    UastModificationTracker.getInstance(module.project)
+                )
+            }, false)
     }
 
     private fun getLocales() = DateFormat.getAvailableLocales()
@@ -396,4 +514,43 @@ class SpringPropertiesInspection : LocalInspectionTool() {
             val country = it.country
             it.language + if (country.isNullOrBlank()) "" else "_$country"
         }.distinct()
+
+    private fun isPropertyMapKey(fileProperty: IProperty, properties: List<ConfigurationProperty>): Boolean {
+        val property = configurationTypeProperties(fileProperty, properties, ".")
+        if (property.isEmpty()) {
+            return false
+        }
+        return property.any { it.isMap() }
+    }
+
+    private fun isPropertyListKey(fileProperty: IProperty, properties: List<ConfigurationProperty>): Boolean {
+        val property = configurationTypeProperties(fileProperty, properties, "[")
+        if (property.isEmpty()) {
+            return false
+        }
+        return property.any { it.isList() }
+    }
+
+    private fun getConfigurationListProperties(
+        fileProperty: IProperty,
+        properties: List<ConfigurationProperty>
+    ): List<ConfigurationProperty> {
+        return configurationTypeProperties(fileProperty, properties, "[")
+    }
+
+    private fun getConfigurationMapProperties(
+        fileProperty: IProperty,
+        properties: List<ConfigurationProperty>
+    ): List<ConfigurationProperty> {
+        return configurationTypeProperties(fileProperty, properties, ".")
+    }
+
+    private fun configurationTypeProperties(
+        fileProperty: IProperty,
+        properties: List<ConfigurationProperty>,
+        separator: String
+    ): List<ConfigurationProperty> {
+        val key = fileProperty.key?.substringBeforeLast(separator) ?: false
+        return properties.filter { it.name == key }
+    }
 }

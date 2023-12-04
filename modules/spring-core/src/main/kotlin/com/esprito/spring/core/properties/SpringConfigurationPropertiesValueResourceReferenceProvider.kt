@@ -46,18 +46,30 @@ class SpringConfigurationPropertiesValueResourceReferenceProvider : PsiReference
     private fun getResourceVariants(element: PsiElement): Array<PsiReference> {
         val text = element.parentOfType<PropertyImpl>()?.value?.substringBefore(DUMMY_IDENTIFIER_TRIMMED) ?: return emptyArray()
         val references = mutableListOf<PsiReference>()
-         when {
+        when {
             text.startsWith(SpringProperties.PREFIX_HTTP) ->
                 references += PropertyUtil.getReferenceWithoutPrefix(text, element, emptyArray(), this)
 
             text.startsWith(SpringProperties.PREFIX_FILE) ->
-                references +=PropertyUtil.getReferenceByFilePrefix(text, element, emptyArray(), this)
+                references += PropertyUtil.getReferenceByFilePrefix(text, element, emptyArray(), this)
 
             text.startsWith(SpringProperties.PREFIX_CLASSPATH) ->
-                references +=PropertyUtil.getReferenceByClasspathPrefix(text, SpringProperties.PREFIX_CLASSPATH,element, emptyArray(), this)
+                references += PropertyUtil.getReferenceByClasspathPrefix(
+                    text,
+                    SpringProperties.PREFIX_CLASSPATH,
+                    element,
+                    emptyArray(),
+                    this
+                )
 
             text.startsWith(SpringProperties.PREFIX_CLASSPATH_STAR) ->
-                references +=PropertyUtil.getReferenceByClasspathPrefix(text, SpringProperties.PREFIX_CLASSPATH_STAR, element, emptyArray(), this)
+                references += PropertyUtil.getReferenceByClasspathPrefix(
+                    text,
+                    SpringProperties.PREFIX_CLASSPATH_STAR,
+                    element,
+                    emptyArray(),
+                    this
+                )
 
             else -> {
                 references += PrefixReference(element, PrefixReferenceType.FILE_PROPERTY)
@@ -67,5 +79,4 @@ class SpringConfigurationPropertiesValueResourceReferenceProvider : PsiReference
 
         return references.toTypedArray()
     }
-
 }
