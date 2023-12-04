@@ -137,27 +137,7 @@ val extractJar by tasks.registering(Copy::class) {
     from(zipFiles)
     into(outputDir)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
-val deleteClassesAndLibs by tasks.registering(Delete::class) {
-    delete(extractedDirPath)
-    delete(sandboxLibPath)
-}
-
-
-val copyObfuscatedClasses by tasks.registering(Copy::class) {
-    //mustRunAfter(proGuardTask)
-    dependsOn(deleteClassesAndLibs)
-
-    from(obfuscatedJarPath)
-    into(sandboxLibPath)
-    finalizedBy(deleteObfuscated)
-}
-
-val deleteObfuscated by tasks.registering(Delete::class) {
-    delete {
-        delete(obfuscatedJarPath)
-    }
+    outputs.doNotCacheIf("Cache is disable") { true }
 }
 
 val proGuardTask = tasks.register<ProGuardTask>("proguard") {
