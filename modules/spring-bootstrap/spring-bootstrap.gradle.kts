@@ -240,16 +240,16 @@ tasks {
 
     test {
         dependsOn(
-            springCoreProject.ext["test"],
-            springGradleProject.ext["test"],
-            springDataProject.ext["test"],
-            springSecurityProject.ext["test"],
-            springWebProject.ext["test"],
-            springCloudProject.ext["test"],
-            springInitializrProject.ext["test"],
-            springIntegrationProject.ext["test"],
-            springMessagingProject.ext["test"],
-            jpaProject.ext["test"]
+            springCoreProject.tasks.test,
+            springGradleProject.tasks.test,
+            springDataProject.tasks.test,
+            springSecurityProject.tasks.test,
+            springWebProject.tasks.test,
+            springCloudProject.tasks.test,
+            springInitializrProject.tasks.test,
+            springIntegrationProject.tasks.test,
+            springMessagingProject.tasks.test,
+            jpaProject.tasks.test
         )
     }
 
