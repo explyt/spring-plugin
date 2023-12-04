@@ -5,8 +5,11 @@ import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
+import com.intellij.psi.util.PropertyUtilBase
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 object EspritoPsiUtil {
     val PsiModifierListOwner.isStatic: Boolean
@@ -88,7 +91,7 @@ object EspritoPsiUtil {
 
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
 
-    inline fun <reified T: PsiElement> PsiElement.findChildrenOfType(): List<T> {
+    inline fun <reified T : PsiElement> PsiElement.findChildrenOfType(): List<T> {
         return PsiTreeUtil.findChildrenOfType(this, T::class.java).toList()
     }
 
@@ -107,19 +110,19 @@ object EspritoPsiUtil {
     val PsiType.deepPsiClassType: PsiClassType?
         get() = this.deepComponentType as? PsiClassType
 
-    val PsiType.isCollection : Boolean
+    val PsiType.isCollection: Boolean
         get() = this.isInheritorOf(java.util.Collection::class.java.canonicalName)
 
-    val PsiType.isInterface : Boolean
+    val PsiType.isInterface: Boolean
         get() = resolvedPsiClass?.isInterface ?: false
 
-    val PsiType.isMap : Boolean
+    val PsiType.isMap: Boolean
         get() = this.isInheritorOf(java.util.Map::class.java.canonicalName)
 
-    val PsiType.isOptional : Boolean
+    val PsiType.isOptional: Boolean
         get() = this.isInheritorOf(java.util.Optional::class.java.canonicalName)
 
-    val PsiType.isString : Boolean
+    val PsiType.isString: Boolean
         get() = this.isInheritorOf(java.lang.String::class.java.canonicalName)
 
     val PsiMember.returnPsiType: PsiType?
@@ -134,5 +137,36 @@ object EspritoPsiUtil {
 
     val PsiMember.returnPsiClassType: PsiClassType?
         get() = returnPsiType?.psiClassType
+
+    @OptIn(ExperimentalContracts::class)
+    fun isSetter(psiMethod: PsiMethod?): Boolean {
+        contract { returns(true) implies (psiMethod != null) }
+
+        return psiMethod?.let {
+            isOpen(it)
+                    && PropertyUtilBase.isSimplePropertySetter(it)
+                    && it.returnPsiClass == null
+        } ?: false
+    }
+
+    @OptIn(ExperimentalContracts::class)
+    fun isGetter(psiMethod: PsiMethod?): Boolean {
+        contract { returns(true) implies (psiMethod != null) }
+
+        return psiMethod?.let {
+            isOpen(it) &&
+                    PropertyUtilBase.isSimplePropertyGetter(it)
+        } ?: false
+    }
+
+    @OptIn(ExperimentalContracts::class)
+    fun isOpen(psiMember: PsiMember?): Boolean {
+        contract { returns(true) implies (psiMember != null) }
+
+        return psiMember != null
+                && !psiMember.hasModifierProperty(PsiModifier.STATIC)
+                && !psiMember.hasModifierProperty(PsiModifier.ABSTRACT)
+                && !psiMember.hasModifierProperty(PsiModifier.PRIVATE)
+    }
 
 }
