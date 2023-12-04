@@ -1,7 +1,6 @@
 package com.esprito.spring.core.inspections
 
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
-import com.esprito.util.ModuleUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
@@ -25,7 +24,6 @@ class SpringContextConfigurationFileInspection : AbstractBaseJavaLocalInspection
                 manager,
                 isOnTheFly
             )
-            ModuleUtil.getContentRootFile(member)
         }
         return problems.toTypedArray()
     }

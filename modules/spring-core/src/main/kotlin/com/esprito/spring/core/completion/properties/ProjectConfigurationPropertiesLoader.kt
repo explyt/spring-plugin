@@ -17,8 +17,6 @@ import com.intellij.psi.util.PropertyUtil
 import com.intellij.psi.util.childrenOfType
 import com.intellij.util.Query
 import java.util.*
-import kotlin.collections.HashMap
-
 
 class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
@@ -27,7 +25,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         val properties = mutableListOf<ConfigurationProperty>()
         properties += projectProperties.asSequence().map { it.value }
         properties += loadPropertiesFromMetadata(module).asSequence()
-            .filter { it.key !in  projectProperties.keys }
+            .filter { it.key !in projectProperties.keys }
             .map { it.value }
             .toList()
 

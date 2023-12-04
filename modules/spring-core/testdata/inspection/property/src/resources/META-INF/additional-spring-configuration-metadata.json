@@ -34,5 +34,28 @@
           "description": "Create and then destroy the schema at the end of the session."
         }
       ]
+    },
+    {
+      "name": "main.contexts.keys",
+      "values": [
+        {
+          "value": "simple1"
+        },
+        {
+          "value": "simple2"
+        }
+      ]
+    },
+    {
+      "name": "main.contexts.values",
+      "values": [
+        {
+          "value": "11"
+        },
+        {
+          "value": "22"
+        }
+      ]
     }
+  ]
 }

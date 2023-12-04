@@ -31,17 +31,18 @@ class PropertyRenderer : LookupElementRenderer<LookupElement>() {
             presentation.appendTailText(" (" + getFirstSentenceWithoutDot(it) + ")", true)
         }
         val deprecation = configurationProperty.deprecation
-        if (deprecation!= null) {
+        if (deprecation != null) {
             presentation.setStrikeout(true)
             if (deprecation.level === DeprecationInfoLevel.ERROR) {
                 presentation.setItemTextForeground(JBColor.RED)
             }
         }
 
-        presentation.icon = if (configurationProperty.type?.startsWith("java.util.Map") == true)
+        presentation.icon = if (configurationProperty.isMap()) {
             AllIcons.Nodes.PropertyWrite
-        else
+        } else {
             AllIcons.Nodes.Property
+        }
     }
 
     private fun shortenedType(type: String?): String? {

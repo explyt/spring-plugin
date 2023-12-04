@@ -23,6 +23,14 @@ public class TestConfig {
 
     private Integer maxConnections;
 
+    private Integer[] arrayInteger;
+
+    private Map<Integer, Integer> contexts;
+
+    private List<Integer> listNotInteger = new ArrayList<>();
+
+    private List<Integer> addresses = new ArrayList<>();
+
     public Boolean isEnabled() {
         return enabled;
     }
@@ -67,8 +75,40 @@ public class TestConfig {
     }
 
     @java.lang.Deprecated
-    public void setMaxConnections(Integer maxConnections) {
+    public void setMaxConnections(java.lang.Integer maxConnections) {
         this.maxConnections = maxConnections;
+    }
+
+    public Integer[] getArrayInteger() {
+        return arrayInteger;
+    }
+
+    public void setArrayInteger(java.lang.Integer[] arrayInteger) {
+        this.arrayInteger = arrayInteger;
+    }
+
+    public Map<Integer, Integer> getContexts() {
+        return contexts;
+    }
+
+    public void setContexts(java.util.Map<java.lang.Integer, java.lang.Integer> contexts) {
+        this.contexts = contexts;
+    }
+
+    public List<Integer> getListNotInteger() {
+        return listNotInteger;
+    }
+
+    public void setListNotInteger(java.util.List<java.lang.Integer> listNotInteger) {
+        this.listNotInteger = listNotInteger;
+    }
+
+    public List<Integer> getAddresses() {
+        return addresses;
+    }
+
+    public void setAddresses(java.util.List<Integer> addresses) {
+        this.addresses = addresses;
     }
 
 }
