@@ -18,7 +18,7 @@ import com.intellij.psi.search.GlobalSearchScope
 object PropertyUtil {
     const val DOT = "."
 
-    data class InfoPackage (
+    data class InfoPackage(
         val psiPackage: PsiPackage?,
         val range: TextRange,
         val name: String
@@ -74,11 +74,13 @@ object PropertyUtil {
         return propertyHint
     }
 
-    fun getReferenceByFilePrefix(text: String,
-                                 element: PsiElement,
-                                 possibleFileTypes: Array<FileType>,
-                                 provider: PsiReferenceProvider?): Array<FileReference> {
-        //("file:./application.properties") or ("file:application.properties") is right link to content root
+    fun getReferenceByFilePrefix(
+        text: String,
+        element: PsiElement,
+        possibleFileTypes: Array<FileType>,
+        provider: PsiReferenceProvider?
+    ): Array<FileReference> {
+        // ("file:./application.properties") or ("file:application.properties") is right link to content root
         // if start with "/" like here @PropertySource("file:/application.properties") - this means it is an absolute path
         var range = ElementManipulators.getValueTextRange(element)
         val referenceType = if (text.startsWith("/")) ReferenceType.ABSOLUTE_PATH else ReferenceType.FILE
@@ -107,18 +109,20 @@ object PropertyUtil {
         ).allReferences
     }
 
-    fun getReferenceByClasspathPrefix(text: String,
-                                      prefix: String,
-                                      element: PsiElement,
-                                      possibleFileTypes: Array<FileType>,
-                                      provider: PsiReferenceProvider?): Array<FileReference> {
+    fun getReferenceByClasspathPrefix(
+        text: String,
+        prefix: String,
+        element: PsiElement,
+        possibleFileTypes: Array<FileType>,
+        provider: PsiReferenceProvider?
+    ): Array<FileReference> {
         var range = ElementManipulators.getValueTextRange(element)
         val textWithoutClassPathPrefix = text.substring(prefix.length)
 
         // classpath: can start with "./"  or "/" or ""
         val lengthOfPrefix = prefix.length +
-                textWithoutClassPathPrefix.lengthPrefix("/") +
-                textWithoutClassPathPrefix.lengthPrefix("./")
+            textWithoutClassPathPrefix.lengthPrefix("/") +
+            textWithoutClassPathPrefix.lengthPrefix("./")
         range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
         return FileReferenceSetWithPrefixSupport(
             textWithoutClassPathPrefix,
@@ -131,10 +135,12 @@ object PropertyUtil {
         ).allReferences
     }
 
-    fun getReferenceWithoutPrefix(text: String,
-                                  element: PsiElement,
-                                  possibleFileTypes: Array<FileType>,
-                                  provider: PsiReferenceProvider?): Array<FileReference> {
+    fun getReferenceWithoutPrefix(
+        text: String,
+        element: PsiElement,
+        possibleFileTypes: Array<FileType>,
+        provider: PsiReferenceProvider?
+    ): Array<FileReference> {
         var range = ElementManipulators.getValueTextRange(element)
         val lengthOfPrefix = text.lengthPrefix("/") + text.lengthPrefix("./")
         range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
@@ -158,6 +164,27 @@ object PropertyUtil {
             prefix.endsWith('.') -> prefix
             else -> "$prefix."
         }
+    }
+
+    fun propertyNameToPascalCase(name: String): String {
+        val separators = setOf('.', '_', '-')
+
+        val builder: StringBuilder = StringBuilder()
+
+        var capitalizeNext = true
+        for (c in name) {
+            if (separators.contains(c)) {
+                capitalizeNext = true
+                continue
+            } else if (capitalizeNext) {
+                builder.append(c.uppercase())
+                capitalizeNext = false
+            } else {
+                builder.append(c)
+            }
+        }
+
+        return builder.toString()
     }
 
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {

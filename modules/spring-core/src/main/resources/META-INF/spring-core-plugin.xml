@@ -80,6 +80,8 @@
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringImplicitUsageProvider"/>
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringAopImplicitUsageProvider"/>
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringReferencedMethodUsageProvider"/>
+        <implicitUsageProvider
+                implementation="com.esprito.spring.core.providers.SpringConfigurationPropertyUsageProvider"/>
 
         <properties.implicitPropertyUsageProvider
                 implementation="com.esprito.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>
@@ -311,6 +313,9 @@
                                         implementationClass="com.esprito.spring.core.providers.SpringBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.core.providers.EventListenerLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.core.providers.ConfigurationPropertyLineMarkerProvider"/>
+
         <codeInsight.implicitSubclassProvider
                 implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 

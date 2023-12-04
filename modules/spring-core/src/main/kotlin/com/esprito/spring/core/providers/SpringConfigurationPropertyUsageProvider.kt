@@ -1,0 +1,33 @@
+package com.esprito.spring.core.providers
+
+import com.esprito.spring.core.properties.ConfigurationPropertyDataRetriever
+import com.intellij.codeInsight.daemon.ImplicitUsageProvider
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
+
+class SpringConfigurationPropertyUsageProvider : ImplicitUsageProvider {
+    override fun isImplicitUsage(element: PsiElement): Boolean {
+        if (element !is PsiMethod) return false
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return false
+
+        val dataRetriever = ConfigurationPropertyDataRetriever(element)
+        val psiClass = dataRetriever.getContainingClass() ?: return false
+        val memberName = dataRetriever.getMemberName() ?: return false
+        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass, module)
+
+        if (prefixValue.isBlank()) return false
+
+        val properties = dataRetriever.getRelatedProperties(prefixValue, memberName, module)
+        return properties.isNotEmpty()
+    }
+
+    override fun isImplicitRead(element: PsiElement): Boolean {
+        return false
+    }
+
+    override fun isImplicitWrite(element: PsiElement): Boolean {
+        return false
+    }
+
+}
