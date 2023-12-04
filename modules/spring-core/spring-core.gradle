@@ -4,7 +4,11 @@ plugins {
     id("org.jetbrains.kotlin.jvm")
 }
 
-ext.intellijPlugins = ["com.intellij.java", "com.intellij.properties", "org.jetbrains.plugins.yaml"]
+ext.intellijPlugins = [
+    "com.intellij.java",
+    "com.intellij.properties",
+    "org.jetbrains.plugins.yaml"
+]
 
 evaluationDependsOn(":base")
 

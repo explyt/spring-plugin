@@ -314,9 +314,11 @@
         <codeInsight.implicitSubclassProvider
                 implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
-        <fileType name="spring.factories" fieldName="INSTANCE"
+        <fileType name="spring.factories"
+                  fieldName="INSTANCE"
                   implementationClass="com.esprito.spring.core.autoconfigure.language.FactoriesFileType"/>
-        <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports" fieldName="INSTANCE"
+        <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports"
+                  fieldName="INSTANCE"
                   implementationClass="com.esprito.spring.core.autoconfigure.language.AutoConfigurationImportsFileType"/>
 
         <fileType name="Profiles File"

@@ -10,6 +10,7 @@ class JpaBundle : DynamicBundle(BUNDLE) {
     companion object {
         @NonNls
         private const val BUNDLE = "messages.JpaBundle"
+        @JvmStatic
         private val INSTANCE: JpaBundle = JpaBundle()
 
         @Nls

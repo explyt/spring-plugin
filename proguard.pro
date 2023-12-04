@@ -7,6 +7,13 @@
 # required for kotlin
 -keep class kotlin.Metadata
 -keep class kotlin.reflect.jvm.internal.** { *; }
+-keepclassmembers enum * { public *; }
+#-keep class **$DefaultImpls { *; }
+
+-keep class com.esprito.jpa.ql.JpqlFileType$Companion { *; }
+-keep class com.esprito.sql.ql.SqlFileType$Companion { *; }
+-keep class com.esprito.spring.core.language.profiles.ProfilesFileType$Companion { *; }
+-keepclassmembers class * { public static ** INSTANCE; }
 
 # otherwise fileTemplates folders will be removed
 -keepdirectories
