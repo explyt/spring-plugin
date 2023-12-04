@@ -1,10 +1,10 @@
 plugins {
-    id 'java'
-    id 'org.jetbrains.intellij'
-    id 'org.jetbrains.kotlin.jvm'
+    id "java"
+    id "org.jetbrains.intellij"
+    id "org.jetbrains.kotlin.jvm"
 }
 
-ext.intellijPlugins = ['com.intellij.gradle', 'com.intellij.java']
+ext.intellijPlugins = ["com.intellij.gradle", "com.intellij.java"]
 
 evaluationDependsOn(":base")
 evaluationDependsOn(":spring-core")
@@ -25,8 +25,8 @@ runIde.enabled = false
 publishPlugin.enabled = false
 verifyPlugin.enabled = false
 
-def springCore = project(':spring-core')
-def testFramework = project(':test-framework')
+def springCore = project(":spring-core")
+def testFramework = project(":test-framework")
 
 dependencies {
     implementation springCore

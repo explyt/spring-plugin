@@ -28,6 +28,7 @@ class CacheKeyStore : Disposable {
         /**
          * Returns the map of Key<CachedValue> that will be recreated after every project sync.
          */
+        @Suppress("UNCHECKED_CAST")
         @JvmStatic
         fun <T> getKeys(project: Project, dataHolder: UserDataHolder): MutableMap<String, Key<CachedValue<T>>> {
             val keyStore = getInstance(project)

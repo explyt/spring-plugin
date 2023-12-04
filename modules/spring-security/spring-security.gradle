@@ -1,13 +1,13 @@
 plugins {
-    id 'java'
-    id 'org.jetbrains.intellij'
-    id 'org.jetbrains.kotlin.jvm'
+    id "java"
+    id "org.jetbrains.intellij"
+    id "org.jetbrains.kotlin.jvm"
 }
 
 evaluationDependsOn(":spring-core")
 
 ext.intellijPlugins = []
-def springCoreProject = project(':spring-core')
+def springCoreProject = project(":spring-core")
 
 sourceCompatibility = JavaVersion.VERSION_17
 

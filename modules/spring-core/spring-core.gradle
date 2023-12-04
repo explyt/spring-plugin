@@ -1,14 +1,16 @@
 plugins {
-    id 'java'
-    id 'org.jetbrains.intellij'
-    id 'org.jetbrains.kotlin.jvm'
+    id("java")
+    id("org.jetbrains.intellij")
+    id("org.jetbrains.kotlin.jvm")
 }
 
-ext.intellijPlugins = ['com.intellij.java', 'com.intellij.properties', 'org.jetbrains.plugins.yaml']
+ext.intellijPlugins = [
+    "com.intellij.java",
+    "com.intellij.properties",
+    "org.jetbrains.plugins.yaml"
+]
 
 evaluationDependsOn(":base")
-
-sourceCompatibility = JavaVersion.VERSION_17
 
 intellij {
     version.set(defaultIdeaVersion)
@@ -32,11 +34,11 @@ runIde.enabled = false
 publishPlugin.enabled = false
 verifyPlugin.enabled = false
 
-def baseProject = project(':base')
+def baseProject = project(":base")
 
 dependencies {
-    api baseProject
-    testImplementation project(':test-framework')
+    api(baseProject)
+    testImplementation(project(":test-framework"))
 }
 
 repositories {
@@ -48,5 +50,5 @@ kotlin {
 }
 
 //sourceSets {
-//    main.kotlin.srcDirs += 'src/main/kotlin'
+//    main.kotlin.srcDirs += "src/main/kotlin"
 //}

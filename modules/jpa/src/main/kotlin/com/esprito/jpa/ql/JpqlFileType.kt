@@ -14,6 +14,6 @@ class JpqlFileType private constructor() : LanguageFileType(JpqlLanguage.INSTANC
     override fun getIcon(): Icon = AllIcons.FileTypes.Text
 
     companion object {
-        val INSTANCE = JpqlFileType()
+        @JvmField val INSTANCE = JpqlFileType()
     }
 }

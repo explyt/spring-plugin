@@ -1,13 +1,13 @@
 plugins {
-    id 'java'
-    id 'org.jetbrains.intellij'
-    id 'org.jetbrains.kotlin.jvm'
+    id "java"
+    id "org.jetbrains.intellij"
+    id "org.jetbrains.kotlin.jvm"
 }
 
 evaluationDependsOn(":spring-core")
 
 ext.intellijPlugins = []
-def springCoreProject = project(':spring-core')
+def springCoreProject = project(":spring-core")
 
 sourceCompatibility = JavaVersion.VERSION_17
 
@@ -15,9 +15,7 @@ intellij {
     version.set(defaultIdeaVersion)
     plugins.set(springCoreProject.intellijPlugins + intellijPlugins)
     downloadSources.set(true)
-    buildSearchableOptions {
-        enabled false
-    }
+    buildSearchableOptions.enabled = false
     instrumentCode.set(false)
 }
 
@@ -27,7 +25,7 @@ verifyPlugin.enabled = false
 
 dependencies {
     implementation springCoreProject
-    testImplementation project(':test-framework')
+    testImplementation project(":test-framework")
 }
 
 repositories {
