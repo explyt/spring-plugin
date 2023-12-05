@@ -240,7 +240,7 @@
                          key="esprito.spring.inspection.property.source.file"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringPropertySourceFileInspection"/>
+                         implementationClass="com.esprito.spring.core.inspections.PsiFileReferenceInspection"/>
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
@@ -249,16 +249,7 @@
                          key="esprito.spring.inspection.property.source.classpath"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringPropertySourceClasspathInspection"/>
-
-        <localInspection language="UAST"
-                         groupBundle="messages.SpringCoreBundle"
-                         groupKey="esprito.spring.common.notifications"
-                         bundle="messages.SpringCoreBundle"
-                         key="esprito.spring.inspection.context.configuration.file"
-                         enabledByDefault="true"
-                         level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringContextConfigurationFileInspection"/>
+                         implementationClass="com.esprito.spring.core.inspections.SpringPropertySourceFileReferenceInspection"/>
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
@@ -267,7 +258,7 @@
                          key="esprito.spring.inspection.context.configuration.classpath"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringContextConfigurationClasspathInspection"/>
+                         implementationClass="com.esprito.spring.core.inspections.SpringContextConfigurationFileReferenceInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringProfileWrongPlacementInspection"

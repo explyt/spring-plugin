@@ -1,0 +1,15 @@
+<html>
+<head>
+    <title>Inspection for invalid file reference</title>
+</head>
+<body>
+<p>
+    Unresolved file references in @Value\ResourceLoader\ResourceUtils
+</p>
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@Component
+public class FooConfiguration(@Value("classpath:foo.xml")) {} // "Cannot resolve file foo.xml"
+</code></pre>
+</body>
+</html>

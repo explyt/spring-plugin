@@ -5,9 +5,10 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.psi.PsiClass
 
-class SpringContextConfigurationClasspathInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringContextConfigurationFileReferenceInspection : AbstractBaseJavaLocalInspectionTool() {
     override fun checkClass(
         aClass: PsiClass,
         manager: InspectionManager,
@@ -17,8 +18,8 @@ class SpringContextConfigurationClasspathInspection : AbstractBaseJavaLocalInspe
         val propertySourceAnnotation = ResourceFileInspectionUtil.psiAnnotationContextConfigurationMembers(aClass)
         for (member in propertySourceAnnotation) {
             val pathValue = AnnotationUtil.getStringAttributeValue(member) ?: continue
-            problems += ResourceFileInspectionUtil.getPathProblemsClasspath(
-                "XML",
+            problems += ResourceFileInspectionUtil.getPathProblems(
+                XmlFileType.INSTANCE,
                 pathValue,
                 member,
                 manager,

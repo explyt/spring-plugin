@@ -5,9 +5,10 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.psi.PsiClass
 
-class SpringPropertySourceFileInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringPropertySourceFileReferenceInspection : AbstractBaseJavaLocalInspectionTool() {
     override fun checkClass(
         aClass: PsiClass,
         manager: InspectionManager,
@@ -17,8 +18,8 @@ class SpringPropertySourceFileInspection : AbstractBaseJavaLocalInspectionTool()
         val propertySourceAnnotation = ResourceFileInspectionUtil.psiAnnotationPropertySourceMembers(aClass)
         for (member in propertySourceAnnotation) {
             val pathValue = AnnotationUtil.getStringAttributeValue(member) ?: continue
-            problems += ResourceFileInspectionUtil.getPathProblemsWithPrefixFile(
-                "Properties",
+            problems += ResourceFileInspectionUtil.getPathProblems(
+                PropertiesFileType.INSTANCE,
                 pathValue,
                 member,
                 manager,
