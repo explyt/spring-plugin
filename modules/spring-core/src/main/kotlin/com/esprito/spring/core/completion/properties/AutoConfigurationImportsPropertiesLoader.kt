@@ -48,7 +48,7 @@ class AutoConfigurationImportsPropertiesLoader : ConfigurationFactoriesNamesLoad
     }
 
     private fun findMetadataFiles(module: Module): List<PsiFile> {
-        val scope = GlobalSearchScope.moduleScope(module)
+        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
         val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
         val psiManager = PsiManager.getInstance(module.project)
 
