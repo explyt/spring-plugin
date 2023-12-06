@@ -17,5 +17,5 @@ This plugin is available for free for non-commercial use (see our [LICENSE](http
 Currently in beta, our plugin is accessible through a custom repository mechanism for IntelliJ IDEA plugins. (see [Installation Guide](https://github.com/esprito-plugin/plugin/blob/main/Installation%20Guide.md))
 
 For questions, use one of our telegram channels:
-* [ENGLISH](https://t.me/espritoplugin)
+* [ENGLISH](https://t.me/+70C48cdnvyczNTAy)
 * [RUSSIAN](https://t.me/espritoplugin)
