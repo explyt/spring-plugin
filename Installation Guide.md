@@ -16,26 +16,21 @@ Follow these simple steps to get started:
 
 ![](/images/installation-guide-1.png)
 
+## 3. Adding JetBrains EAP (testing) repository 
+
+- In the popup window, click the plus icon and enter the following plugin repository URL:
+https://plugins.jetbrains.com/plugins/list?channel=EAP
+- Click 'OK' to confirm.
+
 ![](/images/installation-guide-2.png)
 
-...
-
-## 3. Adding the Plugin Repository
-
-In the popup window, click the plus icon and enter the following plugin repository URL:
-
-https://.../files/Update_plugins.xml
-
-Click 'OK' to confirm.
+## 4. Install plugin Esprito Spring Tools
 
 ![](/images/installation-guide-3.png)
 
-## 4. Restart Your IDE
+- Type "Esprito" in search and find our plugin
+- Click "Install"
+
+## 5. Restart Your IDE
 
 After the installation is complete, restart your IDE to activate the plugin.
-
-## 5. Check the Installation
-
-- Once restarted, navigate back to the 'Plugins' section in your IDE settings.
-- Select the 'Installed' tab.
-- Verify that 'Esprito Spring Tools' is listed among the installed plugins and is active.
