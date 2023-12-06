@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class JpqlParserUtil extends GeneratedParserUtilBase {
-    private static final Map<IElementType, Key<Boolean>> tokenKeys = FactoryMap.createMap(o -> new Key<>(o.getDebugName()), ConcurrentHashMap::new);
+    private static final Map<IElementType, Key<Boolean>> tokenKeys = FactoryMap.createMap(o -> new Key<>(o.toString()), ConcurrentHashMap::new);
 
     public static boolean isUnitTestMode(PsiBuilder builder, int level) {
         return ApplicationManager.getApplication().isInternal()

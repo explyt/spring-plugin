@@ -6,7 +6,7 @@ import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.project.modules
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 
 class ProfilesCompletionContributor : CompletionContributor() {
 

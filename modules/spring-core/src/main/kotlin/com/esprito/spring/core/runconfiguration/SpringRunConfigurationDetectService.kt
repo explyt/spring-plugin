@@ -6,6 +6,7 @@ import com.esprito.spring.core.notifications.SpringToolNotificationGroup
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType
@@ -147,6 +148,8 @@ class SpringRunConfigurationDetectService(
 
     class StartupActivity : ProjectActivity {
         override suspend fun execute(project: Project) {
+            PropertiesComponent.getInstance().setValue("framework.suggestion.dismissed.spring.boot", true)
+
             val runConfigurationsSettingsState = SpringToolRunConfigurationsSettingsState.getInstance()
 
             if (!runConfigurationsSettingsState.state.isAutoDetectConfigurations) {

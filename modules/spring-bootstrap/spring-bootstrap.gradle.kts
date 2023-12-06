@@ -127,7 +127,13 @@ val extractJar by tasks.registering(Copy::class) {
         objects.directoryProperty().fileProvider(it)
     }
     val outputDir = extractedDirPath
-
+    doFirst {
+        val dir = outputDir.get().asFile
+        if (dir.exists()) {
+            val result = delete(dir)
+            logger.info("Folder $dir is deleted: $result")
+        }
+    }
 
     val zipFiles = libDir.map {
         it.asFileTree
@@ -157,12 +163,6 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     val classPath = configurations.compileClasspath.get().minus(toFilter)
     libraryjars(classPath)
 
-    // Automatically handle the Java version of this build.
-    // As of Java 9, the runtime classes are packaged in modular jmod files.
-    // for (final def file in new File("${System.getProperty("java.home")}/jmods/").listFiles()) {
-    //     libraryjars file.getAbsolutePath(), jarfilter: "!**.jar", filter: "!module-info.class"
-    // }
-
     val filterArgs = mapOf(
         "jarfilter" to "!**.jar"
         , "filter" to "!module-info.class"
@@ -179,19 +179,20 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
         libraryjars(filterArgs, "${System.getProperty("java.home")}/jmods/${dependency}")
     }
 
-    outjars(layout.buildDirectory.file("libs/${springPluginName}-obfuscated.jar"))
-    printmapping(layout.buildDirectory.file("distributions/source.map"))
-    //finalizedBy(copyObfuscatedClasses)
+    outjars(obfuscatedJarPath)
+    val sourceMap = layout.buildDirectory.file("distributions/source.map")
+    printmapping(sourceMap)
+    outputs.files.files.add(obfuscatedJarPath.get().asFile)
+    outputs.files.files.add(sourceMap.get().asFile)
+    outputs.files.files.add(extractedDirPath.get().asFile)
     doLast {
-        if (obfuscate) {
-            delete(extractedDirPath)
-            delete(sandboxLibPath)
-            copy {
-                from(obfuscatedJarPath)
-                into(sandboxLibPath)
-            }
-            delete(obfuscatedJarPath)
+        delete(extractedDirPath)
+        delete(sandboxLibPath)
+        copy {
+            from(obfuscatedJarPath)
+            into(sandboxLibPath)
         }
+        delete(obfuscatedJarPath)
     }
 }
 
@@ -272,6 +273,8 @@ tasks {
 
     prepareSandbox {
         if (obfuscate) {
+            delete(extractedDirPath)
+            outputs.doNotCacheIf("Cache is disable") { true }
             finalizedBy(extractJar, proGuardTask)
         }
     }

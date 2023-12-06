@@ -5,7 +5,7 @@ import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang3.StringUtils
 
 object EspritoAnnotationUtil {
 
