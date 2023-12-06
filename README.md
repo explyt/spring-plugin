@@ -19,3 +19,5 @@ Currently in beta, our plugin is accessible through a custom repository mechanis
 For questions, use one of our telegram channels:
 * [ENGLISH](https://t.me/+70C48cdnvyczNTAy)
 * [RUSSIAN](https://t.me/espritoplugin)
+
+[Plugin Homepage in Jetbrains Marketplace](https://plugins.jetbrains.com/plugin/23273-esprito-spring-tools)
