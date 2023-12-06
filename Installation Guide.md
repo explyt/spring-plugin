@@ -19,7 +19,9 @@ Follow these simple steps to get started:
 ## 3. Adding JetBrains EAP (testing) repository 
 
 - In the popup window, click the plus icon and enter the following plugin repository URL:
+  
 https://plugins.jetbrains.com/plugins/list?channel=EAP
+
 - Click 'OK' to confirm.
 
 ![](/images/installation-guide-2.png)
