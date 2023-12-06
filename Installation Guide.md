@@ -26,7 +26,7 @@ https://plugins.jetbrains.com/plugins/list?channel=EAP
 
 ## 4. Install plugin Esprito Spring Tools
 
-![](/images/installation-guide-3.png)
+![](/images/installation-guide-4.png)
 
 - Type "Esprito" in search and find our plugin
 - Click "Install"
