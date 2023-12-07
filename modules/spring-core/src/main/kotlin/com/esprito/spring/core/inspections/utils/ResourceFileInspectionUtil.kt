@@ -13,15 +13,14 @@ import com.intellij.codeInsight.daemon.quickFix.TargetDirectory
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.toNioPathOrNull
-import com.intellij.psi.PsiAnnotationMemberValue
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiDirectory
-import com.intellij.psi.PsiElement
+import com.intellij.psi.*
 import com.intellij.psi.impl.file.PsiDirectoryFactory
 import com.intellij.util.io.isFile
 import java.nio.file.Path
@@ -55,7 +54,7 @@ object ResourceFileInspectionUtil {
                 + getPathProblemsWithPrefixFile(languageFileType, text, element, manager, isOnTheFly))
     }
 
-    private fun getPathProblemsWithPrefixFile(
+    fun getPathProblemsWithPrefixFile(
         languageFileType: LanguageFileType,
         text: String,
         element: PsiElement,
@@ -69,7 +68,7 @@ object ResourceFileInspectionUtil {
         return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly)
     }
 
-    private fun getPathProblemsClasspath(
+    fun getPathProblemsClasspath(
         languageFileType: LanguageFileType,
         text: String,
         element: PsiElement,
@@ -117,7 +116,7 @@ object ResourceFileInspectionUtil {
         val rootPath = getRootPath(rootPaths, fileDirs) ?: return emptyList()
         val directory = TargetDirectory(rootPath, fileDirs)
         val location = NewFileLocation(listOf(directory), fileName)
-        val fix = CreateFilePathAvailable(element, location) { "" }
+        val fix = CreateFilePathAvailable(element, location) { getText(languageFileType, manager.project) }
         return listOf(
             manager.createProblemDescriptor(
                 element,
@@ -127,6 +126,11 @@ object ResourceFileInspectionUtil {
                 highlightType
             )
         )
+    }
+
+    private fun getText(languageFileType: LanguageFileType, project: Project): String {
+        if (languageFileType != XmlFileType.INSTANCE) return ""
+        return FileTemplateManager.getInstance(project).getDefaultTemplate(SpringProperties.SPRING_XML_TEMPLATE).text
     }
 
     private fun getRootPaths(module: Module): List<PsiDirectory> {
@@ -147,7 +151,5 @@ private class CreateFilePathAvailable(
     psiElement: PsiElement, newFileLocation: NewFileLocation, fileTextSupplier: Supplier<String>
 ) : CreateFilePathFix(psiElement, newFileLocation, fileTextSupplier) {
 
-    init {
-        myIsAvailable = true
-    }
+    override fun isAvailable(project: Project, file: PsiFile, startElement: PsiElement, endElement: PsiElement) = true
 }

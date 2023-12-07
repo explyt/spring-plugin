@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>@PropertySource inspection for classpath and file</title>
+    <title>@PropertySource inspection for classpath</title>
 </head>
 <body>
 <p>
@@ -9,7 +9,7 @@
 <p><b>Example:</b></p>
 <pre><code lang="java">
 @Configuration
-@PropertySource("file:foo.properties") // "Cannot resolve file foo.properties"
+@PropertySource("classpath:foo.properties") // "Cannot resolve file foo.properties"
 public class FooPropertySource {}
 </code></pre>
 </body>
