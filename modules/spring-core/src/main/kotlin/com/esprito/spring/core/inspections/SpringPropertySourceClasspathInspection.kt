@@ -5,21 +5,21 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
-import com.intellij.ide.highlighter.XmlFileType
+import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.psi.PsiClass
 
-class SpringContextConfigurationFileReferenceInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringPropertySourceClasspathInspection : AbstractBaseJavaLocalInspectionTool() {
     override fun checkClass(
         aClass: PsiClass,
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): Array<out ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        val propertySourceAnnotation = ResourceFileInspectionUtil.psiAnnotationContextConfigurationMembers(aClass)
+        val propertySourceAnnotation = ResourceFileInspectionUtil.psiAnnotationPropertySourceMembers(aClass)
         for (member in propertySourceAnnotation) {
             val pathValue = AnnotationUtil.getStringAttributeValue(member) ?: continue
-            problems += ResourceFileInspectionUtil.getPathProblems(
-                XmlFileType.INSTANCE,
+            problems += ResourceFileInspectionUtil.getPathProblemsClasspath(
+                PropertiesFileType.INSTANCE,
                 pathValue,
                 member,
                 manager,
