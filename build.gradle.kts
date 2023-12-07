@@ -7,7 +7,6 @@ buildscript {
     }
     dependencies {
         classpath("com.guardsquare:proguard-gradle:7.4.1")
-        classpath("org.jetbrains.intellij.plugins:gradle-intellij-plugin:1.16.0")
     }
 }
 

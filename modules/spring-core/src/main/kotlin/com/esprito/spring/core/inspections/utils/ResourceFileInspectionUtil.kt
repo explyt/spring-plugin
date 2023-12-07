@@ -22,9 +22,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.psi.*
 import com.intellij.psi.impl.file.PsiDirectoryFactory
-import com.intellij.util.io.isFile
 import java.nio.file.Path
 import java.util.function.Supplier
+import kotlin.io.path.isRegularFile
 
 object ResourceFileInspectionUtil {
     fun psiAnnotationPropertySourceMembers(aClass: PsiClass): Set<PsiAnnotationMemberValue> {
@@ -110,7 +110,7 @@ object ResourceFileInspectionUtil {
         val fileDirs = pathToFile.parent?.toList()?.map { it.toString() }?.toTypedArray() ?: emptyArray()
 
         val fileExist = rootPaths.mapNotNull { it.virtualFile.toNioPathOrNull()?.resolve(pathToFile) }
-            .firstOrNull { it.isFile() }
+            .firstOrNull { it.isRegularFile() }
         if (fileExist != null) return emptyList()
 
         val rootPath = getRootPath(rootPaths, fileDirs) ?: return emptyList()
@@ -142,7 +142,7 @@ object ResourceFileInspectionUtil {
         if (fileDirs.isEmpty()) return rootPaths.firstOrNull()
         val firstSubDir = fileDirs[0]
         return rootPaths
-            .firstOrNull { it.virtualFile.toNioPathOrNull()?.resolve(firstSubDir)?.isFile() == true }
+            .firstOrNull { it.virtualFile.toNioPathOrNull()?.resolve(firstSubDir)?.isRegularFile() == true }
             ?: rootPaths.firstOrNull()
     }
 }

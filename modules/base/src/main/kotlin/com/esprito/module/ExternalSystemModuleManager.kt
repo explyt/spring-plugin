@@ -1,6 +1,5 @@
 package com.esprito.module
 
-import com.intellij.ProjectTopics
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
@@ -30,7 +29,7 @@ class ExternalSystemModuleManager(private val project: Project) {
     }
 
     init {
-        project.messageBus.connect().subscribe(ProjectTopics.MODULES, myModuleListener)
+        project.messageBus.connect().subscribe(ModuleListener.TOPIC, myModuleListener)
     }
 
     fun getModules(): List<ExternalSystemModule> {

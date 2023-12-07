@@ -10,11 +10,11 @@ import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopeUtil
-import com.intellij.util.io.isDirectory
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 
 interface ExternalSystemModule {

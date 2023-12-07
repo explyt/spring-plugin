@@ -28,6 +28,8 @@
 <p>This plugin is available for free for non-commercial use. For more details, see our <a href="https://github.com/esprito-plugin/plugin">homepage</a>.</p>
 ]]></description>
 
+    <incompatible-with>com.intellij.spring</incompatible-with>
+
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
 
