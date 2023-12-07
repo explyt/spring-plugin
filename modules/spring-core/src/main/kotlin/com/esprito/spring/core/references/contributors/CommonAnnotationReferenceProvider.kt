@@ -18,9 +18,8 @@ abstract class CommonAnnotationReferenceProvider(private val searchAttributes: A
         host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        val valueLiteral = uExpression as? ULiteralExpression ?: return PsiReference.EMPTY_ARRAY
-        val uNamedExpression = valueLiteral.getParentOfType<UNamedExpression>() ?: return PsiReference.EMPTY_ARRAY
-        val uAnnotation = valueLiteral.getParentOfType<UAnnotation>() ?: return PsiReference.EMPTY_ARRAY
+        val uNamedExpression = uExpression.getParentOfType<UNamedExpression>() ?: return PsiReference.EMPTY_ARRAY
+        val uAnnotation = uExpression.getParentOfType<UAnnotation>() ?: return PsiReference.EMPTY_ARRAY
         val psiAnnotation = uAnnotation.javaPsi ?: return PsiReference.EMPTY_ARRAY
         val psiAnnotationFqn = psiAnnotation.qualifiedName ?: return PsiReference.EMPTY_ARRAY
 
@@ -33,8 +32,8 @@ abstract class CommonAnnotationReferenceProvider(private val searchAttributes: A
             if (metaHolder.contains(psiAnnotation)
                 && metaHolder.isAttributeRelatedWith(psiAnnotationFqn, attributeName, annotationFqn, attributes)
             ) {
-                val valueText = valueLiteral.evaluateString() ?: return PsiReference.EMPTY_ARRAY
-                val literalExpressionPsi = valueLiteral.javaPsi ?: return PsiReference.EMPTY_ARRAY
+                val valueText = uExpression.evaluateString() ?: return PsiReference.EMPTY_ARRAY
+                val literalExpressionPsi = uExpression.sourcePsi ?: return PsiReference.EMPTY_ARRAY
 
                 val rangeInElement = TextRange(
                     0,

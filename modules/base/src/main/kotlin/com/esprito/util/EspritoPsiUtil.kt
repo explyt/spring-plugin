@@ -8,6 +8,7 @@ import com.intellij.psi.*
 import com.intellij.psi.util.PropertyUtilBase
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
+import org.jetbrains.uast.toUElement
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
@@ -137,6 +138,9 @@ object EspritoPsiUtil {
 
     val PsiMember.returnPsiClassType: PsiClassType?
         get() = returnPsiType?.psiClassType
+
+    fun PsiAnnotationMemberValue?.toSourcePsi(): PsiElement? =
+        this?.let { it.toUElement()?.sourcePsi }
 
     @OptIn(ExperimentalContracts::class)
     fun isSetter(psiMethod: PsiMethod?): Boolean {

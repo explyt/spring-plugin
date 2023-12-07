@@ -4,22 +4,22 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.ALIAS_FOR
 import com.esprito.spring.core.service.AliasUtils
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.jvm.annotation.JvmAnnotationAttribute
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMember
-import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.*
 
 
-class SpringAliasBothInterchangeableSetInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringAliasBothInterchangeableSetInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        method: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
@@ -27,7 +27,7 @@ class SpringAliasBothInterchangeableSetInspection : AbstractBaseJavaLocalInspect
     }
 
     override fun checkClass(
-        aClass: PsiClass,
+        aClass: UClass,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
@@ -35,13 +35,14 @@ class SpringAliasBothInterchangeableSetInspection : AbstractBaseJavaLocalInspect
     }
 
     private fun check(
-        member: PsiMember,
+        member: UDeclaration,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         val problems: MutableList<ProblemDescriptor> = mutableListOf()
 
-        for (annotation in member.annotations) {
+        for (uAnnotation in member.uAnnotations) {
+            val annotation = uAnnotation.javaPsi ?: continue
             val attributesByRoot = getAliasedAttributesByRoot(annotation)
 
             for ((rootQn, attributes) in attributesByRoot) {
@@ -52,7 +53,9 @@ class SpringAliasBothInterchangeableSetInspection : AbstractBaseJavaLocalInspect
                         .filter { it.aliasedMethods == aliasedMethods }
                     attributeInfos.removeAll(conflictedAttributes)
 
-                    val attributeValue = annotation.findAttributeValue(attribute.attributeName) ?: continue
+                    val attributeValue = annotation.findAttributeValue(attribute.attributeName)
+                        .toSourcePsi() ?: continue
+
                     if (conflictedAttributes.isNotEmpty()) {
                         val conflictedNames = conflictedAttributes.map { it.attribute.attributeName }
                         problems +=
@@ -79,10 +82,12 @@ class SpringAliasBothInterchangeableSetInspection : AbstractBaseJavaLocalInspect
     private fun getAliasedAttributesByRoot(annotation: PsiAnnotation): Map<String, List<AttributeInfo>> {
         val attributesByRoot = mutableMapOf<String, MutableList<AttributeInfo>>()
 
+        val uAnnotation = annotation.toUElement() ?: return attributesByRoot
+        var aliasedClass = uAnnotation.tryResolve() as? PsiClass ?: return attributesByRoot
+        var aliasedClassQn = aliasedClass.qualifiedName ?: return attributesByRoot
+
         for (attribute in annotation.attributes) {
             var aliasedName = attribute.attributeName
-            var aliasedClass = annotation.resolveAnnotationType() ?: continue
-            var aliasedClassQn = aliasedClass.qualifiedName ?: continue
             var aliasedMethod = aliasedClass
                 .methods
                 .firstOrNull {
