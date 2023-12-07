@@ -6,24 +6,26 @@ import com.esprito.spring.core.service.AliasUtils
 import com.esprito.util.EspritoPsiUtil.fitsForReference
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.uast.UMethod
 
 
-class SpringUnknownAliasMethodInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringUnknownAliasMethodInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
+        val method = uMethod.javaPsi
         val parentClass = method.parentOfType<PsiClass>() ?: return null
         val aliasAnnotation = method.getAnnotation(SpringCoreClasses.ALIAS_FOR) ?: return null
         val aliasedClass = AliasUtils.getAliasedClass(aliasAnnotation) ?: return null
@@ -40,15 +42,17 @@ class SpringUnknownAliasMethodInspection : AbstractBaseJavaLocalInspectionTool()
         val problems: MutableList<ProblemDescriptor> = mutableListOf()
 
         for (member in methodReferences) {
+            val memberSourcePsi = member.toSourcePsi() ?: continue
             val methodName = AnnotationUtil.getStringAttributeValue(member)
             if (methodName.isNullOrBlank()) continue
+
             if (isMetaAnnotationOmitted ||
                 aliasedClass.allMethods.none {
                     fitsForReference(it)
                             && it.name == methodName
                 }
             ) {
-                problems += problemDescriptor(manager, member, isOnTheFly)
+                problems += problemDescriptor(manager, memberSourcePsi, isOnTheFly)
             }
         }
 
@@ -57,7 +61,7 @@ class SpringUnknownAliasMethodInspection : AbstractBaseJavaLocalInspectionTool()
 
     private fun problemDescriptor(
         manager: InspectionManager,
-        member: PsiAnnotationMemberValue,
+        member: PsiElement,
         isOnTheFly: Boolean
     ) = manager.createProblemDescriptor(
         member,

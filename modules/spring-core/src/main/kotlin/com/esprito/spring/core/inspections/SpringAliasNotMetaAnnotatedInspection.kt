@@ -5,24 +5,28 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.AliasUtils
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.intention.AddAnnotationFix
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.uast.UMethod
 
 
-class SpringAliasNotMetaAnnotatedInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringAliasNotMetaAnnotatedInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        val aliasAnnotation = method.getAnnotation(SpringCoreClasses.ALIAS_FOR) ?: return null
+        val method = uMethod.javaPsi
+        val uAliasAnnotation = uMethod.uAnnotations
+            .firstOrNull { it.qualifiedName == SpringCoreClasses.ALIAS_FOR } ?: return null
+        val aliasAnnotation = uAliasAnnotation.javaPsi ?: return null
         val aliasedClassQn =
             AliasUtils.getAliasedClass(aliasAnnotation)
                 ?.takeIf { it.isAnnotationType }
@@ -35,7 +39,8 @@ class SpringAliasNotMetaAnnotatedInspection : AbstractBaseJavaLocalInspectionToo
 
         if (isMetaAnnotationFound) return null
 
-        val annotationMemberValue = aliasAnnotation.findAttributeValue("annotation") ?: return null
+        val annotationMemberValue = aliasAnnotation.findAttributeValue("annotation")
+            .toSourcePsi() ?: return null
         return arrayOf(
             manager.createProblemDescriptor(
                 annotationMemberValue,

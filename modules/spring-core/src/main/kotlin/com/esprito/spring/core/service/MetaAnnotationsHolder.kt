@@ -11,6 +11,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.uast.toUElement
 
 class MetaAnnotationsHolder private constructor(
     private val parentFqn: String,
@@ -50,7 +51,8 @@ class MetaAnnotationsHolder private constructor(
     fun getAnnotationMemberValues(psiMember: PsiMember, targetMethods: Set<String>): Set<PsiAnnotationMemberValue> {
         return psiMember.annotations
             .flatMapTo(mutableSetOf()) {
-                getAnnotationMemberValues(it,targetMethods) }
+                getAnnotationMemberValues(it, targetMethods)
+            }
     }
 
     fun getAnnotationMemberValues(
@@ -139,11 +141,30 @@ object AliasUtils {
 
     fun getAliasedClass(alias: PsiAnnotation): PsiClass? {
         return alias.findAttributeValue("annotation")
-            ?.childrenOfType<PsiTypeElement>()
-            ?.firstOrNull { it.type.resolvedPsiClass?.qualifiedName != JavaCoreClasses.ANNOTATION }
+            ?.let {
+                getAliasedClassJava(it)
+                    ?: getAliasedClassKt(it)
+            } ?: alias.parentOfType<PsiClass>()
+    }
+
+    private fun getAliasedClassJava(memberValue: PsiAnnotationMemberValue): PsiClass? {
+        return memberValue
+            .childrenOfType<PsiTypeElement>()
+            .firstOrNull { it.type.resolvedPsiClass?.qualifiedName != JavaCoreClasses.ANNOTATION }
             ?.type
             ?.resolvedPsiClass
-            ?: alias.parentOfType<PsiClass>()
+    }
+
+    private fun getAliasedClassKt(memberValue: PsiAnnotationMemberValue): PsiClass? {
+        return memberValue
+            .toUElement()
+            ?.sourcePsi
+            ?.children?.asSequence()
+            ?.mapNotNull { it.reference }
+            ?.mapNotNull { it.resolve() }
+            ?.mapNotNull { it.toUElement() }
+            ?.mapNotNull { it.javaPsi as? PsiClass }
+            ?.firstOrNull()
     }
 
     fun getAliasedMethodName(alias: PsiAnnotation): String? {

@@ -6,8 +6,13 @@ import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.*
-import com.intellij.psi.util.parentOfType
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiReference
+import com.intellij.psi.PsiReferenceBase
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.getParentOfType
+import org.jetbrains.uast.toUElement
 
 class EspritoAliasMethodReference(element: PsiElement, private val methodName: String, rangeInElement: TextRange) :
     PsiReferenceBase<PsiElement>(element, rangeInElement), PsiReference, HighlightedReference {
@@ -34,8 +39,9 @@ class EspritoAliasMethodReference(element: PsiElement, private val methodName: S
     }
 
     private fun getRelatedClass(): PsiClass? {
-        val aliasAnnotation = element
-            .parentOfType<PsiAnnotation>() ?: return null
+        val aliasAnnotation = element.toUElement()
+            ?.getParentOfType<UAnnotation>()
+            ?.javaPsi ?: return null
 
         return AliasUtils.getAliasedClass(aliasAnnotation)
     }
