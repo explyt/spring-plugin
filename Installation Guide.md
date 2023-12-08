@@ -6,7 +6,7 @@ Follow these simple steps to get started:
 
 ## 1. Preparation
 
-- Make sure you have IntelliJ IDEA CE or Ultimate version 2022.3 or newer installed.
+- Make sure you have IntelliJ IDEA CE or Ultimate version **2023.3** or newer installed.
 
 ## 2. Setting Up the Repository
 
@@ -16,7 +16,7 @@ Follow these simple steps to get started:
 
 ![](/images/installation-guide-1.png)
 
-## 3. Adding JetBrains EAP (testing) repository 
+## 3. Adding path to JetBrains EAP (testing) repository 
 
 - In the popup window, click the plus icon and enter the following plugin repository URL:
   
@@ -30,7 +30,7 @@ https://plugins.jetbrains.com/plugins/list?channel=EAP
 
 ![](/images/installation-guide-4.png)
 
-- Type "Esprito" in search and find our plugin
+- Type "Esprito" in search and find our plugin "Esprito Spring Tools"
 - Click "Install"
 
 ## 5. Restart Your IDE
