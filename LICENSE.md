@@ -38,7 +38,7 @@ The end users who have the ability to access and concurrently utilize the Plugin
 An individual or legal entity agreeing to the terms of this EULA upon downloading, installing, or using the Plugin.
 
 ### Site
-The official online presence of Esprito Spring Tools, which can be accessed via [https://github.com/esprito-plugin/plugin].
+The official online presence of Esprito Spring Tools, which can be accessed via [https://esprito.com/].
 
 ## AGREEMENT COVERAGE
 This EULA delineates the terms and conditions under which the Plugin is made available to You via the Plugin Marketplace. By engaging with the Plugin, You enter into this binding agreement EULA with Esprito Tech.
