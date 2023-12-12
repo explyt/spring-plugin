@@ -6,22 +6,24 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoPsiUtil.fitsForReference
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.impl.quickfix.createVoidMethodFixes
 import com.intellij.codeInspection.*
 import com.intellij.lang.jvm.JvmModifier
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.UMethod
 import java.util.regex.Pattern
 
 
-class SpringUnknownBeanMethodInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringUnknownBeanMethodInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
+        val method = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(method) ?: return null
         val searchService = SpringSearchService.getInstance(method.project)
 
@@ -44,9 +46,11 @@ class SpringUnknownBeanMethodInspection : AbstractBaseJavaLocalInspectionTool() 
                 fixes += createVoidMethodFixes(returnTypeClass, methodName, JvmModifier.PRIVATE)
             }
 
+            val memberSourcePsi = member.toSourcePsi() ?: continue
+
             problems += manager.createProblemDescriptor(
-                member,
-                member.getHighlightRange(),
+                memberSourcePsi,
+                memberSourcePsi.getHighlightRange(),
                 SpringCoreBundle.message("esprito.spring.inspection.bean.method"),
                 ProblemHighlightType.GENERIC_ERROR,
                 isOnTheFly,
