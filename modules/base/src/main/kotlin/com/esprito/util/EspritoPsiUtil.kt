@@ -28,6 +28,9 @@ object EspritoPsiUtil {
     val PsiModifierListOwner.isAbstract: Boolean
         get() = this.hasModifierProperty(PsiModifier.ABSTRACT)
 
+    val PsiModifierListOwner.isFinal: Boolean
+        get() = this.hasModifierProperty(PsiModifier.FINAL)
+
     fun PsiModifierListOwner.isAnnotatedBy(annotations: Collection<String>, flags: Int = 0) =
         AnnotationUtil.isAnnotated(this, annotations, flags)
 
