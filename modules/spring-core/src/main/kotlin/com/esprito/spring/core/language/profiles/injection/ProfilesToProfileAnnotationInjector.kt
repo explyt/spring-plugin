@@ -1,9 +1,11 @@
 package com.esprito.spring.core.language.profiles.injection
 
-import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringCoreClasses.PROFILE
 import com.esprito.spring.core.language.profiles.ProfilesLanguage
+import com.esprito.spring.core.service.SpringSearchService
 import com.intellij.lang.injection.MultiHostInjector
 import com.intellij.lang.injection.MultiHostRegistrar
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.injected.changesHandler.contentRange
 import org.jetbrains.uast.*
@@ -13,14 +15,31 @@ import org.jetbrains.uast.expressions.UStringConcatenationsFacade
 class ProfilesToProfileAnnotationInjector : MultiHostInjector {
 
     private fun isValidPlace(uElement: UElement): Boolean {
+        val module = uElement.sourcePsi?.let {
+            ModuleUtilCore.findModuleForPsiElement(it)
+        } ?: return false
+
         val uAnnotation = uElement.getParentOfType<UAnnotation>() ?: return false
-
-        if (SpringCoreClasses.PROFILE != uAnnotation.qualifiedName)
+        val uAnnotationQn = uAnnotation.qualifiedName ?: return false
+        if (PROFILE != uAnnotationQn)
             return false
+        val metaHolder = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, PROFILE)
 
-        val valueAttribute = uAnnotation.findAttributeValue("value")
+        val valueAttribute = uAnnotation.attributeValues.asSequence()
+            .filter {
+                metaHolder.isAttributeRelatedWith(
+                    uAnnotationQn,
+                    it.name ?: "value",
+                    PROFILE,
+                    setOf("value")
+                )
+            }
+            .map { it.expression }
+            .firstOrNull() ?: return false
 
-        return uElement.isUastChildOf(valueAttribute)
+
+        return valueAttribute.isInjectionHost() && uElement.isUastChildOf(uAnnotation)
     }
 
     override fun getLanguagesToInject(registrar: MultiHostRegistrar, context: PsiElement) {
@@ -44,17 +63,16 @@ class ProfilesToProfileAnnotationInjector : MultiHostInjector {
 
         registrar.startInjecting(ProfilesLanguage.INSTANCE)
 
-        concatenationsFacade.uastOperands
-            .forEach {
-                val host = (it as? UInjectionHost)?.psiLanguageInjectionHost ?: return@forEach
-
+        concatenationsFacade.psiLanguageInjectionHosts
+            .forEach { hostPsi ->
                 registrar.addPlace(
                     null,
                     null,
-                    host,
-                    host.contentRange.shiftLeft(host.textOffset)
+                    hostPsi,
+                    hostPsi.contentRange.shiftLeft(hostPsi.textOffset)
                 )
             }
+
 
         registrar.doneInjecting()
 

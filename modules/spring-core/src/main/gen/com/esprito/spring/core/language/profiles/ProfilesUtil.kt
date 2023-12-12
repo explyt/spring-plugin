@@ -7,7 +7,6 @@ import com.esprito.spring.core.language.profiles.psi.ProfilesProfile
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.lang.injection.InjectedLanguageManager
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
@@ -15,6 +14,9 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.contextOfType
 import com.intellij.uast.UastModificationTracker
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.isInjectionHost
+import org.jetbrains.uast.toUElement
 import java.util.regex.Pattern
 
 
@@ -53,7 +55,11 @@ object ProfilesUtil {
             }
 
         for (psiAnnotation in psiAnnotations) {
-            val injectionHosts = PsiTreeUtil.findChildrenOfType(psiAnnotation, PsiLanguageInjectionHost::class.java)
+            val uAnnotation = psiAnnotation.toUElement() as? UAnnotation ?: continue
+            val injectionHosts = uAnnotation.attributeValues.asSequence()
+                .map { it.expression }
+                .filter { it.isInjectionHost() }
+                .mapNotNull { it.sourcePsi }
 
             for (injectionHost in injectionHosts) {
                 val injectedElement = InjectedLanguageManager.getInstance(injectionHost.project)
