@@ -211,13 +211,17 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun findClassesByQualifiedName(module: Module, qualifiedName: String): Collection<PsiClass> {
+    fun findAnnotationClassesByQualifiedName(module: Module, qualifiedName: String): Collection<PsiClass> {
         val key = CacheKeyStore.getInstance(project).getKey<Collection<PsiClass>>(
-            "SpringClassesLoaderByQualifiedNameCache(${qualifiedName})"
+            "SpringAnnotationClassesLoaderByQualifiedNameCache(${qualifiedName})"
         )
         return cachedValuesManager.getCachedValue(module, key, {
             CachedValueProvider.Result(
-                LibraryClassCache.searchForLibraryClasses(module, listOf(qualifiedName)),
+                run {
+                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, qualifiedName, false).toMutableSet()
+                    annotations += LibraryClassCache.searchForLibraryClasses(module, listOf(qualifiedName))
+                    return@run annotations
+                },
                 UastModificationTracker.getInstance(project)
             )
         }, false)

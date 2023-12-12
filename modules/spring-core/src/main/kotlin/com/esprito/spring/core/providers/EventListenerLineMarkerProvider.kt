@@ -99,10 +99,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun isApplicationEventMethod(psiMethod: PsiMethod): Boolean {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
-        val classes = LibraryClassCache.searchForLibraryClasses(module, listOf(APPLICATION_LISTENER))
+        val applicationListenerClass = LibraryClassCache.searchForLibraryClass(module, APPLICATION_LISTENER) ?: return false
         val supers = psiMethod.parentOfType<PsiClass>()?.supers ?: return false
         val byApplicationEvent = supers.asSequence()
-            .map { psiClass -> classes.any { psiClass.isEqualOrInheritor(it) } }
+            .map { psiClass -> psiClass.isEqualOrInheritor(applicationListenerClass) }
             .any { it }
 
         return (psiMethod.name == ON_APPLICATION_EVENT) && byApplicationEvent
@@ -143,12 +143,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun getPublishMethods(module: Module): List<PsiMethod> {
-        val eventPublisherClasses =
-            SpringSearchService.getInstance(module.project).findClassesByQualifiedName(module, EVENT_PUBLISHER)
-        return eventPublisherClasses.asSequence()
-            .flatMap { it.findMethodsByName(PUBLISH_EVENT_METHOD, false).asSequence() }
+        val eventPublisherClass = LibraryClassCache.searchForLibraryClass(module, EVENT_PUBLISHER) ?: return emptyList()
+        return eventPublisherClass
+            .findMethodsByName(PUBLISH_EVENT_METHOD, false)
             .filterNotNull()
-            .toList()
     }
 
     private fun getPublishMethodCalls(
@@ -233,11 +231,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getMethodsByApplicationEvent(module: Module): List<MethodArgumentClasses> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
         val listenerClass =
-            SpringSearchService.getInstance(module.project).findClassesByQualifiedName(module, APPLICATION_LISTENER)
-        val publisherClass = listenerClass.asSequence()
+            SpringSearchService.getInstance(module.project).findAnnotationClassesByQualifiedName(module, APPLICATION_LISTENER)
+        return listenerClass.asSequence()
             .flatMap { ClassInheritorsSearch.search(it, scope, true).findAll() }
             .filterNotNull()
-        return publisherClass
             .flatMap { it.findMethodsByName(ON_APPLICATION_EVENT, false).asSequence() }
             .filterNotNull()
             .map { MethodArgumentClasses(it) }
@@ -245,16 +242,13 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun getMethodsByEventListener(module: Module): List<MethodArgumentClasses> {
-        val methodArguments = mutableListOf<MethodArgumentClasses>()
+        val eventListenerClass = LibraryClassCache.searchForLibraryClass(module, EVENT_LISTENER) ?: return emptyList();
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-        val eventListenerClasses =
-            SpringSearchService.getInstance(module.project).findClassesByQualifiedName(module, EVENT_LISTENER)
-        for (eventListenerClass in eventListenerClasses) {
-            val listenerMethods = AnnotatedElementsSearch.searchPsiMethods(eventListenerClass, scope)
-            for (element in listenerMethods) {
-                val byAnnotation = getPsiClassesByAnnotationCached(module, element)
-                methodArguments.add(MethodArgumentClasses(element, byAnnotation))
-            }
+        val listenerMethods = AnnotatedElementsSearch.searchPsiMethods(eventListenerClass, scope)
+        val methodArguments = mutableListOf<MethodArgumentClasses>()
+        for (element in listenerMethods) {
+            val byAnnotation = getPsiClassesByAnnotationCached(module, element)
+            methodArguments.add(MethodArgumentClasses(element, byAnnotation))
         }
         return methodArguments
     }
