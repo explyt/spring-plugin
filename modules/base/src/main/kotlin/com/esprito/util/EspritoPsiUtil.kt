@@ -143,7 +143,7 @@ object EspritoPsiUtil {
     val PsiMember.returnPsiClassType: PsiClassType?
         get() = returnPsiType?.psiClassType
 
-    fun PsiAnnotationMemberValue?.toSourcePsi(): PsiElement? =
+    fun PsiElement?.toSourcePsi(): PsiElement? =
         this?.let { it.toUElement()?.sourcePsi }
 
     @OptIn(ExperimentalContracts::class)

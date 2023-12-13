@@ -4,55 +4,61 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.CONDITIONAL_ON_PROPERTY
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMember
-import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UDeclaration
+import org.jetbrains.uast.UMethod
 
 
-class SpringConditionalOnEmptyValueInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringConditionalOnEmptyValueInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        return check(method, manager, isOnTheFly)
+        return check(uMethod, manager, isOnTheFly)
     }
 
     override fun checkClass(
-        aClass: PsiClass,
+        uClass: UClass,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        if (aClass.isAnnotationType) {
+        if (uClass.isAnnotationType) {
             return null
         }
-        return check(aClass, manager, isOnTheFly)
+        return check(uClass, manager, isOnTheFly)
     }
 
     private fun check(
-        member: PsiMember,
+        uMember: UDeclaration,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
+        val member = uMember.javaPsi ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(member) ?: return null
         val service = SpringSearchService.getInstance(module.project)
 
         val metaHolder = service.getMetaAnnotations(module, CONDITIONAL_ON_PROPERTY)
-        val psiAnnotation = member.annotations.firstOrNull { metaHolder.contains(it) } ?: return null
+        val psiAnnotation = uMember.uAnnotations.asSequence()
+            .mapNotNull { it.javaPsi }
+            .firstOrNull { metaHolder.contains(it) }
+            ?: return null
 
-        val annotationMemberValues = metaHolder.getAnnotationMemberValues(member, setOf("value", "name"))
+        val annotationMemberValues = metaHolder.getAnnotationMemberValues(psiAnnotation, setOf("value", "name"))
 
         return if (annotationMemberValues.isEmpty()) {
+            val sourcePsi = psiAnnotation.toSourcePsi() ?: return null
             arrayOf(
                 manager.createProblemDescriptor(
-                    psiAnnotation,
-                    psiAnnotation.getHighlightRange(),
+                    sourcePsi,
+                    sourcePsi.getHighlightRange(),
                     SpringCoreBundle.message("esprito.spring.inspection.conditionalOnProperty.empty"),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly

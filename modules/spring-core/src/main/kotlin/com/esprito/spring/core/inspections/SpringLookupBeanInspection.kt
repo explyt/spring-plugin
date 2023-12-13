@@ -6,22 +6,24 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.UMethod
 
 
-class SpringLookupBeanInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringLookupBeanInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
+        val method = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(method) ?: return null
         val returnClassQN = method.returnPsiClass?.qualifiedName ?: return null
         val service = SpringSearchService.getInstance(module.project)
@@ -30,22 +32,23 @@ class SpringLookupBeanInspection : AbstractBaseJavaLocalInspectionTool() {
         val problems = mutableListOf<ProblemDescriptor>()
 
         method.getMetaAnnotationMemberValues(LOOKUP)?.forEach {
+            val valueSourcePsi = it.toSourcePsi() ?: return@forEach
             val lookupValue = AnnotationUtil.getStringAttributeValue(it)
             val psiBeans = beanByNames[lookupValue]
 
             if (lookupValue.isNullOrBlank()) return@forEach
             if (psiBeans.isNullOrEmpty()) {
                 problems += manager.createProblemDescriptor(
-                    it,
-                    it.getHighlightRange(),
+                    valueSourcePsi,
+                    valueSourcePsi.getHighlightRange(),
                     SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.unknown", lookupValue),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly
                 )
             } else if (!psiBeans.any { bean -> bean.psiClass.qualifiedName == returnClassQN }) {
                 problems += manager.createProblemDescriptor(
-                    it,
-                    it.getHighlightRange(),
+                    valueSourcePsi,
+                    valueSourcePsi.getHighlightRange(),
                     SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.wrongType",
                         returnClassQN,
                         psiBeans[0].psiClass.qualifiedName.toString()),
