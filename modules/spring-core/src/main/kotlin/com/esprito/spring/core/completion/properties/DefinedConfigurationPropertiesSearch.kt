@@ -8,12 +8,18 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.search.FileTypeIndex
+import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.uast.UastModificationTracker
+import com.intellij.util.CommonProcessors
 import com.intellij.util.Processor
 import org.jetbrains.yaml.YAMLLanguage
 import org.jetbrains.yaml.psi.YAMLFile
@@ -24,10 +30,19 @@ import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl
 class DefinedConfigurationPropertiesSearch(val project: Project) {
 
     companion object {
+        val fileMask = Regex("application(-.+)?\\.(properties|yml|yaml)")
         fun getInstance(project: Project): DefinedConfigurationPropertiesSearch = project.service()
     }
 
     private val psiManager = PsiManager.getInstance(project)
+
+    fun searchPropertyFiles(module: Module): List<PsiFile> {
+        val project = module.project
+
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(findPropertyFiles(module), UastModificationTracker.getInstance(project))
+        }
+    }
 
     fun findProperties(module: Module, key: String): List<DefinedConfigurationProperty> {
         return getAllProperties(module).filter { it.key == key }
@@ -68,6 +83,28 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
             },
             scope
         )
+    }
+
+    private fun findPropertyFiles(module: Module): List<PsiFile> {
+        val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
+
+        val propertyFileNames = FilenameIndex.getAllFilenames(module.project).asSequence()
+            .filter { fileMask.matches(it) }
+            .toSet()
+
+        FilenameIndex.processFilesByNames(
+            propertyFileNames,
+            true,
+            GlobalSearchScope.projectScope(module.project),
+            null,
+            collectProcessor
+        )
+
+        return collectProcessor.results.filter {
+            it.parent?.name == "resources"
+        }.mapNotNull {
+            psiManager.findFile(it)
+        }.sortedBy { it.name }
     }
 }
 

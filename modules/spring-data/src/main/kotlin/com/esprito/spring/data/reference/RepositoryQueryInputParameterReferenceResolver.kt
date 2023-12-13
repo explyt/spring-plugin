@@ -2,6 +2,7 @@ package com.esprito.spring.data.reference
 
 import com.esprito.jpa.ql.psi.JpqlInputParameterExpression
 import com.esprito.jpa.ql.reference.InputParameterReferenceResolver
+import com.esprito.spring.core.SpringProperties.COLON
 import com.esprito.spring.data.SpringDataClasses
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.lang.injection.InjectedLanguageManager
@@ -20,7 +21,7 @@ class RepositoryQueryInputParameterReferenceResolver(
     override fun getVariants(identifier: JpqlInputParameterExpression): List<Any> {
         val namedInputParameter = identifier.namedInputParameter
         if (namedInputParameter != null) {
-            return loadMethod(namedInputParameter)?.uastParameters?.map { ":" + it.name } ?: emptyList()
+            return loadMethod(namedInputParameter)?.uastParameters?.map { COLON + it.name } ?: emptyList()
         }
 
         val numericInputParameter = identifier.numericInputParameter

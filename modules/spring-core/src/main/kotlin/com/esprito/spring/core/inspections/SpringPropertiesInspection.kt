@@ -8,6 +8,8 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.ANY
 import com.esprito.spring.core.SpringProperties.CLASS_REFERENCE
 import com.esprito.spring.core.SpringProperties.HANDLE_AS
+import com.esprito.spring.core.SpringProperties.PLACEHOLDER_PREFIX
+import com.esprito.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.esprito.spring.core.SpringProperties.SPRING_BEAN_REFERENCE
 import com.esprito.spring.core.completion.properties.ConfigurationProperty
 import com.esprito.spring.core.completion.properties.DeprecationInfoLevel
@@ -98,20 +100,25 @@ class SpringPropertiesInspection : LocalInspectionTool() {
 
         for (fileProperty in fileProperties) {
             val psiKey = fileProperty.psiElement.childrenOfType<PropertyKeyImpl>().firstOrNull() ?: continue
+
             val findProperties = properties.filter { it.name == fileProperty.key }
             if (findProperties.isEmpty() && !isPropertyMapKey(fileProperty, properties) && !isPropertyListKey(
                     fileProperty,
                     properties
                 )
             ) {
-                val key = fileProperty.key ?: continue
-                problems += manager.createProblemDescriptor(
-                    psiKey,
-                    SpringCoreBundle.message("esprito.spring.inspection.properties.key.unresolved", key),
-                    isOnTheFly,
-                    emptyArray(),
-                    ProblemHighlightType.WARNING
-                )
+                val psiReferences = SpringSearchService.getInstance(fileProperty.psiElement.project)
+                    .getAllReferencesToElement(fileProperty.psiElement)
+                if (psiReferences.isEmpty()) {
+                    val key = fileProperty.key ?: continue
+                    problems += manager.createProblemDescriptor(
+                        psiKey,
+                        SpringCoreBundle.message("esprito.spring.inspection.properties.key.unresolved", key),
+                        isOnTheFly,
+                        emptyArray(),
+                        ProblemHighlightType.WARNING
+                    )
+                }
             } else {
                 for (it in findProperties) {
                     if (it.isMap()) {
@@ -462,6 +469,8 @@ class SpringPropertiesInspection : LocalInspectionTool() {
         }
         return if (configurationProperty.isArray() || configurationProperty.isList()) {
             value.split(",").map { it.dropWhitespaces() }
+        } else if (value.contains(PLACEHOLDER_PREFIX) && value.contains(PLACEHOLDER_SUFFIX)) {
+            emptyList()
         } else {
             listOf(value)
         }

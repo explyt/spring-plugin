@@ -1,15 +1,10 @@
 package com.esprito.spring.core.properties
 
-import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.esprito.spring.core.completion.properties.ValueHint
+import com.esprito.spring.core.properties.reference.KeyPsiReference
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.intellij.codeInsight.lookup.LookupElement
-import com.intellij.codeInsight.lookup.LookupElementBuilder
-import com.intellij.codeInsight.lookup.LookupElementPresentation
-import com.intellij.codeInsight.lookup.LookupElementRenderer
 import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
@@ -139,34 +134,5 @@ class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
 
     override fun getPresentableText(): String? {
         return member.presentation?.presentableText
-    }
-}
-
-class KeyPsiReference(
-    element: PsiElement,
-    val prefix: String,
-    private val valueHint: ValueHint
-) : PsiReferenceBase<PsiElement>(element) {
-
-    override fun resolve(): PsiElement {
-        return this.element
-    }
-
-    override fun getVariants(): Array<Any> {
-        return arrayOf(
-            LookupElementBuilder.create("$prefix.${valueHint.value}")
-                .withRenderer(HintValuePropertyRenderer(valueHint))
-        )
-    }
-}
-
-class HintValuePropertyRenderer(private val valueHint: ValueHint) : LookupElementRenderer<LookupElement>() {
-    override fun renderElement(element: LookupElement, presentation: LookupElementPresentation) {
-        presentation.itemText = valueHint.value
-        val description = valueHint.description
-        if (!description.isNullOrBlank()) {
-            presentation.setTailText(" ($description)", true)
-        }
-        presentation.icon = SpringIcons.PropertyKey
     }
 }

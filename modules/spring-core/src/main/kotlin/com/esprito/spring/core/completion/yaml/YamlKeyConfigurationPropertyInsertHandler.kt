@@ -1,5 +1,6 @@
 package com.esprito.spring.core.completion.yaml
 
+import com.esprito.spring.core.SpringProperties.COLON
 import com.esprito.spring.core.completion.properties.ConfigurationProperty
 import com.esprito.spring.core.util.YamlUtil
 import com.intellij.application.options.CodeStyle
@@ -186,7 +187,7 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
                 .append(existingIndentation)
                 .append(getIndent(indentPerLevel, count.getAndIncrement()))
                 .append(word)
-                .append(":")
+                .append(COLON)
         }
         builder.delete(0, existingIndentation.length + 1)
         val suffix = StringUtils.SPACE + CARET_MARKUP
