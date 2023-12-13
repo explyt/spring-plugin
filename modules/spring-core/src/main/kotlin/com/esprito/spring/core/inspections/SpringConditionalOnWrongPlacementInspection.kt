@@ -11,48 +11,50 @@ import com.esprito.spring.core.SpringCoreClasses.CONDITIONAL_ON_PROPERTY
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMember
-import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UDeclaration
+import org.jetbrains.uast.UMethod
 
 
-class SpringConditionalOnWrongPlacementInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringConditionalOnWrongPlacementInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        if (method.isMetaAnnotatedBy(BEAN)) {
+        if (uMethod.javaPsi.isMetaAnnotatedBy(BEAN)) {
             return null
         }
-        return check(method, manager, isOnTheFly)
+        return check(uMethod, manager, isOnTheFly)
     }
 
     override fun checkClass(
-        aClass: PsiClass,
+        uClass: UClass,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        if (aClass.isAnnotationType) {
+        if (uClass.isAnnotationType) {
             return null
         }
-        if (aClass.isMetaAnnotatedBy(COMPONENT)) {
+        if (uClass.javaPsi.isMetaAnnotatedBy(COMPONENT)) {
             return null
         }
-        return check(aClass, manager, isOnTheFly)
+        return check(uClass, manager, isOnTheFly)
     }
 
     private fun check(
-        member: PsiMember,
+        uMember: UDeclaration,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
+        val member = uMember.javaPsi ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(member) ?: return null
         val service = SpringSearchService.getInstance(module.project)
 
@@ -64,14 +66,17 @@ class SpringConditionalOnWrongPlacementInspection : AbstractBaseJavaLocalInspect
             CONDITIONAL_ON_MISSING_BEAN
         ).map { service.getMetaAnnotations(module, it) }
 
-        return member.annotations.asSequence()
+        return uMember.uAnnotations.asSequence()
+            .mapNotNull { it.javaPsi }
             .filter { annotation ->
                 annotationsHolders.any { it.contains(annotation) }
             }
-            .map { annotation ->
+            .mapNotNull { annotation ->
+                val sourcePsi = annotation.toSourcePsi() ?: return@mapNotNull null
+
                 manager.createProblemDescriptor(
-                    annotation,
-                    annotation.getHighlightRange(),
+                    sourcePsi,
+                    sourcePsi.getHighlightRange(),
                     SpringCoreBundle.message("esprito.spring.inspection.conditionalOn.wrongPlacement"),
                     ProblemHighlightType.WARNING,
                     isOnTheFly
