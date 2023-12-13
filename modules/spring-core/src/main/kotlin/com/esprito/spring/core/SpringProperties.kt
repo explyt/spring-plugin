@@ -26,4 +26,8 @@ object SpringProperties {
     const val SPRING_XML_TEMPLATE = "spring-beans.xml"
 
     const val PROPERTY_VALUE_DELIMITERS = ",\\ "
+
+    const val COLON = ":"
+    const val PLACEHOLDER_PREFIX = "\${"
+    const val PLACEHOLDER_SUFFIX = "}"
 }

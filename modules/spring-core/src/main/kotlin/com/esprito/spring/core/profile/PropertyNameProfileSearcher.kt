@@ -2,30 +2,24 @@ package com.esprito.spring.core.profile
 
 import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
+import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch.Companion.fileMask
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import com.intellij.psi.search.FilenameIndex
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.uast.UastModificationTracker
-import com.intellij.util.CommonProcessors
 
-class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
-
-    private val psiManager = PsiManager.getInstance(project)
+class PropertyNameProfileSearcher : ProfileSearcher {
 
     override fun searchProfiles(module: Module): List<String> {
         val project = module.project
+        val propertiesSearch = DefinedConfigurationPropertiesSearch.getInstance(module.project)
 
         return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
-                getProfilesFromProperties(module)
+                getProfilesFromProperties(module, propertiesSearch)
                         +
-                        findPropertyFiles(module)
+                        propertiesSearch.searchPropertyFiles(module)
                             .flatMap { getProfiles(it) },
                 UastModificationTracker.getInstance(project)
             )
@@ -44,8 +38,10 @@ class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
         )
     }
 
-    private fun getProfilesFromProperties(module: Module): List<String> {
-        val propertiesSearch = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+    private fun getProfilesFromProperties(
+        module: Module,
+        propertiesSearch: DefinedConfigurationPropertiesSearch
+    ): List<String> {
         return propertiesSearch.findProperties(module, SPRING_PROFILES_ACTIVE)
             .asSequence()
             .mapNotNull { it.value }
@@ -54,32 +50,4 @@ class PropertyNameProfileSearcher(project: Project) : ProfileSearcher {
             .filter { it.isNotBlank() }
             .toList()
     }
-
-    private fun findPropertyFiles(module: Module): List<PsiFile> {
-        val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
-
-        val propertyFileNames = FilenameIndex.getAllFilenames(module.project).asSequence()
-            .filter { fileMask.matches(it) }
-            .toSet()
-
-        FilenameIndex.processFilesByNames(
-            propertyFileNames,
-            true,
-            GlobalSearchScope.projectScope(module.project),
-            null,
-            collectProcessor
-        )
-
-        return collectProcessor.results.filter {
-            it.parent?.name == "resources"
-        }.mapNotNull {
-            psiManager.findFile(it)
-        }.sortedBy { it.name }
-
-    }
-
-    companion object {
-        val fileMask = Regex("application(-.+)?\\.(properties|yml|yaml)")
-    }
-
 }
