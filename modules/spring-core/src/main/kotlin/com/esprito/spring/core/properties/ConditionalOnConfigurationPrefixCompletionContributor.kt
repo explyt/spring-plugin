@@ -8,18 +8,18 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.patterns.PlatformPatterns
-import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.PsiJavaToken
-import com.intellij.psi.PsiNameValuePair
-import com.intellij.psi.util.parentOfType
 import com.intellij.util.ProcessingContext
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UNamedExpression
+import org.jetbrains.uast.getParentOfType
+import org.jetbrains.uast.toUElement
 
 class ConditionalOnConfigurationPrefixCompletionContributor : CompletionContributor() {
 
     init {
         extend(
             CompletionType.BASIC,
-            PlatformPatterns.psiElement(PsiJavaToken::class.java),
+            PlatformPatterns.psiElement(),
             ConditionalOnConfigurationPrefixCompletionProvider()
         )
     }
@@ -31,15 +31,17 @@ class ConditionalOnConfigurationPrefixCompletionContributor : CompletionContribu
             context: ProcessingContext,
             result: CompletionResultSet
         ) {
-            val psiLiteral = parameters.position as? PsiJavaToken ?: return
-            val psiNameValue = psiLiteral.parentOfType<PsiNameValuePair>() ?: return
-            val module = ModuleUtilCore.findModuleForPsiElement(psiNameValue) ?: return
-            val psiAnnotationQn = psiNameValue.parentOfType<PsiAnnotation>()?.qualifiedName ?: return
-            val attributeName = psiNameValue.name ?: return
+            val psiElement = parameters.position
+            val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return
+            val uElement = psiElement.parent.toUElement() ?: return
+            val uLiteralExpression = uElement.getParentOfType<UNamedExpression>() ?: return
+            val uAnnotation = uElement.getParentOfType<UAnnotation>() ?: return
+            val annotationQn = uAnnotation.qualifiedName ?: return
+            val attributeName = uLiteralExpression.name ?: return
 
             val annotationHolder = MetaAnnotationsHolder.of(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
             if (!annotationHolder.isAttributeRelatedWith(
-                    psiAnnotationQn,
+                    annotationQn,
                     attributeName,
                     SpringCoreClasses.CONDITIONAL_ON_PROPERTY,
                     setOf("prefix")
