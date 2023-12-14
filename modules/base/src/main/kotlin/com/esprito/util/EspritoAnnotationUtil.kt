@@ -6,11 +6,25 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 import org.apache.commons.lang3.StringUtils
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UDeclaration
+import org.jetbrains.uast.tryResolve
 
 object EspritoAnnotationUtil {
 
     fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributesName: Collection<String>): Collection<PsiLiteral> {
         return attributesName.flatMap { annotation.getArrayAttributeAsPsiLiteral(it) }
+    }
+
+    fun UDeclaration.getUMetaAnnotation(targetAnnotation: String): UAnnotation? {
+        if (!isMetaAnnotatedBy(targetAnnotation)) {
+            return null
+        }
+
+        return uAnnotations.firstOrNull {
+            it.qualifiedName == targetAnnotation
+                    || (it.tryResolve() as? PsiClass)?.isMetaAnnotatedBy(targetAnnotation) ?: false
+        }
     }
 
     fun PsiMember.getMetaAnnotationMemberValues(

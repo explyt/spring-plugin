@@ -49,7 +49,7 @@
                                 id="com.esprito.spring.core.yamlCompletionContributor"
                                 implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
-        <completion.contributor language="JAVA"
+        <completion.contributor language="UAST"
                                 order="first"
                                 id="com.esprito.spring.core.properties.ConditionalOnConfigurationPrefixCompletionContributor"
                                 implementationClass="com.esprito.spring.core.properties.ConditionalOnConfigurationPrefixCompletionContributor"/>

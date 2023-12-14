@@ -3,38 +3,41 @@ package com.esprito.spring.core.inspections
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddAsMethodArgQuickFix
-import com.esprito.util.EspritoAnnotationUtil.getBooleanValue
-import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
+import com.esprito.util.EspritoAnnotationUtil.getUMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.psi.*
-import com.intellij.psi.util.childrenOfType
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.getUastParentOfType
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiIdentifier
+import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.*
 
-class SpringConfigurationProxyMethodsInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringConfigurationProxyMethodsInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        val surroundingClass: PsiClass = method.getUastParentOfType<UClass>()?.javaPsi ?: return null
-        if (surroundingClass.hasModifierProperty(PsiModifier.STATIC)) return null
+        val method = uMethod.javaPsi
+        val uClass = uMethod.getParentOfType<UClass>() ?: return null
+        val surroundingClass: PsiClass = uClass.javaPsi
+        if (uClass.isStatic) return null
         if (!method.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
         var topClass: PsiClass? = surroundingClass
 
         while (topClass != null) {
-            val proxyBeanMethodsValue = topClass.getMetaAnnotationMemberValues(
-                SpringCoreClasses.CONFIGURATION,
-                "proxyBeanMethods"
-            )?.firstOrNull()
-                ?.getBooleanValue()
+            val proxyBeanMethodsValue = uClass.getUMetaAnnotation(SpringCoreClasses.CONFIGURATION)
+                ?.javaPsi?.let {
+                    AnnotationUtil.getBooleanAttributeValue(it, "proxyBeanMethods")
+                }
 
             if (proxyBeanMethodsValue == false) {
                 return findCallsToLocalBeans(method, topClass).asSequence()
@@ -46,7 +49,7 @@ class SpringConfigurationProxyMethodsInspection : AbstractBaseJavaLocalInspectio
                             isOnTheFly
                         )
                     }.toList().toTypedArray()
-            } else if (proxyBeanMethodsValue == null //hot metaAnnotated by Configuration
+            } else if (proxyBeanMethodsValue == null //not metaAnnotated by Configuration
                 && topClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
             ) {
                 return findCallsToLocalBeans(method, topClass).asSequence()
@@ -67,11 +70,14 @@ class SpringConfigurationProxyMethodsInspection : AbstractBaseJavaLocalInspectio
     private fun createProblemDescriptor(
         manager: InspectionManager,
         message: String,
-        callExpression: PsiMethodCallExpression,
+        callExpression: UCallExpression,
         isOnTheFly: Boolean
     ): ProblemDescriptor? {
-        val identifier = callExpression.childrenOfType<PsiReferenceExpression>().firstOrNull()
-            ?.childrenOfType<PsiIdentifier>()?.firstOrNull() ?: return null
+        val identifier = callExpression.methodIdentifier?.sourcePsi ?: return null
+        val fixes = listOfNotNull(
+            (identifier as? PsiIdentifier)
+                ?.let { AddAsMethodArgQuickFix(it) }
+        ).toTypedArray()
 
         return manager.createProblemDescriptor(
             identifier,
@@ -79,19 +85,20 @@ class SpringConfigurationProxyMethodsInspection : AbstractBaseJavaLocalInspectio
             message,
             ProblemHighlightType.GENERIC_ERROR,
             isOnTheFly,
-            AddAsMethodArgQuickFix(identifier)
+            *fixes
         )
     }
 
-    private fun findCallsToLocalBeans(psiMethod: PsiMethod, surroundingClass: PsiClass): List<PsiMethodCallExpression> {
+    private fun findCallsToLocalBeans(psiMethod: PsiMethod, surroundingClass: PsiClass): List<UCallExpression> {
         val beanMethods = surroundingClass.methods
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
             .toSet()
-        val methodCallExpressions = psiMethod.findChildrenOfType<PsiMethodCallExpression>()
 
-        return methodCallExpressions.filter {
-            beanMethods.contains(it.resolveMethod())
-        }.toList()
+        return psiMethod.toSourcePsi()?.findChildrenOfType<PsiElement>()?.asSequence()
+            ?.mapNotNull { it.toUElement() as? UCallExpression }
+            ?.filter { beanMethods.contains(it.resolve()) }
+            ?.toList()
+            ?: emptyList()
     }
 
 }
