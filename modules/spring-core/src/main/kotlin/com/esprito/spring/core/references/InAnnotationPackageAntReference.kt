@@ -47,6 +47,9 @@ class InAnnotationPackageAntReference(element: PsiElement, range: TextRange?) :
     }
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult?> {
+        if (rangeInElement.endOffset > element.text.length) {
+            return emptyArray()
+        }
         val text = TextRange(
             ElementManipulators.getValueTextRange(element).startOffset,
             rangeInElement.endOffset
