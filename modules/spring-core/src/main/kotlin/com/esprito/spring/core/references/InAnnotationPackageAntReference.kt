@@ -3,6 +3,7 @@ package com.esprito.spring.core.references
 import com.esprito.spring.core.util.PsiPackagesSearcher
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.*
@@ -36,9 +37,11 @@ class InAnnotationPackageAntReference(element: PsiElement, range: TextRange?) :
             .map {
                 if (countOfDistinctParentPackages == 1)
                     LookupElementBuilder.create(it)
+                        .withIcon(AllIcons.Nodes.Package)
                 else
                 // if more than one variant show in popup full path of possible packages
                     LookupElementBuilder.create(it).withPresentableText(it.qualifiedName)
+                        .withIcon(AllIcons.Nodes.Package)
             }
             .toTypedArray()
     }
