@@ -348,9 +348,6 @@
                 language="Profiles"
                 implementationClass="com.esprito.spring.core.language.profiles.ProfilesSyntaxHighlighterFactory"/>
 
-        <multiHostInjector
-                implementation="com.esprito.spring.core.language.profiles.injection.ProfilesToProfileAnnotationInjector"/>
-
         <completion.contributor
                 language="Profiles"
                 implementationClass="com.esprito.spring.core.language.profiles.ProfilesCompletionContributor"/>
@@ -366,6 +363,10 @@
         <psi.referenceContributor
                 language="XML"
                 implementation="com.esprito.spring.core.language.profiles.XmlProfilesReferenceContributor"/>
+
+        <psi.referenceContributor
+                implementation="com.esprito.spring.core.language.profiles.UastProfilesReferenceContributor"
+                language="UAST"/>
 
         <lang.braceMatcher
                 language="Profiles"
