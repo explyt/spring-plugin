@@ -1,10 +1,10 @@
 package com.esprito.spring.core.providers
 
+import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.util.SpringGutterTestUtil
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.GutterMark
-import com.intellij.icons.AllIcons
 import junit.framework.TestCase
 
 class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
@@ -75,7 +75,7 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
             """.trimIndent()
         )
         val gutterMarks = myFixture.findGuttersAtCaret()
-        val gutterMark = gutterMarks.find { it.icon == AllIcons.Nodes.Property }
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.Property }
         TestCase.assertNotNull(gutterMark)
         val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
         TestCase.assertEquals(
@@ -124,7 +124,7 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
             """.trimIndent()
         )
         val gutterMarks = myFixture.findGuttersAtCaret()
-        val gutterMark = gutterMarks.find { it.icon == AllIcons.Nodes.Property }
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.Property }
         TestCase.assertNotNull(gutterMark)
         val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
         TestCase.assertEquals(
@@ -169,7 +169,7 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
             """.trimIndent()
         )
         val gutterMarks = myFixture.findGuttersAtCaret()
-        val gutterMark = gutterMarks.find { it.icon == AllIcons.Nodes.Property }
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.Property }
         TestCase.assertNotNull(gutterMark)
         val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
         TestCase.assertEquals(

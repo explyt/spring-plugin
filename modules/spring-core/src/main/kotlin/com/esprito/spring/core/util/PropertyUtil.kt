@@ -6,6 +6,8 @@ import com.esprito.spring.core.completion.properties.SpringConfigurationProperti
 import com.esprito.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.esprito.spring.core.references.ReferenceType
 import com.esprito.util.ModuleUtil
+import com.intellij.lang.properties.psi.impl.PropertyImpl
+import com.intellij.lang.properties.psi.impl.PropertyValueImpl
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -14,6 +16,11 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.parentOfType
+import org.jetbrains.yaml.YAMLUtil
+import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLValue
 
 object PropertyUtil {
     const val DOT = "."
@@ -205,6 +212,41 @@ object PropertyUtil {
         val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
         val foundClass = javaPsiFacade.findClass(qualifiedName, GlobalSearchScope.allScope(project)) ?: return null
         return findMember(foundClass, memberName, setterName) ?: foundClass
+    }
+
+    fun getPropertyKey(element: PsiElement): String? {
+        val property = element.parentOfType<PropertyImpl>()
+        if (property != null) {
+            return property.key
+        }
+        if (element is YAMLKeyValue) {
+            return YAMLUtil.getConfigFullName(element)
+        }
+        return null
+    }
+
+    fun getPropertyValue(element: PsiElement): String? {
+        val property = element.parentOfType<PropertyImpl>()
+        if (property != null) {
+            return property.value
+        }
+        if (element is YAMLKeyValue) {
+            return element.valueText
+        }
+        return null
+    }
+
+    fun getPropertyValuePsiElement(element: PsiElement): PsiElement? {
+        if (element is PropertyValueImpl) {
+            return element
+        }
+        if (element is YAMLKeyValue) {
+            val yamlValue = PsiTreeUtil.collectElementsOfType(element, YAMLValue::class.java).lastOrNull()
+            if (yamlValue != null && yamlValue.text == element.value?.text) {
+                return element.value
+            }
+        }
+        return null
     }
 
     private fun findMember(

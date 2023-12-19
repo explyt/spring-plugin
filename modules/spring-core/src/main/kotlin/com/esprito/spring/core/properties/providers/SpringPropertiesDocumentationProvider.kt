@@ -1,4 +1,4 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.providers
 
 import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
 import com.intellij.psi.PsiElement

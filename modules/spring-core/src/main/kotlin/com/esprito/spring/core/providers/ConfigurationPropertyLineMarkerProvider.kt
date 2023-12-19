@@ -1,11 +1,11 @@
 package com.esprito.spring.core.providers
 
 import com.esprito.spring.core.SpringCoreBundle
+import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.properties.ConfigurationPropertyDataRetriever
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
@@ -32,7 +32,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         val properties = dataRetriever.getRelatedProperties(prefixValue, memberName, module)
         if (properties.isEmpty()) return
 
-        val builder = NavigationGutterIconBuilder.create(AllIcons.Nodes.Property)
+        val builder = NavigationGutterIconBuilder.create(SpringIcons.Property)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(properties)
             .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.property.usage"))

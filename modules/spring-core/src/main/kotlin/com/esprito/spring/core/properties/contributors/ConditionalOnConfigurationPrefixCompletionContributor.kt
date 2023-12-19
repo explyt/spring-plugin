@@ -1,4 +1,4 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.contributors
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
