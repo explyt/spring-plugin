@@ -32,15 +32,8 @@ class SpringYamlProfilesReferenceProvider : PsiReferenceProvider() {
         val matcher = ProfilesUtil.profilePattern.matcher(propertyValue.text)
         while (matcher.find()) {
             val text = matcher.group()
-            result.add(
-                ProfilesReference(
-                    yamlKeyValue,
-                    text,
-                    TextRange.allOf(text)
-                        .shiftRight(matcher.start())
-                        .shiftRight(propertyValue.startOffsetInParent)
-                )
-            )
+            val range = TextRange.allOf(text).shiftRight(matcher.start()).shiftRight(propertyValue.startOffsetInParent)
+            result.add(SpringProfilePsiReference(yamlKeyValue, text, false, range))
         }
 
         return result.toTypedArray()

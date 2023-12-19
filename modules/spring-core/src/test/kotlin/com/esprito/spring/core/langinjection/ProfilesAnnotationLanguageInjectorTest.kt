@@ -1,6 +1,5 @@
 package com.esprito.spring.core.langinjection
 
-import com.esprito.spring.core.language.profiles.ProfilesLanguage
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.testFramework.TestDataPath
@@ -22,7 +21,8 @@ class ProfilesAnnotationLanguageInjectorTest : EspritoJavaLightTestCase() {
 
         val injectionTestFixture = InjectionTestFixture(myFixture)
 
-        injectionTestFixture.assertInjectedLangAtCaret(ProfilesLanguage.INSTANCE.id)
+        //Profile language - not work rename(remove profile language injection)
+        injectionTestFixture.assertInjectedLangAtCaret(null)
     }
 
     fun testAnnotatedWithBean() {

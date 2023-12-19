@@ -31,23 +31,13 @@ class SpringXmlProfilesReferenceProvider : PsiReferenceProvider() {
 
             while (matcher.find()) {
                 val text = matcher.group()
-                result.add(
-                    ProfilesReference(
-                        xmlTag,
-                        text,
-                        TextRange.allOf(text)
-                            .shiftRight(matcher.start())
-                            .shiftRight(xmlTag.name.length + 2)
-                    )
-                )
+                val range = TextRange.allOf(text).shiftRight(matcher.start()).shiftRight(xmlTag.name.length + 2)
+                result.add(SpringProfilePsiReference(xmlTag, text, false, range))
             }
         } else if (isFromMavenPlugin(xmlTag)) {
             result.add(
-                ProfilesReference(
-                    xmlTag,
-                    xmlValueText,
-                    TextRange.allOf(xmlValueText)
-                        .shiftRight(xmlTag.name.length + 2)
+                SpringProfilePsiReference(
+                    xmlTag, xmlValueText, false, TextRange.allOf(xmlValueText).shiftRight(xmlTag.name.length + 2)
                 )
             )
         }

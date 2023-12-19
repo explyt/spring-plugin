@@ -14,7 +14,7 @@ class PropertiesProfilesReferenceContributor : PsiReferenceContributor() {
 
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(
-        PlatformPatterns.psiElement(PropertyValueImpl::class.java),
+            PlatformPatterns.psiElement(PropertyValueImpl::class.java),
             SpringPropertiesProfilesReferenceProvider()
         )
     }
@@ -36,11 +36,8 @@ class SpringPropertiesProfilesReferenceProvider : PsiReferenceProvider() {
         while (matcher.find()) {
             val text = matcher.group()
             result.add(
-                ProfilesReference(
-                    propertyValue,
-                    text,
-                    TextRange.allOf(text)
-                        .shiftRight(matcher.start())
+                SpringProfilePsiReference(
+                    propertyValue, text, false, TextRange.allOf(text).shiftRight(matcher.start())
                 )
             )
         }
