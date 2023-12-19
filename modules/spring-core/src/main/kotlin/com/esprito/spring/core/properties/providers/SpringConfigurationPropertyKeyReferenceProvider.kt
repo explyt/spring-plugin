@@ -1,33 +1,25 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.esprito.spring.core.properties.reference.KeyPsiReference
+import com.esprito.spring.core.properties.PropertiesJavaClassReferenceSet
+import com.esprito.spring.core.properties.references.KeyPsiReference
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 
-class SpringConfigurationPropertiesKeyReferenceProvider : PsiReferenceProvider() {
+class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
-        val property = PsiTreeUtil.getParentOfType(
-            element,
-            PropertyImpl::class.java
-        ) ?: return PsiReference.EMPTY_ARRAY
-
-        val propertyKey = property.key ?: return PsiReference.EMPTY_ARRAY
-
-        if (!SpringCoreUtil.isConfigurationPropertyFile(property.containingFile)) {
+        if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return emptyArray()
         }
-
+        val propertyKey = PropertyUtil.getPropertyKey(element) ?: return PsiReference.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return PsiReference.EMPTY_ARRAY
         val allHints = SpringConfigurationPropertiesSearch.getInstance(element.project)
             .getAllHints(module)

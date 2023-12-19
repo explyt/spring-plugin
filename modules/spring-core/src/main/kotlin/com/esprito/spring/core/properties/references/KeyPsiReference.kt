@@ -1,4 +1,4 @@
-package com.esprito.spring.core.properties.reference
+package com.esprito.spring.core.properties.references
 
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.completion.properties.ValueHint

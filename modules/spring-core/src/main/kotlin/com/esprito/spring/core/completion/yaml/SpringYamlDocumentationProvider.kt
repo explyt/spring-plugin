@@ -1,6 +1,6 @@
 package com.esprito.spring.core.completion.yaml
 
-import com.esprito.spring.core.properties.ConfigurationPropertiesDocumentationProvider
+import com.esprito.spring.core.properties.providers.ConfigurationPropertiesDocumentationProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentOfType
 import org.jetbrains.yaml.YAMLUtil

@@ -1,4 +1,4 @@
-package com.esprito.spring.core.properties.reference
+package com.esprito.spring.core.properties.references
 
 import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreClasses
@@ -14,6 +14,7 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ClassInheritorsSearch
@@ -23,11 +24,12 @@ import java.text.DateFormat
 
 class ValueHintReference(
     element: PsiElement,
-    private val propertyKey: String
-) : PsiReferenceBase.Poly<PsiElement>(element) {
+    textRange: TextRange
+) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        val propertyValue = element.text ?: return emptyArray()
+        val propertyKey = PropertyUtil.getPropertyKey(element) ?: return emptyArray()
+        val propertyValue = PropertyUtil.getPropertyValue(element) ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
         val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey)
@@ -69,6 +71,7 @@ class ValueHintReference(
 
     override fun getVariants(): Array<Any> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
+        val propertyKey = PropertyUtil.getPropertyKey(element) ?: return emptyArray()
         val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey)
 
         val result = mutableListOf<Any>()

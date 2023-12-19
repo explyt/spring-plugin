@@ -1,6 +1,7 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.properties.references.EspritoPropertyReference
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiReference

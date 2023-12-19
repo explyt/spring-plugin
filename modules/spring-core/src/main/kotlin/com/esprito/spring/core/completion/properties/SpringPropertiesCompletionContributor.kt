@@ -8,7 +8,11 @@ import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.patterns.PlatformPatterns
+import com.intellij.psi.PsiElement
 import com.intellij.util.ProcessingContext
+import org.jetbrains.yaml.YAMLUtil
+import org.jetbrains.yaml.psi.YAMLFile
+import org.jetbrains.yaml.psi.YAMLKeyValue
 
 class SpringPropertiesCompletionContributor : CompletionContributor() {
     init {
@@ -22,33 +26,29 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             result: CompletionResultSet
         ) {
             val propertyPosition = parameters.position
-            if (propertyPosition.parent !is IProperty || !SpringCoreUtil.isConfigurationPropertyFile(parameters.originalFile)
-            ) {
+            val psiElement = propertyPosition.parent
+            if (!SpringCoreUtil.isConfigurationPropertyFile(parameters.originalFile)) {
                 return
             }
 
-            if (propertyPosition is PropertyKeyImpl) {
-                completePropertyKey(propertyPosition, parameters, result)
+            if (psiElement is IProperty) {
+                completeKey(propertyPosition, parameters, result)
+            } else if (psiElement is YAMLKeyValue) {
+                completeKey(psiElement, parameters, result)
             }
-            // completion of key value you can find in SpringConfigurationPropertiesValueReferenceProvider
         }
 
-        private fun completePropertyKey(
-            position: PropertyKeyImpl,
+        private fun completeKey(
+            element: PsiElement,
             parameters: CompletionParameters,
             result: CompletionResultSet
         ) {
-            val module = ModuleUtilCore.findModuleForPsiElement(position) ?: return
-
-            val cursor = parameters.offset
-            val keyStart = position.textOffset
-
-            val key = position.text.substring(0, cursor - keyStart)
-            val fullKey = parameters.originalFile.text.substring(keyStart).substringBefore("\n").substringBefore("=")
+            val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
+            val currentKey = getCurrentKey(element, parameters) ?: return
 
             val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllProperties(module)
-            val parameterKeys = getParametersFromFile(parameters).map { it.key }.filter { it != fullKey }
+            val parameterKeys = getKeysFromFile(parameters).filter { it != currentKey.fullKey }
 
             val reducedProperties = properties
                 .groupBy { it.name }
@@ -59,19 +59,68 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                 .filter { it.name !in parameterKeys }
 
             for (property in reducedProperties) {
-                result.withPrefixMatcher(key).addElement(
+                result.withPrefixMatcher(currentKey.startKey).addElement(
                     LookupElementBuilder.create(property, property.name)
                         .withRenderer(PropertyRenderer())
                 )
             }
         }
 
-        private fun getParametersFromFile(completionParameters: CompletionParameters): List<IProperty> {
+        private fun getCurrentKey(element: PsiElement, parameters: CompletionParameters): CurrentKey? {
+            return when (element) {
+                is PropertyKeyImpl -> {
+                    getCurrentKeyFromProperty(element, parameters)
+                }
+
+                is YAMLKeyValue -> {
+                    getCurrentKeyFromYaml(element)
+                }
+
+                else -> {
+                    null
+                }
+            }
+        }
+
+        private fun getCurrentKeyFromProperty(
+            propertyKey: PropertyKeyImpl,
+            parameters: CompletionParameters
+        ): CurrentKey {
+            val cursor = parameters.offset
+            val keyStart = propertyKey.textOffset
+
+            val key = propertyKey.text.substring(0, cursor - keyStart)
+            val fullKey = parameters.originalFile.text
+                .substring(keyStart)
+                .substringBefore("\n").substringBefore("=")
+            return CurrentKey(key, fullKey)
+        }
+
+        private fun getCurrentKeyFromYaml(yamlKey: YAMLKeyValue): CurrentKey {
+            val keyResult = YAMLUtil.getConfigFullName(yamlKey)
+            val key = keyResult.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
+            val fullKey = keyResult.replace(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED, "").replace(" ", "")
+            return CurrentKey(key, fullKey)
+        }
+
+        private fun getKeysFromFile(completionParameters: CompletionParameters): List<String> {
             val psiFile = completionParameters.originalFile
             if (!SpringCoreUtil.isConfigurationPropertyFile(psiFile)) {
                 return emptyList()
             }
-            return (psiFile as PropertiesFile).properties.filterNotNull()
+            val keys = mutableListOf<String>()
+            if (psiFile is PropertiesFile) {
+                keys.addAll(psiFile.properties.mapNotNull { it.key })
+            }
+            if (psiFile is YAMLFile) {
+                keys.addAll(YamlPropertySource(psiFile).properties.map { it.key })
+            }
+            return keys
         }
     }
+
+    data class CurrentKey(
+        val startKey: String,
+        val fullKey: String
+    )
 }

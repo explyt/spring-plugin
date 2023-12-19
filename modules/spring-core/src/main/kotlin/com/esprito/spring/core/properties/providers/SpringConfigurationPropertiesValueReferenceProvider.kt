@@ -1,25 +1,23 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.esprito.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
-import com.esprito.spring.core.properties.reference.PlaceholderValueReference
-import com.esprito.spring.core.properties.reference.ValueHintReference
+import com.esprito.spring.core.properties.references.PlaceholderValueReference
+import com.esprito.spring.core.properties.references.ValueHintReference
+import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceProvider
-import com.intellij.psi.util.parentOfType
 import com.intellij.util.ProcessingContext
 import com.intellij.util.text.PlaceholderTextRanges
+import com.intellij.util.text.findTextRange
 
 class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider() {
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
-        val propertyKey = element.parentOfType<PropertyImpl>()?.key ?: return emptyArray()
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return emptyArray()
         }
@@ -27,11 +25,13 @@ class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider
         if (placeholderReferences.isNotEmpty()) {
             return placeholderReferences.toTypedArray()
         }
-        return arrayOf(ValueHintReference(element, propertyKey))
+        val valueElement = PropertyUtil.getPropertyValuePsiElement(element) ?: return emptyArray()
+        val textRange = element.text.findTextRange(valueElement.text) ?: return emptyArray()
+        return arrayOf(ValueHintReference(element, textRange))
     }
 
     private fun getPlaceholderValueReferences(element: PsiElement): List<PsiReference> {
-        val text = ElementManipulators.getValueText(element)
+        val text = element.text ?: return emptyList()
         val ranges = PlaceholderTextRanges.getPlaceholderRanges(
             text,
             PLACEHOLDER_PREFIX,

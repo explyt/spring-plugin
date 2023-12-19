@@ -1,6 +1,7 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.properties.references.EspritoLibraryPropertyReference
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues

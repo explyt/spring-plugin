@@ -18,3 +18,5 @@ modules/buildsystem/gradle/build
 .ampicode
 /jflex-1.9.1.jar
 /idea-flex.skeleton
+out.map
+*.hprof

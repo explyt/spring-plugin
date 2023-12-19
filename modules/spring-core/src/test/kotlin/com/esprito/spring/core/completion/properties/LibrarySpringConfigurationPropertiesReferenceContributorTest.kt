@@ -1,7 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
-import com.esprito.spring.core.properties.ConfigKeyPsiElement
-import com.esprito.spring.core.properties.ConfigurationPropertyKeyReference
+import com.esprito.spring.core.properties.providers.ConfigKeyPsiElement
+import com.esprito.spring.core.properties.providers.ConfigurationPropertyKeyReference
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.psi.PsiMember

@@ -51,17 +51,17 @@
 
         <completion.contributor language="UAST"
                                 order="first"
-                                id="com.esprito.spring.core.properties.ConditionalOnConfigurationPrefixCompletionContributor"
-                                implementationClass="com.esprito.spring.core.properties.ConditionalOnConfigurationPrefixCompletionContributor"/>
+                                id="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"
+                                implementationClass="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"/>
 
         <psi.referenceContributor language="Properties"
-                                  implementation="com.esprito.spring.core.properties.SpringConfigurationPropertiesReferenceContributor"/>
+                                  implementation="com.esprito.spring.core.properties.contributors.SpringConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="Properties"
                                   implementation="com.esprito.spring.core.autoconfigure.reference.AutoConfigureReferenceContributor"/>
         <psi.referenceContributor language="yaml"
-                                  implementation="com.esprito.spring.core.completion.yaml.SpringYamlConfigurationPropertiesReferenceContributor"/>
+                                  implementation="com.esprito.spring.core.properties.contributors.SpringYamlConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.properties.UastConfigurationPropertyReferenceContributor"/>
+                                  implementation="com.esprito.spring.core.properties.contributors.UastConfigurationPropertyReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.core.references.contributors.UastAliasMethodReferenceContributor"/>
         <psi.referenceContributor language="UAST"
@@ -72,7 +72,7 @@
                                   implementation="com.esprito.spring.core.references.contributors.QualifierReferenceContributor"/>
         <lang.documentationProvider language="Properties"
                                     order="first"
-                                    implementationClass="com.esprito.spring.core.properties.SpringPropertiesDocumentationProvider"/>
+                                    implementationClass="com.esprito.spring.core.properties.providers.SpringPropertiesDocumentationProvider"/>
         <lang.documentationProvider language="yaml"
                                     order="first"
                                     implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlDocumentationProvider"/>

@@ -1,7 +1,8 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.references
 
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.properties.providers.ConfigKeyPsiElement
 import com.esprito.spring.core.util.PropertyUtil
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
 import com.intellij.codeInsight.highlighting.HighlightedReference
