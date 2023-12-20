@@ -105,7 +105,7 @@ object ResourceFileInspectionUtil {
         val highlightType = if (languageFileType == XmlFileType.INSTANCE)
             ProblemHighlightType.GENERIC_ERROR else ProblemHighlightType.WARNING
 
-        val pathToFile = Path.of(textWithoutPrefix)
+        val pathToFile = getPathToFile(textWithoutPrefix)
         val fileName = pathToFile.lastOrNull()?.toString() ?: return emptyList()
         val fileDirs = pathToFile.parent?.toList()?.map { it.toString() }?.toTypedArray() ?: emptyArray()
 
@@ -126,6 +126,16 @@ object ResourceFileInspectionUtil {
                 highlightType
             )
         )
+    }
+
+    private fun getPathToFile(textWithoutPrefix: String): Path {
+        val path = Path.of(textWithoutPrefix)
+        if (!path.isAbsolute) return path
+        return try {
+            path.subpath(0, path.nameCount)
+        } catch (e: Exception) {
+            path
+        }
     }
 
     private fun getText(languageFileType: LanguageFileType, project: Project): String {
