@@ -2,6 +2,9 @@ package com.esprito.spring.core.references.contributors
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.providers.FileReferenceProvider
+import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.SIMPLE_VALUE
+import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.VALUE_LOCATIONS
+import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.VALUE_SCRIPTS
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.patterns.PsiJavaPatterns
 import com.intellij.patterns.uast.UExpressionPattern
@@ -21,13 +24,19 @@ class FileReferenceContributor : PsiReferenceContributor() {
         val providerYmlProperties = FileReferenceProvider(arrayOf(YAMLFileType.YML, PropertiesFileType.INSTANCE))
         val providerXml = FileReferenceProvider(arrayOf(YAMLFileType.YML, PropertiesFileType.INSTANCE))
 
-        SpringCoreClasses.ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES
-            .forEach { addAnnotationValueContributor(registrar, injection, it, providerYmlProperties) }
+        addAnnotationValueContributor(
+            registrar, injection, SpringCoreClasses.PROPERTY_SOURCE, providerYmlProperties, SIMPLE_VALUE
+        )
+        addAnnotationValueContributor(
+            registrar, injection, SpringCoreClasses.TEST_PROPERTY_SOURCE, providerYmlProperties, VALUE_LOCATIONS
+        )
         SpringCoreClasses.ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML
-            .forEach { addAnnotationValueContributor(registrar, injection, it, providerXml) }
+            .forEach { addAnnotationValueContributor(registrar, injection, it, providerXml, VALUE_LOCATIONS) }
         SpringCoreClasses.ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL
-            .forEach { addAnnotationValueContributor(registrar, injection, it, allFileProvider) }
-        addAnnotationValueContributor(registrar, injection, SpringCoreClasses.VALUE, allFileProvider)
+            .forEach { addAnnotationValueContributor(registrar, injection, it, allFileProvider, VALUE_SCRIPTS) }
+        addAnnotationValueContributor(
+            registrar, injection, SpringCoreClasses.VALUE, allFileProvider, SIMPLE_VALUE
+        )
 
         val resourceMethodPattern = PsiJavaPatterns.psiMethod().withName("getResource")
             .definedInClass(SpringCoreClasses.RESOURCE_LOADER)
@@ -59,9 +68,19 @@ class FileReferenceContributor : PsiReferenceContributor() {
         injection: UExpressionPattern<UExpression, *>,
         className: String,
         provider: FileReferenceProvider,
+        parameterNames: List<String>
     ) {
-        registrar.registerUastReferenceProvider(
-            injection.annotationParam(className, "value"), provider, PsiReferenceRegistrar.LOWER_PRIORITY
-        )
+        parameterNames.forEach {
+            registrar.registerUastReferenceProvider(
+                injection.annotationParam(className, it), provider, PsiReferenceRegistrar.LOWER_PRIORITY
+            )
+        }
     }
+
+    object AnnotationParamsConstants {
+        val SIMPLE_VALUE = listOf("value")
+        val VALUE_LOCATIONS = listOf("value", "locations")
+        val VALUE_SCRIPTS = listOf("value", "scripts")
+    }
+
 }

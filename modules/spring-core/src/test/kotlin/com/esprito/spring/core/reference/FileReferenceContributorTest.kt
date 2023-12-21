@@ -144,4 +144,157 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .toSet()
         assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
     }
+
+    fun testImportResourceDefault() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.IMPORT_RESOURCE}("<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testImportResourceLocations() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.IMPORT_RESOURCE}(locations="<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testContextConfigurationDefault() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.CONTEXT_CONFIGURATION}("<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testContextConfigurationLocations() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.CONTEXT_CONFIGURATION}(locations="<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testTestPropertySourceLocations() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.TEST_PROPERTY_SOURCE}(locations="<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testTestPropertySourceDefault() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.TEST_PROPERTY_SOURCE}("<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testPropertySourceDefault() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.PROPERTY_SOURCE}("<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testSQLDefault() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.CONTEXT_SQL}("<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
+
+    fun testSQLScripts() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                @${SpringCoreClasses.CONTEXT_SQL}(scripts="<caret>")
+                public class TestClass {}
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+    }
 }
