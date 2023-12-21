@@ -7,4 +7,6 @@ object SpringWebClasses {
     const val WEB_INITIALIZER = "org.springframework.web.WebApplicationInitializer"
 
 
+    const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
+    const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
 }

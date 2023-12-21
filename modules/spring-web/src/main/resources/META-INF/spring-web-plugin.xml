@@ -1,6 +1,21 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
+
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.web.references.contributors.UastRequestMappingReferenceContributor"/>
+
         <implicitUsageProvider implementation="com.esprito.spring.web.providers.SpringWebImplicitUsageProvider"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringOmittedPathVariableParameterInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupKey="esprito.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="esprito.spring.web.inspection.pathVariable"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.web.inspections.SpringOmittedPathVariableParameterInspection"/>
+
     </extensions>
 
     <actions>
