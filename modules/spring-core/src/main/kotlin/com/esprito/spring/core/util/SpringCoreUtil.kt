@@ -187,12 +187,20 @@ object SpringCoreUtil {
                 }
                 return firstParam.beanPsiType
             }
-            if (isMap && isInterface && parameterCount == 2 && parameters[0].isString) {
+            if (isMapWithStringKey()) {
                 // Map<String, Bean>
                 return parameters[1]
             }
             return this
         }
+
+    fun PsiType.isMapWithStringKey(): Boolean {
+        return isMap
+                && isInterface
+                && this is PsiClassType
+                && parameterCount == 2
+                && parameters[0].isString
+    }
 
     fun PsiClass?.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean =
         this != null && targetClasses.any { it == this }
