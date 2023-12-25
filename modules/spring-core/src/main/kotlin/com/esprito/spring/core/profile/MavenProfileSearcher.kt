@@ -1,6 +1,7 @@
 package com.esprito.spring.core.profile
 
 import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -11,7 +12,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.xml.XmlFile
-import com.intellij.uast.UastModificationTracker
 import com.intellij.util.CommonProcessors
 
 class MavenProfileSearcher(project: Project) : ProfileSearcher {
@@ -23,11 +23,9 @@ class MavenProfileSearcher(project: Project) : ProfileSearcher {
 
         return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
-                findPomXml(module)
-                    .flatMap { getProfiles(it) },
-                UastModificationTracker.getInstance(project)
+                findPomXml(module).flatMap { getProfiles(it) },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
-
         }
     }
 

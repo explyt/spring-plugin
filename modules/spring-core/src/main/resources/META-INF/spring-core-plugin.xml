@@ -377,6 +377,9 @@
     </extensions>
 
     <actions>
-
+        <action id="Esprito.UastModelTrackerInvalidateAction"
+                class="com.esprito.spring.core.action.UastModelTrackerInvalidateAction">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
+        </action>
     </actions>
 </idea-plugin>

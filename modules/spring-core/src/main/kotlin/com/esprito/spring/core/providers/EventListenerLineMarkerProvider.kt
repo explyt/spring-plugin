@@ -9,6 +9,7 @@ import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.SpringProperties.ON_APPLICATION_EVENT
 import com.esprito.spring.core.SpringProperties.PUBLISH_EVENT_METHOD
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
@@ -30,7 +31,6 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.parentOfType
-import com.intellij.uast.UastModificationTracker
 import org.jetbrains.uast.*
 import java.util.*
 
@@ -127,7 +127,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return cacheManager.getCachedValue(psiMethod) {
             CachedValueProvider.Result.create(
                 getPsiClassesByAnnotation(module, psiMethod),
-                UastModificationTracker.getInstance(module.project)
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -212,7 +212,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return cacheManager.getCachedValue(module) {
             CachedValueProvider.Result.create(
                 getMethodsByApplicationEvent(module),
-                UastModificationTracker.getInstance(module.project)
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -223,7 +223,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return cacheManager.getCachedValue(module) {
             CachedValueProvider.Result.create(
                 getMethodsByEventListener(module),
-                UastModificationTracker.getInstance(module.project)
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
     }

@@ -3,11 +3,11 @@ package com.esprito.spring.core.profile
 import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch.Companion.fileMask
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.uast.UastModificationTracker
 
 class PropertyNameProfileSearcher : ProfileSearcher {
 
@@ -18,13 +18,10 @@ class PropertyNameProfileSearcher : ProfileSearcher {
         return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
                 getProfilesFromProperties(module, propertiesSearch)
-                        +
-                        propertiesSearch.searchPropertyFiles(module)
-                            .flatMap { getProfiles(it) },
-                UastModificationTracker.getInstance(project)
+                        + propertiesSearch.searchPropertyFiles(module).flatMap { getProfiles(it) },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
-
     }
 
     private fun getProfiles(psiFile: PsiFile): List<String> {

@@ -4,6 +4,7 @@ import ai.grazie.utils.capitalize
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.util.EspritoPsiUtil.isAbstract
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -16,7 +17,6 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.parentOfType
-import com.intellij.uast.UastModificationTracker
 import org.apache.logging.log4j.util.Strings
 
 class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
@@ -54,7 +54,7 @@ class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
                 .getCachedValue(psiClass) {
                     CachedValueProvider.Result(
                         getPrefixFromUsage(psiClass, module),
-                        UastModificationTracker.getInstance(module.project)
+                        ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
                     )
                 }
         }
