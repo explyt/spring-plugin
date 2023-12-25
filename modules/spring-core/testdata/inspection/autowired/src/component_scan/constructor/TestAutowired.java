@@ -5,8 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
-public class MyComponent {
-
+class MyComponent {
+    
     @Autowired
     public MyComponent(BarBean bean) {
     }
@@ -28,11 +28,11 @@ public class BarBean {
 }
 
 @Component
-public class FooBean {
+class FooBean {
 }
 
 @Service
-public class MyFactory {
+class MyFactory {
     public MyFactory(String str) {
     }
     public MyFactory(int count) {

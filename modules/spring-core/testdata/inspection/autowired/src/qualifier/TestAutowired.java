@@ -6,32 +6,32 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 @Configuration
-public class MyComponent {
+class MyComponent {
     @Qualifier("fooBean")
     @Autowired
-    FooInterface testQualifier;
-
+    FooInterface testQualifier1;
+    
     @Qualifier("not")
     @Autowired
-    FooInterface testQualifier;
-
+    FooInterface testQualifier2;
+    
     @Qualifier("nameQualifier")
     @Autowired
-    FooInterface testQualifier;
+    FooInterface testQualifier3;
 }
 
-public interface FooInterface {
-}
-
-@Component
-public class FooBean implements FooInterface {
+interface FooInterface {
 }
 
 @Component
-public class OtherBean implements FooInterface {
+class FooBean implements FooInterface {
+}
+
+@Component
+class OtherBean implements FooInterface {
 }
 
 @Component
 @Qualifier("nameQualifier")
-public class AnotherBean implements FooInterface {
+class AnotherBean implements FooInterface {
 }
