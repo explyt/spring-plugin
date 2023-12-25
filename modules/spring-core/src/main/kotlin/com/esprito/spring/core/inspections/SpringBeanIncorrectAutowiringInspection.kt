@@ -14,28 +14,30 @@ import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
-import com.intellij.psi.util.childrenOfType
 import com.intellij.util.applyIf
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UField
 
 
-class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringBeanIncorrectAutowiringInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkField(
-        field: PsiField,
+        uField: UField,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor> {
+        val field = uField.javaPsi as? PsiField ?: return ProblemDescriptor.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(field) ?: return ProblemDescriptor.EMPTY_ARRAY
         if (!field.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)) return ProblemDescriptor.EMPTY_ARRAY
-        //if (!field.isInjectOrAutowiredByRequiredTrue()) return ProblemDescriptor.EMPTY_ARRAY
 
         if (isBeanExist(module, field.containingClass) && SpringCoreUtil.existComponentScan(module)) {
             return getProblemAutowired(module, field, manager, isOnTheFly)
@@ -44,10 +46,11 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
     }
 
     override fun checkClass(
-        aClass: PsiClass,
+        uClass: UClass,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor> {
+        val aClass = uClass.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(aClass) ?: ProblemDescriptor.EMPTY_ARRAY
         if (!SpringCoreUtil.existComponentScan(module as Module)) return ProblemDescriptor.EMPTY_ARRAY
         if (!SpringCoreUtil.isSpringBeanCandidateClass(aClass)) return ProblemDescriptor.EMPTY_ARRAY
@@ -84,7 +87,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
             if (autowiredConstructors.isEmpty() && aClass.constructors.isNotEmpty()) {
                 if (aClass.nameIdentifier != null) {
-                    val psiElement = aClass.nameIdentifier!!.navigationElement
+                    val psiElement = getIdentifyingElement(aClass)?.navigationElement ?: return problems
                     problems += manager.createProblemDescriptor(
                         psiElement,
                         SpringCoreBundle.message("esprito.spring.inspection.constructor.without.autowiring"),
@@ -95,7 +98,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
                 }
             } else if (autowiredConstructors.size > 1) {
                 autowiredConstructors
-                    .mapNotNull { it.nameIdentifier?.navigationElement }
+                    .mapNotNull { getIdentifyingElement(it)?.navigationElement }
                     .forEach {
                         problems += manager.createProblemDescriptor(
                             it,
@@ -124,8 +127,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
         val psiType = element.type
         val nameClass = (psiType.resolveBeanPsiClass ?: psiType.resolvedPsiClass)?.name ?: return ProblemDescriptor.EMPTY_ARRAY
-        val problemElement =
-            (element as? PsiNameIdentifierOwner)?.identifyingElement ?: return ProblemDescriptor.EMPTY_ARRAY
+        val problemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
 
         val springSearchService = SpringSearchService.getInstance(module.project)
         val beanDeclarations = springSearchService
@@ -242,7 +244,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         var problems = emptyArray<ProblemDescriptor>()
-        val identifier = method.identifyingElement
+        val identifier = getIdentifyingElement(method)
         if (method.isAutowiredByRequiredTrue() == true && params.isEmpty() && identifier != null) {
             problems += manager.createProblemDescriptor(
                 identifier,
@@ -264,24 +266,22 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
 
         val fields = aClass.allFields
             .filter { it.isInjectOrAutowiredByRequiredTrue() }
-            .map { it as PsiElement }.toSet()
+            .map { it as PsiNameIdentifierOwner }.toSet()
         val methods = aClass.allMethods
             .filter { it.isInjectOrAutowiredByRequiredTrue() }
-            .map { it as PsiElement }.toSet()
+            .map { it as PsiNameIdentifierOwner }.toSet()
         val elements = fields + methods
 
         if (elements.isNotEmpty() && (aClass.nameIdentifier != null)) {
             elements.map {
-                val identifier = it.childrenOfType<PsiIdentifier>().firstOrNull()
-                if (identifier != null) {
-                    problems += manager.createProblemDescriptor(
-                        identifier,
-                        SpringCoreBundle.message("esprito.spring.inspection.class.without.component"),
-                        isOnTheFly,
-                        emptyArray(),
-                        ProblemHighlightType.GENERIC_ERROR
-                    )
-                }
+                val identifier = getIdentifyingElement(it) ?: return@map
+                problems += manager.createProblemDescriptor(
+                    identifier,
+                    SpringCoreBundle.message("esprito.spring.inspection.class.without.component"),
+                    isOnTheFly,
+                    emptyArray(),
+                    ProblemHighlightType.GENERIC_ERROR
+                )
             }
         }
         return problems
@@ -335,6 +335,10 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseJavaLocalInspectionT
             )
         }
         return SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.type.none", psiType.presentableText)
+    }
+
+    private fun getIdentifyingElement(namedElement: PsiNameIdentifierOwner): PsiElement? {
+        return (namedElement.toSourcePsi() as? PsiNameIdentifierOwner)?.identifyingElement
     }
 
 }

@@ -71,3 +71,8 @@ class ClassBeanExist {
     @Autowired
     InjectBean injectBean;
 }
+
+interface InjectBean {}
+
+@Service
+class IBComponent implements InjectBean {}
