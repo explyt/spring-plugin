@@ -17,6 +17,7 @@ import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.DOT
 import com.esprito.spring.core.util.SpringCoreUtil
@@ -39,7 +40,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
-import com.intellij.uast.UastModificationTracker
 import com.intellij.xml.util.documentation.MimeTypeDictionary
 import java.nio.charset.Charset
 import java.text.DateFormat
@@ -513,7 +513,7 @@ class SpringPropertiesInspection : LocalInspectionTool() {
             .getCachedValue(module, key, {
                 CachedValueProvider.Result.create(
                     JavaPsiFacade.getInstance(project).findClass(propertyType, GlobalSearchScope.allScope(project)),
-                    UastModificationTracker.getInstance(module.project)
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )
             }, false)
     }

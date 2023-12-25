@@ -1,5 +1,6 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.lang.properties.PropertiesLanguage
 import com.intellij.lang.properties.psi.PropertiesFile
@@ -18,7 +19,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.uast.UastModificationTracker
 import com.intellij.util.CommonProcessors
 import com.intellij.util.Processor
 import org.jetbrains.yaml.YAMLLanguage
@@ -40,7 +40,10 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
         val project = module.project
 
         return CachedValuesManager.getManager(project).getCachedValue(module) {
-            CachedValueProvider.Result(findPropertyFiles(module), UastModificationTracker.getInstance(project))
+            CachedValueProvider.Result(
+                findPropertyFiles(module),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
         }
     }
 

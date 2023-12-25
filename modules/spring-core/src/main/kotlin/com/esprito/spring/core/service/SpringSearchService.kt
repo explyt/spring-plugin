@@ -5,6 +5,7 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.conditional.*
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
@@ -42,7 +43,6 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
-import com.intellij.uast.UastModificationTracker
 
 @Service(Service.Level.PROJECT)
 class SpringSearchService(private val project: Project) {
@@ -59,41 +59,25 @@ class SpringSearchService(private val project: Project) {
     private fun getAllBeansClasses(module: Module): FoundBeans {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
-                filterByConditionals(
-                    module,
-                    searchAllBeanClasses(module)
-                ),
-                UastModificationTracker.getInstance(project)
+                filterByConditionals(module, searchAllBeanClasses(module)),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
 
     fun getExcludedBeansClasses(module: Module): Set<PsiBean> {
-        return cachedValuesManager.getCachedValue(module) {
-            CachedValueProvider.Result(
-                getAllBeansClasses(module)
-                    .excluded,
-                UastModificationTracker.getInstance(project)
-            )
-        }
+        return getAllBeansClasses(module).excluded
     }
 
     fun getActiveBeansClasses(module: Module): Set<PsiBean> {
-        return cachedValuesManager.getCachedValue(module) {
-            CachedValueProvider.Result(
-                getAllBeansClasses(module)
-                    .active,
-                UastModificationTracker.getInstance(project)
-            )
-        }
+        return getAllBeansClasses(module).active
     }
 
     fun getAllBeanByNames(module: Module): Map<String, List<PsiBean>> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
-                getActiveBeansClasses(module)
-                    .groupBy { it.name },
-                UastModificationTracker.getInstance(project)
+                getActiveBeansClasses(module).groupBy { it.name },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -101,8 +85,9 @@ class SpringSearchService(private val project: Project) {
     fun getAllBeansClassesWithAncestors(module: Module): Set<PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
-                getActiveBeansClasses(module).asSequence().flatMap { it.psiClass.supers.asSequence() + it.psiClass }.toSet(),
-                UastModificationTracker.getInstance(project)
+                getActiveBeansClasses(module)
+                    .flatMapTo(mutableSetOf()) { it.psiClass.supers.asSequence() + it.psiClass },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -113,7 +98,7 @@ class SpringSearchService(private val project: Project) {
             val annotationPsiClasses = getComponentClassAnnotations(module)
             CachedValueProvider.Result(
                 searchBeanPsiClassesByAnnotations(module, annotationPsiClasses),
-                UastModificationTracker.getInstance(project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -129,7 +114,7 @@ class SpringSearchService(private val project: Project) {
                 .toSet()
             CachedValueProvider.Result(
                 psiMethods,
-                UastModificationTracker.getInstance(project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -153,7 +138,9 @@ class SpringSearchService(private val project: Project) {
             .toSet()
     }
 
-    private fun searchBeanPsiClassesByAnnotations(module: Module, annotationPsiClasses: Collection<PsiClass>): Set<PsiBean> {
+    private fun searchBeanPsiClassesByAnnotations(
+        module: Module, annotationPsiClasses: Collection<PsiClass>
+    ): Set<PsiBean> {
         val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
         return annotationPsiClasses.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
@@ -171,11 +158,13 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
                 run {
-                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false).toMutableSet()
+                    val annotations =
+                        MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
+                            .toMutableSet()
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
                     return@run annotations
                 }.toSet(),
-                UastModificationTracker.getInstance(project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -184,7 +173,7 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(element) {
             CachedValueProvider.Result(
                 ReferencesSearch.search(element).toSet(),
-                UastModificationTracker.getInstance(project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -193,7 +182,7 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
                 searchBeanPsiClassesByAnnotation(module, annotation),
-                UastModificationTracker.getInstance(project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -202,11 +191,16 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
                 run {
-                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false).toMutableSet()
-                    annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns)
+                    val annotations =
+                        MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
+                            .toMutableSet()
+                    annotations += LibraryClassCache.searchForLibraryClasses(
+                        module,
+                        JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns
+                    )
                     return@run annotations
                 },
-                UastModificationTracker.getInstance(module.project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -218,16 +212,19 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module, key, {
             CachedValueProvider.Result(
                 run {
-                    val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, qualifiedName, false).toMutableSet()
+                    val annotations =
+                        MetaAnnotationUtil.getAnnotationTypesWithChildren(module, qualifiedName, false).toMutableSet()
                     annotations += LibraryClassCache.searchForLibraryClasses(module, listOf(qualifiedName))
                     return@run annotations
                 },
-                UastModificationTracker.getInstance(project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }, false)
     }
 
-    private fun PsiMember.filterByQualifier(module: Module, qualifier: PsiAnnotation?, beanNameFromQualifier: String?): Boolean {
+    private fun PsiMember.filterByQualifier(
+        module: Module, qualifier: PsiAnnotation?, beanNameFromQualifier: String?
+    ): Boolean {
         return qualifier == null
                 || beanNameFromQualifier != null && beanNameFromQualifier in this.resolveBeanName(module)
                 || EspritoAnnotationUtil.equal(qualifier, this.getAnnotation(qualifier.qualifiedName!!))
@@ -263,7 +260,10 @@ class SpringSearchService(private val project: Project) {
         val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
         val byTypeComponents = componentPsiBeans.asSequence()
             .map { it.psiClass }
-            .filter { beanPsiClass != null && it.isEqualOrInheritor(beanPsiClass) || beanPsiType is PsiWildcardType && it.matchesWildcardType(beanPsiType) }
+            .filter {
+                beanPsiClass != null && it.isEqualOrInheritor(beanPsiClass)
+                        || beanPsiType is PsiWildcardType && it.matchesWildcardType(beanPsiType)
+            }
             .filter { !it.isGeneric(sourcePsiType) || !byTypeBeanMethodsIsEmpty } //TODO: check why we are checking against byTypeBeanMethods
         return byTypeComponents
     }
@@ -288,9 +288,12 @@ class SpringSearchService(private val project: Project) {
                 byTypeBeanMethods = methodsPsiBeans.filterByBeanPsiType(sourcePsiType, beanPsiType).toSet()
             }
 
-            val byTypeComponents = getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
+            val byTypeComponents =
+                getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
 
-            if (isMultipleBean && byExactMatch.isNotEmpty() && byTypeBeanMethods.isEmpty() && byTypeComponents.isEmpty()) {
+            if (isMultipleBean && byExactMatch.isNotEmpty()
+                && byTypeBeanMethods.isEmpty() && byTypeComponents.isEmpty()
+            ) {
                 // Check if multiple bean has exact type match
                 isMultipleBean = false
                 byTypeBeanMethods = byExactMatch
@@ -303,14 +306,16 @@ class SpringSearchService(private val project: Project) {
                 return emptyList()
             }
 
-            if (aResultByTypeAndQualifier.size > 1 && !isMultipleBean)  {
+            if (aResultByTypeAndQualifier.size > 1 && !isMultipleBean) {
                 val byPrimary = aResultByTypeAndQualifier.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
                 if (byPrimary.isNotEmpty()) {
                     return byPrimary
                 }
                 val byPriority = aResultByTypeAndQualifier.asSequence()
                     .filter { it.isMetaAnnotatedBy(JavaEeClasses.PRIORITY.allFqns) }
-                    .groupBy { it.getMetaAnnotation(JavaEeClasses.PRIORITY.allFqns)?.getLongValue()?.toInt() ?: Int.MAX_VALUE }
+                    .groupBy {
+                        it.getMetaAnnotation(JavaEeClasses.PRIORITY.allFqns)?.getLongValue()?.toInt() ?: Int.MAX_VALUE
+                    }
                 if (byPriority.isNotEmpty()) {
                     val highestPriority = byPriority.minOf { it.key }
                     return byPriority[highestPriority] ?: emptyList()
@@ -319,7 +324,7 @@ class SpringSearchService(private val project: Project) {
             aResultByTypeAndQualifier
         } else {
             val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
-            (methodsPsiBeans + componentPsiBeans.mapTo(mutableSetOf()) {it.psiClass })
+            (methodsPsiBeans + componentPsiBeans.mapTo(mutableSetOf()) { it.psiClass })
                 .filter { it.filterByQualifier(module, qualifier, beanNameFromQualifier) }
         }
 
@@ -358,11 +363,8 @@ class SpringSearchService(private val project: Project) {
     fun searchClassInheritors(psiClass: PsiClass): Set<PsiClass> {
         return cachedValuesManager.getCachedValue(psiClass) {
             CachedValueProvider.Result(
-                ClassInheritorsSearch.search(psiClass).findAll()
-                    .asSequence()
-                    .filterNotNull()
-                    .toSet(),
-                UastModificationTracker.getInstance(project)
+                ClassInheritorsSearch.search(psiClass).findAll().filterNotNullTo(mutableSetOf()),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -374,9 +376,10 @@ class SpringSearchService(private val project: Project) {
         } == true
 
         val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
-        return this.asSequence().filter { it.returnType == sourcePsiType
-                || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
-                || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
+        return this.asSequence().filter {
+            it.returnType == sourcePsiType
+                    || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
+                    || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
                     && resolvedSourcePsiClass != null && it.returnPsiClass == resolvedSourcePsiClass
         }
     }
@@ -389,7 +392,11 @@ class SpringSearchService(private val project: Project) {
         return inheritedPsiMethods + filterByInheritedTypes
     }
 
-    fun getBeansPsiMethodsCheckMultipleBean(possibleMultipleBeanPsiType: PsiType, allBeansPsiMethods: Set<PsiMethod>, beanPsiType: PsiType): Collection<PsiMethod> {
+    fun getBeansPsiMethodsCheckMultipleBean(
+        possibleMultipleBeanPsiType: PsiType,
+        allBeansPsiMethods: Set<PsiMethod>,
+        beanPsiType: PsiType
+    ): Collection<PsiMethod> {
         val isMultipleBean = possibleMultipleBeanPsiType.possibleMultipleBean()
 
         val byExactMatch = allBeansPsiMethods.filterByExactMatch(possibleMultipleBeanPsiType).toSet()
@@ -473,7 +480,7 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module, key, {
             CachedValueProvider.Result(
                 MetaAnnotationsHolder.of(module, annotationFqn),
-                UastModificationTracker.getInstance(module.project)
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }, false)
     }
