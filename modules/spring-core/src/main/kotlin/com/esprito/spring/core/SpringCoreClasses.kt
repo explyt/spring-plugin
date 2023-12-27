@@ -63,6 +63,8 @@ object SpringCoreClasses {
     const val RESOURCE_LOADER_RESOLVER = "org.springframework.core.io.support.ResourcePatternResolver"
     const val RESOURCE_UTILS = "org.springframework.util.ResourceUtils"
 
+    const val PROPERTY_RESOLVER = "org.springframework.core.env.PropertyResolver"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
