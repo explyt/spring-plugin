@@ -5,7 +5,8 @@ import com.esprito.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.esprito.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.esprito.spring.core.properties.references.PlaceholderValueReference
 import com.esprito.spring.core.properties.references.ValueHintReference
-import com.esprito.spring.core.util.PropertyUtil
+import com.esprito.spring.core.util.PropertyUtil.propertyKey
+import com.esprito.spring.core.util.PropertyUtil.propertyValuePsiElement
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -25,7 +26,11 @@ class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider
         if (placeholderReferences.isNotEmpty()) {
             return placeholderReferences.toTypedArray()
         }
-        val valueElement = PropertyUtil.getPropertyValuePsiElement(element) ?: return emptyArray()
+        if (element.propertyKey() == SpringProperties.SPRING_PROFILES_ACTIVE) {
+            return PsiReference.EMPTY_ARRAY
+        }
+
+        val valueElement = element.propertyValuePsiElement() ?: return emptyArray()
         val textRange = element.text.findTextRange(valueElement.text) ?: return emptyArray()
         return arrayOf(ValueHintReference(element, textRange))
     }

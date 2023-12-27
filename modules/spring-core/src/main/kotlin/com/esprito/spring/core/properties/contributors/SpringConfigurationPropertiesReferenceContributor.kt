@@ -12,11 +12,20 @@ import com.intellij.psi.PsiReferenceRegistrar
 class SpringConfigurationPropertiesReferenceContributor : PsiReferenceContributor() {
 
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
+        // key
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(PropertyKeyImpl::class.java),
             SpringConfigurationPropertyKeyReferenceProvider()
         )
-        registrar.registerReferenceProvider(PlatformPatterns.psiElement(PropertyValueImpl::class.java), SpringConfigurationPropertiesValueReferenceProvider())
-        registrar.registerReferenceProvider(PlatformPatterns.psiElement(PropertyValueImpl::class.java), SpringConfigurationPropertiesValueResourceReferenceProvider())
+
+        // value
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(PropertyValueImpl::class.java),
+            SpringConfigurationPropertiesValueReferenceProvider()
+        )
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(PropertyValueImpl::class.java),
+            SpringConfigurationPropertiesValueResourceReferenceProvider()
+        )
     }
 }

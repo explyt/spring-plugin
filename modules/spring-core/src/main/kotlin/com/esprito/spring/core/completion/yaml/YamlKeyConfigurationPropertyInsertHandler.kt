@@ -2,8 +2,8 @@ package com.esprito.spring.core.completion.yaml
 
 import com.esprito.spring.core.SpringProperties.COLON
 import com.esprito.spring.core.completion.properties.ConfigurationProperty
-import com.esprito.spring.core.util.YamlUtil
 import com.intellij.application.options.CodeStyle
+import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.lookup.LookupElement
@@ -55,24 +55,38 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
             val parentMapping = foundParentKey.value as? YAMLMapping
             if (parentMapping != null) {
                 val newName = configurationProperty.name.substringAfter("$parentConfigFullName.")
-                createAndAddKey(context, newName, parentMapping)
-                context.editor.caretModel.moveToOffset(foundParentKey.endOffset)
+                buildAndInsertKeyValue(context, foundParentKey, newName, configurationProperty.isMap())
             }
         } else {
-            val lookupString = lookupElement.lookupString
-            val existingIndentation = getExistingIndentation(context, lookupString)
-            val indentPerLevel = getCodeStyleIntent(context)
-            val suggestionWithCaret =
-                getSuggestionReplacementWithCaret(lookupString, existingIndentation, indentPerLevel)
-            val suggestionWithoutCaret = suggestionWithCaret.replace(CARET_MARKUP, StringUtils.EMPTY)
-
-            if (!deleteCurrentElement(context)) return
-
-            EditorModificationUtilEx.insertStringAtCaret(
-                context.editor, suggestionWithoutCaret, false, true,
-                getCaretIndex(suggestionWithCaret)
-            )
+            insertNewKeyValue(lookupElement, context, configurationProperty)
         }
+    }
+
+    private fun insertNewKeyValue(
+        lookupElement: LookupElement,
+        context: InsertionContext,
+        configurationProperty: ConfigurationProperty
+    ) {
+        val lookupString = lookupElement.lookupString
+        val existingIndentation = getExistingIndentation(context, lookupString)
+        val indentPerLevel = getCodeStyleIntent(context)
+        val suggestionWithCaret =
+            getSuggestionReplacementWithCaret(lookupString, existingIndentation, indentPerLevel)
+        val suggestionWithoutCaret = suggestionWithCaret.replace(CARET_MARKUP, StringUtils.EMPTY)
+
+        if (!deleteCurrentElement(context)) return
+
+        EditorModificationUtilEx.insertStringAtCaret(
+            context.editor, suggestionWithoutCaret, false, true,
+            getCaretIndex(suggestionWithCaret)
+        )
+        if (configurationProperty.isMap()) {
+            val indent = CodeStyle.getIndentSize(context.file)
+            val tabString = StringUtil.repeatSymbol(' ', indent * (lookupString.split('.').lastIndex + 1))
+            EditorModificationUtilEx.insertStringAtCaret(context.editor, "\n$tabString")
+        }
+        val project = context.editor.project ?: return
+        AutoPopupController.getInstance(project).scheduleAutoPopup(context.editor)
     }
 
     private fun deleteCurrentElement(
@@ -83,29 +97,52 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
         return true
     }
 
-    private fun createAndAddKey(
+    private fun buildAndInsertKeyValue(
         context: InsertionContext,
+        foundParentKey: YAMLKeyValue,
         key: String,
-        mapping: YAMLMapping
+        isAddLastLine: Boolean
     ) {
         if (key.isEmpty()) {
             return
         }
+        val mapping = foundParentKey.value as? YAMLMapping ?: return
+
+        val indent = CodeStyle.getIndentSize(context.file)
+        val identFountElement = YAMLUtil.getIndentToThisElement(foundParentKey)
+
         val keyValue = StringBuilder()
         val keys = key.split('.')
         for ((index, keyPart) in keys.withIndex()) {
-            keyValue.append("$keyPart:")
+            val tabString = StringUtil.repeatSymbol(' ', (indent * (index + 1)) + identFountElement)
+            keyValue.append("$tabString$keyPart:")
             if (index == keys.size - 1) {
                 keyValue.append(" ")
             } else {
-                val tabString = StringUtil.repeatSymbol(' ', CodeStyle.getIndentSize(context.file) * (index + 1))
-                keyValue.append("\n$tabString")
+                keyValue.append("\n")
             }
         }
+        if (isAddLastLine) {
+            val tabString = StringUtil.repeatSymbol(' ', (indent * (keys.lastIndex + 2)) + identFountElement)
+            keyValue.append("\n$tabString")
+        }
 
-        val dummyYamlMapping = YamlUtil.createYamlMapping(mapping.project, keyValue.toString())
-        val createdKey = dummyYamlMapping.keyValues.first()
-        mapping.putKeyValue(createdKey)
+        val editor = context.editor
+        editor.caretModel.moveToOffset(foundParentKey.endOffset)
+
+        val keyElement = mapping.getKeyValueByKey(key)
+        if (keyElement == null) {
+            EditorModificationUtilEx.insertStringAtCaret(context.editor, "\n")
+            EditorModificationUtilEx.insertStringAtCaret(context.editor, keyValue.toString())
+            val column = foundParentKey.endOffset + indent * keys.lastIndex
+            editor.caretModel.moveCaretRelatively(column, 0, false, false, true)
+        } else {
+            editor.caretModel.moveToOffset(keyElement.endOffset)
+        }
+
+        val project = editor.project ?: return
+        AutoPopupController.getInstance(project).scheduleAutoPopup(context.editor)
+
     }
 
     private fun getCaretIndex(suggestionWithCaret: String): Int {

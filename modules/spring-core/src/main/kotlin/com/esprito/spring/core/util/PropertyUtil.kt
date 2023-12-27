@@ -3,10 +3,13 @@ package com.esprito.spring.core.util
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.completion.properties.ValueHint
 import com.esprito.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.esprito.spring.core.references.ReferenceType
 import com.esprito.util.ModuleUtil
+import com.intellij.lang.properties.IProperty
 import com.intellij.lang.properties.psi.impl.PropertyImpl
+import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.module.Module
@@ -17,6 +20,7 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -84,12 +88,13 @@ object PropertyUtil {
     fun getReferenceByFilePrefix(
         text: String,
         element: PsiElement,
+        textRange: TextRange,
         possibleFileTypes: Array<FileType>,
         provider: PsiReferenceProvider?
     ): Array<FileReference> {
         // ("file:./application.properties") or ("file:application.properties") is right link to content root
         // if start with "/" like here @PropertySource("file:/application.properties") - this means it is an absolute path
-        var range = ElementManipulators.getValueTextRange(element)
+        var range = textRange
         val referenceType = if (text.startsWith("/")) ReferenceType.ABSOLUTE_PATH else ReferenceType.FILE
         val textWithoutFilePrefix = text.substring(SpringProperties.PREFIX_FILE.length)
 
@@ -120,17 +125,18 @@ object PropertyUtil {
         text: String,
         prefix: String,
         element: PsiElement,
+        textRange: TextRange,
         possibleFileTypes: Array<FileType>,
         provider: PsiReferenceProvider?
     ): Array<FileReference> {
-        var range = ElementManipulators.getValueTextRange(element)
+//        var range = ElementManipulators.getValueTextRange(element)
         val textWithoutClassPathPrefix = text.substring(prefix.length)
 
         // classpath: can start with "./"  or "/" or ""
         val lengthOfPrefix = prefix.length +
             textWithoutClassPathPrefix.lengthPrefix("/") +
             textWithoutClassPathPrefix.lengthPrefix("./")
-        range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+        val range = TextRange(textRange.startOffset + lengthOfPrefix, textRange.endOffset)
         return FileReferenceSetWithPrefixSupport(
             textWithoutClassPathPrefix,
             element,
@@ -145,12 +151,12 @@ object PropertyUtil {
     fun getReferenceWithoutPrefix(
         text: String,
         element: PsiElement,
+        textRange: TextRange,
         possibleFileTypes: Array<FileType>,
         provider: PsiReferenceProvider?
     ): Array<FileReference> {
-        var range = ElementManipulators.getValueTextRange(element)
         val lengthOfPrefix = text.lengthPrefix("/") + text.lengthPrefix("./")
-        range = TextRange(range.startOffset + lengthOfPrefix, range.endOffset)
+        val range = TextRange(textRange.startOffset + lengthOfPrefix, textRange.endOffset)
 
         return FileReferenceSetWithPrefixSupport(
             text,
@@ -214,37 +220,72 @@ object PropertyUtil {
         return findMember(foundClass, memberName, setterName) ?: foundClass
     }
 
-    fun getPropertyKey(element: PsiElement): String? {
-        val property = element.parentOfType<PropertyImpl>()
+    fun PsiElement.propertyKey(): String? {
+        if (this is IProperty) {
+            return this.key
+        }
+        val property = this.parentOfType<PropertyImpl>()
         if (property != null) {
             return property.key
         }
-        if (element is YAMLKeyValue) {
-            return YAMLUtil.getConfigFullName(element)
+        if (this is YAMLKeyValue) {
+            return YAMLUtil.getConfigFullName(this)
         }
         return null
     }
 
-    fun getPropertyValue(element: PsiElement): String? {
-        val property = element.parentOfType<PropertyImpl>()
+    fun PsiElement.propertyValue(): String? {
+        if (this is IProperty) {
+            return this.value
+        }
+        val property = this.parentOfType<PropertyImpl>()
         if (property != null) {
             return property.value
         }
-        if (element is YAMLKeyValue) {
-            return element.valueText
+        if (this is YAMLKeyValue) {
+            return this.value?.text
         }
         return null
     }
 
-    fun getPropertyValuePsiElement(element: PsiElement): PsiElement? {
-        if (element is PropertyValueImpl) {
-            return element
+    fun PsiElement.propertyKeyPsiElement(): PsiElement? {
+        if (this is IProperty) {
+            return this.childrenOfType<PropertyKeyImpl>().firstOrNull()
         }
-        if (element is YAMLKeyValue) {
-            val yamlValue = PsiTreeUtil.collectElementsOfType(element, YAMLValue::class.java).lastOrNull()
-            if (yamlValue != null && yamlValue.text == element.value?.text) {
-                return element.value
+        if (this is PropertyKeyImpl) {
+            return this
+        }
+        if (this is YAMLKeyValue) {
+            val yamlKey = YAMLUtil.getConfigFullName(this)
+            if (yamlKey.substringAfterLast(DOT) == this.key?.text) {
+                return this.key
             }
+        }
+        return null
+    }
+
+    fun PsiElement.propertyValuePsiElement(): PsiElement? {
+        if (this is IProperty) {
+            return this.childrenOfType<PropertyValueImpl>().firstOrNull()
+        }
+        if (this is PropertyValueImpl) {
+            return this
+        }
+        if (this is YAMLKeyValue) {
+            val yamlValue = PsiTreeUtil.collectElementsOfType(this, YAMLValue::class.java).lastOrNull()
+            if (yamlValue != null && yamlValue.text == this.value?.text) {
+                return this.value
+            }
+        }
+        return null
+    }
+
+    fun PsiElement.textRangePropertyKeyMap(prefixLength: Int, valueHint: ValueHint): TextRange? {
+        if (this is PropertyKeyImpl) {
+            return TextRange.from(0, prefixLength + 1 + valueHint.value.length)
+        }
+        if (this is YAMLKeyValue) {
+            return TextRange.from(prefixLength, valueHint.value.length)
         }
         return null
     }

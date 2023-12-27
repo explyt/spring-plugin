@@ -2,6 +2,7 @@ package com.esprito.spring.core.references
 
 import com.esprito.spring.core.SpringProperties
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase
 
@@ -12,8 +13,9 @@ enum class PrefixReferenceType {
 
 class PrefixReference(
     element: PsiElement,
+    textRange: TextRange,
     private val type: PrefixReferenceType
-) : PsiReferenceBase<PsiElement>(element) {
+) : PsiReferenceBase<PsiElement>(element, textRange, false) {
 
     override fun resolve(): PsiElement {
         return this.element

@@ -1,11 +1,16 @@
 package com.esprito.spring.core.properties.providers
 
+import com.esprito.spring.core.SpringProperties.COLON
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.properties.PropertiesJavaClassReferenceSet
 import com.esprito.spring.core.properties.references.KeyPsiReference
 import com.esprito.spring.core.util.PropertyUtil
+import com.esprito.spring.core.util.PropertyUtil.DOT
+import com.esprito.spring.core.util.PropertyUtil.propertyKey
+import com.esprito.spring.core.util.PropertyUtil.textRangePropertyKeyMap
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
@@ -19,7 +24,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return emptyArray()
         }
-        val propertyKey = PropertyUtil.getPropertyKey(element) ?: return PsiReference.EMPTY_ARRAY
+        val propertyKey = element.propertyKey() ?: return PsiReference.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return PsiReference.EMPTY_ARRAY
         val allHints = SpringConfigurationPropertiesSearch.getInstance(element.project)
             .getAllHints(module)
@@ -47,8 +52,15 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         element: PsiElement
     ): Array<PsiReference> {
         val prefix = keyHint.name.substringBefore(".keys")
+        val suffixKey = prefix.substringAfterLast(DOT)
+        val suffixElement = element.text.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
+            .filter { !it.isWhitespace() }
 
-        if (propertyKey.startsWith("$prefix.")
+        if ((propertyKey.startsWith("$prefix.")
+                    ||
+                    (propertyKey.startsWith(prefix)
+                            && suffixKey == suffixElement.substringBeforeLast(COLON)
+                            && suffixElement.endsWith(COLON)))
             && (keyHint.providers.any { it.name == "logger-name" } || keyHint.values.isNotEmpty())
         ) {
             val prefixLength = prefix.length
@@ -62,9 +74,14 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
             )
 
             val references: Array<PsiReference> = if (keyHint.values.isNotEmpty()) {
-                keyHint.values.asSequence()
-                    .map { KeyPsiReference(element, prefix, it) }
-                    .toList().toTypedArray()
+                val refs = mutableListOf<PsiReference>()
+                keyHint.values.forEach {
+                    val range = element.textRangePropertyKeyMap(prefixLength, it)
+                    if (range != null) {
+                        refs.add(KeyPsiReference(element, range, prefix, it))
+                    }
+                }
+                refs.toTypedArray()
             } else {
                 PropertiesJavaClassReferenceSet(
                     propertyKey.substringAfter("$prefix."),
@@ -72,8 +89,8 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                     prefixLength + 1
                 ).references
             }
-            result.addAll(references)
 
+            result.addAll(references)
             return result.toTypedArray()
         }
 

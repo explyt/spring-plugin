@@ -21,22 +21,27 @@ class FileReferenceProvider(private val possibleFileTypes: Array<FileType> = emp
     ): Array<PsiReference> {
         val text = ElementManipulators.getValueText(host)
         val psiElement = uExpression.sourcePsi ?: return PsiReference.EMPTY_ARRAY
+        val textRange = ElementManipulators.getValueTextRange(psiElement)
 
         val references = mutableListOf<PsiReference>()
         when {
             text.startsWith(SpringProperties.PREFIX_FILE) -> {
-                references += PropertyUtil.getReferenceByFilePrefix(text, psiElement, possibleFileTypes, null)
+                references += PropertyUtil.getReferenceByFilePrefix(
+                    text, psiElement, textRange, possibleFileTypes, null
+                )
             }
 
             text.startsWith(SpringProperties.PREFIX_CLASSPATH) -> {
-                references += PropertyUtil
-                    .getReferenceByClasspathPrefix(text,
-                        SpringProperties.PREFIX_CLASSPATH, psiElement, possibleFileTypes, null)
+                references += PropertyUtil.getReferenceByClasspathPrefix(
+                    text, SpringProperties.PREFIX_CLASSPATH, psiElement, textRange, possibleFileTypes, null
+                )
             }
 
             else -> {
-                references += PropertyUtil.getReferenceWithoutPrefix(text, psiElement, possibleFileTypes, null)
-                references += PrefixReference(psiElement, PrefixReferenceType.ANNOTATION_PROPERTY)
+                references += PropertyUtil.getReferenceWithoutPrefix(
+                    text, psiElement, textRange, possibleFileTypes, null
+                )
+                references += PrefixReference(psiElement, textRange, PrefixReferenceType.ANNOTATION_PROPERTY)
             }
         }
         return references.toTypedArray()
