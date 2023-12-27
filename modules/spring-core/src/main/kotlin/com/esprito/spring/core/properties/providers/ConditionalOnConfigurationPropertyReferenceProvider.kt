@@ -22,9 +22,10 @@ class ConditionalOnConfigurationPropertyReferenceProvider : UastInjectionHostRef
         host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        val expression = uExpression as? ULiteralExpression ?: return EMPTY_ARRAY
-        val namedExpression = expression.getParentOfType<UNamedExpression>() ?: return EMPTY_ARRAY
-        val uAnnotation = expression.getParentOfType<UAnnotation>() ?: return EMPTY_ARRAY
+        if (uExpression !is ULiteralExpression && uExpression !is UPolyadicExpression) return EMPTY_ARRAY
+
+        val namedExpression = uExpression.getParentOfType<UNamedExpression>() ?: return EMPTY_ARRAY
+        val uAnnotation = uExpression.getParentOfType<UAnnotation>() ?: return EMPTY_ARRAY
         val psiAnnotation = uAnnotation.javaPsi ?: return EMPTY_ARRAY
         val annotationQn = psiAnnotation.qualifiedName ?: return EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(psiAnnotation) ?: return EMPTY_ARRAY
