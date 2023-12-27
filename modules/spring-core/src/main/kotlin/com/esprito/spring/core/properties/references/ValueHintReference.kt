@@ -10,6 +10,8 @@ import com.esprito.spring.core.completion.properties.SpringConfigurationProperti
 import com.esprito.spring.core.properties.ClassReferencePropertyRenderer
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.PropertyUtil
+import com.esprito.spring.core.util.PropertyUtil.propertyKey
+import com.esprito.spring.core.util.PropertyUtil.propertyValue
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.Module
@@ -28,8 +30,8 @@ class ValueHintReference(
 ) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        val propertyKey = PropertyUtil.getPropertyKey(element) ?: return emptyArray()
-        val propertyValue = PropertyUtil.getPropertyValue(element) ?: return emptyArray()
+        val propertyKey = element.propertyKey() ?: return emptyArray()
+        val propertyValue = element.propertyValue() ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
         val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey)
@@ -71,8 +73,12 @@ class ValueHintReference(
 
     override fun getVariants(): Array<Any> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-        val propertyKey = PropertyUtil.getPropertyKey(element) ?: return emptyArray()
+        val propertyKey = element.propertyKey() ?: return emptyArray()
         val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey)
+
+        if (isMapWithoutValue(propertyKey, propertyHint)) {
+            return emptyArray()
+        }
 
         val result = mutableListOf<Any>()
         if (propertyHint != null) {
@@ -146,9 +152,8 @@ class ValueHintReference(
     }
 
     private fun processProviderHints(provider: ProviderHint): List<Any> {
-        val providerName = provider.name
         val targetClassFqn = provider.parameters?.target ?: return emptyList()
-        when (providerName) {
+        when (provider.name) {
             SpringProperties.CLASS_REFERENCE -> {
                 return getClassReferences(targetClassFqn)
             }
@@ -191,5 +196,17 @@ class ValueHintReference(
                     .withTailText(" (${it.psiMember.containingFile?.name})")
                     .withTypeText(it.psiClass.name)
             }.toList()
+    }
+
+    private fun isMapWithoutValue(propertyKey: String, propertyHint: PropertyHint?): Boolean {
+        if (propertyHint == null) {
+            return false
+        }
+        if (propertyHint.name.substringAfterLast(".") == "values"
+            && propertyHint.name.substringBeforeLast(".") == propertyKey
+        ) {
+            return true
+        }
+        return false
     }
 }

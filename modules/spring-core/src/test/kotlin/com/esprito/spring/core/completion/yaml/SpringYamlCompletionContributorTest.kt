@@ -93,7 +93,7 @@ spring:
       maximum-pool-size: 5
     tomcat:
       name: frog
-      driver-class-name:
+      driver-class-name: 
   
       """.trimIndent()
     }
@@ -154,7 +154,7 @@ spring:
     hikari:
       max-lifetime: 120_000 # ms
       maximum-pool-size: 5
-      allow-pool-suspension:
+      allow-pool-suspension: 
       """.trimIndent()
     }
 
