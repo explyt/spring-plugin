@@ -18,7 +18,7 @@ class EspritoLibraryPropertyReference(
     element: PsiElement,
     private val propertyKey: String,
     rangeInElement: TextRange,
-    private val prefix: String
+    private val prefix: String = ""
 ) : PsiReferenceBase<PsiElement>(element, rangeInElement), PsiPolyVariantReference, HighlightedReference {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {

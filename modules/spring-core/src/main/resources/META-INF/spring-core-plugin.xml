@@ -92,6 +92,10 @@
             language="UAST"
             implementationClass="com.esprito.spring.core.properties.ValueAnnotationFoldingBuilder"/>
 
+        <lang.foldingBuilder
+                language="UAST"
+                implementationClass="com.esprito.spring.core.properties.GetPropertyMethodFoldingBuilder"/>
+
         <languageInjectionContributor language="UAST"
                                       implementationClass="com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector"/>
 
