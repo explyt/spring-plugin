@@ -1,0 +1,13 @@
+main:
+  enabled: not_false
+  enabled-primitive: not_false
+  max-integer-value: 5.6
+  max-double-value: false
+  max-number-value: test
+  max-connections: 1
+  array-integer: 1, e3
+  contexts:
+    simple1: wrong
+    simple2: 22
+  list-not-integer[0]: error
+  addresses[0]: 12345678

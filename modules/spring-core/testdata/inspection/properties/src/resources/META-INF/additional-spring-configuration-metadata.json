@@ -1,7 +1,7 @@
 {
   "properties": [
     {
-      "name": "my.test.foo2.notexist",
+      "name": "main.foo2.notexist",
       "deprecation": {
         "level": "error",
         "reason": "Deprecated because that's all.",
@@ -11,7 +11,7 @@
   ],
   "hints": [
     {
-      "name": "my.main.foo.name",
+      "name": "main.foo.name",
       "values": [
         {
           "value": "none",
