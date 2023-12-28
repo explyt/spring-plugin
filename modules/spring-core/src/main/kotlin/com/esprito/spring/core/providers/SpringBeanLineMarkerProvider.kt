@@ -15,7 +15,6 @@ import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
-import com.esprito.util.EspritoPsiUtil.returnPsiType
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -197,10 +196,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         private fun findTargetClass(): PsiClass? {
-            if (element !is PsiIdentifier) {
-                return null
-            }
-
             return when (uParent) {
                 is UMethod -> uParent.returnPsiClass
                 is UClass -> uParent.javaPsi
@@ -209,12 +204,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         private fun findTargetType(): PsiType? {
-            if (element !is PsiIdentifier) {
-                return null
-            }
-
-            return element.parentOfType<PsiMethod>()?.returnPsiType  // method annotated by Bean
-                ?: element.parentOfType<PsiClass>()?.returnPsiType // class annotated as Component
+            return if (uParent is UMethod) uParent.returnType else null
         }
 
         private fun getAutoconfigureIPropertiesByStringKey(): List<Pair<String, IProperty>> {
@@ -251,8 +241,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
             val allBeans = springSearchService.getActiveBeansClasses(module)
 
-            val allFieldsWithAutowired = allBeans.asSequence().flatMap {
-                it.psiClass.allFields.asSequence()
+            val allFieldsWithAutowired = allBeans.asSequence().flatMap { bean ->
+                bean.psiClass.allFields.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
                     .filter {
                         targetType == it.type
@@ -260,7 +250,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                                 && (targetType !is PsiClassType
                                 || it.type.beanPsiType!!.psiClassType?.isEqualOrInheritorBeanType(targetType) == true)
                     }
-                    .map { it.navigationElement as? PsiVariable }
+                    .map { it.navigationElement.toUElement() as? UVariable }
                     .filterNotNull()
             }.toSet()
 
@@ -274,7 +264,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses) }
-                    .map { it.navigationElement as? PsiVariable }
+                    .map { it.navigationElement.toUElement() as? UVariable }
                     .filterNotNull()
             }.toSet()
 
