@@ -1,11 +1,14 @@
 package com.esprito.util
 
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.GlobalSearchScopeUtil
 
 object ModuleUtil {
 
@@ -26,6 +29,12 @@ object ModuleUtil {
         return psiElement.project.guessProjectDir()
         // this work too
         // return  PsiFileReferenceHelper.getInstance().findRoot(psiElement.project, psiElement.containingFile.virtualFile)
+    }
 
+    fun getOnlyLibrarySearchScope(module: Module): GlobalSearchScope {
+        return GlobalSearchScopeUtil.toGlobalSearchScope(
+            module.moduleWithLibrariesScope.intersectWith(GlobalSearchScope.notScope(module.moduleScope)),
+            module.project
+        )
     }
 }

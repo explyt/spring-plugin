@@ -15,5 +15,7 @@ class ModificationTrackerManager(project: Project) : Disposable {
 
     fun getUastModelAndLibraryTracker() = uastModelTracker
 
+    fun getLibraryTracker() = uastModelTracker.javaLibraryTracker
+
     override fun dispose() {}
 }

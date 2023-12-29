@@ -119,7 +119,7 @@ object SpringCoreUtil {
     // TODO: value or basePackages
     fun existComponentScan(module: Module): Boolean =
         SpringSearchService.getInstance(module.project)
-            .getAllComponentScanBeans(module, SpringCoreClasses.COMPONENT_SCAN)
+            .searchPsiClassesAnnotatedByComponentScan(module)
             .any { !it.isAnnotationType }
 
     fun PsiClass.getBeanName(): String? =
@@ -131,7 +131,7 @@ object SpringCoreUtil {
         )
     }
 
-    fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
+    private fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
         val annotationNames = annotationPsiClasses.mapNotNull { it.qualifiedName }
         return this.resolveBeanNameByAnnotations(annotationNames)
             ?: getBeanName()
@@ -242,7 +242,7 @@ object SpringCoreUtil {
         return false
     }
 
-    fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
+    private fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
         return getMetaAnnotation(annotationNames)?.getStringValue()
     }
 
