@@ -1,5 +1,6 @@
 package com.esprito.module
 
+import com.esprito.util.ModuleUtil
 import com.esprito.util.SourcesUtils
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
 import com.intellij.openapi.module.Module
@@ -9,7 +10,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.GlobalSearchScopeUtil
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -101,11 +101,7 @@ class GradleModule(override val rootModule: Module, override val mainModule: Mod
     override val librariesSearchScope: GlobalSearchScope
         get() {
             val mainModule = mainModule ?: return GlobalSearchScope.EMPTY_SCOPE
-
-            return GlobalSearchScopeUtil.toGlobalSearchScope(
-                mainModule.moduleWithLibrariesScope.intersectWith(GlobalSearchScope.notScope(mainModule.moduleScope)),
-                mainModule.project
-            )
+            return ModuleUtil.getOnlyLibrarySearchScope(mainModule)
         }
 }
 
@@ -136,12 +132,7 @@ class MavenModule(override val rootModule: Module) : ExternalSystemModule {
         get() = SourcesUtils.getResourceRoots(rootModule, isTests = true).toPsiDirectories(rootModule.project)
 
     override val librariesSearchScope: GlobalSearchScope
-        get() {
-            return GlobalSearchScopeUtil.toGlobalSearchScope(
-                rootModule.moduleWithLibrariesScope.intersectWith(GlobalSearchScope.notScope(rootModule.moduleScope)),
-                rootModule.project
-            )
-        }
+        get() = ModuleUtil.getOnlyLibrarySearchScope(rootModule)
 }
 
 /**
@@ -167,12 +158,7 @@ class ExternalSystemModuleImpl(override val rootModule: Module) : ExternalSystem
         get() = SourcesUtils.getResourceRoots(rootModule, isTests = true).toPsiDirectories(rootModule.project)
 
     override val librariesSearchScope: GlobalSearchScope
-        get() {
-            return GlobalSearchScopeUtil.toGlobalSearchScope(
-                rootModule.moduleWithLibrariesScope.intersectWith(GlobalSearchScope.notScope(rootModule.moduleScope)),
-                rootModule.project
-            )
-        }
+        get() = ModuleUtil.getOnlyLibrarySearchScope(rootModule)
 }
 
 private fun List<VirtualFile>.toPsiDirectories(project: Project) = mapNotNull {

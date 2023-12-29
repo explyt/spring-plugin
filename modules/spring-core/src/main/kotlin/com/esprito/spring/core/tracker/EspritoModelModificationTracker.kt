@@ -5,6 +5,7 @@ import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.ModificationTracker.NEVER_CHANGED
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.*
@@ -24,7 +25,7 @@ import org.jetbrains.uast.util.isInstanceOf
 
 @Suppress("UnstableApiUsage")
 class EspritoModelModificationTracker(project: Project, parent: Disposable) : SimpleModificationTracker() {
-    private val javaLibraryTracker = JavaLibraryModificationTracker.getInstance(project)
+    val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
 
     init {
         PsiManager.getInstance(project).addPsiTreeChangeListener(MyUastPsiTreeChangeAdapter(project, this), parent)

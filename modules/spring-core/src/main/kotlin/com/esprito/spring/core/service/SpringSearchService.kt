@@ -3,6 +3,7 @@ package com.esprito.spring.core.service
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.tracker.ModificationTrackerManager
@@ -28,6 +29,7 @@ import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiType
+import com.esprito.util.ModuleUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
@@ -36,6 +38,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
@@ -52,8 +55,7 @@ class SpringSearchService(private val project: Project) {
     private fun searchAllBeanClasses(module: Module): Set<PsiBean> {
         val allPsiClassesAnnotatedByComponent = getBeanPsiClassesAnnotatedByComponent(module)
         val methodsAnnotatedByBeanReturnTypes = searchComponentPsiClassesByBeanMethods(module)
-        return allPsiClassesAnnotatedByComponent +
-                methodsAnnotatedByBeanReturnTypes
+        return allPsiClassesAnnotatedByComponent + methodsAnnotatedByBeanReturnTypes
     }
 
     private fun getAllBeansClasses(module: Module): FoundBeans {
@@ -92,12 +94,28 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-
     fun getBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
         return cachedValuesManager.getCachedValue(module) {
+            val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
             val annotationPsiClasses = getComponentClassAnnotations(module)
+            val moduleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+            val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
             CachedValueProvider.Result(
-                searchBeanPsiClassesByAnnotations(module, annotationPsiClasses),
+                moduleWithDependenciesBeans + moduleLibraryBeans,
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    fun searchPsiClassesAnnotatedByComponentScan(module: Module): Set<PsiClass> {
+        return cachedValuesManager.getCachedValue(module) {
+            val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+            val annotationPsiClasses = MetaAnnotationUtil
+                .getAnnotationTypesWithChildren(module, COMPONENT_SCAN, false)
+            val moduleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+            val moduleLibraryBeans = searchBeanPsiClassesByComponentScanAnnotationLibraryScopeCached(module)
+            CachedValueProvider.Result(
+                (moduleWithDependenciesBeans + moduleLibraryBeans).map { it.psiClass }.toSet(),
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
@@ -139,9 +157,8 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun searchBeanPsiClassesByAnnotations(
-        module: Module, annotationPsiClasses: Collection<PsiClass>
+        module: Module, annotationPsiClasses: Collection<PsiClass>, scope: SearchScope
     ): Set<PsiBean> {
-        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
         return annotationPsiClasses.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
@@ -149,9 +166,28 @@ class SpringSearchService(private val project: Project) {
             .toSet()
     }
 
-    private fun searchBeanPsiClassesByAnnotation(module: Module, annotationName: String): Set<PsiClass> {
-        val annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, annotationName, false)
-        return searchBeanPsiClassesByAnnotations(module, annotations).map { it.psiClass }.toSet()
+    private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): Set<PsiBean> {
+        return cachedValuesManager.getCachedValue(module) {
+            val annotationPsiClasses = getComponentClassAnnotations(module)
+            CachedValueProvider.Result(
+                searchBeanPsiClassesByAnnotations(
+                    module, annotationPsiClasses, ModuleUtil.getOnlyLibrarySearchScope(module)
+                ),
+                ModificationTrackerManager.getInstance(project).getLibraryTracker()
+            )
+        }
+    }
+
+    private fun searchBeanPsiClassesByComponentScanAnnotationLibraryScopeCached(module: Module): Set<PsiBean> {
+        return cachedValuesManager.getCachedValue(module) {
+            val annotationPsiClasses = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, COMPONENT_SCAN, false)
+            CachedValueProvider.Result(
+                searchBeanPsiClassesByAnnotations(
+                    module, annotationPsiClasses, ModuleUtil.getOnlyLibrarySearchScope(module)
+                ),
+                ModificationTrackerManager.getInstance(project).getLibraryTracker()
+            )
+        }
     }
 
     fun getComponentClassAnnotations(module: Module): Collection<PsiClass> {
@@ -173,15 +209,6 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(element) {
             CachedValueProvider.Result(
                 ReferencesSearch.search(element).toSet(),
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
-        }
-    }
-
-    fun getAllComponentScanBeans(module: Module, annotation: String): Set<PsiClass> {
-        return cachedValuesManager.getCachedValue(module) {
-            CachedValueProvider.Result(
-                searchBeanPsiClassesByAnnotation(module, annotation),
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
@@ -246,8 +273,7 @@ class SpringSearchService(private val project: Project) {
         if (byTypeBeanMethods.isNotEmpty()) return true
 
         val byTypeComponents = getPsiClassesByComponents(module, this, beanPsiType, true)
-        if (byTypeComponents.isNotEmpty()) return true
-        return false
+        return byTypeComponents.isNotEmpty()
     }
 
     private fun getPsiClassesByComponents(
