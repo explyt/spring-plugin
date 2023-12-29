@@ -385,6 +385,16 @@
                 language="Profiles"
                 implementationClass="com.esprito.spring.core.language.profiles.psi.ProfilesBraceMatcher"/>
 
+        <codeInsight.declarativeInlayProvider
+                bundle="messages.SpringCoreBundle"
+                group="ANNOTATIONS_GROUP"
+                implementationClass="com.esprito.spring.core.profile.ProfileAnnotationHintsProvider"
+                isEnabledByDefault="true"
+                language="UAST"
+                nameKey="esprito.editor.hints.annotation_profile"
+                descriptionKey="esprito.editor.hints.annotation_profile"
+                providerId="esprito.profile_annotation"/>
+
         <lang.inspectionSuppressor language="Properties"
                                    implementationClass="com.esprito.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
     </extensions>
@@ -395,4 +405,10 @@
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
         </action>
     </actions>
+
+    <projectListeners>
+        <listener class="com.esprito.spring.core.runconfiguration.EspritoRunManagerListener"
+                  topic="com.intellij.execution.RunManagerListener"/>
+    </projectListeners>
+
 </idea-plugin>
