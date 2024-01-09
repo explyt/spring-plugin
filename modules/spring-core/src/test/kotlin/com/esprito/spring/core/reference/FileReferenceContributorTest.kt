@@ -15,6 +15,7 @@ private const val TEST_DATA_PATH = "testdata/reference/file"
 
 @TestDataPath("\$CONTENT_ROOT/../../$TEST_DATA_PATH")
 class FileReferenceContributorTest : EspritoJavaLightTestCase() {
+    private val basicPrefix = setOf("file:", "classpath:", "classpath*:", "http:")
 
     override fun getTestDataPath(): String = TEST_DATA_PATH
 
@@ -32,7 +33,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
         val ref = myFixture.getReferenceAtCaretPosition()
 
         assertEquals(
-            setOf("application2.properties", "application3.properties", "file:", "classpath:"),
+            setOf("application2.properties", "application3.properties") + basicPrefix,
             ref?.variants?.map { (it as LookupElement).lookupString }?.toSet(),
         )
     }
@@ -103,7 +104,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testResourceUtilsResolve() {
@@ -122,7 +123,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testGetResourceResolve() {
@@ -142,7 +143,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testImportResourceDefault() {
@@ -159,7 +160,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testImportResourceLocations() {
@@ -176,7 +177,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testContextConfigurationDefault() {
@@ -193,7 +194,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testContextConfigurationLocations() {
@@ -210,7 +211,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testTestPropertySourceLocations() {
@@ -227,7 +228,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testTestPropertySourceDefault() {
@@ -244,7 +245,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testPropertySourceDefault() {
@@ -261,7 +262,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testSQLDefault() {
@@ -278,7 +279,7 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 
     fun testSQLScripts() {
@@ -295,6 +296,6 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .filterIsInstance(LookupElement::class.java)
             .map { it.lookupString }
             .toSet()
-        assertEquals(setOf("TestClass.java", "file:", "classpath:"), variantSet)
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
 }
