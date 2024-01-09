@@ -37,11 +37,17 @@ class FileReferenceProvider(private val possibleFileTypes: Array<FileType> = emp
                 )
             }
 
+            text.startsWith(SpringProperties.PREFIX_CLASSPATH_STAR) -> {
+                references += PropertyUtil.getReferenceByClasspathPrefix(
+                    text, SpringProperties.PREFIX_CLASSPATH_STAR, psiElement, textRange, possibleFileTypes, null
+                )
+            }
+
             else -> {
                 references += PropertyUtil.getReferenceWithoutPrefix(
                     text, psiElement, textRange, possibleFileTypes, null
                 )
-                references += PrefixReference(psiElement, textRange, PrefixReferenceType.ANNOTATION_PROPERTY)
+                references += PrefixReference(psiElement, textRange, PrefixReferenceType.FILE_PROPERTY)
             }
         }
         return references.toTypedArray()

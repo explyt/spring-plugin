@@ -5,6 +5,8 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES
 import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.PREFIX_CLASSPATH
+import com.esprito.spring.core.SpringProperties.PREFIX_CLASSPATH_STAR
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.ModuleUtil
 import com.intellij.codeInsight.daemon.quickFix.CreateFilePathFix
@@ -75,11 +77,16 @@ object ResourceFileInspectionUtil {
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): List<ProblemDescriptor> {
-        if (!text.startsWith(SpringProperties.PREFIX_CLASSPATH)) return emptyList()
+        if (!text.startsWith(PREFIX_CLASSPATH) && !text.startsWith(PREFIX_CLASSPATH_STAR)) return emptyList()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
         val rootPaths = getRootPaths(module)
-        val textWithoutPrefix = text.substringAfter(SpringProperties.PREFIX_CLASSPATH)
+        val textWithoutPrefix = getTextValue(text)
         return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly)
+    }
+
+    private fun getTextValue(text: String): String {
+        return if (text.startsWith(PREFIX_CLASSPATH)) text.substringAfter(PREFIX_CLASSPATH) else
+            text.substringAfter(PREFIX_CLASSPATH_STAR)
     }
 
     private fun getSourceRootsPath(textWithoutPrefix: String, element: PsiElement): List<PsiDirectory> {
