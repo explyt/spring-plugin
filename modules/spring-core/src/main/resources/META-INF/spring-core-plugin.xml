@@ -222,7 +222,7 @@
                          groupBundle="messages.SpringCoreBundle"
                          groupKey="run.configuration.spring.boot.display.name"
                          bundle="messages.SpringCoreBundle"
-                         key="esprito.spring.inspection.properties.key"
+                         key="esprito.spring.inspection.autoconfigure"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.spring.core.autoconfigure.inspection.EnableAutoConfigureSpringFactoryInspection"/>
 
@@ -298,6 +298,17 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringProfileWrongPlacementInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringProfileAnnotationInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.profile"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringProfileAnnotationInspection"/>
+
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
