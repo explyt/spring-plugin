@@ -22,6 +22,7 @@ object SpringProperties {
 
     const val META_INF = "META-INF"
     const val SPRING = "spring"
+    const val VALUE = "value"
 
     const val SPRING_XML_TEMPLATE = "spring-beans.xml"
 
