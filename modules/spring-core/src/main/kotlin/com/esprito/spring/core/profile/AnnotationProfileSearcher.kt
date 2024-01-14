@@ -11,9 +11,7 @@ import com.intellij.psi.PsiConstantEvaluationHelper
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import kotlin.streams.asSequence
 
-class AnnotationProfileSearcher(
-    private val project: Project
-) : ProfileSearcher {
+class AnnotationProfileSearcher(private val project: Project) : ProfileSearcher {
 
     private val javaPsiFacade by lazy {
         JavaPsiFacade.getInstance(project)
@@ -22,6 +20,10 @@ class AnnotationProfileSearcher(
     private val psiConstantEvaluationHelper: PsiConstantEvaluationHelper
         get() = javaPsiFacade.constantEvaluationHelper
 
+
+    override fun searchActiveProfiles(module: Module): List<String> {
+        return emptyList()
+    }
 
     override fun searchProfiles(module: Module): List<String> {
         val profileAnnotations: Collection<PsiClass> = MetaAnnotationUtil

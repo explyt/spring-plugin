@@ -1,20 +1,32 @@
 package com.esprito.spring.core.service
 
+import com.esprito.spring.core.profile.SpringProfilesService
 import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.modules
 import java.util.*
 
 @Service(Service.Level.PROJECT)
 class ProfilesService(private val project: Project) {
-    var activeProfiles: Set<String> = setOf()
-        get() = field.ifEmpty {
-            getProfilesFromConfiguration(
+    private var activeProfiles: Set<String> = setOf()
+        get() = when {
+            field.isEmpty() -> getProfilesFromConfiguration(
                 RunManager.getInstance(project).selectedConfiguration
             )
+
+            field == DEFAULT_PROFILES && !DumbService.isDumb(project) -> {
+                val springProfilesService = SpringProfilesService.getInstance(project)
+                project.modules
+                    .flatMapTo(mutableSetOf()) { springProfilesService.loadActiveProfiles(it) }
+                    .ifEmpty { DEFAULT_PROFILES }
+            }
+
+            else -> field
         }
         private set
 
@@ -37,12 +49,12 @@ class ProfilesService(private val project: Project) {
     }
 
     fun getProfilesFromConfiguration(settings: RunnerAndConfigurationSettings?): Set<String> {
-        return (settings?.configuration as? SpringBootRunConfiguration)
+        val result = (settings?.configuration as? SpringBootRunConfiguration)
             ?.springProfiles
             ?.split(',')
             ?.filterTo(mutableSetOf()) { it.isNotBlank() }
-            ?.plus(DEFAULT)
             ?: DEFAULT_PROFILES
+        return result.ifEmpty { DEFAULT_PROFILES }
     }
 
     private fun tokenize(expression: String): Collection<Token>? {

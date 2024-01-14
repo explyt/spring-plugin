@@ -119,7 +119,10 @@ class PropertiesPropertySource(propertiesFile: PropertiesFile) : FilePropertySou
 
     override val properties: List<DefinedConfigurationProperty>
         get() {
-            return (file as PropertiesFile).properties.map { PropertyDefinedConfigurationProperty(it) }
+            val propertiesFile = file as? PropertiesFile ?: return emptyList()
+            return propertiesFile.properties.map {
+                PropertyDefinedConfigurationProperty(it, propertiesFile.name)
+            }
         }
 }
 
@@ -127,11 +130,12 @@ class YamlPropertySource(yamlFile: YAMLFile) : FilePropertySource(yamlFile) {
 
     override val properties: List<DefinedConfigurationProperty>
         get() {
-            return (file as YAMLFile).documents.flatMap { document ->
+            val yamlFile = file as? YAMLFile ?: return emptyList()
+            return yamlFile.documents.flatMap { document ->
                 val result = mutableListOf<DefinedConfigurationProperty>()
                 PsiTreeUtil.processElements(document, YAMLKeyValue::class.java) { keyValue ->
                     if (keyValue.value is YAMLPlainTextImpl) {
-                        result.add(YamlDefinedConfigurationProperty(keyValue))
+                        result.add(YamlDefinedConfigurationProperty(keyValue, yamlFile.name))
                     }
                     true
                 }

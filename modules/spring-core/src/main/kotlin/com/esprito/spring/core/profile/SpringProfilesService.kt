@@ -11,6 +11,21 @@ import com.intellij.openapi.project.Project
 class SpringProfilesService(
     private val project: Project
 ) {
+    fun loadActiveProfiles(module: Module): List<String> = runReadAction {
+        val modules = mutableSetOf<Module>()
+        ModuleUtilCore.getDependencies(module, modules)
+
+        return@runReadAction ProfileSearcher.EP_NAME
+            .getExtensions(project)
+            .flatMap {
+                modules.flatMap { module ->
+                    it.searchActiveProfiles(module)
+                }
+            }
+            .toSet()
+            .sorted()
+    }
+
     fun loadExistingProfiles(module: Module): List<String> = runReadAction {
         val modules = mutableSetOf<Module>()
         ModuleUtilCore.getDependencies(module, modules)
@@ -22,9 +37,9 @@ class SpringProfilesService(
                     it.searchProfiles(module)
                 }
             }
-            .plus("default")
             .toSet()
             .sorted()
+            .ifEmpty { listOf("default") }
     }
 
     companion object {

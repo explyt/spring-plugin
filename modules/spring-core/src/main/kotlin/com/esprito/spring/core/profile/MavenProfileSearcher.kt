@@ -1,7 +1,7 @@
 package com.esprito.spring.core.profile
 
 import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
-import com.esprito.spring.core.tracker.ModificationTrackerManager
+import com.esprito.spring.core.tracker.XmlModificationTracker
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -18,13 +18,17 @@ class MavenProfileSearcher(project: Project) : ProfileSearcher {
 
     private val psiManager = PsiManager.getInstance(project)
 
+    override fun searchActiveProfiles(module: Module): List<String> {
+        return emptyList()
+    }
+
     override fun searchProfiles(module: Module): List<String> {
         val project = module.project
 
         return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
                 findPomXml(module).flatMap { getProfiles(it) },
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                XmlModificationTracker.getInstance(project)
             )
         }
     }
@@ -61,6 +65,7 @@ class MavenProfileSearcher(project: Project) : ProfileSearcher {
 
 
         return profilesFromMavenPlugin + profilesFromMavenProfiles
+
     }
 
     private fun findPomXml(module: Module): List<PsiFile> {
@@ -82,6 +87,5 @@ class MavenProfileSearcher(project: Project) : ProfileSearcher {
         }
 
     }
-
 
 }
