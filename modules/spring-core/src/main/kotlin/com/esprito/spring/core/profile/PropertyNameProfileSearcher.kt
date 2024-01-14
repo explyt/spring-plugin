@@ -3,6 +3,7 @@ package com.esprito.spring.core.profile
 import com.esprito.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch.Companion.fileMask
+import com.esprito.spring.core.completion.properties.DefinedConfigurationProperty
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiFile
@@ -10,6 +11,20 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
 class PropertyNameProfileSearcher : ProfileSearcher {
+
+    override fun searchActiveProfiles(module: Module): List<String> {
+        val project = module.project
+        val propertiesSearch = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                getProfilesFromProperties(module, propertiesSearch) { property ->
+                    property.sourceFile.startsWith("application.")
+                },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
 
     override fun searchProfiles(module: Module): List<String> {
         val project = module.project
@@ -37,14 +52,17 @@ class PropertyNameProfileSearcher : ProfileSearcher {
 
     private fun getProfilesFromProperties(
         module: Module,
-        propertiesSearch: DefinedConfigurationPropertiesSearch
+        propertiesSearch: DefinedConfigurationPropertiesSearch,
+        customFilter: (DefinedConfigurationProperty) -> Boolean = { true }
     ): List<String> {
         return propertiesSearch.findProperties(module, SPRING_PROFILES_ACTIVE)
             .asSequence()
+            .filter { customFilter.invoke(it) }
             .mapNotNull { it.value }
             .flatMap { it.split(',') }
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .toList()
     }
+
 }

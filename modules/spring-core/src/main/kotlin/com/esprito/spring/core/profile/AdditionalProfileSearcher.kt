@@ -7,10 +7,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import org.jetbrains.uast.*
 
-class AdditionalProfileSearcher(
-    private val project: Project
-) : ProfileSearcher {
-    override fun searchProfiles(module: Module): List<String> {
+class AdditionalProfileSearcher(private val project: Project) : ProfileSearcher {
+
+    override fun searchActiveProfiles(module: Module): List<String> {
         val springApplication = LibraryClassCache.searchForLibraryClass(
             project,
             SpringCoreClasses.SPRING_APPLICATION
@@ -33,6 +32,10 @@ class AdditionalProfileSearcher(
             }.mapNotNull {
                 it.evaluateString()
             }.toList()
+    }
+
+    override fun searchProfiles(module: Module): List<String> {
+        return searchActiveProfiles(module)
     }
 
     companion object {

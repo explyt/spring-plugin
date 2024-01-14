@@ -12,9 +12,14 @@ interface DefinedConfigurationProperty {
     val value: String?
 
     val psiElement: PsiElement?
+
+    val sourceFile: String
 }
 
-class YamlDefinedConfigurationProperty(property: YAMLKeyValue) : DefinedConfigurationProperty {
+class YamlDefinedConfigurationProperty(
+    property: YAMLKeyValue,
+    override val sourceFile: String
+) : DefinedConfigurationProperty {
 
     private val pointer = SmartPointerManager.createPointer<YAMLKeyValue>(property)
 
@@ -32,7 +37,10 @@ class YamlDefinedConfigurationProperty(property: YAMLKeyValue) : DefinedConfigur
     }
 }
 
-class PropertyDefinedConfigurationProperty(property: IProperty) : DefinedConfigurationProperty {
+class PropertyDefinedConfigurationProperty(
+    property: IProperty,
+    override val sourceFile: String
+) : DefinedConfigurationProperty {
 
     private val pointer = SmartPointerManager.createPointer(property.psiElement)
 
