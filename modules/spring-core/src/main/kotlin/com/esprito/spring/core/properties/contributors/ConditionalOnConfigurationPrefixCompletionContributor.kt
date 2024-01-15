@@ -2,7 +2,7 @@ package com.esprito.spring.core.properties.contributors
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.esprito.spring.core.service.MetaAnnotationsHolder
+import com.esprito.spring.core.service.SpringSearchService
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -39,7 +39,8 @@ class ConditionalOnConfigurationPrefixCompletionContributor : CompletionContribu
             val annotationQn = uAnnotation.qualifiedName ?: return
             val attributeName = uLiteralExpression.name ?: return
 
-            val annotationHolder = MetaAnnotationsHolder.of(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
+            val annotationHolder = SpringSearchService.getInstance(module.project)
+                .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
             if (!annotationHolder.isAttributeRelatedWith(
                     annotationQn,
                     attributeName,

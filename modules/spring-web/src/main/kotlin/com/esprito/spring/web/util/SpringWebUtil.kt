@@ -1,7 +1,7 @@
 package com.esprito.spring.web.util
 
 import com.esprito.base.LibraryClassCache
-import com.esprito.spring.core.service.MetaAnnotationsHolder
+import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.util.EspritoAnnotationUtil.getBooleanValue
@@ -26,7 +26,8 @@ object SpringWebUtil {
 
         val annotatedParams = psiMethod.parameterList.parameters
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.PATH_VARIABLE) }
-        val mahPathVariable = MetaAnnotationsHolder.of(module, SpringWebClasses.PATH_VARIABLE)
+        val mahPathVariable = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringWebClasses.PATH_VARIABLE)
 
         val pathVariableInfos = mutableListOf<PathVariableInfo>()
         for (param in annotatedParams) {

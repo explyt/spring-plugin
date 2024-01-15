@@ -4,6 +4,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.VALUE
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.service.ProfilesService
+import com.esprito.spring.core.service.SpringSearchService
 import com.intellij.codeInsight.hints.declarative.*
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.ModuleUtilCore
@@ -18,7 +19,8 @@ import org.jetbrains.uast.toUElement
 class ProfileAnnotationHintsProvider : InlayHintsProvider {
     override fun createCollector(file: PsiFile, editor: Editor): InlayHintsCollector? {
         val module = ModuleUtilCore.findModuleForPsiElement(file) ?: return null
-        val metaAnnotationsHolder = MetaAnnotationsHolder.of(module, SpringCoreClasses.PROFILE)
+        val metaAnnotationsHolder = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringCoreClasses.PROFILE)
         return Collector(metaAnnotationsHolder)
     }
 

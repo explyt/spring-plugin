@@ -2,7 +2,7 @@ package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.properties.references.EspritoLibraryPropertyReference
-import com.esprito.spring.core.service.MetaAnnotationsHolder
+import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
 import com.intellij.codeInsight.AnnotationUtil
@@ -31,7 +31,8 @@ class ConditionalOnConfigurationPropertyReferenceProvider : UastInjectionHostRef
         val module = ModuleUtilCore.findModuleForPsiElement(psiAnnotation) ?: return EMPTY_ARRAY
         val attributeName = namedExpression.name ?: "value"
 
-        val annotationHolder = MetaAnnotationsHolder.of(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
+        val annotationHolder = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
         if (!annotationHolder.isAttributeRelatedWith(
                 annotationQn,
                 attributeName,
