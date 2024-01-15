@@ -35,6 +35,7 @@ import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
@@ -129,10 +130,26 @@ class SpringSearchService(private val project: Project) {
                 .filter { it.isValid }
                 .flatMap { it.allMethods.asSequence() }
                 .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
+                .filter { isActive(it) }
                 .toSet()
             CachedValueProvider.Result(
                 psiMethods,
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    private fun isActive(psiMember: PsiMember): Boolean {
+        if (!psiMember.isMetaAnnotatedBy(SpringCoreClasses.PROFILE)) return true
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMember) ?: return false
+        val profilesService = ProfilesService.getInstance(project)
+
+        val metaAnnotationsHolder = getMetaAnnotations(module, SpringCoreClasses.PROFILE)
+        val values = metaAnnotationsHolder.getAnnotationMemberValues(psiMember, setOf("value"))
+
+        return values.all { value ->
+            profilesService.compute(
+                ElementManipulators.getValueText(value)
             )
         }
     }
@@ -162,6 +179,7 @@ class SpringSearchService(private val project: Project) {
         return annotationPsiClasses.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
+            .filter { isActive(it) }
             .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
             .toSet()
     }
