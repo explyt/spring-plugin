@@ -1,6 +1,6 @@
 package com.esprito.spring.web.inspections
 
-import com.esprito.spring.core.service.MetaAnnotationsHolder
+import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.esprito.spring.web.inspections.quickfix.AddPathVariableQuickFix
@@ -84,7 +84,8 @@ class SpringOmittedPathVariableParameterInspection : AbstractBaseUastLocalInspec
     }
 
     private fun collectUrlPathParams(module: Module, psiMethod: PsiMethod): MutableList<RefInfo> {
-        val mahRequestMapping = MetaAnnotationsHolder.of(module, REQUEST_MAPPING)
+        val mahRequestMapping = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, REQUEST_MAPPING)
         val urlPaths = mahRequestMapping.getAnnotationMemberValues(psiMethod, setOf("value", "path"))
 
         val urlPathParams = mutableListOf<RefInfo>()

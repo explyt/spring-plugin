@@ -8,7 +8,7 @@
         <package>com</package>
         <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
         <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
-        <description>Should annotate bean/component</description>
+        <description>Profile should annotate bean/component</description>
         <highlighted_element>@Profile</highlighted_element>
         <language>JAVA</language>
         <offset>4</offset>
@@ -22,7 +22,7 @@
         <package>com</package>
         <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
         <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
-        <description>Should annotate bean/component</description>
+        <description>Profile should annotate bean/component</description>
         <highlighted_element>@ProfileA</highlighted_element>
         <language>JAVA</language>
         <offset>4</offset>
@@ -36,7 +36,7 @@
         <package>com</package>
         <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
         <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
-        <description>Should annotate bean/component</description>
+        <description>Profile should annotate bean/component</description>
         <highlighted_element>@Profile</highlighted_element>
         <language>JAVA</language>
         <offset>0</offset>
@@ -50,7 +50,7 @@
         <package>com</package>
         <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
         <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
-        <description>Should annotate bean/component</description>
+        <description>Profile should annotate bean/component</description>
         <highlighted_element>@ProfileA</highlighted_element>
         <language>JAVA</language>
         <offset>0</offset>
