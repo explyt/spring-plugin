@@ -1,14 +1,19 @@
 package com.esprito.spring.core.profile
 
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringProperties.VALUE
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.service.ProfilesService
 import com.intellij.codeInsight.hints.declarative.*
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.*
-import com.intellij.psi.util.parentOfType
+import com.intellij.psi.ElementManipulators
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.refactoring.suggested.endOffset
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.ULiteralExpression
+import org.jetbrains.uast.toUElement
 
 class ProfileAnnotationHintsProvider : InlayHintsProvider {
     override fun createCollector(file: PsiFile, editor: Editor): InlayHintsCollector? {
@@ -18,33 +23,30 @@ class ProfileAnnotationHintsProvider : InlayHintsProvider {
     }
 
     class Collector(private val metaAnnotationsHolder: MetaAnnotationsHolder) : SharedBypassCollector {
-        //TODO: UAST
+
         override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
-            if (element !is PsiLiteralExpression) return
-            val annotation = element.parentOfType<PsiAnnotation>() ?: return
-            val annotationQn = annotation.qualifiedName ?: return
+            val uAnnotation = (element.toUElement() as? UAnnotation) ?: return
+            val annotationQn = uAnnotation.qualifiedName ?: return
+            val annotation = uAnnotation.javaPsi ?: return
             if (!metaAnnotationsHolder.contains(annotation)) return
-            val nameValuePair = element.parent as? PsiNameValuePair ?: return
-            val parameterName = nameValuePair.name ?: "value"
+            val uExpression = uAnnotation.attributeValues
+                .filter { it.expression is ULiteralExpression }
+                .find {
+                    metaAnnotationsHolder.isAttributeRelatedWith(
+                        annotationQn, it.name ?: VALUE, SpringCoreClasses.PROFILE, setOf(VALUE)
+                    )
+                }?.expression ?: return
 
-            if (!metaAnnotationsHolder.isAttributeRelatedWith(
-                    annotationQn,
-                    parameterName,
-                    SpringCoreClasses.PROFILE,
-                    setOf("value")
-                )
-            ) return
-
-            val profileExpression = ElementManipulators.getValueText(element)
+            val sourcePsi = uExpression.sourcePsi ?: return
+            val profileExpression = ElementManipulators.getValueText(sourcePsi)
             val result = ProfilesService.getInstance(element.project).compute(profileExpression)
 
             sink.addPresentation(
-                InlineInlayPosition(element.endOffset, true), hasBackground = true
+                InlineInlayPosition(sourcePsi.endOffset, true), hasBackground = true
             ) {
                 text(": $result")
             }
         }
-
     }
 
 }
