@@ -1,6 +1,8 @@
 package com.esprito.spring.core.runconfiguration
 
 import com.esprito.spring.core.service.ProfilesService
+import com.esprito.spring.core.tracker.ModificationTrackerManager
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.RunnerAndConfigurationSettings
@@ -20,11 +22,22 @@ class EspritoRunManagerListener(val project: Project) : RunManagerListener {
 
     override fun stateLoaded(runManager: RunManager, isFirstLoadState: Boolean) {
         super.stateLoaded(runManager, isFirstLoadState)
-        updateProfilesFromConfiguration(runManager.selectedConfiguration)
+        ProfilesService.getInstance(project)
+            .updateFromConfiguration(runManager.selectedConfiguration)
     }
 
-    private fun updateProfilesFromConfiguration(settings: RunnerAndConfigurationSettings?) {
-        ProfilesService.getInstance(project).updateFromConfiguration(settings)
+    private fun updateProfilesFromConfiguration(
+        settings: RunnerAndConfigurationSettings?
+    ) {
+        val profilesService = ProfilesService.getInstance(project)
+        val oldProfiles = profilesService.activeProfiles
+        val newProfiles = profilesService
+            .updateFromConfiguration(settings)
+
+        if (oldProfiles != newProfiles) {
+            ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker().incModificationCount()
+            DaemonCodeAnalyzer.getInstance(project).restart()
+        }
     }
 
 }

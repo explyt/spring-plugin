@@ -13,7 +13,7 @@ import java.util.*
 
 @Service(Service.Level.PROJECT)
 class ProfilesService(private val project: Project) {
-    private var activeProfiles: Set<String> = setOf()
+    var activeProfiles: Set<String> = setOf()
         get() = when {
             field.isEmpty() -> getProfilesFromConfiguration(
                 RunManager.getInstance(project).selectedConfiguration
