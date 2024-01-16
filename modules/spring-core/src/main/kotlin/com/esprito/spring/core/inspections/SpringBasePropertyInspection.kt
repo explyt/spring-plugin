@@ -99,8 +99,20 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
             val elementFileProperty = fileProperty.psiElement ?: continue
             val psiKey = elementFileProperty.propertyKeyPsiElement() ?: continue
 
-            val findProperties = properties.filter { it.name == fileProperty.key }
-            if (findProperties.isEmpty()
+            if (fileProperty.key in PROHIBITED_IN_PROFILE_PROPERTIES
+                && PROFILE_PROPERTIES_FILE_MASK.matches(file.name)
+            ) {
+                problems += manager.createProblemDescriptor(
+                    psiKey,
+                    SpringCoreBundle.message("esprito.spring.inspection.properties.key.prohibited", fileProperty.key),
+                    isOnTheFly,
+                    emptyArray(),
+                    ProblemHighlightType.GENERIC_ERROR
+                )
+            }
+
+            val foundProperties = properties.filter { it.name == fileProperty.key }
+            if (foundProperties.isEmpty()
                 && !isPropertyMapKey(fileProperty, properties)
                 && !isPropertyListKey(fileProperty, properties)
             ) {
@@ -117,7 +129,7 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
                     )
                 }
             } else {
-                for (it in findProperties) {
+                for (it in foundProperties) {
                     if (it.isMap()) {
                         problems += manager.createProblemDescriptor(
                             psiKey,
@@ -595,6 +607,12 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
     ): List<ConfigurationProperty> {
         val key = fileProperty.key.substringBeforeLast(separator)
         return properties.filter { it.name == key }
+    }
+
+    companion object {
+        val PROHIBITED_IN_PROFILE_PROPERTIES =
+            setOf("spring.profiles.include", "spring.profiles.active", "spring.profiles.default")
+        val PROFILE_PROPERTIES_FILE_MASK = Regex("application-.*\\.(properties|yml|yaml)")
     }
 
 }
