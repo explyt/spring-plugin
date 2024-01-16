@@ -22,12 +22,7 @@ class SpringYamlCompletionContributorTest : EspritoJavaLightTestCase() {
             "spring.datasource.tomcat.driver-class-name",
             "spring.datasource.tomcat.validator-class-name"
         )
-        sourceAfterComplete = """
-spring:
-  datasource:
-    tomcat:
-      name: 
-      """.trimIndent()
+        sourceAfterComplete = """spring.datasource.tomcat.name: """.trimIndent()
     }
 
     fun testInsertToExistKey() = doTest {

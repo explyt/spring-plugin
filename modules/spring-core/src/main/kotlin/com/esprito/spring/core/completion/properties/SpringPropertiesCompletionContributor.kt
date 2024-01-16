@@ -47,7 +47,7 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             val currentKey = getCurrentKey(element, parameters) ?: return
 
             val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
-                .getAllProperties(module)
+                .getAllPropertiesWithSubKeys(module)
             val parameterKeys = getKeysFromFile(parameters).filter { it != currentKey.fullKey }
 
             val reducedProperties = properties

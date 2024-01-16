@@ -6,11 +6,21 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 
+private const val keysSuffix = ".keys"
+
 @Service(Service.Level.PROJECT)
 class SpringConfigurationPropertiesSearch {
 
     companion object {
         fun getInstance(project: Project): SpringConfigurationPropertiesSearch = project.service()
+    }
+
+    /**
+     * return all configuration properties with their map sub-key.
+     * example: logging.level, logging.level.sql.
+     */
+    fun getAllPropertiesWithSubKeys(module: Module): List<ConfigurationProperty> {
+        return getAllProperties(module) + getKeysProperty(module)
     }
 
     fun getAllProperties(module: Module): List<ConfigurationProperty> {
@@ -30,9 +40,21 @@ class SpringConfigurationPropertiesSearch {
 
     fun getAllHints(module: Module): List<PropertyHint> {
         return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
-            .asSequence().flatMap {
-                it.loadPropertyHints(module)
-            }.toList()
+            .asSequence().flatMap { it.loadPropertyHints(module) }.toList()
+    }
+
+    private fun getKeysProperty(module: Module): List<ConfigurationProperty> {
+        return getAllHints(module).asSequence()
+            .filter { it.name.endsWith(keysSuffix) }
+            .flatMap { toConfigurationPropertyList(it) }
+            .toList()
+    }
+
+    private fun toConfigurationPropertyList(hint: PropertyHint): List<ConfigurationProperty> {
+        val basePropertyName = hint.name.substringBefore(keysSuffix)
+        return hint.values.map {
+            ConfigurationProperty("$basePropertyName.${it.value}", null, null, it.description, null, null)
+        }
     }
 
     fun getAllFactoriesNames(module: Module): Set<String> {

@@ -7,11 +7,9 @@ import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.PropertyRenderer
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.properties.PropertiesJavaClassReferenceSet
-import com.esprito.spring.core.properties.references.KeyPsiReference
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.DOT
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
-import com.esprito.spring.core.util.PropertyUtil.textRangePropertyKeyMap
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider
@@ -32,8 +30,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         }
         val propertyKey = element.propertyKey() ?: return PsiReference.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return PsiReference.EMPTY_ARRAY
-        val allHints = SpringConfigurationPropertiesSearch.getInstance(element.project)
-            .getAllHints(module)
+        val allHints = SpringConfigurationPropertiesSearch.getInstance(element.project).getAllHints(module)
 
         val keyHint: PropertyHint = allHints.find { hint ->
             val hintName = hint.name
@@ -81,22 +78,13 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                 )
             )
 
-            val references: Array<PsiReference> = if (keyHint.values.isNotEmpty()) {
-                val refs = mutableListOf<PsiReference>()
-                keyHint.values.forEach {
-                    val range = element.textRangePropertyKeyMap(prefixLength, it)
-                    if (range != null) {
-                        refs.add(KeyPsiReference(element, range, prefix, it))
-                    }
-                }
-                refs.toTypedArray()
-            } else {
+            val references: Array<PsiReference> = if (keyHint.values.isEmpty()) {
                 PropertiesJavaClassReferenceSet(
                     propertyKey.substringAfter("$prefix."),
                     element,
                     prefixLength + 1
                 ).references
-            }
+            } else emptyArray()
 
             result.addAll(references)
             return result.toTypedArray()

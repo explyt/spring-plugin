@@ -50,7 +50,7 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
 
         val parentConfigFullName = if (foundParentKey == null) "" else YAMLUtil.getConfigFullName(foundParentKey)
         if (foundParentKey != null && currentConfigParts != parentConfigFullName) {
-            if (!deleteCurrentElement(context)) return
+            if (!deleteCurrentElement(context, currentElement)) return
 
             val parentMapping = foundParentKey.value as? YAMLMapping
             if (parentMapping != null) {
@@ -58,23 +58,24 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
                 buildAndInsertKeyValue(context, foundParentKey, newName, configurationProperty.isMap())
             }
         } else {
-            insertNewKeyValue(lookupElement, context, configurationProperty)
+            insertNewKeyValue(lookupElement, context, configurationProperty, currentElement)
         }
     }
 
     private fun insertNewKeyValue(
         lookupElement: LookupElement,
         context: InsertionContext,
-        configurationProperty: ConfigurationProperty
+        configurationProperty: ConfigurationProperty,
+        currentElement: PsiElement
     ) {
         val lookupString = lookupElement.lookupString
         val existingIndentation = getExistingIndentation(context, lookupString)
         val indentPerLevel = getCodeStyleIntent(context)
         val suggestionWithCaret =
-            getSuggestionReplacementWithCaret(lookupString, existingIndentation, indentPerLevel)
+            getSuggestionReplacementWithCaret(lookupString, existingIndentation, indentPerLevel, configurationProperty)
         val suggestionWithoutCaret = suggestionWithCaret.replace(CARET_MARKUP, StringUtils.EMPTY)
 
-        if (!deleteCurrentElement(context)) return
+        if (!deleteCurrentElement(context, currentElement)) return
 
         EditorModificationUtilEx.insertStringAtCaret(
             context.editor, suggestionWithoutCaret, false, true,
@@ -90,9 +91,8 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
     }
 
     private fun deleteCurrentElement(
-        context: InsertionContext
+        context: InsertionContext, currentElement: PsiElement
     ): Boolean {
-        val currentElement = context.file.findElementAt(context.startOffset) ?: return false
         deleteLookupTextAndRetrieveOldValue(context, currentElement)
         return true
     }
@@ -214,8 +214,24 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
     private fun getSuggestionReplacementWithCaret(
         suggestion: String,
         existingIndentation: String,
-        indentPerLevel: String
+        indentPerLevel: String,
+        configurationProperty: ConfigurationProperty,
     ): String {
+        val builder = getSuggestStringBuilder(suggestion, existingIndentation, indentPerLevel, configurationProperty)
+        val suffix = StringUtils.SPACE + CARET_MARKUP
+        builder.append(suffix)
+        return builder.toString()
+    }
+
+    private fun getSuggestStringBuilder(
+        suggestion: String,
+        existingIndentation: String,
+        indentPerLevel: String,
+        configurationProperty: ConfigurationProperty
+    ): StringBuilder {
+        if (configurationProperty.inLineYaml) {
+            return StringBuilder(suggestion).append(COLON)
+        }
         val matchesTopFirst = suggestion.split('.').dropLastWhile { it.isEmpty() }.toTypedArray()
         val builder = StringBuilder()
         val count = AtomicInteger(0)
@@ -226,10 +242,7 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
                 .append(word)
                 .append(COLON)
         }
-        builder.delete(0, existingIndentation.length + 1)
-        val suffix = StringUtils.SPACE + CARET_MARKUP
-        builder.append(suffix)
-        return builder.toString()
+        return builder.delete(0, existingIndentation.length + 1)
     }
 
     companion object {
