@@ -11,7 +11,9 @@ interface ConfigurationPropertiesLoader {
     fun loadPropertyHints(module: Module): List<PropertyHint>
 
     companion object {
-        val EP_NAME = ProjectExtensionPointName<ConfigurationPropertiesLoader>("com.esprito.spring.core.configurationPropertiesLoader")
+        val EP_NAME = ProjectExtensionPointName<ConfigurationPropertiesLoader>(
+            "com.esprito.spring.core.configurationPropertiesLoader"
+        )
     }
 }
 
@@ -21,7 +23,8 @@ data class ConfigurationProperty(
     var sourceType: String?,
     var description: String?,
     var defaultValue: Any?,
-    var deprecation: DeprecationInfo?
+    var deprecation: DeprecationInfo?,
+    val inLineYaml: Boolean = false
 ) {
     fun isMap(): Boolean {
         return type?.startsWith(JavaCoreClasses.MAP) == true

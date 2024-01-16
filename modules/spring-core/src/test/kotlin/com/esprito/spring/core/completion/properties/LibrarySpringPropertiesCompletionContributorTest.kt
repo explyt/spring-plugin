@@ -28,6 +28,9 @@ class LibrarySpringPropertiesCompletionContributorTest : AbstractSpringPropertie
         )
         doTest(
             "logging.level",
+            "logging.level.root",
+            "logging.level.sql",
+            "logging.level.web",
             "logging.pattern.level"
         )
     }
@@ -44,6 +47,9 @@ class LibrarySpringPropertiesCompletionContributorTest : AbstractSpringPropertie
         )
         doTest(
             "logging.level",
+            "logging.level.root",
+            "logging.level.sql",
+            "logging.level.web",
             "logging.pattern.level"
         )
     }
