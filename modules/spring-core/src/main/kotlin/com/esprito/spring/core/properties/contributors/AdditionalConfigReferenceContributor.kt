@@ -39,7 +39,7 @@ class AdditionalConfigReferenceContributor : PsiReferenceContributor() {
             javaClassReferenceProvider
         )
 
-        // -- target
+        // -- hints.providers.parameters.target
         registrar.registerReferenceProvider(
             (((PlatformPatterns.psiElement(JsonStringLiteral::class.java)
                 .inFile(StandardPatterns.or(additionalConfigMetadata, springConfigMetadata)))
