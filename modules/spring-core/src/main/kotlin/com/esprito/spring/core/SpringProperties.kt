@@ -1,6 +1,9 @@
 package com.esprito.spring.core
 
 object SpringProperties {
+    const val CONFIGURATION_METADATA_FILE_NAME = "spring-configuration-metadata.json"
+    const val ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME = "additional-spring-configuration-metadata.json"
+
     const val PREFIX_CLASSPATH = "classpath:"
     const val PREFIX_CLASSPATH_STAR = "classpath*:"
     const val PREFIX_FILE = "file:"
@@ -28,7 +31,18 @@ object SpringProperties {
 
     const val PROPERTY_VALUE_DELIMITERS = ",\\ "
 
+    const val POSTFIX_KEYS = ".keys"
+    const val POSTFIX_VALUES = ".values"
+
     const val COLON = ":"
     const val PLACEHOLDER_PREFIX = "\${"
     const val PLACEHOLDER_SUFFIX = "}"
+
+    const val CHAR_COLON = ':'
+    const val CHAR_QUOTES = '"'
+    const val CHAR_START_SQUARE_BRACKET = '['
+    const val CHAR_END_SQUARE_BRACKET = '['
+    const val CHAR_START_BRACKET = '{'
+    const val CHAR_END_BRACKET = '}'
+
 }

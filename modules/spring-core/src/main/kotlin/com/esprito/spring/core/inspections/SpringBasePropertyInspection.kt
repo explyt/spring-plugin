@@ -6,6 +6,8 @@ import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
+import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.*
 import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
 import com.esprito.spring.core.service.SpringSearchService
@@ -195,10 +197,12 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val findInFileProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                (property.key == hint.name || property.key.substringBeforeLast(".") + ".keys" == hint.name)
+            hints.asSequence()
+                .any { hint ->
+                    (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_KEYS == hint.name)
                         && hint.values.isNotEmpty()
-                        && (hint.providers.isEmpty() || hint.providers.any { it.name != SpringProperties.ANY })
+                        && (hint.providers.isEmpty()
+                        || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
             }
         }
         if (findInFileProperties.isEmpty()) {
@@ -210,10 +214,10 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
             val key = elementFileProperty.propertyKey() ?: continue
             val value = elementFileProperty.propertyValue() ?: continue
             val hintValues = hints.asSequence()
-                .filter { it.name == key || it.name == key.substringBeforeLast(".") + ".values" }
+                .filter { it.name == key || it.name == key.substringBeforeLast(".") + POSTFIX_VALUES }
                 .distinctBy { it.name }
                 .flatMap { it.values }
-                .map { it.value }
+                .mapNotNull { it.value }
                 .toList()
 
             if (value !in hintValues) {
@@ -240,7 +244,10 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val classReferenceProperties = fileProperties.filter { property ->
-            hints.any { hint -> property.key == hint.name && hint.providers.any { it.name == SpringProperties.CLASS_REFERENCE } }
+            hints.any { hint ->
+                property.key == hint.name
+                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.CLASS_REFERENCE }
+            }
         }
         if (classReferenceProperties.isEmpty()) {
             return problems
@@ -307,7 +314,10 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val handleAsProperties = fileProperties.filter { property ->
-            hints.any { hint -> property.key == hint.name && hint.providers.any { it.name == SpringProperties.HANDLE_AS } }
+            hints.any { hint ->
+                property.key == hint.name
+                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
+            }
         }
         if (handleAsProperties.isEmpty()) {
             return problems
@@ -361,7 +371,11 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val springBeanReferenceProperties = fileProperties.filter { property ->
-            hints.any { hint -> property.key == hint.name && hint.providers.any { it.name == SpringProperties.SPRING_BEAN_REFERENCE } }
+            hints.any { hint ->
+                property.key == hint.name
+                        && hint.providers.filter { it.name != null }
+                    .any { it.name == SpringProperties.SPRING_BEAN_REFERENCE }
+            }
         }
         if (springBeanReferenceProperties.isEmpty()) {
             return problems

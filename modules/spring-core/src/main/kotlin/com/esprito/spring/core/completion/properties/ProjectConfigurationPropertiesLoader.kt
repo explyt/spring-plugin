@@ -2,6 +2,7 @@ package com.esprito.spring.core.completion.properties
 
 import com.esprito.module.ExternalSystemModule
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass

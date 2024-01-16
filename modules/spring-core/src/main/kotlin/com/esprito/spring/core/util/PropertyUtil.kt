@@ -1,6 +1,7 @@
 package com.esprito.spring.core.util
 
 import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.completion.properties.ValueHint
@@ -76,7 +77,7 @@ object PropertyUtil {
                 if (hintName == propertyKey) {
                     return@find true
                 }
-                val valuesIdx = hintName.lastIndexOf(".values")
+                val valuesIdx = hintName.lastIndexOf(POSTFIX_VALUES)
                 if (valuesIdx == -1) {
                     return@find false
                 }
@@ -281,6 +282,9 @@ object PropertyUtil {
     }
 
     fun PsiElement.textRangePropertyKeyMap(prefixLength: Int, valueHint: ValueHint): TextRange? {
+        if (valueHint.value == null) {
+            return null
+        }
         if (this is PropertyKeyImpl) {
             return TextRange.from(0, prefixLength + 1 + valueHint.value.length)
         }

@@ -1,5 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
+import com.esprito.spring.core.SpringProperties.CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.util.CacheKeyStore
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.openapi.module.Module

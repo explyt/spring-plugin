@@ -24,6 +24,9 @@ class KeyPsiReference(
     }
 
     override fun getVariants(): Array<Any> {
+        if (valueHint.value == null) {
+            return emptyArray()
+        }
         val lookupString = if (this.element is YAMLKeyValue) {
             "  ${valueHint.value}: "
         } else if (this.element is PropertyKeyImpl) {
@@ -41,7 +44,7 @@ class KeyPsiReference(
 
 class HintValuePropertyRenderer(private val valueHint: ValueHint) : LookupElementRenderer<LookupElement>() {
     override fun renderElement(element: LookupElement, presentation: LookupElementPresentation) {
-        presentation.itemText = valueHint.value
+        presentation.itemText = valueHint.value ?: return
         val description = valueHint.description
         if (!description.isNullOrBlank()) {
             presentation.setTailText(" ($description)", true)

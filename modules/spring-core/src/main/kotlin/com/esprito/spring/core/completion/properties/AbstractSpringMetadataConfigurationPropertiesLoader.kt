@@ -19,9 +19,6 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
     }
 
     companion object {
-        const val CONFIGURATION_METADATA_FILE_NAME = "spring-configuration-metadata.json"
-        const val ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME = "additional-spring-configuration-metadata.json"
-
         private val logger = logger<AbstractSpringMetadataConfigurationPropertiesLoader>()
     }
 
@@ -34,7 +31,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
 
         val processedPropertyKeys = mutableSetOf<String>()
         return metadata.hints?.mapNotNull {
-            val propertyName = it.name
+            val propertyName = it.name ?: return emptyList()
             if (processedPropertyKeys.add(propertyName)) {
                 PropertyHint(
                     name = propertyName,
@@ -162,7 +159,7 @@ data class SpringConfigurationMetadataDeprecation @JsonCreator constructor(
 
 class SpringConfigurationMetadataHint @JsonCreator constructor(
     @JsonProperty("name")
-    val name: String,
+    val name: String?,
     @JsonProperty("values")
     val values: List<ValueHint>?,
     @JsonProperty("providers")
@@ -171,7 +168,7 @@ class SpringConfigurationMetadataHint @JsonCreator constructor(
 
 class ProviderHint @JsonCreator constructor(
     @JsonProperty("name")
-    val name: String,
+    val name: String?,
     @JsonProperty("parameters")
     val parameters: ProviderParameters?
 )
@@ -183,7 +180,7 @@ class ProviderParameters @JsonCreator constructor(
 
 class ValueHint @JsonCreator constructor(
     @JsonProperty("value")
-    val value: String,
+    val value: String?,
     @JsonProperty("description")
     val description: String?
 )

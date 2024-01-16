@@ -1,7 +1,10 @@
 package com.esprito.spring.core.properties.providers
 
+import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringProperties.COLON
+import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.esprito.spring.core.completion.properties.PropertyHint
+import com.esprito.spring.core.completion.properties.PropertyRenderer
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.properties.PropertiesJavaClassReferenceSet
 import com.esprito.spring.core.properties.references.KeyPsiReference
@@ -11,6 +14,9 @@ import com.esprito.spring.core.util.PropertyUtil.propertyKey
 import com.esprito.spring.core.util.PropertyUtil.textRangePropertyKeyMap
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.completion.CompletionUtilCore
+import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
@@ -31,7 +37,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 
         val keyHint: PropertyHint = allHints.find { hint ->
             val hintName = hint.name
-            val keysIdx = hintName.lastIndexOf(".keys")
+            val keysIdx = hintName.lastIndexOf(POSTFIX_KEYS)
             if (keysIdx == -1) {
                 return@find false
             }
@@ -51,7 +57,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         keyHint: PropertyHint,
         element: PsiElement
     ): Array<PsiReference> {
-        val prefix = keyHint.name.substringBefore(".keys")
+        val prefix = keyHint.name.substringBefore(POSTFIX_KEYS)
         val suffixKey = prefix.substringAfterLast(DOT)
         val suffixElement = element.text.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
             .filter { !it.isWhitespace() }
@@ -61,7 +67,9 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                     (propertyKey.startsWith(prefix)
                             && suffixKey == suffixElement.substringBeforeLast(COLON)
                             && suffixElement.endsWith(COLON)))
-            && (keyHint.providers.any { it.name == "logger-name" } || keyHint.values.isNotEmpty())
+            && (keyHint.providers.asSequence()
+                .filter { it.name != null }
+                .any { it.name == "logger-name" } || keyHint.values.isNotEmpty())
         ) {
             val prefixLength = prefix.length
 
@@ -101,8 +109,9 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 open class ConfigurationPropertyKeyReference(
     element: PsiElement,
     private val propertyKey: String,
-    textRange: TextRange? = null
-) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
+    textRange: TextRange? = null,
+    private val mode: String? = null,
+) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false), EmptyResolveMessageProvider {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
@@ -115,6 +124,32 @@ open class ConfigurationPropertyKeyReference(
             return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         }
         return emptyArray()
+    }
+
+    override fun getVariants(): Array<Any> {
+        if (mode == null) {
+            return emptyArray()
+        }
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
+        val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
+            .getAllProperties(module)
+
+        val allVariants = mutableListOf<LookupElement>()
+
+        for (property in properties) {
+            allVariants.add(
+                LookupElementBuilder.create(property, property.name)
+                    .withRenderer(PropertyRenderer())
+            )
+        }
+        return allVariants.toTypedArray()
+    }
+
+    override fun getUnresolvedMessagePattern(): String {
+        return SpringCoreBundle.message(
+            "esprito.spring.inspection.metadata.config.unresolved.key.reference",
+            this.value
+        )
     }
 
 }

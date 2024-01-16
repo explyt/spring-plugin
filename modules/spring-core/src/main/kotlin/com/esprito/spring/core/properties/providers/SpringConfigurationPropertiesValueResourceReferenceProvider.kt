@@ -38,7 +38,8 @@ class SpringConfigurationPropertiesValueResourceReferenceProvider : PsiReference
 
     private fun processProviderHints(element: PsiElement, provider: ProviderHint): Array<PsiReference> {
         val targetClassFqn = provider.parameters?.target ?: return emptyArray()
-        if (provider.name == SpringProperties.HANDLE_AS && targetClassFqn == SpringCoreClasses.IO_RESOURCE) {
+        val name = provider.name ?: return emptyArray()
+        if (name == SpringProperties.HANDLE_AS && targetClassFqn == SpringCoreClasses.IO_RESOURCE) {
             return getResourceVariants(element)
         }
         return emptyArray()
