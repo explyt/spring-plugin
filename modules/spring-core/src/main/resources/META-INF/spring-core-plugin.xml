@@ -70,6 +70,9 @@
                                   implementation="com.esprito.spring.core.references.contributors.UastBeanReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.core.references.contributors.QualifierReferenceContributor"/>
+        <psi.referenceContributor language="JSON"
+                                  implementation="com.esprito.spring.core.properties.contributors.AdditionalConfigReferenceContributor"/>
+
         <lang.documentationProvider language="Properties"
                                     order="first"
                                     implementationClass="com.esprito.spring.core.properties.providers.SpringPropertiesDocumentationProvider"/>

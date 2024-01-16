@@ -4,6 +4,7 @@ import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
@@ -23,6 +24,7 @@ import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
 import com.esprito.util.runReadNonBlocking
+import com.intellij.json.psi.JsonFile
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -88,6 +90,11 @@ object SpringCoreUtil {
                 return@any targetFile == propertiesVf
             }
         }
+    }
+
+    fun isAdditionalConfigFile(psiFile: PsiFile): Boolean {
+        return psiFile is JsonFile
+                && psiFile.name == ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
     }
 
     private fun isSpringProject(module: Module): Boolean {

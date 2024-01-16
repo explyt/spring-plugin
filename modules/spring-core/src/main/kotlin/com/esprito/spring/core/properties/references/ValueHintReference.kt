@@ -98,9 +98,9 @@ class ValueHintReference(
         propertyHint: PropertyHint
     ): List<Any> {
         val result = mutableListOf<Any>()
-        result.addAll(propertyHint.values.map {
-            LookupElementBuilder.create(it, it.value).withRenderer(PropertyValueRenderer())
-        })
+        result.addAll(propertyHint.values
+            .filter { it.value != null }
+            .map { LookupElementBuilder.create(it, it.value!!).withRenderer(PropertyValueRenderer()) })
 
         propertyHint.providers.flatMapTo(result) { providerHint ->
             processProviderHints(providerHint)
