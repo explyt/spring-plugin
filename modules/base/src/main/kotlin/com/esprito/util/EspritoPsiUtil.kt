@@ -22,14 +22,23 @@ object EspritoPsiUtil {
     val PsiModifierListOwner.isPrivate: Boolean
         get() = this.hasModifierProperty(PsiModifier.PRIVATE)
 
+    val PsiModifierListOwner.isNonPrivate: Boolean
+        get() = !this.isPrivate
+
     val PsiModifierListOwner.isPublic: Boolean
         get() = this.hasModifierProperty(PsiModifier.PUBLIC)
 
     val PsiModifierListOwner.isAbstract: Boolean
         get() = this.hasModifierProperty(PsiModifier.ABSTRACT)
 
+    val PsiModifierListOwner.isNonAbstract: Boolean
+        get() = !this.isAbstract
+
     val PsiModifierListOwner.isFinal: Boolean
         get() = this.hasModifierProperty(PsiModifier.FINAL)
+
+    val PsiModifierListOwner.isTransient: Boolean
+        get() = this.hasModifierProperty(PsiModifier.TRANSIENT)
 
     fun PsiModifierListOwner.isAnnotatedBy(annotations: Collection<String>, flags: Int = 0) =
         AnnotationUtil.isAnnotated(this, annotations, flags)
@@ -164,7 +173,7 @@ object EspritoPsiUtil {
         return psiMethod?.let {
             isOpen(it) &&
                     PropertyUtilBase.isSimplePropertyGetter(it)
-        } ?: false
+        } == true
     }
 
     @OptIn(ExperimentalContracts::class)
@@ -172,9 +181,9 @@ object EspritoPsiUtil {
         contract { returns(true) implies (psiMember != null) }
 
         return psiMember != null
-                && !psiMember.hasModifierProperty(PsiModifier.STATIC)
-                && !psiMember.hasModifierProperty(PsiModifier.ABSTRACT)
-                && !psiMember.hasModifierProperty(PsiModifier.PRIVATE)
+                && psiMember.isNonStatic
+                && psiMember.isNonAbstract
+                && psiMember.isNonPrivate
     }
 
 }

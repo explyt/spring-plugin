@@ -18,6 +18,7 @@ import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isInterface
 import com.esprito.util.EspritoPsiUtil.isMap
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
+import com.esprito.util.EspritoPsiUtil.isNonPrivate
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.isString
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
@@ -118,7 +119,7 @@ object SpringCoreUtil {
     fun isSpringBeanCandidateClass(psiClass: PsiClass): Boolean {
         return psiClass.isValid
                 && psiClass !is PsiTypeParameter
-                && !psiClass.hasModifierProperty(PsiModifier.PRIVATE)
+                && psiClass.isNonPrivate
                 && !psiClass.isAnnotationType
                 && psiClass.qualifiedName != null
                 && !PsiUtil.isLocalOrAnonymousClass(psiClass)

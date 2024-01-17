@@ -6,8 +6,8 @@ import com.esprito.spring.core.completion.properties.DefinedConfigurationPropert
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
-import com.esprito.util.EspritoPsiUtil.isAbstract
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.esprito.util.EspritoPsiUtil.isSetter
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
@@ -24,7 +24,7 @@ class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
     fun getContainingClass(): PsiClass? {
         val psiClass = psiMethod.containingClass
 
-        return if (psiClass != null && !psiClass.isInterface && !psiClass.isAbstract) {
+        return if (psiClass != null && !psiClass.isInterface && psiClass.isNonAbstract) {
             psiClass
         } else {
             null

@@ -4,7 +4,10 @@ import com.esprito.module.ExternalSystemModule
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.isNonPrivate
+import com.esprito.util.EspritoPsiUtil.isNonStatic
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.runReadNonBlocking
@@ -182,8 +185,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         nestedFields: List<FieldPropertyWrapper>
     ) : List<PsiMethod> {
         return targetClass.allMethods.filter {
-            !it.hasModifierProperty(PsiModifier.STATIC)
-                    && !it.hasModifierProperty(PsiModifier.PRIVATE)
+            it.isNonStatic
+                    && it.isNonPrivate
                     && it.parameterList.parametersCount == 0
                     && (isPrefixedJavaIdentifier(it.name, "get") || isPrefixedJavaIdentifier(it.name, "is"))
                     && it.returnType !in nestedFields.map { field -> field.psiType }
@@ -195,8 +198,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         nestedFields: List<FieldPropertyWrapper>
     ) : List<PsiMethod> {
         return targetClass.allMethods.filter {
-            !it.hasModifierProperty(PsiModifier.STATIC)
-                    && !it.hasModifierProperty(PsiModifier.PRIVATE)
+            it.isNonStatic
+                    && it.isNonPrivate
                     && it.parameterList.parametersCount == 1
                     && isPrefixedJavaIdentifier(it.name, "set")
                     && it.parameterList.parameters[0].type !in nestedFields.map { field -> field.psiType }
@@ -212,8 +215,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
 
     private fun getFieldPropertyWrappers(targetClass: PsiClass): List<FieldPropertyWrapper> {
         return targetClass.allFields.filter {
-            !it.hasModifierProperty(PsiModifier.STATIC)
-                    && it.hasModifierProperty(PsiModifier.FINAL)
+            it.isNonStatic
+                    && it.isFinal
                     && !it.isMetaAnnotatedBy(SpringCoreClasses.NESTED_CONFIGURATION_PROPERTIES)
         }.map { FieldPropertyWrapper(it) }
     }

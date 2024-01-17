@@ -1,12 +1,13 @@
 package com.esprito.jpa.service
 
 import com.esprito.jpa.JpaClasses
+import com.esprito.util.EspritoPsiUtil.isStatic
+import com.esprito.util.EspritoPsiUtil.isTransient
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiField
-import com.intellij.psi.PsiModifier
 
 @Service(Service.Level.PROJECT)
 class JpaService {
@@ -23,10 +24,10 @@ class JpaService {
     }
 
     fun isJpaEntityAttribute(psiField: PsiField): Boolean {
-        if (psiField.hasModifierProperty(PsiModifier.STATIC))
+        if (psiField.isStatic)
             return false
 
-        if (psiField.hasModifierProperty(PsiModifier.TRANSIENT))
+        if (psiField.isTransient)
             return false
 
         val psiClass = psiField.containingClass ?: return false
