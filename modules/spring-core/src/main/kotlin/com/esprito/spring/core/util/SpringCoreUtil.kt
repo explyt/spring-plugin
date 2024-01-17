@@ -24,6 +24,7 @@ import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
 import com.esprito.util.runReadNonBlocking
+import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.json.psi.JsonFile
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
@@ -355,6 +356,11 @@ object SpringCoreUtil {
                 } == true
             }
         }
+    }
+
+    @Suppress("UnstableApiUsage")
+    fun hasBootLibrary(module: Module): Boolean {
+        return JavaLibraryUtil.hasLibraryJar(module, "org.springframework.boot:spring-boot")
     }
 
 }

@@ -64,6 +64,9 @@ object SpringCoreClasses {
     const val RESOURCE_UTILS = "org.springframework.util.ResourceUtils"
 
     const val PROPERTY_RESOLVER = "org.springframework.core.env.PropertyResolver"
+    const val ENVIRONMENT = "org.springframework.core.env.Environment"
+    const val CONVERSION_SERVICE = "org.springframework.core.convert.ConversionService"
+    const val APPLICATION_ARGUMENTS = "org.springframework.boot.ApplicationArguments"
 
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)

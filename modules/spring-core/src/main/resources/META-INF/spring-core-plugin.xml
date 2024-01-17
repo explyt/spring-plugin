@@ -17,6 +17,10 @@
         <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher"
                         interface="com.esprito.spring.core.profile.ProfileSearcher"
                         area="IDEA_PROJECT"/>
+
+        <extensionPoint qualifiedName="com.esprito.spring.core.staticBeansDiscoverer"
+                        interface="com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer"
+                        area="IDEA_PROJECT"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.esprito.spring.core">
@@ -33,6 +37,11 @@
         <profileSearcher implementation="com.esprito.spring.core.profile.AdditionalProfileSearcher"/>
         <profileSearcher implementation="com.esprito.spring.core.profile.PropertyNameProfileSearcher"/>
         <profileSearcher implementation="com.esprito.spring.core.profile.MavenProfileSearcher"/>
+
+        <staticBeansDiscoverer
+                implementation="com.esprito.spring.core.service.beans.discoverer.SpringCoreStaticBeansDiscoverer"/>
+        <staticBeansDiscoverer
+                implementation="com.esprito.spring.core.service.beans.discoverer.SpringBootStaticBeansDiscoverer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
