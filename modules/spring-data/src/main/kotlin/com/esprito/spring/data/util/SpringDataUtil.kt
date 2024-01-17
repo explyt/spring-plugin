@@ -14,4 +14,8 @@ object SpringDataUtil {
         return LibraryClassCache.searchForLibraryClass(module, SpringDataClasses.SPRING_RESOURCE) != null
     }
 
+    fun isSpringDataJpaModule(module: Module): Boolean {
+        return LibraryClassCache.searchForLibraryClass(module, SpringDataClasses.JPA_CONTEXT) != null
+    }
+
 }

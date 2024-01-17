@@ -8,16 +8,32 @@ import com.esprito.util.EspritoAnnotationUtil.getBooleanValue
 import com.esprito.util.EspritoAnnotationUtil.getStringValue
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isOptional
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 
 object SpringWebUtil {
+
     fun isSpringWebProject(project: Project): Boolean {
         return LibraryClassCache.searchForLibraryClass(
             project,
             SpringWebClasses.WEB_INITIALIZER
+        ) != null
+    }
+
+    fun isSpringWebModule(module: Module): Boolean {
+        return LibraryClassCache.searchForLibraryClass(
+            module,
+            SpringWebClasses.WEB_INITIALIZER
+        ) != null
+    }
+
+    fun hasJakartaClasses(module: Module): Boolean {
+        return LibraryClassCache.searchForLibraryClass(
+            module,
+            SpringWebClasses.JAKARTA_SERVLET_CONTEXT
         ) != null
     }
 

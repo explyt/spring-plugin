@@ -10,6 +10,11 @@
                 implementation="com.esprito.spring.data.reference.RepositoryQueryInputParameterReferenceResolver"/>
     </extensions>
 
+    <extensions defaultExtensionNs="com.esprito.spring.core">
+        <staticBeansDiscoverer
+                implementation="com.esprito.spring.data.service.beans.discoverer.SpringDataStaticBeansDiscoverer"/>
+    </extensions>
+
     <actions>
 
     </actions>

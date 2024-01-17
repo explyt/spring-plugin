@@ -5,6 +5,7 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
 import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
@@ -56,7 +57,19 @@ class SpringSearchService(private val project: Project) {
     private fun searchAllBeanClasses(module: Module): Set<PsiBean> {
         val allPsiClassesAnnotatedByComponent = getBeanPsiClassesAnnotatedByComponent(module)
         val methodsAnnotatedByBeanReturnTypes = searchComponentPsiClassesByBeanMethods(module)
-        return allPsiClassesAnnotatedByComponent + methodsAnnotatedByBeanReturnTypes
+        val staticBeans = getStaticBeans(module)
+        return allPsiClassesAnnotatedByComponent + methodsAnnotatedByBeanReturnTypes + staticBeans
+    }
+
+    private fun getStaticBeans(module: Module): Set<PsiBean> {
+        return cachedValuesManager.getCachedValue(module) {
+            CachedValueProvider.Result(
+                StaticBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
+                    .filter { it.accepts(module) }
+                    .flatMapTo(mutableSetOf()) { it.discoverBeans(module) },
+                ModificationTrackerManager.getInstance(project).getLibraryTracker()
+            )
+        }
     }
 
     private fun getAllBeansClasses(module: Module): FoundBeans {
@@ -332,8 +345,8 @@ class SpringSearchService(private val project: Project) {
                 byTypeBeanMethods = methodsPsiBeans.filterByBeanPsiType(sourcePsiType, beanPsiType).toSet()
             }
 
-            val byTypeComponents =
-                getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
+            val byTypeComponents = getStaticBeans(module).filter { it.psiClass == beanPsiClass }.map { it.psiClass } +
+                    getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
 
             if (isMultipleBean && byExactMatch.isNotEmpty()
                 && byTypeBeanMethods.isEmpty() && byTypeComponents.isEmpty()
