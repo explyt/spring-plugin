@@ -55,7 +55,7 @@ object SpringCoreClasses {
 
     const val CONTEXT_CONFIGURATION = "org.springframework.test.context.ContextConfiguration"
     const val IMPORT_RESOURCE = "org.springframework.context.annotation.ImportResource"
-    const val CONTEXT_SQL = "org.springframework.test.context.jdbc.SQL"
+    const val CONTEXT_SQL = "org.springframework.test.context.jdbc.Sql"
 
     const val TRANSACTIONAL = "org.springframework.transaction.annotation.Transactional"
 
