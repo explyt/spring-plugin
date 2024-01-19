@@ -11,22 +11,22 @@ enum class SpringBootValueProvider(val id: String, val description: String, val 
     CLASS_REFERENCE(
         "class-reference",
         "Auto-completes the classes available in the project.",
-        arrayOf(Parameter("target"), Parameter("concrete"))
+        arrayOf(Parameter("target", true), Parameter("concrete", false))
     ),
     HANDLE_AS(
         "handle-as",
         "Handles the property as if it were defined by the type defined by the mandatory target parameter.",
-        arrayOf(Parameter("target"))
+        arrayOf(Parameter("target", true))
     ),
     LOGGER_NAME(
         "logger-name",
         "Auto-completes valid logger names and logger groups.",
-        arrayOf(Parameter("group"))
+        arrayOf(Parameter("group", false))
     ),
     SPRING_BEAN_REFERENCE(
         "spring-bean-reference",
         "Auto-completes the available bean names in the current project.",
-        arrayOf(Parameter("target"))
+        arrayOf(Parameter("target", true))
     ),
     SPRING_PROFILE_NAME(
         "spring-profile-name",
@@ -34,18 +34,19 @@ enum class SpringBootValueProvider(val id: String, val description: String, val 
         emptyArray()
     );
 
+    fun isRequiredParameters(): Boolean {
+        return parameters.any { it.required }
+    }
+
     companion object {
         fun findById(id: String): SpringBootValueProvider? {
             return ContainerUtil.find(entries.toTypedArray()) { it.id == id }
         }
     }
 
-    class Parameter internal constructor(
-        nameParameter: String
-    ) {
-
+    class Parameter(nameParameter: String, requiredParameter: Boolean) {
         val name: String = nameParameter
-
+        val required: Boolean = requiredParameter
     }
 
 

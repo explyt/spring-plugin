@@ -1,7 +1,13 @@
 package com.esprito.spring.core.properties.contributors
 
+import com.esprito.spring.core.SpringProperties.DEPRECATION
+import com.esprito.spring.core.SpringProperties.NAME
 import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
+import com.esprito.spring.core.SpringProperties.REPLACEMENT
+import com.esprito.spring.core.SpringProperties.SOURCE_TYPE
+import com.esprito.spring.core.SpringProperties.TARGET
+import com.esprito.spring.core.SpringProperties.TYPE
 import com.esprito.spring.core.properties.providers.ConfigurationPropertyKeyReference
 import com.esprito.spring.core.properties.references.AdditionalConfigPropertyNameReference
 import com.esprito.spring.core.properties.references.AdditionalConfigValueProviderReference
@@ -177,17 +183,17 @@ class AdditionalConfigReferenceContributor : PsiReferenceContributor() {
 
         private val propertyName = object : PatternCondition<JsonProperty>("nameProperty") {
             override fun accepts(jsonProperty: JsonProperty, context: ProcessingContext) =
-                "name" == jsonProperty.name
+                NAME == jsonProperty.name
         }
 
         private val classPropertyNames = object : PatternCondition<JsonProperty>("classPropertyNames") {
             override fun accepts(property: JsonProperty, context: ProcessingContext) =
-                "type" == property.name || "sourceType" == property.name
+                TYPE == property.name || SOURCE_TYPE == property.name
         }
 
         private val targetProperty = object : PatternCondition<JsonProperty>("targetProperty") {
             override fun accepts(property: JsonProperty, context: ProcessingContext) =
-                "target" == property.name
+                TARGET == property.name
         }
 
         private val hintsGroup = object : PatternCondition<JsonStringLiteral>("hintsGroup") {
@@ -202,12 +208,12 @@ class AdditionalConfigReferenceContributor : PsiReferenceContributor() {
 
         private val replacement = object : PatternCondition<JsonProperty>("replacementProperty") {
             override fun accepts(jsonProperty: JsonProperty, context: ProcessingContext) =
-                jsonProperty.name == "replacement"
+                jsonProperty.name == REPLACEMENT
         }
 
         private val deprecation = object : PatternCondition<JsonStringLiteral>("deprecationGroup") {
             override fun accepts(literal: JsonStringLiteral, context: ProcessingContext) =
-                literal.name == "deprecation"
+                literal.name == DEPRECATION
         }
 
 

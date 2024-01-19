@@ -3,6 +3,7 @@ package com.esprito.spring.core.properties.references
 import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.VALUES
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.PropertyValueRenderer
 import com.esprito.spring.core.completion.properties.ProviderHint
@@ -202,7 +203,7 @@ class ValueHintReference(
         if (propertyHint == null) {
             return false
         }
-        if (propertyHint.name.substringAfterLast(".") == "values"
+        if (propertyHint.name.substringAfterLast(".") == VALUES
             && propertyHint.name.substringBeforeLast(".") == propertyKey
         ) {
             return true

@@ -1,12 +1,11 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-
-private const val keysSuffix = ".keys"
 
 @Service(Service.Level.PROJECT)
 class SpringConfigurationPropertiesSearch {
@@ -45,13 +44,13 @@ class SpringConfigurationPropertiesSearch {
 
     private fun getKeysProperty(module: Module): List<ConfigurationProperty> {
         return getAllHints(module).asSequence()
-            .filter { it.name.endsWith(keysSuffix) }
+            .filter { it.name.endsWith(POSTFIX_KEYS) }
             .flatMap { toConfigurationPropertyList(it) }
             .toList()
     }
 
     private fun toConfigurationPropertyList(hint: PropertyHint): List<ConfigurationProperty> {
-        val basePropertyName = hint.name.substringBefore(keysSuffix)
+        val basePropertyName = hint.name.substringBefore(POSTFIX_KEYS)
         return hint.values.map {
             ConfigurationProperty("$basePropertyName.${it.value}", null, null, it.description, null, null)
         }
