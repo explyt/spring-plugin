@@ -6,6 +6,7 @@ import com.esprito.spring.core.SpringProperties.CHAR_END_SQUARE_BRACKET
 import com.esprito.spring.core.SpringProperties.CHAR_QUOTES
 import com.esprito.spring.core.SpringProperties.CHAR_START_BRACKET
 import com.esprito.spring.core.SpringProperties.CHAR_START_SQUARE_BRACKET
+import com.esprito.spring.core.SpringProperties.NAME
 import com.esprito.spring.core.properties.providers.SpringBootValueProvider
 import com.intellij.codeInsight.TailType
 import com.intellij.codeInsight.lookup.LookupElement
@@ -190,7 +191,7 @@ class AdditionalConfigPropertyNameReference(element: PsiElement) : PsiReferenceB
         val parametersObject = PsiTreeUtil.getParentOfType(this.element, JsonObject::class.java) ?: return null
         val superParent = PsiTreeUtil.getParentOfType(parametersObject, JsonObject::class.java) ?: return null
 
-        val nameProperty = superParent.findProperty("name") ?: return null
+        val nameProperty = superParent.findProperty(NAME) ?: return null
         val nameLiteral = ObjectUtils.tryCast(nameProperty.value, JsonStringLiteral::class.java) ?: return null
 
         for (reference in nameLiteral.references) {

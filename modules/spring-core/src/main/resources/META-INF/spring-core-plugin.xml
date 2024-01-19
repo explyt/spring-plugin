@@ -321,6 +321,14 @@
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringProfileAnnotationInspection"/>
 
+        <localInspection language="JSON"
+                         shortName="AdditionalConfigPropertyInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="run.configuration.spring.boot.display.name"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.metadata.config.key"
+                         enabledByDefault="true" level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.AdditionalConfigPropertyInspection"/>
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>

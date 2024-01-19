@@ -2,7 +2,11 @@ package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringProperties.COLON
+import com.esprito.spring.core.SpringProperties.HINTS
+import com.esprito.spring.core.SpringProperties.NAME
 import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
+import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
+import com.esprito.spring.core.completion.properties.ConfigurationProperty
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.PropertyRenderer
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
@@ -15,6 +19,8 @@ import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.json.JsonUtil
+import com.intellij.json.psi.*
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
@@ -118,19 +124,54 @@ open class ConfigurationPropertyKeyReference(
         if (mode == null) {
             return emptyArray()
         }
+        val existingKeys = if (mode == "Hint") loadExistingNameKeys() else emptySet()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getAllProperties(module)
 
-        val allVariants = mutableListOf<LookupElement>()
+        val results = mutableListOf<LookupElement>()
 
-        for (property in properties) {
-            allVariants.add(
-                LookupElementBuilder.create(property, property.name)
-                    .withRenderer(PropertyRenderer())
-            )
+        properties.forEach {
+            if (it.isMap()) {
+                createVariant(existingKeys, it.name + POSTFIX_KEYS, results, it)
+                createVariant(existingKeys, it.name + POSTFIX_VALUES, results, it)
+            } else {
+                createVariant(existingKeys, it.name, results, it)
+            }
         }
-        return allVariants.toTypedArray()
+        return results.toTypedArray()
+    }
+
+    private fun createVariant(
+        existingKeys: Set<String>,
+        keysName: String,
+        results: MutableList<LookupElement>,
+        property: ConfigurationProperty
+    ) {
+        if (existingKeys.contains(keysName)) return
+
+        results.add(
+            LookupElementBuilder.create(property, keysName)
+                .withRenderer(PropertyRenderer())
+        )
+    }
+
+    private fun loadExistingNameKeys(): Set<String> {
+        val file = element.containingFile as? JsonFile ?: return emptySet()
+
+        val rootObject = file.topLevelValue as? JsonObject ?: return emptySet()
+        val hintsArray = JsonUtil.getPropertyValueOfType(rootObject, HINTS, JsonArray::class.java) ?: return emptySet()
+
+        val result = HashSet<String>()
+        for (value in hintsArray.valueList) {
+            if (value is JsonValue) {
+                val entry = value as? JsonObject ?: continue
+                val literal = JsonUtil.getPropertyValueOfType(entry, NAME, JsonStringLiteral::class.java) ?: continue
+
+                result.add(literal.value)
+            }
+        }
+        return result
     }
 
     override fun getUnresolvedMessagePattern(): String {
