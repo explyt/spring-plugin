@@ -12,9 +12,7 @@ import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.refactoring.suggested.endOffset
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.ULiteralExpression
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 
 class ProfileAnnotationHintsProvider : InlayHintsProvider {
     override fun createCollector(file: PsiFile, editor: Editor): InlayHintsCollector? {
@@ -32,16 +30,26 @@ class ProfileAnnotationHintsProvider : InlayHintsProvider {
             val annotation = uAnnotation.javaPsi ?: return
             if (!metaAnnotationsHolder.contains(annotation)) return
             val uExpression = uAnnotation.attributeValues
-                .filter { it.expression is ULiteralExpression }
                 .find {
                     metaAnnotationsHolder.isAttributeRelatedWith(
                         annotationQn, it.name ?: VALUE, SpringCoreClasses.PROFILE, setOf(VALUE)
                     )
                 }?.expression ?: return
 
+            if (uExpression is ULiteralExpression) {
+                addHint(uExpression, sink)
+            }
+            if (uExpression is UCallExpression) {
+                uExpression.valueArguments
+                    .filterIsInstance<ULiteralExpression>()
+                    .forEach { addHint(it, sink) }
+            }
+        }
+
+        private fun addHint(uExpression: UExpression, sink: InlayTreeSink) {
             val sourcePsi = uExpression.sourcePsi ?: return
             val profileExpression = ElementManipulators.getValueText(sourcePsi)
-            val result = ProfilesService.getInstance(element.project).compute(profileExpression)
+            val result = ProfilesService.getInstance(sourcePsi.project).compute(profileExpression)
 
             sink.addPresentation(
                 InlineInlayPosition(sourcePsi.endOffset, true), hasBackground = true
