@@ -24,6 +24,18 @@ class SpringProfileAnnotationInspectionTest : EspritoInspectionTestCase() {
         myFixture.testHighlighting("SpringBean.java")
     }
 
+    fun testValidProfileArraysExpression() {
+        myFixture.configureByText(
+            "SpringBean.java",
+            """
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.PROFILE}({"profile1","profile3"})
+            public class SpringBean {}
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("SpringBean.java")
+    }
+
     fun testEmptyProfileExpression() {
         myFixture.configureByText(
             "SpringBean.java",
@@ -42,6 +54,21 @@ class SpringProfileAnnotationInspectionTest : EspritoInspectionTestCase() {
             """
             @${SpringCoreClasses.COMPONENT}
             @${SpringCoreClasses.PROFILE}("profile1 | profile2<error descr="ProfilesTokenType.| expected, got '&'">&</error> & profile3")
+            public class SpringBean {}
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("SpringBean.java")
+    }
+
+    fun testInvalidProfileArraysExpression() {
+        myFixture.configureByText(
+            "SpringBean.java",
+            """
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.PROFILE}({
+                "profile1 | profile2<error descr="ProfilesTokenType.| expected, got '&'">&</error>",
+                "abc & abd<error descr="ProfilesTokenType.& expected, got '|'">|</error> abe"
+            })
             public class SpringBean {}
             """.trimIndent()
         )
