@@ -27,6 +27,8 @@ object SpringCoreClasses {
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
 
     const val MIME_TYPE = "org.springframework.util.MimeType"
+    const val RETENTION = "java.lang.annotation.Retention"
+    const val RETENTION_POLICY = "java.lang.annotation.RetentionPolicy"
 
     const val CACHEABLE = "org.springframework.cache.annotation.Cacheable"
     const val CACHING = "org.springframework.cache.annotation.Caching"

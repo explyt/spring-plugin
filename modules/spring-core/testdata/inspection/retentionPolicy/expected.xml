@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<problems>
+
+    <problem>
+        <file>MyProfile.java</file>
+        <line>21</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.MyProfileWithoutRetention"/>
+        <problem_class id="SpringMetaAnnotationWithoutRuntime" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Spring meta-annotation should have RUNTIME RetentionPolicy</description>
+        <highlighted_element>MyProfileWithoutRetention</highlighted_element>
+        <language>JAVA</language>
+        <offset>11</offset>
+        <length>25</length>
+    </problem>
+
+    <problem>
+        <file>MyProfile.java</file>
+        <line>29</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.MyProfileWrongRetention"/>
+        <problem_class id="SpringMetaAnnotationWithoutRuntime" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Spring meta-annotation should have RUNTIME RetentionPolicy</description>
+        <highlighted_element>MyProfileWrongRetention</highlighted_element>
+        <language>JAVA</language>
+        <offset>11</offset>
+        <length>23</length>
+    </problem>
+
+</problems>

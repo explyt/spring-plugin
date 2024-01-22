@@ -321,6 +321,16 @@
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringProfileAnnotationInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringMetaAnnotationWithoutRuntimeInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.retention"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.SpringMetaAnnotationWithoutRuntimeInspection"/>
+
         <localInspection language="JSON"
                          shortName="AdditionalConfigPropertyInspection"
                          groupBundle="messages.SpringCoreBundle"
