@@ -1,10 +1,15 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.spring.core.SpringProperties.NAME
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.json.JsonUtil
+import com.intellij.json.psi.JsonArray
+import com.intellij.json.psi.JsonFile
+import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
@@ -44,6 +49,17 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
         } ?: emptyList()
     }
 
+    protected fun collectElementMetadataName(file: JsonFile): List<com.intellij.json.psi.JsonProperty> {
+        val topValue = file.topLevelValue as? JsonObject ?: return emptyList()
+        val hintsArray = JsonUtil.getPropertyValueOfType(topValue, "hints", JsonArray::class.java) ?: return emptyList()
+
+        return hintsArray.valueList
+            .asSequence()
+            .mapNotNull { it as? JsonObject }
+            .mapNotNull { it.findProperty(NAME) }
+            .toList()
+    }
+
     protected fun collectConfigurationProperties(
         metaDataFileText: String,
         metaDataFilePath: String,
@@ -55,31 +71,33 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
 
         metadata.properties?.forEach {
             val propertyName = it.name
-            val existProperty = configurationProperties[propertyName]
-            if (existProperty == null) {
-                configurationProperties[propertyName] = ConfigurationProperty(
-                    name = propertyName,
-                    type = it.type,
-                    sourceType = it.sourceType,
-                    description = it.description,
-                    defaultValue = it.defaultValue,
-                    deprecation = deprecationInfo(it.deprecation)
-                )
-            } else {
-                if (existProperty.type.isNullOrEmpty()) {
-                    existProperty.type = it.type
-                }
-                if (existProperty.sourceType.isNullOrEmpty()) {
-                    existProperty.sourceType = it.sourceType
-                }
-                if (existProperty.description.isNullOrEmpty()) {
-                    existProperty.description = it.description
-                }
-                if (existProperty.defaultValue == null) {
-                    existProperty.defaultValue = it.defaultValue
-                }
-                if (existProperty.deprecation == null) {
-                    existProperty.deprecation = deprecationInfo(it.deprecation)
+            if (propertyName != null) {
+                val existProperty = configurationProperties[propertyName]
+                if (existProperty == null) {
+                    configurationProperties[propertyName] = ConfigurationProperty(
+                        name = propertyName,
+                        type = it.type,
+                        sourceType = it.sourceType,
+                        description = it.description,
+                        defaultValue = it.defaultValue,
+                        deprecation = deprecationInfo(it.deprecation)
+                    )
+                } else {
+                    if (existProperty.type.isNullOrEmpty()) {
+                        existProperty.type = it.type
+                    }
+                    if (existProperty.sourceType.isNullOrEmpty()) {
+                        existProperty.sourceType = it.sourceType
+                    }
+                    if (existProperty.description.isNullOrEmpty()) {
+                        existProperty.description = it.description
+                    }
+                    if (existProperty.defaultValue == null) {
+                        existProperty.defaultValue = it.defaultValue
+                    }
+                    if (existProperty.deprecation == null) {
+                        existProperty.deprecation = deprecationInfo(it.deprecation)
+                    }
                 }
             }
         }
@@ -135,7 +153,7 @@ data class SpringConfigurationHintsMetadata @JsonCreator constructor(
 
 data class SpringConfigurationMetadataProperty @JsonCreator constructor(
     @JsonProperty("name")
-    val name: String,
+    val name: String?,
     @JsonProperty("type")
     val type: String?,
     @JsonProperty("description")

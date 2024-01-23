@@ -12,6 +12,8 @@ import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.runReadNonBlocking
 import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.json.psi.JsonFile
+import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
@@ -40,6 +42,12 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         return findMetadataFiles(module).flatMap {
             collectPropertyHints(it.text, it.virtualFile.path)
         }
+    }
+
+    override fun loadMetadataElements(module: Module): List<JsonProperty> {
+        return findMetadataFiles(module)
+            .filterIsInstance<JsonFile>()
+            .flatMap { collectElementMetadataName(it) }
     }
 
     private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> = runReadNonBlocking {
@@ -242,20 +250,14 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             .map { it.childrenOfType<PsiAssignmentExpression>() }
             .filter { it.isNotEmpty() }
             .toList()
-        for(assignmentExpression in assignmentExpressions) {
-            for(it in assignmentExpression) {
-                if (it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild.text) {
-                    val referenceExpression = it.firstChild
-                    if (referenceExpression is PsiReferenceExpression) {
-                        val identifier = referenceExpression.childrenOfType<PsiIdentifier>().firstOrNull()
-                        if (identifier != null) {
-                            return identifier
-                        }
-                    }
-                }
-            }
-        }
-        return null
+        return assignmentExpressions
+            .asSequence()
+            .flatMap { it.asSequence() }
+            .filter { it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild.text }
+            .map { it.firstChild }
+            .filterIsInstance<PsiReferenceExpression>()
+            .map { it.childrenOfType<PsiIdentifier>().firstOrNull() }
+            .firstOrNull { it != null }
     }
 
     private fun getIdentifierFromGetterMethod(psiMethod: PsiMethod): PsiIdentifier? {
