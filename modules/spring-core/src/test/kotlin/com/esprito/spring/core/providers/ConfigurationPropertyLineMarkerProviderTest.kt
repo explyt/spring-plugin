@@ -75,7 +75,7 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
             """.trimIndent()
         )
         val gutterMarks = myFixture.findGuttersAtCaret()
-        val gutterMark = gutterMarks.find { it.icon == SpringIcons.Property }
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringSetting }
         TestCase.assertNotNull(gutterMark)
         val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
         TestCase.assertEquals(
@@ -124,7 +124,7 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
             """.trimIndent()
         )
         val gutterMarks = myFixture.findGuttersAtCaret()
-        val gutterMark = gutterMarks.find { it.icon == SpringIcons.Property }
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringSetting }
         TestCase.assertNotNull(gutterMark)
         val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
         TestCase.assertEquals(
@@ -169,7 +169,7 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
             """.trimIndent()
         )
         val gutterMarks = myFixture.findGuttersAtCaret()
-        val gutterMark = gutterMarks.find { it.icon == SpringIcons.Property }
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringSetting }
         TestCase.assertNotNull(gutterMark)
         val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
         TestCase.assertEquals(

@@ -1,6 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.JavaCoreClasses
+import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
 
@@ -9,6 +10,8 @@ interface ConfigurationPropertiesLoader {
     fun loadProperties(module: Module): List<ConfigurationProperty>
 
     fun loadPropertyHints(module: Module): List<PropertyHint>
+
+    fun loadMetadataElements(module: Module): List<JsonProperty>
 
     companion object {
         val EP_NAME = ProjectExtensionPointName<ConfigurationPropertiesLoader>(

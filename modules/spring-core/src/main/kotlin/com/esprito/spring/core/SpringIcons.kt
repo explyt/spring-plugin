@@ -9,6 +9,7 @@ object SpringIcons {
 
     val Spring = load("com/esprito/spring/core/icons/spring.svg")
     val SpringBean = load("com/esprito/spring/core/icons/springBean.svg")
+    val SpringSetting = load("com/esprito/spring/core/icons/springSetting.svg")
     val Property = load("com/esprito/spring/core/icons/property.svg")
     val PropertyKey = load("com/esprito/spring/core/icons/propertyKey.svg")
     val SpringBeanDependencies = load("com/esprito/spring/core/icons/showAutowiredDependencies.svg")

@@ -1,6 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
+import com.intellij.json.psi.JsonProperty
 import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -39,7 +40,12 @@ class SpringConfigurationPropertiesSearch {
 
     fun getAllHints(module: Module): List<PropertyHint> {
         return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
-            .asSequence().flatMap { it.loadPropertyHints(module) }.toList()
+            .flatMap { it.loadPropertyHints(module) }
+    }
+
+    fun getElementNameHints(module: Module): List<JsonProperty> {
+        return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
+            .flatMap { it.loadMetadataElements(module) }
     }
 
     private fun getKeysProperty(module: Module): List<ConfigurationProperty> {

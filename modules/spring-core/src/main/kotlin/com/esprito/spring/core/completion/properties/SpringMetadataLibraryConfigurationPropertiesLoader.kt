@@ -4,6 +4,7 @@ import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADAT
 import com.esprito.spring.core.SpringProperties.CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.util.CacheKeyStore
 import com.intellij.java.library.JavaLibraryModificationTracker
+import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.impl.LibraryScopeCache
@@ -52,6 +53,10 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
                     JavaLibraryModificationTracker.getInstance(project)
                 )
             }, false)
+    }
+
+    override fun loadMetadataElements(module: Module): List<JsonProperty> {
+        return emptyList()
     }
 
     private fun findMetadataFiles(module: Module): List<PsiFile> {

@@ -3,6 +3,7 @@ package com.esprito.spring.core.properties
 import ai.grazie.utils.capitalize
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
+import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
@@ -10,6 +11,7 @@ import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.esprito.util.EspritoPsiUtil.isSetter
 import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.json.psi.JsonStringLiteral
 import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
@@ -45,6 +47,20 @@ class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
             .filter { it.key.startsWith(prefix) }
             .filter { propertyNameToPascalFormat(it.key, prefix) == name }
             .mapNotNull { it.psiElement }.toList()
+    }
+
+    fun getMetadataName(prefix: String, name: String, module: Module): List<PsiElement> {
+        val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
+            .getElementNameHints(module)
+
+        val results = mutableListOf<PsiElement>()
+        for (hint in hints) {
+            val hintValue = hint.value as? JsonStringLiteral ?: continue
+            if (hintValue.value.startsWith(prefix) && propertyNameToPascalFormat(hintValue.value, prefix) == name) {
+                results.add(hintValue)
+            }
+        }
+        return results
     }
 
     companion object {
