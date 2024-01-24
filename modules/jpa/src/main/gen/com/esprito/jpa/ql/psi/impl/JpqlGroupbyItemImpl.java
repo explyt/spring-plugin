@@ -1,15 +1,15 @@
 // This is a generated file. Not intended for manual editing.
 package com.esprito.jpa.ql.psi.impl;
 
-import java.util.List;
-import org.jetbrains.annotations.*;
-import com.intellij.lang.ASTNode;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiElementVisitor;
-import com.intellij.psi.util.PsiTreeUtil;
-import static com.esprito.jpa.ql.psi.JpqlTypes.*;
+import com.esprito.jpa.ql.psi.JpqlGroupbyItem;
+import com.esprito.jpa.ql.psi.JpqlIdentifier;
+import com.esprito.jpa.ql.psi.JpqlReferenceExpression;
+import com.esprito.jpa.ql.psi.JpqlVisitor;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
-import com.esprito.jpa.ql.psi.*;
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElementVisitor;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class JpqlGroupbyItemImpl extends ASTWrapperPsiElement implements JpqlGroupbyItem {
 

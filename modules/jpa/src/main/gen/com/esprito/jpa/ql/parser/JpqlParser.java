@@ -1,15 +1,16 @@
 // This is a generated file. Not intended for manual editing.
 package com.esprito.jpa.ql.parser;
 
+import com.intellij.lang.ASTNode;
+import com.intellij.lang.LightPsiParser;
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiBuilder.Marker;
-import static com.esprito.jpa.ql.psi.JpqlTypes.*;
-import static com.esprito.jpa.ql.parser.JpqlParserUtil.*;
-import com.intellij.psi.tree.IElementType;
-import com.intellij.lang.ASTNode;
-import com.intellij.psi.tree.TokenSet;
 import com.intellij.lang.PsiParser;
-import com.intellij.lang.LightPsiParser;
+import com.intellij.psi.tree.IElementType;
+import com.intellij.psi.tree.TokenSet;
+
+import static com.esprito.jpa.ql.parser.JpqlParserUtil.*;
+import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 
 @SuppressWarnings({"SimplifiableIfStatement", "UnusedAssignment"})
 public class JpqlParser implements PsiParser, LightPsiParser {
@@ -763,7 +764,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // join_spec [FETCH <<facedToken 'FETCH'>>] reference_expression alias_declaration [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition] <<resetToken 'FETCH'>>
+  // join_spec [FETCH <<facedToken 'FETCH'>>] reference_expression [alias_declaration] [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition] <<resetToken 'FETCH'>>
   public static boolean join_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "join_expression")) return false;
     boolean r, p;
@@ -772,7 +773,7 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     p = r; // pin = join_spec
     r = r && report_error_(b, join_expression_1(b, l + 1));
     r = p && report_error_(b, reference_expression(b, l + 1)) && r;
-    r = p && report_error_(b, alias_declaration(b, l + 1)) && r;
+      r = p && report_error_(b, join_expression_3(b, l + 1)) && r;
     r = p && report_error_(b, join_expression_4(b, l + 1)) && r;
     r = p && resetToken(b, l + 1, FETCH) && r;
     exit_section_(b, l, m, r, p, JpqlParser::join_expression_recovery);
@@ -796,6 +797,13 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     exit_section_(b, m, null, r);
     return r;
   }
+    
+    // [alias_declaration]
+    private static boolean join_expression_3(PsiBuilder b, int l) {
+        if (!recursion_guard_(b, l, "join_expression_3")) return false;
+        alias_declaration(b, l + 1);
+        return true;
+    }
 
   // [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition]
   private static boolean join_expression_4(PsiBuilder b, int l) {

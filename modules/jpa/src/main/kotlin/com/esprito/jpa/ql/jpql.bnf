@@ -105,7 +105,7 @@ alias_declaration ::= [AS] identifier {
     methods = [setName getName getReferencedElement getNameIdentifier]
 }
 
-join_expression ::= join_spec [FETCH <<facedToken 'FETCH'>>] reference_expression alias_declaration [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition] <<resetToken 'FETCH'>> {
+join_expression ::= join_spec [FETCH <<facedToken 'FETCH'>>] reference_expression [alias_declaration] [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition] <<resetToken 'FETCH'>> {
     pin = join_spec
     recoverWhile = join_expression_recovery
 }
