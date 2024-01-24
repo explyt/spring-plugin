@@ -1,10 +1,10 @@
 // This is a generated file. Not intended for manual editing.
 package com.esprito.jpa.ql.psi;
 
-import com.intellij.psi.tree.IElementType;
-import com.intellij.psi.PsiElement;
-import com.intellij.lang.ASTNode;
 import com.esprito.jpa.ql.psi.impl.*;
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.tree.IElementType;
 
 public interface JpqlTypes {
 
