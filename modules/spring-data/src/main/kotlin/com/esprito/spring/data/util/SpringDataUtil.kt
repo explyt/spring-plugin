@@ -2,7 +2,12 @@ package com.esprito.spring.data.util
 
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.data.SpringDataClasses
+import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.codeInsight.AnnotationUtil.CHECK_HIERARCHY
 import com.intellij.openapi.module.Module
+import com.intellij.psi.PsiClass
+import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.PropertyUtilBase
 
 
 object SpringDataUtil {
@@ -18,4 +23,17 @@ object SpringDataUtil {
         return LibraryClassCache.searchForLibraryClass(module, SpringDataClasses.JPA_CONTEXT) != null
     }
 
+    fun isRepository(psiClass: PsiClass): Boolean {
+        return InheritanceUtil.isInheritor(psiClass, SpringDataClasses.SPRING_RESOURCE) ||
+                AnnotationUtil.isAnnotated(psiClass, SpringDataClasses.REPOSITORY_ANNOTATION, CHECK_HIERARCHY)
+    }
+
+    fun getProperties(domainClass: PsiClass): Set<String> {
+        val qualifiedName = domainClass.qualifiedName
+        if (qualifiedName == null || qualifiedName.startsWith("java.lang")) return emptySet()
+        val all = HashSet<String>()
+        all.addAll(PropertyUtilBase.getAllProperties(domainClass, false, true).keys)
+        all.addAll(domainClass.fields.map { PropertyUtilBase.suggestPropertyName(it) })
+        return all
+    }
 }

@@ -3,6 +3,9 @@
         <implicitUsageProvider implementation="com.esprito.spring.data.providers.SpringDataImplicitUsageProvider"/>
         <multiHostInjector
                 implementation="com.esprito.spring.data.langinjection.JpqlSpringDataQueryLanguageInjector"/>
+        <completion.contributor language="UAST"
+                                implementationClass="com.esprito.spring.data.completion.SpringDataBaseCompletionContributor"
+                                order="before javaMemberName"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.esprito">

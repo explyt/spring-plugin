@@ -4,6 +4,8 @@ import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.uast.UClassLiteralExpression
+import org.jetbrains.uast.toUElement
 
 object PsiAnnotationUtils {
     fun getParentAnnotationForPsiLiteralParameter(
@@ -38,6 +40,14 @@ object PsiAnnotationUtils {
             .map { it.type }
             .mapNotNull { it.resolveBeanPsiClass }
             .mapNotNull { it.qualifiedName }
+            .toSet()
+    }
+
+    fun getPsiTypes(annotationMemberValues: Set<PsiAnnotationMemberValue>): Set<PsiType> {
+        return annotationMemberValues.asSequence()
+            .mapNotNull { it.toUElement() }
+            .filterIsInstance<UClassLiteralExpression>()
+            .mapNotNull { it.type }
             .toSet()
     }
 
