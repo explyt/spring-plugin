@@ -1,0 +1,61 @@
+package com.esprito.spring.data.completion
+
+import com.esprito.spring.data.util.SpringDataUtil
+import com.intellij.codeInsight.completion.CompletionContributor
+import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.lang.java.JavaLanguage
+import com.intellij.patterns.*
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiIdentifier
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.util.ProcessingContext
+import org.jetbrains.uast.*
+
+
+class SpringDataBaseCompletionContributor : CompletionContributor() {
+
+    init {
+        val javaFieldCapture = PsiJavaPatterns.psiElement(
+            PsiIdentifier::class.java
+        ).withParent(PsiField::class.java)
+            .with(object : PatternCondition<PsiElement>(SpringDataBaseCompletionContributor::class.java.simpleName) {
+                override fun accepts(psiElement: PsiElement, context: ProcessingContext): Boolean {
+                    val psiClass = PsiTreeUtil.getParentOfType(psiElement, PsiClass::class.java)
+                    return psiClass != null && SpringDataUtil.isRepository(psiClass)
+                }
+            })
+
+        val uastMethodCapture: ElementPattern<PsiElement> = object : PsiElementPattern.Capture<PsiElement>(
+            PsiElement::class.java
+        ) {
+            override fun accepts(elementObject: Any?, context: ProcessingContext): Boolean {
+                val element = elementObject as? PsiElement ?: return false
+
+                // javaFieldCapture covers Java cases
+                val file = element.containingFile
+                if (file != null && file.language.`is`(JavaLanguage.INSTANCE)) return false
+
+                val uIdentifier = element.toUElement(UIdentifier::class.java) ?: return false
+
+                // skip intermediate elements in Kotlin between identifier and method
+                val intermediateParent: UMethod = uIdentifier.skipParentOfType(
+                    true, UReferenceExpression::class.java, UTypeReferenceExpression::class.java
+                ) as? UMethod ?: return false
+
+                // do not complete inside of return type
+                val returnTypeReference = intermediateParent.returnTypeReference
+                if (returnTypeReference != null && isPsiAncestor(returnTypeReference, uIdentifier)) {
+                    return false
+                }
+
+                val uClass = element.toUElement()?.getParentOfType(UClass::class.java) ?: return false
+                return SpringDataUtil.isRepository(uClass.javaPsi)
+            }
+        }
+
+        val completionPattern = StandardPatterns.or(javaFieldCapture, uastMethodCapture)
+        extend(CompletionType.BASIC, completionPattern, SpringDataBaseCompletionProvider())
+    }
+}
