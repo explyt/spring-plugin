@@ -31,11 +31,9 @@ class EspritoRunManagerListener(val project: Project) : RunManagerListener {
         settings: RunnerAndConfigurationSettings?
     ) {
         val profilesService = ProfilesService.getInstance(project)
-        val oldProfiles = profilesService.activeProfiles
-        val newProfiles = profilesService
-            .updateFromConfiguration(settings)
+        val isChanged = profilesService.updateFromConfiguration(settings)
 
-        if (oldProfiles != newProfiles) {
+        if (isChanged) {
             ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker().incModificationCount()
             //InlayHintsPassFactoryInternal.clearModificationStamp(editor)
             // TODO: use it for updating hints only instead of dropping all psi caches

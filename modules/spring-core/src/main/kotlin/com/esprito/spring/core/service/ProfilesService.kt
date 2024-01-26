@@ -2,40 +2,46 @@ package com.esprito.spring.core.service
 
 import com.esprito.spring.core.profile.SpringProfilesService
 import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
-import com.intellij.execution.RunManager
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import java.util.*
 
 @Service(Service.Level.PROJECT)
 class ProfilesService(private val project: Project) {
-    var activeProfiles: Set<String> = setOf()
-        get() = when {
-            field.isEmpty() -> getProfilesFromConfiguration(
-                RunManager.getInstance(project).selectedConfiguration
+    @Volatile
+    var activeProfilesFromRunConfiguration: Set<String> = setOf()
+
+    private fun isActive(profile: String) = getActiveProfiles().contains(profile)
+
+    fun updateFromConfiguration(settings: RunnerAndConfigurationSettings?): Boolean {
+        val profiles = getProfilesFromConfiguration(settings)
+        val changed = profiles != activeProfilesFromRunConfiguration
+        activeProfilesFromRunConfiguration = profiles
+        return changed
+    }
+
+    private fun getActiveProfiles(): Set<String> {
+        if (activeProfilesFromRunConfiguration.isNotEmpty()) return activeProfilesFromRunConfiguration
+
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            CachedValueProvider.Result(
+                getActiveProfilesFromCodeAndConfig(),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
-
-            field == DEFAULT_PROFILES && !DumbService.isDumb(project) -> {
-                val springProfilesService = SpringProfilesService.getInstance(project)
-                project.modules
-                    .flatMapTo(mutableSetOf()) { springProfilesService.loadActiveProfiles(it) }
-                    .ifEmpty { DEFAULT_PROFILES }
-            }
-
-            else -> field
         }
-        private set
+    }
 
-    fun isActive(profile: String) =
-        activeProfiles.contains(profile)
-
-    fun updateFromConfiguration(settings: RunnerAndConfigurationSettings?): Set<String> {
-        activeProfiles = getProfilesFromConfiguration(settings)
-        return activeProfiles
+    private fun getActiveProfilesFromCodeAndConfig(): Set<String> {
+        val springProfilesService = SpringProfilesService.getInstance(project)
+        return project.modules
+            .flatMapTo(mutableSetOf()) { springProfilesService.loadActiveProfiles(it) }
+            .ifEmpty { DEFAULT_PROFILES }
     }
 
     /**
@@ -48,13 +54,12 @@ class ProfilesService(private val project: Project) {
         return evaluate(postfixExpression) ?: false
     }
 
-    fun getProfilesFromConfiguration(settings: RunnerAndConfigurationSettings?): Set<String> {
-        val result = (settings?.configuration as? SpringBootRunConfiguration)
+    private fun getProfilesFromConfiguration(settings: RunnerAndConfigurationSettings?): Set<String> {
+        return (settings?.configuration as? SpringBootRunConfiguration)
             ?.springProfiles
             ?.split(',')
             ?.filterTo(mutableSetOf()) { it.isNotBlank() }
-            ?: DEFAULT_PROFILES
-        return result.ifEmpty { DEFAULT_PROFILES }
+            ?: setOf()
     }
 
     private fun tokenize(expression: String): Collection<Token>? {
