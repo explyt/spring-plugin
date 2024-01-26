@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.test.TestMetadata
 
 class AdditionalConfigPropertyInspectionTest : EspritoInspectionTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBoot_3_1_1)
 
     @TestMetadata("json")
     fun testJson() = doTest(AdditionalConfigPropertyInspection())

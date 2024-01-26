@@ -144,4 +144,17 @@
         <length>9</length>
     </problem>
 
+    <problem>
+        <file>additional-spring-configuration-metadata.json</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
+        <problem_class id="AdditionalConfigProperty" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Duplicate property in method 'setMaxSessionsPerConnection' class 'MainFooProperties'</description>
+        <highlighted_element>&quot;main.max-sessions-per-connection&quot;</highlighted_element>
+        <language>JSON</language>
+        <offset>14</offset>
+        <length>34</length>
+    </problem>
+
 </problems>

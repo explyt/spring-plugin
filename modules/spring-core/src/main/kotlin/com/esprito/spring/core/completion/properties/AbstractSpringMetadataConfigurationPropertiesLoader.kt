@@ -10,6 +10,7 @@ import com.intellij.json.JsonUtil
 import com.intellij.json.psi.JsonArray
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
+import com.intellij.json.psi.JsonStringLiteral
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
@@ -49,14 +50,16 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
         } ?: emptyList()
     }
 
-    protected fun collectElementMetadataName(file: JsonFile): List<com.intellij.json.psi.JsonProperty> {
+    protected fun collectElementMetadataName(file: JsonFile, name: String): List<ElementHint> {
         val topValue = file.topLevelValue as? JsonObject ?: return emptyList()
-        val hintsArray = JsonUtil.getPropertyValueOfType(topValue, "hints", JsonArray::class.java) ?: return emptyList()
+        val jsonElement = JsonUtil.getPropertyValueOfType(topValue, name, JsonArray::class.java) ?: return emptyList()
 
-        return hintsArray.valueList
+        return jsonElement.valueList
             .asSequence()
             .mapNotNull { it as? JsonObject }
             .mapNotNull { it.findProperty(NAME) }
+            .filter { it.value is JsonStringLiteral && it.value != null }
+            .map { ElementHint((it.value as JsonStringLiteral).value, it) }
             .toList()
     }
 

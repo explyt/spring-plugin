@@ -2,9 +2,11 @@ package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.SpringProperties.CONFIGURATION_METADATA_FILE_NAME
+import com.esprito.spring.core.SpringProperties.PROPERTIES
+import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.util.CacheKeyStore
 import com.intellij.java.library.JavaLibraryModificationTracker
-import com.intellij.json.psi.JsonProperty
+import com.intellij.json.psi.JsonFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.impl.LibraryScopeCache
@@ -55,18 +57,32 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
             }, false)
     }
 
-    override fun loadMetadataElements(module: Module): List<JsonProperty> {
+    override fun loadPropertyMetadataElements(module: Module): List<ElementHint> {
+        val project = module.project
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                findMetadataFiles(module, true)
+                    .filterIsInstance<JsonFile>()
+                    .flatMap { collectElementMetadataName(it, PROPERTIES) },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    override fun loadMetadataElements(module: Module): List<ElementHint> {
         return emptyList()
     }
 
-    private fun findMetadataFiles(module: Module): List<PsiFile> {
+    private fun findMetadataFiles(module: Module, onlyAdditional: Boolean = false): List<PsiFile> {
         val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
 
+        val fileName = mutableSetOf(ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME)
+        if (!onlyAdditional) {
+            fileName.add(CONFIGURATION_METADATA_FILE_NAME)
+        }
+
         FilenameIndex.processFilesByNames(
-            setOf(
-                CONFIGURATION_METADATA_FILE_NAME,
-                ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
-            ),
+            fileName,
             true,
             LibraryScopeCache.getInstance(module.project).librariesOnlyScope,
             null,

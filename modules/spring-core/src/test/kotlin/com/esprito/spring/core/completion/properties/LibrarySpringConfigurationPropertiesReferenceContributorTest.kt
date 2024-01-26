@@ -1,10 +1,10 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.properties.providers.ConfigKeyPsiElement
-import com.esprito.spring.core.properties.providers.ConfigurationPropertyKeyReference
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.psi.PsiMember
+import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 
 class LibrarySpringConfigurationPropertiesReferenceContributorTest : EspritoJavaLightTestCase() {
 
@@ -51,7 +51,7 @@ class LibrarySpringConfigurationPropertiesReferenceContributorTest : EspritoJava
         model.init()
 
         myFixture.configureByText("application.properties", model.initSource)
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? ConfigurationPropertyKeyReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference
         assertNotNull(ref)
 
         val multiResolve = ref!!.multiResolve(true)
