@@ -15,5 +15,6 @@ object SpringIcons {
     val SpringBeanDependencies = load("com/esprito/spring/core/icons/showAutowiredDependencies.svg")
     val EventListener = load("com/esprito/spring/core/icons/listener.svg")
     val EventPublisher = load("com/esprito/spring/core/icons/publisher.svg")
+    val Hint = load("com/esprito/spring/core/icons/hint.svg")
     val SpringFactories = LayeredIcon.layeredIcon(arrayOf(Spring, AllIcons.Actions.New))
 }

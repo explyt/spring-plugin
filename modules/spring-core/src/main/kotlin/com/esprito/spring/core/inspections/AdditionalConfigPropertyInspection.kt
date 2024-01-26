@@ -6,25 +6,26 @@ import com.esprito.spring.core.SpringProperties.DESCRIPTION
 import com.esprito.spring.core.SpringProperties.HINTS
 import com.esprito.spring.core.SpringProperties.NAME
 import com.esprito.spring.core.SpringProperties.PARAMETERS
+import com.esprito.spring.core.SpringProperties.PROPERTIES
 import com.esprito.spring.core.SpringProperties.PROVIDERS
 import com.esprito.spring.core.SpringProperties.REASON
 import com.esprito.spring.core.SpringProperties.TARGET
 import com.esprito.spring.core.SpringProperties.VALUE
 import com.esprito.spring.core.SpringProperties.VALUES
+import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.inspections.quickfix.AddJsonElementQuickFix
 import com.esprito.spring.core.properties.providers.ConfigurationPropertyKeyReference
 import com.esprito.spring.core.properties.providers.SpringBootValueProvider
 import com.esprito.spring.core.properties.references.AdditionalConfigValueProviderReference
+import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInspection.*
 import com.intellij.json.psi.*
 import com.intellij.json.psi.impl.JsonRecursiveElementVisitor
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.Conditions
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.psi.ElementManipulators
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiPolyVariantReference
-import com.intellij.psi.PsiReference
+import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReference
 import com.intellij.util.NotNullProducer
 import java.util.function.Predicate
@@ -50,6 +51,11 @@ class AdditionalConfigPropertyInspection : LocalInspectionTool() {
             topLevelValue,
             Conditions.alwaysTrue(),
             visitorProducer = { NameAttributeVisitor(problems) }
+        )
+        visitTopLevelValues(
+            topLevelValue,
+            { jsonProperty: JsonProperty -> jsonProperty.name == PROPERTIES },
+            visitorProducer = { NamePropertiesVisitor(problems) }
         )
         visitTopLevelValues(
             topLevelValue,
@@ -173,25 +179,70 @@ class AdditionalConfigPropertyInspection : LocalInspectionTool() {
                 val jsonValue = jsonProperty.value ?: return
                 val value = jsonValue as? JsonStringLiteral ?: return
 
-                val nameValue = value.value
-                if (!existingNames.containsKey(nameValue)) {
-                    existingNames[nameValue] = value
-                    return
-                }
+                getProblemDuplicate(value)
+            }
+        }
 
-                val existingNameValue = existingNames[nameValue] ?: return
+        private fun getProblemDuplicate(value: JsonStringLiteral) {
+            val nameValue = value.value
+            if (!existingNames.containsKey(nameValue)) {
+                existingNames[nameValue] = value
+                return
+            }
 
-                val message = SpringCoreBundle.message("esprito.spring.inspection.metadata.config.duplicate", nameValue)
-                problems.registerProblem(value, ElementManipulators.getValueTextRange(value), message)
+            val existingNameValue = existingNames[nameValue] ?: return
+
+            val message = SpringCoreBundle.message("esprito.spring.inspection.metadata.config.duplicate", nameValue)
+            problems.registerProblem(value, ElementManipulators.getValueTextRange(value), message)
+            problems.registerProblem(
+                existingNameValue,
+                ElementManipulators.getValueTextRange(existingNameValue),
+                message
+            )
+        }
+    }
+
+    private class NamePropertiesVisitor(private var problems: ProblemsHolder) : JsonElementVisitor() {
+        override fun visitObject(jsonObject: JsonObject) {
+            jsonObject.acceptChildren(this)
+        }
+
+        override fun visitProperty(jsonProperty: JsonProperty) {
+            if (jsonProperty.name == NAME) {
+                val jsonValue = jsonProperty.value ?: return
+                val value = jsonValue as? JsonStringLiteral ?: return
+
+                getProblemExistInSetMethod(value)
+            }
+        }
+
+        private fun getProblemExistInSetMethod(value: JsonStringLiteral) {
+            val module = ModuleUtilCore.findModuleForPsiElement(value) ?: return
+            val project = value.project
+
+            val nameValue = value.value
+            val foundProperty = SpringConfigurationPropertiesSearch.getInstance(project)
+                .findProperty(module, nameValue) ?: return
+            val sourceType = foundProperty.sourceType ?: return
+            val sourceMember = PropertyUtil.findSourceMember(nameValue, sourceType, project)
+
+            if (sourceMember != null && sourceMember is PsiMethod) {
+                val psiClass = sourceMember.containingClass
+                val className =
+                    if (psiClass != null && psiClass.name != null) psiClass.name!!
+                    else "NONE"
                 problems.registerProblem(
-                    existingNameValue,
-                    ElementManipulators.getValueTextRange(existingNameValue),
-                    message
+                    value,
+                    SpringCoreBundle.message(
+                        "esprito.spring.inspection.metadata.config.duplicate.method",
+                        sourceMember.name,
+                        className
+                    ),
+                    ProblemHighlightType.WEAK_WARNING
                 )
             }
         }
     }
-
     private class HintsVisitor(private var problems: ProblemsHolder) : JsonRecursiveElementVisitor() {
         override fun visitProperty(jsonProperty: JsonProperty) {
             val providersValue = jsonProperty.value ?: return

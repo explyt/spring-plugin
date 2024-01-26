@@ -11,6 +11,7 @@ import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.PropertyRenderer
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.properties.PropertiesJavaClassReferenceSet
+import com.esprito.spring.core.properties.references.MetaConfigKeyReference
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.DOT
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
@@ -45,7 +46,10 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                 return@find false
             }
             propertyKey.startsWith(hintName.substring(0, keysIdx))
-        } ?: return arrayOf(ConfigurationPropertyKeyReference(element, propertyKey))
+        } ?: return arrayOf(
+            ConfigurationPropertyKeyReference(element, propertyKey),
+            MetaConfigKeyReference(element, propertyKey)
+        )
 
         val referencesByPrefixKey = getPsiReferencesByPrefixKeys(propertyKey, keyHint, element)
         if (referencesByPrefixKey.isNotEmpty()) {
@@ -114,7 +118,7 @@ open class ConfigurationPropertyKeyReference(
             .findProperty(module, propertyKey) ?: return emptyArray()
         val sourceType = foundProperty.sourceType ?: return emptyArray()
         val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project)
-        if (sourceMember != null) {
+        if (sourceMember != null && (sourceMember is PsiMethod || !mode.isNullOrEmpty())) {
             return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         }
         return emptyArray()

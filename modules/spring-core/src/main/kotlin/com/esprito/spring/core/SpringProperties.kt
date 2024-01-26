@@ -26,6 +26,7 @@ object SpringProperties {
     const val META_INF = "META-INF"
     const val SPRING = "spring"
     const val VALUE = "value"
+    const val PROPERTIES = "properties"
     const val HINTS = "hints"
     const val NAME = "name"
     const val PROVIDERS = "providers"

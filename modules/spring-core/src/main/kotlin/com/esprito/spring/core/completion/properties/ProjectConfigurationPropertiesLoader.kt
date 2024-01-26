@@ -3,6 +3,8 @@ package com.esprito.spring.core.completion.properties
 import com.esprito.module.ExternalSystemModule
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
+import com.esprito.spring.core.SpringProperties.HINTS
+import com.esprito.spring.core.SpringProperties.PROPERTIES
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -13,7 +15,6 @@ import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.runReadNonBlocking
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.json.psi.JsonFile
-import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
@@ -44,10 +45,16 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         }
     }
 
-    override fun loadMetadataElements(module: Module): List<JsonProperty> {
+    override fun loadPropertyMetadataElements(module: Module): List<ElementHint> {
         return findMetadataFiles(module)
             .filterIsInstance<JsonFile>()
-            .flatMap { collectElementMetadataName(it) }
+            .flatMap { collectElementMetadataName(it, PROPERTIES) }
+    }
+
+    override fun loadMetadataElements(module: Module): List<ElementHint> {
+        return findMetadataFiles(module)
+            .filterIsInstance<JsonFile>()
+            .flatMap { collectElementMetadataName(it, HINTS) }
     }
 
     private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> = runReadNonBlocking {

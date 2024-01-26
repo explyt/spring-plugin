@@ -12,6 +12,7 @@ import com.intellij.json.psi.JsonStringLiteral
 import com.intellij.lang.properties.psi.Property
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMethod
@@ -45,7 +46,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
 
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringSetting)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(targets)
+            .setTargets(NotNullLazyValue.lazy { targets })
             .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.property.usage"))
             .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.property.usage"))
             .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.property.usage"))
@@ -74,7 +75,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
                 if (element is Property || element is YAMLKeyValue) {
                     return SpringIcons.Property
                 } else if (element is JsonStringLiteral) {
-                    return SpringIcons.SpringSetting
+                    return SpringIcons.Hint
                 }
                 return super.getIcon(element)
             }

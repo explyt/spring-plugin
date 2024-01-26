@@ -11,7 +11,6 @@ import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.esprito.util.EspritoPsiUtil.isSetter
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.json.psi.JsonStringLiteral
 import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
@@ -53,14 +52,11 @@ class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
 
-        val results = mutableListOf<PsiElement>()
-        for (hint in hints) {
-            val hintValue = hint.value as? JsonStringLiteral ?: continue
-            if (hintValue.value.startsWith(prefix) && propertyNameToPascalFormat(hintValue.value, prefix) == name) {
-                results.add(hintValue)
-            }
-        }
-        return results
+        return hints
+            .asSequence()
+            .filter { it.name.startsWith(prefix) && propertyNameToPascalFormat(it.name, prefix) == name }
+            .mapNotNull { it.jsonProperty.value }
+            .toList()
     }
 
     companion object {

@@ -11,7 +11,9 @@ interface ConfigurationPropertiesLoader {
 
     fun loadPropertyHints(module: Module): List<PropertyHint>
 
-    fun loadMetadataElements(module: Module): List<JsonProperty>
+    fun loadPropertyMetadataElements(module: Module): List<ElementHint>
+
+    fun loadMetadataElements(module: Module): List<ElementHint>
 
     companion object {
         val EP_NAME = ProjectExtensionPointName<ConfigurationPropertiesLoader>(
@@ -46,4 +48,9 @@ data class PropertyHint(
     val name: String,
     val values: List<ValueHint>,
     val providers: List<ProviderHint>
+)
+
+data class ElementHint(
+    val name: String,
+    val jsonProperty: JsonProperty
 )
