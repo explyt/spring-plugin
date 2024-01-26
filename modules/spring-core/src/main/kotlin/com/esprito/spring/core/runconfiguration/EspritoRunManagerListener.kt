@@ -6,6 +6,7 @@ import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.RunnerAndConfigurationSettings
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiManager
 
@@ -34,11 +35,13 @@ class EspritoRunManagerListener(val project: Project) : RunManagerListener {
         val isChanged = profilesService.updateFromConfiguration(settings)
 
         if (isChanged) {
-            ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker().incModificationCount()
-            //InlayHintsPassFactoryInternal.clearModificationStamp(editor)
-            // TODO: use it for updating hints only instead of dropping all psi caches
-            PsiManager.getInstance(project).dropPsiCaches()
-            DaemonCodeAnalyzer.getInstance(project).restart()
+            ApplicationManager.getApplication().invokeLater {
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker().incModificationCount()
+                //InlayHintsPassFactoryInternal.clearModificationStamp(editor)
+                // TODO: use it for updating hints only instead of dropping all psi caches
+                PsiManager.getInstance(project).dropPsiCaches()
+                DaemonCodeAnalyzer.getInstance(project).restart()
+            }
         }
     }
 
