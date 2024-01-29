@@ -23,7 +23,9 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.json.JsonUtil
 import com.intellij.json.psi.*
 import com.intellij.navigation.ItemPresentation
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
@@ -104,16 +106,24 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
     }
 }
 
-open class ConfigurationPropertyKeyReference(
+class ConfigurationPropertyKeyReference(
     element: PsiElement,
     private val propertyKey: String,
     textRange: TextRange? = null,
     private val mode: String? = null,
-) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false), EmptyResolveMessageProvider {
+) : MetaConfigKeyReference(element, propertyKey, textRange), EmptyResolveMessageProvider {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val project = element.project
+        val results = resultConfigKeyPsiElement(project, module)
+        if (results.isNotEmpty()) {
+            return results
+        }
+        return super.multiResolve(incompleteCode)
+    }
+
+    private fun resultConfigKeyPsiElement(project: Project, module: Module): Array<ResolveResult> {
         val foundProperty = SpringConfigurationPropertiesSearch.getInstance(project)
             .findProperty(module, propertyKey) ?: return emptyArray()
         val sourceType = foundProperty.sourceType ?: return emptyArray()
