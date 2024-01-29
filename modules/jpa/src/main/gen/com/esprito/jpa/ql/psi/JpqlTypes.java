@@ -36,6 +36,7 @@ public interface JpqlTypes {
   IElementType FETCH_CLAUSE = new JpqlElementType("FETCH_CLAUSE");
   IElementType FETCH_COUNT_OR_PERCENT = new JpqlElementType("FETCH_COUNT_OR_PERCENT");
   IElementType FROM_CLAUSE = new JpqlElementType("FROM_CLAUSE");
+    IElementType FULLY_QUALIFIED_CONSTRUCTOR = new JpqlElementType("FULLY_QUALIFIED_CONSTRUCTOR");
   IElementType FUNCTIONS_RETURNING_NUMERICS_EXPRESSION = new JpqlElementType("FUNCTIONS_RETURNING_NUMERICS_EXPRESSION");
   IElementType FUNCTION_ARG = new JpqlElementType("FUNCTION_ARG");
   IElementType FUNCTION_INVOCATION_EXPRESSION = new JpqlElementType("FUNCTION_INVOCATION_EXPRESSION");
@@ -290,6 +291,8 @@ public interface JpqlTypes {
       }
       else if (type == FROM_CLAUSE) {
         return new JpqlFromClauseImpl(node);
+      } else if (type == FULLY_QUALIFIED_CONSTRUCTOR) {
+          return new JpqlFullyQualifiedConstructorImpl(node);
       }
       else if (type == FUNCTIONS_RETURNING_NUMERICS_EXPRESSION) {
         return new JpqlFunctionsReturningNumericsExpressionImpl(node);

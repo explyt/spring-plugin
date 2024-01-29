@@ -9,6 +9,6 @@ public interface JpqlConstructorExpression extends JpqlExpression {
   JpqlConstructorArgumentsList getConstructorArgumentsList();
 
   @NotNull
-  JpqlReferenceExpression getReferenceExpression();
+  JpqlFullyQualifiedConstructor getFullyQualifiedConstructor();
 
 }

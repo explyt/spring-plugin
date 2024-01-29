@@ -35,7 +35,7 @@ class JpaEntitySearch(
         return processor.results.toList()
     }
 
-    fun processEntities(
+    private fun processEntities(
         searchScope: GlobalSearchScope,
         processor: Processor<JpaEntity>
     ) {

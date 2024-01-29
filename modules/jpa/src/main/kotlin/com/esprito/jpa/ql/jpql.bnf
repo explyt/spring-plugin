@@ -168,7 +168,7 @@ private select_expression ::=
 
 object_expression ::= OBJECT'('identifier')'
 
-constructor_expression ::= NEW reference_expression '(' constructor_arguments_list ')'
+constructor_expression ::= NEW fully_qualified_constructor '(' constructor_arguments_list ')'
 constructor_arguments_list ::= expression {',' expression}*
 
 aggregate_expression ::= { AVG'(' | MAX'(' | MIN'(' | SUM'(' | COUNT'(' } [DISTINCT] reference_expression')' | function_invocation_expression
@@ -384,8 +384,11 @@ nullif_expression::= NULLIF'('scalar_expression',' scalar_expression')'
 private reference_or_parameter ::= reference_expression | input_parameter_expression
 
 
-reference_expression ::= path_reference_expression | map_based_reference_expression
+reference_expression ::= path_reference_expression | map_based_reference_expression | fully_qualified_constructor
 path_reference_expression ::= identifier {'.' identifier}* {
+    extends = reference_expression
+}
+fully_qualified_constructor ::= {identifier '.'}* identifier {
     extends = reference_expression
 }
 map_based_reference_expression ::= KEY'('reference_expression')'

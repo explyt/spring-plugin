@@ -41,6 +41,8 @@ abstract class JpqlExternalReferenceCompletionTest : EspritoJavaLightTestCase() 
     fun testFieldJoin() = doTest()
     fun testEntityInsert() = doTest()
     fun testFieldInsert() = doTest()
+    fun testConstructorClass() = doTest()
+    fun testConstructorPackage() = doTest()
 
     @Suppress("UnstableApiUsage")
     private fun doTest() {
