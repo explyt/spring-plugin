@@ -148,7 +148,7 @@ class AdditionalConfigPropertyInspection : LocalInspectionTool() {
             reference: PsiReference
         ): ProblemHighlightType {
             return if (reference is ConfigurationPropertyKeyReference)
-                ProblemHighlightType.LIKE_UNKNOWN_SYMBOL
+                ProblemHighlightType.WEAK_WARNING
             else if (reference !is JavaClassReference) {
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING
             } else if (propertyName == TARGET) {

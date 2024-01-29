@@ -157,4 +157,17 @@
         <length>34</length>
     </problem>
 
+    <problem>
+        <file>additional-spring-configuration-metadata.json</file>
+        <line>40</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
+        <problem_class id="AdditionalConfigProperty" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Cannot resolve configuration key reference 'not_exist'</description>
+        <highlighted_element>not_exist</highlighted_element>
+        <language>JSON</language>
+        <offset>15</offset>
+        <length>9</length>
+    </problem>
+
 </problems>
