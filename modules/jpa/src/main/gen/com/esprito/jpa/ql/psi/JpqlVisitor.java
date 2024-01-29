@@ -1,9 +1,9 @@
 // This is a generated file. Not intended for manual editing.
 package com.esprito.jpa.ql.psi;
 
-import com.intellij.psi.PsiElement;
+import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElementVisitor;
-import org.jetbrains.annotations.NotNull;
+import com.intellij.psi.PsiElement;
 
 public class JpqlVisitor extends PsiElementVisitor {
 
@@ -126,6 +126,10 @@ public class JpqlVisitor extends PsiElementVisitor {
   public void visitFromClause(@NotNull JpqlFromClause o) {
     visitAliasHost(o);
   }
+    
+    public void visitFullyQualifiedConstructor(@NotNull JpqlFullyQualifiedConstructor o) {
+        visitReferenceExpression(o);
+    }
 
   public void visitFunctionArg(@NotNull JpqlFunctionArg o) {
     visitPsiElement(o);

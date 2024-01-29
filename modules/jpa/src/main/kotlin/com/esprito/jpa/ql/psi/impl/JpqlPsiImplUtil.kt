@@ -1,6 +1,7 @@
 package com.esprito.jpa.ql.psi.impl
 
 import com.esprito.jpa.ql.psi.*
+import com.esprito.jpa.ql.reference.JpqlFullyQualifiedElementReference
 import com.esprito.jpa.ql.reference.JpqlInputParameterReference
 import com.esprito.jpa.ql.reference.JpqlReference
 import com.intellij.psi.PsiElement
@@ -60,6 +61,9 @@ object JpqlPsiImplUtil {
         val isAliasIdentifier = element.parentOfType<JpqlAliasDeclaration>() != null
         if (isAliasIdentifier) {
             return null
+        }
+        if (element.parent is JpqlFullyQualifiedConstructor) {
+            return JpqlFullyQualifiedElementReference(element)
         }
 
         return JpqlReference(element)

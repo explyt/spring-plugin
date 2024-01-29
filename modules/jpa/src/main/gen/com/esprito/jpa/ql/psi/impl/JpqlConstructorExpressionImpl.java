@@ -3,7 +3,7 @@ package com.esprito.jpa.ql.psi.impl;
 
 import com.esprito.jpa.ql.psi.JpqlConstructorArgumentsList;
 import com.esprito.jpa.ql.psi.JpqlConstructorExpression;
-import com.esprito.jpa.ql.psi.JpqlReferenceExpression;
+import com.esprito.jpa.ql.psi.JpqlFullyQualifiedConstructor;
 import com.esprito.jpa.ql.psi.JpqlVisitor;
 import com.intellij.lang.ASTNode;
 import com.intellij.psi.PsiElementVisitor;
@@ -34,8 +34,8 @@ public class JpqlConstructorExpressionImpl extends JpqlExpressionImpl implements
 
   @Override
   @NotNull
-  public JpqlReferenceExpression getReferenceExpression() {
-    return findNotNullChildByClass(JpqlReferenceExpression.class);
+  public JpqlFullyQualifiedConstructor getFullyQualifiedConstructor() {
+      return findNotNullChildByClass(JpqlFullyQualifiedConstructor.class);
   }
 
 }

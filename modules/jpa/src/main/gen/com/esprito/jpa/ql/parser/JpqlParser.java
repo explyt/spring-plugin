@@ -1,16 +1,16 @@
 // This is a generated file. Not intended for manual editing.
 package com.esprito.jpa.ql.parser;
 
-import com.intellij.lang.ASTNode;
-import com.intellij.lang.LightPsiParser;
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiBuilder.Marker;
-import com.intellij.lang.PsiParser;
-import com.intellij.psi.tree.IElementType;
-import com.intellij.psi.tree.TokenSet;
 
-import static com.esprito.jpa.ql.parser.JpqlParserUtil.*;
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
+import static com.esprito.jpa.ql.parser.JpqlParserUtil.*;
+import com.intellij.psi.tree.IElementType;
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.tree.TokenSet;
+import com.intellij.lang.PsiParser;
+import com.intellij.lang.LightPsiParser;
 
 @SuppressWarnings({"SimplifiableIfStatement", "UnusedAssignment"})
 public class JpqlParser implements PsiParser, LightPsiParser {
@@ -42,12 +42,13 @@ public class JpqlParser implements PsiParser, LightPsiParser {
       BOOLEAN_LITERAL, COALESCE_EXPRESSION, COLLECTION_MEMBER_EXPRESSION, COMPARISON_EXPRESSION,
       CONDITIONAL_AND_EXPRESSION, CONDITIONAL_NOT_EXPRESSION, CONDITIONAL_OR_EXPRESSION, CONSTRUCTOR_EXPRESSION,
       DATETIME_FUNCTION_EXPRESSION, DATETIME_LITERAL, EMPTY_COLLECTION_COMPARISON_EXPRESSION, EXISTS_EXPRESSION,
-      EXPRESSION, FUNCTIONS_RETURNING_NUMERICS_EXPRESSION, FUNCTION_INVOCATION_EXPRESSION, GENERAL_CASE_EXPRESSION,
-      INPUT_PARAMETER_EXPRESSION, IN_EXPRESSION, JOIN_EXPRESSION, LIKE_EXPRESSION,
-      MAP_BASED_REFERENCE_EXPRESSION, MULTIPLICATIVE_EXPRESSION, NULLIF_EXPRESSION, NULL_COMPARISON_EXPRESSION,
-      NULL_EXPRESSION, NUMERIC_LITERAL, OBJECT_EXPRESSION, PAREN_EXPRESSION,
-      PATH_REFERENCE_EXPRESSION, REFERENCE_EXPRESSION, SIMPLE_CASE_EXPRESSION, STRING_FUNCTION_EXPRESSION,
-      STRING_LITERAL, SUBQUERY_EXPRESSION, TYPE_EXPRESSION, UNARY_ARITHMETIC_EXPRESSION),
+            EXPRESSION, FULLY_QUALIFIED_CONSTRUCTOR, FUNCTIONS_RETURNING_NUMERICS_EXPRESSION, FUNCTION_INVOCATION_EXPRESSION,
+            GENERAL_CASE_EXPRESSION, INPUT_PARAMETER_EXPRESSION, IN_EXPRESSION, JOIN_EXPRESSION,
+            LIKE_EXPRESSION, MAP_BASED_REFERENCE_EXPRESSION, MULTIPLICATIVE_EXPRESSION, NULLIF_EXPRESSION,
+            NULL_COMPARISON_EXPRESSION, NULL_EXPRESSION, NUMERIC_LITERAL, OBJECT_EXPRESSION,
+            PAREN_EXPRESSION, PATH_REFERENCE_EXPRESSION, REFERENCE_EXPRESSION, SIMPLE_CASE_EXPRESSION,
+            STRING_FUNCTION_EXPRESSION, STRING_LITERAL, SUBQUERY_EXPRESSION, TYPE_EXPRESSION,
+            UNARY_ARITHMETIC_EXPRESSION),
   };
 
   /* ********************************************************** */
@@ -162,14 +163,14 @@ public class JpqlParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // NEW reference_expression '(' constructor_arguments_list ')'
+  // NEW fully_qualified_constructor '(' constructor_arguments_list ')'
   public static boolean constructor_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "constructor_expression")) return false;
     if (!nextTokenIs(b, NEW)) return false;
     boolean r;
     Marker m = enter_section_(b);
     r = consumeToken(b, NEW);
-    r = r && reference_expression(b, l + 1);
+      r = r && fully_qualified_constructor(b, l + 1);
     r = r && consumeToken(b, LPAREN);
     r = r && constructor_arguments_list(b, l + 1);
     r = r && consumeToken(b, RPAREN);
@@ -412,6 +413,40 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     if (!r) r = collection_member_declaration(b, l + 1);
     return r;
   }
+    
+    /* ********************************************************** */
+    // {identifier '.'}* identifier
+    public static boolean fully_qualified_constructor(PsiBuilder b, int l) {
+        if (!recursion_guard_(b, l, "fully_qualified_constructor")) return false;
+        boolean r;
+        Marker m = enter_section_(b, l, _NONE_, FULLY_QUALIFIED_CONSTRUCTOR, "<fully qualified constructor>");
+        r = fully_qualified_constructor_0(b, l + 1);
+        r = r && identifier(b, l + 1);
+        exit_section_(b, l, m, r, false, null);
+        return r;
+    }
+    
+    // {identifier '.'}*
+    private static boolean fully_qualified_constructor_0(PsiBuilder b, int l) {
+        if (!recursion_guard_(b, l, "fully_qualified_constructor_0")) return false;
+        while (true) {
+            int c = current_position_(b);
+            if (!fully_qualified_constructor_0_0(b, l + 1)) break;
+            if (!empty_element_parsed_guard_(b, "fully_qualified_constructor_0", c)) break;
+        }
+        return true;
+    }
+    
+    // identifier '.'
+    private static boolean fully_qualified_constructor_0_0(PsiBuilder b, int l) {
+        if (!recursion_guard_(b, l, "fully_qualified_constructor_0_0")) return false;
+        boolean r;
+        Marker m = enter_section_(b);
+        r = identifier(b, l + 1);
+        r = r && consumeToken(b, DOT);
+        exit_section_(b, m, null, r);
+        return r;
+    }
 
   /* ********************************************************** */
   // literal_group
@@ -2899,14 +2934,15 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     if (!r) r = input_parameter_expression(b, l + 1);
     return r;
   }
-
-  // path_reference_expression | map_based_reference_expression
+    
+    // path_reference_expression | map_based_reference_expression | fully_qualified_constructor
   public static boolean reference_expression(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "reference_expression")) return false;
     boolean r;
     Marker m = enter_section_(b, l, _COLLAPSE_, REFERENCE_EXPRESSION, "<reference expression>");
     r = path_reference_expression(b, l + 1);
     if (!r) r = map_based_reference_expression(b, l + 1);
+      if (!r) r = fully_qualified_constructor(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
   }
