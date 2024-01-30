@@ -42,6 +42,13 @@
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.jpa.ql.inspection.JpqlInsertStatementInspection"/>
 
+        <localInspection language="JPQL"
+                         shortName="JpqlFullyQualifiedConstructorInspection"
+                         groupBundle="messages.JpaBundle" groupKey="esprito.jpa.inspection.group"
+                         bundle="messages.JpaBundle" key="esprito.jpa.inspection.constructor.expression"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.esprito.jpa.ql.inspection.JpqlFullyQualifiedConstructorInspection"/>
+
         <multiHostInjector implementation="com.esprito.jpa.langinjection.JpqlEntityManagerLanguageInjector"/>
         <multiHostInjector implementation="com.esprito.jpa.langinjection.JpqNamedQueryLanguageInjector"/>
 
