@@ -41,6 +41,9 @@ import java.util.regex.Pattern;
  */
 public class PartTree implements Iterable<PartTree.OrPart> {
 
+    public static final String OR_OPERATOR = "Or";
+    public static final String AND_OPERATOR = "And";
+
     /*
      * We look for a pattern of: keyword followed by
      *
@@ -83,10 +86,11 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         Matcher matcher = PREFIX_TEMPLATE.matcher(source);
         if (!matcher.find()) {
             this.subject = new Subject(null);
-            this.predicate = new Predicate(source, domainClass);
+            this.predicate = new Predicate(source, domainClass, 0);
         } else {
             this.subject = new Subject(matcher.group(0));
-            this.predicate = new Predicate(source.substring(matcher.group().length()), domainClass);
+            int offset = matcher.group().length();
+            this.predicate = new Predicate(source.substring(offset), domainClass, offset);
         }
     }
 
@@ -251,12 +255,14 @@ public class PartTree implements Iterable<PartTree.OrPart> {
          * @param domainClass      the domain class to check the resulting {@link Part}s against.
          * @param alwaysIgnoreCase if always ignoring case
          */
-        OrPart(@NotNull String source, PsiClass domainClass, boolean alwaysIgnoreCase) {
+        OrPart(@NotNull String source, PsiClass domainClass, boolean alwaysIgnoreCase, int offset) {
             mySource = source;
-
-            String[] split = split(source, "And");
+            String[] split = split(source, AND_OPERATOR);
+            int currentOffset = 0;
             for (String part : split) {
-                children.add(new Part(part, domainClass, alwaysIgnoreCase));
+                currentOffset = StringUtil.indexOf(source, part, currentOffset);
+                children.add(new Part(part, domainClass, alwaysIgnoreCase, offset + currentOffset));
+                currentOffset += part.length() + AND_OPERATOR.length();
             }
         }
 
@@ -379,20 +385,18 @@ public class PartTree implements Iterable<PartTree.OrPart> {
 
         private final List<OrPart> nodes = new ArrayList<>();
         private final OrderBySource orderBySource;
+        private final int offset;
         private boolean alwaysIgnoreCase;
 
-        Predicate(@NotNull String predicate, @NotNull PsiClass domainClass) {
-
-            String[] parts = split(detectAndSetAllIgnoreCase(predicate), ORDER_BY);
-
-            if (parts.length > 2) {
-                // todo: process multiple parts, add inspection
-                // throw new IllegalArgumentException("OrderBy must not be used more than once in a method name!");
-            }
+        Predicate(@NotNull String predicate, @NotNull PsiClass domainClass, int offset) {
+            this.offset = offset;
+            String sourceString = detectAndSetAllIgnoreCase(predicate);
+            String[] parts = split(sourceString, ORDER_BY);
 
             buildTree(parts[0], domainClass);
 
-            this.orderBySource = parts.length == 2 ? new OrderBySource(parts[1], domainClass) : null;
+            int sortIndex = offset + StringUtil.indexOf(sourceString, ORDER_BY) + ORDER_BY.length();
+            this.orderBySource = parts.length == 2 ? new OrderBySource(parts[1], domainClass, sortIndex) : null;
         }
 
         private String detectAndSetAllIgnoreCase(String predicate) {
@@ -408,10 +412,12 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         }
 
         private void buildTree(@NotNull String source, @NotNull PsiClass domainClass) {
-
-            String[] split = split(source, "Or");
+            String[] split = split(source, OR_OPERATOR);
+            int currentOffset = 0;
             for (String part : split) {
-                nodes.add(new OrPart(part, domainClass, alwaysIgnoreCase));
+                currentOffset = StringUtil.indexOf(source, part, currentOffset);
+                nodes.add(new OrPart(part, domainClass, alwaysIgnoreCase, offset + currentOffset));
+                currentOffset += part.length() + OR_OPERATOR.length();
             }
         }
 

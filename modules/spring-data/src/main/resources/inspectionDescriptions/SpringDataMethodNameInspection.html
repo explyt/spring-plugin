@@ -1,0 +1,19 @@
+<html>
+<body>
+<p>
+    Reports Spring Data JPA Query Methods
+    <a href="https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html#jpa.query-methods.query-creation">Spring
+        Data JPA Query</a>
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+interface JpaEntityRepository extends Repository&lt;JpaEntity, Long&gt; {
+  List&lt;JpaEntity&gt; findByNameAndId(String name, Long id);
+}
+</code></pre>
+</body>
+</html>
+
+</body>
+</html>

@@ -43,6 +43,7 @@ public class Part {
 
     private IgnoreCaseType ignoreCase = IgnoreCaseType.NEVER;
     private final String mySource;
+    private final int offset;
 
 
     /**
@@ -55,8 +56,10 @@ public class Part {
      */
     public Part(String source,
                 PsiClass clazz,
-                boolean alwaysIgnoreCase) {
+                boolean alwaysIgnoreCase,
+                int offset) {
         mySource = source;
+        this.offset = offset;
         String partToUse = detectAndSetIgnoreCase(source);
         if (alwaysIgnoreCase && ignoreCase != IgnoreCaseType.ALWAYS) {
             this.ignoreCase = IgnoreCaseType.WHEN_POSSIBLE;
@@ -64,6 +67,14 @@ public class Part {
         this.type = Type.fromProperty(partToUse);
         this.propertyPath = PropertyPath.from(type.extractProperty(partToUse), JavaPsiFacade
                 .getElementFactory(clazz.getProject()).createType(clazz, PsiSubstitutor.EMPTY));
+    }
+
+    public int getOffset() {
+        return offset;
+    }
+
+    public int getEndOffset() {
+        return offset + mySource.length();
     }
 
     @NotNull

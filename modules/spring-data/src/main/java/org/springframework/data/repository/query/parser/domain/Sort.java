@@ -85,7 +85,7 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
         this.orders = new ArrayList<>(properties.size());
 
         for (String property : properties) {
-            this.orders.add(new Order(direction, property, property));
+            this.orders.add(new Order(direction, property, property, 0));
         }
     }
 
@@ -248,6 +248,7 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
         private PropertyPath myPath;
         private String myPropertySource;
         private final String mySortExpression;
+        private final int offset;
 
         /**
          * Creates a new {@link Order} instance. if order is {@literal null} then order defaults to
@@ -256,8 +257,8 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
          * @param direction can be {@literal null}, will default to {@link Sort#DEFAULT_DIRECTION}
          * @param property  must not be {@literal null} or empty.
          */
-        public Order(Direction direction, String property, String sortExpression) {
-            this(direction, property, DEFAULT_IGNORE_CASE, null, sortExpression);
+        public Order(Direction direction, String property, String sortExpression, int offset) {
+            this(direction, property, DEFAULT_IGNORE_CASE, null, sortExpression, offset);
         }
 
         /**
@@ -268,18 +269,8 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
          * @param property         must not be {@literal null} or empty.
          * @param nullHandlingHint can be {@literal null}, will default to {@link NullHandling#NATIVE}.
          */
-        public Order(Direction direction, String property, NullHandling nullHandlingHint) {
-            this(direction, property, DEFAULT_IGNORE_CASE, nullHandlingHint, property);
-        }
-
-        /**
-         * Creates a new {@link Order} instance. Takes a single property. Direction defaults to
-         * {@link Sort#DEFAULT_DIRECTION}.
-         *
-         * @param property must not be {@literal null} or empty.
-         */
-        public Order(String property) {
-            this(DEFAULT_DIRECTION, property, property);
+        public Order(Direction direction, String property, NullHandling nullHandlingHint, int offset) {
+            this(direction, property, DEFAULT_IGNORE_CASE, nullHandlingHint, property, offset);
         }
 
         /**
@@ -292,7 +283,8 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
          * @param nullHandling can be {@literal null}, will default to {@link NullHandling#NATIVE}.
          * @since 1.7
          */
-        private Order(Direction direction, @NotNull String property, boolean ignoreCase, NullHandling nullHandling, String sortExpression) {
+        private Order(Direction direction, @NotNull String property, boolean ignoreCase,
+                      NullHandling nullHandling, String sortExpression, int offset) {
             if (StringUtil.isEmptyOrSpaces(property)) {
                 // throw new IllegalArgumentException("Property must not null or empty!");
             }
@@ -301,10 +293,11 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
             this.property = property;
             this.ignoreCase = ignoreCase;
             this.nullHandling = nullHandling == null ? NullHandling.NATIVE : nullHandling;
+            this.offset = offset;
         }
 
-        public Order(Direction direction, PropertyPath path, String propertySource, String sortExpression) {
-            this(direction, path.toDotPath(), sortExpression);
+        public Order(Direction direction, PropertyPath path, String propertySource, String sortExpression, int offset) {
+            this(direction, path.toDotPath(), sortExpression, offset);
             myPath = path;
             myPropertySource = propertySource;
         }
@@ -364,7 +357,7 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
          * @return
          */
         public Order with(Direction order) {
-            return new Order(order, this.property, nullHandling);
+            return new Order(order, this.property, nullHandling, offset);
         }
 
         /**
@@ -383,7 +376,7 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
          * @return
          */
         public Order ignoreCase() {
-            return new Order(direction, property, true, nullHandling, property);
+            return new Order(direction, property, true, nullHandling, property, offset);
         }
 
         /**
@@ -394,7 +387,7 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
          * @since 1.8
          */
         public Order with(NullHandling nullHandling) {
-            return new Order(direction, this.property, ignoreCase, nullHandling, this.property);
+            return new Order(direction, this.property, ignoreCase, nullHandling, this.property, offset);
         }
 
         /**
@@ -435,6 +428,14 @@ public class Sort implements Iterable<Sort.Order>, Serializable {
          */
         public NullHandling getNullHandling() {
             return nullHandling;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
+
+        public int getEndOffset() {
+            return offset + (property == null ? 0 : property.length());
         }
 
         /*

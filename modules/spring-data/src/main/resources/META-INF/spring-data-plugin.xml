@@ -6,6 +6,16 @@
         <completion.contributor language="UAST"
                                 implementationClass="com.esprito.spring.data.completion.SpringDataBaseCompletionContributor"
                                 order="before javaMemberName"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDataMethodNameInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupKey="esprito.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="esprito.spring.data.inspection.method.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.data.inspection.SpringDataMethodNameInspection"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.esprito">

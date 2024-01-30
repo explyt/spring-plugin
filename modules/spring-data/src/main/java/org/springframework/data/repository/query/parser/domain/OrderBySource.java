@@ -20,7 +20,6 @@ import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiSubstitutor;
 import com.intellij.psi.PsiType;
-import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -40,8 +39,7 @@ public class OrderBySource {
 
     private static final String BLOCK_SPLIT = "(?<=Asc|Desc)(?=\\p{Lu})";
     private static final Pattern DIRECTION_SPLIT = Pattern.compile("(.+?)(Asc|Desc)?$");
-    private static final String INVALID_ORDER_SYNTAX = "Invalid order syntax for part %s!";
-    private static final Set<String> DIRECTION_KEYWORDS = ContainerUtil.set("Asc", "Desc");
+    public static final Set<String> DIRECTION_KEYWORDS = Set.of("Asc", "Desc");
 
     private final List<Sort.Order> orders;
     private final String mySource;
@@ -53,15 +51,17 @@ public class OrderBySource {
      * @param clause      must not be {@literal null}.
      * @param domainClass can be {@literal null}.
      */
-    public OrderBySource(@NotNull String clause, @NotNull PsiClass domainClass) {
+    public OrderBySource(@NotNull String clause, @NotNull PsiClass domainClass, int offset) {
         mySource = clause;
 
         this.orders = new ArrayList<>();
 
         if (StringUtil.isNotEmpty(clause)) {
+            int currentOffset = 0;
             for (String part : clause.split(BLOCK_SPLIT)) {
                 Matcher matcher = DIRECTION_SPLIT.matcher(part);
                 if (matcher.find()) {
+                    currentOffset = StringUtil.indexOf(clause, part, currentOffset);
                     String propertyString = matcher.group(1);
                     String directionString = matcher.group(2);
 
@@ -69,12 +69,13 @@ public class OrderBySource {
                         // No property, but only a direction keyword
                         // spring data: throw new IllegalArgumentException(String.format(INVALID_ORDER_SYNTAX, part));
                         Sort.Direction direction = StringUtil.isNotEmpty(propertyString) ? Sort.Direction.fromString(propertyString) : null;
-                        this.orders.add(createOrder("", direction, domainClass, part));
+                        this.orders.add(createOrder("", direction, domainClass, part, offset + currentOffset));
                     } else {
                         Sort.Direction direction = StringUtil.isNotEmpty(directionString) ? Sort.Direction.fromString(directionString) : null;
-                        this.orders.add(createOrder(propertyString, direction, domainClass, part));
+                        this.orders.add(createOrder(propertyString, direction, domainClass, part, offset + currentOffset));
                     }
                 }
+                currentOffset += Math.max(1, part.length());
             }
         }
     }
@@ -93,10 +94,11 @@ public class OrderBySource {
     private static Sort.Order createOrder(String propertySource,
                                           Sort.Direction direction,
                                           @NotNull PsiClass domainClass,
-                                          String sortExpression) {
+                                          String sortExpression,
+                                          int offset) {
         PropertyPath propertyPath = PropertyPath.from(propertySource, JavaPsiFacade
                 .getElementFactory(domainClass.getProject()).createType(domainClass, PsiSubstitutor.EMPTY));
-        return new Sort.Order(direction, propertyPath, propertySource, sortExpression);
+        return new Sort.Order(direction, propertyPath, propertySource, sortExpression, offset);
     }
 
     /**

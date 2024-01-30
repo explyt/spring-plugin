@@ -1,41 +1,39 @@
 package com.esprito.spring.data.completion
 
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.core.service.MetaAnnotationsHolder
-import com.esprito.spring.core.util.PsiAnnotationUtils
-import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.esprito.spring.data.SpringDataClasses
+import com.esprito.spring.data.util.RepositoryTypes
+import com.esprito.spring.data.util.SpringDataRepositoryUtil
 import com.esprito.spring.data.util.SpringDataUtil
 import com.esprito.util.EspritoPsiUtil.returnPsiType
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
-import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.psi.util.PsiUtil
 import com.intellij.util.ObjectUtils
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.*
+import org.springframework.data.repository.query.parser.PartTree
 import kotlin.math.max
 
 class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters>() {
-    private val existPattern = listOf("exists")
-    private val countPattern = listOf("count")
-    private val removePattern = listOf("delete", "remove")
-    private val queryPattern = listOf("find", "read", "get", "query", "stream", "search")
+    private val existPattern = PartTree.EXISTS_PATTERN.split("|")
+    private val countPattern = PartTree.COUNT_PATTERN.split("|")
+    private val removePattern = PartTree.DELETE_PATTERN.split("|")
+    private val queryPattern = PartTree.QUERY_PATTERN.split("|")
 
     private val distinctAllSuffix = listOf("Distinct", "All")
     private val firstTopSuffix = listOf("First", "Top", "DistinctFirst", "DistinctTop")
+    private val sortOrder = listOf("Desc", "Asc")
+    private val orderBy = "OrderBy"
     private val allOperators = listOf(
         "Distinct", "And", "Or", "Is", "Equals",
         "Between", "LessThan", "LessThanEqual", "GreaterThan", "GreaterThanEqual", "After",
         "Before", "IsNull", "Null", "IsNotNull", "NotNull", "Like",
         "NotLike", "StartingWith", "EndingWith", "Containing", "OrderBy", "Not",
-        "In", "NotIn", "True", "False", "IgnoreCase", "Desc", "Asc"
+        "In", "NotIn", "True", "False", "IgnoreCase"
     )
 
     override fun addCompletions(
@@ -48,11 +46,11 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
     }
 
     private fun getCompletionVariants(
-        typesPair: Pair<PsiClass, PsiType?>, positionContext: PositionContext, matcher: PrefixMatcher
+        repositoryTypes: RepositoryTypes, positionContext: PositionContext, matcher: PrefixMatcher
     ): Set<LookupElement> {
         val methodName = positionContext.methodName
         val methodPrefix = matcher.prefix
-        val domainClass: PsiClass = typesPair.first
+        val domainClass = repositoryTypes.psiClass
         val offset = methodPrefix.length
 
         val subjectVariants = getSubjectVariants(domainClass, positionContext)
@@ -70,10 +68,10 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
         val suffix = getSuffix(methodName, offset)
         if (endWithProperty != null) {
             //case when caret after property: findById<Caret>/findByName<caret>OrAddress
-            return getCompletionVariants(allOperators.toSet(), methodPrefix, suffix)
+            return getCompletionVariants(getOperators(methodPrefix).toSet(), methodPrefix, suffix)
         } else {
             val prefix = getPrefix(methodName, offset)
-            val lookupStrings = (domainProperties + allOperators).toSet()
+            val lookupStrings = (domainProperties + getOperators(methodPrefix)).toSet()
             return getLookupElements(lookupStrings, prefix, suffix, methodPrefix)
         }
     }
@@ -86,39 +84,9 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
                 getCompletionVariants(lookupStrings, methodPrefix, suffix)
     }
 
-    private fun getRepositoryTypes(parameters: CompletionParameters): Pair<PsiClass, PsiType?>? {
+    private fun getRepositoryTypes(parameters: CompletionParameters): RepositoryTypes? {
         val aClass: UClass = parameters.position.findContaining(UClass::class.java) ?: return null
-        return substituteRepositoryTypes(aClass.javaPsi)
-    }
-
-    private fun substituteRepositoryTypes(repositoryClass: PsiClass): Pair<PsiClass, PsiType>? {
-        if (AnnotationUtil.isAnnotated(
-                repositoryClass, SpringDataClasses.REPOSITORY_ANNOTATION,
-                AnnotationUtil.CHECK_HIERARCHY
-            )
-        ) {
-            return substituteForRepositoryDefinition(repositoryClass)
-        }
-        val psiClassType = JavaPsiFacade.getInstance(repositoryClass.project)
-            .elementFactory.createType(repositoryClass)
-        val psiType = PsiUtil.substituteTypeParameter(psiClassType, SpringDataClasses.SPRING_RESOURCE, 0, false)
-                as? PsiClassType ?: return null
-
-        val idPsiType =
-            PsiUtil.substituteTypeParameter(psiClassType, SpringDataClasses.SPRING_RESOURCE, 1, false) ?: return null
-        val psiClass = psiType.resolve() ?: return null
-        return Pair(psiClass, idPsiType)
-    }
-
-    private fun substituteForRepositoryDefinition(repositoryClass: PsiClass): Pair<PsiClass, PsiType>? {
-        val module = ModuleUtilCore.findModuleForPsiElement(repositoryClass) ?: return null
-        val metaAnnotationsHolder = MetaAnnotationsHolder.of(module, SpringDataClasses.REPOSITORY_ANNOTATION)
-        val annotation = repositoryClass.annotations.find { metaAnnotationsHolder.contains(it) } ?: return null
-        val domainValues = metaAnnotationsHolder.getAnnotationMemberValues(annotation, setOf("domainClass"))
-        val idValues = metaAnnotationsHolder.getAnnotationMemberValues(annotation, setOf("idClass"))
-        val classDomain = PsiAnnotationUtils.getPsiTypes(domainValues).map { it.resolveBeanPsiClass }.firstOrNull()
-        val typeId = PsiAnnotationUtils.getPsiTypes(idValues).firstOrNull()
-        return if (classDomain != null && typeId != null) Pair(classDomain, typeId) else null
+        return SpringDataRepositoryUtil.substituteRepositoryTypes(aClass.javaPsi)
     }
 
     private fun getCurrentPositionContext(parameters: CompletionParameters): PositionContext? {
@@ -158,7 +126,6 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
             removePattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
             existPattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
             countPattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
-            removePattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
         } else {
             addQueryPattern(strings, domainClassName)
         }
@@ -259,6 +226,10 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
             next = PsiTreeUtil.getParentOfType(next, elementClass, true)
         }
         return parent
+    }
+
+    private fun getOperators(methodPrefix: String): List<String> {
+        return if (methodPrefix.contains(orderBy)) sortOrder else allOperators
     }
 }
 
