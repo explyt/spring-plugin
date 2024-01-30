@@ -4,6 +4,7 @@
     <depends>com.intellij.modules.java</depends>
     <depends>com.intellij.properties</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
+    <depends optional="true" config-file="spring-core-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader"

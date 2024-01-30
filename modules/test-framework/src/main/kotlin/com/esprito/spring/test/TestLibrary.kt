@@ -24,6 +24,8 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val javax_annotation_1_3_2 = TestLibrary("javax.annotation:javax.annotation-api:1.3.2", true)
         val javax_inject_1 = TestLibrary("javax.inject:javax.inject:1", true)
         val javax_persistence_2_2 = TestLibrary("javax.persistence:javax.persistence-api:2.2", true)
+
+        val kotlin_1_9_22 = TestLibrary("org.jetbrains.kotlin:kotlin-stdlib:1.9.22", true)
     }
 }
 
