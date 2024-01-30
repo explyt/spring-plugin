@@ -1,0 +1,9 @@
+SELECT e.id, e.name FROM Employee e;
+
+SELECT NEW Owner(e.name) FROM Owner e
+
+SELECT NEW unknown.Entity(e.name) FROM Owner e
+
+SELECT NEW ComOwner(e.name) FROM Owner e
+
+SELECT NEW com.ComOwner(e.name) FROM Owner e
