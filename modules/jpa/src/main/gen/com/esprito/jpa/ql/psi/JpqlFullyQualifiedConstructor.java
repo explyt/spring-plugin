@@ -9,5 +9,5 @@ public interface JpqlFullyQualifiedConstructor extends JpqlReferenceExpression {
     
     @NotNull
     List<JpqlIdentifier> getIdentifierList();
-    
+
 }

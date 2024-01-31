@@ -266,7 +266,7 @@ private in_collection ::= '(' in_item {',' in_item}* ')'
 in_item ::= literal | input_parameter_expression
 
 like_expression ::= expression [NOT] LIKE
-    {reference_or_parameter | string_literal | string_function_expression }
+    {['%']reference_or_parameter['%'] | string_literal | string_function_expression }
     [ESCAPE {string_literal | string_function_expression | input_parameter_expression}]
 
 null_comparison_expression ::= reference_or_parameter IS [NOT] NULL
