@@ -3,7 +3,6 @@ package com.esprito.jpa.ql.parser;
 
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiBuilder.Marker;
-
 import static com.esprito.jpa.ql.psi.JpqlTypes.*;
 import static com.esprito.jpa.ql.parser.JpqlParserUtil.*;
 import com.intellij.psi.tree.IElementType;
@@ -2092,8 +2091,8 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     exit_section_(b, m, null, r);
     return r;
   }
-
-  // [NOT] LIKE {reference_or_parameter | string_literal | string_function_expression } [ESCAPE {string_literal | string_function_expression | input_parameter_expression}]
+    
+    // [NOT] LIKE {['%']reference_or_parameter['%'] | string_literal | string_function_expression } [ESCAPE {string_literal | string_function_expression | input_parameter_expression}]
   private static boolean like_expression_0(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "like_expression_0")) return false;
     boolean r;
@@ -2112,16 +2111,44 @@ public class JpqlParser implements PsiParser, LightPsiParser {
     consumeTokenSmart(b, NOT);
     return true;
   }
-
-  // reference_or_parameter | string_literal | string_function_expression
+    
+    // ['%']reference_or_parameter['%'] | string_literal | string_function_expression
   private static boolean like_expression_0_2(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "like_expression_0_2")) return false;
     boolean r;
-    r = reference_or_parameter(b, l + 1);
+      Marker m = enter_section_(b);
+      r = like_expression_0_2_0(b, l + 1);
     if (!r) r = string_literal(b, l + 1);
     if (!r) r = string_function_expression(b, l + 1);
+      exit_section_(b, m, null, r);
+      return r;
+  }
+    
+    // ['%']reference_or_parameter['%']
+    private static boolean like_expression_0_2_0(PsiBuilder b, int l) {
+        if (!recursion_guard_(b, l, "like_expression_0_2_0")) return false;
+        boolean r;
+        Marker m = enter_section_(b);
+        r = like_expression_0_2_0_0(b, l + 1);
+        r = r && reference_or_parameter(b, l + 1);
+        r = r && like_expression_0_2_0_2(b, l + 1);
+        exit_section_(b, m, null, r);
     return r;
   }
+    
+    // ['%']
+    private static boolean like_expression_0_2_0_0(PsiBuilder b, int l) {
+        if (!recursion_guard_(b, l, "like_expression_0_2_0_0")) return false;
+        consumeTokenSmart(b, "%");
+        return true;
+    }
+    
+    // ['%']
+    private static boolean like_expression_0_2_0_2(PsiBuilder b, int l) {
+        if (!recursion_guard_(b, l, "like_expression_0_2_0_2")) return false;
+        consumeTokenSmart(b, "%");
+        return true;
+    }
 
   // [ESCAPE {string_literal | string_function_expression | input_parameter_expression}]
   private static boolean like_expression_0_3(PsiBuilder b, int l) {

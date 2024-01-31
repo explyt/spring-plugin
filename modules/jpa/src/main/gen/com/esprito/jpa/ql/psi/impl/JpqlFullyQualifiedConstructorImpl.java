@@ -33,5 +33,5 @@ public class JpqlFullyQualifiedConstructorImpl extends JpqlReferenceExpressionIm
     public List<JpqlIdentifier> getIdentifierList() {
         return PsiTreeUtil.getChildrenOfTypeAsList(this, JpqlIdentifier.class);
     }
-    
+
 }
