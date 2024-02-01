@@ -3,9 +3,6 @@ package com.esprito.jpa.ql.reference
 import com.esprito.jpa.ql.psi.JpqlFullyQualifiedConstructor
 import com.esprito.jpa.ql.psi.JpqlIdentifier
 import com.esprito.jpa.ql.psi.impl.JpqlElementFactory
-import com.esprito.jpa.service.JpaEntitySearch
-import com.intellij.codeInsight.completion.JavaPsiClassReferenceElement
-import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementResolveResult
@@ -31,20 +28,7 @@ class JpqlFullyQualifiedElementReference(
     }
 
     override fun getVariants(): Array<Any> {
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-        val jpaEntitySet = JpaEntitySearch.getInstance(element.project)
-            .loadEntities(module)
-            .mapNotNullTo(mutableSetOf()) { it.psiElement }
-
-        return getElementReference()?.variants
-            ?.filter {
-                if (it is JavaPsiClassReferenceElement) {
-                    jpaEntitySet.contains(it.psiElement)
-                } else {
-                    true
-                }
-            }?.toTypedArray()
-            ?: emptyArray()
+        return getElementReference()?.variants ?: return emptyArray()
     }
 
     override fun multiResolve(incompleteCode: Boolean): Array<PsiElementResolveResult> {
