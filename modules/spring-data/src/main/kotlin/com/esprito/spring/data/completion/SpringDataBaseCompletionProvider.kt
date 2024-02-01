@@ -10,7 +10,10 @@ import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.psi.*
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiType
+import com.intellij.psi.PsiTypeElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ObjectUtils
 import com.intellij.util.ProcessingContext
@@ -54,8 +57,7 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
         val offset = methodPrefix.length
 
         val subjectVariants = getSubjectVariants(domainClass, positionContext)
-        val domainProperties = SpringDataUtil.getProperties(domainClass).map { StringUtil.capitalize(it) } +
-                (domainClass.name?.let { listOf(it, StringUtil.pluralize(it)) } ?: listOf())
+        val domainProperties = SpringDataUtil.getProperties(domainClass).map { StringUtil.capitalize(it) }
 
         //start of input: <caret>/fin<caret>/r<caret>/remov<caret> and etc
         if (subjectVariants.contains(methodPrefix)) {
@@ -114,11 +116,11 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
         domainClassName: PsiClass, positionContext: PositionContext? = null
     ): Set<String> {
         val strings = HashSet<String>()
-        if (positionContext?.psiType?.isAssignableFrom(PsiTypes.voidType()) == true) {
+        if (SpringDataRepositoryUtil.isVoidType(positionContext?.psiType)) {
             removePattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
-        } else if (positionContext?.psiType?.isAssignableFrom(PsiTypes.booleanType()) == true) {
+        } else if (SpringDataRepositoryUtil.isBooleanType(positionContext?.psiType)) {
             existPattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
-        } else if (isNumberType(positionContext)) {
+        } else if (SpringDataRepositoryUtil.isNumberType(positionContext?.psiType)) {
             countPattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
             removePattern.forEach { addSubjectSimpleTails(strings, it, domainClassName) }
         } else if (positionContext?.psiType == null) {
@@ -131,11 +133,6 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
         }
         return strings.mapTo(mutableSetOf()) { s: String -> s + "By" }
     }
-
-    private fun isNumberType(positionContext: PositionContext?) =
-        positionContext?.psiType?.isAssignableFrom(PsiTypes.intType()) == true
-                || positionContext?.psiType?.isAssignableFrom(PsiTypes.longType()) == true
-                || positionContext?.psiType?.isAssignableFrom(PsiTypes.byteType()) == true
 
     private fun addQueryPattern(strings: HashSet<String>, domainClassName: PsiClass) {
         for (s in queryPattern) {

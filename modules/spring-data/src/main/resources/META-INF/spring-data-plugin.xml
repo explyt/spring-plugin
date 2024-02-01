@@ -16,6 +16,16 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.data.inspection.SpringDataMethodNameInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDataReturnTypeInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupKey="esprito.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="esprito.spring.data.inspection.return.type"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.data.inspection.SpringDataReturnTypeInspection"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.esprito">

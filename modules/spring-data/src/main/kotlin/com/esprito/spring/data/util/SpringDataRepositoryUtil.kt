@@ -5,12 +5,10 @@ import com.esprito.spring.core.util.PsiAnnotationUtils
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.SpringDataClasses.SPRING_RESOURCE
+import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiClassType
-import com.intellij.psi.PsiType
+import com.intellij.psi.*
 import com.intellij.psi.util.PsiUtil
 
 object SpringDataRepositoryUtil {
@@ -30,6 +28,37 @@ object SpringDataRepositoryUtil {
         val idPsiType = PsiUtil.substituteTypeParameter(psiClassType, SPRING_RESOURCE, 1, false) ?: return null
         val psiClass = (psiType as? PsiClassType)?.resolve() ?: return null
         return RepositoryTypes(psiClass, idPsiType)
+    }
+
+    fun isNumberType(psiType: PsiType?): Boolean {
+        if (isNumberTypeInner(psiType)) return true
+        if ((psiType as? PsiClassType)?.hasParameters() == false) return false
+        val resolvedPsiClass = psiType?.resolvedPsiClass ?: return false
+        return isNumberTypeInner(PsiUtil.substituteTypeParameter(psiType, resolvedPsiClass, 0, false))
+    }
+
+    private fun isNumberTypeInner(psiType: PsiType?) =
+        psiType?.isAssignableFrom(PsiTypes.intType()) == true
+                || psiType?.isAssignableFrom(PsiTypes.longType()) == true
+                || psiType?.isAssignableFrom(PsiTypes.byteType()) == true
+                || psiType?.isAssignableFrom(PsiTypes.shortType()) == true
+
+    fun isVoidType(psiType: PsiType?): Boolean {
+        if (psiType?.isAssignableFrom(PsiTypes.voidType()) == true) return true
+        if ((psiType as? PsiClassType)?.hasParameters() == false) return false
+        val resolvedPsiClass = psiType?.resolvedPsiClass ?: return false
+        val substituteTypeParameter = PsiUtil.substituteTypeParameter(psiType, resolvedPsiClass, 0, false)
+            ?: return false
+        return substituteTypeParameter.isAssignableFrom(PsiTypes.voidType())
+                || substituteTypeParameter.canonicalText == Void::class.java.canonicalName
+    }
+
+    fun isBooleanType(psiType: PsiType?): Boolean {
+        if (psiType?.isAssignableFrom(PsiTypes.booleanType()) == true) return true
+        if ((psiType as? PsiClassType)?.hasParameters() == false) return false
+        val resolvedPsiClass = psiType?.resolvedPsiClass ?: return false
+        return PsiUtil.substituteTypeParameter(psiType, resolvedPsiClass, 0, false)
+            ?.isAssignableFrom(PsiTypes.booleanType()) == true
     }
 
     private fun substituteForRepositoryDefinition(repositoryClass: PsiClass): RepositoryTypes? {
