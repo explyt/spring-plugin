@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<problems>
+
+    <problem>
+        <file>AsyncConfiguration.java</file>
+        <line>18</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.AsyncConfiguration java.lang.String invalidReturnType()"/>
+        <problem_class id="SpringAsyncReturnType" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Async method should return type of ''void'' or a ''Future'' inheritor</description>
+        <highlighted_element>invalidReturnType</highlighted_element>
+        <language>JAVA</language>
+        <offset>18</offset>
+        <length>17</length>
+    </problem>
+
+</problems>

@@ -1,0 +1,22 @@
+<html>
+<head>
+    <title>Async Return Type Inspection</title></head>
+<body>
+<p>Reports wrong return type for async methods.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@Configuration
+@Async
+public class SomeConfiguration {
+    public void validReturnType() {}
+
+    public String invalidReturnType() { // reports "Async method should return type of ''void'' or a ''Future'' inheritor"
+        return "";
+    }
+}
+</code></pre>
+
+</body>
+</html>
+

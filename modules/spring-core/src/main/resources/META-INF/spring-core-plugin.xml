@@ -341,6 +341,17 @@
                          enabledByDefault="true" level="ERROR"
                          implementationClass="com.esprito.spring.core.inspections.AdditionalConfigPropertyInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringAsyncReturnTypeInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupKey="esprito.spring.common.notifications"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.async"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringAsyncReturnTypeInspection"/>
+
+
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
 
