@@ -22,6 +22,16 @@
                          level="WARNING"
                          implementationClass="com.esprito.spring.web.inspections.SpringOmittedPathVariableParameterInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringInitBinderNonVoidInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupKey="esprito.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="esprito.spring.web.inspection.initBinder"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
+
     </extensions>
 
     <actions>
