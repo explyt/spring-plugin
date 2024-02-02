@@ -50,6 +50,7 @@ object SpringCoreClasses {
     const val PROPERTY_SOURCE = "org.springframework.context.annotation.PropertySource"
 
     const val ASYNC = "org.springframework.scheduling.annotation.Async"
+    const val FUTURE = "java.util.concurrent.Future"
 
     const val SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest"
     const val TEST_PROPERTY_SOURCE = "org.springframework.test.context.TestPropertySource"
