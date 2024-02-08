@@ -3,6 +3,9 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
 
+    <depends optional="true" config-file="jpa-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
+
+
 
     <extensionPoints>
         <extensionPoint

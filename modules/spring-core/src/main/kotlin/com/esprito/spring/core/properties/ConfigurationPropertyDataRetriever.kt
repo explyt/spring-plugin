@@ -17,8 +17,10 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.parentOfType
 import org.apache.logging.log4j.util.Strings
+import org.jetbrains.uast.UField
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.getUastParentOfType
 
 class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
 
@@ -80,17 +82,24 @@ class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
                 .mapNotNull { it.element }
 
             val configurationOnBean = references.asSequence()
-                .mapNotNull { it.parentOfType<PsiMethod>() }
+                .mapNotNull {
+                    listOfNotNull(
+                        it.getUastParentOfType<UMethod>(),
+                        it.getUastParentOfType<UField>()
+                    )
+                        .firstOrNull()
+                }
                 .filter { it.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES) }
                 .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
                 .firstOrNull()
+
             if (configurationOnBean != null) {
                 return getPrefixFromAnnotation(configurationOnBean, module)
             }
 
             val psiFields = references.asSequence()
-                .mapNotNull { it.parentOfType<PsiTypeElement>() }
-                .mapNotNullTo(mutableSetOf()) { it.parentOfType<PsiField>() }
+                .mapNotNull { it.getUastParentOfType<UField>() }
+                .mapNotNullTo(mutableSetOf()) { it.javaPsi as? PsiField }
             for (psiField in psiFields) {
                 val topClass = psiField.containingClass ?: continue
                 val prefixValue = getPrefixFromUsage(topClass, module)

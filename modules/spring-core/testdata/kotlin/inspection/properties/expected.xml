@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>application.properties</file>
+        <line>1</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Cannot convert 'not_false' to boolean</description>
+        <highlighted_element>not_false</highlighted_element>
+        <language>Properties</language>
+        <offset>13</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>2</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Cannot convert 'not_false' to boolean</description>
+        <highlighted_element>not_false</highlighted_element>
+        <language>Properties</language>
+        <offset>23</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>3</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Cannot convert '5.6' to java.lang.Integer</description>
+        <highlighted_element>5.6</highlighted_element>
+        <language>Properties</language>
+        <offset>23</offset>
+        <length>3</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>4</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Cannot convert 'false' to java.lang.Double</description>
+        <highlighted_element>false</highlighted_element>
+        <language>Properties</language>
+        <offset>22</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>5</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Cannot convert 'test' to java.lang.Number</description>
+        <highlighted_element>test</highlighted_element>
+        <language>Properties</language>
+        <offset>22</offset>
+        <length>4</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>6</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.properties"/>
+        <problem_class id="SpringProperties" severity="WARNING" attribute_key="DEPRECATED_ATTRIBUTES" />
+        <description>Deprecated: Deprecated because that's all.</description>
+        <highlighted_element>main.max-connections=1</highlighted_element>
+        <language>Properties</language>
+        <offset>0</offset>
+        <length>22</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>7</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/config/application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'e3' to java.lang.Integer</description>
+        <highlighted_element>1, e3</highlighted_element>
+        <language>Properties</language>
+        <offset>19</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>8</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/config/application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'wrong' to java.lang.Integer</description>
+        <highlighted_element>wrong</highlighted_element>
+        <language>Properties</language>
+        <offset>22</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>application.properties</file>
+        <line>10</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/config/application.properties"/>
+        <problem_class id="SpringProperties" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'error' to java.lang.Integer</description>
+        <highlighted_element>error</highlighted_element>
+        <language>Properties</language>
+        <offset>25</offset>
+        <length>5</length>
+    </problem>
+
+</problems>

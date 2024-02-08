@@ -11,6 +11,7 @@ import org.jetbrains.idea.maven.utils.library.RepositoryLibraryProperties
 data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDependencies: Boolean = true) {
     companion object {
         val springContext_6_0_7 = TestLibrary("org.springframework:spring-context:6.0.7")
+        val springTx_6_0_7 = TestLibrary("org.springframework:spring-tx:6.0.7")
         val springTest_6_0_7 = TestLibrary("org.springframework:spring-test:6.0.7")
         val springWeb_6_0_7 = TestLibrary("org.springframework:spring-web:6.0.7", true)
 

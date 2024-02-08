@@ -1,9 +1,9 @@
 package com.esprito.spring.data.inspection
 
-import com.esprito.spring.test.EspritoInspectionTestCase
+import com.esprito.spring.test.EspritoInspectionJavaTestCase
 import com.esprito.spring.test.TestLibrary
 
-class SpringDataMethodNameInspectionTest : EspritoInspectionTestCase() {
+class SpringDataMethodNameInspectionTest : EspritoInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1, TestLibrary.springContext_6_0_7, TestLibrary.springDataJpa_3_1_0
     )

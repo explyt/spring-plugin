@@ -1,38 +1,14 @@
 package com.esprito.spring.core.util
 
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.intellij.psi.*
+import com.intellij.psi.PsiAnnotationMemberValue
+import com.intellij.psi.PsiType
+import com.intellij.psi.PsiTypeElement
 import com.intellij.psi.util.childrenOfType
-import com.intellij.psi.util.parentOfType
 import org.jetbrains.uast.UClassLiteralExpression
 import org.jetbrains.uast.toUElement
 
 object PsiAnnotationUtils {
-    fun getParentAnnotationForPsiLiteralParameter(
-        psiElement: PsiElement,
-    ): PsiAnnotation? {
-        return getParentAnnotationForPsiLiteralParameterCaseOneParameter(psiElement)
-            ?: getParentAnnotationForPsiLiteralParameterCaseManyParameters(psiElement)
-    }
-
-    fun getParentAnnotationForPsiLiteralParameterCaseOneParameter(
-        psiElement: PsiElement,
-    ): PsiAnnotation? {
-        return (psiElement as? PsiLiteral)
-            ?.parentOfType<PsiNameValuePair>()
-            ?.parentOfType<PsiAnnotationParameterList>()
-            ?.parentOfType<PsiAnnotation>()
-    }
-
-    fun getParentAnnotationForPsiLiteralParameterCaseManyParameters(
-        psiElement: PsiElement,
-    ): PsiAnnotation? {
-        return (psiElement as? PsiLiteral)
-            ?.parentOfType<PsiArrayInitializerMemberValue>()
-            ?.parentOfType<PsiNameValuePair>()
-            ?.parentOfType<PsiAnnotationParameterList>()
-            ?.parentOfType<PsiAnnotation>()
-    }
 
     fun getTypeNames(annotationMemberValues: Set<PsiAnnotationMemberValue>): Set<String> {
         return annotationMemberValues.asSequence()

@@ -1,0 +1,61 @@
+{
+  "properties": [
+    {
+      "name": "main.foo2.notexist",
+      "deprecation": {
+        "level": "error",
+        "reason": "Deprecated because that's all.",
+        "replacement": "my.try-integer"
+      }
+    }
+  ],
+  "hints": [
+    {
+      "name": "main.foo.name",
+      "values": [
+        {
+          "value": "none",
+          "description": "Disable DDL handling."
+        },
+        {
+          "value": "validate",
+          "description": "Validate the schema, make no changes to the database."
+        },
+        {
+          "value": "update",
+          "description": "Update the schema if necessary."
+        },
+        {
+          "value": "create",
+          "description": "Create the schema and destroy previous data."
+        },
+        {
+          "value": "create-drop",
+          "description": "Create and then destroy the schema at the end of the session."
+        }
+      ]
+    },
+    {
+      "name": "main.contexts.keys",
+      "values": [
+        {
+          "value": "simple1"
+        },
+        {
+          "value": "simple2"
+        }
+      ]
+    },
+    {
+      "name": "main.contexts.values",
+      "values": [
+        {
+          "value": "11"
+        },
+        {
+          "value": "22"
+        }
+      ]
+    }
+  ]
+}

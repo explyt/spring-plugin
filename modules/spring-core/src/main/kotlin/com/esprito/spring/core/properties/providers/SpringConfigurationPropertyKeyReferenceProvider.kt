@@ -30,6 +30,9 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
 import com.intellij.util.ProcessingContext
+import org.jetbrains.uast.UField
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElement
 
 class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 
@@ -128,7 +131,8 @@ class ConfigurationPropertyKeyReference(
             .findProperty(module, propertyKey) ?: return emptyArray()
         val sourceType = foundProperty.sourceType ?: return emptyArray()
         val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project)
-        if (sourceMember != null && (sourceMember is PsiMethod || !mode.isNullOrEmpty())) {
+        val uElement = sourceMember.toUElement() ?: return emptyArray()
+        if (sourceMember != null && (uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())) {
             return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         }
         return emptyArray()

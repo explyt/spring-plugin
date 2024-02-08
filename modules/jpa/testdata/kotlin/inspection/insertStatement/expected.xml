@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+    <problem>
+        <file>test.jpql</file>
+        <line>1</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Duplicate field</description>
+        <highlighted_element>name</highlighted_element>
+        <language>JPQL</language>
+        <offset>32</offset>
+        <length>4</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>1</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Duplicate field</description>
+        <highlighted_element>id</highlighted_element>
+        <language>JPQL</language>
+        <offset>46</offset>
+        <length>2</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>2</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Lack of insertion parameters. The 5 is expected.</description>
+        <highlighted_element>)</highlighted_element>
+        <language>JPQL</language>
+        <offset>39</offset>
+        <length>1</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>3</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Unexpected insertion parameter. The 5 is expected.</description>
+        <highlighted_element>50000</highlighted_element>
+        <language>JPQL</language>
+        <offset>48</offset>
+        <length>5</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>6</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Lack of insertion parameters. The 3 is expected.</description>
+        <highlighted_element>SELECT</highlighted_element>
+        <language>JPQL</language>
+        <offset>0</offset>
+        <length>6</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>9</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Unexpected insertion parameter. The 2 is expected.</description>
+        <highlighted_element>e.salary</highlighted_element>
+        <language>JPQL</language>
+        <offset>21</offset>
+        <length>8</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Numeric is expected, but Boolean is received.</description>
+        <highlighted_element>TRUE</highlighted_element>
+        <language>JPQL</language>
+        <offset>8</offset>
+        <length>4</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. String is expected, but Numeric is received.</description>
+        <highlighted_element>5</highlighted_element>
+        <language>JPQL</language>
+        <offset>14</offset>
+        <length>1</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Numeric is expected, but Datetime is received.</description>
+        <highlighted_element>{ts '2023-01-01 12:34:56'}</highlighted_element>
+        <language>JPQL</language>
+        <offset>17</offset>
+        <length>26</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Boolean is expected, but String is received.</description>
+        <highlighted_element>'TRUE'</highlighted_element>
+        <language>JPQL</language>
+        <offset>59</offset>
+        <length>6</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>13</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Numeric is expected, but String is received.</description>
+        <highlighted_element>'John Doe'</highlighted_element>
+        <language>JPQL</language>
+        <offset>8</offset>
+        <length>10</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>13</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. String is expected, but Numeric is received.</description>
+        <highlighted_element>2</highlighted_element>
+        <language>JPQL</language>
+        <offset>20</offset>
+        <length>1</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>13</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Numeric is expected, but String is received.</description>
+        <highlighted_element>'John Doe'</highlighted_element>
+        <language>JPQL</language>
+        <offset>23</offset>
+        <length>10</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Numeric is expected, but String is received.</description>
+        <highlighted_element>e.name</highlighted_element>
+        <language>JPQL</language>
+        <offset>7</offset>
+        <length>6</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. String is expected, but Numeric is received.</description>
+        <highlighted_element>e.id</highlighted_element>
+        <language>JPQL</language>
+        <offset>15</offset>
+        <length>4</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Numeric is expected, but String is received.</description>
+        <highlighted_element>e.name</highlighted_element>
+        <language>JPQL</language>
+        <offset>21</offset>
+        <length>6</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Datetime is expected, but Boolean is received.</description>
+        <highlighted_element>e.inVacation</highlighted_element>
+        <language>JPQL</language>
+        <offset>29</offset>
+        <length>12</length>
+    </problem>
+    <problem>
+        <file>test.jpql</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlInsertStatement" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Invalid expression type. Boolean is expected, but Datetime is received.</description>
+        <highlighted_element>e.birthday</highlighted_element>
+        <language>JPQL</language>
+        <offset>43</offset>
+        <length>10</length>
+    </problem>
+</problems>

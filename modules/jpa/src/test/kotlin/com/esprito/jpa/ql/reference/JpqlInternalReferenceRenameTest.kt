@@ -1,16 +1,16 @@
 package com.esprito.jpa.ql.reference
 
 import com.esprito.spring.test.EspritoJavaLightTestCase
-import org.jetbrains.kotlin.test.TestMetadata
+import com.intellij.testFramework.TestDataPath
 
 private const val TEST_DATA_PATH = "reference/internal/rename"
 
 /**
  * Tests references from jpql to itself
  */
-@TestMetadata(TEST_DATA_PATH)
+@TestDataPath("\$CONTENT_ROOT/../../testdata/$TEST_DATA_PATH")
 class JpqlInternalReferenceRenameTest : EspritoJavaLightTestCase() {
-    override fun getTestDataPath() = super.getTestDataPath() + TEST_DATA_PATH
+    override fun getTestDataPath() = "testdata/$TEST_DATA_PATH"
 
     fun testAliasInSelect() = doTest()
     fun testAliasInWhere() = doTest()

@@ -250,7 +250,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     private fun getIdentifierFromSetterMethod(psiMethod: PsiMethod): PsiIdentifier? {
         val codeBlock = psiMethod.childrenOfType<PsiCodeBlock>()
         if (codeBlock.isEmpty()) {
-            return null
+            return psiMethod.identifyingElement as? PsiIdentifier
         }
         val expressions = codeBlock[0].childrenOfType<PsiExpressionStatement>()
         val assignmentExpressions = expressions.asSequence()
@@ -270,7 +270,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     private fun getIdentifierFromGetterMethod(psiMethod: PsiMethod): PsiIdentifier? {
         val codeBlock = psiMethod.childrenOfType<PsiCodeBlock>()
         if (codeBlock.isEmpty()) {
-            return null
+            return psiMethod.identifyingElement as? PsiIdentifier
         }
         val expressions = codeBlock.flatMap { it.childrenOfType<PsiReturnStatement>() }
 

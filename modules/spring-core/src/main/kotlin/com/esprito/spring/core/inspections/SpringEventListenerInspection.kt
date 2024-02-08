@@ -5,21 +5,23 @@ import com.esprito.spring.core.SpringCoreClasses.EVENT_LISTENER
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isPublic
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInspection.*
-import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
 import com.siyeh.ig.fixes.ChangeModifierFix
+import org.jetbrains.uast.UMethod
 
-class SpringEventListenerInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringEventListenerInspection : AbstractBaseUastLocalInspectionTool() {
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        if (method.isMetaAnnotatedBy(EVENT_LISTENER)) {
+        val psiMethod = uMethod.javaPsi
+        if (psiMethod.isMetaAnnotatedBy(EVENT_LISTENER)) {
             var problems = emptyArray<ProblemDescriptor>()
-            val eventListenerAnnotation = method.getMetaAnnotation(EVENT_LISTENER) ?: return null
-            if (!method.isPublic) {
+            val eventListenerAnnotation = psiMethod.getMetaAnnotation(EVENT_LISTENER).toSourcePsi() ?: return null
+            if (!psiMethod.isPublic) {
                 problems +=
                     manager.createProblemDescriptor(
                         eventListenerAnnotation,
@@ -29,7 +31,7 @@ class SpringEventListenerInspection : AbstractBaseJavaLocalInspectionTool() {
                         true
                     )
             }
-            if (method.parameterList.parameters.size > 1) {
+            if (psiMethod.parameterList.parameters.size > 1) {
                 problems +=
                     manager.createProblemDescriptor(
                         eventListenerAnnotation,

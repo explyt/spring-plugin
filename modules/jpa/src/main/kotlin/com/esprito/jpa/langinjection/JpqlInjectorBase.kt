@@ -25,18 +25,14 @@ abstract class JpqlInjectorBase : MultiHostInjector {
         @Suppress("UnstableApiUsage")
         if (isConcatenation(uElement.uastParent)) return
 
-        val concatenationsFacade = if (uElement is UInjectionHost) {
-            UStringConcatenationsFacade.createFromUExpression(uElement, false) ?: return
-        } else {
-            UStringConcatenationsFacade.createFromUExpression(uElement, true) ?: return
-        }
+        val flattenExpression = uElement !is UInjectionHost
+        val concatenationsFacade =
+            UStringConcatenationsFacade.createFromUExpression(uElement, flattenExpression) ?: return
 
         registrar.startInjecting(JpqlLanguage.INSTANCE)
 
-        concatenationsFacade.uastOperands
-            .forEach {
-                val host = (it as? UInjectionHost)?.psiLanguageInjectionHost ?: return@forEach
-
+        concatenationsFacade.psiLanguageInjectionHosts
+            .forEach { host ->
                 registrar.addPlace(
                     null,
                     null,

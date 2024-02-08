@@ -5,7 +5,6 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isOrdinaryClass
-import com.esprito.util.EspritoPsiUtil.isStatic
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
@@ -26,8 +25,8 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
             if (element.isConstructor) {
                 return element.isMetaAnnotatedBy(IMPLICIT_CONSTRUCTOR_ANNOTATIONS)
             }
-            if (element.isStatic) {
-                return isDynamicPropertySource(element)
+            if (isDynamicPropertySource(element)) {
+                return true
             }
             return element.isMetaAnnotatedBy(IMPLICIT_METHOD_ANNOTATIONS)
         }
@@ -48,7 +47,9 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
     }
 
     private fun isDynamicPropertySource(element: PsiMethod): Boolean {
-        return element.isStatic && element.isAnnotatedBy("org.springframework.test.context.DynamicPropertySource")
+        // TODO: check for static
+        // if (element.isStatic) // doesn't work in Kotlin
+        return /*element.isStatic && */ element.isAnnotatedBy("org.springframework.test.context.DynamicPropertySource")
     }
 
     companion object {

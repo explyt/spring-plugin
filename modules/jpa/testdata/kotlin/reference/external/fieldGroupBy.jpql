@@ -1,0 +1,1 @@
+SELECT COUNT(d) FROM Department d GROUP BY d.name<caret>

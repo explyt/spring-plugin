@@ -8,16 +8,16 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
+import org.jetbrains.uast.ULiteralExpression
+import org.jetbrains.uast.toUElement
 
 class InAnnotationPackageAntReference(element: PsiElement, range: TextRange?) :
     PsiReferenceBase.Poly<PsiElement>(element, range, false) {
 
     override fun getVariants(): Array<Any> {
-        val text = (element as? PsiLiteralExpression)
-            ?.value
-            ?.toString()
-            ?.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
-            ?: return emptyArray()
+        if (element.toUElement() !is ULiteralExpression) return emptyArray()
+        val text = ElementManipulators.getValueText(element)
+            .substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
 
         val textWithoutLastWord = if (text.contains(".")) text.substringBeforeLast(".") + ".*" else "*"
         val prefilteredPackages = PsiPackagesSearcher.getFilteredPackages(element.project, element.resolveScope, textWithoutLastWord)

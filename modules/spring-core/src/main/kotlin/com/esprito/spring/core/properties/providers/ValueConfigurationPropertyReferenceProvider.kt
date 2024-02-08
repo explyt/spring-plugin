@@ -2,6 +2,8 @@ package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.properties.references.EspritoPropertyReference
+import com.esprito.spring.core.providers.ConfigurationPropertyLineMarkerProvider
+import com.esprito.spring.core.util.SpringCoreUtil.removeDummyIdentifier
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiReference
@@ -21,33 +23,36 @@ class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferencePr
         host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        val expression = uExpression as? ULiteralExpression ?: return EMPTY_ARRAY
-        val uAnnotation = expression.getParentOfType<UAnnotation>() ?: return EMPTY_ARRAY
+        if (uExpression !is ULiteralExpression && uExpression !is UPolyadicExpression) return EMPTY_ARRAY
+
+        val uAnnotation = uExpression.getParentOfType<UAnnotation>() ?: return EMPTY_ARRAY
         if (SpringCoreClasses.VALUE != uAnnotation.qualifiedName) {
             return EMPTY_ARRAY
         }
-        val valueText = uAnnotation.findDeclaredAttributeValue("value")?.evaluateString()
-            ?: return EMPTY_ARRAY
+
+        val valueText = uAnnotation.findDeclaredAttributeValue("value")
+            ?.evaluateString()
+            ?.removeDummyIdentifier() ?: return EMPTY_ARRAY
         val referenceProperties = extractReferenceProperty(valueText)
 
         if (referenceProperties.isEmpty() && valueText.startsWith("\${")) {
+            val startPosition =
+                if (uExpression.lang == ConfigurationPropertyLineMarkerProvider.KOTLIN_LANGUAGE.value) 4 else 3
             return arrayOf(
                 EspritoPropertyReference(
-                    host, "", TextRange.from(3, 0)
+                    host, "", TextRange.from(startPosition, 0)
                 )
             )
         }
 
         return referenceProperties
             .map { referenceProperty ->
-                val startOffset = host.text.indexOf(valueText)
-                val range = referenceProperty.textRange
+                val text = host.text.removeDummyIdentifier()
+                val startOffset = text.indexOf(referenceProperty.key)
 
                 EspritoPropertyReference(
-                    host, referenceProperty.key, TextRange(
-                        startOffset + range.startOffset,
-                        startOffset + range.endOffset
-                    )
+                    host, referenceProperty.key,
+                    TextRange.from(startOffset, referenceProperty.key.length)
                 )
             }.toTypedArray()
     }

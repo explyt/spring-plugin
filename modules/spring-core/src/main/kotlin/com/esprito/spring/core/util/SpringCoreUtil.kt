@@ -25,6 +25,7 @@ import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
 import com.esprito.util.runReadNonBlocking
+import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.json.psi.JsonFile
 import com.intellij.lang.properties.psi.PropertiesFile
@@ -364,4 +365,9 @@ object SpringCoreUtil {
         return JavaLibraryUtil.hasLibraryJar(module, "org.springframework.boot:spring-boot")
     }
 
+    fun String.removeDummyIdentifier(): String {
+        return this.replace(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED, "")
+            .replace("$,", "")
+            .replace(" ", "")
+    }
 }
