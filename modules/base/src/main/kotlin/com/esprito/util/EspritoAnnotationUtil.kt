@@ -4,16 +4,22 @@ import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.psi.*
-import com.intellij.psi.util.childrenOfType
 import org.apache.commons.lang3.StringUtils
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UDeclaration
-import org.jetbrains.uast.tryResolve
+import org.jetbrains.uast.*
 
 object EspritoAnnotationUtil {
 
-    fun getArrayAttributeAsPsiLiteral(annotation: PsiAnnotation, attributesName: Collection<String>): Collection<PsiLiteral> {
-        return attributesName.flatMap { annotation.getArrayAttributeAsPsiLiteral(it) }
+    fun getAttributeValues(uAnnotation: UAnnotation, attributeName: Collection<String>): List<ULiteralExpression> {
+        return attributeName.flatMap { getAttributeValues(uAnnotation, it) }
+    }
+
+    private fun getAttributeValues(uAnnotation: UAnnotation, attributeName: String): List<ULiteralExpression> {
+        val attributeValue = uAnnotation.findAttributeValue(attributeName) ?: return emptyList()
+        return when (attributeValue) {
+            is UCallExpression -> attributeValue.valueArguments.filterIsInstance<ULiteralExpression>()
+            is ULiteralExpression -> listOf(attributeValue)
+            else -> emptyList()
+        }
     }
 
     fun UDeclaration.getUMetaAnnotation(targetAnnotation: String): UAnnotation? {
@@ -62,19 +68,6 @@ object EspritoAnnotationUtil {
 
     fun PsiAnnotationMemberValue.getStringValue(): String? {
         return computeConstantExpression() as? String
-    }
-
-    private fun PsiAnnotation?.getArrayAttributeAsPsiLiteral(attributeName: String?): Collection<PsiLiteral> {
-        return when (val attributeValue = this?.findAttributeValue(attributeName)) {
-            is PsiArrayInitializerMemberValue -> getArrayAttributeAsPsiLiteral(attributeValue)
-            is PsiLiteral -> listOf(attributeValue)
-            is PsiReferenceExpression -> getReferenceValue(attributeValue)
-            else -> emptyList()
-        }
-    }
-
-    fun getArrayAttributeAsPsiLiteral(attributeValue: PsiAnnotationMemberValue): List<PsiLiteral> {
-        return (attributeValue as? PsiArrayInitializerMemberValue)?.initializers?.filterIsInstance<PsiLiteral>()?.toList() ?: emptyList()
     }
 
     fun getArrayValueAnnotations(
@@ -129,10 +122,6 @@ object EspritoAnnotationUtil {
         return result
     }
 
-    fun getArrayAttributeValue(annotation: PsiAnnotation, attributesName: Collection<String>): Collection<String> {
-        return attributesName.flatMap { getArrayAttributeValue(annotation, it) }
-    }
-
     fun getArrayAttributeValue(annotation: PsiAnnotation, attributeName: String?): Collection<String> {
         return when (val attributeValue = annotation.findAttributeValue(attributeName)) {
             is PsiArrayInitializerMemberValue -> getArrayAttributeValue(attributeValue)
@@ -144,10 +133,6 @@ object EspritoAnnotationUtil {
     fun getArrayAttributeValue(attributeValue: PsiAnnotationMemberValue): List<String> {
         return (attributeValue as? PsiArrayInitializerMemberValue)?.initializers
             ?.flatMap { processLiteralValue(it) } ?: emptyList()
-    }
-
-    fun getReferenceValue(attributeValue: PsiReferenceExpression): Collection<PsiLiteral> {
-       return attributeValue.reference?.resolve()?.childrenOfType() ?: emptyList()
     }
 
     fun PsiAnnotation.getStringValue(): String? {
@@ -186,7 +171,10 @@ object EspritoAnnotationUtil {
         }
         val valueMap1: MutableMap<String, PsiAnnotationMemberValue?> = HashMap(2)
         val valueMap2: MutableMap<String, PsiAnnotationMemberValue?> = HashMap(2)
-        if (!fillValueMap(a.parameterList, valueMap1) || !fillValueMap(b.parameterList, valueMap2) || valueMap1.size != valueMap2.size) {
+        if (!fillValueMap(a.parameterList, valueMap1)
+            || !fillValueMap(b.parameterList, valueMap2)
+            || valueMap1.size != valueMap2.size
+        ) {
             return false
         }
         for ((key, value) in valueMap1) {
@@ -197,12 +185,16 @@ object EspritoAnnotationUtil {
         return true
     }
 
-    private fun fillValueMap(parameterList: PsiAnnotationParameterList, valueMap: MutableMap<String, PsiAnnotationMemberValue?>): Boolean {
+    private fun fillValueMap(
+        parameterList: PsiAnnotationParameterList,
+        valueMap: MutableMap<String, PsiAnnotationMemberValue?>
+    ): Boolean {
         val attributes1 = parameterList.attributes
         for (attribute in attributes1) {
-            val reference = attribute.reference ?: return false
-            val target = reference.resolve() as? PsiAnnotationMethod ?: return false
-            val defaultValue = target.defaultValue
+            val defaultValue = (attribute.reference
+                ?.resolve() as? PsiAnnotationMethod
+                    )
+                ?.defaultValue
             val value = attribute.value
             if (equal(value, defaultValue)) {
                 continue
@@ -217,8 +209,7 @@ object EspritoAnnotationUtil {
         if (value1 == value2) {
             return true
         }
-        if (value1 is PsiReference && value2 is PsiReference
-            && value1.resolve() == value2.resolve()) {
+        if (value1 is PsiReference && value2 is PsiReference && value1.resolve() == value2.resolve()) {
             return true
         }
         if (value1 is PsiArrayInitializerMemberValue && value2 is PsiArrayInitializerMemberValue) {

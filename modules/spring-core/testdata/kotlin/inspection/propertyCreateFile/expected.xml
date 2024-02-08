@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>spring.factories</file>
+        <line>1</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/resources/META-INF/spring.factories"/>
+        <problem_class id="EnableAutoConfigureSpringFactory" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Property org.springframework.boot.autoconfigure.EnableAutoConfiguration is deprecated since spring-boot 2.7. The setting must be moved to the file: META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports.</description>
+        <highlighted_element>org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.example.Class1 \
+            com.example.Cl...
+        </highlighted_element>
+        <language>Properties</language>
+        <offset>0</offset>
+        <length>104</length>
+    </problem>
+
+</problems>

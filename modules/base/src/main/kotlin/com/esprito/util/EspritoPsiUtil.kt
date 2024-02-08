@@ -53,10 +53,10 @@ object EspritoPsiUtil {
         MetaAnnotationUtil.isMetaAnnotated(this, listOf(annotation))
 
     fun PsiAnnotation.isMetaAnnotatedByOrSelf(annotationNames: Collection<String>) =
-        qualifiedName in annotationNames || resolveAnnotationType()?.isMetaAnnotatedBy(annotationNames) ?: false
+        qualifiedName in annotationNames || resolveUAnnotationType()?.isMetaAnnotatedBy(annotationNames) ?: false
 
     fun PsiAnnotation.isMetaAnnotatedByOrSelf(annotation: String) =
-        qualifiedName == annotation || resolveAnnotationType()?.isMetaAnnotatedBy(annotation) ?: false
+        qualifiedName == annotation || resolveUAnnotationType()?.isMetaAnnotatedBy(annotation) ?: false
 
     fun PsiModifierListOwner.getMetaAnnotation(annotation: String): PsiAnnotation? =
         this.annotations.firstOrNull {
@@ -70,8 +70,15 @@ object EspritoPsiUtil {
 
     fun PsiModifierListOwner.getAnnotation(annotationNames: Collection<String>): PsiAnnotation? =
         this.annotations.firstOrNull {
-            it.qualifiedName in annotationNames || it.resolveAnnotationType()?.isAnnotatedBy(annotationNames) ?: false
+            it.qualifiedName in annotationNames || it.resolveUAnnotationType()?.isAnnotatedBy(annotationNames) ?: false
         }
+
+    fun PsiAnnotation.resolveUAnnotationType(): PsiClass? {
+        val element = nameReferenceElement
+        val declaration = element?.resolve().toUElement()?.javaPsi
+        if (declaration !is PsiClass || !declaration.isAnnotationType) return null
+        return declaration
+    }
 
     fun PsiMember.inClassAnnotatedBy(annotation: String, flags: Int = 0) =
         this.containingClass?.let {

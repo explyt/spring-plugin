@@ -7,41 +7,44 @@ import com.esprito.spring.core.SpringCoreClasses.PROFILE
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMember
-import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UMethod
 
 
-class SpringProfileWrongPlacementInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringProfileWrongPlacementInspection : AbstractBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
-        method: PsiMethod,
+        uMethod: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        if (method.isMetaAnnotatedBy(BEAN)) {
+        val psiMethod = uMethod.javaPsi
+        if (psiMethod.isMetaAnnotatedBy(BEAN)) {
             return null
         }
-        return check(method, manager, isOnTheFly)
+        return check(psiMethod, manager, isOnTheFly)
     }
 
     override fun checkClass(
-        aClass: PsiClass,
+        uClass: UClass,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
-        if (aClass.isAnnotationType) {
+        val psiClass = uClass.javaPsi
+        if (uClass.isAnnotationType) {
             return null
         }
-        if (aClass.isMetaAnnotatedBy(COMPONENT)) {
+        if (psiClass.isMetaAnnotatedBy(COMPONENT)) {
             return null
         }
-        return check(aClass, manager, isOnTheFly)
+        return check(psiClass, manager, isOnTheFly)
     }
 
     private fun check(
@@ -56,6 +59,7 @@ class SpringProfileWrongPlacementInspection : AbstractBaseJavaLocalInspectionToo
 
         return member.annotations.asSequence()
             .filter { annotationsHolder.contains(it) }
+            .mapNotNull { it.toSourcePsi() }
             .map { annotation ->
                 manager.createProblemDescriptor(
                     annotation,

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>test.jpql</file>
+        <line>5</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlFullyQualifiedConstructor" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Can not find class unknown.Entity</description>
+        <highlighted_element>unknown.Entity</highlighted_element>
+        <language>JPQL</language>
+        <offset>11</offset>
+        <length>14</length>
+    </problem>
+
+
+    <problem>
+        <file>test.jpql</file>
+        <line>7</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <problem_class id="JpqlFullyQualifiedConstructor" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Constructor name must be fully qualified</description>
+        <highlighted_element>ComOwner</highlighted_element>
+        <language>JPQL</language>
+        <offset>11</offset>
+        <length>8</length>
+    </problem>
+
+</problems>

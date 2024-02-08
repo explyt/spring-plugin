@@ -6,64 +6,47 @@ import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_WITH_PACKAGE_ANT_RE
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.util.PsiPackagesSearcher
 import com.esprito.util.EspritoAnnotationUtil
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
+import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.ElementManipulators
-import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.uast.UClass
 
-class SpringComponentScanInvalidPackageInspection : AbstractBaseJavaLocalInspectionTool() {
+class SpringComponentScanInvalidPackageInspection : AbstractBaseUastLocalInspectionTool() {
     override fun checkClass(
-        aClass: PsiClass,
+        aClass: UClass,
         manager: InspectionManager,
         isOnTheFly: Boolean
-    ): Array<ProblemDescriptor>? {
-        if (ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES.stream().noneMatch { aClass.hasAnnotation(it) }) return null
-
+    ): Array<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
 
-        aClass.annotations
+        aClass.uAnnotations
             .filter { annotation -> ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES.contains(annotation.qualifiedName) }
             .forEach { annotation ->
                 val attributesName =
                     when (annotation.qualifiedName) {
-                        COMPONENT_SCAN -> {
-                            setOf(
-                                "value",
-                                "basePackages",
-                            )
-                        }
-
-                        SpringCoreClasses.SPRING_BOOT_APPLICATION -> {
-                            setOf(
-                                "scanBasePackages"
-                            )
-                        }
-
-                        else -> {
-                            emptySet()
-                        }
+                        COMPONENT_SCAN -> setOf("value", "basePackages")
+                        SpringCoreClasses.SPRING_BOOT_APPLICATION -> setOf("scanBasePackages")
+                        else -> emptySet()
                     }
-                val attributesAsPsiLiteral =
-                    EspritoAnnotationUtil.getArrayAttributeAsPsiLiteral(annotation, attributesName)
+                val attributesAsPsiLiteral = EspritoAnnotationUtil.getAttributeValues(annotation, attributesName)
 
                 // if countOfPackagesFound = 0 than we create only 1 problem
                 var countOfPackagesFound = 0
                 val currentProblems = mutableListOf<ProblemDescriptor>()
-                attributesAsPsiLiteral.forEach { psiLiteral ->
-                    val text = psiLiteral.value.toString()
-                    val range = ElementManipulators.getValueTextRange(psiLiteral)
+                attributesAsPsiLiteral.mapNotNull { it.sourcePsi }.forEach { sourcePsi ->
+                    val text = ElementManipulators.getValueText(sourcePsi)
+                    val range = ElementManipulators.getValueTextRange(sourcePsi)
                     val words = text.split(".")
 
                     var path = ""
                     for (word in words) {
                         path += word
 
-                        val packages =
-                            PsiPackagesSearcher.getFilteredPackages(
+                        val packages = PsiPackagesSearcher.getFilteredPackages(
                                 manager.project,
                                 GlobalSearchScope.allScope(manager.project),
                                 path
@@ -82,7 +65,7 @@ class SpringComponentScanInvalidPackageInspection : AbstractBaseJavaLocalInspect
                             }
 
                             val problem = manager.createProblemDescriptor(
-                                psiLiteral,
+                                sourcePsi,
                                 curTextRange,
                                 SpringCoreBundle.message("esprito.spring.inspection.method.componentScan.notFound"),
                                 ProblemHighlightType.ERROR,
@@ -97,8 +80,8 @@ class SpringComponentScanInvalidPackageInspection : AbstractBaseJavaLocalInspect
 
                     if (countOfPackagesFound == 0) {
                         val problem = manager.createProblemDescriptor(
-                            psiLiteral,
-                            TextRange(0, range.endOffset + 1),
+                            sourcePsi,
+                            range,
                             SpringCoreBundle.message("esprito.spring.inspection.method.componentScan.notFound"),
                             ProblemHighlightType.ERROR,
                             true

@@ -55,11 +55,9 @@ class ProfilesToProfileAnnotationInjector : MultiHostInjector {
         @Suppress("UnstableApiUsage")
         if (isConcatenation(uElement.uastParent)) return
 
-        val concatenationsFacade = if (uElement is UInjectionHost) {
-            UStringConcatenationsFacade.createFromUExpression(uElement, false) ?: return
-        } else {
-            UStringConcatenationsFacade.createFromUExpression(uElement, true) ?: return
-        }
+        val flattenExpression = uElement !is UInjectionHost
+        val concatenationsFacade =
+            UStringConcatenationsFacade.createFromUExpression(uElement, flattenExpression) ?: return
 
         registrar.startInjecting(ProfilesLanguage.INSTANCE)
 

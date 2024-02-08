@@ -11,11 +11,11 @@ import com.esprito.spring.core.SpringProperties.PUBLISH_EVENT_METHOD
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isPublic
 import com.esprito.util.EspritoPsiUtil.isStatic
+import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -135,11 +135,8 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getPsiClassesByAnnotation(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, EVENT_LISTENER)
         val annotationValues = metaHolder.getAnnotationMemberValues(psiMethod, setOf("value", "classes"))
-        return annotationValues.asSequence()
-            .map { it.findChildrenOfType<PsiJavaCodeReferenceElement>() }
-            .filter { it.isNotEmpty() }.map { it[0].resolve() }
-            .filter { it is PsiClass }.map { it as PsiClass }
-            .toSet()
+        return annotationValues
+            .mapNotNullTo(mutableSetOf()) { (it.toUElement() as? UClassLiteralExpression)?.type?.resolvedPsiClass }
     }
 
     private fun getPublishMethods(module: Module): List<PsiMethod> {
