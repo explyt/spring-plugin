@@ -60,8 +60,11 @@
 #-printmapping build/mapping.txt
 #-printmapping out.map
 
--dontwarn training.**
+-dontwarn com.intellij.ui.mac.**
 -dontwarn com.jetbrains.performancePlugin.**
--dontwarn org.junit.**
 -dontwarn com.jetbrains.rd.**
+-dontwarn io.kinference.core.operators.ml.trees.KICoreTreeEnsemble
+-dontwarn org.jetbrains.kotlin.**
+-dontwarn org.junit.**
 -dontwarn reactor.blockhound.**
+-dontwarn training.**
