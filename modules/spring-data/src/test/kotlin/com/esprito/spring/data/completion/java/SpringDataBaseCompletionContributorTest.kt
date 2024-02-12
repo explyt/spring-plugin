@@ -1,4 +1,4 @@
-package com.esprito.spring.data.completion
+package com.esprito.spring.data.completion.java
 
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
@@ -10,19 +10,27 @@ class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
         TestLibrary.springBootAutoConfigure_3_1_1, TestLibrary.springContext_6_0_7, TestLibrary.springDataJpa_3_1_0
     )
 
+    override fun setUp() {
+        super.setUp()
+        myFixture.addClass(
+            """
+            public class Entity {
+            		public Integer id;
+            		public String name;
+                    public String city;
+            }
+        """.trimIndent()
+        )
+    }
+    
     fun testAfterType() {
         myFixture.configureByText(
             "TestRepository.java",
             """
             import org.springframework.data.repository.Repository;
 
-            public interface TestRepository extends Repository<TestRepository.Entity, Integer> {
+            public interface TestRepository extends Repository<Entity, Integer> {
             	Entity <caret>
-
-            	public static class Entity {
-            		public Integer id;
-            		public String name;
-            	}
             """.trimIndent()
         )
 
@@ -44,13 +52,8 @@ class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
             """
             import org.springframework.data.repository.Repository;
 
-            public interface TestRepository extends Repository<TestRepository.Entity, Integer> {
-            	Entity find<caret>
-
-            	public static class Entity {
-            		public Integer id;
-            		public String name;
-            	}
+            public interface TestRepository extends Repository<Entity, Integer> {
+            	Entity find<caret>            
             """.trimIndent()
         )
 
@@ -70,13 +73,8 @@ class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
             """
             import org.springframework.data.repository.Repository;
 
-            public interface TestRepository extends Repository<TestRepository.Entity, Integer> {
-            	int <caret>
-
-            	public static class Entity {
-            		public Integer id;
-            		public String name;
-            	}
+            public interface TestRepository extends Repository<Entity, Integer> {
+            	int <caret>            
             """.trimIndent()
         )
 
@@ -95,13 +93,8 @@ class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
             """
             import org.springframework.data.repository.Repository;
 
-            public interface TestRepository extends Repository<TestRepository.Entity, Integer> {
-            	Boolean <caret>
-
-            	public static class Entity {
-            		public Integer id;
-            		public String name;
-            	}
+            public interface TestRepository extends Repository<Entity, Integer> {
+            	Boolean <caret>            
             """.trimIndent()
         )
 
@@ -120,13 +113,8 @@ class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
             """
             import org.springframework.data.repository.Repository;
 
-            public interface TestRepository extends Repository<TestRepository.Entity, Integer> {
-            	void <caret>
-
-            	public static class Entity {
-            		public Integer id;
-            		public String name;
-            	}
+            public interface TestRepository extends Repository<Entity, Integer> {
+            	void <caret>          
             """.trimIndent()
         )
 
@@ -145,13 +133,8 @@ class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
             """
             import org.springframework.data.repository.Repository;
 
-            public interface TestRepository extends Repository<TestRepository.Entity, Integer> {
-            	Entity findBy<caret>
-
-            	public static class Entity {
-            		public Integer id;
-            		public String name;
-            	}
+            public interface TestRepository extends Repository<Entity, Integer> {
+            	Entity findBy<caret>            
             """.trimIndent()
         )
 
@@ -167,13 +150,8 @@ class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
             """
             import org.springframework.data.repository.Repository;
 
-            public interface TestRepository extends Repository<TestRepository.Entity, Integer> {
-            	Entity findByName<caret>
-
-            	public static class Entity {
-            		public Integer id;
-            		public String name;
-            	}
+            public interface TestRepository extends Repository<Entity, Integer> {
+            	Entity findByName<caret>            
             """.trimIndent()
         )
 

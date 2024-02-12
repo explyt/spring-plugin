@@ -3,11 +3,13 @@ package com.esprito.spring.data.inspection
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
+import com.esprito.util.TypeQuickFixUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.psi.PsiTypes
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getParentOfType
@@ -37,14 +39,16 @@ class SpringDataReturnTypeInspection : AbstractBaseUastLocalInspectionTool() {
             if (!SpringDataRepositoryUtil.isNumberType(returnType)) {
                 holder.registerProblem(
                     returnTypeReference,
-                    message("esprito.spring.data.inspection.return.type.count")
+                    message("esprito.spring.data.inspection.return.type.count"),
+                    *TypeQuickFixUtil.getQuickFixesReturnType(method, PsiTypes.longType())
                 )
             }
         } else if (subject.isExistsProjection) {
             if (!SpringDataRepositoryUtil.isBooleanType(returnType)) {
                 holder.registerProblem(
                     returnTypeReference,
-                    message("esprito.spring.data.inspection.return.type.boolean")
+                    message("esprito.spring.data.inspection.return.type.boolean"),
+                    *TypeQuickFixUtil.getQuickFixesReturnType(method, PsiTypes.booleanType())
                 )
             }
         } else if (subject.isDelete) {
@@ -53,7 +57,8 @@ class SpringDataReturnTypeInspection : AbstractBaseUastLocalInspectionTool() {
             ) {
                 holder.registerProblem(
                     returnTypeReference,
-                    message("esprito.spring.data.inspection.return.type.remove")
+                    message("esprito.spring.data.inspection.return.type.remove"),
+                    *TypeQuickFixUtil.getQuickFixesReturnType(method, PsiTypes.voidType(), PsiTypes.longType())
                 )
             }
         }
