@@ -1,16 +1,17 @@
-package com.esprito.spring.data.inspection
+package com.esprito.spring.data.inspection.java
 
+import com.esprito.spring.data.inspection.SpringDataMethodNameInspection
 import com.esprito.spring.test.EspritoInspectionJavaTestCase
 import com.esprito.spring.test.TestLibrary
 
-class SpringDataReturnTypeInspectionTest : EspritoInspectionJavaTestCase() {
+class SpringDataMethodNameInspectionTest : EspritoInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1, TestLibrary.springContext_6_0_7, TestLibrary.springDataJpa_3_1_0
     )
 
     override fun setUp() {
         super.setUp()
-        myFixture.enableInspections(SpringDataReturnTypeInspection::class.java)
+        myFixture.enableInspections(SpringDataMethodNameInspection::class.java)
         myFixture.addClass(
             """
             public class Entity {
@@ -34,72 +35,60 @@ class SpringDataReturnTypeInspectionTest : EspritoInspectionJavaTestCase() {
         myFixture.testHighlighting("TestRepository.java")
     }
 
-    fun testCorrectExistsMethod() {
+    fun testUnknownPropertyInMethod() {
         myFixture.configureByText(
             "TestRepository.java",
             """            
             public interface TestRepository extends org.springframework.data.repository.Repository<Entity, Integer> {
-            	boolean existsByName();            	
+            	Entity findBy<warning descr="Unknown property 'name1'">Name1</warning>();            	
             }
             """.trimIndent()
         )
         myFixture.testHighlighting("TestRepository.java")
     }
 
-    fun testCorrectCountMethod() {
+    fun testMissingPropertyInMethod() {
         myFixture.configureByText(
             "TestRepository.java",
             """            
             public interface TestRepository extends org.springframework.data.repository.Repository<Entity, Integer> {
-            	int countByName();            	
+            	Entity <warning descr="Empty property 'findByNameOr<MISSING_PROPERTY>And'"><warning descr="Empty property 'findByNameOrAnd<MISSING_PROPERTY>'">findByNameOrAnd</warning></warning>();            	
             }
             """.trimIndent()
         )
         myFixture.testHighlighting("TestRepository.java")
     }
 
-    fun testCorrectDeleteMethod() {
+    fun testCorrectOrderBy() {
         myFixture.configureByText(
             "TestRepository.java",
             """            
             public interface TestRepository extends org.springframework.data.repository.Repository<Entity, Integer> {
-            	void deleteByName();            	
+            	Entity findByNameAndCityOrderById();            	
             }
             """.trimIndent()
         )
         myFixture.testHighlighting("TestRepository.java")
     }
 
-    fun testInvalidExistsMethod() {
+    fun testUnknownPropertyOrderBy() {
         myFixture.configureByText(
             "TestRepository.java",
             """            
             public interface TestRepository extends org.springframework.data.repository.Repository<Entity, Integer> {
-            	<warning descr="Return type must be a boolean">void</warning> existsByName();            	
+            	Entity findByNameAndCityOrderBy<warning descr="Unknown property 'prop'">Prop</warning>();            	
             }
             """.trimIndent()
         )
         myFixture.testHighlighting("TestRepository.java")
     }
 
-    fun testInvalidCountMethod() {
+    fun testMissingPropertyOrderBy() {
         myFixture.configureByText(
             "TestRepository.java",
             """            
             public interface TestRepository extends org.springframework.data.repository.Repository<Entity, Integer> {
-            	<warning descr="Return type must be a number">void</warning> countByName();            	
-            }
-            """.trimIndent()
-        )
-        myFixture.testHighlighting("TestRepository.java")
-    }
-
-    fun testInvalidDeleteMethod() {
-        myFixture.configureByText(
-            "TestRepository.java",
-            """            
-            public interface TestRepository extends org.springframework.data.repository.Repository<Entity, Integer> {
-            	<warning descr="Return type must be a number or void">Entity</warning> deleteByName();            	
+            	Entity <warning descr="Empty property 'findByNameAndCityOrderBy<MISSING_PROPERTY>Asc'">findByNameAndCityOrderByAsc</warning>();            	
             }
             """.trimIndent()
         )
