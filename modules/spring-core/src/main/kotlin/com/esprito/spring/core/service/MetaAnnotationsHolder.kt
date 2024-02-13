@@ -14,7 +14,7 @@ import com.intellij.psi.util.parentOfType
 import org.jetbrains.uast.toUElement
 
 class MetaAnnotationsHolder private constructor(
-    private val parentFqn: String,
+    private val rootFqn: String,
     private val annotationByFqn: Map<String, AnnotationInfo>
 ) {
 
@@ -60,20 +60,28 @@ class MetaAnnotationsHolder private constructor(
         targetMethods: Set<String>
     ): Set<PsiAnnotationMemberValue> {
         val annotationMemberValues = mutableListOf<PsiAnnotationMemberValue>()
+        val annotationsToProceed = mutableListOf(psiAnnotation)
 
-        val annotationFqn = psiAnnotation.qualifiedName ?: return setOf()
-        if (!this.contains(psiAnnotation)) return setOf()
+        while (annotationMemberValues.isEmpty() && annotationsToProceed.isNotEmpty()) {
+            val currentPsiAnnotation = annotationsToProceed.removeFirst()
+            val annotationFqn = currentPsiAnnotation.qualifiedName ?: return setOf()
+            val annotationInfo = annotationByFqn[annotationFqn] ?: continue
 
-        annotationMemberValues += psiAnnotation.attributes.asSequence()
-            .filter {
-                isAttributeRelatedWith(
-                    annotationFqn,
-                    it.attributeName,
-                    parentFqn,
-                    targetMethods
-                )
-            }
-            .flatMap { psiAnnotation.getMemberValues(it.attributeName) }
+            annotationsToProceed.addAll(annotationInfo.annotationType.annotations)
+
+            annotationMemberValues += currentPsiAnnotation.attributes.asSequence()
+                .filter {
+                    isAttributeRelatedWith(
+                        annotationFqn,
+                        it.attributeName,
+                        rootFqn,
+                        targetMethods
+                    )
+                }
+                .flatMap { currentPsiAnnotation.getMemberValues(it.attributeName) }
+
+        }
+
         return annotationMemberValues.toSet()
     }
 
@@ -89,7 +97,7 @@ class MetaAnnotationsHolder private constructor(
 
             while (annotationsToProceed.isNotEmpty()) {
                 val annotationToProceed = annotationsToProceed.removeFirst()
-                val annotation = annotationTypes.remove(annotationToProceed) ?: continue
+                val annotationType = annotationTypes.remove(annotationToProceed) ?: continue
 
                 annotationsToProceed += annotationTypes.values.asSequence()
                     .filter { it.isValid }
@@ -98,7 +106,8 @@ class MetaAnnotationsHolder private constructor(
 
                 val annotationInfo = AnnotationInfo(
                     annotationToProceed,
-                    annotation.methods
+                    annotationType,
+                    annotationType.methods
                         .map { AttributeInfo.of(it, annotationToProceed) }
                 )
 
@@ -110,7 +119,7 @@ class MetaAnnotationsHolder private constructor(
     }
 
 
-    class AnnotationInfo(val qualifiedName: String, attributes: List<AttributeInfo>) {
+    class AnnotationInfo(val qualifiedName: String, val annotationType: PsiClass, attributes: List<AttributeInfo>) {
         val attributeByName = attributes.associateBy { it.name }
     }
 

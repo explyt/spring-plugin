@@ -32,6 +32,9 @@
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
 
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
+
     </extensions>
 
     <actions>

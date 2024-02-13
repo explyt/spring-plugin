@@ -21,8 +21,6 @@ class UastConfigurationPropertyReferenceContributor : PsiReferenceContributor() 
             ConditionalOnConfigurationPropertyReferenceProvider()
         )
 
-        injectionHostUExpression(false)
-
         val propertyResolverClass = PsiJavaPatterns.psiClass()
             .inheritorOf(false, "org.springframework.core.env.PropertyResolver")
 
