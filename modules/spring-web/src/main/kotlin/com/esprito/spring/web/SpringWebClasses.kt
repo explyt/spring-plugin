@@ -7,8 +7,11 @@ object SpringWebClasses {
     const val WEB_INITIALIZER = "org.springframework.web.WebApplicationInitializer"
 
 
+    const val CONTROLLER = "org.springframework.stereotype.Controller"
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
+
+    const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
 
     const val JAVAX_SERVLET_CONTEXT: String = "javax.servlet.ServletContext"
     const val JAKARTA_SERVLET_CONTEXT: String = "jakarta.servlet.ServletContext"

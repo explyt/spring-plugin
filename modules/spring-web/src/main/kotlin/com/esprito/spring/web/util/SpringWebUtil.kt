@@ -87,7 +87,19 @@ object SpringWebUtil {
 
     }
 
+    fun simplifyUrl(urlPath: String): String {
+        var result = if (urlPath.startsWith("/")) urlPath else "/$urlPath"
 
+        result = result.replace(MultipleSlashes, "/")
+
+        if (result.endsWith("/")) {
+            result = result.substring(0, result.length - 1)
+        }
+        return result.split('?').first()
+    }
+
+
+    private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
 
     data class PathVariableInfo(
