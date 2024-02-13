@@ -36,6 +36,10 @@ object SpringCoreClasses {
     const val CACHEPUT = "org.springframework.cache.annotation.CachePut"
     const val CACHECONFIG= "org.springframework.cache.annotation.CacheConfig"
 
+    const val CACHE_RESOLVER = "org.springframework.cache.interceptor.CacheResolver"
+    const val CACHE_KEY_GENERATOR = "org.springframework.cache.interceptor.KeyGenerator"
+    const val CACHE_MANAGER = "org.springframework.cache.CacheManager"
+
     const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
     const val CONDITIONAL_ON_MISSING_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean"
     const val CONDITIONAL_ON_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnClass"
@@ -75,6 +79,7 @@ object SpringCoreClasses {
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
     val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN, SPRING_BOOT_APPLICATION)
+    val ANNOTATIONS_CACHE = setOf(CACHEABLE, CACHEPUT, CACHEEVICT, CACHECONFIG)
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns
 }
