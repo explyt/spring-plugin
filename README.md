@@ -14,7 +14,7 @@ Esprito Spring Tools is designed to significantly increase your productivity and
 
 This plugin is available for free for non-commercial use (see our [LICENSE](https://github.com/esprito-plugin/plugin/blob/main/LICENSE.md))
 
-Currently in beta, our plugin is accessible through a custom repository mechanism for IntelliJ IDEA plugins. (see [Installation Guide](https://github.com/esprito-plugin/plugin/blob/main/Installation%20Guide.md))
+Currently in beta, our plugin is accessible through a standart plugin-marketplace for IntelliJ IDEA plugins. (see [Installation Guide](https://github.com/esprito-plugin/plugin/blob/main/Installation%20Guide.md))
 
 For questions, use one of our telegram channels:
 * [ENGLISH](https://t.me/+70C48cdnvyczNTAy)
