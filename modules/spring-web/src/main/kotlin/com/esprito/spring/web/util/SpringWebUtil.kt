@@ -109,4 +109,6 @@ object SpringWebUtil {
         val isMap: Boolean
     )
 
+    val REQUEST_METHODS = setOf("get", "head", "post", "put", "patch", "delete", "options", "trace")
+
 }

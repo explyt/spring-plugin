@@ -10,7 +10,7 @@ import com.intellij.psi.*
 class EspritoControllerMethodReference(
     element: PsiElement,
     private val urlPath: String,
-    private val requestMethod: String,
+    private val requestMethod: String?,
     rangeInElement: TextRange
 ) : PsiReferenceBase<PsiElement>(element, rangeInElement), PsiPolyVariantReference, HighlightedReference {
     private val webSearchService = SpringWebSearchService.getInstance(element.project)
@@ -25,7 +25,7 @@ class EspritoControllerMethodReference(
         val currentModule = module.value ?: return emptyArray()
 
         return webSearchService.getEndpointElements(urlPath, currentModule).asSequence()
-            .filter { it.requestMethods.contains(requestMethod) }
+            .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) { PsiElementResolveResult(it.psiElement) }
             .toTypedArray()
     }
@@ -35,12 +35,15 @@ class EspritoControllerMethodReference(
 
         return webSearchService.searchEndpoints(currentModule).asSequence()
             .filter { it.path.isNotEmpty() }
-            .filter { it.requestMethods.contains(requestMethod) }
+            .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) {
                 LookupElementBuilder.create(it, it.path)
                     .withRenderer(EndpointRenderer())
             }
             .toTypedArray()
     }
+
+    private fun isRequestedMethod(it: SpringWebSearchService.EndpointElement) =
+        requestMethod == null || it.requestMethods.contains(requestMethod)
 
 }

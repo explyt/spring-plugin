@@ -46,7 +46,8 @@
 -keep class com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
 # spring-data
 -keep class com.esprito.jpa.ql.reference.InputParameterReferenceResolver
-
+#spring-web
+-keep class com.esprito.spring.web.references.contributors.SpringOpenApiUrlEndpointReferenceContributor
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
