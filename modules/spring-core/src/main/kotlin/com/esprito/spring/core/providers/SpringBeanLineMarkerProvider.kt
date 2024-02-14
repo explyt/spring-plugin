@@ -338,7 +338,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun getElementPresentationName(it: UMethod, file: VirtualFile?): String {
         val className = it.javaPsi.containingClass?.name ?: file?.name
-        return if (className == null) it.name else (className + ":" + it.name)
+        return if (className == null) it.name else (className + "#" + it.name)
     }
 
     private fun presentationError(element: PsiElement) {
@@ -360,7 +360,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
         return factory.getModuleTextWithIcon(value)
     }
-    
+
     companion object {
         private val CONTAINER_PATTERN = Pattern.compile("(\\(in |\\()?([^)]*)(\\))?")
     }
