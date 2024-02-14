@@ -35,6 +35,9 @@
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
 
+        <psi.referenceContributor language="yaml"
+                                  implementation="com.esprito.spring.web.references.contributors.SpringOpenApiUrlEndpointReferenceContributor"/>
+
     </extensions>
 
     <actions>
