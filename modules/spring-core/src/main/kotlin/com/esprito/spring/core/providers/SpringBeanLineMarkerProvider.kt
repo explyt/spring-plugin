@@ -18,16 +18,31 @@ import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
+import com.intellij.codeInsight.navigation.LOG
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
+import com.intellij.codeInsight.navigation.fileStatusAttributes
+import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
+import com.intellij.diagnostic.PluginException
+import com.intellij.ide.util.ModuleRendererFactory
+import com.intellij.ide.util.PlatformModuleRendererFactory
 import com.intellij.lang.properties.IProperty
+import com.intellij.navigation.ItemPresentation
+import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.Iconable
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
+import com.intellij.platform.backend.presentation.TargetPresentation
+import com.intellij.pom.PomTargetPsiElement
 import com.intellij.psi.*
 import com.intellij.psi.util.parentOfType
+import com.intellij.util.TextWithIcon
+import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.uast.*
-
+import java.util.regex.Pattern
 
 class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     override fun collectNavigationMarkers(
@@ -43,6 +58,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.autowired.candidate"))
+                .setTargetRenderer { getTargetRender() }
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isFieldOrAutowiredParameter()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
@@ -113,7 +129,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private fun isLombokAnnotatedClassFieldExpression(psiField: PsiField): Boolean {
             return psiField.containingClass?.let {
                 it.isMetaAnnotatedBy(LombokClasses.ALL_ARGS_CONSTRUCTOR)
-                    || it.isMetaAnnotatedBy(LombokClasses.REQUIRED_ARGS_CONSTRUCTOR) && psiField.isFinal
+                        || it.isMetaAnnotatedBy(LombokClasses.REQUIRED_ARGS_CONSTRUCTOR) && psiField.isFinal
             } == true
         }
 
@@ -163,7 +179,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     return false
                 }
                 return (isAutowiredFieldExpression(psiField) || isLombokAnnotatedClassFieldExpression(psiField))
-                    && !dependsOnIncorrectBean(psiField.containingClass)
+                        && !dependsOnIncorrectBean(psiField.containingClass)
             }
             if (uParent is UParameter) {
                 val uMethod = uParent.uastParent ?: return false
@@ -177,8 +193,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     return (uMethod.isConstructor
                             || isAutowiredMethodExpression(psiMethod)
                             || isBeanMethodExpression(psiMethod)
-                        )
-                        && !dependsOnIncorrectBean(uMethod.getContainingUClass()?.javaPsi)
+                            ) && !dependsOnIncorrectBean(uMethod.getContainingUClass()?.javaPsi)
                 }
             }
             return false
@@ -284,4 +299,69 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
     }
 
+    /**
+     * code from /com/intellij/codeInsight/navigation/util.kt:targetPresentation
+     */
+    private fun getTargetRender(): PsiTargetPresentationRenderer<PsiElement> {
+        return object : PsiTargetPresentationRenderer<PsiElement>() {
+
+            override fun getPresentation(element: PsiElement): TargetPresentation {
+                val project = element.project
+                val file = element.containingFile?.virtualFile
+                val itemPresentation = (element as? NavigationItem)?.presentation
+                val presentableText: String = itemPresentation?.presentableText
+                    ?: (element as? PsiNamedElement)?.name
+                    ?: element.text
+                    ?: run {
+                        presentationError(element)
+                        element.toString()
+                    }
+
+                val moduleTextWithIcon = getModuleTextWithIcon(element)
+                val containerText = itemPresentation?.getContainerText() ?: getOptionContainerText(file, element)
+                return TargetPresentation
+                    .builder(presentableText)
+                    .backgroundColor(file?.let { VfsPresentationUtil.getFileBackgroundColor(project, file) })
+                    .icon(element.getIcon(Iconable.ICON_FLAG_VISIBILITY or Iconable.ICON_FLAG_READ_STATUS))
+                    .containerText(containerText, file?.let { fileStatusAttributes(project, file) })
+                    .locationText(moduleTextWithIcon?.text, moduleTextWithIcon?.icon)
+                    .presentation()
+            }
+        }
+    }
+
+    private fun getOptionContainerText(file: VirtualFile?, element: PsiElement): String {
+        val methodName = element.toUElement()?.getParentOfType<UMethod>()
+            ?.let { getElementPresentationName(it, file) }
+        return methodName ?: (file?.name + ":" + element.getLineNumber())
+    }
+
+    private fun getElementPresentationName(it: UMethod, file: VirtualFile?): String {
+        val className = it.javaPsi.containingClass?.name ?: file?.name
+        return if (className == null) it.name else (className + ":" + it.name)
+    }
+
+    private fun presentationError(element: PsiElement) {
+        val instance = (element as? PomTargetPsiElement)?.target ?: element
+        val clazz = instance.javaClass
+        LOG.error(PluginException.createByClass("${clazz.name} cannot be presented", null, clazz))
+    }
+
+    private fun ItemPresentation.getContainerText(): String? {
+        val locationString = locationString ?: return null
+        val matcher = CONTAINER_PATTERN.matcher(locationString)
+        return if (matcher.matches()) matcher.group(2) else locationString
+    }
+
+    fun getModuleTextWithIcon(value: Any?): TextWithIcon? {
+        val factory = ModuleRendererFactory.findInstance(value)
+        if (factory is PlatformModuleRendererFactory) {
+            return null
+        }
+        return factory.getModuleTextWithIcon(value)
+    }
+    
+    companion object {
+        private val CONTAINER_PATTERN = Pattern.compile("(\\(in |\\()?([^)]*)(\\))?")
+    }
 }
