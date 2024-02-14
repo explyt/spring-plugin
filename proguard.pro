@@ -44,6 +44,8 @@
 -keep class com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader
 -keep class com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
 -keep class com.esprito.spring.core.profile.ProfileSearcher
+#spring-web
+-keep class com.esprito.spring.web.references.contributors.SpringOpenApiUrlEndpointReferenceContributor
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
