@@ -1,13 +1,14 @@
-package com.esprito.spring.web.completion.java
+package com.esprito.spring.web.completion
 
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.web.references.EspritoControllerMethodReference
 import com.intellij.psi.PsiMember
 import com.intellij.psi.ResolveResult
+import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import junit.framework.TestCase
 
-class SpringOpenApiUrlEndpointReferenceContributorTest : EspritoJavaLightTestCase() {
+class SpringOpenApiJsonUrlEndpointReferenceContributorTest : EspritoJavaLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/openApi"
 
     override val libraries: Array<TestLibrary>
@@ -20,18 +21,23 @@ class SpringOpenApiUrlEndpointReferenceContributorTest : EspritoJavaLightTestCas
     fun testGet() {
         myFixture.copyFileToProject("ProductController.java")
         myFixture.configureByText(
-            "open-api.yaml", """
-                openapi: "3.0.3"
-                info: 
-                  title: "Just test"
-                  version: "1.0.0"
-                paths:   
-                  /product/{product-id}:
-                    ge<caret>t:
+            "open-api.json", """
+                {
+                  "openapi": "3.0.3",
+                  "info": {
+                    "title": "Just test",
+                    "version": "1.0.0"
+                  },
+                  "paths": {
+                    "/product/{product-id}": {
+                      "ge<caret>t": {}
+                    }
+                  }
+                }
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = getControllerMethodReference()
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -43,19 +49,24 @@ class SpringOpenApiUrlEndpointReferenceContributorTest : EspritoJavaLightTestCas
     fun testNoPatch() {
         myFixture.copyFileToProject("ProductController.java")
         myFixture.configureByText(
-            "open-api.yaml", """
-                openapi: "3.0.3"
-                info: 
-                  title: "Just test"
-                  version: "1.0.0"
-                paths:   
-                  /product/{product-id}:
-                    pat<caret>ch:
+            "open-api.json", """
+                {
+                  "openapi": "3.0.3",
+                  "info": {
+                    "title": "Just test",
+                    "version": "1.0.0"
+                  },
+                  "paths": {
+                    "/product/{product-id}": {
+                      "pat<caret>ch": {}
+                    }
+                  }
+                }
         """.trimIndent()
 
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = getControllerMethodReference()
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -64,18 +75,24 @@ class SpringOpenApiUrlEndpointReferenceContributorTest : EspritoJavaLightTestCas
     fun testUrl() {
         myFixture.copyFileToProject("ProductController.java")
         myFixture.configureByText(
-            "open-api.yaml", """
-                openapi: "3.0.3"
-                info: 
-                  title: "Just test"
-                  version: "1.0.0"
-                paths:   
-                  /prod<caret>uct:
+            "open-api.json", """
+                {
+                  "openapi": "3.0.3",
+                  "info": {
+                    "title": "Just test",
+                    "version": "1.0.0"
+                  },
+                  "paths": {
+                    "/prod<caret>uct": {
+                    }
+                  }
+                }
+
         """.trimIndent()
 
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = getControllerMethodReference()
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(2, multiResolve.size)
@@ -83,6 +100,13 @@ class SpringOpenApiUrlEndpointReferenceContributorTest : EspritoJavaLightTestCas
         TestCase.assertEquals(2, resolvedTexts.size)
         assertContainsElements(resolvedTexts, "ProductController#getProducts", "ProductController#save")
     }
+
+    private fun getControllerMethodReference() =
+        (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? EspritoControllerMethodReference
+            }?.firstOrNull()
 
     private fun getResolvedText(resolveResult: ResolveResult): String? {
         val resolvedElement = resolveResult.element as? PsiMember ?: return null
