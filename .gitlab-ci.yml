@@ -11,7 +11,7 @@ stages:
 test:
   stage: test
   script:
-    - ./gradlew :spring-bootstrap:test -Dfile.encoding=UTF8
+    - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:test -Dfile.encoding=UTF8
   artifacts:
     reports:
       junit: modules/**/build/test-results/test/TEST-*.xml
@@ -23,10 +23,9 @@ release:
     - /^release\/.*$/
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
-    - export | sort
-    - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
-    - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:runPluginVerifier
-    - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:publishPlugin -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER
+    - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
+    - ./gradlew :spring-bootstrap:runPluginVerifier
+    - ./gradlew :spring-bootstrap:publishPlugin -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER
   artifacts:
     paths:
       - modules/spring-bootstrap/build/reports/pluginVerifier
