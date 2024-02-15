@@ -16,7 +16,6 @@
 
 
 -keep class com.esprito.jpa.ql.JpqlFileType$Companion { *; }
--keep class com.esprito.sql.ql.SqlFileType$Companion { *; }
 -keep class com.esprito.spring.core.language.profiles.ProfilesFileType$Companion { *; }
 -keepclassmembers class * { public static ** INSTANCE; }
 
@@ -38,12 +37,15 @@
 -keep,allowobfuscation class com.esprito.** { *; }
 
 # here is list of extensionPoint classes, which we have to keep
-#jpa
+# jpa
 -keep class com.esprito.jpa.ql.reference.InputParameterReferenceResolver
-#spring-core
+# spring-core
 -keep class com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader
 -keep class com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
 -keep class com.esprito.spring.core.profile.ProfileSearcher
+-keep class com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
+# spring-data
+-keep class com.esprito.jpa.ql.reference.InputParameterReferenceResolver
 #spring-web
 -keep class com.esprito.spring.web.references.contributors.SpringOpenApiUrlEndpointReferenceContributor
 
@@ -59,8 +61,11 @@
 #-printmapping build/mapping.txt
 #-printmapping out.map
 
--dontwarn training.**
+-dontwarn com.intellij.ui.mac.**
 -dontwarn com.jetbrains.performancePlugin.**
--dontwarn org.junit.**
 -dontwarn com.jetbrains.rd.**
+-dontwarn io.kinference.core.operators.ml.trees.KICoreTreeEnsemble
+-dontwarn org.jetbrains.kotlin.**
+-dontwarn org.junit.**
 -dontwarn reactor.blockhound.**
+-dontwarn training.**
