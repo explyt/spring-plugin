@@ -21,10 +21,6 @@ release:
   when: manual
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|/|_|g')"
-    - git config --global user.name "${GITLAB_USER_NAME}"
-    - git config --global user.email "${GITLAB_USER_EMAIL}"
-    - git tag "release/$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER"
-    - git push --tags http://root:$ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git HEAD:master
     - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
     - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:runPluginVerifier
     - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:publishPlugin
@@ -33,3 +29,7 @@ release:
       - modules/spring-bootstrap/build/reports/pluginVerifier
       - modules/spring-bootstrap/build/distributions/*.zip
       - modules/spring-bootstrap/build/distributions/source.map
+  release:
+    tag_name: release/$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER
+    description: 'Release created using the release-cli.'
+    name: $ESCAPED_BRANCH_NAME-b$BUILD_NUMBER
