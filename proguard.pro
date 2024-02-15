@@ -47,7 +47,8 @@
 # spring-data
 -keep class com.esprito.jpa.ql.reference.InputParameterReferenceResolver
 #spring-web
--keep class com.esprito.spring.web.references.contributors.SpringOpenApiUrlEndpointReferenceContributor
+-keep class com.esprito.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor
+-keep class com.esprito.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
