@@ -256,6 +256,7 @@ tasks {
         token.set(providers.environmentVariable("PUBLISH_TOKEN"))
         val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
         distributionFile.set(buildArchivePath.get().asFile)
+        hidden = true
     }
 
     //TODO
