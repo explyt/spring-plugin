@@ -167,7 +167,7 @@
                          groupBundle="messages.SpringCoreBundle"
                          groupKey="esprito.spring.common.notifications"
                          bundle="messages.SpringCoreBundle"
-                         key="esprito.spring.inspection.alias.interchangeable"
+                         key="esprito.spring.inspection.alias.key"
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.esprito.spring.core.inspections.SpringAliasBothInterchangeableSetInspection"/>
@@ -226,7 +226,7 @@
                          groupBundle="messages.SpringCoreBundle"
                          groupKey="run.configuration.spring.boot.display.name"
                          bundle="messages.SpringCoreBundle"
-                         key="esprito.spring.inspection.properties.key"
+                         key="esprito.spring.inspection.yaml.key"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringYamlInspection"/>
 
