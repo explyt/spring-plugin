@@ -5,6 +5,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.SpringProperties.HINTS
 import com.esprito.spring.core.SpringProperties.PROPERTIES
+import com.esprito.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -19,10 +20,8 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocToken
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.PropertyUtil
 import com.intellij.psi.util.childrenOfType
-import com.intellij.util.Query
 import java.util.*
 
 class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
@@ -60,10 +59,11 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> = runReadNonBlocking {
         val result = hashMapOf<String, ConfigurationProperty>()
 
-        val annotatedElements = getAnnotatedElements(module) ?: return@runReadNonBlocking result
+        val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(module)
 
         for (annotatedElement in annotatedElements) {
-            val prefix = extractConfigurationPropertyPrefix(module, annotatedElement) ?: continue
+            val prefix = ProjectConfigurationPropertiesUtil
+                .extractConfigurationPropertyPrefix(module, annotatedElement) ?: continue
             val configurationPropertiesType = when (annotatedElement) {
                 is PsiClass -> annotatedElement
                 is PsiMethod -> annotatedElement.returnPsiClass
@@ -88,29 +88,6 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             collectConfigurationProperties(it.text, it.virtualFile.path, result)
         }
         return result
-    }
-
-    private fun getAnnotatedElements(module: Module): Query<out PsiModifierListOwner>? {
-        val librariesSearchScope = ExternalSystemModule.of(module).librariesSearchScope
-        val configurationPropertiesClass = JavaPsiFacade.getInstance(module.project)
-            .findClass(SpringCoreClasses.CONFIGURATION_PROPERTIES, librariesSearchScope)
-            ?: return null
-
-        return AnnotatedElementsSearch.searchElements(
-            configurationPropertiesClass,
-            module.moduleWithDependenciesScope,
-            PsiClass::class.java, PsiMethod::class.java
-        )
-    }
-
-    private fun extractConfigurationPropertyPrefix(module: Module, annotatedElement: PsiModifierListOwner): String? {
-        if (annotatedElement !is PsiMember) {
-            return null
-        }
-        val metaHolder = SpringSearchService.getInstance(module.project)
-            .getMetaAnnotations(module, SpringCoreClasses.CONFIGURATION_PROPERTIES)
-        val prefix = metaHolder.getAnnotationMemberValues(annotatedElement, setOf("value", "prefix")).firstOrNull() ?: return null
-        return AnnotationUtil.getStringAttributeValue(prefix)
     }
 
     private fun collectConfigurationProperty(
