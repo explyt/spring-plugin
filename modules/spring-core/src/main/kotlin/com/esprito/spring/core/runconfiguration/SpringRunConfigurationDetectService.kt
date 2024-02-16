@@ -149,6 +149,7 @@ class SpringRunConfigurationDetectService(
     class StartupActivity : ProjectActivity {
         override suspend fun execute(project: Project) {
             PropertiesComponent.getInstance().setValue("framework.suggestion.dismissed.spring.boot", true)
+            PropertiesComponent.getInstance().setValue("promo.framework.suggestion.dismissed.spring.boot", true)
 
             val runConfigurationsSettingsState = SpringToolRunConfigurationsSettingsState.getInstance()
 
