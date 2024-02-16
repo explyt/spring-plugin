@@ -2,6 +2,8 @@ package com.esprito.spring.web.providers
 
 import com.esprito.spring.web.references.EspritoControllerMethodReference
 import com.esprito.spring.web.util.SpringWebUtil
+import com.esprito.spring.web.util.SpringWebUtil.OPEN_API
+import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
@@ -12,7 +14,7 @@ import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
-class SpringOpenApiKeyUrlEndpointReferenceProvider : PsiReferenceProvider() {
+class SpringOpenApiYamlUrlEndpointReferenceProvider : PsiReferenceProvider() {
 
     override fun getReferencesByElement(psiElement: PsiElement, context: ProcessingContext): Array<PsiReference> {
         val yamlFile = psiElement.containingFile as? YAMLFile ?: return emptyArray()
@@ -61,11 +63,6 @@ class SpringOpenApiKeyUrlEndpointReferenceProvider : PsiReferenceProvider() {
         return YAMLUtil.getTopLevelKeys(yamlFile).asSequence()
             .map { YAMLUtil.getConfigFullName(it) }
             .any { it == OPEN_API }
-    }
-
-    companion object {
-        private const val OPEN_API = "openapi"
-        private const val PATHS = "paths"
     }
 
 }
