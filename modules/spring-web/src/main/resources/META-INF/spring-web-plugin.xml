@@ -32,6 +32,8 @@
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
 
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
 

@@ -79,7 +79,7 @@ class SpringWebSearchService(private val project: Project) {
             for (value in values) {
                 for (prefix in prefixes) {
                     result += EndpointElement(
-                        SpringWebUtil.simplifyUrl("/$prefix/$value"),
+                        SpringWebUtil.simplifyUrl("$prefix/$value"),
                         requestMethods,
                         method,
                         controllerPsiClass
