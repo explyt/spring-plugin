@@ -9,7 +9,10 @@
 <p><b>Example:</b></p>
 <pre><code lang="java">
 @Component
-public class FooConfiguration(@Value("classpath:foo.xml")) {} // "Cannot resolve file foo.xml"
+public class FooConfiguration {
+    // "Cannot resolve file foo.xml"
+    public FooConfiguration(@Value("classpath:foo.xml") Resource value) {}
+}
 </code></pre>
 </body>
 </html>
