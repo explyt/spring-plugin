@@ -205,7 +205,8 @@ tasks {
     patchPluginXml {
         version.set(springBootstrapModule.version as String)
         sinceBuild.set(ext["sinceVersion"] as String)
-        untilBuild.set(optProperty("setUntilVersion") ?: "")
+        //        untilBuild.set(optProperty("setUntilVersion") ?: "")
+        untilBuild.set(ext["untilVersion"] as String)
         changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
     }
 
