@@ -48,6 +48,7 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
+import org.jetbrains.uast.UAnnotation
 
 @Service(Service.Level.PROJECT)
 class SpringSearchService(private val project: Project) {
@@ -540,6 +541,19 @@ class SpringSearchService(private val project: Project) {
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }, false)
+    }
+
+    fun findUAnnotation(module: Module, uAnnotations: List<UAnnotation>, annotationFqn: String): UAnnotation? {
+        if (uAnnotations.isEmpty()) return null
+
+        val metaAnnotationsHolder = getMetaAnnotations(module, annotationFqn)
+        for (annotation in uAnnotations) {
+            val psiAnnotation = annotation.javaPsi ?: continue
+            if (metaAnnotationsHolder.contains(psiAnnotation)) {
+                return annotation
+            }
+        }
+        return null
     }
 
     companion object {
