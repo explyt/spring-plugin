@@ -26,6 +26,8 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val javax_inject_1 = TestLibrary("javax.inject:javax.inject:1", true)
         val javax_persistence_2_2 = TestLibrary("javax.persistence:javax.persistence-api:2.2", true)
 
+        val springSecurityTest_6_0_7 = TestLibrary("org.springframework.security:spring-security-test:6.0.7", true)
+
         val kotlin_1_9_22 = TestLibrary("org.jetbrains.kotlin:kotlin-stdlib:1.9.22", true)
     }
 }
