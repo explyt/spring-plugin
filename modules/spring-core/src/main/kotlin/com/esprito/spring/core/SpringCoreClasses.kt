@@ -15,6 +15,7 @@ object SpringCoreClasses {
     const val CONFIGURATION = "org.springframework.context.annotation.Configuration"
     const val DEPENDS_ON = "org.springframework.context.annotation.DependsOn"
     const val PRIMARY = "org.springframework.context.annotation.Primary"
+    const val SCOPE = "org.springframework.context.annotation.Scope"
 
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
