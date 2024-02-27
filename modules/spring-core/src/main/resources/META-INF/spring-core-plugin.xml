@@ -82,6 +82,8 @@
                                   implementation="com.esprito.spring.core.references.contributors.QualifierReferenceContributor"/>
         <psi.referenceContributor language="JSON"
                                   implementation="com.esprito.spring.core.properties.contributors.AdditionalConfigReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.core.references.contributors.SpringScopeReferenceContributor"/>
 
         <lang.documentationProvider language="Properties"
                                     order="first"
