@@ -12,6 +12,9 @@
                          level="ERROR"
                          implementationClass="com.esprito.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection"/>
 
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.security.references.contributors.SpringSecurityContributor"/>
+
     </extensions>
 
     <actions>
