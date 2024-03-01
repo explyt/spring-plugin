@@ -17,7 +17,7 @@ class UastMockMvcUrlReferenceContributor : PsiReferenceContributor() {
                 .withMethodNames(SpringWebUtil.REQUEST_METHODS)
 
         val injectionHostInsideHttpMethods = injectionHostUExpression(false)
-            .callParameter(0, methodCall)
+            .inCall(methodCall)
 
         registrar.registerUastReferenceProvider(
             injectionHostInsideHttpMethods,

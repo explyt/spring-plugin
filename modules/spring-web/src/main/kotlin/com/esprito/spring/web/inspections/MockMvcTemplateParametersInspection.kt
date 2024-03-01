@@ -3,15 +3,11 @@ package com.esprito.spring.web.inspections
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.util.SpringWebUtil
-import com.esprito.spring.web.util.SpringWebUtil.MULTIPART
-import com.esprito.spring.web.util.SpringWebUtil.REQUEST
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
-import com.esprito.spring.web.util.SpringWebUtil.URL_TEMPLATE
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.CommonClassNames.JAVA_LANG_STRING
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.uast.UastVisitorAdapter
 import org.jetbrains.uast.UCallExpression
@@ -48,11 +44,9 @@ private class MockMvcRequestBuilderVisitor(
     private fun checkCallExpression(uCallExpression: UCallExpression) {
         if (uCallExpression.kind != UastCallKind.METHOD_CALL) return
         val methodName = uCallExpression.methodName ?: return
-        if (methodName !in REQUEST_METHODS + REQUEST + MULTIPART) return
+        if (methodName !in REQUEST_METHODS) return
         val psiMethod = uCallExpression.resolve() ?: return
-        val urlTemplateIndex = psiMethod.parameterList
-            .parameters
-            .indexOfFirst { it.name == URL_TEMPLATE && it.type.canonicalText == JAVA_LANG_STRING }
+        val urlTemplateIndex = SpringWebUtil.getUrlTemplateIndex(psiMethod)
         if (urlTemplateIndex < 0) return
         val varargSize = uCallExpression.valueArguments.size - (urlTemplateIndex + 1)
 
