@@ -112,5 +112,8 @@ object SpringWebUtil {
     val REQUEST_METHODS = setOf("get", "head", "post", "put", "patch", "delete", "options", "trace")
     const val OPEN_API = "openapi"
     const val PATHS = "paths"
+    const val REQUEST = "request"
+    const val MULTIPART = "multipart"
+    const val URL_TEMPLATE = "urlTemplate"
 
 }
