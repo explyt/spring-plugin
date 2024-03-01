@@ -34,6 +34,17 @@
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="MockMvcTemplateParametersInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.web.notifications.core"
+                         bundle="messages.SpringWebBundle"
+                         key="esprito.spring.web.inspection.mockMvc.parameters"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.web.inspections.MockMvcTemplateParametersInspection"/>
+
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
         <psi.referenceContributor language="UAST"

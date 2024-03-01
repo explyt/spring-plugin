@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<problems>
+    <problem>
+        <file>TemplateParametersTest.kt</file>
+        <line>8</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.TemplateParametersTest void tooFew()"/>
+        <problem_class id="MockMvcTemplateParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>/product/{tooFew}</highlighted_element>
+        <language>kotlin</language>
+        <offset>36</offset>
+        <length>17</length>
+    </problem>
+
+
+    <problem>
+        <file>TemplateParametersTest.kt</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.TemplateParametersTest void tooMany()"/>
+        <problem_class id="MockMvcTemplateParameters" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Too many URI parameters</description>
+        <highlighted_element>/product/{tooMany}</highlighted_element>
+        <language>kotlin</language>
+        <offset>36</offset>
+        <length>18</length>
+    </problem>
+
+
+    <problem>
+        <file>TemplateParametersTest.kt</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.TemplateParametersTest void tooFewConst()"/>
+        <problem_class id="MockMvcTemplateParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>TOO_FEW_CONST</highlighted_element>
+        <language>kotlin</language>
+        <offset>35</offset>
+        <length>13</length>
+    </problem>
+
+</problems>
