@@ -45,6 +45,12 @@ class SpringBootRunConfiguration(
                 params.vmParametersList.add("-D$SPRING_PROFILES_ACTIVE=$springProfiles")
             }
         }
+        //Activate JMX
+        params.vmParametersList.add("-Dcom.sun.management.jmxremote")
+        params.vmParametersList.add("-Dspring.jmx.enabled=true")
+        params.vmParametersList.add("-Dspring.liveBeansView.mbeanDomain")
+        params.vmParametersList.add("-Dspring.application.admin.enabled=true")
+        params.vmParametersList.add("-Dmanagement.endpoints.jmx.exposure.include=*")
     }
 
     override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> {

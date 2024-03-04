@@ -3,6 +3,7 @@ package com.esprito.spring.core.runconfiguration
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringRunConfigurationBundle
 import com.esprito.spring.core.notifications.SpringToolNotificationGroup
+import com.esprito.spring.core.runconfiguration.lifecycle.SpringBootLifecycleManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
@@ -148,6 +149,7 @@ class SpringRunConfigurationDetectService(
 
     class StartupActivity : ProjectActivity {
         override suspend fun execute(project: Project) {
+            SpringBootLifecycleManager.getInstance(project)
             PropertiesComponent.getInstance().setValue("framework.suggestion.dismissed.spring.boot", true)
             PropertiesComponent.getInstance().setValue("promo.framework.suggestion.dismissed.spring.boot", true)
 
