@@ -64,6 +64,10 @@
                                 id="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"
                                 implementationClass="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"/>
 
+        <runDashboardCustomizer
+                implementation="com.esprito.spring.core.runconfiguration.EspritoSpringBootRunDashboardCustomizer"
+                order="before commonJavaCustomizer"/>
+
         <psi.referenceContributor language="Properties"
                                   implementation="com.esprito.spring.core.properties.contributors.SpringConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="Properties"

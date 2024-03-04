@@ -362,7 +362,7 @@ object SpringCoreUtil {
 
     @Suppress("UnstableApiUsage")
     fun hasBootLibrary(module: Module): Boolean {
-        return JavaLibraryUtil.hasLibraryJar(module, "org.springframework.boot:spring-boot")
+        return JavaLibraryUtil.hasLibraryJar(module, SPRING_BOOT_MAVEN)
     }
 
     fun String.removeDummyIdentifier(): String {
@@ -370,4 +370,8 @@ object SpringCoreUtil {
             .replace("$,", "")
             .replace(" ", "")
     }
+
+    const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"
+    const val SPRING_BOOT_ACTUATOR_MAVEN = "org.springframework.boot:spring-boot-actuator"
+
 }
