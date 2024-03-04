@@ -1,0 +1,24 @@
+<html>
+<head>
+    <title>Inspection for invalid AOP Spring method call</title>
+</head>
+<body>
+<p>
+    Do not call AOP methods from the same class.
+</p>
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@Component
+public class SpringComponent {
+    public String method() {
+        return transactionalMethod(); // "Warning: call AOP method from the same class"
+    }
+
+    @Transactional
+    public String transactionalMethod() {
+        return "Transactional";
+    }
+}
+</code></pre>
+</body>
+</html>

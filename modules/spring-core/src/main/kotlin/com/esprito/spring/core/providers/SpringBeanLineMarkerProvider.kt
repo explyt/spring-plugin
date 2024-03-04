@@ -331,8 +331,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun getOptionContainerText(file: VirtualFile?, element: PsiElement): String {
-        val methodName = element.toUElement()?.getParentOfType<UMethod>()
-            ?.let { getElementPresentationName(it, file) }
+        val uElement = if (element is UElement) element else element.toUElement()
+        val methodName = uElement?.getParentOfType<UMethod>()?.let { getElementPresentationName(it, file) }
         return methodName ?: (file?.name + ":" + element.getLineNumber())
     }
 

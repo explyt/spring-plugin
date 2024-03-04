@@ -26,11 +26,14 @@ import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isGeneric
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.isNonStatic
+import com.esprito.util.EspritoPsiUtil.isPublic
 import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiType
 import com.esprito.util.ModuleUtil
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
@@ -48,7 +51,10 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
+import com.intellij.uast.UastModificationTracker
 import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UMethod
 
 @Service(Service.Level.PROJECT)
 class SpringSearchService(private val project: Project) {
@@ -556,8 +562,53 @@ class SpringSearchService(private val project: Project) {
         return null
     }
 
+    fun isBean(uClass: UClass): Boolean {
+        if (AnnotationUtil.isAnnotated(uClass.javaPsi, SpringCoreClasses.COMPONENT, AnnotationUtil.CHECK_HIERARCHY)) {
+            return true
+        }
+        val psiElement = uClass.sourcePsi ?: return false
+        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return false
+        return getAllBeansClassesWithAncestors(module).contains(uClass.javaPsi)
+    }
+
+    fun getBeanMethods(uClass: UClass?): MethodsInfoHolder {
+        uClass ?: return MethodsInfoHolder(emptySet())
+        return CachedValuesManager.getManager(project).getCachedValue(uClass) {
+            CachedValueProvider.Result(
+                getBeanMethodsInner(uClass), UastModificationTracker.getInstance(project)
+            )
+        }
+    }
+
+    private fun getBeanMethodsInner(uClass: UClass?): MethodsInfoHolder {
+        uClass ?: return MethodsInfoHolder(emptySet())
+        val isAopClass = AnnotationUtil.isAnnotated(
+            uClass.javaPsi, SpringCoreClasses.AOP_ANNOTATION, AnnotationUtil.CHECK_HIERARCHY
+        )
+        if (isAopClass || isBean(uClass)) {
+            val psiMethods = uClass.methods.asSequence()
+                .filter { isPublicAopMethod(it, isAopClass) }
+                .mapTo(mutableSetOf()) { it.javaPsi }
+            return MethodsInfoHolder(psiMethods)
+        }
+        return MethodsInfoHolder(emptySet())
+    }
+
+    private fun isPublicAopMethod(it: UMethod, isAopClass: Boolean): Boolean {
+        return if (isAopClass) it.isPublic && it.isNonStatic else
+            it.isPublic && it.isNonStatic && AnnotationUtil.isAnnotated(
+                it.javaPsi,
+                SpringCoreClasses.AOP_ANNOTATION,
+                AnnotationUtil.CHECK_HIERARCHY
+            )
+    }
+
     companion object {
         fun getInstance(project: Project): SpringSearchService = project.service()
     }
 
+}
+
+data class MethodsInfoHolder(val beanPublicAnnotatedMethods: Set<PsiMethod>) {
+    val beanPublicAnnotatedMethodNames: Set<String> = beanPublicAnnotatedMethods.map { it.name }.toSet()
 }
