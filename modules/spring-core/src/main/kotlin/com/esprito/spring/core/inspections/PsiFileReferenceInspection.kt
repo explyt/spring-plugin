@@ -1,6 +1,7 @@
 package com.esprito.spring.core.inspections
 
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.util.EspritoPsiUtil.isString
 import com.intellij.codeInspection.LocalInspectionTool
@@ -11,10 +12,8 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.uast.UastVisitorAdapter
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UCallExpression
-import org.jetbrains.uast.UastCallKind
-import org.jetbrains.uast.isInjectionHost
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 class PsiFileReferenceInspection : LocalInspectionTool() {
@@ -34,6 +33,15 @@ private class PsiFileReferenceVisitor(
 
     override fun visitCallExpression(node: UCallExpression): Boolean {
         checkCallExpression(node)
+        checkConstructorCallExpression(node)
+        return true
+    }
+
+    override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean {
+        if (node.lang == KotlinLanguage.INSTANCE) return true
+        val callerException = (node.selector as? UCallExpression) ?: return true
+        checkCallExpression(callerException)
+        checkConstructorCallExpression(callerException)
         return true
     }
 
@@ -56,43 +64,33 @@ private class PsiFileReferenceVisitor(
         val methodName = node.methodName
         val psiMethod = node.resolve() ?: return
         val targetClass = psiMethod.containingClass ?: return
-        checkResourceLoaderGetResource(methodName, node, targetClass)
+        checkResourceLoaderGetResource(node, targetClass, methodName)
+        checkResourceClassGetResource(methodName, node, targetClass)
         checkResourceUtil(targetClass, node)
 
     }
 
-    private fun checkResourceLoaderGetResource(
-        methodName: String?, node: UCallExpression, targetClass: PsiClass
-    ) {
-        if (methodName == "getResource" && node.valueArgumentCount == 1) {
-            val uArgumentExpression = node.getArgumentForParameter(0) ?: return
-            if (uArgumentExpression.isInjectionHost()
-                && InheritanceUtil.isInheritor(targetClass, SpringCoreClasses.RESOURCE_LOADER)
-            ) {
-                val psiElement = uArgumentExpression.sourcePsi ?: return
-                val valueText = ElementManipulators.getValueText(psiElement)
-                val problems = ResourceFileInspectionUtil.getPathProblems(
-                    PropertiesFileType.INSTANCE,
-                    valueText,
-                    psiElement,
-                    holder.manager,
-                    isOnTheFly
-                )
-                problems.forEach { holder.registerProblem(it) }
-            }
-        }
+    private fun checkConstructorCallExpression(node: UCallExpression) {
+        if (node.kind != UastCallKind.CONSTRUCTOR_CALL) return
+        val psiMethod = node.resolve() ?: return
+        val targetClass = psiMethod.containingClass ?: return
+        checkResourceLoaderGetResource(node, targetClass)
     }
 
-    private fun checkResourceUtil(targetClass: PsiClass, node: UCallExpression) {
-        if (InheritanceUtil.isInheritor(targetClass, SpringCoreClasses.RESOURCE_UTILS)
-            && node.valueArgumentCount == 1
-        ) {
-            val uArgumentExpression = node.getArgumentForParameter(0) ?: return
-            if (uArgumentExpression.getExpressionType()?.isString == false) return
-            if (!uArgumentExpression.isInjectionHost()) return
+    private fun checkResourceLoaderGetResource(
+        node: UCallExpression,
+        targetClass: PsiClass,
+        methodName: String? = null
+    ) {
+        if (!methodName.isNullOrBlank() && methodName != SpringProperties.GET_RESOURCE) return
+        if (node.valueArgumentCount != 1) return
 
-            val psiElement = uArgumentExpression.sourcePsi ?: return
-            val valueText = ElementManipulators.getValueText(psiElement)
+        val uArgumentExpression = node.getArgumentForParameter(0) ?: return
+        val psiElement = uArgumentExpression.sourcePsi ?: return
+        val valueText = getExpression(uArgumentExpression) ?: return
+        if (InheritanceUtil.isInheritor(targetClass, SpringCoreClasses.RESOURCE_LOADER)
+            || InheritanceUtil.isInheritor(targetClass, SpringCoreClasses.FILE_RESOURCE_RESOURCE)
+        ) {
             val problems = ResourceFileInspectionUtil.getPathProblems(
                 PropertiesFileType.INSTANCE,
                 valueText,
@@ -103,4 +101,58 @@ private class PsiFileReferenceVisitor(
             problems.forEach { holder.registerProblem(it) }
         }
     }
+
+    private fun checkResourceClassGetResource(
+        methodName: String?,
+        node: UCallExpression,
+        targetClass: PsiClass
+    ) {
+        if (methodName != SpringProperties.GET_RESOURCE || node.valueArgumentCount != 1) return
+        val uArgumentExpression = node.getArgumentForParameter(0) ?: return
+        val psiElement = uArgumentExpression.sourcePsi ?: return
+        val valueText = getExpression(uArgumentExpression) ?: return
+        if (InheritanceUtil.isInheritor(targetClass, SpringCoreClasses.RESOURCE_CLASS)
+            || InheritanceUtil.isInheritor(targetClass, SpringCoreClasses.RESOURCE_CLASS_LOADER)
+        ) {
+            val problems = ResourceFileInspectionUtil.getPathClassResourceProblems(
+                PropertiesFileType.INSTANCE,
+                valueText,
+                psiElement,
+                holder.manager,
+                isOnTheFly
+            )
+            problems.forEach { holder.registerProblem(it) }
+        }
+    }
+
+    private fun checkResourceUtil(targetClass: PsiClass, node: UCallExpression) {
+        if (!InheritanceUtil.isInheritor(targetClass, SpringCoreClasses.RESOURCE_UTILS)
+            || node.valueArgumentCount != 1
+        ) return
+
+        val uArgumentExpression = node.getArgumentForParameter(0) ?: return
+        if (uArgumentExpression.getExpressionType()?.isString == false) return
+        if (!uArgumentExpression.isInjectionHost()) return
+
+        val psiElement = uArgumentExpression.sourcePsi ?: return
+        val valueText = ElementManipulators.getValueText(psiElement)
+        val problems = ResourceFileInspectionUtil.getPathProblems(
+            PropertiesFileType.INSTANCE,
+            valueText,
+            psiElement,
+            holder.manager,
+            isOnTheFly
+        )
+        problems.forEach { holder.registerProblem(it) }
+    }
+
+    private fun getExpression(uArgumentExpression: UExpression): String? {
+        val psiElement = uArgumentExpression.sourcePsi ?: return null
+        return if (uArgumentExpression.isInjectionHost()) {
+            ElementManipulators.getValueText(psiElement)
+        } else {
+            uArgumentExpression.evaluate() as? String
+        }
+    }
+
 }

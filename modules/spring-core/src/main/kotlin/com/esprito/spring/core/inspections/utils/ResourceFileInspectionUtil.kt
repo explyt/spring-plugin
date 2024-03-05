@@ -84,6 +84,31 @@ object ResourceFileInspectionUtil {
         return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly)
     }
 
+    fun getPathClassResourceProblems(
+        languageFileType: LanguageFileType,
+        text: String,
+        element: PsiElement,
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): List<ProblemDescriptor> {
+        if (!text.startsWith("/")) {
+            return listOf(
+                manager.createProblemDescriptor(
+                    element,
+                    SpringCoreBundle.message("esprito.spring.inspection.resource.error.start.with.slash"),
+                    isOnTheFly,
+                    emptyArray(),
+                    ProblemHighlightType.WARNING
+                )
+            )
+        }
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
+        val rootPaths = getRootPaths(module)
+        val textWithoutPrefix = if (text.startsWith("/")) text.substringAfter("/") else text
+
+        return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly)
+    }
+
     private fun getTextValue(text: String): String {
         return if (text.startsWith(PREFIX_CLASSPATH)) text.substringAfter(PREFIX_CLASSPATH) else
             text.substringAfter(PREFIX_CLASSPATH_STAR)

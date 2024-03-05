@@ -67,6 +67,14 @@ object SpringCoreClasses {
 
     const val TRANSACTIONAL = "org.springframework.transaction.annotation.Transactional"
 
+    const val RESOURCE_CLASS = "java.lang.Class"
+    const val RESOURCE_CLASS_LOADER = "java.lang.ClassLoader"
+
+    const val FILE_RESOURCE_RESOURCE = "org.springframework.core.io.AbstractFileResolvingResource"
+    const val FILE_URL_RESOURCE = "org.springframework.core.io.FileUrlResource"
+    const val URL_RESOURCE = "org.springframework.core.io.UrlResource"
+    const val CLASS_PATH_RESOURCE = "org.springframework.core.io.ClassPathResource"
+
     const val RESOURCE_LOADER = "org.springframework.core.io.ResourceLoader"
     const val RESOURCE_LOADER_RESOLVER = "org.springframework.core.io.support.ResourcePatternResolver"
     const val RESOURCE_UTILS = "org.springframework.util.ResourceUtils"
