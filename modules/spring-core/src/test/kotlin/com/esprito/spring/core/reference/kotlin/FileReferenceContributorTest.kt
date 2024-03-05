@@ -299,4 +299,93 @@ class FileReferenceContributorTest : EspritoKotlinLightTestCase() {
             .toSet()
         assertEquals(setOf("TestClass.kt") + basicPrefix, variantSet)
     }
+
+    fun testConstructorClassPathResourceVariable() {
+        myFixture.configureByText(
+            "TestClass.kt",
+            """           
+                class TestClass {
+                    val path = org.springframework.core.io.ClassPathResource("<caret>")
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    fun testConstructorUrlResourceVariable() {
+        myFixture.configureByText(
+            "TestClass.kt",
+            """
+                class TestClass {
+                    val path = org.springframework.core.io.UrlResource("<caret>")
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    fun testConstructorFileUrlResourceVariable() {
+        myFixture.configureByText(
+            "TestClass.kt",
+            """
+                class TestClass {
+                    val path = org.springframework.core.io.FileUrlResource("<caret>");
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    fun testGetResourceClassResolve() {
+        myFixture.configureByText(
+            "TestClass.kt",
+            """        
+                import kotlin.jvm
+                open class TestClass {
+                    fun getResource() {
+                        TestClass::class.java.getResource("<caret>")
+                    }
+                }
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.kt"), variantSet)
+    }
+
+    fun testGetResourceClassLoaderResolve() {
+        myFixture.configureByText(
+            "TestClass.kt",
+            """                
+                object TestClass {
+                    fun getResource() {
+                        val url = TestClass::class.java.classLoader.getResource("<caret>")
+                    }
+                }
+            """.trimIndent()
+        )
+
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.kt"), variantSet)
+    }
+
+    private fun assertVariants() {
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.kt") + basicPrefix, variantSet)
+    }
 }
