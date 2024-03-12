@@ -19,6 +19,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
 import com.intellij.psi.presentation.java.SymbolPresentationUtil
 import com.intellij.psi.util.childrenOfType
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
@@ -66,7 +67,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
 
     private fun getMethodFromKtField(uField: UField): UMethod? {
         val psiField = uField.javaPsi as? PsiField ?: return null
-        if (psiField.language != KOTLIN_LANGUAGE.value) return null
+        if (psiField.language != KotlinLanguage.INSTANCE) return null
 
         val name = "set${StringUtil.capitalize(psiField.name)}"
 
@@ -115,7 +116,4 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         }
     }
 
-    companion object {
-        val KOTLIN_LANGUAGE = lazy { Language.findLanguageByID("kotlin") }
-    }
 }

@@ -17,15 +17,17 @@
 <p>Esprito Spring Tools is an IntelliJ IDEA (Community Edition) plugin designed to enhance your experience with the Spring Framework.</p>
 <p>Key Features Include:</p>
 <ul>
-    <li><strong>Autocompletion:</strong> Autocomplete bean names and navigate through annotations, linking to relevant classes and files.</li>
+     <li><strong>Autocompletion:</strong> Autocomplete bean names and navigate through annotations, linking to relevant classes and files.</li>
     <li><strong>Simplified Configuration:</strong> Make working with .properties and .yaml files more efficient through our advanced autocomplete and navigation features.</li>
-    <li><strong>Intelligent Code Navigation:</strong> Instantly understand the interconnections within your Spring architecture.</li>
-    <li><strong>Inspections:</strong> Identify and resolve common issues in your Spring configuration and annotations with smart checks.</li>
+    <li><strong>Easy Navigation:</strong> Quickly find your way through your project's Spring architecture, improving code understanding.</li>
+    <li><strong>Smart Inspections:</strong> Spot and fix common Spring issues early with our targeted checks and fixes.</li>
     <li><strong>JPQL Support:</strong> Maximize your efficiency in JPQL with syntax highlighting and detailed navigation options.</li>
-    <li><strong>Spring Profiles:</strong> Easily manage and search for Spring profiles within your configuration files.</li>
+    <li><strong>Kotlin Support:</strong> We support Kotlin, enhancing your Spring projects with seamless integration.</li>
+    <li><strong>Code Folding:</strong> Automatically show expected variable values from properties files, simplifying code readability and focus.</li>
+    <li><strong>Spring Events Navigation:</strong> Easily move between event publishers and listeners, making your event handling straightforward.</li>
 </ul>
 <p>Esprito Spring Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.</p>
-<p>This plugin is available for free for non-commercial use. For more details, see our <a href="https://github.com/esprito-plugin/plugin">homepage</a>.</p>
+<p>This plugin is available for free for non-commercial use. For more details, see <a href="https://github.com/esprito-plugin/plugin">homepage</a>.</p>
 ]]></description>
 
     <incompatible-with>com.intellij.spring</incompatible-with>
