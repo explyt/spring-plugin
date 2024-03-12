@@ -10,11 +10,13 @@ import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.*
 import com.intellij.psi.*
 import com.intellij.psi.impl.PsiTreeChangeEventImpl
+import com.intellij.psi.impl.PsiTreeChangeEventImpl.PsiEventType.*
 import com.intellij.psi.impl.source.tree.LazyParseablePsiElement
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.uast.*
 import org.jetbrains.uast.util.ClassSet
 import org.jetbrains.uast.util.isInstanceOf
@@ -92,6 +94,18 @@ internal class MyUastPsiTreeChangeAdapter(
         if (event.newChild is PsiWhiteSpace && event.oldChild is PsiWhiteSpace) {
             return
         }
+
+        //added or removed class or method
+        if (psiEventOfType(event, BEFORE_CHILD_ADDITION, BEFORE_CHILD_REMOVAL) && isClassOrMethod(child)) {
+            modelTracker.incModificationCount()
+            return
+        }
+        //added or removed comment
+        if (psiEventOfType(event, CHILD_REPLACED) && isClassOrMethodCommented(event)) {
+            modelTracker.incModificationCount()
+            return
+        }
+
         val possiblePsiTypes = getPossiblePsiTypesFor(languageId) ?: return
         val newChild = event.newChild
         val grandParent = parent?.parent
@@ -111,10 +125,7 @@ internal class MyUastPsiTreeChangeAdapter(
             annotationTracker.incModificationCount()
             return
         }
-        if ((isRelevantAnnotation(child, possiblePsiTypes) // removed annotation
-                    || isRelevantAnnotation(unsafeGrandChild, possiblePsiTypes) // removed annotation
-                    || isRelevantAnnotation(newChild, possiblePsiTypes) // added   annotation
-                    || (grandParent.isInstanceOf(possiblePsiTypes.forClasses) // modifier changed (static, public)
+        if (((grandParent.isInstanceOf(possiblePsiTypes.forClasses) // modifier changed (static, public)
                     && !parent.isInstanceOf(possiblePsiTypes.forAnnotationOwners))
                     || innerClassChanged(parent, grandParent, child, event, possiblePsiTypes)
                     || classRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
@@ -221,6 +232,22 @@ internal class MyUastPsiTreeChangeAdapter(
         }
         uastPsiPossibleTypes[languageId] = possibleTypesCachedValue
         return possibleTypesCachedValue.value
+    }
+
+    private fun isClassOrMethod(child: PsiElement?) =
+        child is PsiClass || child is PsiMethod || child is KtFunction
+
+    private fun psiEventOfType(event: PsiTreeChangeEvent, vararg type: PsiTreeChangeEventImpl.PsiEventType): Boolean {
+        if (type.isEmpty()) return false
+        val eventType = (event as? PsiTreeChangeEventImpl)?.code ?: return false
+        return type.contains(eventType)
+    }
+
+    private fun isClassOrMethodCommented(event: PsiTreeChangeEvent): Boolean {
+        val newChild = event.newChild ?: return false
+        val oldChild = event.oldChild ?: return false
+        return (newChild is PsiComment && isClassOrMethod(oldChild))
+                || (oldChild is PsiComment && isClassOrMethod(newChild))
     }
 }
 
