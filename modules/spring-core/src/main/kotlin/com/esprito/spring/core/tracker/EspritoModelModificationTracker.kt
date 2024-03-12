@@ -2,15 +2,12 @@ package com.esprito.spring.core.tracker
 
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.lang.properties.psi.PropertiesFile
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.ModificationTracker.NEVER_CHANGED
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.*
-import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
-import com.intellij.openapi.vfs.impl.BulkVirtualFileListenerAdapter
 import com.intellij.psi.*
 import com.intellij.psi.impl.PsiTreeChangeEventImpl
 import com.intellij.psi.impl.source.tree.LazyParseablePsiElement
@@ -24,14 +21,17 @@ import org.jetbrains.uast.util.isInstanceOf
 
 
 @Suppress("UnstableApiUsage")
-class EspritoModelModificationTracker(project: Project, parent: Disposable) : SimpleModificationTracker() {
-    val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
+class EspritoModelModificationTracker(project: Project) : SimpleModificationTracker() {
+    private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
 
-    init {
-        PsiManager.getInstance(project).addPsiTreeChangeListener(MyUastPsiTreeChangeAdapter(project, this), parent)
-        project.messageBus.connect(parent)
-            .subscribe(VFS_CHANGES, BulkVirtualFileListenerAdapter(SpringVirtualFileListener(project, this)))
+    override fun getModificationCount(): Long {
+        return super.getModificationCount() + javaLibraryTracker.modificationCount
     }
+}
+
+@Suppress("UnstableApiUsage")
+class EspritoAnnotationModificationTracker(project: Project) : SimpleModificationTracker() {
+    private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
 
     override fun getModificationCount(): Long {
         return super.getModificationCount() + javaLibraryTracker.modificationCount
@@ -39,7 +39,9 @@ class EspritoModelModificationTracker(project: Project, parent: Disposable) : Si
 }
 
 internal class MyUastPsiTreeChangeAdapter(
-    val project: Project, val tracker: SimpleModificationTracker
+    private val project: Project,
+    private val modelTracker: EspritoModelModificationTracker,
+    private val annotationTracker: EspritoAnnotationModificationTracker
 ) : PsiTreeChangeAdapter() {
     private val uastPsiPossibleTypes = HashMap<String, CachedValue<UastPsiPossibleTypes>>()
 
@@ -71,12 +73,12 @@ internal class MyUastPsiTreeChangeAdapter(
     private fun processChange(event: PsiTreeChangeEvent, parent: PsiElement?, child: PsiElement?) {
         val psiFile = event.file
         if (psiFile is PropertiesFile) {
-            tracker.incModificationCount()
+            modelTracker.incModificationCount()
             return
         }
         val languageId = psiFile?.language?.id ?: return
         if ("yaml" == languageId) {
-            tracker.incModificationCount()
+            modelTracker.incModificationCount()
             return
         }
         if (psiFile !is PsiClassOwner) {
@@ -100,6 +102,15 @@ internal class MyUastPsiTreeChangeAdapter(
             } catch (ignored: Exception) {
             }
         }
+        if (isRelevantAnnotation(child, possiblePsiTypes) // removed annotation
+            || isRelevantAnnotation(unsafeGrandChild, possiblePsiTypes) // removed annotation
+            || isRelevantAnnotation(newChild, possiblePsiTypes) // added   annotation
+            || getFirstParentIsRelevantAnnotation(parent, possiblePsiTypes) != null // change in  annotation
+        ) {
+            modelTracker.incModificationCount()
+            annotationTracker.incModificationCount()
+            return
+        }
         if ((isRelevantAnnotation(child, possiblePsiTypes) // removed annotation
                     || isRelevantAnnotation(unsafeGrandChild, possiblePsiTypes) // removed annotation
                     || isRelevantAnnotation(newChild, possiblePsiTypes) // added   annotation
@@ -111,11 +122,10 @@ internal class MyUastPsiTreeChangeAdapter(
                     || fieldRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || parameterRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || parameterStartInput(grandParent, event.newChild, possiblePsiTypes)
-                    || changedReturnStatement(newChild, parent, grandParent, possiblePsiTypes)
-                    || getFirstParentIsRelevantAnnotation(parent, possiblePsiTypes) != null)
+                    || changedReturnStatement(newChild, parent, grandParent, possiblePsiTypes))
             || child is LazyParseablePsiElement
         ) {
-            tracker.incModificationCount()
+            modelTracker.incModificationCount()
         }
     }
 

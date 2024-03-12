@@ -1,14 +1,12 @@
 package com.esprito.spring.core.runconfiguration
 
+import com.esprito.spring.core.action.UastModelTrackerInvalidateAction
 import com.esprito.spring.core.service.ProfilesService
-import com.esprito.spring.core.tracker.ModificationTrackerManager
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiManager
 
 class EspritoRunManagerListener(val project: Project) : RunManagerListener {
 
@@ -36,11 +34,9 @@ class EspritoRunManagerListener(val project: Project) : RunManagerListener {
 
         if (isChanged) {
             ApplicationManager.getApplication().invokeLater {
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker().incModificationCount()
+                UastModelTrackerInvalidateAction.invalidate(project)
                 //InlayHintsPassFactoryInternal.clearModificationStamp(editor)
                 // TODO: use it for updating hints only instead of dropping all psi caches
-                PsiManager.getInstance(project).dropPsiCaches()
-                DaemonCodeAnalyzer.getInstance(project).restart()
             }
         }
     }

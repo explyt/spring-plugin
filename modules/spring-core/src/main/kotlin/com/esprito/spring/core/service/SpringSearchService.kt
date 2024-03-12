@@ -119,7 +119,11 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module) {
             val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
             val annotationPsiClasses = getComponentClassAnnotations(module)
-            val moduleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+            val allModuleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+            val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+            val moduleWithDependenciesBeans = filterBeansByPackage(
+                allModuleWithDependenciesBeans, modulePackagesHolder, module
+            )
             val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
             CachedValueProvider.Result(
                 moduleWithDependenciesBeans + moduleLibraryBeans,
@@ -133,13 +137,34 @@ class SpringSearchService(private val project: Project) {
             val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
             val annotationPsiClasses = MetaAnnotationUtil
                 .getAnnotationTypesWithChildren(module, COMPONENT_SCAN, false)
-            val moduleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+            val allModuleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+            val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+            val moduleWithDependenciesBeans = filterBeansByPackage(
+                allModuleWithDependenciesBeans, modulePackagesHolder, module
+            )
             val moduleLibraryBeans = searchBeanPsiClassesByComponentScanAnnotationLibraryScopeCached(module)
             CachedValueProvider.Result(
                 (moduleWithDependenciesBeans + moduleLibraryBeans).map { it.psiClass }.toSet(),
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
+    }
+
+    private fun filterBeansByPackage(
+        beanComponents: Set<PsiBean>, rootDataHolder: RootDataHolder, module: Module
+    ): Set<PsiBean> {
+        if (rootDataHolder.isEmpty()) return beanComponents
+        val packages = rootDataHolder.getPackages(module)
+        if (packages.isEmpty()) return emptySet()
+        return beanComponents.filterTo(mutableSetOf()) { checkBeanByPackage(packages, rootDataHolder, it) }
+    }
+
+    private fun checkBeanByPackage(packages: Set<String>, rootDataHolder: RootDataHolder, bean: PsiBean): Boolean {
+        if (bean.psiClass.qualifiedName?.let { rootDataHolder.isRootComponent(it) } == true) {
+            return true
+        }
+        val packageName = (bean.psiClass.containingFile as? PsiJavaFile)?.packageName ?: return false
+        return packages.any { packageName.startsWith(it) }
     }
 
     fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> {

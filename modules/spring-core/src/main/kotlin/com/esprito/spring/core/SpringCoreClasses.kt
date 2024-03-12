@@ -11,6 +11,7 @@ object SpringCoreClasses {
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
 
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
+    const val COMPONENT_SCANS = "org.springframework.context.annotation.ComponentScans"
     const val BEAN = "org.springframework.context.annotation.Bean"
     const val CONFIGURATION = "org.springframework.context.annotation.Configuration"
     const val DEPENDS_ON = "org.springframework.context.annotation.DependsOn"
