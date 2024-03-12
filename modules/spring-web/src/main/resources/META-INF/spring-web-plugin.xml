@@ -49,6 +49,8 @@
                                         implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.web.references.contributors.ControllerEndpointReturnReferenceContributor"/>
 
         <psi.referenceContributor language="yaml"
                                   implementation="com.esprito.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor"/>
