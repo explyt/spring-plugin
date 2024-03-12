@@ -11,6 +11,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.toUElement
 
 class MetaAnnotationsHolder private constructor(
@@ -20,6 +21,11 @@ class MetaAnnotationsHolder private constructor(
 
     fun contains(psi: PsiAnnotation) =
         annotationByFqn.contains(psi.qualifiedName)
+
+    fun contains(uAnnotation: UAnnotation): Boolean {
+        val javaPsi = uAnnotation.javaPsi ?: return false
+        return annotationByFqn.contains(javaPsi.qualifiedName)
+    }
 
     fun isAttributeRelatedWith(
         annotationFqn: String,
