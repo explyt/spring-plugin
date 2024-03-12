@@ -4,6 +4,7 @@ import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
+import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.util.SpringWebUtil
@@ -27,7 +28,6 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.*
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
@@ -248,20 +248,13 @@ class ControllerEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .getCachedValue(module) {
                 CachedValueProvider.Result(
                     doGetMockMvcMethods(module),
-                    ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                    ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
                 )
             }
     }
 
     private fun doGetMockMvcMethods(module: Module): Array<PsiMethod> {
-        return PsiShortNamesCache.getInstance(module.project)
-            .getClassesByName(
-                "MockMvcRequestBuilders",
-                GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-            )
-            .firstOrNull() { it.qualifiedName == SpringWebClasses.MOCK_MVC_REQUEST_BUILDERS }
-            ?.methods
-            ?: emptyArray()
+        return SpringCoreUtil.getClassMethods(SpringWebClasses.MOCK_MVC_REQUEST_BUILDERS, module) ?: emptyArray()
     }
 
     data class Referrer(val path: String, val method: String?, val psiElement: PsiElement)

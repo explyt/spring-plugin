@@ -8,10 +8,15 @@ object SpringWebClasses {
 
 
     const val CONTROLLER = "org.springframework.stereotype.Controller"
+    const val RESPONSE_BODY = "org.springframework.web.bind.annotation.ResponseBody"
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
+
+    const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
+    const val ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER =
+        "org.thymeleaf.templateresolver.AbstractConfigurableTemplateResolver"
 
     const val JAVAX_SERVLET_CONTEXT: String = "javax.servlet.ServletContext"
     const val JAKARTA_SERVLET_CONTEXT: String = "jakarta.servlet.ServletContext"
