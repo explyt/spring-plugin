@@ -9,7 +9,7 @@ import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 
 class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase() {
 
-    fun testJavaAddNewAnnotationOnClass() {
+    fun testAddNewAnnotationOnClass() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """
@@ -20,7 +20,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaRemoveAnnotationOnClass() {
+    fun testRemoveAnnotationOnClass() {
         myFixture.configureByText(
             "KotlinClass.kt",
             "@A<caret> class KotlinClass {}"
@@ -28,7 +28,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest { typeBackspaces(2) }
     }
 
-    fun testJavaEditAnnotationOnClass() {
+    fun testEditAnnotationOnClass() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """
@@ -39,7 +39,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaAddNewAnnotationOnMethod() {
+    fun testAddNewAnnotationOnMethod() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """ class KotlinClass {
@@ -50,7 +50,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaRemoveAnnotationOnMethod() {
+    fun testRemoveAnnotationOnMethod() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """ class KotlinClass {
@@ -61,7 +61,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest { typeBackspaces(2) }
     }
 
-    fun testJavaEditAnnotationOnMethod() {
+    fun testEditAnnotationOnMethod() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """ class KotlinClass {
@@ -72,7 +72,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaAddAnnotationOnField() {
+    fun testAddAnnotationOnField() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """
@@ -85,7 +85,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaEditAnnotationOnField() {
+    fun testEditAnnotationOnField() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """
@@ -98,7 +98,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaRemoveAnnotationOnField() {
+    fun testRemoveAnnotationOnField() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """
@@ -111,7 +111,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest { typeBackspaces(2) }
     }
 
-    fun testJavaEditMethodName() {
+    fun testEditMethodName() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """
@@ -123,7 +123,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaEditConstructorName() {
+    fun testEditConstructorName() {
         myFixture.configureByText(
             "KotlinClass.kt",
             " class  KotlinClass<caret>() { }"
@@ -131,7 +131,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaEditConstructorParameterName() {
+    fun testEditConstructorParameterName() {
         myFixture.configureByText(
             "KotlinClass.kt",
             "class  KotlinClass(val param<caret> : String)"
@@ -139,7 +139,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    fun testJavaEditMethodParameterName() {
+    fun testEditMethodParameterName() {
         myFixture.configureByText(
             "KotlinClass.kt",
             " class  KotlinClass {  fun method(param<caret> : String ) {} }"
@@ -147,7 +147,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest()
     }
 
-    /*fun testJavaEditLocalVariableName() {
+    /*fun testEditLocalVariableName() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """ class KotlinClass {
@@ -159,7 +159,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runIsNotModifiedTest()
     }*/
 
-    fun testJavaEditClassName() {
+    fun testEditClassName() {
         myFixture.configureByText(
             "KotlinClass.kt",
             " class KotlinClass<caret> {}"
@@ -175,7 +175,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runOuterModelModificationTrackerTest(true) { UastModelTrackerInvalidateAction.invalidate(project) }
     }
 
-    fun testJavaEditReturnType() {
+    fun testEditReturnType() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """ class  KotlinClass { 
@@ -207,7 +207,7 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest { myFixture.type(")") }
     }
 
-    fun testJavaEditReturnKeyword() {
+    fun testEditReturnKeyword() {
         myFixture.configureByText(
             "KotlinClass.kt",
             """ class  KotlinClass { 
@@ -227,6 +227,153 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
             }""".trimMargin()
         )
         runModificationTriggeredTest { myFixture.type("n") }
+    }
+
+    fun testInsertClass() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                    @Bean
+                    fun getE(): E { return E() }
+                }
+                <caret>
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("class E {}") }
+    }
+
+    fun testRemoveClass() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                    @Bean
+                    fun getE(): E { return E() }
+                }
+                
+                class E{}<caret>
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(10) }
+    }
+
+    fun testInsertMethod() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                    <caret>   
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("@Bean fun getE(): E { return E() }") }
+    }
+
+    fun testRemoveMethod() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                         @Bean fun getE(): E { return E() }<caret>   
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(35) }
+    }
+
+    fun testCommentClass() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                       @Bean fun getE(): E { return E() }
+                }                
+                <caret>class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testUncommentClass() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                       fun getE(): E { return E() }  
+                }                
+                //<caret>class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
+    fun testCommentMethod() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                       <caret>@Bean fun getE(): E { return E() } 
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testUncommentMethod() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                class KotlinClass {
+                       //<caret>@Bean fun getE(): E { return E() }
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
     }
 
     private fun runModificationTriggeredTest() {

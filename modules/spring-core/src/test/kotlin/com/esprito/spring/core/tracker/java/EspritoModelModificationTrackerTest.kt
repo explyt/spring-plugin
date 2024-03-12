@@ -303,6 +303,153 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest { myFixture.type("n") }
     }
 
+    fun testJavaInsertClass() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                    @Bean
+                    public E getE() {   return new E();   }
+                }
+                <caret>
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("class E {}") }
+    }
+
+    fun testJavaRemoveClass() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                    @Bean
+                    public E getE() {   return new E();   }
+                }
+                
+                class E{}<caret>
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(10) }
+    }
+
+    fun testJavaInsertMethod() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                    <caret>   
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("@Bean public E getE() {return new E();}") }
+    }
+
+    fun testJavaRemoveMethod() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                       @Bean public E getE() {return new E();}<caret>   
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(40) }
+    }
+
+    fun testJavaCommentClass() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                       @Bean public E getE() {return new E();}   
+                }                
+                <caret>class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testJavaUncommentClass() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                       @Bean public E getE() {return new E();}   
+                }                
+                //<caret>class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
+    fun testJavaCommentMethod() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                       <caret>@Bean public E getE() {return new E();}   
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testJavaUncommentMethod() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+
+                @Configuration
+                public class MyConfiguration {
+                       //<caret>@Bean public E getE() {return new E();}   
+                }                
+                class E {}
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
     private fun runModificationTriggeredTest() {
         runModificationTriggeredTest { myFixture.type('A') }
     }
