@@ -49,6 +49,7 @@
 #spring-web
 -keep class com.esprito.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor
 -keep class com.esprito.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor
+-keep class com.esprito.spring.web.references.contributors.RedirectUrlReferenceContributor
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
