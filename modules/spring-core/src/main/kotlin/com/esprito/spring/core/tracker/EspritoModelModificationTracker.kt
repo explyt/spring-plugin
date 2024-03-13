@@ -46,6 +46,7 @@ internal class MyUastPsiTreeChangeAdapter(
     private val annotationTracker: EspritoAnnotationModificationTracker
 ) : PsiTreeChangeAdapter() {
     private val uastPsiPossibleTypes = HashMap<String, CachedValue<UastPsiPossibleTypes>>()
+    private val beforeChildAddRemoveSet = setOf(BEFORE_CHILD_ADDITION, BEFORE_CHILD_REMOVAL)
 
     override fun beforeChildAddition(event: PsiTreeChangeEvent) {
         processChange(event, event.parent, event.child)
@@ -95,13 +96,14 @@ internal class MyUastPsiTreeChangeAdapter(
             return
         }
 
+        val eventType = (event as? PsiTreeChangeEventImpl)?.code
         //added or removed class or method
-        if (psiEventOfType(event, BEFORE_CHILD_ADDITION, BEFORE_CHILD_REMOVAL) && isClassOrMethod(child)) {
+        if (eventType != null && beforeChildAddRemoveSet.contains(eventType) && isClassOrMethod(child)) {
             modelTracker.incModificationCount()
             return
         }
         //added or removed comment
-        if (psiEventOfType(event, CHILD_REPLACED) && isClassOrMethodCommented(event)) {
+        if (eventType == CHILD_REPLACED && isClassOrMethodCommented(event)) {
             modelTracker.incModificationCount()
             return
         }
@@ -237,10 +239,9 @@ internal class MyUastPsiTreeChangeAdapter(
     private fun isClassOrMethod(child: PsiElement?) =
         child is PsiClass || child is PsiMethod || child is KtFunction
 
-    private fun psiEventOfType(event: PsiTreeChangeEvent, vararg type: PsiTreeChangeEventImpl.PsiEventType): Boolean {
-        if (type.isEmpty()) return false
+    private fun psiEventOfTypeBeforeChildAddOrRemove(event: PsiTreeChangeEvent): Boolean {
         val eventType = (event as? PsiTreeChangeEventImpl)?.code ?: return false
-        return type.contains(eventType)
+        return beforeChildAddRemoveSet.contains(eventType)
     }
 
     private fun isClassOrMethodCommented(event: PsiTreeChangeEvent): Boolean {
