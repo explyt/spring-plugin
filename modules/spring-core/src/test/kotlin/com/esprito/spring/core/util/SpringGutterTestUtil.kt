@@ -59,11 +59,10 @@ object SpringGutterTestUtil {
     }
 
     fun getGutterTargetString(allBeanGutters: List<GutterMark>): List<List<String>> {
-        val gutterTargetString = allBeanGutters.asSequence()
+        return allBeanGutters.asSequence()
             .map { getGutterTargetsStrings(it) }
             .filter { it.isNotEmpty() }
             .toList()
-        return gutterTargetString
     }
 
 }
