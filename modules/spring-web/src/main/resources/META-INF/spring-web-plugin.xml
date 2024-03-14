@@ -15,7 +15,8 @@
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.web.notifications.core"
                          bundle="messages.SpringWebBundle"
                          key="esprito.spring.web.inspection.pathVariable"
                          enabledByDefault="true"
@@ -25,15 +26,33 @@
         <localInspection language="UAST"
                          shortName="SpringInitBinderNonVoidInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.web.notifications.core"
                          bundle="messages.SpringWebBundle"
                          key="esprito.spring.web.inspection.initBinder"
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="MockMvcTemplateParametersInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.web.notifications.core"
+                         bundle="messages.SpringWebBundle"
+                         key="esprito.spring.web.inspection.mockMvc.parameters"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.web.inspections.MockMvcTemplateParametersInspection"/>
+
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.web.references.contributors.ControllerEndpointReturnReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.web.references.contributors.RedirectUrlReferenceContributor"/>
 
         <psi.referenceContributor language="yaml"
                                   implementation="com.esprito.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor"/>

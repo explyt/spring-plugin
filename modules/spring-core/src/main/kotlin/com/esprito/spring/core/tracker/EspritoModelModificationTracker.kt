@@ -2,36 +2,38 @@ package com.esprito.spring.core.tracker
 
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.lang.properties.psi.PropertiesFile
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.ModificationTracker.NEVER_CHANGED
 import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.*
-import com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES
-import com.intellij.openapi.vfs.impl.BulkVirtualFileListenerAdapter
 import com.intellij.psi.*
 import com.intellij.psi.impl.PsiTreeChangeEventImpl
+import com.intellij.psi.impl.PsiTreeChangeEventImpl.PsiEventType.*
 import com.intellij.psi.impl.source.tree.LazyParseablePsiElement
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.uast.*
 import org.jetbrains.uast.util.ClassSet
 import org.jetbrains.uast.util.isInstanceOf
 
 
 @Suppress("UnstableApiUsage")
-class EspritoModelModificationTracker(project: Project, parent: Disposable) : SimpleModificationTracker() {
-    val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
+class EspritoModelModificationTracker(project: Project) : SimpleModificationTracker() {
+    private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
 
-    init {
-        PsiManager.getInstance(project).addPsiTreeChangeListener(MyUastPsiTreeChangeAdapter(project, this), parent)
-        project.messageBus.connect(parent)
-            .subscribe(VFS_CHANGES, BulkVirtualFileListenerAdapter(SpringVirtualFileListener(project, this)))
+    override fun getModificationCount(): Long {
+        return super.getModificationCount() + javaLibraryTracker.modificationCount
     }
+}
+
+@Suppress("UnstableApiUsage")
+class EspritoAnnotationModificationTracker(project: Project) : SimpleModificationTracker() {
+    private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
 
     override fun getModificationCount(): Long {
         return super.getModificationCount() + javaLibraryTracker.modificationCount
@@ -39,9 +41,12 @@ class EspritoModelModificationTracker(project: Project, parent: Disposable) : Si
 }
 
 internal class MyUastPsiTreeChangeAdapter(
-    val project: Project, val tracker: SimpleModificationTracker
+    private val project: Project,
+    private val modelTracker: EspritoModelModificationTracker,
+    private val annotationTracker: EspritoAnnotationModificationTracker
 ) : PsiTreeChangeAdapter() {
     private val uastPsiPossibleTypes = HashMap<String, CachedValue<UastPsiPossibleTypes>>()
+    private val beforeChildAddRemoveSet = setOf(BEFORE_CHILD_ADDITION, BEFORE_CHILD_REMOVAL)
 
     override fun beforeChildAddition(event: PsiTreeChangeEvent) {
         processChange(event, event.parent, event.child)
@@ -71,12 +76,12 @@ internal class MyUastPsiTreeChangeAdapter(
     private fun processChange(event: PsiTreeChangeEvent, parent: PsiElement?, child: PsiElement?) {
         val psiFile = event.file
         if (psiFile is PropertiesFile) {
-            tracker.incModificationCount()
+            modelTracker.incModificationCount()
             return
         }
         val languageId = psiFile?.language?.id ?: return
         if ("yaml" == languageId) {
-            tracker.incModificationCount()
+            modelTracker.incModificationCount()
             return
         }
         if (psiFile !is PsiClassOwner) {
@@ -90,6 +95,19 @@ internal class MyUastPsiTreeChangeAdapter(
         if (event.newChild is PsiWhiteSpace && event.oldChild is PsiWhiteSpace) {
             return
         }
+
+        val eventType = (event as? PsiTreeChangeEventImpl)?.code
+        //added or removed class or method
+        if (eventType != null && beforeChildAddRemoveSet.contains(eventType) && isClassOrMethod(child)) {
+            modelTracker.incModificationCount()
+            return
+        }
+        //added or removed comment
+        if (eventType == CHILD_REPLACED && isClassOrMethodCommented(event)) {
+            modelTracker.incModificationCount()
+            return
+        }
+
         val possiblePsiTypes = getPossiblePsiTypesFor(languageId) ?: return
         val newChild = event.newChild
         val grandParent = parent?.parent
@@ -100,10 +118,16 @@ internal class MyUastPsiTreeChangeAdapter(
             } catch (ignored: Exception) {
             }
         }
-        if ((isRelevantAnnotation(child, possiblePsiTypes) // removed annotation
-                    || isRelevantAnnotation(unsafeGrandChild, possiblePsiTypes) // removed annotation
-                    || isRelevantAnnotation(newChild, possiblePsiTypes) // added   annotation
-                    || (grandParent.isInstanceOf(possiblePsiTypes.forClasses) // modifier changed (static, public)
+        if (isRelevantAnnotation(child, possiblePsiTypes) // removed annotation
+            || isRelevantAnnotation(unsafeGrandChild, possiblePsiTypes) // removed annotation
+            || isRelevantAnnotation(newChild, possiblePsiTypes) // added   annotation
+            || getFirstParentIsRelevantAnnotation(parent, possiblePsiTypes) != null // change in  annotation
+        ) {
+            modelTracker.incModificationCount()
+            annotationTracker.incModificationCount()
+            return
+        }
+        if (((grandParent.isInstanceOf(possiblePsiTypes.forClasses) // modifier changed (static, public)
                     && !parent.isInstanceOf(possiblePsiTypes.forAnnotationOwners))
                     || innerClassChanged(parent, grandParent, child, event, possiblePsiTypes)
                     || classRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
@@ -111,11 +135,10 @@ internal class MyUastPsiTreeChangeAdapter(
                     || fieldRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || parameterRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || parameterStartInput(grandParent, event.newChild, possiblePsiTypes)
-                    || changedReturnStatement(newChild, parent, grandParent, possiblePsiTypes)
-                    || getFirstParentIsRelevantAnnotation(parent, possiblePsiTypes) != null)
+                    || changedReturnStatement(newChild, parent, grandParent, possiblePsiTypes))
             || child is LazyParseablePsiElement
         ) {
-            tracker.incModificationCount()
+            modelTracker.incModificationCount()
         }
     }
 
@@ -211,6 +234,21 @@ internal class MyUastPsiTreeChangeAdapter(
         }
         uastPsiPossibleTypes[languageId] = possibleTypesCachedValue
         return possibleTypesCachedValue.value
+    }
+
+    private fun isClassOrMethod(child: PsiElement?) =
+        child is PsiClass || child is PsiMethod || child is KtFunction
+
+    private fun psiEventOfTypeBeforeChildAddOrRemove(event: PsiTreeChangeEvent): Boolean {
+        val eventType = (event as? PsiTreeChangeEventImpl)?.code ?: return false
+        return beforeChildAddRemoveSet.contains(eventType)
+    }
+
+    private fun isClassOrMethodCommented(event: PsiTreeChangeEvent): Boolean {
+        val newChild = event.newChild ?: return false
+        val oldChild = event.oldChild ?: return false
+        return (newChild is PsiComment && isClassOrMethod(oldChild))
+                || (oldChild is PsiComment && isClassOrMethod(newChild))
     }
 }
 

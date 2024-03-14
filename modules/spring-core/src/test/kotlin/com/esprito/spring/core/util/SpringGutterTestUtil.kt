@@ -6,9 +6,12 @@ import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.navigation.NavigationGutterIconRenderer
 import com.intellij.psi.PsiElement
 import com.intellij.psi.presentation.java.SymbolPresentationUtil
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 import com.intellij.util.Function
 import com.intellij.util.containers.ContainerUtil
+import junit.framework.TestCase
+import javax.swing.Icon
 
 object SpringGutterTestUtil {
     private val PSI_FUNCTION = Function<PsiElement, String> { SymbolPresentationUtil.getSymbolPresentableText(it) }
@@ -47,4 +50,19 @@ object SpringGutterTestUtil {
         }
         return emptyList()
     }
+
+    fun getAllBeanGuttersByIcon(myFixture: JavaCodeInsightTestFixture, icon: Icon): List<GutterMark> {
+        val allBeanGutters = myFixture.findAllGutters()
+            .filter { it.icon == icon }
+        TestCase.assertTrue(allBeanGutters.isNotEmpty())
+        return allBeanGutters
+    }
+
+    fun getGutterTargetString(allBeanGutters: List<GutterMark>): List<List<String>> {
+        return allBeanGutters.asSequence()
+            .map { getGutterTargetsStrings(it) }
+            .filter { it.isNotEmpty() }
+            .toList()
+    }
+
 }

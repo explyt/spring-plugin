@@ -19,7 +19,9 @@ import com.esprito.util.EspritoPsiUtil.isStatic
 import com.intellij.codeInspection.inheritance.ImplicitSubclassProvider
 import com.intellij.lang.jvm.JvmModifier
 import com.intellij.openapi.roots.TestSourcesFilter
-import com.intellij.psi.*
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 
 @Suppress("UnstableApiUsage")
 class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
@@ -47,9 +49,9 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
                 .filterNotNull()
                 .firstOrNull()
             if ( annotation != null ) {
-                val shotName = annotation.qualifiedName?.split(".")?.last() ?: ""
+                val shortName = annotation.qualifiedName?.split(".")?.last() ?: ""
                 return SubclassingInfo(
-                    SpringCoreBundle.message("esprito.implicit.inspection.forClass.annotated", shotName),
+                    SpringCoreBundle.message("esprito.implicit.inspection.forClass.annotated", shortName),
                     methodsInfo.ifEmpty { null },
                     psiClass.isAbstract)
             }
@@ -82,9 +84,9 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
             .filterNotNull()
             .firstOrNull()
         return if (annotation != null) {
-            val shotName = annotation.qualifiedName?.split(".")?.last() ?: ""
+            val shortName = annotation.qualifiedName?.split(".")?.last() ?: ""
             val message =
-                SpringCoreBundle.message("esprito.implicit.inspection.forMethod.annotated", shotName)
+                SpringCoreBundle.message("esprito.implicit.inspection.forMethod.annotated", shortName)
             OverridingInfo(message)
         } else if (isBeanInConfiguration(method)) {
             OverridingInfo(SpringCoreBundle.message("esprito.implicit.inspection.bean.in.configuration"))
@@ -121,8 +123,11 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
             .filterNotNull()
             .firstOrNull() ?: return null
 
-        val shotName = annotation.qualifiedName?.split(".")?.last() ?: ""
-        return OverridingInfo(SpringCoreBundle.message("esprito.implicit.inspection.forMethod.annotated", shotName), acceptedModifiers)
+        val shortName = annotation.qualifiedName?.split(".")?.last() ?: ""
+        return OverridingInfo(
+            SpringCoreBundle.message("esprito.implicit.inspection.forMethod.annotated", shortName),
+            acceptedModifiers
+        )
     }
 
 }

@@ -4,12 +4,14 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiManager
 
 class UastModelTrackerInvalidateAction : AnAction() {
     init {
@@ -42,7 +44,9 @@ class UastModelTrackerInvalidateAction : AnAction() {
 
     companion object {
         fun invalidate(project: Project) {
-            ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker().incModificationCount()
+            ModificationTrackerManager.getInstance(project).invalidateAll()
+            PsiManager.getInstance(project).dropPsiCaches()
+            DaemonCodeAnalyzer.getInstance(project).restart()
         }
     }
 }

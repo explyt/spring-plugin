@@ -13,6 +13,7 @@ buildscript {
 plugins {
     java
     id("org.jetbrains.intellij") apply false
+    id("org.jetbrains.changelog") version "2.2.0" apply false
     kotlin("jvm") version "1.9.22"
 }
 

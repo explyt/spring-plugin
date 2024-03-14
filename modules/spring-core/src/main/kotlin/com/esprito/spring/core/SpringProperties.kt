@@ -19,6 +19,9 @@ object SpringProperties {
 
     const val SPRING_PROFILES_ACTIVE = "spring.profiles.active"
 
+    const val GET_RESOURCE = "getResource"
+    const val GET_RESOURCES = "getResources"
+
     const val SPRING_FACTORIES_FILE_NAME = "spring.factories"
     const val FACTORIES_ENABLE_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.EnableAutoConfiguration"
     const val AUTOCONFIGURATION_IMPORTS = "org.springframework.boot.autoconfigure.AutoConfiguration.imports"

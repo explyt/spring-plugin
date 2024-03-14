@@ -11,10 +11,12 @@ object SpringCoreClasses {
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
 
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
+    const val COMPONENT_SCANS = "org.springframework.context.annotation.ComponentScans"
     const val BEAN = "org.springframework.context.annotation.Bean"
     const val CONFIGURATION = "org.springframework.context.annotation.Configuration"
     const val DEPENDS_ON = "org.springframework.context.annotation.DependsOn"
     const val PRIMARY = "org.springframework.context.annotation.Primary"
+    const val SCOPE = "org.springframework.context.annotation.Scope"
 
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
@@ -66,6 +68,14 @@ object SpringCoreClasses {
 
     const val TRANSACTIONAL = "org.springframework.transaction.annotation.Transactional"
 
+    const val RESOURCE_CLASS = "java.lang.Class"
+    const val RESOURCE_CLASS_LOADER = "java.lang.ClassLoader"
+
+    const val FILE_RESOURCE_RESOURCE = "org.springframework.core.io.AbstractFileResolvingResource"
+    const val FILE_URL_RESOURCE = "org.springframework.core.io.FileUrlResource"
+    const val URL_RESOURCE = "org.springframework.core.io.UrlResource"
+    const val CLASS_PATH_RESOURCE = "org.springframework.core.io.ClassPathResource"
+
     const val RESOURCE_LOADER = "org.springframework.core.io.ResourceLoader"
     const val RESOURCE_LOADER_RESOLVER = "org.springframework.core.io.support.ResourcePatternResolver"
     const val RESOURCE_UTILS = "org.springframework.util.ResourceUtils"
@@ -82,4 +92,5 @@ object SpringCoreClasses {
     val ANNOTATIONS_CACHE = setOf(CACHEABLE, CACHEPUT, CACHEEVICT, CACHECONFIG)
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns
+    val AOP_ANNOTATION = listOf(TRANSACTIONAL, ASYNC) + ANNOTATIONS_CACHE
 }

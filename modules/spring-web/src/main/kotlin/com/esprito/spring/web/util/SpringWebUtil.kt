@@ -11,6 +11,7 @@ import com.esprito.util.EspritoPsiUtil.isOptional
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.psi.CommonClassNames
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 
@@ -98,6 +99,10 @@ object SpringWebUtil {
         return result.split('?').first()
     }
 
+    fun getUrlTemplateIndex(psiMethod: PsiMethod) =
+        psiMethod.parameterList
+            .parameters
+            .indexOfFirst { it.name == URL_TEMPLATE && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING }
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
@@ -109,8 +114,12 @@ object SpringWebUtil {
         val isMap: Boolean
     )
 
-    val REQUEST_METHODS = setOf("get", "head", "post", "put", "patch", "delete", "options", "trace")
+    val REQUEST_METHODS =
+        setOf("get", "head", "post", "put", "patch", "delete", "options", "trace", "request", "multipart")
+    val HTTP_METHOD_NAMES = setOf("httpMethod", "method")
+
     const val OPEN_API = "openapi"
     const val PATHS = "paths"
+    const val URL_TEMPLATE = "urlTemplate"
 
 }

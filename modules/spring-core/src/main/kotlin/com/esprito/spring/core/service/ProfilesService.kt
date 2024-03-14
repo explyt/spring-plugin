@@ -17,13 +17,21 @@ class ProfilesService(private val project: Project) {
     @Volatile
     var activeProfilesFromRunConfiguration: Set<String> = setOf()
 
+    @Volatile
+    var currentMainClass: String? = null
+
     private fun isActive(profile: String) = getActiveProfiles().contains(profile)
 
     fun updateFromConfiguration(settings: RunnerAndConfigurationSettings?): Boolean {
         val profiles = getProfilesFromConfiguration(settings)
-        val changed = profiles != activeProfilesFromRunConfiguration
+        val profileChanged = profiles != activeProfilesFromRunConfiguration
         activeProfilesFromRunConfiguration = profiles
-        return changed
+
+        val mainClassName = getMainClassName(settings)
+        val mainClassChanged = mainClassName != currentMainClass
+        currentMainClass = mainClassName
+
+        return profileChanged || mainClassChanged
     }
 
     private fun getActiveProfiles(): Set<String> {
@@ -60,6 +68,11 @@ class ProfilesService(private val project: Project) {
             ?.split(',')
             ?.filterTo(mutableSetOf()) { it.isNotBlank() }
             ?: setOf()
+    }
+
+    private fun getMainClassName(settings: RunnerAndConfigurationSettings?): String? {
+        return (settings?.configuration as? SpringBootRunConfiguration)
+            ?.mainClass?.qualifiedName
     }
 
     private fun tokenize(expression: String): Collection<Token>? {

@@ -1,0 +1,14 @@
+<idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
+
+    <vendor>esprito</vendor>
+    <name>Spring Tool Tests</name>
+    <id>com.esprito.spring-security-test</id>
+    <description>Overriding services and components for tests.</description>
+
+    <xi:include href="spring-security-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+    </extensions>
+</idea-plugin>

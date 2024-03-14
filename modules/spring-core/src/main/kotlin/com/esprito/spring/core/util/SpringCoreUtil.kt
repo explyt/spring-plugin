@@ -36,6 +36,8 @@ import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.uast.toUElement
 import java.util.*
@@ -362,7 +364,7 @@ object SpringCoreUtil {
 
     @Suppress("UnstableApiUsage")
     fun hasBootLibrary(module: Module): Boolean {
-        return JavaLibraryUtil.hasLibraryJar(module, "org.springframework.boot:spring-boot")
+        return JavaLibraryUtil.hasLibraryJar(module, SPRING_BOOT_MAVEN)
     }
 
     fun String.removeDummyIdentifier(): String {
@@ -370,4 +372,20 @@ object SpringCoreUtil {
             .replace("$,", "")
             .replace(" ", "")
     }
+
+    fun getClassMethods(fullyQualifiedName: String, module: Module): Array<PsiMethod>? {
+        val shortName = fullyQualifiedName.split('.').last()
+
+        return PsiShortNamesCache.getInstance(module.project)
+            .getClassesByName(
+                shortName,
+                GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+            )
+            .firstOrNull() { it.qualifiedName == fullyQualifiedName }
+            ?.methods
+    }
+
+    const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"
+    const val SPRING_BOOT_ACTUATOR_MAVEN = "org.springframework.boot:spring-boot-actuator"
+
 }

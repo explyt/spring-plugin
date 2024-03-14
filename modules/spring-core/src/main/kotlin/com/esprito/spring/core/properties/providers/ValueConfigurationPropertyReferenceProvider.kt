@@ -10,6 +10,7 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReference.EMPTY_ARRAY
 import com.intellij.psi.UastInjectionHostReferenceProvider
 import com.intellij.util.ProcessingContext
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.*
 
 class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferenceProvider() {
@@ -37,7 +38,7 @@ class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferencePr
 
         if (referenceProperties.isEmpty() && valueText.startsWith("\${")) {
             val startPosition =
-                if (uExpression.lang == ConfigurationPropertyLineMarkerProvider.KOTLIN_LANGUAGE.value) 4 else 3
+                if (uExpression.lang == KotlinLanguage.INSTANCE) 4 else 3
             return arrayOf(
                 EspritoPropertyReference(
                     host, "", TextRange.from(startPosition, 0)

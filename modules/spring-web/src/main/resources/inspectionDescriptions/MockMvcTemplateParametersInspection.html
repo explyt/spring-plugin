@@ -1,0 +1,27 @@
+<html lang="en">
+<head>
+    <title>MockMvc Template Parameters Inspection</title>
+</head>
+<body>
+
+<p>Reports wrong parameters count</p>
+
+<p><b>Example:</b></p>
+Reports "Too few URI parameters"
+<pre><code lang="java">
+    void tooFew() {
+        mockMvc.perform(put("/product/{tooFew}"));
+    }
+</code></pre>
+
+<p><b>Example:</b></p>
+Reports "Too many URI parameters"
+<pre><code lang="java">
+    void tooMany() {
+        mockMvc.perform(get("/product/{tooMany}", 1, 2));
+    }
+</code></pre>
+
+
+</body>
+</html>

@@ -26,7 +26,8 @@ class SpringConfigurationPropertiesInspection : AbstractBaseUastLocalInspectionT
     ): Array<ProblemDescriptor> {
         val file = uClass.javaPsi.containingFile ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForFile(file) ?: return emptyArray()
-        val uAnnotation = findUAnnotation(module, uClass.uAnnotations) ?: return emptyArray()
+        val uAnnotation = SpringSearchService.getInstance(manager.project)
+            .findUAnnotation(module, uClass.uAnnotations, CONFIGURATION_PROPERTIES) ?: return emptyArray()
         return collectProblems(uAnnotation, module, manager, isOnTheFly)
     }
 
@@ -35,7 +36,8 @@ class SpringConfigurationPropertiesInspection : AbstractBaseUastLocalInspectionT
     ): Array<ProblemDescriptor> {
         val file = method.javaPsi.containingFile ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForFile(file) ?: return emptyArray()
-        val uAnnotation = findUAnnotation(module, method.uAnnotations) ?: return emptyArray()
+        val uAnnotation = SpringSearchService.getInstance(manager.project)
+            .findUAnnotation(module, method.uAnnotations, CONFIGURATION_PROPERTIES) ?: return emptyArray()
         return collectProblems(uAnnotation, module, manager, isOnTheFly)
     }
 
@@ -58,19 +60,6 @@ class SpringConfigurationPropertiesInspection : AbstractBaseUastLocalInspectionT
             registerDuplicateProblemWithQuickFix(holder, sourcePsi, module, valueText)
         }
         return holder.resultsArray
-    }
-
-    private fun findUAnnotation(module: Module, uAnnotations: List<UAnnotation>): UAnnotation? {
-        val metaAnnotationsHolder = SpringSearchService.getInstance(module.project)
-            .getMetaAnnotations(module, CONFIGURATION_PROPERTIES)
-
-        for (annotation in uAnnotations) {
-            val psiAnnotation = annotation.javaPsi ?: continue
-            if (metaAnnotationsHolder.contains(psiAnnotation)) {
-                return annotation
-            }
-        }
-        return null
     }
 
     private fun registerDuplicateProblemWithQuickFix(

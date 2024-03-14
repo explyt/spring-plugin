@@ -297,4 +297,105 @@ class FileReferenceContributorTest : EspritoJavaLightTestCase() {
             .toSet()
         assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
     }
+
+    fun testConstructorClassPathResourceVariable() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """           
+                import org.springframework.core.io.ClassPathResource;
+                
+                @Service
+                public class TestClass {
+                    ClassPathResource path = new ClassPathResource("<caret>");
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    fun testConstructorUrlResourceVariable() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """
+                import org.springframework.core.io.UrlResource;
+                
+                @Service
+                public class TestClass {
+                    UrlResource path = new UrlResource("<caret>");
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    fun testConstructorFileUrlResourceVariable() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """
+                import org.springframework.core.io.FileUrlResource;
+                
+                @Service
+                public class TestClass {
+                    FileUrlResource path = new FileUrlResource("<caret>");
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    fun testGetResourceClassResolve() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                import java.net.URL;
+                import org.springframework.stereotype.Service;
+                import jakarta.annotation.PostConstruct;
+                
+                @Service
+                public class TestClass {
+                    @PostConstruct
+                    public void init() {
+                        URL credentialsResource = TestClass.class.getResource("<caret>");
+                    }
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    fun testGetResourceClassLoaderResolve() {
+        myFixture.configureByText(
+            "TestClass.java",
+            """                
+                import java.net.URL;
+                import org.springframework.stereotype.Service;
+                import jakarta.annotation.PostConstruct;
+                
+                @Service
+                public class TestClass {
+                    @PostConstruct
+                    public void init() {
+                        URL credentialsResource = TestClass.class.getClassLoader().getResource("<caret>");
+                    }
+                }
+            """.trimIndent()
+        )
+
+        assertVariants()
+    }
+
+    private fun assertVariants() {
+        val variants = myFixture.getReferenceAtCaretPosition()?.variants ?: emptyArray()
+        val variantSet = variants.asSequence()
+            .filterIsInstance(LookupElement::class.java)
+            .map { it.lookupString }
+            .toSet()
+        assertEquals(setOf("TestClass.java") + basicPrefix, variantSet)
+    }
+
+
 }

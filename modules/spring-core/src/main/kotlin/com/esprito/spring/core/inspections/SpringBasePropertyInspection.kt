@@ -5,11 +5,13 @@ import ai.grazie.nlp.utils.dropWhitespaces
 import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.SpringCoreClasses.IO_RESOURCE
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.*
 import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
+import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
@@ -22,6 +24,7 @@ import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
@@ -188,6 +191,7 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
         problems += getProblemHandleAs(module, manager, isOnTheFly)
         problems += getProblemBeanReferenceProperties(module, manager, isOnTheFly)
         problems += getProblemPropertyType(module, manager, isOnTheFly)
+        problems += getProblemResource(manager, isOnTheFly)
         return problems
     }
 
@@ -435,6 +439,36 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
                 }
                 problems += getProblemEnum(module, manager, psiValue, isOnTheFly, propertyType, value)
             }
+        }
+        return problems
+    }
+
+    private fun getProblemResource(
+        manager: InspectionManager,
+        isOnTheFly: Boolean,
+    ): MutableList<ProblemDescriptor> {
+        val problems = mutableListOf<ProblemDescriptor>()
+        val resources = fileProperties.filter { property ->
+            hints.any { hint ->
+                property.key == hint.name
+                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
+                        && hint.providers.any { it.parameters?.target == IO_RESOURCE }
+            }
+        }
+        if (resources.isEmpty()) {
+            return problems
+        }
+        for (property in resources) {
+            val value = property.value ?: continue
+            val elementFileProperty = property.psiElement ?: continue
+            val psiValue = elementFileProperty.propertyValuePsiElement() ?: continue
+            problems += ResourceFileInspectionUtil.getPathProblemsClasspath(
+                PropertiesFileType.INSTANCE,
+                value,
+                psiValue,
+                manager,
+                isOnTheFly
+            )
         }
         return problems
     }
