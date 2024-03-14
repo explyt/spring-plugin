@@ -9,14 +9,20 @@
 
 #### Added
 
-- inspection for methods annotated with `@Async`, `@Cacheable`, `@CachePut`, `@CacheEvict` work to prevent calls within the same class.
+- support ComponentScan to find spring beans
+- inspection for methods annotated with `@Async`, `@Transactional`, `@Cacheable`, `@CachePut`, `@CacheEvict` work to prevent calls within the same class.
 - bean scope options in autocomplete, including custom scopes.
 - inspections for missing or problematic resource files in .properties and .yaml.
+
+#### Fixed
+
+- remove or comment Bean class action does not recover (return back) bean gutter icon
 
 ### Spring Web/MVC
 
 #### Added
 
+- Add Navigation from strings "redirect:" to controller endpoints
 - Enhanced MockMvc with better handling of multipart requests and parameter checks.
 - linemarkers for quick navigation to URLs defined in controller endpoints.
 - Integrated OpenAPI spec navigation for both .yaml and .json formats.
@@ -32,5 +38,10 @@
 #### Added
 
 - inspection for getResource method to ensure classpath resource path is correct.
-- New inspections and tests were added to improve overall functionality and to adjust inspection paths and keys.
+- inspections and tests to improve overall functionality 
 - Automated Changelog introduced 
+- Extended tests coverage for cases: bean inheritance, bean name navigation, bean as parameter
+
+#### Fixed
+
+- adjust inspection paths and keys
