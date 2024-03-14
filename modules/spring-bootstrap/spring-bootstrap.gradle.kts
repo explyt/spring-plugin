@@ -1,10 +1,14 @@
+import org.jetbrains.changelog.Changelog
+import org.jetbrains.changelog.date
 import org.jetbrains.intellij.tasks.PrepareSandboxTask
 import org.jetbrains.intellij.tasks.RunPluginVerifierTask
 import proguard.gradle.ProGuardTask
+import java.time.LocalDate
 
 plugins {
     kotlin("jvm")
     id("org.jetbrains.intellij")
+    id("org.jetbrains.changelog")
 }
 
 evaluationDependsOn(":base")
@@ -43,7 +47,7 @@ version = fun(): String {
         return bv
     }
     val sincePostfix = "${ext["sinceVersion"]}".substring(0, 3)
-    return "${ext["pluginVersion"]}.${ext["snapshotVersion"]}-${sincePostfix}"
+    return "${sincePostfix}.${ext["pluginVersion"]}.${LocalDate.now()}.${ext["snapshotVersion"]}"
 }.invoke()
 
 val springPluginName = "spring-tool"
@@ -197,6 +201,26 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     }
 }
 
+
+changelog {
+    version.set(springBootstrapModule.version as String)
+    path.set(rootProject.file("CHANGELOG.md").canonicalPath)
+    header.set(provider { "[${version.get()}] - ${date()}" })
+    //headerParserRegex.set("""(\d+\.\d+)""".toRegex())
+    introduction.set(
+        rootProject.file("README.md").readText()
+    )
+    itemPrefix.set("-")
+    keepUnreleasedSection.set(true)
+    unreleasedTerm.set("[Unreleased]")
+    //groups.set(listOf("Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"))
+    groups.empty()
+    lineSeparator.set("\n")
+    combinePreReleases.set(true)
+    //sectionUrlBuilder.set(ChangelogSectionUrlBuilder { repositoryUrl, currentVersion, previousVersion, isUnreleased -> "foo" })
+
+}
+
 tasks {
     buildSearchableOptions {
         enabled = false
@@ -207,7 +231,17 @@ tasks {
         sinceBuild.set(ext["sinceVersion"] as String)
         //        untilBuild.set(optProperty("setUntilVersion") ?: "")
         untilBuild.set(ext["untilVersion"] as String)
-        changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
+        //changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
+        changeNotes.set(provider {
+            changelog.renderItem(
+                changelog
+                    .getUnreleased()
+                    .withHeader(false)
+                    .withEmptySections(false),
+                Changelog.OutputType.HTML
+            )
+        })
+
     }
 
     runIde {
