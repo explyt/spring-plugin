@@ -71,3 +71,4 @@
 -dontwarn org.junit.**
 -dontwarn reactor.blockhound.**
 -dontwarn training.**
+-dontwarn com.sun.tools.**
