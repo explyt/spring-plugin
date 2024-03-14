@@ -12,7 +12,10 @@ private const val TEST_DATA_PATH = "providers/linemarkers/beans"
 class SpringBeanLineMarkerProviderSimpleTest : EspritoJavaLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springContext_6_0_7,
+        TestLibrary.jakarta_annotation_2_1_1
+    )
 
     fun testLineMarkerOneBeanOneDependency_toAutowired() {
         val vf = myFixture.copyFileToProject(
@@ -154,5 +157,53 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoJavaLightTestCase() {
                         || it.contains("foo", true)
             }
         }.size, 2)
+    }
+
+    fun testLineMarkerResource_toAutowired() {
+        myFixture.configureByText(
+            "FooComponent.java",
+            """
+                @org.springframework.stereotype.Component
+                class E {}
+
+                @org.springframework.stereotype.Component
+                class Foo {
+                    @jakarta.annotation.Resource E e;  /** Target {@link E} */
+                }
+
+            """.trimIndent()
+        )
+        myFixture.doHighlighting()
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        TestCase.assertEquals(
+            gutterTargetString.flatMap { gutter -> gutter.filter { it == "e" } }.size, 1
+        )
+    }
+
+    fun testLineMarkerResource_toBean() {
+        myFixture.configureByText(
+            "FooComponent.kt",
+            """
+                @org.springframework.stereotype.Component
+                internal class E {}
+
+                @org.springframework.stereotype.Component
+                internal class Foo {
+                    @jakarta.annotation.Resource
+                    private lateinit var e: E
+                }
+            """.trimIndent()
+        )
+        myFixture.doHighlighting()
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        TestCase.assertEquals(
+            gutterTargetString.flatMap { gutter -> gutter.filter { it == "E" } }.size, 1
+        )
     }
 }

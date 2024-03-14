@@ -179,6 +179,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
         , "java.instrument.jmod"
         , "java.datatransfer.jmod"
         , "java.rmi.jmod"
+        , "java.management.jmod"
     )
     for (dependency in jdkDependencies) {
         libraryjars(filterArgs, "${System.getProperty("java.home")}/jmods/${dependency}")
