@@ -115,4 +115,44 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoJavaLightTestCase() {
             gutter.filter { it.contains("fooFormatter", true) }
         }.size, 3)
     }
+
+    fun testLineMarkerByBeanName_toAutowired() {
+        val vf = myFixture.copyFileToProject(
+            "method_navigates/TestConfiguration.java"
+        )
+        myFixture.configureFromExistingVirtualFile(vf)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        TestCase.assertEquals(gutterTargetString
+            .filter { it.size == 1 }
+            .flatMap { gutter ->
+                gutter.filter {
+                    it.contains("namedBeanFoo", true)
+                            || it.contains("foo", true)
+                }
+            }.size,
+            2
+        )
+    }
+
+    fun testLineMarkerByBeanName_toBean() {
+        val vf = myFixture.copyFileToProject(
+            "method_navigates/TestConfiguration.java"
+        )
+        myFixture.configureFromExistingVirtualFile(vf)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
+            gutter.filter {
+                it.contains("namedBeanFoo", true)
+                        || it.contains("foo", true)
+            }
+        }.size, 2)
+    }
 }
