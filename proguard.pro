@@ -6,6 +6,7 @@
 
 # required for kotlin
 -keep class kotlin.Metadata
+-keep class kotlin.collections.**
 -keep class kotlin.reflect.**
 -keep class kotlin.reflect.jvm.internal.** { *; }
 -keepclassmembers enum * { public *; }
@@ -44,12 +45,6 @@
 -keep class com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
 -keep class com.esprito.spring.core.profile.ProfileSearcher
 -keep class com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
-# spring-data
--keep class com.esprito.jpa.ql.reference.InputParameterReferenceResolver
-#spring-web
--keep class com.esprito.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor
--keep class com.esprito.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor
--keep class com.esprito.spring.web.references.contributors.RedirectUrlReferenceContributor
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
@@ -66,9 +61,9 @@
 -dontwarn com.intellij.ui.mac.**
 -dontwarn com.jetbrains.performancePlugin.**
 -dontwarn com.jetbrains.rd.**
+-dontwarn com.sun.tools.attach.**
 -dontwarn io.kinference.core.operators.ml.trees.KICoreTreeEnsemble
 -dontwarn org.jetbrains.kotlin.**
 -dontwarn org.junit.**
 -dontwarn reactor.blockhound.**
 -dontwarn training.**
--dontwarn com.sun.tools.**

@@ -7,7 +7,6 @@ variables:
 stages:
   - test
   - release
-  - tag-release
 
 test:
   stage: test

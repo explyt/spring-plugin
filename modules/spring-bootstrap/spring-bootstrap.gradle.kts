@@ -161,6 +161,11 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     configuration(file("../../proguard.pro"))
 
     injars(extractJar.map { it.outputs.files.singleFile })
+
+    // workaround for proguard bug: https://github.com/Guardsquare/proguard/issues/94
+    // See: https://github.com/Guardsquare/proguard/issues/94#issuecomment-723663507
+    injars(configurations.kotlinCompilerClasspath.get().filter { it.name.contains("stdlib") })
+
     val toFilter = configurations.compileClasspath.get().files
         .filter { it.startsWith(rootProject.layout.projectDirectory.asFile) }
 
