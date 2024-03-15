@@ -6,11 +6,13 @@
 
 # required for kotlin
 -keep class kotlin.Metadata
--keep class kotlin.collections.**
 -keep class kotlin.reflect.**
 -keep class kotlin.reflect.jvm.internal.** { *; }
 -keepclassmembers enum * { public *; }
 -keep class **$DefaultImpls { *; }
+
+-keep class kotlin.**
+-keep class kotlinx.**
 
 -dontwarn kotlin.**
 -dontwarn kotlinx.**
