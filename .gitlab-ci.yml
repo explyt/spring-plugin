@@ -23,12 +23,10 @@ test:
 
 release:
   stage: release
-  only:
-    - /^release\/.*$/
   rules:
     - if: $CI_COMMIT_TAG
       when: never                                             # Do not run this job when a tag is created manually
-    - when: always
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
     - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
@@ -48,12 +46,10 @@ release_job:
   needs:
     - job: release
       artifacts: true
-  only:
-    - /^release\/.*$/
   rules:
     - if: $CI_COMMIT_TAG
       when: never                                             # Do not run this job when a tag is created manually
-    - when: always
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
     - VERSION="$ESCAPED_BRANCH_NAME.$(date +%Y-%m-%d).$BUILD_NUMBER"
