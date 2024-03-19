@@ -7,6 +7,7 @@ variables:
 stages:
   - test
   - release
+  - gitlab-release
 
 test:
   stage: test
@@ -29,6 +30,17 @@ release:
       - modules/spring-bootstrap/build/reports/pluginVerifier
       - modules/spring-bootstrap/build/distributions/*.zip
       - modules/spring-bootstrap/build/distributions/source.map
+
+release_job:
+  stage: gitlab-release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: release
+      artifacts: true
+  only:
+    - /^release\/.*$/
+  script:
+    - echo "running release_job"
   release:
     tag_name: release/$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER
     description: 'Release created using the release-cli.'
