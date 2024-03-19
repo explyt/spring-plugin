@@ -17,6 +17,12 @@ class SpringToolRunConfigurationsSettingsState :
     @get:Property(surroundWithTag = true)
     var isAutoDetectConfigurations by property(true)
 
+    @get:Property(surroundWithTag = true)
+    var stateLicenseConfigurations by property(-1)
+
+    @get:Property(surroundWithTag = true)
+    var textLicenseConfigurations by string("")
+
     override fun getState(): SpringToolRunConfigurationsSettingsState = this
 
     override fun loadState(state: SpringToolRunConfigurationsSettingsState) {

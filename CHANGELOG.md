@@ -42,7 +42,9 @@
 - inspections and tests to improve overall functionality 
 - Automated Changelog introduced 
 - Extended tests coverage for cases: bean inheritance, bean name navigation, bean as parameter
+- Added validate license panel in Settings/Tools/Esprito Spring Tools
 
 #### Fixed
 
 - adjust inspection paths and keys
+- set name Esprito Spring Tools in Settings/Tools 
