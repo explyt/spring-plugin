@@ -463,6 +463,8 @@
                                         implementationClass="com.esprito.spring.core.providers.PropertyLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="yaml"
                                         implementationClass="com.esprito.spring.core.providers.PropertyLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.core.providers.GetBeanLineMarkerProvider"/>
 
         <codeInsight.implicitSubclassProvider
                 implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>

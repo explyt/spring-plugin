@@ -99,6 +99,11 @@ object EspritoPsiUtil {
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
+    fun PsiClass.isEqualOrInheritor(fullyQualifiedName: String): Boolean {
+        return qualifiedName == fullyQualifiedName
+                || supers.any { it.isEqualOrInheritor(fullyQualifiedName) }
+    }
+
     fun PsiClassType.isEqualOrInheritor(baseType: PsiClassType): Boolean {
         return baseType.resolve()?.qualifiedName?.let { className -> this.isInheritorOf(className) } ?: false
     }
