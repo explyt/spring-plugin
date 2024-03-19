@@ -54,7 +54,8 @@ release_job:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
     - VERSION="$ESCAPED_BRANCH_NAME.$(date +%Y-%m-%d).$BUILD_NUMBER"
     - echo "running release_job version $VERSION"
-  release:
-    tag_name: release/$VERSION
-    description: 'Release created using the release-cli.'
-    name: $VERSION
+    - |
+      release-cli create \
+      --name "Release $VERSION" \
+      --tag-name release/$VERSION \
+      --description 'Release created using the release-cli.'
