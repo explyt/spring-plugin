@@ -125,12 +125,20 @@ class SpringSearchService(private val project: Project) {
                 allModuleWithDependenciesBeans, modulePackagesHolder, module
             )
             val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
+            val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
+
             CachedValueProvider.Result(
-                moduleWithDependenciesBeans + moduleLibraryBeans,
+                moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans,
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
+
+    private fun getImportedBeans(modulePackagesHolder: RootDataHolder, module: Module) =
+        modulePackagesHolder.importQualified.asSequence()
+            .mapNotNull { JavaPsiFacade.getInstance(project).findClass(it, module.moduleWithDependenciesScope) }
+            .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
+            .toSet()
 
     fun searchPsiClassesAnnotatedByComponentScan(module: Module): Set<PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
@@ -163,8 +171,8 @@ class SpringSearchService(private val project: Project) {
         if (bean.psiClass.qualifiedName?.let { rootDataHolder.isRootComponent(it) } == true) {
             return true
         }
-        val packageName = (bean.psiClass.containingFile as? PsiJavaFile)?.packageName ?: return false
-        return packages.any { packageName.startsWith(it) }
+        val qualifiedName = bean.psiClass.qualifiedName ?: return false
+        return packages.any { qualifiedName.startsWith(it) }
     }
 
     fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> {
