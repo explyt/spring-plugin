@@ -14,7 +14,7 @@ class SpringBootRunConfiguration(
     project: Project,
     factory: ConfigurationFactory
 ) : ApplicationConfiguration(
-    "Spring Boot",
+    "Esprito Spring Boot",
     project,
     factory
 ) {
