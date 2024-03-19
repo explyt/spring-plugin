@@ -1,12 +1,12 @@
 package com.esprito.spring.web.service.beans.discoverer
 
 import com.esprito.spring.core.service.PsiBean
-import com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
+import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.openapi.module.Module
 
-class SpringWebStaticBeansDiscoverer : StaticBeansDiscoverer() {
+class SpringWebAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
 
     override fun accepts(module: Module): Boolean {
         return SpringWebUtil.isSpringWebModule(module)

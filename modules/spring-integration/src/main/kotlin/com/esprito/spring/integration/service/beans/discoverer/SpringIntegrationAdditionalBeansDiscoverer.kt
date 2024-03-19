@@ -1,12 +1,12 @@
 package com.esprito.spring.integration.service.beans.discoverer
 
 import com.esprito.spring.core.service.PsiBean
-import com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
+import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.integration.SpringIntegrationClasses
 import com.esprito.spring.integration.util.SpringIntegrationUtil
 import com.intellij.openapi.module.Module
 
-class SpringIntegrationStaticBeansDiscoverer : StaticBeansDiscoverer() {
+class SpringIntegrationAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
 
     override fun accepts(module: Module): Boolean {
         return SpringIntegrationUtil.isSpringIntegrationModule(module)

@@ -4,7 +4,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.PsiBean
 import com.intellij.openapi.module.Module
 
-class SpringCoreStaticBeansDiscoverer : StaticBeansDiscoverer() {
+class SpringCoreAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
 
     override fun discoverBeans(module: Module): Collection<PsiBean> {
         return listOfNotNull(

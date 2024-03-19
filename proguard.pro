@@ -44,7 +44,7 @@
 -keep class com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader
 -keep class com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
 -keep class com.esprito.spring.core.profile.ProfileSearcher
--keep class com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
+-keep class com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {

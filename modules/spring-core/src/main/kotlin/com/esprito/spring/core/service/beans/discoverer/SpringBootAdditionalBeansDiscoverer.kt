@@ -5,7 +5,7 @@ import com.esprito.spring.core.service.PsiBean
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.openapi.module.Module
 
-class SpringBootStaticBeansDiscoverer : StaticBeansDiscoverer() {
+class SpringBootAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
 
     override fun accepts(module: Module): Boolean {
         return SpringCoreUtil.hasBootLibrary(module)

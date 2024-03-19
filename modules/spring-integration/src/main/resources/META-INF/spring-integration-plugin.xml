@@ -1,8 +1,8 @@
 <idea-plugin>
 
     <extensions defaultExtensionNs="com.esprito.spring.core">
-        <staticBeansDiscoverer
-                implementation="com.esprito.spring.integration.service.beans.discoverer.SpringIntegrationStaticBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.esprito.spring.integration.service.beans.discoverer.SpringIntegrationAdditionalBeansDiscoverer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

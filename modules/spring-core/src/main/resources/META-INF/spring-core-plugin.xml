@@ -7,20 +7,20 @@
     <depends optional="true" config-file="spring-core-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
 
     <extensionPoints>
-        <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader"
+        <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader" dynamic="true"
                         interface="com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.configurationFactoriesNamesLoader"
+        <extensionPoint qualifiedName="com.esprito.spring.core.configurationFactoriesNamesLoader" dynamic="true"
                         interface="com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher"
+        <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher" dynamic="true"
                         interface="com.esprito.spring.core.profile.ProfileSearcher"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.staticBeansDiscoverer"
-                        interface="com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer"
+        <extensionPoint qualifiedName="com.esprito.spring.core.additionalBeansDiscoverer" dynamic="true"
+                        interface="com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer"
                         area="IDEA_PROJECT"/>
     </extensionPoints>
 
@@ -39,10 +39,10 @@
         <profileSearcher implementation="com.esprito.spring.core.profile.PropertyNameProfileSearcher"/>
         <profileSearcher implementation="com.esprito.spring.core.profile.MavenProfileSearcher"/>
 
-        <staticBeansDiscoverer
-                implementation="com.esprito.spring.core.service.beans.discoverer.SpringCoreStaticBeansDiscoverer"/>
-        <staticBeansDiscoverer
-                implementation="com.esprito.spring.core.service.beans.discoverer.SpringBootStaticBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.esprito.spring.core.service.beans.discoverer.SpringCoreAdditionalBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.esprito.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
