@@ -1,0 +1,20 @@
+<html lang="en">
+<head>
+    <title>Cache on interface inspection</title>
+</head>
+<body>
+<p>Reports @Cache annotations declared on interface</p>
+
+<p><b>Example:</b></p>
+"@Cache annotations shouldn't annotate interfaces" will be reported on 'MyInterface'
+"@Cache annotations should annotate concrete methods" will be reported on 'myMethod'
+<pre><code lang="java">
+  @CacheConfig
+  public interface MyInterface {
+    @CacheEvict
+    void myMethod();
+  }
+</code></pre>
+
+</body>
+</html>

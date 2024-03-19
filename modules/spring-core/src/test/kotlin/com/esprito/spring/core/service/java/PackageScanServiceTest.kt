@@ -19,7 +19,7 @@ class PackageScanServiceTest : EspritoJavaLightTestCase() {
         TestCase.assertNotNull(allPackages)
         val module = getModule(virtualFile)
         val packages = allPackages.getPackages(module)
-        TestCase.assertEquals(setOf("com.inner", "com.outer"), packages)
+        TestCase.assertEquals(setOf("com.inner.", "com.outer."), packages)
     }
 
     fun testPackageScanAndSpringBootApp() {
@@ -28,7 +28,7 @@ class PackageScanServiceTest : EspritoJavaLightTestCase() {
         TestCase.assertNotNull(allPackages)
         val module = getModule(virtualFile)
         val packages = allPackages.getPackages(module)
-        TestCase.assertEquals(setOf("com.inner", "com.app"), packages)
+        TestCase.assertEquals(setOf("com.inner.", "com.app."), packages)
     }
 
     fun testPackageScanAndSpringBootAppClass() {
@@ -37,7 +37,7 @@ class PackageScanServiceTest : EspritoJavaLightTestCase() {
         TestCase.assertNotNull(allPackages)
         val module = getModule(virtualFile)
         val packages = allPackages.getPackages(module)
-        TestCase.assertEquals(setOf("com.outer", "com.app"), packages)
+        TestCase.assertEquals(setOf("com.outer.", "com.app."), packages)
     }
 
     fun testPackageScansAndSpringBootApp() {
@@ -46,7 +46,7 @@ class PackageScanServiceTest : EspritoJavaLightTestCase() {
         TestCase.assertNotNull(allPackages)
         val module = getModule(virtualFile)
         val packages = allPackages.getPackages(module)
-        TestCase.assertEquals(setOf("com.inner.scan1", "com.inner.scan2", "com.app"), packages)
+        TestCase.assertEquals(setOf("com.inner.scan1.", "com.inner.scan2.", "com.app."), packages)
     }
 
     fun testPackageScanAndSpringBootAppSomeClass() {
@@ -55,7 +55,7 @@ class PackageScanServiceTest : EspritoJavaLightTestCase() {
         TestCase.assertNotNull(allPackages)
         val module = getModule(virtualFile)
         val packages = allPackages.getPackages(module)
-        TestCase.assertEquals(setOf("com.inner"), packages)
+        TestCase.assertEquals(setOf("com.inner."), packages)
     }
 
     private fun getModule(virtualFile: VirtualFile): Module {
@@ -76,7 +76,7 @@ class PackageScanServiceTest : EspritoJavaLightTestCase() {
         TestCase.assertNotNull(allPackages)
         val module = getModule(virtualFile.virtualFile)
         val packages = allPackages.getPackages(module)
-        TestCase.assertEquals(setOf("java.lang", "java.util"), packages)
+        TestCase.assertEquals(setOf("java.lang.", "java.util."), packages)
     }
 
     fun testSpringBootScanBasePackages() {
@@ -91,6 +91,6 @@ class PackageScanServiceTest : EspritoJavaLightTestCase() {
         TestCase.assertNotNull(allPackages)
         val module = getModule(virtualFile.virtualFile)
         val packages = allPackages.getPackages(module)
-        TestCase.assertEquals(setOf("java.lang", "java.util"), packages)
+        TestCase.assertEquals(setOf("java.lang.", "java.util."), packages)
     }
 }

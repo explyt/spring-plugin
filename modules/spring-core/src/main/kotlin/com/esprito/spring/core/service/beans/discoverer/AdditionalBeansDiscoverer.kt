@@ -5,7 +5,7 @@ import com.esprito.spring.core.service.PsiBean
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
 
-abstract class StaticBeansDiscoverer {
+abstract class AdditionalBeansDiscoverer {
 
     open fun accepts(module: Module): Boolean = true
 
@@ -22,9 +22,11 @@ abstract class StaticBeansDiscoverer {
 
     }
 
+    open fun getExtraComponents(module: Module): Collection<PsiBean> = emptyList()
+
     companion object {
-        val EP_NAME = ProjectExtensionPointName<StaticBeansDiscoverer>(
-            "com.esprito.spring.core.staticBeansDiscoverer"
+        val EP_NAME = ProjectExtensionPointName<AdditionalBeansDiscoverer>(
+            "com.esprito.spring.core.additionalBeansDiscoverer"
         )
     }
 

@@ -5,7 +5,7 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer
+import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
@@ -71,7 +71,7 @@ class SpringSearchService(private val project: Project) {
     private fun getStaticBeans(module: Module): Set<PsiBean> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
-                StaticBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
+                AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
                     .filter { it.accepts(module) }
                     .flatMapTo(mutableSetOf()) { it.discoverBeans(module) },
                 ModificationTrackerManager.getInstance(project).getLibraryTracker()
@@ -119,18 +119,27 @@ class SpringSearchService(private val project: Project) {
         return cachedValuesManager.getCachedValue(module) {
             val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
             val annotationPsiClasses = getComponentClassAnnotations(module)
-            val allModuleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+            val allModuleWithDependenciesBeans =
+                searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope) + getExtraComponents(module)
             val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
             val moduleWithDependenciesBeans = filterBeansByPackage(
                 allModuleWithDependenciesBeans, modulePackagesHolder, module
             )
             val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
+            val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
+
             CachedValueProvider.Result(
-                moduleWithDependenciesBeans + moduleLibraryBeans,
+                moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans,
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
+
+    private fun getImportedBeans(modulePackagesHolder: RootDataHolder, module: Module) =
+        modulePackagesHolder.importQualified.asSequence()
+            .mapNotNull { JavaPsiFacade.getInstance(project).findClass(it, module.moduleWithDependenciesScope) }
+            .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
+            .toSet()
 
     fun searchPsiClassesAnnotatedByComponentScan(module: Module): Set<PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
@@ -163,8 +172,8 @@ class SpringSearchService(private val project: Project) {
         if (bean.psiClass.qualifiedName?.let { rootDataHolder.isRootComponent(it) } == true) {
             return true
         }
-        val packageName = (bean.psiClass.containingFile as? PsiJavaFile)?.packageName ?: return false
-        return packages.any { packageName.startsWith(it) }
+        val qualifiedName = bean.psiClass.qualifiedName ?: return false
+        return packages.any { qualifiedName.startsWith(it) }
     }
 
     fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> {
@@ -626,6 +635,13 @@ class SpringSearchService(private val project: Project) {
                 SpringCoreClasses.AOP_ANNOTATION,
                 AnnotationUtil.CHECK_HIERARCHY
             )
+    }
+
+    private fun getExtraComponents(module: Module): Set<PsiBean> {
+        return AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
+            .flatMap { it.getExtraComponents(module) }
+            .filter { isActive(it.psiClass) }
+            .toSet()
     }
 
     companion object {

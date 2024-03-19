@@ -9,10 +9,13 @@
 
 #### Added
 
-- support ComponentScan to find spring beans
+- support `@ComponentScan` scope to find spring beans
+- support `@Import` to find configurations
 - inspection for methods annotated with `@Async`, `@Transactional`, `@Cacheable`, `@CachePut`, `@CacheEvict` work to prevent calls within the same class.
 - bean scope options in autocomplete, including custom scopes.
 - inspections for missing or problematic resource files in .properties and .yaml.
+- inspection for interfaces annotated with `@Cacheable`, `@CacheConfig`, `@CachePut`, `@CacheEvict`, `@Caching`: prohibit cache annotations on interfaces.
+- line marker navigates from `getBean` method to bean declaration.
 
 #### Fixed
 
@@ -33,6 +36,12 @@
 
 - Included reference checks for Spring beans within Spring Security annotations.
 
+### Spring Data
+
+#### Added
+
+- mark JpaRepositories as bean
+
 ### Other
 
 #### Added
@@ -41,7 +50,9 @@
 - inspections and tests to improve overall functionality 
 - Automated Changelog introduced 
 - Extended tests coverage for cases: bean inheritance, bean name navigation, bean as parameter
+- Added validate license panel in Settings/Tools/Esprito Spring Tools
 
 #### Fixed
 
 - adjust inspection paths and keys
+- set name Esprito Spring Tools in Settings/Tools 

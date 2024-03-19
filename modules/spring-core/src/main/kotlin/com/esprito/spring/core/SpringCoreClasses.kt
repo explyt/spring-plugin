@@ -17,6 +17,8 @@ object SpringCoreClasses {
     const val DEPENDS_ON = "org.springframework.context.annotation.DependsOn"
     const val PRIMARY = "org.springframework.context.annotation.Primary"
     const val SCOPE = "org.springframework.context.annotation.Scope"
+    const val IMPORT = "org.springframework.context.annotation.Import"
+    const val BEAN_FACTORY = "org.springframework.beans.factory.BeanFactory"
 
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
@@ -89,7 +91,7 @@ object SpringCoreClasses {
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
     val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN, SPRING_BOOT_APPLICATION)
-    val ANNOTATIONS_CACHE = setOf(CACHEABLE, CACHEPUT, CACHEEVICT, CACHECONFIG)
+    val ANNOTATIONS_CACHE = setOf(CACHEABLE, CACHEPUT, CACHEEVICT, CACHECONFIG, CACHING)
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns
     val AOP_ANNOTATION = listOf(TRANSACTIONAL, ASYNC) + ANNOTATIONS_CACHE

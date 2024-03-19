@@ -7,20 +7,20 @@
     <depends optional="true" config-file="spring-core-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
 
     <extensionPoints>
-        <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader"
+        <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader" dynamic="true"
                         interface="com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.configurationFactoriesNamesLoader"
+        <extensionPoint qualifiedName="com.esprito.spring.core.configurationFactoriesNamesLoader" dynamic="true"
                         interface="com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher"
+        <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher" dynamic="true"
                         interface="com.esprito.spring.core.profile.ProfileSearcher"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.staticBeansDiscoverer"
-                        interface="com.esprito.spring.core.service.beans.discoverer.StaticBeansDiscoverer"
+        <extensionPoint qualifiedName="com.esprito.spring.core.additionalBeansDiscoverer" dynamic="true"
+                        interface="com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer"
                         area="IDEA_PROJECT"/>
     </extensionPoints>
 
@@ -39,10 +39,10 @@
         <profileSearcher implementation="com.esprito.spring.core.profile.PropertyNameProfileSearcher"/>
         <profileSearcher implementation="com.esprito.spring.core.profile.MavenProfileSearcher"/>
 
-        <staticBeansDiscoverer
-                implementation="com.esprito.spring.core.service.beans.discoverer.SpringCoreStaticBeansDiscoverer"/>
-        <staticBeansDiscoverer
-                implementation="com.esprito.spring.core.service.beans.discoverer.SpringBootStaticBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.esprito.spring.core.service.beans.discoverer.SpringCoreAdditionalBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.esprito.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
@@ -232,7 +232,7 @@
                          shortName="SpringPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Esprito Spring Tool"
-                         groupKey="run.configuration.spring.boot.display.name"
+                         groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.properties.key"
                          enabledByDefault="true" level="WARNING"
@@ -242,7 +242,7 @@
                          shortName="SpringYamlInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Esprito Spring Tool"
-                         groupKey="run.configuration.spring.boot.display.name"
+                         groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.yaml.key"
                          enabledByDefault="true" level="WARNING"
@@ -252,7 +252,7 @@
                          shortName="EnableAutoConfigureSpringFactoryInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Esprito Spring Tool"
-                         groupKey="run.configuration.spring.boot.display.name"
+                         groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.autoconfigure"
                          enabledByDefault="true" level="WARNING"
@@ -375,7 +375,7 @@
                          shortName="AdditionalConfigPropertyInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Esprito Spring Tool"
-                         groupKey="run.configuration.spring.boot.display.name"
+                         groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.metadata.config.key"
                          enabledByDefault="true" level="ERROR"
@@ -423,6 +423,17 @@
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringKotlinObjectInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringCacheAnnotationsOnInterfaceInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.cache.interface.class"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringCacheAnnotationsOnInterfaceInspection"/>
+
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
 
@@ -443,6 +454,7 @@
         <applicationConfigurable id="com.esprito.spring.runConfigurations"
                                  key="run.configuration.spring.boot.display.name"
                                  groupId="com.esprito.spring.group"
+                                 bundle="messages.SpringCoreBundle"
                                  instance="com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
                                  groupWeight="85"/>
 
@@ -463,6 +475,8 @@
                                         implementationClass="com.esprito.spring.core.providers.PropertyLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="yaml"
                                         implementationClass="com.esprito.spring.core.providers.PropertyLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.core.providers.GetBeanLineMarkerProvider"/>
 
         <codeInsight.implicitSubclassProvider
                 implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
