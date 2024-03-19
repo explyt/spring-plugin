@@ -11,6 +11,10 @@ stages:
 
 test:
   stage: test
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never                                             # Do not run this job when a tag is created manually
+    - when: always
   script:
     - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:test -Dfile.encoding=UTF8
   artifacts:
@@ -21,16 +25,23 @@ release:
   stage: release
   only:
     - /^release\/.*$/
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never                                             # Do not run this job when a tag is created manually
+    - when: always
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
     - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
     - ./gradlew :spring-bootstrap:runPluginVerifier
   artifacts:
+    reports:
+      dotenv: variables.env                                   # Use artifacts:reports:dotenv to expose the variables to other jobs
     paths:
       - modules/spring-bootstrap/build/reports/pluginVerifier
       - modules/spring-bootstrap/build/distributions/*.zip
       - modules/spring-bootstrap/build/distributions/source.map
 
+#TODO: It will be better if we can attach artifacts by uploading to storage: generic package registry
 release_job:
   stage: gitlab-release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
@@ -39,9 +50,15 @@ release_job:
       artifacts: true
   only:
     - /^release\/.*$/
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never                                             # Do not run this job when a tag is created manually
+    - when: always
   script:
-    - echo "running release_job"
+    - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
+    - VERSION="$ESCAPED_BRANCH_NAME.$(date +%Y-%m-%d).$BUILD_NUMBER"
+    - echo "running release_job version $VERSION"
   release:
-    tag_name: release/$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER
+    tag_name: release/$VERSION
     description: 'Release created using the release-cli.'
-    name: $ESCAPED_BRANCH_NAME-b$BUILD_NUMBER
+    name: $VERSION
