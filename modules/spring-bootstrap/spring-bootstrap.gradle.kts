@@ -3,6 +3,9 @@ import org.jetbrains.changelog.date
 import org.jetbrains.intellij.tasks.PrepareSandboxTask
 import org.jetbrains.intellij.tasks.RunPluginVerifierTask
 import proguard.gradle.ProGuardTask
+import java.net.URI
+import java.nio.file.FileSystems
+import java.nio.file.Files
 import java.time.LocalDate
 
 plugins {
@@ -125,6 +128,34 @@ val sandboxLibPath = layout.buildDirectory.dir("idea-sandbox/plugins/${springPlu
 val extractedDirPath = layout.buildDirectory.dir("extracted")
 val obfuscatedJarPath = layout.buildDirectory.file("libs/${springPluginName}-obfuscated.jar")
 
+fun deleteDirectory(pathToBeDeleted: java.nio.file.Path) {
+    Files.walk(pathToBeDeleted)
+        .sorted(Comparator.reverseOrder())
+        .peek {
+            println("About to path entry from ZIP File: " + it.toUri())
+        }
+        .forEach { Files.delete(it) };}
+
+
+fun removeFromJar(pathToJar: String, fileToRemove: String) {
+    /* Define ZIP File System Properties in HashMap */
+    /* We want to read an existing ZIP File, so we set this to False */
+    /* Specify the path to the ZIP File that you want to read as a File System */
+    val zipDisk: URI = URI.create("jar:file://$pathToJar")
+
+    FileSystems.newFileSystem(zipDisk, mapOf("create" to "false")).use { zipfs ->
+        /* Get the Path inside ZIP File to delete the ZIP Entry */
+        val pathInZipfile = zipfs.getPath("/$fileToRemove")
+        println("About to delete an entry from ZIP File" + pathInZipfile.toUri())
+
+        deleteDirectory(pathInZipfile)
+
+        /* Execute Delete */
+        //Files.delete(pathInZipfile)
+        println("File successfully deleted")
+    }
+}
+
 val extractJar by tasks.registering(Copy::class) {
     val prepareSandbox = tasks.named<PrepareSandboxTask>("prepareSandbox");
     val libDir = prepareSandbox.map { it.defaultDestinationDir }.flatMap {
@@ -197,6 +228,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     outputs.files.files.add(sourceMap.get().asFile)
     outputs.files.files.add(extractedDirPath.get().asFile)
     doLast {
+        removeFromJar(obfuscatedJarPath.get().asFile.path, "kotlin")
         delete(extractedDirPath)
         delete(sandboxLibPath)
         copy {
