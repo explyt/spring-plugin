@@ -18,6 +18,7 @@ object SpringCoreClasses {
     const val PRIMARY = "org.springframework.context.annotation.Primary"
     const val SCOPE = "org.springframework.context.annotation.Scope"
     const val IMPORT = "org.springframework.context.annotation.Import"
+    const val BEAN_FACTORY = "org.springframework.beans.factory.BeanFactory"
 
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"

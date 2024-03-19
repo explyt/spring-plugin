@@ -13,6 +13,7 @@
 - inspection for methods annotated with `@Async`, `@Transactional`, `@Cacheable`, `@CachePut`, `@CacheEvict` work to prevent calls within the same class.
 - bean scope options in autocomplete, including custom scopes.
 - inspections for missing or problematic resource files in .properties and .yaml.
+- line marker navigates from `getBean` method to bean declaration.
 
 #### Fixed
 
