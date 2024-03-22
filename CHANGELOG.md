@@ -7,7 +7,7 @@
 
 ### Spring Core/Boot
 
-- Detect context.register as context root
+- Detect `context.register` as context root
 
 ## [2024.233.1020] - 2024-03-22
 
