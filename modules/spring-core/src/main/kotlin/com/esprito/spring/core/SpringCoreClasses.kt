@@ -24,6 +24,7 @@ object SpringCoreClasses {
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
     const val QUALIFIER = "org.springframework.beans.factory.annotation.Qualifier"
     const val LOOKUP = "org.springframework.beans.factory.annotation.Lookup"
+    const val ANNOTATION_CONFIG_CONTEXT = "org.springframework.context.annotation.AnnotationConfigApplicationContext"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
 

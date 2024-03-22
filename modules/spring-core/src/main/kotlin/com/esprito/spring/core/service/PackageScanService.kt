@@ -7,7 +7,7 @@ import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCANS
 import com.esprito.spring.core.SpringCoreClasses.IMPORT
 import com.esprito.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.esprito.spring.core.SpringProperties
-import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.esprito.spring.core.runconfiguration.RunConfigurationUtil
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
@@ -43,17 +43,17 @@ class PackageScanService(private val project: Project) {
 
     private fun getAllPackagesInner(): RootDataHolder {
         val annotationPsiClasses = getComponentScanAnnotations()
-        val rootModuleData = searchRootClasses(annotationPsiClasses).mapNotNull { findRootModulePackages(it) }
+        val rootClasses = searchRootClasses(annotationPsiClasses)
+        val rootModuleData = rootClasses.mapNotNull { findRootModulePackages(it) }
+        val programConfigRootClasses = AnnotationConfigApplicationService.getRootClasses(rootClasses, rootModuleData)
 
         val rootPackages = rootModuleData.flatMapTo(mutableSetOf()) { it.packages }
-        val scanModuleData = annotationPsiClasses.scanAnnotationClass
-            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
-            .filter { filterComponentScanClass(rootPackages, it) }
-            .mapNotNull { toModulePackages(it) }
+        val scanModuleData = getComponentScanClasses(annotationPsiClasses, rootPackages, programConfigRootClasses)
 
         val moduleRootDataList = rootModuleData + scanModuleData
 
-        val importClasses = getImportClasses(moduleRootDataList, annotationPsiClasses)
+        val importAnnotationClass = annotationPsiClasses.importAnnotationClass
+        val importClasses = getImportClasses(moduleRootDataList, importAnnotationClass, programConfigRootClasses)
         val importModuleRootDataList = importClasses.mapNotNull { toModulePackages(it, true) }
         val allModuleRootDataList = moduleRootDataList + importModuleRootDataList
 
@@ -65,21 +65,36 @@ class PackageScanService(private val project: Project) {
         return RootDataHolder(packagesByModuleName, rootComponentQualified, importQualified)
     }
 
+    private fun getComponentScanClasses(
+        annotationPsiClasses: ScanAnnotationHolder, rootPackages: MutableSet<String>, programConfigRoots: List<PsiClass>
+    ): List<ModuleRootData> {
+        val classesForSearchComponentScan = programConfigRoots.ifEmpty {
+            annotationPsiClasses.scanAnnotationClass
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+        }
+        return classesForSearchComponentScan
+            .filter { filterComponentScanClass(rootPackages, it) }
+            .mapNotNull { toModulePackages(it) }
+    }
+
     private fun getImportClasses(
-        moduleRootData: List<ModuleRootData>, annotationPsiClasses: ScanAnnotationHolder
+        moduleRootData: List<ModuleRootData>, importAnnotationClass: Set<PsiClass>, programConfigRoots: List<PsiClass>
     ): Set<PsiClass> {
         val packages = moduleRootData.flatMapTo(mutableSetOf()) { it.packages }
-        return annotationPsiClasses.importAnnotationClass
-            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+        val classesForSearchImport = programConfigRoots.ifEmpty {
+            importAnnotationClass
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+        }
+        return classesForSearchImport
             .filter { filterComponentScanClass(packages, it) }
             .flatMapTo(mutableSetOf()) { getImportClasses(it) }
     }
 
     private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder): List<PsiClass> {
         return if (Registry.`is`("esprito.spring.root.runConfiguration")) {
-            val springBootRunConfiguration = RunManager.getInstance(project).selectedConfiguration
-                ?.configuration as? SpringBootRunConfiguration ?: return emptyList()
-            springBootRunConfiguration.mainClass?.let { listOf(it) } ?: return emptyList()
+            RunManager.getInstance(project).selectedConfiguration?.configuration
+                ?.let { RunConfigurationUtil.getRunPsiClass(it) }
+                ?.let { listOf(it) } ?: emptyList()
         } else {
             annotationPsiClasses.rootAnnotationClass
                 .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
@@ -262,7 +277,7 @@ class PackageScanService(private val project: Project) {
         fun getInstance(project: Project): PackageScanService = project.service()
     }
 
-    private data class ModuleRootData(
+    data class ModuleRootData(
         val moduleName: String, val packages: Set<String>, val rootComponentQualified: String? = null
     )
 
