@@ -1,6 +1,7 @@
 package com.esprito.spring.core.service
 
 import com.esprito.spring.core.profile.SpringProfilesService
+import com.esprito.spring.core.runconfiguration.RunConfigurationUtil
 import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.intellij.execution.RunnerAndConfigurationSettings
@@ -27,7 +28,7 @@ class ProfilesService(private val project: Project) {
         val profileChanged = profiles != activeProfilesFromRunConfiguration
         activeProfilesFromRunConfiguration = profiles
 
-        val mainClassName = getMainClassName(settings)
+        val mainClassName = RunConfigurationUtil.getRunClassName(settings?.configuration)
         val mainClassChanged = mainClassName != currentMainClass
         currentMainClass = mainClassName
 
@@ -68,11 +69,6 @@ class ProfilesService(private val project: Project) {
             ?.split(',')
             ?.filterTo(mutableSetOf()) { it.isNotBlank() }
             ?: setOf()
-    }
-
-    private fun getMainClassName(settings: RunnerAndConfigurationSettings?): String? {
-        return (settings?.configuration as? SpringBootRunConfiguration)
-            ?.mainClass?.qualifiedName
     }
 
     private fun tokenize(expression: String): Collection<Token>? {

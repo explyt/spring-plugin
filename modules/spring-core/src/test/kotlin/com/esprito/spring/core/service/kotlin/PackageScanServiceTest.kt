@@ -1,17 +1,30 @@
 package com.esprito.spring.core.service.kotlin
 
 import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.runconfiguration.SpringBootConfigurationFactory
+import com.esprito.spring.core.service.AnnotationConfigApplicationService
 import com.esprito.spring.core.service.PackageScanService
 import com.esprito.spring.test.EspritoKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
+import com.intellij.execution.RunManager
+import com.intellij.execution.impl.RunManagerImpl
+import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
 import junit.framework.TestCase
 
 
 class PackageScanServiceTest : EspritoKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
+
+    override fun tearDown() {
+        super.tearDown()
+        Registry.get("esprito.spring.root.runConfiguration").resetToDefault()
+    }
 
     fun testPackageScan() {
         val virtualFile = myFixture.copyDirectoryToProject("service/packageScan", "")
@@ -74,5 +87,24 @@ class PackageScanServiceTest : EspritoKotlinLightTestCase() {
         val module = getModule(virtualFile.virtualFile)
         val packages = allPackages.getPackages(module)
         TestCase.assertEquals(setOf("java.lang.", "java.util."), packages)
+    }
+
+    fun testRunConfigurationMainAppConfigConstructor() {
+        myFixture.copyDirectoryToProject("service/packageScanRunConfigurationAppConfigConstructor", "")
+
+        Registry.get("esprito.spring.root.runConfiguration").setValue(true)
+        val runConfiguration = SpringBootConfigurationFactory.createTemplateConfiguration(project)
+        runConfiguration.mainClassName = "com.app.MainClass"
+
+        val manager = RunManager.getInstance(project)
+        val settings = RunnerAndConfigurationSettingsImpl((manager as RunManagerImpl), runConfiguration)
+        manager.setTemporaryConfiguration(settings)
+
+        val mainClass = JavaPsiFacade.getInstance(project)
+            .findClass(runConfiguration.mainClassName!!, GlobalSearchScope.projectScope(project))
+            ?.let { listOf(it) } ?: throw RuntimeException()
+        val actualList = AnnotationConfigApplicationService.getRootClasses(mainClass, emptyList())
+            .mapNotNull { it.name }
+        TestCase.assertEquals(listOf("AppTestConfiguration"), actualList)
     }
 }
