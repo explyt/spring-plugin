@@ -7,7 +7,11 @@
 
 ### Spring Core/Boot
 
-#### Added
+- Detect context.register as context root
+
+## [2024.233.1020] - 2024-03-22
+
+### Spring Core/Boot
 
 - Support `@ComponentScan` scope to find spring beans.
 - Support `@Import` to find configurations.
@@ -16,14 +20,9 @@
 - Inspections for missing or problematic resource files in .properties and .yaml.
 - Inspection for interfaces annotated with `@Cacheable`, `@CacheConfig`, `@CachePut`, `@CacheEvict`, `@Caching`: prohibit cache annotations on interfaces.
 - Line marker navigates from `getBean` method to bean declaration.
-
-#### Fixed
-
-- Remove or comment Bean class action does not recover (return back) bean gutter icon
+- Fix: Remove or comment Bean class action does not recover (return back) bean gutter icon
 
 ### Spring Web/MVC
-
-#### Added
 
 - Add Navigation from strings "redirect:" to controller endpoints.
 - Enhanced MockMvc with better handling of multipart requests and parameter checks.
@@ -32,19 +31,13 @@
 
 ### Spring Security
 
-#### Added
-
 - Included reference checks for Spring beans within Spring Security annotations.
 
 ### Spring Data
 
-#### Added
-
 - Detect JpaRepositories as beans.
 
 ### Other
-
-#### Added
 
 - Switch to versioning 2024.{platformVersion}.{buildNumber}.
 - Inspection for getResource method to ensure classpath resource path is correct.
@@ -52,8 +45,5 @@
 - Automated Changelog introduced.
 - Extended tests coverage for cases: bean inheritance, bean name navigation, bean as parameter.
 - Added validate license panel in Settings/Tools/Esprito Spring Tools.
-
-#### Fixed
-
-- Adjust inspection paths and keys.
-- Set name Esprito Spring Tools in Settings/Tools.
+- Fix: Adjust inspection paths and keys.
+- Fix: Set name Esprito Spring Tools in Settings/Tools.
