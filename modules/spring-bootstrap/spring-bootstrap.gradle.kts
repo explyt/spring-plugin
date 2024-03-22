@@ -6,7 +6,6 @@ import proguard.gradle.ProGuardTask
 import java.net.URI
 import java.nio.file.FileSystems
 import java.nio.file.Files
-import java.time.LocalDate
 
 plugins {
     kotlin("jvm")
@@ -49,8 +48,9 @@ version = fun(): String {
         }
         return bv
     }
-    val sincePostfix = "${ext["sinceVersion"]}".substring(0, 3)
-    return "${sincePostfix}.${ext["pluginVersion"]}.${LocalDate.now()}.${ext["snapshotVersion"]}"
+    val ideaPlatformVersion = "${ext["sinceVersion"]}".substring(0, 3)
+    // return "${ideaPlatformVersion}.${ext["pluginVersion"]}.${ext["snapshotVersion"]}"
+    return "2024.${ideaPlatformVersion}.${ext["snapshotVersion"]}"
 }.invoke()
 
 val springPluginName = "spring-tool"
