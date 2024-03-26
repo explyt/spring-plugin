@@ -94,4 +94,17 @@ class SpringDataMethodNameInspectionTest : EspritoInspectionJavaTestCase() {
         )
         myFixture.testHighlighting("TestRepository.java")
     }
+
+    fun testOverride() {
+        myFixture.configureByText(
+            "TestRepository.java",
+            """            
+            public interface TestRepository extends org.springframework.data.jpa.repository.JpaRepository<Entity, Integer> {
+            	@Override
+                java.util.List<Entity> findAll();            	
+            }
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("TestRepository.java")
+    }
 }

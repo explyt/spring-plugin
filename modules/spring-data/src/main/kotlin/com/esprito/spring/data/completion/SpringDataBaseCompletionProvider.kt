@@ -131,7 +131,12 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
         } else {
             addQueryPattern(strings, domainClassName)
         }
-        return strings.mapTo(mutableSetOf()) { s: String -> s + "By" }
+        val result = mutableSetOf<String>()
+        for (prefixValue in strings) {
+            result.add(prefixValue + "By")
+            if (prefixValue.endsWith("All")) result.add(prefixValue)
+        }
+        return result
     }
 
     private fun addQueryPattern(strings: HashSet<String>, domainClassName: PsiClass) {

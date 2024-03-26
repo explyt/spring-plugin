@@ -1,5 +1,6 @@
 package com.esprito.spring.data.inspection
 
+import com.esprito.base.LibraryClassCache
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
@@ -8,6 +9,8 @@ import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
@@ -26,16 +29,20 @@ class SpringDataMethodNameInspection : AbstractBaseUastLocalInspectionTool() {
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
+        val javaMethodPsi = method.javaPsi
         val uClass = method.getParentOfType<UClass>() ?: return emptyArray()
         val typeParams = SpringDataRepositoryUtil.substituteRepositoryTypes(uClass.javaPsi) ?: return emptyArray()
-        if (AnnotationUtil.isAnnotated(method.javaPsi, SpringDataClasses.QUERY, AnnotationUtil.CHECK_HIERARCHY)) {
+        if (AnnotationUtil.isAnnotated(javaMethodPsi, SpringDataClasses.QUERY, AnnotationUtil.CHECK_HIERARCHY)) {
             return emptyArray()
         }
+
+        val module = ModuleUtilCore.findModuleForPsiElement(javaMethodPsi)
+        if (getPredefinedSpringDataMethods(module).contains(method.name)) return emptyArray()
 
         val methodName = method.getName()
         val domainClass = typeParams.psiClass
         val partTree = PartTree(methodName, domainClass)
-        val holder = ProblemsHolder(manager, method.javaPsi.containingFile, isOnTheFly)
+        val holder = ProblemsHolder(manager, javaMethodPsi.containingFile, isOnTheFly)
 
         checkParts(holder, method, partTree)
         checkOrderBy(holder, method, partTree)
@@ -123,5 +130,14 @@ class SpringDataMethodNameInspection : AbstractBaseUastLocalInspectionTool() {
 
     private fun getEmptyPropertyMessage(methodName: String, range: TextRange): String {
         return methodName.substring(0, range.startOffset) + "<MISSING_PROPERTY>" + methodName.substring(range.endOffset)
+    }
+
+    private fun getPredefinedSpringDataMethods(module: Module?): Set<String> {
+        module ?: return emptySet()
+        val crudMethods = LibraryClassCache.searchForLibraryClass(module, SpringDataClasses.REPOSITORY_CRUD)
+            ?.allMethods?.map { it.name } ?: emptyList()
+        val jpaMethods = LibraryClassCache.searchForLibraryClass(module, SpringDataClasses.REPOSITORY_JPA)
+            ?.allMethods?.map { it.name } ?: emptyList()
+        return (crudMethods + jpaMethods).toSet()
     }
 }
