@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Spring Data
+
+#### Fixed
+
+- Spring Data methods name inspection (Repository: findAll property is unknown)
+
 ### Spring Core/Boot
 
 - Detect `context.register` as context root
