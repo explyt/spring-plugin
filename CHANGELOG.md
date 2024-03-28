@@ -14,6 +14,7 @@
 ### Spring Core/Boot
 
 - Detect `context.register` as context root
+- Support @SpringBootTest annotation
 
 ## [2024.233.1020] - 2024-03-22
 

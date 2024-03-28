@@ -27,6 +27,7 @@ object SpringCoreClasses {
     const val ANNOTATION_CONFIG_CONTEXT = "org.springframework.context.annotation.AnnotationConfigApplicationContext"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
+    const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
 
     const val IO_RESOURCE = "org.springframework.core.io.Resource"
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
