@@ -46,6 +46,7 @@
 
 ### Other
 
+- Fix: reference publishEvent to inherited annotation listener
 - Switch to versioning 2024.{platformVersion}.{buildNumber}.
 - Inspection for getResource method to ensure classpath resource path is correct.
 - Inspections and tests to improve overall functionality.
