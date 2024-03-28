@@ -17,6 +17,7 @@ import com.esprito.util.EspritoPsiUtil.isCollection
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isInterface
 import com.esprito.util.EspritoPsiUtil.isMap
+import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isNonPrivate
 import com.esprito.util.EspritoPsiUtil.isOptional
@@ -39,6 +40,7 @@ import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.PsiUtil
+import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.toUElement
 import java.util.*
 
@@ -126,6 +128,21 @@ object SpringCoreUtil {
                 && !psiClass.isAnnotationType
                 && psiClass.qualifiedName != null
                 && !PsiUtil.isLocalOrAnonymousClass(psiClass)
+    }
+
+    fun isComponentCandidate(psiElement: PsiElement?): Boolean {
+        psiElement ?: return false
+        return if (psiElement is PsiClass) {
+            isComponentCandidateForClass(psiElement)
+        } else {
+            val uClass = psiElement.toUElement()?.getContainingUClass()
+            isComponentCandidateForClass(uClass?.javaPsi)
+        }
+    }
+
+    private fun isComponentCandidateForClass(psiClass: PsiClass?): Boolean {
+        return psiClass != null && (psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
+                || psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH))
     }
 
     // TODO: value or basePackages

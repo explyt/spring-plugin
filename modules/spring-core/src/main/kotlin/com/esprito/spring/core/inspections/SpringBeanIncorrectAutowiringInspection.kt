@@ -224,17 +224,12 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseUastLocalInspectionT
         if (psiClass == null) {
             return false
         }
-        if (isAnnotationComponentContainingClass(psiClass)) {
+        if (SpringCoreUtil.isComponentCandidate(psiClass)) {
             return true
         }
         return SpringSearchService.getInstance(module.project).getActiveBeansClasses(module).asSequence()
             .filter { it.psiClass.qualifiedName == psiClass.qualifiedName }
             .toList().isNotEmpty()
-    }
-
-    private fun isAnnotationComponentContainingClass(containingClass: PsiClass?): Boolean {
-        if (containingClass == null) return false
-        return containingClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
     }
 
     private fun getProblemByMethodWithoutParams(
@@ -313,7 +308,7 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseUastLocalInspectionT
         if (isAutowiredByRequiredTrue() == true) {
             return true
         }
-        return isMetaAnnotatedBy(SpringCoreClasses.QUALIFIERS)
+        return isMetaAnnotatedBy(SpringCoreClasses.QUALIFIERS) || isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH)
     }
 
     private fun PsiModifierListOwner.isAutowiredByRequiredTrue(): Boolean? {

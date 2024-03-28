@@ -38,7 +38,6 @@ import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.pom.PomTargetPsiElement
 import com.intellij.psi.*
-import com.intellij.psi.util.parentOfType
 import com.intellij.util.TextWithIcon
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.uast.*
@@ -96,8 +95,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun isComponentClassOrBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
-                val isComponentExpression = uParent.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-                return (isComponentExpression
+                return (SpringCoreUtil.isComponentCandidate(uParent.javaPsi)
                         || findTargetClass() in springSearchService.getAllBeansClassesWithAncestors(module))
                         && !dependsOnIncorrectBean(uParent.javaPsi)
             }
@@ -145,9 +143,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun isFieldOrAutowiredParameter(): Boolean {
             fun checkParam(psiVariable: PsiVariable): Boolean = with(springSearchService) {
-                val psiClass = psiVariable.parentOfType<PsiClass>() ?: return false
-                val isClassIsComponentConstructed =
-                    getBeanPsiClassesAnnotatedByComponent(module).any { it.psiClass == psiClass }
+                val javaPsiClass = uParent.getContainingUClass()?.javaPsi ?: return false
+                val isClassIsComponentConstructed = SpringCoreUtil.isSpringBeanCandidateClass(javaPsiClass)
+                        && SpringCoreUtil.isComponentCandidate(javaPsiClass)
+
                 if (!isClassIsComponentConstructed) {
                     return false
                 }

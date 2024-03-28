@@ -20,7 +20,7 @@ class SpringDataAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
     override fun getExtraComponents(module: Module): Collection<PsiBean> {
         val repositoryPsiClass = LibraryClassCache.searchForLibraryClass(module, SPRING_RESOURCE) ?: return emptySet()
         val scope = module.moduleWithDependenciesScope
-        return ClassInheritorsSearch.search(repositoryPsiClass, scope, false)
+        return ClassInheritorsSearch.search(repositoryPsiClass, scope, true)
             .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
     }
 
