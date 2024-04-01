@@ -105,7 +105,8 @@ class SpringBeanLineMarkerProviderPriorityTest : EspritoJavaLightTestCase() {
         myFixture.configureByText("FooComponent.java", getFooBeanA() + getStringBean())
         myFixture.doHighlighting()
 
-        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val icons = setOf(SpringIcons.SpringBean, SpringIcons.springBeanInactive)
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(
@@ -132,7 +133,8 @@ class SpringBeanLineMarkerProviderPriorityTest : EspritoJavaLightTestCase() {
         myFixture.configureByText("FooComponent.java", getFooBeanB() + getStringBean())
         myFixture.doHighlighting()
 
-        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val icons = setOf(SpringIcons.SpringBean, SpringIcons.springBeanInactive)
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(
@@ -156,7 +158,8 @@ class SpringBeanLineMarkerProviderPriorityTest : EspritoJavaLightTestCase() {
         myFixture.configureByText("FooComponent.java", getFooBeanC() + getStringBean())
         myFixture.doHighlighting()
 
-        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val icons = setOf(SpringIcons.SpringBean, SpringIcons.springBeanInactive)
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(

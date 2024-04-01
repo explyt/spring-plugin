@@ -23,8 +23,8 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoKotlinLightTestCase() {
         myFixture.configureFromExistingVirtualFile(vf)
         myFixture.doHighlighting()
 
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBean }
+        val icons = setOf(SpringIcons.SpringBean, SpringIcons.springBeanInactive)
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = allBeanGutters.asSequence()
             .map { SpringGutterTestUtil.getGutterTargetsStrings(it) }
             .filter { it.isNotEmpty() }
@@ -156,7 +156,8 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoKotlinLightTestCase() {
         myFixture.configureFromExistingVirtualFile(vf)
         myFixture.doHighlighting()
 
-        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val icons = setOf(SpringIcons.SpringBean, SpringIcons.springBeanInactive)
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(gutterTargetString

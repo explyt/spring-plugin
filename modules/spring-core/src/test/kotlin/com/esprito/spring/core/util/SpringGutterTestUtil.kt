@@ -52,8 +52,12 @@ object SpringGutterTestUtil {
     }
 
     fun getAllBeanGuttersByIcon(myFixture: JavaCodeInsightTestFixture, icon: Icon): List<GutterMark> {
+        return getAllBeanGuttersByIcon(myFixture, listOf(icon))
+    }
+
+    fun getAllBeanGuttersByIcon(myFixture: JavaCodeInsightTestFixture, icon: Collection<Icon>): List<GutterMark> {
         val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == icon }
+            .filter { icon.contains(it.icon) }
         TestCase.assertTrue(allBeanGutters.isNotEmpty())
         return allBeanGutters
     }

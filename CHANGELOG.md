@@ -15,6 +15,7 @@
 
 - Detect `context.register` as context root
 - Support @SpringBootTest annotation
+- LineMarker: Inactive bean
 
 ## [2024.233.1020] - 2024-03-22
 

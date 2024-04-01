@@ -51,10 +51,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val processor = getLineMarkerElementProcessor(element) ?: return
 
         if (processor.isComponentClassOrBeanMethod()) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+            val builder = NavigationGutterIconBuilder.create(getComponentIcom(processor))
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findFieldsAndMethodsWithAutowired() })
-                .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate"))
+                .setTooltipText(getTooltipMessage(processor))
                 .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.autowired.candidate"))
                 .setTargetRenderer { getTargetRender() }
@@ -85,6 +85,17 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return LineMarkerElementProcessor(element, module, uParent)
     }
 
+    private fun getTooltipMessage(processor: LineMarkerElementProcessor) =
+        if (processor.inSpringContextClass == true)
+            SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate")
+        else
+            SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate.innactive")
+
+    private fun getComponentIcom(processor: LineMarkerElementProcessor) =
+        if (processor.inSpringContextClass == true)
+            SpringIcons.SpringBean else SpringIcons.springBeanInactive
+
+
     class LineMarkerElementProcessor(
         private val element: PsiElement,
         private val module: Module,
@@ -93,11 +104,17 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private val springSearchService = SpringSearchService.getInstance(module.project)
         private val autoConfigureProperties = NotNullLazyValue.lazy { getAutoconfigureIPropertiesByStringKey() }
 
+        var inSpringContextClass: Boolean? = null
+
         fun isComponentClassOrBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
-                return (SpringCoreUtil.isComponentCandidate(uParent.javaPsi)
+                val result = (SpringCoreUtil.isComponentCandidate(uParent.javaPsi)
                         || findTargetClass() in springSearchService.getAllBeansClassesWithAncestors(module))
                         && !dependsOnIncorrectBean(uParent.javaPsi)
+                if (result) {
+                    inSpringContextClass = inSpringContext()
+                }
+                return result
             }
             if (uParent is UMethod) {
                 return isBeanMethodExpression(uParent.javaPsi)
@@ -106,6 +123,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             }
             return false
         }
+
+        private fun inSpringContext() = findTargetClass() in springSearchService.getAllActiveBeans(module)
 
         private fun dependsOnIncorrectBean(member: PsiMember?): Boolean {
             val beanNames = springSearchService.getAllBeanByNames(module)
