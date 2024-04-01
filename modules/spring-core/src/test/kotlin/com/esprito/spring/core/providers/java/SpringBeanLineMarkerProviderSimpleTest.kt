@@ -24,7 +24,8 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoJavaLightTestCase() {
         myFixture.configureFromExistingVirtualFile(vf)
         myFixture.doHighlighting()
 
-        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val icons = setOf(SpringIcons.SpringBean, SpringIcons.springBeanInactive)
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
@@ -126,7 +127,8 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoJavaLightTestCase() {
         myFixture.configureFromExistingVirtualFile(vf)
         myFixture.doHighlighting()
 
-        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val icons = setOf(SpringIcons.SpringBean, SpringIcons.springBeanInactive)
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(gutterTargetString

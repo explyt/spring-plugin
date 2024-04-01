@@ -69,22 +69,26 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun getStaticBeans(module: Module): Set<PsiBean> {
-        return cachedValuesManager.getCachedValue(module) {
-            CachedValueProvider.Result(
-                AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
-                    .filter { it.accepts(module) }
-                    .flatMapTo(mutableSetOf()) { it.discoverBeans(module) },
-                ModificationTrackerManager.getInstance(project).getLibraryTracker()
-            )
+        synchronized(module) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
+                        .filter { it.accepts(module) }
+                        .flatMapTo(mutableSetOf()) { it.discoverBeans(module) },
+                    ModificationTrackerManager.getInstance(project).getLibraryTracker()
+                )
+            }
         }
     }
 
     private fun getAllBeansClasses(module: Module): FoundBeans {
-        return cachedValuesManager.getCachedValue(module) {
-            CachedValueProvider.Result(
-                filterByConditionals(module, searchAllBeanClasses(module)),
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
+        synchronized(module) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    filterByConditionals(module, searchAllBeanClasses(module)),
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
         }
     }
 
@@ -106,32 +110,47 @@ class SpringSearchService(private val project: Project) {
     }
 
     fun getAllBeansClassesWithAncestors(module: Module): Set<PsiClass> {
-        return cachedValuesManager.getCachedValue(module) {
-            CachedValueProvider.Result(
-                getActiveBeansClasses(module)
-                    .flatMapTo(mutableSetOf()) { it.psiClass.supers.asSequence() + it.psiClass },
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
+        synchronized(module) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    getActiveBeansClasses(module)
+                        .flatMapTo(mutableSetOf()) { it.psiClass.supers.asSequence() + it.psiClass },
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
+        }
+    }
+
+    fun getAllActiveBeans(module: Module): Set<PsiClass> {
+        synchronized(module) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    getActiveBeansClasses(module).mapTo(mutableSetOf()) { it.psiClass },
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
         }
     }
 
     fun getBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
-        return cachedValuesManager.getCachedValue(module) {
-            val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-            val annotationPsiClasses = getComponentClassAnnotations(module)
-            val allModuleWithDependenciesBeans =
-                searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope) + getExtraComponents(module)
-            val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
-            val moduleWithDependenciesBeans = filterBeansByPackage(
-                allModuleWithDependenciesBeans, modulePackagesHolder, module
-            )
-            val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
-            val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
+        synchronized(module) {
+            return cachedValuesManager.getCachedValue(module) {
+                val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+                val annotationPsiClasses = getComponentClassAnnotations(module)
+                val allModuleWithDependenciesBeans =
+                    searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope) + getExtraComponents(module)
+                val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+                val moduleWithDependenciesBeans = filterBeansByPackage(
+                    allModuleWithDependenciesBeans, modulePackagesHolder, module
+                )
+                val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
+                val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
 
-            CachedValueProvider.Result(
-                moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans,
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
+                CachedValueProvider.Result(
+                    moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans,
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
         }
     }
 
@@ -142,20 +161,23 @@ class SpringSearchService(private val project: Project) {
             .toSet()
 
     fun searchPsiClassesAnnotatedByComponentScan(module: Module): Set<PsiClass> {
-        return cachedValuesManager.getCachedValue(module) {
-            val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-            val annotationPsiClasses = MetaAnnotationUtil
-                .getAnnotationTypesWithChildren(module, COMPONENT_SCAN, false)
-            val allModuleWithDependenciesBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
-            val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
-            val moduleWithDependenciesBeans = filterBeansByPackage(
-                allModuleWithDependenciesBeans, modulePackagesHolder, module
-            )
-            val moduleLibraryBeans = searchBeanPsiClassesByComponentScanAnnotationLibraryScopeCached(module)
-            CachedValueProvider.Result(
-                (moduleWithDependenciesBeans + moduleLibraryBeans).map { it.psiClass }.toSet(),
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
+        synchronized(module) {
+            return cachedValuesManager.getCachedValue(module) {
+                val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+                val annotationPsiClasses = MetaAnnotationUtil
+                    .getAnnotationTypesWithChildren(module, COMPONENT_SCAN, false)
+                val allModuleWithDependenciesBeans =
+                    searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
+                val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+                val moduleWithDependenciesBeans = filterBeansByPackage(
+                    allModuleWithDependenciesBeans, modulePackagesHolder, module
+                )
+                val moduleLibraryBeans = searchBeanPsiClassesByComponentScanAnnotationLibraryScopeCached(module)
+                CachedValueProvider.Result(
+                    (moduleWithDependenciesBeans + moduleLibraryBeans).map { it.psiClass }.toSet(),
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
         }
     }
 
@@ -287,20 +309,21 @@ class SpringSearchService(private val project: Project) {
     }
 
     fun getAutowiredFieldAnnotations(module: Module): Collection<PsiClass> {
-        return cachedValuesManager.getCachedValue(module) {
-            CachedValueProvider.Result(
-                run {
-                    val annotations =
-                        MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
+        synchronized(module) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    run {
+                        val annotations = MetaAnnotationUtil
+                            .getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
                             .toMutableSet()
-                    annotations += LibraryClassCache.searchForLibraryClasses(
-                        module,
-                        JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns
-                    )
-                    return@run annotations
-                },
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
+                        annotations += LibraryClassCache.searchForLibraryClasses(
+                            module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns
+                        )
+                        return@run annotations
+                    },
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
         }
     }
 
