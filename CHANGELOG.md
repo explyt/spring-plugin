@@ -10,6 +10,7 @@
 #### Fixed
 
 - Spring Data methods name inspection (Repository: findAll property is unknown)
+- Parse run configuration profile arguments
 
 ### Spring Core/Boot
 
