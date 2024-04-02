@@ -2,7 +2,6 @@ package com.esprito.spring.core.service
 
 import com.esprito.spring.core.profile.SpringProfilesService
 import com.esprito.spring.core.runconfiguration.RunConfigurationUtil
-import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.components.Service
@@ -24,7 +23,7 @@ class ProfilesService(private val project: Project) {
     private fun isActive(profile: String) = getActiveProfiles().contains(profile)
 
     fun updateFromConfiguration(settings: RunnerAndConfigurationSettings?): Boolean {
-        val profiles = getProfilesFromConfiguration(settings)
+        val profiles = RunConfigurationUtil.getProfiles(settings)
         val profileChanged = profiles != activeProfilesFromRunConfiguration
         activeProfilesFromRunConfiguration = profiles
 
@@ -61,14 +60,6 @@ class ProfilesService(private val project: Project) {
         val postfixExpression = toPostfix(tokens)
 
         return evaluate(postfixExpression) ?: false
-    }
-
-    private fun getProfilesFromConfiguration(settings: RunnerAndConfigurationSettings?): Set<String> {
-        return (settings?.configuration as? SpringBootRunConfiguration)
-            ?.springProfiles
-            ?.split(',')
-            ?.filterTo(mutableSetOf()) { it.isNotBlank() }
-            ?: setOf()
     }
 
     private fun tokenize(expression: String): Collection<Token>? {
