@@ -1,0 +1,29 @@
+<html lang="en">
+<head>
+    <title>RequestMapping Duplicate Inspection</title>
+</head>
+<body>
+
+<p>Reports duplicated RequestMapping endpoint</p>
+
+<p><b>Example:</b></p>
+Reports "Duplicated endpoint 'first'" and "Duplicated endpoint 'second'"
+<pre><code lang="java">
+    @Controller("some")
+    class SomeController {
+
+        @GetMapping("/some/uri") //Duplicated endpoint 'second'
+        public String first() {
+            return "first";
+        }
+
+        @GetMapping("/some/uri") //Duplicated endpoint 'first'
+        public String second() {
+            return "second";
+        }
+
+    }
+</code></pre>
+
+</body>
+</html>
