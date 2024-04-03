@@ -18,6 +18,10 @@
 - Support @SpringBootTest annotation
 - LineMarker: Inactive bean
 
+### Spring Web/MVC
+
+- Inspection for duplicated `@RequestMapping` endpoints
+
 ## [2024.233.1020] - 2024-03-22
 
 ### Spring Core/Boot
