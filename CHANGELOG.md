@@ -22,6 +22,7 @@
 
 ### Spring Core/Boot
 
+- Fix: inspection reference placeholder in yaml
 - Support `@ComponentScan` scope to find spring beans.
 - Support `@Import` to find configurations.
 - Inspection for methods annotated with `@Async`, `@Transactional`, `@Cacheable`, `@CachePut`, `@CacheEvict` work to prevent calls within the same class.

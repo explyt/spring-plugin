@@ -7,6 +7,8 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.IO_RESOURCE
 import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.PLACEHOLDER_PREFIX
+import com.esprito.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.*
@@ -217,6 +219,10 @@ abstract class SpringBasePropertyInspection : LocalInspectionTool() {
             val psiValue = elementFileProperty.propertyValuePsiElement() ?: continue
             val key = elementFileProperty.propertyKey() ?: continue
             val value = elementFileProperty.propertyValue() ?: continue
+            if (value.startsWith(PLACEHOLDER_PREFIX) && value.endsWith(PLACEHOLDER_SUFFIX)) {
+                continue
+            }
+
             val hintValues = hints.asSequence()
                 .filter { it.name == key || it.name == key.substringBeforeLast(".") + POSTFIX_VALUES }
                 .distinctBy { it.name }
