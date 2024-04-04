@@ -11,6 +11,7 @@
 
 - Spring Data methods name inspection (Repository: findAll property is unknown)
 - Parse run configuration profile arguments
+- LineMarker: Navigate to Bean Declaration for class/type injected through the @Bean annotation
 
 ### Spring Core/Boot
 

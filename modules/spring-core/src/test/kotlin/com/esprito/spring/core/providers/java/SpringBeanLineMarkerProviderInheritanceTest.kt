@@ -40,7 +40,7 @@ class SpringBeanLineMarkerProviderInheritanceTest : EspritoJavaLightTestCase() {
 
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "a" }
-        }.size, 3)
+        }.size, 2)
     }
 
     fun testLineMarkerInheritance_toBean_I_a() {
@@ -84,7 +84,7 @@ class SpringBeanLineMarkerProviderInheritanceTest : EspritoJavaLightTestCase() {
 
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "ab" }
-        }.size, 3)
+        }.size, 2)
     }
 
     fun testLineMarkerInheritance_toBean_I_ab() {
@@ -128,7 +128,7 @@ class SpringBeanLineMarkerProviderInheritanceTest : EspritoJavaLightTestCase() {
 
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "c" }
-        }.size, 3)
+        }.size, 2)
     }
 
     fun testLineMarkerInheritance_toBean_I_c() {
@@ -172,7 +172,7 @@ class SpringBeanLineMarkerProviderInheritanceTest : EspritoJavaLightTestCase() {
 
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "e" }
-        }.size, 3)
+        }.size, 2)
     }
 
     fun testLineMarkerInheritance_toBean_I_e() {
