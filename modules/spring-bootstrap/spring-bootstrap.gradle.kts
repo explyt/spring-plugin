@@ -49,8 +49,8 @@ version = fun(): String {
         return bv
     }
     val ideaPlatformVersion = "${ext["sinceVersion"]}".substring(0, 3)
-    // return "${ideaPlatformVersion}.${ext["pluginVersion"]}.${ext["snapshotVersion"]}"
-    return "2024.${ideaPlatformVersion}.${ext["snapshotVersion"]}"
+    return "${ideaPlatformVersion}.${ext["pluginVersion"]}.${ext["snapshotVersion"]}"
+    //return "2024.${ideaPlatformVersion}.${ext["snapshotVersion"]}"
 }.invoke()
 
 val springPluginName = "spring-tool"
