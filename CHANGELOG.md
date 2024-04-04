@@ -14,6 +14,8 @@
 
 ### Spring Core/Boot
 
+- Added `'ConditionalOn' bean filtering` setting with `true` as default value. On activation bean filtering works
+  without auto-configurations
 - Detect `context.register` as context root
 - Support @SpringBootTest annotation
 - LineMarker: Inactive bean

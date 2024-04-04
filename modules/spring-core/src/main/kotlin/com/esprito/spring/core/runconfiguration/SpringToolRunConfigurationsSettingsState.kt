@@ -18,6 +18,9 @@ class SpringToolRunConfigurationsSettingsState :
     var isAutoDetectConfigurations by property(true)
 
     @get:Property(surroundWithTag = true)
+    var isBeanFilterEnabled by property(true)
+
+    @get:Property(surroundWithTag = true)
     var stateLicenseConfigurations by property(-1)
 
     @get:Property(surroundWithTag = true)

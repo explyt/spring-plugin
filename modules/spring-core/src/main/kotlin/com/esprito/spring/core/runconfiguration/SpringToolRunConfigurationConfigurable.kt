@@ -1,6 +1,9 @@
 package com.esprito.spring.core.runconfiguration
 
+import com.esprito.spring.core.SpringCoreBundle
+import com.esprito.spring.core.action.UastModelTrackerInvalidateAction
 import com.esprito.spring.core.runconfiguration.clients.EspritoLicenseClient
+import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.SearchableConfigurable
@@ -23,6 +26,7 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
     private val propertyGraph = PropertyGraph()
 
     private val isAutoDetection = propertyGraph.lazyProperty { settingsState.isAutoDetectConfigurations }
+    private val isBeanFilterEnabled = propertyGraph.lazyProperty { settingsState.isBeanFilterEnabled }
     private val sateLicense = propertyGraph.lazyProperty { settingsState.stateLicenseConfigurations }
     private val textLicense = propertyGraph.lazyProperty { settingsState.textLicenseConfigurations }
 
@@ -40,6 +44,7 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
 
     override fun isModified(): Boolean {
         val changeDetection = isAutoDetection.get() != settingsState.isAutoDetectConfigurations
+                || isBeanFilterEnabled.get() != settingsState.isBeanFilterEnabled
         val changeLicense = textLicense.get() != settingsState.textLicenseConfigurations
 
         return changeDetection
@@ -50,6 +55,15 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
         settingsState.isAutoDetectConfigurations = isAutoDetection.get()
         settingsState.textLicenseConfigurations = textLicense.get()
         settingsState.stateLicenseConfigurations = sateLicense.get()
+
+        if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) {
+            settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
+
+            ProjectUtil.getActiveProject()?.let { project ->
+                UastModelTrackerInvalidateAction.invalidate(project)
+            }
+        }
+
 
         if (sateLicense.get() == EspritoLicenseState.Valid.state) {
             settingsState.licenseOrganizationName = labelOrganizationName.text
@@ -69,14 +83,14 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
         val mainPanel = BorderLayoutPanel(10, 10)
         mainPanel.preferredSize = Dimension(550, 400)
 
-        mainPanel.addToTop(configAutoDetection())
+        mainPanel.addToTop(configTop())
         mainPanel.addToCenter(configLicense())
         mainPanel.addToBottom(configBottom())
 
         return mainPanel
     }
 
-    private fun configAutoDetection(): BorderLayoutPanel {
+    private fun configTop(): BorderLayoutPanel {
         val topPanel = BorderLayoutPanel(10, 10)
 
         val cbAutoDetection = JCheckBox("SpringBoot configurations auto-detection")
@@ -85,6 +99,16 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
             isAutoDetection.set((it.source as AbstractButton).isSelected)
         }
         topPanel.addToCenter(cbAutoDetection)
+
+        val cbEnableBeanFiltering =
+            JCheckBox(SpringCoreBundle.message("esprito.spring.settings.enableBeanFiltering.label"))
+        cbEnableBeanFiltering.toolTipText =
+            SpringCoreBundle.message("esprito.spring.settings.enableBeanFiltering.tooltip")
+        cbEnableBeanFiltering.isSelected = isBeanFilterEnabled.get()
+        cbEnableBeanFiltering.addItemListener {
+            isBeanFilterEnabled.set((it.source as AbstractButton).isSelected)
+        }
+        topPanel.addToBottom(cbEnableBeanFiltering)
 
         return topPanel
     }

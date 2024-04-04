@@ -5,6 +5,7 @@ import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.tracker.ModificationTrackerManager
@@ -534,22 +535,25 @@ class SpringSearchService(private val project: Project) {
         val active = foundBeans.toMutableSet()
         val excluded = mutableSetOf<PsiBean>()
 
+        val beanFilterEnabled = SpringToolRunConfigurationsSettingsState.getInstance()
+            .isBeanFilterEnabled
+
         val autoConfigurationsFqn =
             SpringConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllFactoriesNames(module)
-        if (autoConfigurationsFqn.isEmpty()) return FoundBeans(active, excluded)
+        if (!beanFilterEnabled && autoConfigurationsFqn.isEmpty()) return FoundBeans(active, excluded)
 
         val exclusionStrategies = listOf(
             ConditionalOnBeanStrategy(module),
             ConditionalOnMissingBeanStrategy(module),
             ConditionalOnClassStrategy(module),
             ConditionalOnMissingClassStrategy(module),
-            ConditionalOnPropertyStrategy(module) // TODO: не только для автоконфигураций
+            ConditionalOnPropertyStrategy(module)
         )
 
         val dependants = foundBeans.asSequence()
             .filter { it.psiMember is PsiClass }
-            .filter { autoConfigurationsFqn.contains(it.psiClass.qualifiedName) }
+            .filter { beanFilterEnabled || autoConfigurationsFqn.contains(it.psiClass.qualifiedName) }
             .map { it.psiClass }
             .toList()
 
