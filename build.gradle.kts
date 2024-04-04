@@ -14,7 +14,7 @@ plugins {
     java
     id("org.jetbrains.intellij") apply false
     id("org.jetbrains.changelog") version "2.2.0" apply false
-    kotlin("jvm") version "1.9.22"
+    kotlin("jvm") apply false
 }
 
 subprojects {
@@ -46,7 +46,7 @@ subprojects {
 
 }
 dependencies {
-    implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("stdlib"))
 }
 repositories {
     mavenCentral()
