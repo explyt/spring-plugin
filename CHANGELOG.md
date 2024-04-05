@@ -15,6 +15,7 @@
 
 ### Spring Core/Boot
 
+- Added inspection: Class constructor properties annotated with `@ConfigurationProperties` must be nullable
 - Added `'ConditionalOn' bean filtering` setting with `true` as default value. On activation bean filtering works
   without auto-configurations
 - Detect `context.register` as context root
