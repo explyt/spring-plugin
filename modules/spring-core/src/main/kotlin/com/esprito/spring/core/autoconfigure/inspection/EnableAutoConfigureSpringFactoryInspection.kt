@@ -13,9 +13,11 @@ import com.intellij.codeInsight.daemon.quickFix.TargetDirectory
 import com.intellij.codeInspection.*
 import com.intellij.ide.actions.OpenFileAction
 import com.intellij.lang.properties.IProperty
-import com.intellij.lang.properties.RemovePropertyLocalFix
+import com.intellij.lang.properties.PropertiesBundle
+import com.intellij.lang.properties.PropertiesQuickFixFactory
 import com.intellij.lang.properties.psi.PropertiesElementFactory
 import com.intellij.lang.properties.psi.PropertiesFile
+import com.intellij.lang.properties.psi.Property
 import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.ModuleUtilCore
@@ -25,6 +27,9 @@ import com.intellij.openapi.vfs.findDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.util.IncorrectOperationException
+import org.jetbrains.kotlin.idea.codeinsight.utils.findExistingEditor
 import java.util.function.Supplier
 import javax.swing.Icon
 
@@ -133,5 +138,21 @@ private class MovePropertyFix(private val movedValues: List<String>) : LocalQuic
         dummyPropertiesFile.properties.forEach { autoConfigurationPropertyFile.addPropertyAfter(it, lastProperty) }
         OpenFileAction.openFile(autoConfigurationImportsFile, project)
         if (descriptor.psiElement is PropertyImpl) descriptor.psiElement.delete()
+    }
+}
+
+class RemovePropertyLocalFix() : LocalQuickFix {
+
+    override fun getFamilyName() = PropertiesBundle.message("remove.property.intention.text")
+
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val element = descriptor.psiElement
+        val property = PsiTreeUtil.getParentOfType(element, Property::class.java, false) ?: return
+        try {
+            val editor = element.containingFile.findExistingEditor() ?: return
+            PropertiesQuickFixFactory.getInstance().createRemovePropertyFix(property)
+                .invoke(project, editor, property.containingFile)
+        } catch (e: IncorrectOperationException) {
+        }
     }
 }

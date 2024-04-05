@@ -10,8 +10,6 @@ import com.intellij.psi.UastInjectionHostReferenceProvider
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.ULiteralExpression
-import org.jetbrains.uast.UPolyadicExpression
 
 class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvider() {
 
@@ -21,7 +19,6 @@ class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvi
         context: ProcessingContext
     ): Array<PsiReference> {
         val psiElement = uExpression.sourcePsi ?: return PsiReference.EMPTY_ARRAY
-        if (uExpression !is ULiteralExpression && uExpression !is UPolyadicExpression) return PsiReference.EMPTY_ARRAY
         val uCallExpression = uExpression.uastParent as? UCallExpression ?: return PsiReference.EMPTY_ARRAY
         val psiMethod = uCallExpression.resolve() ?: return PsiReference.EMPTY_ARRAY
         val urlTemplateIndex = SpringWebUtil.getUrlTemplateIndex(psiMethod)
@@ -68,10 +65,7 @@ class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvi
     ): Boolean {
         val expressionAtIndex = callExpression.valueArguments.getOrNull(urlTemplateIndex)
 
-        return if (argumentExpression is UPolyadicExpression)
-            argumentExpression.operands.contains(expressionAtIndex)
-        else
-            expressionAtIndex == argumentExpression
+        return expressionAtIndex == argumentExpression
     }
 
     companion object {

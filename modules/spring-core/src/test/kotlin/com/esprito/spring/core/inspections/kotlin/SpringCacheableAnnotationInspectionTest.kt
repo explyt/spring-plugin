@@ -91,9 +91,9 @@ class SpringCacheableAnnotationInspectionTest : EspritoInspectionJavaTestCase() 
             """
             @${SpringCoreClasses.COMPONENT}            
             public class SpringBean {
-                @${SpringCoreClasses.CACHEABLE}(cacheResolver = "<warning>myResolver</warning>", 
-                                                cacheManager = "<warning>myManager</warning>", 
-                                                keyGenerator = "<warning>myGenerator</warning>")
+                @${SpringCoreClasses.CACHEABLE}(cacheResolver = <warning>"myResolver"</warning>, 
+                                                cacheManager = <warning>"myManager"</warning>, 
+                                                keyGenerator = <warning>"myGenerator"</warning>)
                 fun test():String { return ""}
             }
             """.trimIndent()

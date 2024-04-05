@@ -9,16 +9,15 @@ import org.jetbrains.uast.*
 
 object EspritoAnnotationUtil {
 
-    fun getAttributeValues(uAnnotation: UAnnotation, attributeName: Collection<String>): List<ULiteralExpression> {
+    fun getAttributeValues(uAnnotation: UAnnotation, attributeName: Collection<String>): List<UExpression> {
         return attributeName.flatMap { getAttributeValues(uAnnotation, it) }
     }
 
-    private fun getAttributeValues(uAnnotation: UAnnotation, attributeName: String): List<ULiteralExpression> {
+    private fun getAttributeValues(uAnnotation: UAnnotation, attributeName: String): List<UExpression> {
         val attributeValue = uAnnotation.findAttributeValue(attributeName) ?: return emptyList()
         return when (attributeValue) {
-            is UCallExpression -> attributeValue.valueArguments.filterIsInstance<ULiteralExpression>()
-            is ULiteralExpression -> listOf(attributeValue)
-            else -> emptyList()
+            is UCallExpression -> attributeValue.valueArguments
+            else -> listOf(attributeValue)
         }
     }
 

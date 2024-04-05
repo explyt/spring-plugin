@@ -8,14 +8,11 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
-import org.jetbrains.uast.ULiteralExpression
-import org.jetbrains.uast.toUElement
 
 class InAnnotationPackageAntReference(element: PsiElement, range: TextRange?) :
     PsiReferenceBase.Poly<PsiElement>(element, range, false) {
 
     override fun getVariants(): Array<Any> {
-        if (element.toUElement() !is ULiteralExpression) return emptyArray()
         val text = ElementManipulators.getValueText(element)
             .substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
 

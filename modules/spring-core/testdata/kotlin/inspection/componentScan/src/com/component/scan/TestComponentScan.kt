@@ -19,8 +19,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication(scanBasePackages = "com.?.4")
 @SpringBootApplication("com.1.3")
 @SpringBootApplication(scanBasePackages = "com.?7.?")
-@SpringBootApplication({"com.2.4", "com.?.?", "com.2.6"})
-@SpringBootApplication(scanBasePackages = {"com.2.4", "com.?.?", "com.2.6"})
+@SpringBootApplication(["com.2.4", "com.?.?", "com.2.6"])
+@SpringBootApplication(scanBasePackages = ["com.2.4", "com.?.?", "com.2.5"])
 @ComponentScan(basePackages = "a.1.3")
 @ComponentScan(basePackages = "com.1.3")
 @ComponentScan(basePackages = "com.1.4")
@@ -37,7 +37,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @ComponentScan(basePackages = "com.?.4")
 @ComponentScan("com.1.3")
 @ComponentScan(basePackages = "com.?7.?")
-@ComponentScan({"com.2.4", "com.?.?", "com.2.6"})
-@ComponentScan(basePackages = {"com.2.4", "com.?.?", "com.2.6"})
+@ComponentScan(["com.2.4", "com.?.?", "com.2.5"])
+@ComponentScan(basePackages = ["com.2.4", "com.?.?", "com.2.5"])
 public class TestComponentScan {
 }
