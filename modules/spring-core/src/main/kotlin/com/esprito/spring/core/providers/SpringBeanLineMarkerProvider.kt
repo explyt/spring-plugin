@@ -8,6 +8,7 @@ import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
 import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
+import com.esprito.spring.core.util.SpringCoreUtil.isComponentCandidate
 import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
@@ -59,6 +60,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.autowired.candidate"))
                 .setTargetRenderer { getTargetRender() }
             result.add(builder.createLineMarkerInfo(element))
+        } else if (processor.isClassForBeanMethod()) {
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { processor.findBeanDeclarations() })
+                .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
+            result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isFieldOrAutowiredParameter()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
@@ -107,24 +116,31 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         var inSpringContextClass: Boolean? = null
 
         fun isComponentClassOrBeanMethod(): Boolean {
+            var result = false
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
-                val result = (SpringCoreUtil.isComponentCandidate(uParent.javaPsi)
-                        || findTargetClass() in springSearchService.getAllBeansClassesWithAncestors(module))
-                        && !dependsOnIncorrectBean(uParent.javaPsi)
-                if (result) {
-                    inSpringContextClass = inSpringContext()
-                }
-                return result
+                result = isComponentCandidate(uParent.javaPsi) && !dependsOnIncorrectBean(uParent.javaPsi)
             }
             if (uParent is UMethod) {
-                return isBeanMethodExpression(uParent.javaPsi)
+                result = isBeanMethodExpression(uParent.javaPsi)
                         && !dependsOnIncorrectBean(uParent.javaPsi)
                         && !dependsOnIncorrectBean(uParent.javaPsi.containingClass)
             }
-            return false
+            if (result) {
+                inSpringContextClass = inSpringContext()
+            }
+            return result
         }
 
         private fun inSpringContext() = findTargetClass() in springSearchService.getAllActiveBeans(module)
+
+        fun isClassForBeanMethod(): Boolean {
+            if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
+                val targetClass = findTargetClass() ?: return false
+                val allBeans = springSearchService.getActiveBeansClasses(module)
+                return allBeans.any { it.psiClass == targetClass && it.psiClass != it.psiMember }
+            }
+            return false
+        }
 
         private fun dependsOnIncorrectBean(member: PsiMember?): Boolean {
             val beanNames = springSearchService.getAllBeanByNames(module)
@@ -164,7 +180,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             fun checkParam(psiVariable: PsiVariable): Boolean = with(springSearchService) {
                 val javaPsiClass = uParent.getContainingUClass()?.javaPsi ?: return false
                 val isClassIsComponentConstructed = SpringCoreUtil.isSpringBeanCandidateClass(javaPsiClass)
-                        && SpringCoreUtil.isComponentCandidate(javaPsiClass)
+                        && isComponentCandidate(javaPsiClass)
 
                 if (!isClassIsComponentConstructed) {
                     return false
@@ -314,6 +330,17 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return filteredByName.ifEmpty {
                 allByType
             }
+        }
+
+        fun findBeanDeclarations(): List<PsiElement> {
+            if (uParent is UClass) {
+                val targetClass = findTargetClass() ?: return emptyList()
+                return springSearchService.getActiveBeansClasses(module).asSequence()
+                    .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
+                    .map { it.psiMember }
+                    .toList()
+            }
+            return emptyList()
         }
     }
 

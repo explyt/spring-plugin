@@ -1,5 +1,6 @@
 package com.esprito.spring.core.providers.kotlin
 
+import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.util.SpringGutterTestUtil
 import com.esprito.spring.test.EspritoKotlinLightTestCase
@@ -33,7 +34,7 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoKotlinLightTestCase() {
         TestCase.assertTrue(allBeanGutters.isNotEmpty())
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it.contains("fooAOneBeanOneDependency", true) }
-        }.size, 2)  // !!expected 1
+        }.size, 1)
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it.contains("fooBOneBeanOneDependency", true) }
         }.size, 0)
@@ -59,7 +60,7 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoKotlinLightTestCase() {
         TestCase.assertTrue(allBeanGutters.isNotEmpty())
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it.contains("fooAOneBeanOneDependency", true) }
-        }.size, 1)
+        }.size, 2)
         TestCase.assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it.contains("fooBOneBeanOneDependency", true) }
         }.size, 0)
@@ -187,7 +188,7 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoKotlinLightTestCase() {
                 it.contains("namedBeanFoo", true)
                         || it.contains("foo", true)
             }
-        }.size, 2)
+        }.size, 5)
     }
 
     fun testLineMarkerResource_toAutowired() {
@@ -236,5 +237,30 @@ class SpringBeanLineMarkerProviderSimpleTest : EspritoKotlinLightTestCase() {
         TestCase.assertEquals(
             gutterTargetString.flatMap { gutter -> gutter.filter { it == "E" } }.size, 1
         )
+    }
+
+    fun testLineMarker_BeanDeclaration() {
+        myFixture.configureByText(
+            "FooComponent.kt",
+            """
+                class Foo
+
+                @${SpringCoreClasses.CONFIGURATION}
+                open class FooComponent {
+                
+                    @${SpringCoreClasses.BEAN}
+                    fun foo():Foo {
+                        return Foo()
+                    }                                    
+                }
+
+            """.trimIndent()
+        )
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+
+        TestCase.assertTrue(gutterTargetString.flatten().all { it == "foo()" })
     }
 }

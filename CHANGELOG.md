@@ -7,28 +7,34 @@
 
 ### Spring Data
 
-#### Fixed
-
 - Spring Data methods name inspection (Repository: findAll property is unknown)
 - Parse run configuration profile arguments
+- LineMarker: Navigate to Bean Declaration for class/type injected through the @Bean annotation
 
 ### Spring Core/Boot
 
+- Added inspection: Class constructor properties annotated with `@ConfigurationProperties` must be nullable
 - Added `'ConditionalOn' bean filtering` setting with `true` as default value. On activation bean filtering works
   without auto-configurations
 - Detect `context.register` as context root
 - Support @SpringBootTest annotation
 - LineMarker: Inactive bean
+- Fix: reference publishEvent to inherited annotation listener
+- Fix: inspection reference placeholder in yaml
 
 ### Spring Web/MVC
 
 - Inspection for duplicated `@RequestMapping` endpoints
 
+### Other 
+
+- Invalid name in Tools settings
+- Added validate license panel
+
 ## [2024.233.1020] - 2024-03-22
 
 ### Spring Core/Boot
 
-- Fix: inspection reference placeholder in yaml
 - Support `@ComponentScan` scope to find spring beans.
 - Support `@Import` to find configurations.
 - Inspection for methods annotated with `@Async`, `@Transactional`, `@Cacheable`, `@CachePut`, `@CacheEvict` work to prevent calls within the same class.
@@ -55,7 +61,6 @@
 
 ### Other
 
-- Fix: reference publishEvent to inherited annotation listener
 - Switch to versioning 2024.{platformVersion}.{buildNumber}.
 - Inspection for getResource method to ensure classpath resource path is correct.
 - Inspections and tests to improve overall functionality.

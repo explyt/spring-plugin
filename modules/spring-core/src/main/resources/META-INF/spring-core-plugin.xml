@@ -435,6 +435,17 @@
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringCacheAnnotationsOnInterfaceInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringConfigurationPropertiesNullableParametersInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.kotlin.constructor.nullable"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.esprito.spring.core.inspections.SpringConfigurationPropertiesNullableParametersInspection"/>
+
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
 
