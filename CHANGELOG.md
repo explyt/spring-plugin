@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [2024.233.1151] - 2024-04-08
+
 ### Spring Data
 
 - Spring Data methods name inspection (Repository: findAll property is unknown)
@@ -26,12 +28,12 @@
 
 - Inspection for duplicated `@RequestMapping` endpoints
 
-### Other 
+### Other
 
 - Invalid name in Tools settings
 - Added validate license panel
 
-## [2024.233.1020] - 2024-03-22
+## 2024.233.1020 - 2024-03-22
 
 ### Spring Core/Boot
 
