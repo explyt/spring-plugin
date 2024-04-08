@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Other 
+
+- Upgrade to intellij 241 branch
+
 ## [2024.233.1151] - 2024-04-08
 
 ### Spring Data
