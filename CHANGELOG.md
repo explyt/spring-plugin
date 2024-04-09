@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [241.1.1167] - 2024-04-09
+
 ### Spring Core/Boot
 
 - LineMarker: Navigation from Kotlin constructor parameters to property declaration
@@ -13,11 +15,11 @@
 
 - Bean method doesn't navigate to autowired collection
 
-### Other 
+### Other
 
 - Upgrade to intellij 241 branch
 
-## [2024.233.1151] - 2024-04-08
+## 2024.233.1151 - 2024-04-08
 
 ### Spring Data
 
