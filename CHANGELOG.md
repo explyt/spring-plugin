@@ -12,6 +12,7 @@
 - Spring Data methods name inspection (Repository: findAll property is unknown)
 - Parse run configuration profile arguments
 - LineMarker: Navigate to Bean Declaration for class/type injected through the @Bean annotation
+- Bean method doesn't navigate to autowired collection
 
 ### Spring Core/Boot
 
