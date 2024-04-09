@@ -1,17 +1,19 @@
 package com.esprito.spring.core.providers
 
-import com.esprito.spring.core.properties.ConfigurationPropertyDataRetriever
+import com.esprito.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetriever
+import com.esprito.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
+import org.jetbrains.uast.toUElement
 
 class SpringConfigurationPropertyUsageProvider : ImplicitUsageProvider {
     override fun isImplicitUsage(element: PsiElement): Boolean {
         if (element !is PsiMethod) return false
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return false
 
-        val dataRetriever = ConfigurationPropertyDataRetriever(element)
+        val dataRetriever = ConfigurationPropertyDataRetrieverFactory.createFor(element.toUElement()) ?: return false
         val psiClass = dataRetriever.getContainingClass() ?: return false
         val memberName = dataRetriever.getMemberName() ?: return false
         val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass, module)

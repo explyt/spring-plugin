@@ -16,6 +16,7 @@
 
 ### Spring Core/Boot
 
+- LineMarker: Navigation from Kotlin constructor parameters to property declaration
 - Added inspection: Class constructor properties annotated with `@ConfigurationProperties` must be nullable
 - Added `'ConditionalOn' bean filtering` setting with `true` as default value. On activation bean filtering works
   without auto-configurations

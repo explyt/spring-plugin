@@ -2,12 +2,12 @@ package com.esprito.spring.core.providers.kotlin
 
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.util.SpringGutterTestUtil
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.EspritoKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.GutterMark
 import junit.framework.TestCase
 
-class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
+class ConfigurationPropertyLineMarkerProviderTest : EspritoKotlinLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
@@ -49,6 +49,32 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
             open class MainPropertiesConfiguration {
                 var val<caret>ue: String? = null
             }
+            """.trimIndent()
+        )
+        val gutterMarks = myFixture.findGuttersAtCaret()
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
+        TestCase.assertEquals(
+            listOf("configuration.value"), gutterTargetsStrings
+        )
+    }
+
+    fun testConstructorParameters() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME, "configuration.value=1"
+        )
+
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.kt", """
+            import org.springframework.boot.context.properties.ConfigurationProperties
+            import org.springframework.context.annotation.Configuration
+
+            @ConfigurationProperties(prefix="configuration")
+            @Configuration
+            open class MainPropertiesConfiguration (
+                var valu<caret>e: String? = null
+            )
             """.trimIndent()
         )
         val gutterMarks = myFixture.findGuttersAtCaret()
