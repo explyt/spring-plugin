@@ -200,7 +200,13 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     val toFilter = configurations.compileClasspath.get().files
         .filter { it.startsWith(rootProject.layout.projectDirectory.asFile) }
 
-    val classPath = configurations.compileClasspath.get().minus(toFilter)
+    // File contains K2 files, but proguard supports up to 1.9
+    val invalidFiles = configurations.compileClasspath.get().files
+        .filter { it.endsWith("jetbrains.kotlinx.metadata.jvm.jar") }
+
+    val classPath = configurations.compileClasspath.get()
+        .minus(toFilter)
+        .minus(invalidFiles)
     libraryjars(classPath)
 
     val filterArgs = mapOf(
