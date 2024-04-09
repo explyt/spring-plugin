@@ -16,9 +16,11 @@
 - Spring Data methods name inspection (Repository: findAll property is unknown)
 - Parse run configuration profile arguments
 - LineMarker: Navigate to Bean Declaration for class/type injected through the @Bean annotation
+- Bean method doesn't navigate to autowired collection
 
 ### Spring Core/Boot
 
+- LineMarker: Navigation from Kotlin constructor parameters to property declaration
 - Added inspection: Class constructor properties annotated with `@ConfigurationProperties` must be nullable
 - Added `'ConditionalOn' bean filtering` setting with `true` as default value. On activation bean filtering works
   without auto-configurations

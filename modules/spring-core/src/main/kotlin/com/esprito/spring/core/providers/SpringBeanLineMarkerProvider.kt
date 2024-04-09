@@ -40,6 +40,7 @@ import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.pom.PomTargetPsiElement
 import com.intellij.psi.*
 import com.intellij.util.TextWithIcon
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.uast.*
 import java.util.regex.Pattern
@@ -293,12 +294,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allFieldsWithAutowired = allBeans.asSequence().flatMap { bean ->
                 bean.psiClass.allFields.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                    .filter {
-                        targetType == it.type
-                                || it.type.canResolveBeanClass(targetClasses)
-                                && (targetType !is PsiClassType
-                                || it.type.beanPsiType!!.psiClassType?.isEqualOrInheritorBeanType(targetType) == true)
-                    }
+                    .filter { isCandidateField(it, targetType, targetClasses) }
                     .map { it.navigationElement.toUElement() as? UVariable }
                     .filterNotNull()
             }.toSet()
@@ -330,6 +326,30 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return filteredByName.ifEmpty {
                 allByType
             }
+        }
+
+        private fun isCandidateField(field: PsiField, targetType: PsiType?, targetClasses: Set<PsiClass>): Boolean {
+            val isResolved = targetType == field.type || field.type.canResolveBeanClass(targetClasses)
+            if (!isResolved) return false
+            if (targetType == null) return true
+
+            if (targetType !is PsiClassType) return true
+            val psiClassType = psiType(field)
+            return if (targetType.parameters.isNotEmpty()) {
+                psiClassType?.isEqualOrInheritorBeanType(targetType) == true
+            } else true
+        }
+
+        private fun psiType(field: PsiField): PsiType? {
+            val type = field.type.beanPsiType
+            if (type is PsiClassType) {
+                return type.psiClassType
+            }
+            if (field.language == KotlinLanguage.INSTANCE && type is PsiWildcardType) {
+                if (type.isExtends) return type.extendsBound
+                if (type.isSuper) return type.superBound
+            }
+            return null
         }
 
         fun findBeanDeclarations(): List<PsiElement> {

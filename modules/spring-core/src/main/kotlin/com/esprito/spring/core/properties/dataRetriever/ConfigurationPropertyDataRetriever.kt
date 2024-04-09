@@ -1,4 +1,4 @@
-package com.esprito.spring.core.properties
+package com.esprito.spring.core.properties.dataRetriever
 
 import ai.grazie.utils.capitalize
 import com.esprito.spring.core.SpringCoreClasses
@@ -8,11 +8,12 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isNonAbstract
-import com.esprito.util.EspritoPsiUtil.isSetter
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
-import com.intellij.psi.*
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiMember
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
@@ -22,25 +23,14 @@ import org.jetbrains.uast.UField
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUastParentOfType
 
-class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
+abstract class ConfigurationPropertyDataRetriever {
 
-    fun getContainingClass(): PsiClass? {
-        val psiClass = psiMethod.containingClass
+    abstract fun getContainingClass(): PsiClass?
 
-        return if (psiClass != null && !psiClass.isInterface && psiClass.isNonAbstract) {
-            psiClass
-        } else {
-            null
-        }
-    }
 
-    fun getMemberName(): String? {
-        return if (isSetter(psiMethod)) {
-            toPascalFormat(psiMethod.name)
-        } else {
-            return null
-        }
-    }
+    abstract fun getMemberName(): String?
+
+    abstract fun getNameElementPsi(): PsiElement?
 
     fun getRelatedProperties(prefix: String, name: String, module: Module): List<PsiElement> {
         return DefinedConfigurationPropertiesSearch.getInstance(module.project)
@@ -129,7 +119,7 @@ class ConfigurationPropertyDataRetriever(val psiMethod: PsiMethod) {
         return PropertyUtil.propertyNameToPascalCase(name)
     }
 
-    private fun toPascalFormat(memberName: String?): String {
+    protected fun toPascalFormat(memberName: String?): String {
         return when {
             memberName == null -> ""
             memberName.startsWith("set") -> memberName.substring(3)
