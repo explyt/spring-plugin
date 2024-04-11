@@ -36,7 +36,7 @@ Any subsidiaries, affiliates, and associated entities of JetBrains.
 
 ### Plugin Marketplace
 
-The digital distribution service provided by JetBrains or an JetBrains Affiliate, through which the Plugin is made available to User(s), including but not limited to [https://plugins.jetbrains.com](https://plugins.jetbrains.com/), and any other related platforms or repositories, regardless of their specific designations.
+The digital distribution service provided by JetBrains or an JetBrains Affiliate, through which the Plugin is made available to User(s), including but not limited to [https://plugins.jetbrains.com](https://plugins.jetbrains.com), and any other related platforms or repositories, regardless of their specific designations.
 
 ### Confirmation
 
@@ -80,7 +80,7 @@ A certificate issued under the License Key, allowing individual users within the
 
 ### Site
 
-The official online presence of Esprito Spring Tools, which can be accessed via \[<https://esprito.com/\>].
+The official online presence of Esprito Spring Tools, which can be accessed via \[<https://esprito.com>].
 
 ## AGREEMENT COVERAGE
 
@@ -110,7 +110,7 @@ The Licensee may issue up to the agreed amount of active User Certificates, as d
 
 There is a hard limit for each License Key on the maximum possible amount of active User Certificates, which is set at 10,000 (ten thousand).
 
-Each User within the Licensee’s organization must have their own active User Certificate. You must create new User certificate through the Plugin's API or the Telegram channel at the address \[<https://t.me/esprito_plugin_license_bot\>] before using the Plugin. The Licensee is entitled to revoke active User Certificates but cannot exceed the user limit set by the License Key.
+Each User within the Licensee’s organization must have their own active User Certificate. You must create new User certificate through the Plugin's API or the Telegram channel at the address \[<https://t.me/esprito_plugin_license_bot>] before using the Plugin. The Licensee is entitled to revoke active User Certificates but cannot exceed the user limit set by the License Key.
 
 ### Usage Rights
 
