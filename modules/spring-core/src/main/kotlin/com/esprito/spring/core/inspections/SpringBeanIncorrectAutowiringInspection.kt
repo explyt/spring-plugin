@@ -81,11 +81,14 @@ class SpringBeanIncorrectAutowiringInspection : AbstractBaseUastLocalInspectionT
     ): Array<ProblemDescriptor> {
         var problems = emptyArray<ProblemDescriptor>()
 
-        if (aClass.constructors.size > 1) {
-            val autowiredConstructors = aClass.constructors
+        val uniqueConstructors = aClass.constructors.distinctBy { it.text }
+
+        if (uniqueConstructors.size > 1) {
+            val autowiredConstructors = uniqueConstructors
                 .filter { it.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED) || it.isMetaAnnotatedBy(JavaEeClasses.INJECT.allFqns) }
 
-            if (autowiredConstructors.isEmpty() && aClass.constructors.isNotEmpty()) {
+            if (autowiredConstructors.isEmpty() && uniqueConstructors.isNotEmpty()) {
+
                 if (aClass.nameIdentifier != null) {
                     val psiElement = getIdentifyingElement(aClass)?.navigationElement ?: return problems
                     problems += manager.createProblemDescriptor(
