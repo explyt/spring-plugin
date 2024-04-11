@@ -446,6 +446,17 @@
                          level="ERROR"
                          implementationClass="com.esprito.spring.core.inspections.SpringConfigurationPropertiesNullableParametersInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringValueAnnotationInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.value"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringValueAnnotationInspection"/>
+
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
 
