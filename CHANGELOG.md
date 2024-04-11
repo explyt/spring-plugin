@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+- Fix: Kotlin constructor with default values counts as autowired
+
 ## [241.1.1167] - 2024-04-09
 
 ### Spring Core/Boot

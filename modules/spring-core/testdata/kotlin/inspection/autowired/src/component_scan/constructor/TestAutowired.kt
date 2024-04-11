@@ -27,3 +27,8 @@ open class MyFactory {
     constructor(str: String?)
     constructor(count: Int)
 }
+
+@Component
+class ConstructorProperties(
+    var param: String? = null
+)
