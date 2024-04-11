@@ -60,9 +60,8 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
         val yamlFileType = YAMLLanguage.INSTANCE.associatedFileType ?: return emptySet()
 
         val sources = mutableSetOf<PropertySource>()
-        collectPropertySources(propertiesFileType, sources, module.getModuleScope(false))
-        collectPropertySources(yamlFileType, sources, module.getModuleScope(false))
-
+        collectPropertySources(propertiesFileType, sources, module.moduleWithDependentsScope)
+        collectPropertySources(yamlFileType, sources, module.moduleWithDependentsScope)
         return sources
     }
 
