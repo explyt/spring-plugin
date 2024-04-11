@@ -8,6 +8,11 @@
 ### Spring Core/Boot
 
 - Fix: Kotlin constructor with default values counts as autowired
+- Inspection: Warning: Spring @Value annotation string should start with "#{" "${" or resource prefixes
+
+### Other
+
+- License URL fix
 
 ## [241.1.1167] - 2024-04-09
 
