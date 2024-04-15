@@ -1,10 +1,10 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.util.EspritoPsiUtil.isString
-import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.psi.ElementManipulators
@@ -16,7 +16,7 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class PsiFileReferenceInspection : LocalInspectionTool() {
+class PsiFileReferenceInspection : SpringBaseLocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return UastVisitorAdapter(PsiFileReferenceVisitor(holder, isOnTheFly), true)
     }

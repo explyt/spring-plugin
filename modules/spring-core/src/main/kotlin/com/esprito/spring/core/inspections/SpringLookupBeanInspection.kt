@@ -1,5 +1,6 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.LOOKUP
 import com.esprito.spring.core.service.SpringSearchService
@@ -8,7 +9,6 @@ import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -16,7 +16,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import org.jetbrains.uast.UMethod
 
 
-class SpringLookupBeanInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringLookupBeanInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,

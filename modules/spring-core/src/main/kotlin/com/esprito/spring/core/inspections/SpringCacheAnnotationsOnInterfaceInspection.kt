@@ -1,10 +1,10 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_CACHE
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -14,7 +14,7 @@ import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass
 
-class SpringCacheAnnotationsOnInterfaceInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,

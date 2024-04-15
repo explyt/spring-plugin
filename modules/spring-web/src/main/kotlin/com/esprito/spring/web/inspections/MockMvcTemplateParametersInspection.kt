@@ -1,11 +1,11 @@
 package com.esprito.spring.web.inspections
 
+import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
@@ -16,7 +16,7 @@ import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class MockMvcTemplateParametersInspection : LocalInspectionTool() {
+class MockMvcTemplateParametersInspection : SpringBaseLocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return UastVisitorAdapter(MockMvcRequestBuilderVisitor(holder, isOnTheFly), true)
     }

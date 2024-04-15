@@ -1,5 +1,6 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.AliasUtils
@@ -7,7 +8,6 @@ import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.intention.AddAnnotationFix
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -16,7 +16,7 @@ import com.intellij.psi.util.parentOfType
 import org.jetbrains.uast.UMethod
 
 
-class SpringAliasNotMetaAnnotatedInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringAliasNotMetaAnnotatedInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,

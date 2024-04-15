@@ -2,6 +2,7 @@ package com.esprito.spring.core.inspections
 
 import ai.grazie.nlp.utils.dropLastWhitespaces
 import ai.grazie.nlp.utils.dropWhitespaces
+import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
@@ -23,7 +24,6 @@ import com.esprito.spring.core.util.PropertyUtil.propertyValuePsiElement
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.util.CacheKeyStore
 import com.intellij.codeInspection.InspectionManager
-import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.properties.PropertiesFileType
@@ -42,7 +42,7 @@ import com.intellij.xml.util.documentation.MimeTypeDictionary
 import java.nio.charset.Charset
 import java.text.DateFormat
 
-abstract class SpringBasePropertyInspection : LocalInspectionTool() {
+abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
 
     private var fileProperties = listOf<DefinedConfigurationProperty>()
     private var configurationProperties = listOf<ConfigurationProperty>()

@@ -1,10 +1,10 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.KotlinObjectToClassQuickFix
 import com.esprito.spring.core.service.SpringSearchService
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.uast.UClass
 
 
-class SpringKotlinObjectInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringKotlinObjectInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkClass(
         uClass: UClass, manager: InspectionManager, isOnTheFly: Boolean

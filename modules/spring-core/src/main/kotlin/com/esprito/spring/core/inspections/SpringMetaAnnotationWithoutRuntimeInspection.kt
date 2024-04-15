@@ -1,11 +1,11 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.RETENTION
 import com.esprito.spring.core.SpringCoreClasses.RETENTION_POLICY
 import com.esprito.spring.core.inspections.quickfix.RewriteAnnotationQuickFix
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -15,7 +15,7 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import org.jetbrains.uast.UClass
 
 
-class SpringMetaAnnotationWithoutRuntimeInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringMetaAnnotationWithoutRuntimeInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkClass(
         aClass: UClass,

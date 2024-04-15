@@ -1,5 +1,6 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.BEAN
 import com.esprito.spring.core.service.SpringSearchService
@@ -9,14 +10,17 @@ import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.impl.quickfix.createVoidMethodFixes
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.jvm.JvmModifier
 import com.intellij.openapi.module.ModuleUtilCore
 import org.jetbrains.uast.UMethod
 import java.util.regex.Pattern
 
 
-class SpringUnknownBeanMethodInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringUnknownBeanMethodInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,

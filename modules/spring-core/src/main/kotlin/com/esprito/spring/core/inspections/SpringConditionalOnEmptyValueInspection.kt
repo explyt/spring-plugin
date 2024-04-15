@@ -1,11 +1,11 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.CONDITIONAL_ON_PROPERTY
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -15,7 +15,7 @@ import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UMethod
 
 
-class SpringConditionalOnEmptyValueInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringConditionalOnEmptyValueInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,
