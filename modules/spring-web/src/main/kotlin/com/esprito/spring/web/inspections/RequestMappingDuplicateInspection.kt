@@ -1,5 +1,6 @@
 package com.esprito.spring.web.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
@@ -7,7 +8,6 @@ import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.module.ModuleUtilCore
@@ -18,7 +18,7 @@ import org.jetbrains.kotlin.build.joinToReadableString
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class RequestMappingDuplicateInspection : AbstractBaseUastLocalInspectionTool() {
+class RequestMappingDuplicateInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return UastVisitorAdapter(RequestMappingVisitor(holder, isOnTheFly), true)

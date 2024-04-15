@@ -1,8 +1,8 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle.message
 import com.esprito.spring.core.service.SpringSearchService
-import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType.WARNING
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
@@ -12,7 +12,7 @@ import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class CallBeanMethodFromSomeClassInspection : LocalInspectionTool() {
+class CallBeanMethodFromSomeClassInspection : SpringBaseLocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return UastVisitorAdapter(CallExpressionVisitor(holder), true)
     }

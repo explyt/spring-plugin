@@ -1,12 +1,12 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.ALIAS_FOR
 import com.esprito.spring.core.service.AliasUtils
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -16,7 +16,7 @@ import com.intellij.psi.PsiClass
 import org.jetbrains.uast.*
 
 
-class SpringAliasBothInterchangeableSetInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringAliasBothInterchangeableSetInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,

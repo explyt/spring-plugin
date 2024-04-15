@@ -1,17 +1,21 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.EVENT_LISTENER
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isPublic
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiModifier
 import com.siyeh.ig.fixes.ChangeModifierFix
 import org.jetbrains.uast.UMethod
 
-class SpringEventListenerInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringEventListenerInspection : SpringBaseUastLocalInspectionTool() {
     override fun checkMethod(
         uMethod: UMethod,
         manager: InspectionManager,

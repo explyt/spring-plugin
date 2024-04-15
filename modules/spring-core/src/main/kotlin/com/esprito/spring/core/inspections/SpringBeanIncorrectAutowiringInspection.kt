@@ -1,5 +1,6 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
@@ -16,7 +17,6 @@ import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -28,7 +28,7 @@ import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
 
 
-class SpringBeanIncorrectAutowiringInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkField(
         uField: UField,

@@ -1,5 +1,6 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle.message
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.CACHE_KEY_GENERATOR
@@ -8,7 +9,6 @@ import com.esprito.spring.core.SpringCoreClasses.CACHE_RESOLVER
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isPublic
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
@@ -20,7 +20,7 @@ import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 
 
-class SpringCacheableAnnotationInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkClass(
         uClass: UClass, manager: InspectionManager, isOnTheFly: Boolean

@@ -1,17 +1,21 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isPrivate
 import com.intellij.codeInsight.daemon.impl.quickfix.MethodReturnTypeFix
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.isInheritorOf
 import com.intellij.psi.*
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 
 
-class SpringAsyncReturnTypeInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringAsyncReturnTypeInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkClass(
         uClass: UClass,

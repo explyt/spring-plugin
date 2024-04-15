@@ -1,12 +1,12 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.util.PsiPackagesSearcher
 import com.esprito.util.EspritoAnnotationUtil
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -15,7 +15,7 @@ import com.intellij.psi.ElementManipulators
 import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.uast.UClass
 
-class SpringComponentScanInvalidPackageInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringComponentScanInvalidPackageInspection : SpringBaseUastLocalInspectionTool() {
     override fun checkClass(
         aClass: UClass,
         manager: InspectionManager,

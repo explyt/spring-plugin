@@ -1,11 +1,11 @@
 package com.esprito.spring.data.inspection
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
 import com.esprito.util.TypeQuickFixUtil
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
@@ -16,7 +16,7 @@ import org.jetbrains.uast.getParentOfType
 import org.springframework.data.repository.query.parser.PartTree
 
 
-class SpringDataReturnTypeInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringDataReturnTypeInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,

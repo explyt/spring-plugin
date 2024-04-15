@@ -1,10 +1,10 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
@@ -15,7 +15,7 @@ import org.jetbrains.uast.UParameter
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class SpringConfigurationPropertiesNullableParametersInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringConfigurationPropertiesNullableParametersInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return UastVisitorAdapter(ConstructorParameterVisitor(holder, isOnTheFly), true)

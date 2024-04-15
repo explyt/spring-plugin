@@ -1,5 +1,6 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringProperties.DEPRECATED
 import com.esprito.spring.core.SpringProperties.DESCRIPTION
@@ -19,7 +20,10 @@ import com.esprito.spring.core.properties.providers.SpringBootValueProvider
 import com.esprito.spring.core.properties.references.AdditionalConfigValueProviderReference
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.json.psi.*
 import com.intellij.json.psi.impl.JsonRecursiveElementVisitor
 import com.intellij.openapi.module.ModuleUtilCore
@@ -30,7 +34,7 @@ import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassRe
 import com.intellij.util.NotNullProducer
 import java.util.function.Predicate
 
-class AdditionalConfigPropertyInspection : LocalInspectionTool() {
+class AdditionalConfigPropertyInspection : SpringBaseLocalInspectionTool() {
 
     override fun checkFile(
         file: PsiFile,
