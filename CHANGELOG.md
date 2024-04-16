@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Other
+
+- Fix: EDT exception in SpringToolRunConfigurationConfigurable
+
 ### Spring Core/Boot
 
 - Auto-detection for Kotlin SpringBoot run configurations

@@ -9,7 +9,7 @@ import com.intellij.util.io.HttpRequests
 import com.intellij.util.io.jackson.obj
 
 object EspritoLicenseClient {
-    private const val LICENSE_SERVICE_URL = "https://license.esprito.ru" // "http://localhost:8189"
+    private const val LICENSE_SERVICE_URL = "https://license.esprito.ru"
     private const val VERIFY_URL = "/license/verify"
     private const val TIMEOUT = 5000
 
