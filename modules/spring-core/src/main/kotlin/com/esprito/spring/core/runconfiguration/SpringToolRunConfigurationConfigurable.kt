@@ -4,19 +4,15 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.action.UastModelTrackerInvalidateAction
 import com.esprito.spring.core.runconfiguration.clients.EspritoLicenseClient
 import com.intellij.ide.impl.ProjectUtil
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.SearchableConfigurable
+import com.intellij.ui.GroupHeaderSeparator
 import com.intellij.ui.JBColor
-import com.intellij.ui.SeparatorWithText
-import com.intellij.ui.util.maximumHeight
-import com.intellij.ui.util.minimumHeight
 import com.intellij.uiDesigner.core.Spacer
 import com.intellij.util.ui.components.BorderLayoutPanel
-import java.awt.Color
-import java.awt.Cursor
-import java.awt.Dimension
-import java.awt.GridLayout
+import java.awt.*
 import javax.swing.*
 
 
@@ -115,21 +111,19 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
 
     private fun configLicense(): BorderLayoutPanel {
         val centerPanel = BorderLayoutPanel(10, 10)
-        centerPanel.maximumHeight = 300
 
-        val topPanel = BorderLayoutPanel(0, 0)
-        val separator = SeparatorWithText()
-        separator.caption = "License Info"
+        val topPanel = BorderLayoutPanel(0, 10)
+
+        val sep = GroupHeaderSeparator(Insets(10, 10, 10, 10))
 
         val label = JLabel("Enter Your License:")
-        topPanel.addToTop(separator)
+        topPanel.addToTop(sep)
         topPanel.addToBottom(label)
 
         val textArea = JTextArea()
         textArea.wrapStyleWord = true
         textArea.lineWrap = true
         textArea.autoscrolls = true
-        textArea.minimumHeight = 200
         textArea.append(textLicense.get())
 
         val bottomCenterPanel = BorderLayoutPanel(5, 10)
@@ -139,28 +133,35 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
         val defaultColor = licenseLabel.foreground
         licenseLabel.foreground = getLabelLicenseColor(defaultColor)
         val panelLicenseInfo = getLicenseInfo()
-        panelLicenseInfo.isVisible = sateLicense.get() == EspritoLicenseState.Valid.state
+        panelLicenseInfo.isVisible =
+            sateLicense.get() == EspritoLicenseState.Valid.state
+                    || sateLicense.get() == EspritoLicenseState.Expired.state
 
         validateButton.addActionListener {
             panelLicenseInfo.isVisible = false
-            bottomCenterPanel.cursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
             val text = textArea.text
-            try {
-                if (text.isEmpty()) {
-                    sateLicense.set(EspritoLicenseState.Empty.state)
-                } else {
-                    val result = verify(text)
-                    sateLicense.set(result.state)
-                    if (result == EspritoLicenseState.Valid) {
-                        panelLicenseInfo.isVisible = true
-                    }
-                }
-            } catch (e: Exception) {
-                sateLicense.set(EspritoLicenseState.NotConnect.state)
-            } finally {
-                licenseLabel.text = getLabelLicenseText()
+            if (text.isEmpty()) {
+                sateLicense.set(EspritoLicenseState.Empty.state)
                 licenseLabel.foreground = getLabelLicenseColor(defaultColor)
-                bottomCenterPanel.cursor = Cursor.getDefaultCursor()
+                licenseLabel.text = getLabelLicenseText()
+            } else {
+                bottomCenterPanel.cursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+                ApplicationManager.getApplication().executeOnPooledThread {
+                    try {
+                        val result = verify(text)
+                        sateLicense.set(result.state)
+                        if (result == EspritoLicenseState.Valid || result == EspritoLicenseState.Expired) {
+                            panelLicenseInfo.isVisible = true
+                        }
+                    } catch (e: Exception) {
+                        sateLicense.set(EspritoLicenseState.NotConnect.state)
+                    } finally {
+                        licenseLabel.text = getLabelLicenseText()
+                        licenseLabel.foreground = getLabelLicenseColor(defaultColor)
+                        bottomCenterPanel.cursor = Cursor.getDefaultCursor()
+                    }
+
+                }
             }
             textLicense.set(textArea.text)
         }
@@ -212,7 +213,6 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
 
     private fun configBottom(): BorderLayoutPanel {
         val bottomPanel = BorderLayoutPanel(0, 300)
-        bottomPanel.minimumHeight = 300
         return bottomPanel
     }
 
