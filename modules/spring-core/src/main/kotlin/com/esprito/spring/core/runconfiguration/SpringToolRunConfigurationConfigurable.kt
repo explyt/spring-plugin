@@ -23,7 +23,7 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
 
     private val isAutoDetection = propertyGraph.lazyProperty { settingsState.isAutoDetectConfigurations }
     private val isBeanFilterEnabled = propertyGraph.lazyProperty { settingsState.isBeanFilterEnabled }
-    private val sateLicense = propertyGraph.lazyProperty { settingsState.stateLicenseConfigurations }
+    private val stateLicense = propertyGraph.lazyProperty { settingsState.stateLicenseConfigurations }
     private val textLicense = propertyGraph.lazyProperty { settingsState.textLicenseConfigurations }
 
     private var labelOrganizationName =
@@ -44,13 +44,13 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
         val changeLicense = textLicense.get() != settingsState.textLicenseConfigurations
 
         return changeDetection
-                || (changeLicense && sateLicense.get() == EspritoLicenseState.Valid.state)
+                || (changeLicense && stateLicense.get() == EspritoLicenseState.Valid.state)
     }
 
     override fun apply() {
         settingsState.isAutoDetectConfigurations = isAutoDetection.get()
         settingsState.textLicenseConfigurations = textLicense.get()
-        settingsState.stateLicenseConfigurations = sateLicense.get()
+        settingsState.stateLicenseConfigurations = stateLicense.get()
 
         if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) {
             settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
@@ -61,7 +61,7 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
         }
 
 
-        if (sateLicense.get() == EspritoLicenseState.Valid.state) {
+        if (stateLicense.get() == EspritoLicenseState.Valid.state) {
             settingsState.licenseOrganizationName = labelOrganizationName.text
             settingsState.licenseFullName = labelFullName.text
             settingsState.licenseEmail = labelEmail.text
@@ -134,14 +134,14 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
         licenseLabel.foreground = getLabelLicenseColor(defaultColor)
         val panelLicenseInfo = getLicenseInfo()
         panelLicenseInfo.isVisible =
-            sateLicense.get() == EspritoLicenseState.Valid.state
-                    || sateLicense.get() == EspritoLicenseState.Expired.state
+            stateLicense.get() == EspritoLicenseState.Valid.state
+                    || stateLicense.get() == EspritoLicenseState.Expired.state
 
         validateButton.addActionListener {
             panelLicenseInfo.isVisible = false
             val text = textArea.text
             if (text.isEmpty()) {
-                sateLicense.set(EspritoLicenseState.Empty.state)
+                stateLicense.set(EspritoLicenseState.Empty.state)
                 licenseLabel.foreground = getLabelLicenseColor(defaultColor)
                 licenseLabel.text = getLabelLicenseText()
             } else {
@@ -149,12 +149,12 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
                 ApplicationManager.getApplication().executeOnPooledThread {
                     try {
                         val result = verify(text)
-                        sateLicense.set(result.state)
+                        stateLicense.set(result.state)
                         if (result == EspritoLicenseState.Valid || result == EspritoLicenseState.Expired) {
                             panelLicenseInfo.isVisible = true
                         }
                     } catch (e: Exception) {
-                        sateLicense.set(EspritoLicenseState.NotConnect.state)
+                        stateLicense.set(EspritoLicenseState.NotConnect.state)
                     } finally {
                         licenseLabel.text = getLabelLicenseText()
                         licenseLabel.foreground = getLabelLicenseColor(defaultColor)
@@ -217,7 +217,7 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
     }
 
     private fun getLabelLicenseText(): String {
-        return when (sateLicense.get()) {
+        return when (stateLicense.get()) {
             EspritoLicenseState.NotValid.state -> "License is not valid"
             EspritoLicenseState.Valid.state -> "License is valid"
             EspritoLicenseState.Expired.state -> "License is expired"
@@ -228,7 +228,7 @@ class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigura
     }
 
     private fun getLabelLicenseColor(defaultColor: Color): Color {
-        return when (sateLicense.get()) {
+        return when (stateLicense.get()) {
             EspritoLicenseState.NotValid.state -> JBColor.RED
             EspritoLicenseState.Expired.state -> JBColor.YELLOW
             EspritoLicenseState.Valid.state -> defaultColor

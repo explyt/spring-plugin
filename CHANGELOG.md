@@ -5,10 +5,6 @@
 
 ## [Unreleased]
 
-### Other
-
-- Fix: EDT exception in SpringToolRunConfigurationConfigurable
-
 ### Spring Core/Boot
 
 - Auto-detection for Kotlin SpringBoot run configurations
@@ -17,7 +13,9 @@
 
 ### Other
 
-- License URL fix
+- Added license check scheduler
+- Fix: EDT exception in SpringToolRunConfigurationConfigurable
+- Fix: License URL
 
 ## [241.1.1167] - 2024-04-09
 
