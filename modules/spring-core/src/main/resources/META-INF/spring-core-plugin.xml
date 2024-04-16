@@ -460,6 +460,9 @@
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
 
+        <postStartupActivity
+                implementation="com.esprito.spring.core.runconfiguration.service.LicenseTaskSchedulerService$StartupActivity"/>
+
         <configurationType
                 id="Spring Boot"
                 implementation="com.esprito.spring.core.runconfiguration.SpringBootConfigurationType"/>
