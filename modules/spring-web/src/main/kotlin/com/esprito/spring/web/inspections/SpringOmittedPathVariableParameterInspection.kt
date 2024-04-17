@@ -1,5 +1,6 @@
 package com.esprito.spring.web.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses.REQUEST_MAPPING
@@ -9,7 +10,10 @@ import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -18,7 +22,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.UMethod
 
-class SpringOmittedPathVariableParameterInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,

@@ -1,6 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
+import com.esprito.spring.core.util.PropertyUtil.isSameProperty
 import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -30,7 +31,7 @@ class SpringConfigurationPropertiesSearch {
     }
 
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {
-        return getAllProperties(module).find { it.name == propertyName }
+        return getAllProperties(module).find { isSameProperty(it.name, propertyName) }
     }
 
     fun findHint(module: Module, propertyName: String): PropertyHint? {

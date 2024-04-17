@@ -1,10 +1,10 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.language.profiles.ProfilesLanguage
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -16,7 +16,7 @@ import com.intellij.psi.PsiFileFactory
 import org.jetbrains.uast.*
 
 
-class SpringProfileAnnotationInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringProfileAnnotationInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkClass(
         uClass: UClass, manager: InspectionManager, isOnTheFly: Boolean

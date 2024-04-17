@@ -7,6 +7,20 @@
 
 ### Spring Core/Boot
 
+- Fixed inspection for constructor parameters with default value: Class constructor properties annotated
+  with `@ConfigurationProperties` must be nullable
+- Property reference supports Relaxed Binding
+- Auto-detection for Kotlin SpringBoot run configurations
+
+### Other
+
+- Added license check scheduler
+- Fix: EDT exception in SpringToolRunConfigurationConfigurable
+
+## [241.1.1199] - 2024-04-11
+
+### Spring Core/Boot
+
 - Fix: Kotlin constructor with default values counts as autowired
 - Inspection: Warning: Spring @Value annotation string should start with "#{" "${" or resource prefixes
 
@@ -14,7 +28,7 @@
 
 - License URL fix
 
-## [241.1.1167] - 2024-04-09
+## 241.1.1167 - 2024-04-09
 
 ### Spring Core/Boot
 

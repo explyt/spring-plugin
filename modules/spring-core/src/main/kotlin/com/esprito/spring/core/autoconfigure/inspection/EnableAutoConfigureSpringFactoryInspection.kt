@@ -1,6 +1,7 @@
 package com.esprito.spring.core.autoconfigure.inspection
 
 import com.esprito.base.LibraryClassCache
+import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.BOOT_AUTO_CONFIGURATION
 import com.esprito.spring.core.SpringIcons
@@ -10,7 +11,10 @@ import com.esprito.spring.core.autoconfigure.language.FactoriesFileType
 import com.intellij.codeInsight.daemon.quickFix.CreateFilePathFix
 import com.intellij.codeInsight.daemon.quickFix.NewFileLocation
 import com.intellij.codeInsight.daemon.quickFix.TargetDirectory
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.ide.actions.OpenFileAction
 import com.intellij.lang.properties.IProperty
 import com.intellij.lang.properties.PropertiesBundle
@@ -33,7 +37,7 @@ import org.jetbrains.kotlin.idea.codeinsight.utils.findExistingEditor
 import java.util.function.Supplier
 import javax.swing.Icon
 
-class EnableAutoConfigureSpringFactoryInspection : LocalInspectionTool() {
+class EnableAutoConfigureSpringFactoryInspection : SpringBaseLocalInspectionTool() {
 
     override fun checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor> {
         if (!FactoriesFileType.isMyFileType(file.virtualFile)) return ProblemDescriptor.EMPTY_ARRAY

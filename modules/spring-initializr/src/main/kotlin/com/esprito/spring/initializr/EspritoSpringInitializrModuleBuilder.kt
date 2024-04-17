@@ -36,7 +36,7 @@ class EspritoSpringInitializrModuleBuilder : ModuleBuilder() {
         val extractDirectory = wizardStep?.projectsDirectory ?: return null
         val extractProject = unzip(zipFile, extractDirectory.toPath()) ?: return null
 
-        ApplicationManager.getApplication().invokeLater {
+        ApplicationManager.getApplication().invokeLaterOnWriteThread {
             zipFile.delete()
             ProjectManagerEx.getInstanceEx().loadAndOpenProject(extractProject)
         }

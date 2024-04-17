@@ -1,5 +1,6 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.BEAN
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT
@@ -12,7 +13,6 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -22,7 +22,7 @@ import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UMethod
 
 
-class SpringConditionalOnWrongPlacementInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringConditionalOnWrongPlacementInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,

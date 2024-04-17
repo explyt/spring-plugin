@@ -1,12 +1,12 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.esprito.spring.core.completion.properties.DefinedConfigurationProperty
 import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
-import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -19,7 +19,7 @@ import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.evaluateString
 
 
-class SpringValueAnnotationInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringValueAnnotationInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,

@@ -1,12 +1,16 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle.message
 import com.esprito.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES
 import com.esprito.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil.extractConfigurationPropertyPrefix
 import com.esprito.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil.getAnnotatedElements
 import com.esprito.spring.core.service.SpringSearchService
 import com.intellij.codeInsight.navigation.getPsiElementPopup
-import com.intellij.codeInspection.*
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.ide.DataManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -19,7 +23,7 @@ import org.jetbrains.uast.UMethod
 import java.util.regex.Pattern
 
 
-class SpringConfigurationPropertiesInspection : AbstractBaseUastLocalInspectionTool() {
+class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkClass(
         uClass: UClass, manager: InspectionManager, isOnTheFly: Boolean

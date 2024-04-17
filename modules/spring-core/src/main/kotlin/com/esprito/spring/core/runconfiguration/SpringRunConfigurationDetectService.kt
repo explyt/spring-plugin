@@ -5,6 +5,7 @@ import com.esprito.spring.core.SpringRunConfigurationBundle
 import com.esprito.spring.core.notifications.SpringToolNotificationGroup
 import com.esprito.spring.core.runconfiguration.lifecycle.SpringBootLifecycleManager
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.ide.util.PropertiesComponent
@@ -22,11 +23,13 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.DumbService.DumbModeListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
-import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
-import com.intellij.psi.util.PsiMethodUtil
+import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.util.concurrency.AppExecutorUtil
+import org.jetbrains.kotlin.j2k.isMainMethod
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElementOfType
 import java.util.concurrent.Callable
 
 @Service(Service.Level.PROJECT)
@@ -51,32 +54,30 @@ class SpringRunConfigurationDetectService(
     }
 
     private fun searchForRunConfigurations(): List<SpringBootRunConfiguration> {
-        val applicationAnnotation = JavaPsiFacade.getInstance(project)
-            .findClass(
-                SpringCoreClasses.SPRING_BOOT_APPLICATION,
-                GlobalSearchScope.allScope(project)
-            )
-            ?: return emptyList()
+        return PsiShortNamesCache.getInstance(project)
+            .getMethodsByName("main", GlobalSearchScope.projectScope(project)).asSequence()
+            .filter { it.isMainMethod() }
+            .filter { isBootApplicationMethod(it) }
+            .mapNotNull { it.containingClass }
+            .mapNotNullTo(mutableListOf()) { psiClass ->
+                val module = ModuleUtilCore.findModuleForPsiElement(psiClass)
+                    ?: return@mapNotNullTo null
 
-        val bootApplicationClasses = AnnotatedElementsSearch.searchPsiClasses(
-            applicationAnnotation,
-            GlobalSearchScope.projectScope(project)
-        )
+                SpringBootConfigurationFactory
+                    .createTemplateConfiguration(project)
+                    .apply {
+                        setModule(module)
+                        setMainClass(psiClass)
+                        setGeneratedName()
+                    }
+            }
+    }
 
-        return bootApplicationClasses.filter {
-            PsiMethodUtil.findMainInClass(it) != null
-        }.mapNotNull { psiClass ->
-            val module = ModuleUtilCore.findModuleForPsiElement(psiClass)
-                ?: return@mapNotNull null
+    private fun isBootApplicationMethod(psiMethod: PsiMethod): Boolean {
+        if (psiMethod.containingClass?.isMetaAnnotatedBy(SpringCoreClasses.SPRING_BOOT_APPLICATION) == true) return true
 
-            SpringBootConfigurationFactory
-                .createTemplateConfiguration(project)
-                .apply {
-                    setModule(module)
-                    setMainClass(psiClass)
-                    setGeneratedName()
-                }
-        }
+        val bodyPsi = psiMethod.toUElementOfType<UMethod>()?.uastBody?.sourcePsi ?: return false
+        return bodyPsi.text.contains("runApplication")
     }
 
     private fun saveRunConfigurations(
