@@ -7,6 +7,8 @@
 
 ### Spring Core/Boot
 
+- Fixed inspection for constructor parameters with default value: Class constructor properties annotated
+  with `@ConfigurationProperties` must be nullable
 - Property reference supports Relaxed Binding
 - Auto-detection for Kotlin SpringBoot run configurations
 - Fix: Kotlin constructor with default values counts as autowired

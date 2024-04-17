@@ -12,7 +12,15 @@ data class SomeProperties(
 
 @Component
 //@ConfigurationProperties(prefix = "some.prefix")
-data class SomeProperties(
+data class SomeProperties2(
     var first: String?,
     var notAProblem: String
+)
+
+@Component
+@ConfigurationProperties(prefix = "some.prefix")
+data class SomeProperties3(
+    var first: String?,
+    var notAProblemA: String = "A",
+    val notAProblemB: String = "B"
 )
