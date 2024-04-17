@@ -11,16 +11,24 @@
   with `@ConfigurationProperties` must be nullable
 - Property reference supports Relaxed Binding
 - Auto-detection for Kotlin SpringBoot run configurations
-- Fix: Kotlin constructor with default values counts as autowired
-- Inspection: Warning: Spring @Value annotation string should start with "#{" "${" or resource prefixes
 
 ### Other
 
 - Added license check scheduler
 - Fix: EDT exception in SpringToolRunConfigurationConfigurable
-- Fix: License URL
 
-## [241.1.1167] - 2024-04-09
+## [241.1.1199] - 2024-04-11
+
+### Spring Core/Boot
+
+- Fix: Kotlin constructor with default values counts as autowired
+- Inspection: Warning: Spring @Value annotation string should start with "#{" "${" or resource prefixes
+
+### Other
+
+- License URL fix
+
+## 241.1.1167 - 2024-04-09
 
 ### Spring Core/Boot
 
