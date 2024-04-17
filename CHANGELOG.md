@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Property reference supports Relaxed Binding
 - Auto-detection for Kotlin SpringBoot run configurations
 - Fix: Kotlin constructor with default values counts as autowired
 - Inspection: Warning: Spring @Value annotation string should start with "#{" "${" or resource prefixes

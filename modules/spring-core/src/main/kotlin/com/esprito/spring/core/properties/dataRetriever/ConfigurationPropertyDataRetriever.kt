@@ -33,20 +33,21 @@ abstract class ConfigurationPropertyDataRetriever {
     abstract fun getNameElementPsi(): PsiElement?
 
     fun getRelatedProperties(prefix: String, name: String, module: Module): List<PsiElement> {
+        val propertyFqn = prefix + name
         return DefinedConfigurationPropertiesSearch.getInstance(module.project)
             .getAllProperties(module).asSequence()
-            .filter { it.key.startsWith(prefix) }
-            .filter { propertyNameToPascalFormat(it.key, prefix) == name }
+            .filter { PropertyUtil.isSameProperty(it.key, propertyFqn) }
             .mapNotNull { it.psiElement }.toList()
     }
 
     fun getMetadataName(prefix: String, name: String, module: Module): List<PsiElement> {
+        val propertyFqn = prefix + name
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
 
         return hints
             .asSequence()
-            .filter { it.name.startsWith(prefix) && propertyNameToPascalFormat(it.name, prefix) == name }
+            .filter { PropertyUtil.isSameProperty(it.name, propertyFqn) }
             .mapNotNull { it.jsonProperty.value }
             .toList()
     }
@@ -112,11 +113,6 @@ abstract class ConfigurationPropertyDataRetriever {
             return PropertyUtil.prefixValue(prefix)
         }
 
-    }
-
-    private fun propertyNameToPascalFormat(key: String, prefixValue: String): String {
-        val name = key.replace(prefixValue, "")
-        return PropertyUtil.propertyNameToPascalCase(name)
     }
 
     protected fun toPascalFormat(memberName: String?): String {

@@ -180,26 +180,6 @@ object PropertyUtil {
         }
     }
 
-    fun propertyNameToPascalCase(name: String): String {
-        val separators = setOf('.', '_', '-')
-
-        val builder: StringBuilder = StringBuilder()
-
-        var capitalizeNext = true
-        for (c in name) {
-            if (separators.contains(c)) {
-                capitalizeNext = true
-                continue
-            } else if (capitalizeNext) {
-                builder.append(c.uppercase())
-                capitalizeNext = false
-            } else {
-                builder.append(c)
-            }
-        }
-
-        return builder.toString()
-    }
 
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
         val javaPsiFacade = JavaPsiFacade.getInstance(project)
@@ -293,6 +273,17 @@ object PropertyUtil {
         }
         return null
     }
+
+    fun isSameProperty(propertyName1: String, propertyName2: String): Boolean {
+        return toCommonPropertyForm(propertyName1) == toCommonPropertyForm(propertyName2)
+    }
+
+    private fun toCommonPropertyForm(propertyName: String): String {
+        return propertyName.lowercase()
+            .replace("-", "")
+            .replace("_", "")
+    }
+
 
     private fun findMember(
         foundClass: PsiClass,
