@@ -2,6 +2,7 @@ package com.esprito.spring.core.properties.references
 
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
+import com.esprito.spring.core.util.PropertyUtil
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.lang.properties.IProperty
@@ -30,14 +31,14 @@ class PlaceholderValueReference(
             val property = it.psiElement
             if (property is IProperty) {
                 val propertyKey = property.key ?: return@forEach
-                if (propertyKey == key) {
+                if (PropertyUtil.isSameProperty(propertyKey, key)) {
                     results.add(PsiElementResolveResult(property))
                 }
             }
 
             if (property is YAMLKeyValue) {
                 val propertyKey = YAMLUtil.getConfigFullName(property)
-                if (propertyKey == key) {
+                if (PropertyUtil.isSameProperty(propertyKey, key)) {
                     results.add(PsiElementResolveResult(property))
                 }
             }
