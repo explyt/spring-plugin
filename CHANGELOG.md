@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [241.1.1263] - 2024-04-17
+
 ### Spring Core/Boot
 
 - Fixed inspection for constructor parameters with default value: Class constructor properties annotated
@@ -17,7 +19,7 @@
 - Added license check scheduler
 - Fix: EDT exception in SpringToolRunConfigurationConfigurable
 
-## [241.1.1199] - 2024-04-11
+## 241.1.1199 - 2024-04-11
 
 ### Spring Core/Boot
 
