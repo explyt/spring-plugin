@@ -9,6 +9,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.uast.UastVisitorAdapter
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtNullableType
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.UParameter
@@ -26,9 +27,10 @@ class SpringConfigurationPropertiesNullableParametersInspection : SpringBaseUast
     ) : AbstractUastNonRecursiveVisitor() {
 
         override fun visitParameter(node: UParameter): Boolean {
-            if (node.lang.id != "kotlin") return true
+            if (node.lang != KotlinLanguage.INSTANCE) return true
             if (node.isFinal) return true
             val ktParameter = node.sourcePsi as? KtParameter ?: return true
+            if (ktParameter.hasDefaultValue()) return true
             if (node.getContainingUClass()?.javaPsi
                     ?.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES) != true
             ) return true
