@@ -50,6 +50,9 @@
 -keep class com.esprito.spring.core.profile.ProfileSearcher
 -keep class com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 
+# here is list of class that persistence state to file (data mapping is broken)
+-keep class com.esprito.spring.core.runconfiguration.SpringBootConfigurationOptions { *; }
+
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
    <fields>;
