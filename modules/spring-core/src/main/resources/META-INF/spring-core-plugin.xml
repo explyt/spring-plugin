@@ -98,7 +98,6 @@
 
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringImplicitUsageProvider"/>
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringAopImplicitUsageProvider"/>
-        <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringReferencedMethodUsageProvider"/>
         <implicitUsageProvider implementation="com.esprito.spring.core.providers.TestContainerImplicitUsageProvider"/>
         <implicitUsageProvider
                 implementation="com.esprito.spring.core.providers.SpringConfigurationPropertyUsageProvider"/>
