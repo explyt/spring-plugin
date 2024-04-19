@@ -93,6 +93,8 @@ abstract class ConfigurationPropertyDataRetriever {
                 .mapNotNullTo(mutableSetOf()) { it.javaPsi as? PsiField }
             for (psiField in psiFields) {
                 val topClass = psiField.containingClass ?: continue
+                if (topClass.qualifiedName == psiClass.qualifiedName) continue
+
                 val prefixValue = getPrefixFromUsage(topClass, module)
                 if (prefixValue.isNotBlank()) {
                     return PropertyUtil.prefixValue("$prefixValue${psiField.name}")
