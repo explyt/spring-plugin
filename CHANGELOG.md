@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+- Fixed inspection for `@Retention` on Spring annotations. Supported meta-annotations
+
 ## [241.1.1263] - 2024-04-17
 
 ### Spring Core/Boot
