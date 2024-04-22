@@ -1,8 +1,11 @@
 package com.esprito.spring.core.properties.contributors
 
+import com.esprito.spring.core.SpringCoreClasses.SCHEDULED
+import com.esprito.spring.core.SpringCoreClasses.VALUE
 import com.esprito.spring.core.properties.providers.ConditionalOnConfigurationPropertyReferenceProvider
 import com.esprito.spring.core.properties.providers.GetPropertyMethodPropertyReferenceProvider
 import com.esprito.spring.core.properties.providers.ValueConfigurationPropertyReferenceProvider
+import com.esprito.util.EspritoContributorUtil
 import com.intellij.patterns.PsiJavaPatterns
 import com.intellij.patterns.uast.callExpression
 import com.intellij.patterns.uast.injectionHostUExpression
@@ -12,9 +15,13 @@ import com.intellij.psi.registerUastReferenceProvider
 
 class UastConfigurationPropertyReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        registrar.registerUastReferenceProvider(
-            injectionHostUExpression(),
-            ValueConfigurationPropertyReferenceProvider()
+        val injection = injectionHostUExpression()
+
+        EspritoContributorUtil.addAnnotationValueContributor(
+            registrar, injection, VALUE, ValueConfigurationPropertyReferenceProvider()
+        )
+        EspritoContributorUtil.addAnnotationValueContributor(
+            registrar, injection, SCHEDULED, ValueConfigurationPropertyReferenceProvider(), VALUE_SCHEDULED
         )
         registrar.registerUastReferenceProvider(
             injectionHostUExpression(),
@@ -36,7 +43,9 @@ class UastConfigurationPropertyReferenceContributor : PsiReferenceContributor() 
             injectionHostInsideGetPropertyMethod,
             GetPropertyMethodPropertyReferenceProvider()
         )
+    }
 
-
+    companion object {
+        val VALUE_SCHEDULED = listOf("cron", "initialDelayString", "fixedDelayString", "fixedRateString")
     }
 }

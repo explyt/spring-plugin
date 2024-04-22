@@ -7,14 +7,14 @@
 
 <p><b>Examples:</b></p>
 <pre><code lang="java">
-  <!-- correctly configured -->
+  //correctly configured
   @Value("${property.name}")
 
-    <!-- correctly configured -->
+  //correctly configured
   @Value("#{property.name}")
 
-    <!-- incorrectly configured -->
-  @Value("property.name") //warning should be @Value("${property.name}")
+  //warning should be @Value("${property.name}")
+  @Value("property.name")
 </code></pre>
 </body>
 </html>
