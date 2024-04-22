@@ -64,6 +64,11 @@
                                 id="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"
                                 implementationClass="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"/>
 
+        <completion.contributor language="UAST"
+                                order="first"
+                                id="com.esprito.spring.core.properties.contributors.ScheduledCronCompletionContributor"
+                                implementationClass="com.esprito.spring.core.properties.contributors.ScheduledCronCompletionContributor"/>
+
         <runDashboardCustomizer
                 implementation="com.esprito.spring.core.runconfiguration.EspritoSpringBootRunDashboardCustomizer"
                 order="before commonJavaCustomizer"/>
@@ -455,6 +460,18 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringValueAnnotationInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringScheduledInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.scheduled"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringScheduledInspection"/>
+
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>

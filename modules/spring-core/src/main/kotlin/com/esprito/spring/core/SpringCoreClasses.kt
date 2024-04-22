@@ -60,6 +60,7 @@ object SpringCoreClasses {
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"
     const val PROPERTY_SOURCE = "org.springframework.context.annotation.PropertySource"
 
+    const val SCHEDULED = "org.springframework.scheduling.annotation.Scheduled"
     const val ASYNC = "org.springframework.scheduling.annotation.Async"
     const val FUTURE = "java.util.concurrent.Future"
 

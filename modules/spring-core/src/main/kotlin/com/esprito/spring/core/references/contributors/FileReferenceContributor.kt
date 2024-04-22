@@ -14,6 +14,7 @@ import com.esprito.spring.core.providers.FileReferenceProvider
 import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.SIMPLE_VALUE
 import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.VALUE_LOCATIONS
 import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.VALUE_SCRIPTS
+import com.esprito.util.EspritoContributorUtil.addAnnotationValueContributor
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.patterns.PsiJavaPatterns
 import com.intellij.patterns.uast.UExpressionPattern
@@ -109,20 +110,6 @@ class FileReferenceContributor : PsiReferenceContributor() {
             allFileProvider,
             PsiReferenceRegistrar.LOWER_PRIORITY
         )
-    }
-
-    private fun addAnnotationValueContributor(
-        registrar: PsiReferenceRegistrar,
-        injection: UExpressionPattern<UExpression, *>,
-        className: String,
-        provider: FileReferenceProvider,
-        parameterNames: List<String>
-    ) {
-        parameterNames.forEach {
-            registrar.registerUastReferenceProvider(
-                injection.annotationParam(className, it), provider, PsiReferenceRegistrar.LOWER_PRIORITY
-            )
-        }
     }
 
     object AnnotationParamsConstants {
