@@ -1,6 +1,7 @@
 package com.esprito.spring.data.util
 
 import com.esprito.base.LibraryClassCache
+import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.data.SpringDataClasses
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.AnnotationUtil.CHECK_HIERARCHY
@@ -30,7 +31,7 @@ object SpringDataUtil {
 
     fun getProperties(domainClass: PsiClass): Set<String> {
         val qualifiedName = domainClass.qualifiedName
-        if (qualifiedName == null || qualifiedName.startsWith("java.lang")) return emptySet()
+        if (qualifiedName == null || qualifiedName.startsWith(JavaCoreClasses.PACKAGE_JAVA_LANG)) return emptySet()
         val all = HashSet<String>()
         all.addAll(PropertyUtilBase.getAllProperties(domainClass, false, true).keys)
         all.addAll(domainClass.fields.map { PropertyUtilBase.suggestPropertyName(it) })

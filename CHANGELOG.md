@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Added autocompletion in properties files for all classes fields
 - Fixed inspection for `@Retention` on Spring annotations. Supported meta-annotations
 
 ## [241.1.1263] - 2024-04-17
