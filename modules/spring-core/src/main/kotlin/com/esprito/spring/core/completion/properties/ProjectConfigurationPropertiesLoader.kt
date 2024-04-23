@@ -1,6 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.module.ExternalSystemModule
+import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.SpringProperties.HINTS
@@ -23,6 +24,7 @@ import com.intellij.psi.javadoc.PsiDocToken
 import com.intellij.psi.util.PropertyUtil
 import com.intellij.psi.util.childrenOfType
 import java.util.*
+
 
 class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
@@ -121,8 +123,10 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
 
             if (psiType is PsiClassType) {
                 val propertyTypeClass = psiType.resolve()
-                if (propertyTypeClass != null
-                    && ownerConfigurationClass.containsClass(propertyTypeClass)
+                val javaFile = propertyTypeClass?.containingFile as? PsiJavaFile ?: continue
+
+                if (javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_LANG &&
+                    javaFile.packageName != JavaCoreClasses.PACKAGE_KOTLIN
                 ) {
                     collectConfigurationProperty(
                         module,
@@ -269,10 +273,6 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             if (replacementAnnotation != null) AnnotationUtil.getStringAttributeValue(replacementAnnotation) else null
         return DeprecationInfo(DeprecationInfoLevel.WARNING, replacement, reason)
     }
-}
-
-private fun PsiClass.containsClass(nestedClass: PsiClass): Boolean {
-    return innerClasses.any { it == nestedClass || it.containsClass(nestedClass) }
 }
 
 private abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {

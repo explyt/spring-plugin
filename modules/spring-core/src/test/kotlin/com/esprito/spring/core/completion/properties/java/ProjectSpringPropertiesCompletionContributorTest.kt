@@ -17,6 +17,9 @@ class ProjectSpringPropertiesCompletionContributorTest : AbstractSpringPropertie
             "mail.form-and-port",
             "mail.from",
             "mail.host-name",
+            "mail.external-settings",
+            "mail.external-settings.yet-property",
+            "mail.external-settings.camel-case-long-property-very-long-property",
             "mail.nested-settings",
             "mail.nested-settings.another-nested-settings",
             "mail.nested-settings.another-nested-settings.camel-case-long-property-very-long-property",
@@ -37,6 +40,8 @@ class ProjectSpringPropertiesCompletionContributorTest : AbstractSpringPropertie
         doTest(
             "mail.ert",
             "mail.external-settings",
+            "mail.external-settings.yet-property",
+            "mail.external-settings.camel-case-long-property-very-long-property",
             "mail.form-and-port",
             "mail.host-name",
             "mail.nested-settings",
@@ -57,6 +62,8 @@ class ProjectSpringPropertiesCompletionContributorTest : AbstractSpringPropertie
             """mail.from=me
             mail.ert=ert
             mail.external-settings=ext
+            mail.external-settings.yet-property=yet
+            mail.external-settings.camel-case-long-property-very-long-property=camel
             mail.form-and-port=port
             mail.host-name=name
             mail.nested-settings=nested
