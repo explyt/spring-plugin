@@ -118,7 +118,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 )
             }
 
-            val foundProperties = properties.filter { it.name == fileProperty.key }
+            val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, fileProperty.key) }
             if (foundProperties.isEmpty()
                 && !isPropertyMapKey(fileProperty, properties)
                 && !isPropertyListKey(fileProperty, properties)
