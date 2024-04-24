@@ -11,19 +11,19 @@
 
 <p><b>Examples:</b></p>
 <pre><code lang="java">
-  <!-- correctly configured -->
+  //correctly configured
   @Component
   @Profile("profile1 & profile2")
   public class SpringBean {...}
 
-    <!-- empty  -->
+  //warning: "Must not be empty"
   @Component
-  @Profile("") // reports "Must not be empty"
+  @Profile("")
   public class SpringBean {...}
 
-    <!-- mixed operators without  parentheses -->
+  //warning: mixed operators without parentheses
   @Component
-  @Profile("profile1 & profile2 | profile3") // reports "warning"
+  @Profile("profile1 & profile2 | profile3")
   public class SpringBean {...}
 </code></pre>
 </body>

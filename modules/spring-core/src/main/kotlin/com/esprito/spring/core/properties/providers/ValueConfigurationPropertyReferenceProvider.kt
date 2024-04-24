@@ -1,8 +1,6 @@
 package com.esprito.spring.core.properties.providers
 
-import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.properties.references.EspritoPropertyReference
-import com.esprito.spring.core.providers.ConfigurationPropertyLineMarkerProvider
 import com.esprito.spring.core.util.SpringCoreUtil.removeDummyIdentifier
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiLanguageInjectionHost
@@ -11,7 +9,10 @@ import com.intellij.psi.PsiReference.EMPTY_ARRAY
 import com.intellij.psi.UastInjectionHostReferenceProvider
 import com.intellij.util.ProcessingContext
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.uast.*
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.evaluateString
+import org.jetbrains.uast.getParentOfType
 
 class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferenceProvider() {
 
@@ -24,16 +25,9 @@ class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferencePr
         host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        if (uExpression !is ULiteralExpression && uExpression !is UPolyadicExpression) return EMPTY_ARRAY
+        uExpression.getParentOfType<UAnnotation>() ?: return EMPTY_ARRAY
 
-        val uAnnotation = uExpression.getParentOfType<UAnnotation>() ?: return EMPTY_ARRAY
-        if (SpringCoreClasses.VALUE != uAnnotation.qualifiedName) {
-            return EMPTY_ARRAY
-        }
-
-        val valueText = uAnnotation.findDeclaredAttributeValue("value")
-            ?.evaluateString()
-            ?.removeDummyIdentifier() ?: return EMPTY_ARRAY
+        val valueText = uExpression.evaluateString()?.removeDummyIdentifier() ?: return EMPTY_ARRAY
         val referenceProperties = extractReferenceProperty(valueText)
 
         if (referenceProperties.isEmpty() && valueText.startsWith("\${")) {
