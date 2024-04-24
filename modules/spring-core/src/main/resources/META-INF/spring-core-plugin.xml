@@ -582,7 +582,7 @@
         <lang.inspectionSuppressor language="Properties"
                                    implementationClass="com.esprito.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
 
-        <registryKey key="esprito.spring.root.runConfiguration" defaultValue="false"
+        <registryKey key="esprito.spring.root.runConfiguration" defaultValue="true"
                      description="Use root class from run configuration for bean search"/>
     </extensions>
 
