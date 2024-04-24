@@ -5,15 +5,17 @@
 
 ## [Unreleased]
 
+## [241.1.1303] - 2024-04-24
+
 ### Spring Core/Boot
 
 - Added autocompletion in properties files for all classes fields
 - Inspection `unresolved property key` supports Relaxed Binding
 - Fixed inspection for `@Retention` on Spring annotations. Supported meta-annotations
 - Fixed stackoverflow error while property calculation on some cases
-- Support @Scheduled annotation
+- Support `@Scheduled` annotation
 
-## [241.1.1263] - 2024-04-17
+## 241.1.1263 - 2024-04-17
 
 ### Spring Core/Boot
 
