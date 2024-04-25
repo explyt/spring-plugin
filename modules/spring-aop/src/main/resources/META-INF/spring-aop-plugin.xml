@@ -1,0 +1,18 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <localInspection language="UAST"
+                         shortName="SpringAopAnnotationInspection"
+                         groupBundle="messages.SpringAopBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.aop.notifications"
+                         bundle="messages.SpringAopBundle"
+                         key="esprito.spring.inspection.aop"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.aop.inspections.SpringAopAnnotationInspection"/>
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>

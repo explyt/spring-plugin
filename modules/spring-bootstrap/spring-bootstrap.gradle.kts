@@ -23,6 +23,7 @@ evaluationDependsOn(":spring-cloud")
 evaluationDependsOn(":spring-initializr")
 evaluationDependsOn(":spring-integration")
 evaluationDependsOn(":spring-messaging")
+evaluationDependsOn(":spring-aop")
 evaluationDependsOn(":jpa")
 evaluationDependsOn(":test-framework")
 
@@ -75,6 +76,7 @@ val springCloudProject = project(":spring-cloud")
 val springInitializrProject = project(":spring-initializr")
 val springIntegrationProject = project(":spring-integration")
 val springMessagingProject = project(":spring-messaging")
+val springAopProject = project(":spring-aop")
 val jpaProject = project(":jpa")
 val springBootstrapModule = project(":spring-bootstrap")
 val testFramework = project(":test-framework")
@@ -94,6 +96,7 @@ dependencies {
     implementation(springInitializrProject)
     implementation(springIntegrationProject)
     implementation(springMessagingProject)
+    implementation(springAopProject)
     implementation(jpaProject)
     testImplementation(testFramework)
 }
@@ -115,6 +118,7 @@ intellij {
     pluginDependencies += springInitializrProject.ext["intellijPlugins"] as Iterable<String>
     pluginDependencies += springIntegrationProject.ext["intellijPlugins"] as Iterable<String>
     pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
+    pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
     pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
     plugins.set(pluginDependencies)
     downloadSources.set(true)
@@ -320,6 +324,7 @@ tasks {
             springInitializrProject.tasks.test,
             springIntegrationProject.tasks.test,
             springMessagingProject.tasks.test,
+            springAopProject.tasks.test,
             jpaProject.tasks.test
         )
     }
