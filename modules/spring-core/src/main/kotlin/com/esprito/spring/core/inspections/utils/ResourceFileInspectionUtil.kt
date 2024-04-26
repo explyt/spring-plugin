@@ -7,6 +7,8 @@ import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_WITH_FILE_REFERENCE
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.SpringProperties.PREFIX_CLASSPATH
 import com.esprito.spring.core.SpringProperties.PREFIX_CLASSPATH_STAR
+import com.esprito.spring.core.SpringProperties.PREFIX_FILE
+import com.esprito.spring.core.SpringProperties.PREFIX_HTTP
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.ModuleUtil
 import com.intellij.codeInsight.daemon.quickFix.CreateFilePathFix
@@ -63,9 +65,9 @@ object ResourceFileInspectionUtil {
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): List<ProblemDescriptor> {
-        if (!text.startsWith(SpringProperties.PREFIX_FILE)) return emptyList()
+        if (!text.startsWith(PREFIX_FILE)) return emptyList()
 
-        val textWithoutPrefix = text.substringAfter(SpringProperties.PREFIX_FILE)
+        val textWithoutPrefix = text.substringAfter(PREFIX_FILE)
         val rootPaths = getSourceRootsPath(textWithoutPrefix, element)
         return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly)
     }
@@ -84,6 +86,8 @@ object ResourceFileInspectionUtil {
         return getPsiFileProblemFix(rootPaths, textWithoutPrefix, languageFileType, element, manager, isOnTheFly)
     }
 
+    private val VALID_PREFIXES = setOf("/", PREFIX_CLASSPATH, PREFIX_FILE, PREFIX_HTTP)
+
     fun getPathClassResourceProblems(
         languageFileType: LanguageFileType,
         text: String,
@@ -91,7 +95,7 @@ object ResourceFileInspectionUtil {
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): List<ProblemDescriptor> {
-        if (!text.startsWith("/")) {
+        if (VALID_PREFIXES.none { text.startsWith(it) }) {
             return listOf(
                 manager.createProblemDescriptor(
                     element,
