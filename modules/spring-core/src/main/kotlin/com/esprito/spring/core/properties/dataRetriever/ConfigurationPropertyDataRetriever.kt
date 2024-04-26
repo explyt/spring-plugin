@@ -10,18 +10,14 @@ import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiField
-import com.intellij.psi.PsiMember
+import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import org.apache.logging.log4j.util.Strings
-import org.jetbrains.uast.UField
-import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.getUastParentOfType
+import org.jetbrains.kotlin.j2k.getContainingConstructor
+import org.jetbrains.uast.*
 
 abstract class ConfigurationPropertyDataRetriever {
 
@@ -88,16 +84,21 @@ abstract class ConfigurationPropertyDataRetriever {
                 return getPrefixFromAnnotation(configurationOnBean, module)
             }
 
-            val psiFields = references.asSequence()
-                .mapNotNull { it.getUastParentOfType<UField>() }
-                .mapNotNullTo(mutableSetOf()) { it.javaPsi as? PsiField }
-            for (psiField in psiFields) {
-                val topClass = psiField.containingClass ?: continue
+            val psiElements = references.asSequence()
+                .mapNotNull { it.getUastParentOfTypes(arrayOf(UField::class.java, UParameter::class.java)) }
+                .mapNotNullTo(mutableSetOf()) { it.javaPsi as? PsiVariable }
+            for (element in psiElements) {
+                val topClass = when (element) {
+                    is PsiParameter -> element.getContainingConstructor()?.containingClass
+                    is PsiField -> element.containingClass
+                    else -> null
+                }
+                if (topClass == null) continue
                 if (topClass.qualifiedName == psiClass.qualifiedName) continue
 
                 val prefixValue = getPrefixFromUsage(topClass, module)
                 if (prefixValue.isNotBlank()) {
-                    return PropertyUtil.prefixValue("$prefixValue${psiField.name}")
+                    return PropertyUtil.prefixValue("$prefixValue${element.name}")
                 }
             }
 
