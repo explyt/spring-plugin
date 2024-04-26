@@ -586,6 +586,18 @@
 
         <registryKey key="esprito.spring.root.runConfiguration" defaultValue="true"
                      description="Use root class from run configuration for bean search"/>
+        <intentionAction>
+            <language>yaml</language>
+            <className>com.esprito.spring.core.intentions.CreateYamlMetaDescriptionIntention</className>
+        </intentionAction>
+        <intentionAction>
+            <language>Properties</language>
+            <className>com.esprito.spring.core.intentions.CreatePropertiesMetaDescriptionIntention</className>
+        </intentionAction>
+        <intentionAction>
+            <language>UAST</language>
+            <className>com.esprito.spring.core.intentions.CreateConfigurationMetaDescriptionIntention</className>
+        </intentionAction>
     </extensions>
 
     <actions>

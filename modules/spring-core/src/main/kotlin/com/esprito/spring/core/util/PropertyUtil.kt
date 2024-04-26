@@ -278,6 +278,17 @@ object PropertyUtil {
         return toCommonPropertyForm(propertyName1) == toCommonPropertyForm(propertyName2)
     }
 
+    fun guessTypeFromValue(value: String?): String {
+        return when {
+            value == null -> CommonClassNames.JAVA_LANG_STRING
+            StringUtil.equalsIgnoreCase(value, "true") -> CommonClassNames.JAVA_LANG_BOOLEAN
+            StringUtil.equalsIgnoreCase(value, "false") -> CommonClassNames.JAVA_LANG_BOOLEAN
+            INT_REGEX.matches(value) -> CommonClassNames.JAVA_LANG_INTEGER
+            DOUBLE_REGEX.matches(value) -> CommonClassNames.JAVA_LANG_DOUBLE
+            else -> CommonClassNames.JAVA_LANG_STRING
+        }
+    }
+
     private fun toCommonPropertyForm(propertyName: String): String {
         return propertyName.lowercase()
             .replace("-", "")
@@ -296,5 +307,7 @@ object PropertyUtil {
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()
+    private val INT_REGEX = "[-+]?[0-9]+".toRegex()
+    private val DOUBLE_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?".toRegex()
 
 }

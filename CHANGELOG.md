@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Intention: create property description in `additional-metadata.json`
 - Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes
 
@@ -39,6 +40,7 @@
 
 ### Spring Core/Boot
 
+- Inspection `unresolved property key` supports Relaxed Binding
 - Fix: Kotlin constructor with default values counts as autowired
 - Inspection: Warning: Spring @Value annotation string should start with "#{" "${" or resource prefixes
 
