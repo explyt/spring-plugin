@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+- Fixed inspection `resource name must begin with a slash`. Added valid prefixes
+
 ## [241.1.1303] - 2024-04-24
 
 ### Spring Core/Boot
