@@ -28,6 +28,7 @@ object SpringCoreClasses {
 
     const val COMPONENT = "org.springframework.stereotype.Component"
     const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
+    const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
 
     const val IO_RESOURCE = "org.springframework.core.io.Resource"
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"

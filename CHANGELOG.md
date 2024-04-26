@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes
 
 ## [241.1.1303] - 2024-04-24

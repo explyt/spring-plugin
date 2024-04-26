@@ -564,6 +564,8 @@
         <psi.referenceContributor
                 implementation="com.esprito.spring.core.language.profiles.UastProfilesReferenceContributor"
                 language="UAST"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.core.references.contributors.DynamicPropertyRegistryReferenceContributor"/>
 
         <lang.braceMatcher
                 language="Profiles"
