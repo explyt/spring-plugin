@@ -9,6 +9,7 @@
 
 ### Spring Core/Boot
 
+- Added a gutter to the constructors of other classes that are used in the class with @ConfigurationProperties
 - Added autocompletion in properties files for all classes fields
 - Inspection `unresolved property key` supports Relaxed Binding
 - Fixed inspection for `@Retention` on Spring annotations. Supported meta-annotations
