@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- The inspection text has been adjusted for @ConfigurationProperties
 - Intention: create property description in `additional-metadata.json`
 - Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes

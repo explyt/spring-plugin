@@ -17,6 +17,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
@@ -29,19 +30,26 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
         uClass: UClass, manager: InspectionManager, isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         val file = uClass.javaPsi.containingFile ?: return emptyArray()
-        val module = ModuleUtilCore.findModuleForFile(file) ?: return emptyArray()
-        val uAnnotation = SpringSearchService.getInstance(manager.project)
-            .findUAnnotation(module, uClass.uAnnotations, CONFIGURATION_PROPERTIES) ?: return emptyArray()
-        return collectProblems(uAnnotation, module, manager, isOnTheFly)
+        return problemDescriptors(file, uClass.uAnnotations, manager, isOnTheFly)
     }
 
     override fun checkMethod(
         method: UMethod, manager: InspectionManager, isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         val file = method.javaPsi.containingFile ?: return emptyArray()
+        return problemDescriptors(file, method.uAnnotations, manager, isOnTheFly)
+
+    }
+
+    private fun problemDescriptors(
+        file: PsiFile,
+        uAnnotations: List<UAnnotation>,
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): Array<ProblemDescriptor> {
         val module = ModuleUtilCore.findModuleForFile(file) ?: return emptyArray()
         val uAnnotation = SpringSearchService.getInstance(manager.project)
-            .findUAnnotation(module, method.uAnnotations, CONFIGURATION_PROPERTIES) ?: return emptyArray()
+            .findUAnnotation(module, uAnnotations, CONFIGURATION_PROPERTIES) ?: return emptyArray()
         return collectProblems(uAnnotation, module, manager, isOnTheFly)
     }
 
