@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Fix: Inspection "Autowire failed" for ApplicationContext
 - The inspection text has been adjusted for @ConfigurationProperties
 - Intention: create property description in `additional-metadata.json`
 - Added reference from `DynamicPropertyRegistry.add` method to property
