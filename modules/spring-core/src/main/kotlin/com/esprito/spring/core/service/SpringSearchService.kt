@@ -30,6 +30,7 @@ import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isNonStatic
 import com.esprito.util.EspritoPsiUtil.isPublic
 import com.esprito.util.EspritoPsiUtil.psiClassType
+import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiType
@@ -240,8 +241,22 @@ class SpringSearchService(private val project: Project) {
         return getComponentBeanPsiMethods(module)
             .asSequence()
             .flatMap { method ->
-                // fixme: because of resolvedPsiClass - the method takes only classes, not arrays
+                // for array created separated method: searchArrayComponentPsiClassesByBeanMethods
                 method.returnType?.resolvedPsiClass?.let { psiClass ->
+                    method.resolveBeanName.asSequence()
+                        .map { PsiBean(it, psiClass, method.getQualifierAnnotation(), method) }
+                } ?: emptySequence()
+            }
+            .filter { SpringCoreUtil.isSpringBeanCandidateClass(it.psiClass) }
+            .toSet()
+    }
+
+    fun searchArrayComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
+        return getComponentBeanPsiMethods(module)
+            .asSequence()
+            .filter { it.returnType is PsiArrayType }
+            .flatMap { method ->
+                method.returnType?.resolvedDeepPsiClass?.let { psiClass ->
                     method.resolveBeanName.asSequence()
                         .map { PsiBean(it, psiClass, method.getQualifierAnnotation(), method) }
                 } ?: emptySequence()
