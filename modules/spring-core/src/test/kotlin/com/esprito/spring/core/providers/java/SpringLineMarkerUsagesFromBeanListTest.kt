@@ -389,4 +389,106 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoJavaLightTestCase() {
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
         assertEquals(0, gutterTargetString.size)
     }
+
+    fun testCollectionBeanUsage() {
+        myFixture.copyFileToProject("BeanUsagesClasses.java")
+        myFixture.addClass(
+            """            
+            import java.util.Collection;
+                
+            @${SpringCoreClasses.COMPONENT}
+            class TestUsages {
+                @${SpringCoreClasses.AUTOWIRED}                        
+                Collection<I> iCollection;
+            }
+        """.trimIndent()
+        )
+
+        @Language("JAVA") val text = """
+            import java.util.ArrayList;
+            import java.util.Collection;
+                       
+            @${SpringCoreClasses.CONFIGURATION}
+            public class TestMarker {                               
+                @${SpringCoreClasses.BEAN}
+                public Collection<I> collectionWithManyBeanI() { return new ArrayList<>(); }
+            }
+            """.trimIndent()
+
+        myFixture.configureByText("TestMarker.java", text)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("iCollection"), gutterTargetString[0])
+    }
+
+    fun testSetBeanUsage() {
+        myFixture.copyFileToProject("BeanUsagesClasses.java")
+        myFixture.addClass(
+            """            
+            import java.util.Collection;
+                
+            @${SpringCoreClasses.COMPONENT}
+            class TestUsages {
+                @${SpringCoreClasses.AUTOWIRED}                        
+                Collection<I> iCollection;
+            }
+        """.trimIndent()
+        )
+
+        @Language("JAVA") val text = """            
+            import java.util.HashSet;
+            import java.util.Set;
+                       
+            @${SpringCoreClasses.CONFIGURATION}
+            public class TestMarker {                               
+                @${SpringCoreClasses.BEAN}
+                public Set<I> collectionWithManyBeanI() { return new HashSet<>(); }
+            }
+            """.trimIndent()
+
+        myFixture.configureByText("TestMarker.java", text)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("iCollection"), gutterTargetString[0])
+    }
+
+    fun testListBeanUsage() {
+        myFixture.copyFileToProject("BeanUsagesClasses.java")
+        myFixture.addClass(
+            """            
+            import java.util.Collection;
+                
+            @${SpringCoreClasses.COMPONENT}
+            class TestUsages {
+                @${SpringCoreClasses.AUTOWIRED}                        
+                Collection<I> iCollection;
+            }
+        """.trimIndent()
+        )
+
+        @Language("JAVA") val text = """            
+            import java.util.ArrayList;
+            import java.util.List;
+                       
+            @${SpringCoreClasses.CONFIGURATION}
+            public class TestMarker {                               
+                @${SpringCoreClasses.BEAN}
+                public List<I> collectionWithManyBeanI() { return new ArrayList<>(); }
+            }
+            """.trimIndent()
+
+        myFixture.configureByText("TestMarker.java", text)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("iCollection"), gutterTargetString[0])
+    }
 }

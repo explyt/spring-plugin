@@ -271,6 +271,16 @@ object SpringCoreUtil {
         return false
     }
 
+    fun PsiType.getArrayType(): PsiArrayType? {
+        var arrayPsiType: PsiArrayType? = null
+        if (this is PsiClassType) {
+            arrayPsiType = this.beanPsiType as? PsiArrayType
+        } else if (this is PsiArrayType) {
+            arrayPsiType = this
+        }
+        return arrayPsiType
+    }
+
     private fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
         return getMetaAnnotation(annotationNames)?.getStringValue()
     }
@@ -366,7 +376,7 @@ object SpringCoreUtil {
             }
         }
 
-        return sequence.filter { psiMethod ->
+        return sequence.filter { psiMethod ->//
             val psiMethodReturnType = psiMethod.returnType
             psiMethod.findChildrenOfType<PsiReturnStatement>().any {
                 it.returnValue?.type?.let {

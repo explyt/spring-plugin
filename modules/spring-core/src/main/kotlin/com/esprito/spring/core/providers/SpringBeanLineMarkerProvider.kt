@@ -7,6 +7,7 @@ import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
 import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
+import com.esprito.spring.core.util.SpringCoreUtil.getArrayType
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.isComponentCandidate
 import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
@@ -15,6 +16,7 @@ import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.psiClassType
+import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -132,7 +134,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return result
         }
 
-        private fun inSpringContext() = findTargetClass() in springSearchService.getAllActiveBeans(module)
+        private fun inSpringContext(): Boolean {
+            if (uParent is UMethod && uParent.returnType is PsiArrayType) {
+                val deepArrayPsiClass = uParent.returnType?.resolvedDeepPsiClass ?: return false
+                return springSearchService.searchArrayComponentPsiClassesByBeanMethods(module)
+                    .map { it.psiClass }.contains(deepArrayPsiClass)
+            }
+            return findTargetClass() in springSearchService.getAllActiveBeans(module)
+        }
 
         fun isClassForBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
@@ -195,6 +204,12 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 if (hasExactType) {
                     return true
                 }
+                val arrayPsiType = psiVariable.type.getArrayType()
+                if (arrayPsiType != null) {
+                    return searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
+                        .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
+                        .any { arrayPsiType.isAssignableFrom(it) }
+                }
                 val beanPsiType = psiVariable.type.beanPsiType
                 val foundInheritedTypes = if (beanPsiType != null) {
                     componentBeanPsiMethods.filterByBeanPsiType(psiVariable.type, beanPsiType).isNotEmpty()
@@ -240,12 +255,29 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val beanName = uField.name ?: return emptyList()
             val qualifierAnnotation = uField.getQualifierAnnotation()
 
+            val arrayType = beanPsiType.getArrayType()
+            if (arrayType != null) {
+                val arrayBeans = getArrayBeans(arrayType)
+                if (arrayBeans.isNotEmpty()) return arrayBeans
+            }
             return springSearchService.findActiveBeanDeclarations(
                 module, beanName, beanPsiType, qualifierAnnotation
             )
         }
 
-        private fun findTargetClass(): PsiClass? {
+        private fun getArrayBeans(arrayPsiType: PsiArrayType): List<PsiMember> {
+            return springSearchService.searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
+                .filter {
+                    it.psiMember is PsiMethod && it.psiMember.returnType != null
+                            && arrayPsiType.isAssignableFrom(it.psiMember.returnType!!)
+                }
+                .map { it.psiMember }.toList()
+        }
+
+        private fun findTargetClass(isArray: Boolean = false): PsiClass? {
+            if (isArray) {
+                return (uParent as? UMethod)?.returnType?.resolvedDeepPsiClass
+            }
             return when (uParent) {
                 is UMethod -> uParent.returnPsiClass
                 is UClass -> uParent.javaPsi
@@ -282,7 +314,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
-            val targetClass = findTargetClass() ?: return emptyList()
+            val isArrayType = uParent is UMethod && uParent.returnType is PsiArrayType
+            val targetClass = findTargetClass(isArrayType) ?: return emptyList()
             val targetClasses = targetClass.supers.toSet() + targetClass
             val targetType = findTargetType()
 
@@ -329,21 +362,31 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         private fun isCandidateField(field: PsiField, targetType: PsiType?, targetClasses: Set<PsiClass>): Boolean {
-            val isResolved = targetType == field.type || field.type.canResolveBeanClass(targetClasses)
+            if (targetType == field.type) return true
+            if (targetType != null && field.type.isAssignableFrom(targetType)) return true
+
+            if (targetType is PsiArrayType) {
+                return getPsiType(field)?.isAssignableFrom(targetType) == true
+            }
+
+            val isResolved = field.type.canResolveBeanClass(targetClasses)
             if (!isResolved) return false
             if (targetType == null) return true
 
             if (targetType !is PsiClassType) return true
-            val psiClassType = psiType(field)
+            val psiClassType = getPsiType(field)
             return if (targetType.parameters.isNotEmpty()) {
                 psiClassType?.isEqualOrInheritorBeanType(targetType) == true
             } else true
         }
 
-        private fun psiType(field: PsiField): PsiType? {
+        private fun getPsiType(field: PsiField): PsiType? {
             val type = field.type.beanPsiType
             if (type is PsiClassType) {
                 return type.psiClassType
+            }
+            if (type is PsiArrayType) {
+                return type
             }
             if (field.language == KotlinLanguage.INSTANCE && type is PsiWildcardType) {
                 if (type.isExtends) return type.extendsBound

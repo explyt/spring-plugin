@@ -7,6 +7,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddQualifierQuickFix
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.esprito.spring.core.util.SpringCoreUtil.getArrayType
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
@@ -15,6 +16,7 @@ import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiType
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
@@ -38,6 +40,15 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         val field = uField.javaPsi as? PsiField ?: return ProblemDescriptor.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(field) ?: return ProblemDescriptor.EMPTY_ARRAY
         if (!field.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)) return ProblemDescriptor.EMPTY_ARRAY
+
+        val arrayType = uField.returnPsiType?.getArrayType()
+        if (arrayType != null) {
+            val isArrayBeanExist = SpringSearchService.getInstance(manager.project)
+                .searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
+                .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
+                .any { arrayType.isAssignableFrom(it) }
+            if (isArrayBeanExist) return emptyArray()
+        }
 
         if (isBeanExist(module, field.containingClass) && SpringCoreUtil.existComponentScan(module)) {
             return getProblemAutowired(module, field, manager, isOnTheFly)
