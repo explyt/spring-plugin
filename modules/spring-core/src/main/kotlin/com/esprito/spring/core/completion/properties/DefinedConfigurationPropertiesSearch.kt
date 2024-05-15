@@ -1,6 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.tracker.ModificationTrackerManager
+import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.lang.properties.PropertiesLanguage
 import com.intellij.lang.properties.psi.PropertiesFile
@@ -53,6 +54,27 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
 
     fun getAllProperties(module: Module): List<DefinedConfigurationProperty> {
         return loadPropertySources(module).flatMap { it.properties }
+    }
+
+    fun getAllPlaceholders(module: Module): List<String> {
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                doGetPlaceholders(module),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+
+    }
+
+    private fun doGetPlaceholders(module: Module): List<String> {
+        return getAllProperties(module).asSequence()
+            .mapNotNull { it.value }
+            .flatMap {
+                PropertyUtil.getPlaceholders(it) { placeholder, _ ->
+                    placeholder
+                }
+            }
+            .toList()
     }
 
     private fun loadPropertySources(module: Module): Set<PropertySource> {

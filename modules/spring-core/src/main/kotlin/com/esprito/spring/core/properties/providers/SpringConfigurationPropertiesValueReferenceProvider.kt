@@ -1,19 +1,16 @@
 package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringProperties
-import com.esprito.spring.core.SpringProperties.PLACEHOLDER_PREFIX
-import com.esprito.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.esprito.spring.core.properties.references.PlaceholderValueReference
 import com.esprito.spring.core.properties.references.ValueHintReference
+import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
 import com.esprito.spring.core.util.PropertyUtil.propertyValuePsiElement
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceProvider
 import com.intellij.util.ProcessingContext
-import com.intellij.util.text.PlaceholderTextRanges
 import com.intellij.util.text.findTextRange
 
 class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider() {
@@ -37,19 +34,9 @@ class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider
 
     private fun getPlaceholderValueReferences(element: PsiElement): List<PsiReference> {
         val text = element.text ?: return emptyList()
-        val ranges = PlaceholderTextRanges.getPlaceholderRanges(
-            text,
-            PLACEHOLDER_PREFIX,
-            PLACEHOLDER_SUFFIX
-        )
-        val result = mutableListOf<PsiReference>()
-        for (it in ranges) {
-            val index = it.substring(text).indexOf(SpringProperties.COLON)
-            val textInRange =
-                if (index == -1) it.substring(text) else it.substring(text).substringBefore(SpringProperties.COLON)
-            val range = if (index == -1) it else TextRange.from(it.startOffset, index)
-            result.add(PlaceholderValueReference(textInRange, element, range))
+
+        return PropertyUtil.getPlaceholders(text) { placeholder, range ->
+            PlaceholderValueReference(placeholder, element, range)
         }
-        return result
     }
 }

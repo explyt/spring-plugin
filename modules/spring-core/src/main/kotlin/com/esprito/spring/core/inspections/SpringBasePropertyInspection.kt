@@ -119,9 +119,15 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             }
 
             val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, fileProperty.key) }
+            val placeholders = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+                .getAllPlaceholders(module)
+
             if (foundProperties.isEmpty()
                 && !isPropertyMapKey(fileProperty, properties)
                 && !isPropertyListKey(fileProperty, properties)
+                && placeholders.none {
+                    PropertyUtil.isSameProperty(fileProperty.key, it)
+                }
             ) {
                 val psiReferences = SpringSearchService.getInstance(elementFileProperty.project)
                     .getAllReferencesToElement(elementFileProperty)
@@ -206,10 +212,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             hints.asSequence()
                 .any { hint ->
                     (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_KEYS == hint.name)
-                        && hint.values.isNotEmpty()
-                        && (hint.providers.isEmpty()
-                        || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
-            }
+                            && hint.values.isNotEmpty()
+                            && (hint.providers.isEmpty()
+                            || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
+                }
         }
         if (findInFileProperties.isEmpty()) {
             return problems
@@ -541,7 +547,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             && !property.key.endsWith("]")
         ) {
             value.split(",").map { it.dropWhitespaces() }
-        } else if (value.contains(SpringProperties.PLACEHOLDER_PREFIX) && value.contains(SpringProperties.PLACEHOLDER_SUFFIX)) {
+        } else if (value.contains(PLACEHOLDER_PREFIX) && value.contains(PLACEHOLDER_SUFFIX)) {
             emptyList()
         } else {
             listOf(value)
