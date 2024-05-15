@@ -1,4 +1,4 @@
-package com.esprito.spring.core.inspections.quickfix;
+package com.esprito.spring.core.inspections.quickfix
 
 import com.esprito.spring.core.SpringCoreBundle
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
@@ -7,12 +7,18 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.ElementManipulators
-import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.idea.KotlinLanguage
 
-class ReplacementStringQuickFix(private val oldValue: String, private val newValue: String, element: PsiElement) :
+class ReplacementStringQuickFix(
+    private val oldValue: String,
+    private val newValue: String,
+    element: PsiElement,
+    private val range: TextRange? = null
+) :
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
 
     override fun getFamilyName(): String = SpringCoreBundle
@@ -34,7 +40,7 @@ class ReplacementStringQuickFix(private val oldValue: String, private val newVal
         WriteCommandAction.runWriteCommandAction(project, "Replacement String", null, {
             if (editor != null) {
                 if (!ElementManipulators.getValueText(startElement).contains(oldValue)) return@runWriteCommandAction
-                val valueTextRange = ElementManipulators.getValueTextRange(startElement)
+                val valueTextRange = range ?: ElementManipulators.getValueTextRange(startElement)
                 val startOffset = startElement.textRange.startOffset + valueTextRange.startOffset
                 val end = startOffset + oldValue.length
                 editor.caretModel.moveToOffset(startOffset)

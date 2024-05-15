@@ -14,6 +14,7 @@ import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.*
 import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
+import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.PropertyUtil
@@ -208,6 +209,29 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
+
+        for (property in fileProperties) {
+            val elementFileProperty = property.psiElement ?: continue
+            val psiValue = elementFileProperty.propertyValuePsiElement() ?: continue
+            val value = elementFileProperty.propertyValue() ?: continue
+
+
+            problems += PropertyUtil.getPlaceholders(value) { placeholder, range ->
+                PlaceholderWithRange(placeholder, range)
+            }.asSequence()
+                .filter { isNotSnakeCase(it.placeholder) }
+                .mapTo(mutableListOf()) {
+                    manager.createProblemDescriptor(
+                        psiValue,
+                        it.range,
+                        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.snaked"),
+                        ProblemHighlightType.WARNING,
+                        isOnTheFly,
+                        ReplacementStringQuickFix(it.placeholder, toSnakeCase(it.placeholder), psiValue, it.range)
+                    )
+                }
+        }
+
         val findInFileProperties = fileProperties.filter { property ->
             hints.asSequence()
                 .any { hint ->
@@ -252,6 +276,31 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         }
         return problems
     }
+
+    private fun isNotSnakeCase(placeholder: String): Boolean {
+        return placeholder.any { it.isUpperCase() || it == '_' }
+    }
+
+    private fun toSnakeCase(placeholder: String): String {
+        if (placeholder.isEmpty()) return ""
+
+        var prev: Char? = null
+        val stringBuilder = StringBuilder()
+        for (current in placeholder) {
+            if (current.isUpperCase()) {
+                if (prev != null && prev.isLowerCase()) {
+                    stringBuilder.append('_')
+                }
+            }
+            stringBuilder.append(current.lowercaseChar())
+
+            prev = current
+        }
+
+        return stringBuilder.replace(UNDERSCORES_REGEX, "-")
+    }
+
+    data class PlaceholderWithRange(val placeholder: String, val range: TextRange)
 
     private fun getProblemClassReference(
         module: Module,
@@ -673,6 +722,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val PROHIBITED_IN_PROFILE_PROPERTIES =
             setOf("spring.profiles.include", "spring.profiles.active", "spring.profiles.default")
         val PROFILE_PROPERTIES_FILE_MASK = Regex("application-.*\\.(properties|yml|yaml)")
+        val UNDERSCORES_REGEX = Regex("_+")
     }
 
 }

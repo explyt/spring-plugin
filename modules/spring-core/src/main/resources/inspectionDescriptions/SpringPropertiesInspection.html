@@ -9,6 +9,7 @@
     <li>deprecated configuration key</li>
     <li>prohibited configuration key</li>
     <li>invalid values</li>
+    <li>placeholders not in snake-case</li>
 </p>
 
 <p><b>Example:</b></p>
@@ -55,4 +56,7 @@ spring.profiles.default=baz
 </code></pre>
 
 
-
+<p><b>Example:</b></p>
+<pre><code lang="properties">
+my.main.name=${not.in.A_snake_case}                           # Should be snake-case
+</code></pre>
