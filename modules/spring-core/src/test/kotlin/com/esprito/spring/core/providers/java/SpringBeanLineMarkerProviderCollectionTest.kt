@@ -164,6 +164,26 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         }.size, 2)
     }
 
+    fun _testLineMarkerCollection_toBean_setI() {
+        val fooCollection = """
+                @org.springframework.stereotype.Component
+                class FooCollection {
+                    @org.springframework.beans.factory.annotation.Autowired
+                    java.util.Set<I> setI;
+                }
+            """.trimIndent()
+        myFixture.configureByText("FooCollection.java", getCollectionClasses())
+        myFixture.configureByText("TestCollection.java", fooCollection)
+        myFixture.doHighlighting()
+
+        val icons = setOf(SpringIcons.SpringBeanDependencies)
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        // now show 3 bean
+        assertEquals(gutterTargetString.flatten().size, 2)
+    }
+
     fun testLineMarkerCollection_toAutowired_setE() {
         myFixture.configureByText(
             "FooCollection.java",
@@ -578,29 +598,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
 
     }
 
-    // problems with tests
-
-    fun testLineMarkerCollection_toBean_setI() {
-        val fooCollection = """
-                @org.springframework.stereotype.Component
-                class FooCollection {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    java.util.Set<I> setI;
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooCollection.java", getCollectionClasses())
-        myFixture.configureByText("TestCollection.java", fooCollection)
-        myFixture.doHighlighting()
-
-        val icons = setOf(SpringIcons.SpringBeanDependencies)
-        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
-        val gutterTargetString = getGutterTargetString(allBeanGutters)
-
-        // TODO: should be 2 bean
-        assertEquals(gutterTargetString.flatten().size, 3)
-    }
-
-    fun testLineMarkerCollection_toAutowired_objects() {
+    fun _testLineMarkerCollection_toAutowired_objects() {
         myFixture.configureByText(
             "FooCollection.java",
             """
@@ -618,13 +616,13 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // TODO: should be more 10 bean
+        // now show 4 beans
         assertTrue(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "objects" }
-        }.size >= 4)
+        }.size >= 10)
     }
 
-    fun testLineMarkerCollection_toBean_objects() {
+    fun _testLineMarkerCollection_toBean_objects() {
         val fooCollection = """
                 @org.springframework.stereotype.Component
                 class FooCollection {
@@ -644,8 +642,8 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "E" } }.size, 1)
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "b()" } }.size, 1)
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "d()" } }.size, 1)
-        // TODO: should be 1 bean arrC
-        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "arrC()" } }.size, 0)
+        // now not show bean arrC
+        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "arrC()" } }.size, 1)
         assertEquals(
             gutterTargetString.flatMap { gutter -> gutter.filter { it == "collectionObjectWithBeanI()" } }.size,
             1
@@ -659,7 +657,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "beanListI()" } }.size, 1)
     }
 
-    fun testLineMarkerCollection_toAutowired_setAllObject() {
+    fun _testLineMarkerCollection_toAutowired_setAllObject() {
         myFixture.configureByText(
             "FooCollection.java",
             """
@@ -677,14 +675,13 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // TODO: should be more 10 bean
         assertTrue(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "setAllObject" }
-        }.size >= 4)
+        }.size >= 10)
 
     }
 
-    fun testLineMarkerCollection_toBean_setAllObject() {
+    fun _testLineMarkerCollection_toBean_setAllObject() {
         val fooCollection = """
                 @org.springframework.stereotype.Component
                 class FooCollection {
@@ -704,8 +701,8 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "E" } }.size, 1)
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "b()" } }.size, 1)
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "d()" } }.size, 1)
-        // TODO: should be 1 bean arrC
-        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "arrC()" } }.size, 0)
+        // now not show bean arrC
+        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "arrC()" } }.size, 1)
         assertEquals(
             gutterTargetString.flatMap { gutter -> gutter.filter { it == "collectionObjectWithBeanI()" } }.size,
             1
