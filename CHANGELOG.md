@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Fixed inspection "Cannot resolve key property" for non-snake-case keys
 - Fix: Inspection "Autowire failed" for ApplicationContext
 - The inspection text has been adjusted for @ConfigurationProperties
 - Intention: create property description in `additional-metadata.json`
