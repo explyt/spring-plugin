@@ -401,7 +401,6 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoKotlinLightTestCase() {
         myFixture.configureByText(
             "FooOptional.kt",
             """
-                import java.util.Map;
                 import java.util.Optional;
 
                 @org.springframework.stereotype.Component
@@ -425,7 +424,6 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoKotlinLightTestCase() {
 
     fun testLineMarkerOptional_toBean_optionalMapStringI() {
         val fooOptional = """
-                import java.util.Map;
                 import java.util.Optional;
 
                 @org.springframework.stereotype.Component
@@ -449,7 +447,6 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoKotlinLightTestCase() {
         myFixture.configureByText(
             "FooOptional.kt",
             """
-                import java.util.Map;
                 import java.util.Optional;
 
                 @org.springframework.stereotype.Component
@@ -473,7 +470,6 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoKotlinLightTestCase() {
 
     fun testLineMarkerOptional_toBean_optionalOptionalMapStringI() {
         val fooOptional = """
-                import java.util.Map;
                 import java.util.Optional;
 
                 @org.springframework.stereotype.Component
