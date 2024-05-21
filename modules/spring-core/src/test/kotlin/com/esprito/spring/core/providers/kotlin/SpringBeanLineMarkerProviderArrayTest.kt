@@ -278,7 +278,7 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
                 @org.springframework.stereotype.Component
                 class FooArray {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var arrayC: java.util.List<Array<C>>
+                    lateinit var arrayC: List<Array<C>>
                 }
             """.trimIndent()
         )
@@ -299,7 +299,7 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
                 @org.springframework.stereotype.Component
                 class FooArray {
                     @org.springframework.beans.factory.annotation.Autowired
-                        lateinit var arrayC: java.util.List<Array<C>>
+                        lateinit var arrayC: List<Array<C>>
                 }
             """.trimIndent()
 

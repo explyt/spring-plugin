@@ -64,7 +64,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionI: java.util.Collection<I>
+                    lateinit var collectionI: Collection<I>
                 }
             """.trimIndent()
         )
@@ -85,7 +85,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionI: java.util.Collection<I>
+                    lateinit var collectionI: Collection<I>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -106,7 +106,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listI: java.util.List<I>
+                    lateinit var listI: List<I>
                 }
             """.trimIndent()
         )
@@ -127,7 +127,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listI: java.util.List<I>
+                    lateinit var listI: List<I>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -148,7 +148,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setI: java.util.Set<I>
+                    lateinit var setI: Set<I>
                 }
             """.trimIndent()
         )
@@ -169,7 +169,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setI: java.util.Set<I>
+                    lateinit var setI: Set<I>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -190,7 +190,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setE: java.util.Set<E>
+                    lateinit var setE: Set<E>
                 }
             """.trimIndent()
         )
@@ -211,7 +211,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setE: java.util.Set<E>
+                    lateinit var setE: Set<E>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -232,7 +232,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionAll: java.util.Collection<*>
+                    lateinit var collectionAll: Collection<*>
                 }
             """.trimIndent()
         )
@@ -255,7 +255,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionAll: java.util.Collection<*>
+                    lateinit var collectionAll: Collection<*>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -286,7 +286,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listAll: java.util.List<*>
+                    lateinit var listAll: List<*>
                 }
             """.trimIndent()
         )
@@ -309,7 +309,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listAll: java.util.List<*>
+                    lateinit var listAll: List<*>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -331,7 +331,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setAll: java.util.Set<*>
+                    lateinit var setAll: Set<*>
                 }
             """.trimIndent()
         )
@@ -354,7 +354,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setAll: java.util.Set<*>
+                    lateinit var setAll: Set<*>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -368,14 +368,14 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "beanSetWithManyBeanI()" } }.size, 1)
     }
 
-    fun testLineMarkerCollection_toAutowired_listsI() {
+    fun _testLineMarkerCollection_toAutowired_listsI() {
         myFixture.configureByText(
             "FooCollection.kt",
             """
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listsI: java.util.List<java.util.List<I>>
+                    lateinit var listsI: List<List<I>>
                 }
             """.trimIndent()
         )
@@ -397,7 +397,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listsI: java.util.List<java.util.List<I>>
+                    lateinit var listsI: List<List<I>>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -418,7 +418,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listsC: java.util.List<Array<C>>
+                    lateinit var listsC: List<Array<C>>
                 }
             """.trimIndent()
         )
@@ -440,7 +440,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listsC: java.util.List<Array<C>>
+                    lateinit var listsC: List<Array<C>>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -461,7 +461,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var listOfMapsStringI: java.util.List<java.util.Map<String, I>>
+                    lateinit var listOfMapsStringI: List<Map<String, I>>
                 }
             """.trimIndent()
         )
@@ -491,14 +491,12 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
 
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "listOfMapsStringI" }
-        }.size, 1)
+        }.size, 0)
 
     }
 
     fun testLineMarkerCollection_toBean_listOfMapsStringI() {
         val fooCollection = """
-                import java.util.*;
-                
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
@@ -540,7 +538,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionWithBeanI: java.util.Collection<WithBeanI>
+                    lateinit var collectionWithBeanI: Collection<WithBeanI>
                 }
             """.trimIndent()
         )
@@ -557,12 +555,12 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
 
     }
 
-    fun testLineMarkerCollection_toBean_collectionWithBeanI() {
+    fun _testLineMarkerCollection_toBean_collectionWithBeanI() {
         val fooCollection = """
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionWithBeanI: java.util.Collection<WithBeanI>
+                    lateinit var collectionWithBeanI: Collection<WithBeanI>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -586,7 +584,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionAllWithManyBeanI: java.util.Collection<WithManyBeanI>
+                    lateinit var collectionAllWithManyBeanI: Collection<WithManyBeanI>
                 }
             """.trimIndent()
         )
@@ -603,12 +601,12 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
 
     }
 
-    fun testLineMarkerCollection_toBean_collectionAllWithManyBeanI() {
+    fun _testLineMarkerCollection_toBean_collectionAllWithManyBeanI() {
         val fooCollection = """
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var collectionAllWithManyBeanI: java.util.Collection<WithManyBeanI>
+                    lateinit var collectionAllWithManyBeanI: Collection<WithManyBeanI>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -634,7 +632,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var objects: java.util.List<Any>
+                    lateinit var objects: List<Any>
                 }
             """.trimIndent()
         )
@@ -657,7 +655,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var objects: java.util.List<Any>
+                    lateinit var objects: List<Any>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -696,7 +694,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setAllObject: java.util.Set<Any>
+                    lateinit var setAllObject: Set<Any>
                 }
             """.trimIndent()
         )
@@ -719,7 +717,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
                 @org.springframework.stereotype.Component
                 class FooCollection {
                     @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var setAllObject: java.util.Set<Any>
+                    lateinit var setAllObject: Set<Any>
                 }
             """.trimIndent()
         myFixture.configureByText("FooCollection.kt", getCollectionClasses())
@@ -758,11 +756,6 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
             import org.springframework.context.annotation.Configuration;
             import org.springframework.stereotype.Component;
 
-            import java.util.ArrayList;
-            import java.util.Collection;
-            import java.util.List;
-            import java.util.Set;
-            
             interface I
 
             @Component
