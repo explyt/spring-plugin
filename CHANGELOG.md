@@ -19,6 +19,7 @@
 ### Spring Web/MVC
 
 - Inspection: `WebController/WebTestController` uri parameters count
+- Add Navigation from `WebClient/WebTestClient` to Controller endpoints
 
 ## [241.1.1303] - 2024-04-24
 
