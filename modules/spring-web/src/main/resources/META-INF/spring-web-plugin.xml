@@ -72,6 +72,8 @@
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
         <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.web.references.contributors.UastWebClientUrlReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.ControllerEndpointReturnReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.RedirectUrlReferenceContributor"/>
