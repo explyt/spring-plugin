@@ -13,6 +13,8 @@ object SpringWebClasses {
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
+    const val WEB_TEST_CLIENT_URI_SPEC = "org.springframework.test.web.reactive.server.WebTestClient.UriSpec"
+    const val WEB_CLIENT_URI_SPEC = "org.springframework.web.reactive.function.client.WebClient.UriSpec"
 
     const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
     const val ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER =
