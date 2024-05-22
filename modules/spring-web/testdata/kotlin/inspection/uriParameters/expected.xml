@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<problems>
+
+    <problem>
+        <file>UriParametersTest.kt</file>
+        <line>11</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void tooFew()"/>
+        <problem_class id="WebClientUriParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>&quot;/product/{tooFew}&quot;</highlighted_element>
+        <language>kotlin</language>
+        <offset>28</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>UriParametersTest.kt</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void tooFew()"/>
+        <problem_class id="WebClientUriParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>&quot;/product/{tooFew}&quot;</highlighted_element>
+        <language>kotlin</language>
+        <offset>32</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>UriParametersTest.kt</file>
+        <line>16</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void tooMany()"/>
+        <problem_class id="WebClientUriParameters" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Too many URI parameters</description>
+        <highlighted_element>&quot;/product/{tooMany}&quot;</highlighted_element>
+        <language>kotlin</language>
+        <offset>28</offset>
+        <length>20</length>
+    </problem>
+
+
+    <problem>
+        <file>UriParametersTest.kt</file>
+        <line>17</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void tooMany()"/>
+        <problem_class id="WebClientUriParameters" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Too many URI parameters</description>
+        <highlighted_element>&quot;/product/{tooMany}&quot;</highlighted_element>
+        <language>kotlin</language>
+        <offset>32</offset>
+        <length>20</length>
+    </problem>
+
+
+    <problem>
+        <file>UriParametersTest.kt</file>
+        <line>26</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void tooFewConst()"/>
+        <problem_class id="WebClientUriParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>TOO_FEW_CONST</highlighted_element>
+        <language>kotlin</language>
+        <offset>28</offset>
+        <length>13</length>
+    </problem>
+
+
+    <problem>
+        <file>UriParametersTest.kt</file>
+        <line>27</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void tooFewConst()"/>
+        <problem_class id="WebClientUriParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>TOO_FEW_CONST</highlighted_element>
+        <language>kotlin</language>
+        <offset>32</offset>
+        <length>13</length>
+    </problem>
+
+</problems>

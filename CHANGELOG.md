@@ -14,6 +14,11 @@
 - Intention: create property description in `additional-metadata.json`
 - Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes
+-
+
+### Spring Web/MVC
+
+- Inspection: `WebController/WebTestController` uri parameters count
 
 ## [241.1.1303] - 2024-04-24
 
