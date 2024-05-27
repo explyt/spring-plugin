@@ -145,7 +145,6 @@ object SpringCoreUtil {
                 || psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH))
     }
 
-    // TODO: value or basePackages
     fun existComponentScan(module: Module): Boolean =
         SpringSearchService.getInstance(module.project)
             .searchPsiClassesAnnotatedByComponentScan(module)
@@ -255,6 +254,14 @@ object SpringCoreUtil {
         return true
     }
 
+    private fun PsiType.extendsWildcard(value: PsiType): Boolean {
+        if (this is PsiWildcardType) {
+            val superTypes = this.superTypes
+            return superTypes.size == 1 && (superTypes[0] == value || superTypes[0] in value.superTypes)
+        }
+        return false
+    }
+
     fun PsiType.possibleMultipleBean(): Boolean {
         if (this is PsiArrayType) {
             return true
@@ -329,7 +336,7 @@ object SpringCoreUtil {
                     && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType))
         }
         if (beanPsiType is PsiWildcardType) {
-            return this.resolvedPsiClass?.matchesWildcardType(beanPsiType) ?: return false
+            return this.matchesWildcardType(beanPsiType)
         }
         return false
     }
@@ -339,7 +346,12 @@ object SpringCoreUtil {
             return false
         }
         return this.parameters.withIndex().all { (index, value) ->
-            otherPsiType.parameters[index].let { it == value || !it.isBounded() }
+            otherPsiType.parameters[index].let {
+                it == value
+                        || it.extendsWildcard(value)
+                        || value.extendsWildcard(it)
+                        || !it.isBounded()
+            }
         }
     }
 
@@ -350,10 +362,30 @@ object SpringCoreUtil {
                 return this.isEqualOrInheritor(extendsBeanPsiClass)
             }
         }
+        return isWildcardTypeSuper(this, beanPsiType)
+    }
+
+    fun PsiClassType.matchesWildcardType(beanPsiType: PsiWildcardType): Boolean {
+        val resolvedPsiClass = this.resolvedPsiClass ?: return false
+        if (beanPsiType.isExtends) {
+            val extendsBeanType = beanPsiType.extendsBound
+            val extendsBeanPsiClass = extendsBeanType.resolvedPsiClass
+            if (extendsBeanPsiClass != null) {
+                return if (extendsBeanType is PsiClassType) {
+                    resolvedPsiClass.isEqualOrInheritor(extendsBeanPsiClass)
+                            && (extendsBeanType.parameters.isEmpty() || this.equalParamsWithBound(extendsBeanType))
+
+                } else resolvedPsiClass.isEqualOrInheritor(extendsBeanPsiClass)
+            }
+        }
+        return isWildcardTypeSuper(resolvedPsiClass, beanPsiType)
+    }
+
+    private fun isWildcardTypeSuper(psiClass: PsiClass, beanPsiType: PsiWildcardType): Boolean {
         if (beanPsiType.isSuper) {
             val superBeanPsiClass = beanPsiType.superBound.resolvedPsiClass
             if (superBeanPsiClass != null) {
-                return superBeanPsiClass == this
+                return superBeanPsiClass == psiClass
             }
         }
         return false
