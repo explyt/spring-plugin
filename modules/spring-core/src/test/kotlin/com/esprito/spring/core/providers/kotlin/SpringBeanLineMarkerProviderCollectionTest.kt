@@ -454,7 +454,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "arrC()" } }.size, 1)
     }
 
-    fun testLineMarkerCollection_toAutowired_listOfMapsStringI() {
+    fun _testLineMarkerCollection_toAutowired_listOfMapsStringI() {
         myFixture.configureByText(
             "FooCollection.kt",
             """

@@ -80,7 +80,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toBean_mapObjI() {
+    fun testLineMarkerOptional_toBean_mapObjI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooMap {
@@ -124,7 +124,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toBean_mapIntI() {
+    fun testLineMarkerOptional_toBean_mapIntI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooMap {
@@ -209,7 +209,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toBean_mapStringWithBeanI() {
+    fun testLineMarkerOptional_toBean_mapStringWithBeanI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooMap {
@@ -299,7 +299,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toBean_mapObjectExtWithBeanI() {
+    fun testLineMarkerOptional_toBean_mapObjectExtWithBeanI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooMap {
@@ -382,7 +382,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "beanMapStringI()" } }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toAutowired_mapObjectExtI() {
+    fun testLineMarkerOptional_toAutowired_mapObjectExtI() {
         myFixture.configureByText(
             "FooMap.kt",
             """
@@ -402,10 +402,10 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
 
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "mapObjectExtI" }
-        }.size, 2)
+        }.size, 3)
     }
 
-    fun _testLineMarkerOptional_toBean_mapObjectExtI() {
+    fun testLineMarkerOptional_toBean_mapObjectExtI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooMap {
@@ -427,6 +427,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
             gutterTargetString.flatMap { gutter -> gutter.filter { it == "beanMapObjectExtIOther()" } }.size,
             1
         )
+        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "beanMapObjectExtA()" } }.size, 1)
     }
 
     fun testLineMarkerOptional_toAutowired_mapObjectExtWithoutBeanI() {
@@ -471,7 +472,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.size, 0)
     }
 
-    fun _testLineMarkerOptional_toAutowired_mapOfListI() {
+    fun testLineMarkerOptional_toAutowired_mapOfListI() {
         myFixture.configureByText(
             "FooMap.kt",
             """
@@ -537,7 +538,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toBean_mapArrC() {
+    fun testLineMarkerOptional_toBean_mapArrC() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooMap {
@@ -554,10 +555,10 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "arrС()" } }.size, 1)
+        assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "arrC()" } }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toAutowired_mapOfMapStringI() {
+    fun testLineMarkerOptional_toAutowired_mapOfMapStringI() {
         myFixture.configureByText(
             "FooMap.kt",
             """
@@ -580,7 +581,7 @@ class SpringBeanLineMarkerProviderMapTest : EspritoJavaLightTestCase() {
         }.size, 1)
     }
 
-    fun _testLineMarkerOptional_toBean_mapOfMapStringI() {
+    fun testLineMarkerOptional_toBean_mapOfMapStringI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooMap {

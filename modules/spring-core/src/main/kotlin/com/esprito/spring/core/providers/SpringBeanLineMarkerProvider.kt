@@ -324,16 +324,20 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
             val allBeans = springSearchService.getActiveBeansClasses(module)
 
-            val allFieldsWithAutowired = allBeans.asSequence().flatMap { bean ->
-                bean.psiClass.allFields.asSequence()
-                    .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                    .filter { isCandidateField(it, targetType, targetClasses) }
-                    .map { it.navigationElement.toUElement() as? UVariable }
-                    .filterNotNull()
-            }.toSet()
+            val allFieldsWithAutowired = allBeans.asSequence()
+                .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+                .flatMap { field ->
+                    field.asSequence()
+                        .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
+                        .filter { isCandidateField(it, targetType, targetClasses) }
+                        .mapNotNull { it.navigationElement.toUElement() as? UVariable }
+                }.toSet()
 
-            val allParametersWithAutowired = allBeans.asSequence().flatMap { bean ->
-                bean.psiClass.allMethods.asSequence()
+
+            val allParametersWithAutowired = mutableSetOf<UVariable>()
+            allBeans.forEach { bean ->
+                val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+                allParametersWithAutowired.addAll(methods.asSequence()
                     .filter {
                         it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
@@ -343,8 +347,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses) }
                     .map { it.navigationElement.toUElement() as? UVariable }
-                    .filterNotNull()
-            }.toSet()
+                    .filterNotNull().toSet())
+            }
 
             val allByType = allFieldsWithAutowired + allParametersWithAutowired
             val filteredByName = allByType.filter {
@@ -363,6 +367,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         private fun isCandidateField(field: PsiField, targetType: PsiType?, targetClasses: Set<PsiClass>): Boolean {
             if (targetType == field.type) return true
+            if (targetType != null && targetType.isEqualOrInheritorBeanType(field.type)) return true
             if (targetType != null && field.type.isAssignableFrom(targetType)) return true
 
             if (targetType is PsiArrayType) {

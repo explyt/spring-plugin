@@ -514,6 +514,7 @@ class SpringSearchService(private val project: Project) {
 
         val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
         return this.asSequence().filter {
+            it.returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
             it.returnType == sourcePsiType
                     || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
                     || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
