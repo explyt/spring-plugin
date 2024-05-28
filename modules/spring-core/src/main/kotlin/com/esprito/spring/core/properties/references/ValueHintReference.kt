@@ -62,7 +62,7 @@ class ValueHintReference(
 
     private fun getSpringBeanReference(module: Module, propertyValue: String): List<PsiElement> {
         val springSearchService = SpringSearchService.getInstance(element.project)
-        return springSearchService.findActiveBeanDeclarations(module, propertyValue)
+        return springSearchService.findActiveBeanDeclarations(module, propertyValue, element.language)
     }
 
     private fun getClassReference(module: Module, propertyValue: String): List<PsiElement> {

@@ -196,7 +196,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     return false
                 }
                 val allBeansClassesWithAncestors = getAllBeansClassesWithAncestors(module)
-                if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors)) {
+                if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors, psiVariable.language)) {
                     return true
                 }
                 val componentBeanPsiMethods = getComponentBeanPsiMethods(module)
@@ -261,7 +261,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 if (arrayBeans.isNotEmpty()) return arrayBeans
             }
             return springSearchService.findActiveBeanDeclarations(
-                module, beanName, beanPsiType, qualifierAnnotation
+                module, beanName, uField.language, beanPsiType, qualifierAnnotation
             )
         }
 
@@ -345,7 +345,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                                 && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
-                    .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses) }
+                    .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses, it.language) }
                     .map { it.navigationElement.toUElement() as? UVariable }
                     .filterNotNull().toSet())
             }
@@ -355,7 +355,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val beanName = it.name ?: return@filter true
                 val beanPsiType = it.type
                 val resolvedBeanTargets = springSearchService.findActiveBeanDeclarations(
-                    module, beanName, beanPsiType, it.getQualifierAnnotation()
+                    module, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
                 )
                 return@filter uParent.javaPsi in resolvedBeanTargets
             }
@@ -371,10 +371,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (targetType != null && field.type.isAssignableFrom(targetType)) return true
 
             if (targetType is PsiArrayType) {
-                return getPsiType(field)?.isAssignableFrom(targetType) == true
+                return if (field.language == KotlinLanguage.INSTANCE) getPsiType(field) == targetType
+                else getPsiType(field)?.isAssignableFrom(targetType) == true
             }
 
-            val isResolved = field.type.canResolveBeanClass(targetClasses)
+            val isResolved = field.type.canResolveBeanClass(targetClasses, field.language)
             if (!isResolved) return false
             if (targetType == null) return true
 

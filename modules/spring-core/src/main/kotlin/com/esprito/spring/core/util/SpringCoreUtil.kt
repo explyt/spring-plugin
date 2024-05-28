@@ -1,6 +1,7 @@
 package com.esprito.spring.core.util
 
 import com.esprito.base.LibraryClassCache
+import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
@@ -29,6 +30,7 @@ import com.esprito.util.runReadNonBlocking
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.json.psi.JsonFile
+import com.intellij.lang.Language
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -40,6 +42,7 @@ import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.PsiUtil
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.toUElement
 import java.util.*
@@ -222,6 +225,36 @@ object SpringCoreUtil {
             return this
         }
 
+    val PsiType.beanPsiTypeKotlin: PsiType?
+        get() {
+            if (isCollection && isInterface && this is PsiClassType) {
+                val parameterType = parameters.firstOrNull()
+                if (parameterType != null && parameterType is PsiWildcardType) {
+                    if (parameterType.isExtends) {
+                        val extendsBound = parameterType.extendsBound
+                        if (extendsBound.isMap
+                            || extendsBound.isCollection
+                            || extendsBound.resolvedPsiClass?.qualifiedName != JavaCoreClasses.OBJECT
+                        ) {
+                            return extendsBound
+                        }
+                    }
+                    if (parameterType.isSuper) {
+                        val superBound = parameterType.superBound
+                        if (superBound.isMap
+                            || superBound.isCollection
+                            || superBound.resolvedPsiClass?.qualifiedName != JavaCoreClasses.OBJECT
+                        ) {
+                            return superBound
+                        }
+                    }
+                    return this
+                }
+                return parameters.firstOrNull() ?: this
+            }
+            return this.beanPsiType
+        }
+
     fun PsiType.isMapWithStringKey(): Boolean {
         return isMap
                 && isInterface
@@ -233,15 +266,15 @@ object SpringCoreUtil {
     fun PsiClass?.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean =
         this != null && targetClasses.any { it == this }
 
-    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean {
-        val beanPsiType = beanPsiType
-        return when (beanPsiType) {
-            is PsiClassType -> beanPsiType.resolvedPsiClass.canResolveBeanClass(targetClasses)
+    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>, language: Language): Boolean {
+        val psiType = if (language == KotlinLanguage.INSTANCE) beanPsiTypeKotlin else beanPsiType
+        return when (psiType) {
+            is PsiClassType -> psiType.resolvedPsiClass.canResolveBeanClass(targetClasses)
             is PsiWildcardType -> {
-                if (!beanPsiType.isBounded) {
+                if (!psiType.isBounded) {
                     return true
                 }
-                targetClasses.any { it.matchesWildcardType(beanPsiType) }
+                targetClasses.any { it.matchesWildcardType(psiType) }
             }
             else -> false
         }

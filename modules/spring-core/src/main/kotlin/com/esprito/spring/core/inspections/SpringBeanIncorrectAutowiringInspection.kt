@@ -145,7 +145,13 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         val springSearchService = SpringSearchService.getInstance(module.project)
         val beanDeclarations = springSearchService
-            .findActiveBeanDeclarations(module, element.name ?: "", psiType, element.getQualifierAnnotation())
+            .findActiveBeanDeclarations(
+                module,
+                element.name ?: "",
+                element.getLanguage(),
+                psiType,
+                element.getQualifierAnnotation()
+            )
 
         if (psiType.isOptional || element.isAutowiredByRequiredTrue() == false) {
             if (beanDeclarations.size > 1) {
@@ -212,7 +218,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         val qualifier = element.getQualifierAnnotation() ?: return ProblemDescriptor.EMPTY_ARRAY
         val beanDeclarations = SpringSearchService.getInstance(module.project)
-            .findActiveBeanDeclarations(module, element.name ?: "", element.type, qualifier)
+            .findActiveBeanDeclarations(module, element.name ?: "", element.language, element.type, qualifier)
 
         if (beanDeclarations.isNotEmpty()) {
             return ProblemDescriptor.EMPTY_ARRAY

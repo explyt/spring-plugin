@@ -56,7 +56,7 @@ class GetBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getBeans(psiElement: PsiElement, name: String, requiredType: PsiType?): Collection<PsiElement> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return emptyList()
         return SpringSearchService.getInstance(psiElement.project)
-            .findActiveBeanDeclarations(module, name, requiredType)
+            .findActiveBeanDeclarations(module, name, psiElement.language, requiredType)
     }
 
 }

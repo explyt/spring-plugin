@@ -11,6 +11,7 @@ import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
+import com.esprito.spring.core.util.SpringCoreUtil.beanPsiTypeKotlin
 import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.isBounded
@@ -37,6 +38,7 @@ import com.esprito.util.EspritoPsiUtil.returnPsiType
 import com.esprito.util.ModuleUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
+import com.intellij.lang.Language
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -54,6 +56,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
 import com.intellij.uast.UastModificationTracker
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
@@ -410,15 +413,17 @@ class SpringSearchService(private val project: Project) {
         module: Module,
         byBeanName: String,
         sourcePsiType: PsiType?,
-        qualifier: PsiAnnotation?
+        qualifier: PsiAnnotation?,
+        language: Language,
     ): List<PsiMember> {
-        val beanPsiType = sourcePsiType?.beanPsiType
+        val beanPsiType = if (language == KotlinLanguage.INSTANCE)
+            sourcePsiType?.beanPsiTypeKotlin else sourcePsiType?.beanPsiType
         val beanPsiClass = sourcePsiType?.resolveBeanPsiClass
         var isMultipleBean = sourcePsiType?.possibleMultipleBean() ?: false
         val methodsPsiBeans = getComponentBeanPsiMethods(module)
         val beanNameFromQualifier = qualifier?.resolveBeanName()
 
-        val resultByType: List<PsiMember> = if (beanPsiType != null) {
+        val resultByType: List<PsiMember> = if (sourcePsiType != null && beanPsiType != null) {
             val byExactMatch = methodsPsiBeans.filterByExactMatch(sourcePsiType).toSet()
             var byTypeBeanMethods = byExactMatch
             if (isMultipleBean || byExactMatch.isEmpty()) {
@@ -488,10 +493,11 @@ class SpringSearchService(private val project: Project) {
     fun findActiveBeanDeclarations(
         module: Module,
         byBeanName: String,
+        language: Language,
         byBeanPsiType: PsiType? = null,
         qualifier: PsiAnnotation? = null
     ): List<PsiMember> = runReadAction {
-        val beanDeclarations = findBeanDeclarations(module, byBeanName, byBeanPsiType, qualifier)
+        val beanDeclarations = findBeanDeclarations(module, byBeanName, byBeanPsiType, qualifier, language)
         val excludedElements = getExcludedBeansClasses(module).map { it.psiMember }.toSet()
 
         beanDeclarations - excludedElements
