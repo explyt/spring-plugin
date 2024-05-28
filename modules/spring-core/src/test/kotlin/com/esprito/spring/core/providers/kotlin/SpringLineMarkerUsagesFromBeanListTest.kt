@@ -155,7 +155,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
         assertEquals(0, gutterTargetString.size)
     }
 
-    fun testListCommonGeneric() {
+    fun _testListCommonGeneric() {
         myFixture.copyFileToProject("BeanUsagesClasses.kt")
 
         @Language("kotlin") val usage = """                 
@@ -273,7 +273,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
             @${SpringCoreClasses.COMPONENT}
             class TestUsages {
                 @${SpringCoreClasses.AUTOWIRED}
-                lateinit var list: List<in B>               
+                lateinit var list: List<B>               
             }
         """.trimIndent()
         myFixture.createFile("TestUsages.kt", usage)

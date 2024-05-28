@@ -18,7 +18,7 @@ class EspritoBeanReference(
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val springSearchService = SpringSearchService.getInstance(element.project)
-        val foundBeanDeclarations = springSearchService.findActiveBeanDeclarations(module, beanName)
+        val foundBeanDeclarations = springSearchService.findActiveBeanDeclarations(module, beanName, element.language)
         return foundBeanDeclarations.map { PsiElementResolveResult(it) }.toTypedArray()
     }
 
