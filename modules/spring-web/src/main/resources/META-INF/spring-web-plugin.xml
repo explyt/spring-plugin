@@ -12,6 +12,10 @@
 
         <implicitUsageProvider implementation="com.esprito.spring.web.providers.SpringWebImplicitUsageProvider"/>
 
+        <completion.contributor language="UAST"
+                                order="first"
+                                implementationClass="com.esprito.spring.web.references.contributors.WebClientMethodCompletionContributor"/>
+
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
                          groupBundle="messages.SpringWebBundle"
