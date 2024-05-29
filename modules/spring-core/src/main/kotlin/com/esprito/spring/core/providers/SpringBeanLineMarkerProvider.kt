@@ -12,6 +12,7 @@ import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.isComponentCandidate
 import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
+import com.esprito.util.EspritoPsiUtil.allSupers
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -316,7 +317,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             val isArrayType = uParent is UMethod && uParent.returnType is PsiArrayType
             val targetClass = findTargetClass(isArrayType) ?: return emptyList()
-            val targetClasses = targetClass.supers.toSet() + targetClass
+            val targetClasses = targetClass.allSupers()
             val targetType = findTargetType()
 
             val allAutowiredAnnotations = springSearchService.getAutowiredFieldAnnotations(module)
