@@ -1,7 +1,6 @@
 package com.esprito.spring.core.util
 
 import com.esprito.base.LibraryClassCache
-import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
@@ -21,6 +20,7 @@ import com.esprito.util.EspritoPsiUtil.isMap
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isNonPrivate
+import com.esprito.util.EspritoPsiUtil.isObject
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.isString
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
@@ -31,6 +31,7 @@ import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.json.psi.JsonFile
 import com.intellij.lang.Language
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -234,7 +235,7 @@ object SpringCoreUtil {
                         val extendsBound = parameterType.extendsBound
                         if (extendsBound.isMap
                             || extendsBound.isCollection
-                            || extendsBound.resolvedPsiClass?.qualifiedName != JavaCoreClasses.OBJECT
+                            || !extendsBound.isObject
                         ) {
                             return extendsBound
                         }
@@ -243,7 +244,7 @@ object SpringCoreUtil {
                         val superBound = parameterType.superBound
                         if (superBound.isMap
                             || superBound.isCollection
-                            || superBound.resolvedPsiClass?.qualifiedName != JavaCoreClasses.OBJECT
+                            || !superBound.isObject
                         ) {
                             return superBound
                         }
@@ -252,15 +253,22 @@ object SpringCoreUtil {
                 }
                 return parameters.firstOrNull() ?: this
             }
+            if (isMap) {
+                return if (isMapWithStringKey(KotlinLanguage.INSTANCE) && this is PsiClassType)
+                    parameters[1]
+                else this
+            }
             return this.beanPsiType
         }
 
-    fun PsiType.isMapWithStringKey(): Boolean {
+    fun PsiType.isMapWithStringKey(language: Language = JavaLanguage.INSTANCE): Boolean {
         return isMap
                 && isInterface
                 && this is PsiClassType
                 && parameterCount == 2
                 && parameters[0].isString
+                && (language == JavaLanguage.INSTANCE
+                || (language == KotlinLanguage.INSTANCE && !parameters[1].isObject))
     }
 
     fun PsiClass?.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean =
@@ -361,10 +369,19 @@ object SpringCoreUtil {
         if (this == beanPsiType) {
             return true
         }
+        if (this is PsiArrayType && this.isEqualOrInheritor(beanPsiType) && beanPsiType.isObject) {
+            return true
+        }
         if (this !is PsiClassType) {
             return false
         }
         if (beanPsiType is PsiClassType) {
+            if (beanPsiType.isCollection) {
+                val parameter = beanPsiType.parameters.firstOrNull()
+                if (parameter != null && parameter is PsiClassType && this.isObject) {
+                    return parameter.isEqualOrInheritor(this)
+                }
+            }
             return this.isEqualOrInheritor(beanPsiType)
                     && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType))
         }
