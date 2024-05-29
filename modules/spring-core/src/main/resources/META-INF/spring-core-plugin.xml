@@ -472,6 +472,17 @@
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringScheduledInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringKotlinInternalBeanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.kotlin.internal"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
+
 
         <postStartupActivity
                 implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
