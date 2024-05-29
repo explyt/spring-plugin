@@ -19,6 +19,7 @@
 
 ### Spring Web/MVC
 
+- Inspection: `WebController` `bodyToMono/Flux` methods autocompletion
 - Inspection: `WebController/WebTestController` uri parameters count
 - Add Navigation from `WebClient/WebTestClient` to Controller endpoints
 

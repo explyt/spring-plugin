@@ -93,6 +93,8 @@ object SpringCoreClasses {
     const val CONVERSION_SERVICE = "org.springframework.core.convert.ConversionService"
     const val APPLICATION_ARGUMENTS = "org.springframework.boot.ApplicationArguments"
 
+    const val PARAMETERIZED_TYPE_REFERENCE = "org.springframework.core.ParameterizedTypeReference"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
