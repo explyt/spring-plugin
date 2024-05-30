@@ -450,6 +450,110 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest { typeBackspaces(2) }
     }
 
+    fun testJavaCommentField() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+                import org.springframework.stereotype.Component;
+                import org.springframework.beans.factory.annotation.Autowired;
+
+                @Configuration
+                public class MyConfiguration {
+                       @Bean public E getE() {return new E();}   
+                }                
+                class E {}
+                
+                @Component
+                class JavaComponent {
+                    <caret>@Autowired E service;                       
+                }
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testJavaUncommentField() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+                import org.springframework.stereotype.Component;
+                import org.springframework.beans.factory.annotation.Autowired;
+
+                @Configuration
+                public class MyConfiguration {
+                       @Bean public E getE() {return new E();}   
+                }                
+                class E {}
+                
+                @Component
+                class JavaComponent {
+                    //<caret>@Autowired E service;                       
+                }
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
+    fun testJavaCommentFieldConstructor() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+                import org.springframework.stereotype.Component;
+                import org.springframework.beans.factory.annotation.Autowired;
+
+                @Configuration
+                public class MyConfiguration {
+                       @Bean public E getE() {return new E();}   
+                }                
+                class E {}
+                
+                @Component
+                class JavaComponent {
+                   public JavaComponent(
+                    <caret>E service
+                   ) {}                                           
+                }
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testJavaUncommentFieldConstructor() {
+        myFixture.configureByText(
+            "MyConfiguration.java",
+            """
+                import org.springframework.context.annotation.Bean;
+                import org.springframework.context.annotation.Configuration;
+                import org.springframework.stereotype.Component;
+                import org.springframework.beans.factory.annotation.Autowired;
+
+                @Configuration
+                public class MyConfiguration {
+                       @Bean public E getE() {return new E();}   
+                }                
+                class E {}
+                
+                @Component
+                class JavaComponent {
+                   public JavaComponent(
+                    //<caret>E service
+                   ) {}                                           
+                }
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
     private fun runModificationTriggeredTest() {
         runModificationTriggeredTest { myFixture.type('A') }
     }
