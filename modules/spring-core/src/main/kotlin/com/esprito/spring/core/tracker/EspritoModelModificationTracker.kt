@@ -17,6 +17,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtFunction
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.*
 import org.jetbrains.uast.util.ClassSet
 import org.jetbrains.uast.util.isInstanceOf
@@ -97,8 +98,8 @@ internal class MyUastPsiTreeChangeAdapter(
         }
 
         val eventType = (event as? PsiTreeChangeEventImpl)?.code
-        //added or removed class or method
-        if (eventType != null && beforeChildAddRemoveSet.contains(eventType) && isClassOrMethod(child)) {
+        //added or removed class or method or field
+        if (eventType != null && beforeChildAddRemoveSet.contains(eventType) && isClassOrMethodOrField(child)) {
             modelTracker.incModificationCount()
             return
         }
@@ -123,6 +124,7 @@ internal class MyUastPsiTreeChangeAdapter(
             || isRelevantAnnotation(newChild, possiblePsiTypes) // added   annotation
             || getFirstParentIsRelevantAnnotation(parent, possiblePsiTypes) != null // change in  annotation
         ) {
+            //tracker for root package search
             modelTracker.incModificationCount()
             annotationTracker.incModificationCount()
             return
@@ -134,7 +136,7 @@ internal class MyUastPsiTreeChangeAdapter(
                     || methodRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || fieldRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || parameterRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
-                    || parameterStartInput(grandParent, event.newChild, possiblePsiTypes)
+                    || parameterAddedOrRemove(grandParent, event.newChild, event.oldChild, possiblePsiTypes)
                     || changedReturnStatement(newChild, parent, grandParent, possiblePsiTypes))
             || child is LazyParseablePsiElement
         ) {
@@ -180,11 +182,17 @@ internal class MyUastPsiTreeChangeAdapter(
                 && oldChild.isInstanceOf(possiblePsiTypes.forIdentifier)
     }
 
-    private fun parameterStartInput(
-        grandParent: PsiElement?, newChild: PsiElement?, possiblePsiTypes: UastPsiPossibleTypes
+    private fun parameterAddedOrRemove(
+        grandParent: PsiElement?,
+        newChild: PsiElement?,
+        oldChild: PsiElement?,
+        possiblePsiTypes: UastPsiPossibleTypes
     ): Boolean {
         return grandParent.isInstanceOf(possiblePsiTypes.forMethods)
-                && newChild.isInstanceOf(possiblePsiTypes.forParameters)
+                && (
+                newChild.isInstanceOf(possiblePsiTypes.forParameters)
+                        || oldChild.isInstanceOf(possiblePsiTypes.forParameters)
+                )
     }
 
     private fun innerClassChanged(
@@ -236,19 +244,16 @@ internal class MyUastPsiTreeChangeAdapter(
         return possibleTypesCachedValue.value
     }
 
-    private fun isClassOrMethod(child: PsiElement?) =
-        child is PsiClass || child is PsiMethod || child is KtFunction
-
-    private fun psiEventOfTypeBeforeChildAddOrRemove(event: PsiTreeChangeEvent): Boolean {
-        val eventType = (event as? PsiTreeChangeEventImpl)?.code ?: return false
-        return beforeChildAddRemoveSet.contains(eventType)
+    private fun isClassOrMethodOrField(child: PsiElement?): Boolean {
+        return child is PsiClass || child is PsiMethod || child is KtFunction
+                || child is PsiField || child is KtProperty
     }
 
     private fun isClassOrMethodCommented(event: PsiTreeChangeEvent): Boolean {
         val newChild = event.newChild ?: return false
         val oldChild = event.oldChild ?: return false
-        return (newChild is PsiComment && isClassOrMethod(oldChild))
-                || (oldChild is PsiComment && isClassOrMethod(newChild))
+        return (newChild is PsiComment && isClassOrMethodOrField(oldChild))
+                || (oldChild is PsiComment && isClassOrMethodOrField(newChild))
     }
 }
 
