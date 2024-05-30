@@ -34,7 +34,7 @@ class EspritoPropertyReference(
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val allProperties = DefinedConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
         return allProperties
-            .map() { property ->
+            .map { property ->
                 val psiElement = property.psiElement
                 LookupElementBuilder.create(property.key)
                     .withIcon(AllIcons.Nodes.Property)

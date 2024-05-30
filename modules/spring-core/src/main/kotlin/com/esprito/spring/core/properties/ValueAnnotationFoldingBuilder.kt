@@ -11,43 +11,57 @@ import com.intellij.openapi.editor.FoldingGroup
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.psi.JavaRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiLiteralExpression
+import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.psi.util.PsiLiteralUtil
+import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.ULiteralExpression
+import org.jetbrains.uast.UPolyadicExpression
+import org.jetbrains.uast.toUElement
 
 
 class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
 
     override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> {
         val module = ModuleUtilCore.findModuleForPsiElement(root) ?: return emptyArray()
-
-        val group = FoldingGroup.newGroup("PropertyValue")
         val descriptors = mutableListOf<FoldingDescriptor>()
 
-        root.accept(object : JavaRecursiveElementWalkingVisitor() {
-            override fun visitLiteralExpression(literalExpression: PsiLiteralExpression) {
-                super.visitLiteralExpression(literalExpression)
-
-                val value = PsiLiteralUtil.getStringLiteralContent(literalExpression) ?: return
-                val matchResult = PropertyUtil.VALUE_REGEX.matchEntire(value) ?: return
-
-                val (key, defaultValue) = matchResult.destructured
-                val propertyInfo = getPropertyInfo(module, key)
-
-                if (propertyInfo != null || defaultValue.isNotEmpty()) {
-                    descriptors.add(
-                        FoldingDescriptor(
-                            literalExpression.node,
-                            literalExpression.textRange,
-                            group, setOfNotNull(propertyInfo?.psiElement)
-                        )
-                    )
+        root.accept(object : PsiRecursiveElementVisitor() {
+            override fun visitElement(element: PsiElement) {
+                val uElement = element.toUElement()
+                if (uElement is UExpression) {
+                    processUElement(uElement, module, descriptors)
                 }
+                super.visitElement(element)
             }
         })
-
         return descriptors.toTypedArray()
+    }
+
+    private fun processUElement(
+        uElement: UExpression, module: Module, descriptors: MutableList<FoldingDescriptor>
+    ) {
+        if (uElement is UPolyadicExpression || uElement is ULiteralExpression) {
+            val value = uElement.evaluate() as? String ?: return
+            val element = uElement.sourcePsi ?: return
+            val matchResult = PropertyUtil.VALUE_REGEX.matchEntire(value) ?: return
+
+            val (key, defaultValue) = matchResult.destructured
+            val propertyInfo = getPropertyInfo(module, key)
+
+
+            if (propertyInfo != null || defaultValue.isNotEmpty()) {
+                val placeholder = propertyInfo?.value ?: defaultValue
+                descriptors.add(
+                    FoldingDescriptor(
+                        element.node,
+                        element.textRange,
+                        group, placeholder
+                    )
+                )
+            }
+        }
     }
 
     override fun getPlaceholderText(node: ASTNode): String? {
@@ -75,4 +89,7 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
 
+    companion object {
+        val group = FoldingGroup.newGroup("PropertyValue")
+    }
 }
