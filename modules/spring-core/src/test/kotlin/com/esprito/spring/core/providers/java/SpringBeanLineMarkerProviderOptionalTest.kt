@@ -177,7 +177,7 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoJavaLightTestCase() {
         }.size, 0)
     }
 
-    fun _testLineMarkerOptional_toBean_D_dParameter() {
+    fun testLineMarkerOptional_toBean_D_dParameter() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooOptional {
@@ -300,7 +300,7 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoJavaLightTestCase() {
         }.size, 2)
     }
 
-    fun _testLineMarkerOptional_toBean_optionalI() {
+    fun testLineMarkerOptional_toBean_optionalI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooOptional {
@@ -316,7 +316,6 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3 bean
         assertEquals(gutterTargetString.flatten().size, 2)
     }
 
@@ -343,7 +342,7 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoJavaLightTestCase() {
         }.size, 2)
     }
 
-    fun _testLineMarkerOptional_toBean_optionalListI() {
+    fun testLineMarkerOptional_toBean_optionalListI() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooOptional {
@@ -359,7 +358,6 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3 bean
         assertEquals(gutterTargetString.flatten().size, 2)
     }
 
@@ -429,7 +427,7 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoJavaLightTestCase() {
         }.size, 2)
     }
 
-    fun _testLineMarkerOptional_toBean_optionalMapStringI() {
+    fun testLineMarkerOptional_toBean_optionalMapStringI() {
         val fooOptional = """
                 import java.util.Map;
                 import java.util.Optional;
@@ -448,7 +446,6 @@ class SpringBeanLineMarkerProviderOptionalTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3 bean
         assertEquals(gutterTargetString.flatten().size, 2)
     }
 

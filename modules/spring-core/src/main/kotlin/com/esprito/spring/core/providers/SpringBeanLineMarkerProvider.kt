@@ -256,14 +256,18 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val beanName = uField.name ?: return emptyList()
             val qualifierAnnotation = uField.getQualifierAnnotation()
 
+            val activeBean = springSearchService.findActiveBeanDeclarations(
+                module, beanName, uField.language, beanPsiType, qualifierAnnotation
+            )
+            if (activeBean.isNotEmpty()) {
+                return activeBean
+            }
             val arrayType = beanPsiType.getArrayType()
             if (arrayType != null) {
                 val arrayBeans = getArrayBeans(arrayType)
                 if (arrayBeans.isNotEmpty()) return arrayBeans
             }
-            return springSearchService.findActiveBeanDeclarations(
-                module, beanName, uField.language, beanPsiType, qualifierAnnotation
-            )
+            return emptyList()
         }
 
         private fun getArrayBeans(arrayPsiType: PsiArrayType): List<PsiMember> {
