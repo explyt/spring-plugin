@@ -96,7 +96,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        assertEquals(gutterTargetString.flatten().size, 3)
+        assertEquals(gutterTargetString.flatten().size, 2)
     }
 
     fun testLineMarkerCollection_toAutowired_listI() {
@@ -138,7 +138,6 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3 bean
         assertEquals(gutterTargetString.flatten().size, 2)
     }
 
@@ -165,7 +164,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         }.size, 2)
     }
 
-    fun _testLineMarkerCollection_toBean_setI() {
+    fun testLineMarkerCollection_toBean_setI() {
         val fooCollection = """
                 @org.springframework.stereotype.Component
                 class FooCollection {
@@ -181,7 +180,6 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3 bean
         assertEquals(gutterTargetString.flatten().size, 2)
     }
 

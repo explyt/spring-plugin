@@ -12,7 +12,6 @@ import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiTypeKotlin
-import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.isBounded
 import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
@@ -532,8 +531,10 @@ class SpringSearchService(private val project: Project) {
         val inheritedPsiMethods = this.asSequence().filter {
             it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
         }
-        val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
-        return inheritedPsiMethods + filterByInheritedTypes
+        // This function added a candidate to the beans, where returned other type.
+        // Example: @Bean E dBean() { return new D(); }
+        // val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
+        return inheritedPsiMethods // + filterByInheritedTypes
     }
 
     fun getBeansPsiMethodsCheckMultipleBean(

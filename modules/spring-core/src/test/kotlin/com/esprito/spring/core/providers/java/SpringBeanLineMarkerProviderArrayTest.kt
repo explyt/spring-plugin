@@ -55,7 +55,7 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatten().size, 1)
     }
 
-    fun _testLineMarkerOptional_toAutowired_arrayE() {
+    fun testLineMarkerOptional_toAutowired_arrayE() {
         myFixture.configureByText(
             "FooArray.java",
             """
@@ -73,13 +73,12 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 6 beans
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "arrayE" }
-        }.size, 4)
+        }.size, 6)
     }
 
-    fun _testLineMarkerOptional_toBean_arrayE() {
+    fun testLineMarkerOptional_toBean_arrayE() {
         val fooOptional = """
                 @org.springframework.stereotype.Component
                 class FooArray {
@@ -96,7 +95,6 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 2 beans
         assertEquals(gutterTargetString.flatten().size, 4)
     }
 
@@ -184,7 +182,7 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
         assertTrue(allBeanGutters.isEmpty())
     }
 
-    fun _testLineMarkerOptional_toAutowired_arrayI() {
+    fun testLineMarkerOptional_toAutowired_arrayI() {
         myFixture.configureByText(
             "FooArray.java",
             """
@@ -202,10 +200,9 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 4 beans
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "arrayI" }
-        }.size, 2)
+        }.size, 4)
     }
 
     fun testLineMarkerOptional_toBean_arrayI() {
@@ -271,14 +268,14 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatten().size, 1)
     }
 
-    fun _testLineMarkerOptional_toAutowired_list_beanArrayC() {
+    fun testLineMarkerOptional_toAutowired_list_beanArrayC() {
         myFixture.configureByText(
             "FooArray.java",
             """
                 @org.springframework.stereotype.Component
                 class FooArray {
                     @org.springframework.beans.factory.annotation.Autowired
-                    List<C[]> arrayC;
+                    java.util.List<C[]> arrayC;
                 }
             """.trimIndent()
         )
@@ -289,7 +286,6 @@ class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 1 beans
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "arrayC" }
         }.size, 1)
