@@ -1,4 +1,4 @@
-package com.esprito.spring.core.profile
+package com.esprito.spring.core.hint
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties.VALUE

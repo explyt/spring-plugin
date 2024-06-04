@@ -585,7 +585,7 @@
         <codeInsight.declarativeInlayProvider
                 bundle="messages.SpringCoreBundle"
                 group="ANNOTATIONS_GROUP"
-                implementationClass="com.esprito.spring.core.profile.ProfileAnnotationHintsProvider"
+                implementationClass="com.esprito.spring.core.hint.ProfileAnnotationHintsProvider"
                 isEnabledByDefault="true"
                 language="UAST"
                 nameKey="esprito.editor.hints.annotation_profile"

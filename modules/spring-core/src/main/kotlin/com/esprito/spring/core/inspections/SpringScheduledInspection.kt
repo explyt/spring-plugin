@@ -1,5 +1,8 @@
 package com.esprito.spring.core.inspections
 
+import com.cronutils.model.CronType
+import com.cronutils.model.definition.CronDefinitionBuilder
+import com.cronutils.parser.CronParser
 import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle.message
 import com.esprito.spring.core.SpringCoreClasses
@@ -9,9 +12,13 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType.WARNING
 import com.intellij.codeInspection.ProblemsHolder
 import org.jetbrains.uast.*
-import org.springframework.scheduling.support.CronExpression
 import java.time.Duration
 
+val CRON_PARSER = CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.SPRING53))
+
+/**
+ * Original spring code in org.springframework.scheduling.support.CronExpression.
+ */
 class SpringScheduledInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
@@ -87,12 +94,14 @@ class SpringScheduledInspection : SpringBaseUastLocalInspectionTool() {
     private fun checkCronValue(annotation: UAnnotation, problems: ProblemsHolder) {
         val uExpression = annotation.findAttributeValue(CRON_PARAM) ?: return
         val value = uExpression.getPropertyValue() ?: return
+        val psiElement = uExpression.sourcePsi ?: return
         try {
-            CronExpression.parse(value)
+            CRON_PARSER.parse(value)
         } catch (e: Exception) {
             val errorString = e.message ?: return
-            val psiElement = uExpression.sourcePsi ?: return
-            problems.registerProblem(psiElement, errorString, WARNING)
+            val finalMessage = errorString + System.lineSeparator() +
+                    message("esprito.spring.inspection.scheduled.cron.hint")
+            problems.registerProblem(psiElement, finalMessage)
         }
     }
 
@@ -137,15 +146,13 @@ class SpringScheduledInspection : SpringBaseUastLocalInspectionTool() {
         return (ch == 'P' || ch == 'p')
     }
 
-
     companion object {
-        private const val CRON_PARAM = "cron"
-        private const val INITIAL_DELAY = "initialDelay"
-        private const val INITIAL_DELAY_STRING = "initialDelayString"
-        private const val FIXED_DELAY_STRING = "fixedDelayString"
-        private const val FIXED_RATE_STRING = "fixedRateString"
-        private const val FIXED_DELAY = "fixedDelay"
-        private const val FIXED_RATE = "fixedRate"
-
+        const val CRON_PARAM = "cron"
+        const val INITIAL_DELAY = "initialDelay"
+        const val INITIAL_DELAY_STRING = "initialDelayString"
+        const val FIXED_DELAY_STRING = "fixedDelayString"
+        const val FIXED_RATE_STRING = "fixedRateString"
+        const val FIXED_DELAY = "fixedDelay"
+        const val FIXED_RATE = "fixedRate"
     }
 }

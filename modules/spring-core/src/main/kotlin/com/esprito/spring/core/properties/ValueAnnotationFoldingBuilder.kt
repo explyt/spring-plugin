@@ -1,7 +1,10 @@
 package com.esprito.spring.core.properties
 
+import com.cronutils.descriptor.CronDescriptor
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.esprito.spring.core.completion.properties.DefinedConfigurationProperty
+import com.esprito.spring.core.inspections.CRON_PARSER
+import com.esprito.spring.core.inspections.SpringScheduledInspection
 import com.esprito.spring.core.util.PropertyUtil
 import com.intellij.lang.ASTNode
 import com.intellij.lang.folding.FoldingBuilderEx
@@ -15,11 +18,11 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.psi.util.PsiLiteralUtil
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.ULiteralExpression
-import org.jetbrains.uast.UPolyadicExpression
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
+import java.util.*
 
+
+val CRON_DESCRIPTOR: CronDescriptor = CronDescriptor.instance(Locale.UK)
 
 class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
 
@@ -45,22 +48,47 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
         if (uElement is UPolyadicExpression || uElement is ULiteralExpression) {
             val value = uElement.evaluate() as? String ?: return
             val element = uElement.sourcePsi ?: return
-            val matchResult = PropertyUtil.VALUE_REGEX.matchEntire(value) ?: return
+            val matchResult = PropertyUtil.VALUE_REGEX.matchEntire(value)
+            if (matchResult == null) {
+                val uastParent = uElement.uastParent as? UNamedExpression ?: return
+                if (uastParent.name != SpringScheduledInspection.CRON_PARAM) return
+                val cronValue = uElement.evaluate() as? String ?: return
+                val placeholder = parseCron(cronValue, true) ?: return
+                descriptors.add(
+                    FoldingDescriptor(element.node, element.textRange, group, placeholder)
+                )
+                return
+            }
 
             val (key, defaultValue) = matchResult.destructured
             val propertyInfo = getPropertyInfo(module, key)
 
-
             if (propertyInfo != null || defaultValue.isNotEmpty()) {
-                val placeholder = propertyInfo?.value ?: defaultValue
+                val placeholder = getPlaceholder(uElement, propertyInfo, defaultValue) ?: return
                 descriptors.add(
-                    FoldingDescriptor(
-                        element.node,
-                        element.textRange,
-                        group, placeholder
-                    )
+                    FoldingDescriptor(element.node, element.textRange, group, placeholder)
                 )
             }
+        }
+    }
+
+    private fun getPlaceholder(
+        uElement: UExpression, propertyInfo: DefinedConfigurationProperty?, defaultValue: String
+    ): String? {
+        val placeholder = propertyInfo?.value ?: defaultValue
+        val uastParent = uElement.uastParent
+        if (uastParent is UNamedExpression && uastParent.name == SpringScheduledInspection.CRON_PARAM) {
+            return parseCron(placeholder)
+        }
+        return placeholder
+    }
+
+    private fun parseCron(placeholder: String, returnNullOnError: Boolean = false): String? {
+        return try {
+            val description = CRON_DESCRIPTOR.describe(CRON_PARSER.parse(placeholder))
+            "$placeholder :$description"
+        } catch (e: Exception) {
+            if (returnNullOnError) null else placeholder
         }
     }
 
@@ -89,7 +117,6 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
 
-    companion object {
-        val group = FoldingGroup.newGroup("PropertyValue")
-    }
 }
+
+val group: FoldingGroup = FoldingGroup.newGroup("PropertyValue")

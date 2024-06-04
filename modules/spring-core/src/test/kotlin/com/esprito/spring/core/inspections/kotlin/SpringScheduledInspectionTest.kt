@@ -170,4 +170,19 @@ class SpringScheduledInspectionTest : EspritoInspectionKotlinTestCase() {
         )
         myFixture.testHighlighting("SpringBean.kt")
     }
+
+    fun testValueDefault() {
+        val propertyString = "\\\${test.property: 10}"
+        myFixture.configureByText(
+            "SpringBean.kt",
+            """
+            @${SpringCoreClasses.COMPONENT}     
+            class SpringBean {
+                @${SpringCoreClasses.SCHEDULED}(fixedRateString=<warning>"$propertyString"</warning>)
+                fun scheduledMethod() {}
+            }
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("SpringBean.kt")
+    }
 }
