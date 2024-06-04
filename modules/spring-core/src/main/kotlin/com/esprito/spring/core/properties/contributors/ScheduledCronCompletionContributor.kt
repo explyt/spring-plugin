@@ -6,7 +6,6 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.*
-import org.springframework.scheduling.support.CronExpression
 
 class ScheduledCronCompletionContributor : CompletionContributor() {
 
@@ -31,11 +30,11 @@ class ScheduledCronCompletionContributor : CompletionContributor() {
             val uNamedExpression = uExpression.getParentOfType<UNamedExpression>() ?: return
             if (uNamedExpression.name != "cron") return
 
-            CronExpression.MACROS.forEachIndexed { index, element ->
+            MACROS.forEachIndexed { index, element ->
                 if (index % 2 == 0) {
                     result.addElement(
                         LookupElementBuilder.create(element)
-                            .withPresentableText(element + " (${CronExpression.MACROS[index + 1]})")
+                            .withPresentableText(element + " (${MACROS[index + 1]})")
                     )
                 }
             }
@@ -58,5 +57,15 @@ class ScheduledCronCompletionContributor : CompletionContributor() {
                 Pair("0 * * * * *", message("esprito.spring.inspection.scheduled.cron.minute", "")),
                 Pair("0 */5 * * * *", message("esprito.spring.inspection.scheduled.cron.minute", "5 ")),
             )
+
+        private val MACROS: Array<String> = arrayOf(
+            "@yearly", "0 0 0 1 1 *",
+            "@annually", "0 0 0 1 1 *",
+            "@monthly", "0 0 0 1 * *",
+            "@weekly", "0 0 0 * * 0",
+            "@daily", "0 0 0 * * *",
+            "@midnight", "0 0 0 * * *",
+            "@hourly", "0 0 * * * *"
+        )
     }
 }

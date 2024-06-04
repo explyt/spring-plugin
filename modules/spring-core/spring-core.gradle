@@ -39,6 +39,7 @@ def baseProject = project(":base")
 
 dependencies {
     api(baseProject)
+    implementation("com.cronutils:cron-utils:9.2.0")
     testImplementation(project(":test-framework"))
 }
 

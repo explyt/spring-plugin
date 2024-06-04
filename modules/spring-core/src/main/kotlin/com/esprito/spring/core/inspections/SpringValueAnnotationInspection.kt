@@ -26,21 +26,44 @@ class SpringValueAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
+        val scheduledAnnotation = method.findAnnotation(SpringCoreClasses.SCHEDULED)
+        val scheduledProblems = processScheduled(scheduledAnnotation, manager, isOnTheFly)
+
         return method.uastParameters
             .mapNotNull { it.findAnnotation(SpringCoreClasses.VALUE) }
-            .mapNotNull { findProblemDescriptors(it, manager, isOnTheFly) }
-            .toTypedArray()
+            .mapNotNull { findProblemDescriptors(it, manager, isOnTheFly, SpringProperties.VALUE) }
+            .toTypedArray() + scheduledProblems
+    }
+
+    private fun processScheduled(
+        scheduledAnnotation: UAnnotation?, manager: InspectionManager, isOnTheFly: Boolean
+    ): List<ProblemDescriptor> {
+        if (scheduledAnnotation == null) return emptyList()
+        val result = mutableListOf<ProblemDescriptor>()
+        findProblemDescriptors(
+            scheduledAnnotation, manager, isOnTheFly, SpringScheduledInspection.CRON_PARAM
+        )?.let { result.add(it) }
+        findProblemDescriptors(
+            scheduledAnnotation, manager, isOnTheFly, SpringScheduledInspection.FIXED_RATE_STRING
+        )?.let { result.add(it) }
+        findProblemDescriptors(
+            scheduledAnnotation, manager, isOnTheFly, SpringScheduledInspection.FIXED_RATE_STRING
+        )?.let { result.add(it) }
+        findProblemDescriptors(
+            scheduledAnnotation, manager, isOnTheFly, SpringScheduledInspection.INITIAL_DELAY_STRING
+        )?.let { result.add(it) }
+        return result
     }
 
     override fun checkField(field: UField, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor> {
         val annotation = field.findAnnotation(SpringCoreClasses.VALUE) ?: return emptyArray()
-        return findProblemDescriptors(annotation, manager, isOnTheFly)?.let { arrayOf(it) } ?: emptyArray()
+        return findProblemDescriptors(annotation, manager, isOnTheFly, "value")?.let { arrayOf(it) } ?: emptyArray()
     }
 
     private fun findProblemDescriptors(
-        annotation: UAnnotation, manager: InspectionManager, isOnTheFly: Boolean
+        annotation: UAnnotation, manager: InspectionManager, isOnTheFly: Boolean, annoParameterName: String
     ): ProblemDescriptor? {
-        val attributeValue = annotation.findAttributeValue(SpringProperties.VALUE) ?: return null
+        val attributeValue = annotation.findAttributeValue(annoParameterName) ?: return null
         val sourcePsi = attributeValue.sourcePsi ?: return null
         val valueText = attributeValue.evaluateString() ?: return null
         if (valueText.isEmpty() || valueText.startsWith("\${") || valueText.startsWith("#{")) return null
