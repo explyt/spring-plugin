@@ -174,7 +174,8 @@ object EspritoPsiUtil {
                     }
                 }
             }
-            return this.resolvedPsiClass?.qualifiedName == java.lang.Object::class.java.canonicalName
+            return this.resolvedPsiClass == null
+                    || this.resolvedPsiClass?.qualifiedName == java.lang.Object::class.java.canonicalName
         }
 
     val PsiMember.returnPsiType: PsiType?

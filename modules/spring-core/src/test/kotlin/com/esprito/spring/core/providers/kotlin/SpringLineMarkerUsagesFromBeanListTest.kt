@@ -155,7 +155,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
         assertEquals(0, gutterTargetString.size)
     }
 
-    fun _testListCommonGeneric() {
+    fun testListCommonGeneric() {
         myFixture.copyFileToProject("BeanUsagesClasses.kt")
 
         @Language("kotlin") val usage = """                 
@@ -171,7 +171,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
             @${SpringCoreClasses.CONFIGURATION}
             class TestMarker {                               
                 @${SpringCoreClasses.BEAN}
-                fun b(): B { return B() }
+                open fun beanListI(): List<I> { return emptyList() }
             }
             """.trimIndent()
 
@@ -180,7 +180,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
 
         val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
-        assertEquals(2, gutterTargetString.size)
+        assertEquals(1, gutterTargetString.size)
         assertEquals(listOf("list"), gutterTargetString[0])
     }
 

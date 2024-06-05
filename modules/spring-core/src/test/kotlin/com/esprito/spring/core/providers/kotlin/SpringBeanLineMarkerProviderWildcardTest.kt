@@ -146,7 +146,7 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "dBean()" } }.size, 1)
     }
 
-    fun _testLineMarkerWildcard_toAutowired_setAllWildcardExtendsI() {
+    fun testLineMarkerWildcard_toAutowired_setAllWildcardExtendsI() {
         myFixture.configureByText(
             "FooWildcard.kt",
             """
@@ -164,10 +164,9 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "setAllWildcardExtendsI" }
-        }.size, 2)
+        }.size, 3)
     }
 
     fun testLineMarkerWildcard_toBean_setAllWildcardExtendsI() {
@@ -192,7 +191,7 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "bBean()" } }.size, 1)
     }
 
-    fun _testLineMarkerWildcard_toAutowired_mapWildcard() {
+    fun testLineMarkerWildcard_toAutowired_mapWildcard() {
         myFixture.configureByText(
             "FooWildcard.kt",
             """
@@ -241,7 +240,7 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "beanMapStringI()" } }.size, 1)
     }
 
-    fun _testLineMarkerWildcard_toAutowired_optionalMapWildcard() {
+    fun testLineMarkerWildcard_toAutowired_optionalMapWildcard() {
         myFixture.configureByText(
             "FooWildcard.kt",
             """
@@ -279,14 +278,12 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         myFixture.configureByText("FooWildcard.kt", fooWildcard)
         myFixture.doHighlighting()
 
-        val icons = setOf(SpringIcons.SpringBeanDependencies)
-        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
-        val gutterTargetString = getGutterTargetString(allBeanGutters)
-
-        assertEquals(gutterTargetString.flatten().size, 0)
+        val allBeanGutters = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.SpringBeanDependencies }
+        assertTrue(allBeanGutters.isEmpty())
     }
 
-    fun _testLineMarkerWildcard_toAutowired_mapWildcardSuperA() {
+    fun testLineMarkerWildcard_toAutowired_mapWildcardSuperA() {
         myFixture.configureByText(
             "FooWildcard.kt",
             """
@@ -304,10 +301,9 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "mapWildcardSuperA" }
-        }.size, 1)
+        }.size, 4)
     }
 
     fun testLineMarkerWildcard_toBean_mapWildcardSuperA() {
@@ -331,7 +327,7 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "A" } }.size, 1)
     }
 
-    fun _testLineMarkerWildcard_toAutowired_mapWildcardSuperE() {
+    fun testLineMarkerWildcard_toAutowired_mapWildcardSuperE() {
         myFixture.configureByText(
             "FooWildcard.kt",
             """
@@ -349,7 +345,6 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 6
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "mapWildcardSuperE" }
         }.size, 2)
@@ -468,7 +463,7 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "bBean()" } }.size, 1)
     }
 
-    fun _testLineMarkerWildcard_toAutowired_mapWildcardExtendsI() {
+    fun testLineMarkerWildcard_toAutowired_mapWildcardExtendsI() {
         myFixture.configureByText(
             "FooWildcard.kt",
             """
@@ -486,10 +481,9 @@ class SpringBeanLineMarkerProviderWildcardTest : EspritoJavaLightTestCase() {
         val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
         val gutterTargetString = getGutterTargetString(allBeanGutters)
 
-        // now show 3
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "mapWildcardExtendsI" }
-        }.size, 2)
+        }.size, 3)
     }
 
     fun testLineMarkerWildcard_toBean_mapWildcardExtendsI() {
