@@ -122,7 +122,7 @@ class SpringBeanLineMarkerProviderCollectionTest : EspritoKotlinLightTestCase() 
         }.size, 3)
     }
 
-    fun _testLineMarkerCollection_toBean_listI() {
+    fun testLineMarkerCollection_toBean_listI() {
         val fooCollection = """
                 @org.springframework.stereotype.Component
                 class FooCollection {

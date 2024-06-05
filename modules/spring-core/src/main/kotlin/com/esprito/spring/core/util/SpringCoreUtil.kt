@@ -10,6 +10,7 @@ import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
 import com.esprito.util.EspritoAnnotationUtil.getStringValue
+import com.esprito.util.EspritoPsiUtil.allSupers
 import com.esprito.util.EspritoPsiUtil.deepPsiClassType
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
@@ -274,13 +275,20 @@ object SpringCoreUtil {
     fun PsiClass?.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean =
         this != null && targetClasses.any { it == this }
 
-    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>, language: Language): Boolean {
+    fun PsiType.canResolveBeanClass(
+        targetClasses: Set<PsiClass>,
+        language: Language,
+        targetClass: PsiClass? = null
+    ): Boolean {
         val psiType = if (language == KotlinLanguage.INSTANCE) beanPsiTypeKotlin else beanPsiType
         return when (psiType) {
             is PsiClassType -> psiType.resolvedPsiClass.canResolveBeanClass(targetClasses)
             is PsiWildcardType -> {
-                if (!psiType.isBounded) {
+                if (!psiType.isBounded && !psiType.extendsBound.isObject) {
                     return true
+                }
+                if (psiType.isSuper && targetClass != null) {
+                    return psiType.superBound.resolvedPsiClass?.allSupers()?.any { it == targetClass } == true
                 }
                 targetClasses.any { it.matchesWildcardType(psiType) }
             }
@@ -295,10 +303,16 @@ object SpringCoreUtil {
         return true
     }
 
+    private fun PsiType.supersWildcard(value: PsiType): Boolean {
+        if (this is PsiWildcardType && this.isSuper) {
+            return this.superBound == value || this.superBound in value.superTypes
+        }
+        return false
+    }
+
     private fun PsiType.extendsWildcard(value: PsiType): Boolean {
-        if (this is PsiWildcardType) {
-            val superTypes = this.superTypes
-            return superTypes.size == 1 && (superTypes[0] == value || superTypes[0] in value.superTypes)
+        if (this is PsiWildcardType && this.isExtends) {
+            return this.extendsBound == value || this.extendsBound in value.superTypes
         }
         return false
     }
@@ -400,6 +414,7 @@ object SpringCoreUtil {
                 it == value
                         || it.extendsWildcard(value)
                         || value.extendsWildcard(it)
+                        || it.supersWildcard(value)
                         || !it.isBounded()
             }
         }

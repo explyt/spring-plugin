@@ -334,7 +334,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .flatMap { field ->
                     field.asSequence()
                         .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                        .filter { isCandidateField(it, targetType, targetClasses) }
+                        .filter { isCandidateField(it, targetType, targetClasses, targetClass) }
                         .mapNotNull { it.navigationElement.toUElement() as? UVariable }
                 }.toSet()
 
@@ -370,7 +370,12 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             }
         }
 
-        private fun isCandidateField(field: PsiField, targetType: PsiType?, targetClasses: Set<PsiClass>): Boolean {
+        private fun isCandidateField(
+            field: PsiField,
+            targetType: PsiType?,
+            targetClasses: Set<PsiClass>,
+            targetClass: PsiClass
+        ): Boolean {
             if (targetType == field.type) return true
             if (targetType != null && targetType.isEqualOrInheritorBeanType(field.type)) return true
             if (targetType != null && field.type.isAssignableFrom(targetType)) return true
@@ -380,7 +385,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 else getPsiType(field)?.isAssignableFrom(targetType) == true
             }
 
-            val isResolved = field.type.canResolveBeanClass(targetClasses, field.language)
+            val isResolved = field.type.canResolveBeanClass(targetClasses, field.language, targetClass)
             if (!isResolved) return false
             if (targetType == null) return true
 

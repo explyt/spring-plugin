@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Fixed: Navigate to autowired candidates and bean declarations for wildcard type
 - Fixed: Navigate to autowired candidates and bean declarations in Kotlin
 - Inspection: property placeholder not in a snake-case
 - Fixed inspection "Cannot resolve key property" for non-snake-case keys
@@ -15,7 +16,6 @@
 - Intention: create property description in `additional-metadata.json`
 - Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes
--
 
 ### Spring Web/MVC
 

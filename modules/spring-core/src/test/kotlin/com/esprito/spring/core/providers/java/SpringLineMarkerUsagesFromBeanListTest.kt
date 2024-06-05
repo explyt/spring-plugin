@@ -188,11 +188,13 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        @Language("JAVA") val text = """                        
+        @Language("JAVA") val text = """     
+            import java.util.*;
+                               
             @${SpringCoreClasses.CONFIGURATION}
             public class TestMarker {                               
                 @${SpringCoreClasses.BEAN}
-                public B b() { return new B(); }
+                List<I> beanListI() { return new ArrayList<>(); }
             }
             """.trimIndent()
 
@@ -201,7 +203,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoJavaLightTestCase() {
 
         val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
-        assertEquals(2, gutterTargetString.size)
+        assertEquals(1, gutterTargetString.size)
         assertEquals(listOf("list"), gutterTargetString[0])
     }
 
