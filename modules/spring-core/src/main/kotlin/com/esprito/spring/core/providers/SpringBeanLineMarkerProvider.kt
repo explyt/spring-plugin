@@ -334,7 +334,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .flatMap { field ->
                     field.asSequence()
                         .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                        .filter { isCandidateField(it, targetType, targetClasses, targetClass) }
+                        .filter { it.isCandidate(targetType, targetClasses, targetClass) }
                         .mapNotNull { it.navigationElement.toUElement() as? UVariable }
                 }.toSet()
 
@@ -370,27 +370,26 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             }
         }
 
-        private fun isCandidateField(
-            field: PsiField,
+        private fun PsiField.isCandidate(
             targetType: PsiType?,
             targetClasses: Set<PsiClass>,
             targetClass: PsiClass
         ): Boolean {
-            if (targetType == field.type) return true
-            if (targetType != null && targetType.isEqualOrInheritorBeanType(field.type)) return true
-            if (targetType != null && field.type.isAssignableFrom(targetType)) return true
+            if (targetType == this.type) return true
+            if (targetType != null && targetType.isEqualOrInheritorBeanType(this.type)) return true
+            if (targetType != null && this.type.isAssignableFrom(targetType)) return true
 
             if (targetType is PsiArrayType) {
-                return if (field.language == KotlinLanguage.INSTANCE) getPsiType(field) == targetType
-                else getPsiType(field)?.isAssignableFrom(targetType) == true
+                return if (this.language == KotlinLanguage.INSTANCE) getPsiType(this) == targetType
+                else getPsiType(this)?.isAssignableFrom(targetType) == true
             }
 
-            val isResolved = field.type.canResolveBeanClass(targetClasses, field.language, targetClass)
+            val isResolved = this.type.canResolveBeanClass(targetClasses, this.language, targetClass)
             if (!isResolved) return false
             if (targetType == null) return true
 
             if (targetType !is PsiClassType) return true
-            val psiClassType = getPsiType(field)
+            val psiClassType = getPsiType(this)
             return if (targetType.parameters.isNotEmpty()) {
                 psiClassType?.isEqualOrInheritorBeanType(targetType) == true
             } else true
