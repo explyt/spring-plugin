@@ -41,10 +41,20 @@ class EspritoAnnotationModificationTracker(project: Project) : SimpleModificatio
     }
 }
 
+@Suppress("UnstableApiUsage")
+class EspritoPropertyModificationTracker(project: Project) : SimpleModificationTracker() {
+    private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
+
+    override fun getModificationCount(): Long {
+        return super.getModificationCount() + javaLibraryTracker.modificationCount
+    }
+}
+
 internal class MyUastPsiTreeChangeAdapter(
     private val project: Project,
     private val modelTracker: EspritoModelModificationTracker,
-    private val annotationTracker: EspritoAnnotationModificationTracker
+    private val annotationTracker: EspritoAnnotationModificationTracker,
+    private val propertyTracker: EspritoPropertyModificationTracker,
 ) : PsiTreeChangeAdapter() {
     private val uastPsiPossibleTypes = HashMap<String, CachedValue<UastPsiPossibleTypes>>()
     private val beforeChildAddRemoveSet = setOf(BEFORE_CHILD_ADDITION, BEFORE_CHILD_REMOVAL)
@@ -78,11 +88,13 @@ internal class MyUastPsiTreeChangeAdapter(
         val psiFile = event.file
         if (psiFile is PropertiesFile) {
             modelTracker.incModificationCount()
+            propertyTracker.incModificationCount()
             return
         }
         val languageId = psiFile?.language?.id ?: return
         if ("yaml" == languageId) {
             modelTracker.incModificationCount()
+            propertyTracker.incModificationCount()
             return
         }
         if (psiFile !is PsiClassOwner) {
