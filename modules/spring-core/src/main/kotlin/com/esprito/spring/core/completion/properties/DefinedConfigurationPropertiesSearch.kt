@@ -63,7 +63,14 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
+    }
 
+    fun getPropertiesCommonKeyMap(module: Module): Map<String, List<DefinedConfigurationProperty>> {
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                toCommonKeyMap(module), ModificationTrackerManager.getInstance(project).getPropertyTracker()
+            )
+        }
     }
 
     private fun doGetPlaceholders(module: Module): List<String> {
@@ -75,6 +82,10 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
                 }
             }
             .toList()
+    }
+
+    private fun toCommonKeyMap(module: Module): Map<String, List<DefinedConfigurationProperty>> {
+        return getAllProperties(module).groupBy { PropertyUtil.toCommonPropertyForm(it.key) }
     }
 
     private fun loadPropertySources(module: Module): Set<PropertySource> {

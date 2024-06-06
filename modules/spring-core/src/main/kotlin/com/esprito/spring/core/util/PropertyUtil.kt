@@ -311,7 +311,7 @@ object PropertyUtil {
     }
 
 
-    private fun toCommonPropertyForm(propertyName: String): String {
+    fun toCommonPropertyForm(propertyName: String): String {
         return propertyName.lowercase()
             .replace("-", "")
             .replace("_", "")

@@ -592,6 +592,8 @@
                 descriptionKey="esprito.editor.hints.annotation_profile"
                 providerId="esprito.profile_annotation"/>
 
+        <referencesSearch implementation="com.esprito.spring.core.search.PropertyStringUsagesSearcher"/>
+
         <lang.inspectionSuppressor language="Properties"
                                    implementationClass="com.esprito.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
 

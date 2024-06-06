@@ -14,10 +14,11 @@ import com.intellij.psi.PsiManager
 class ModificationTrackerManager(val project: Project) : Disposable {
     private val uastModelTracker = EspritoModelModificationTracker(project)
     private val uastAnnotationTracker = EspritoAnnotationModificationTracker(project)
+    private val propertyTracker = EspritoPropertyModificationTracker(project)
 
     init {
         PsiManager.getInstance(project).addPsiTreeChangeListener(
-            MyUastPsiTreeChangeAdapter(project, uastModelTracker, uastAnnotationTracker), this
+            MyUastPsiTreeChangeAdapter(project, uastModelTracker, uastAnnotationTracker, propertyTracker), this
         )
         project.messageBus.connect(this)
             .subscribe(
@@ -34,6 +35,8 @@ class ModificationTrackerManager(val project: Project) : Disposable {
     fun getUastModelAndLibraryTracker() = uastModelTracker
 
     fun getUastAnnotationAndLibraryTracker() = uastAnnotationTracker
+
+    fun getPropertyTracker() = propertyTracker
 
     fun invalidateAll() {
         uastModelTracker.incModificationCount()

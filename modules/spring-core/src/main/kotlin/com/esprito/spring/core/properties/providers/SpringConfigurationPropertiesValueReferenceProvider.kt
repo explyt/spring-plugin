@@ -1,7 +1,7 @@
 package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringProperties
-import com.esprito.spring.core.properties.references.PlaceholderValueReference
+import com.esprito.spring.core.properties.references.EspritoPropertyReference
 import com.esprito.spring.core.properties.references.ValueHintReference
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
@@ -36,7 +36,7 @@ class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider
         val text = element.text ?: return emptyList()
 
         return PropertyUtil.getPlaceholders(text) { placeholder, range ->
-            PlaceholderValueReference(placeholder, element, range)
+            EspritoPropertyReference(element, placeholder, range, true)
         }
     }
 }
