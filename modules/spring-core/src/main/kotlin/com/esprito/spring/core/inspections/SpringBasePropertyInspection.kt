@@ -24,9 +24,9 @@ import com.esprito.spring.core.util.PropertyUtil.propertyValue
 import com.esprito.spring.core.util.PropertyUtil.propertyValuePsiElement
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.util.CacheKeyStore
-import com.intellij.codeInspection.InspectionManager
-import com.intellij.codeInspection.ProblemDescriptor
-import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.*
+import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR
+import com.intellij.lang.properties.PropertiesBundle
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -71,6 +71,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val problems = mutableListOf<ProblemDescriptor>()
         problems += checkKey(module, file, manager, isOnTheFly)
         problems += checkValue(module, manager, isOnTheFly)
+        problems += checkDuplicateKeys(manager, file, isOnTheFly)
         return problems.toTypedArray()
 
     }
@@ -717,6 +718,40 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val key = fileProperty.key.substringBeforeLast(separator)
         return properties.filter { it.name == key }
     }
+
+    private fun checkDuplicateKeys(
+        manager: InspectionManager, file: PsiFile, isOnTheFly: Boolean
+    ): List<ProblemDescriptor> {
+        val duplicateKeyMap = fileProperties.asSequence()
+            .groupBy { PropertyUtil.toCommonPropertyForm(it.key) }
+            .filter { it.value.size > 1 }
+            .takeIf { it.isNotEmpty() } ?: return emptyList()
+
+        val problemsHolder = ProblemsHolder(manager, file, isOnTheFly)
+        duplicateKeyMap.forEach { processDuplicate(it.value, problemsHolder) }
+        return problemsHolder.results
+    }
+
+    private fun processDuplicate(properties: List<DefinedConfigurationProperty>, problemsHolder: ProblemsHolder) {
+        val duplicateProperties = properties
+            .associateBy { it.key }
+            .values
+            .takeIf { it.size > 1 } ?: return
+
+        val duplicateKeys = duplicateProperties.joinToString(", ") { it.key }
+        for (property in duplicateProperties) {
+            val psiElementKey = getKeyPsiElement(property) ?: continue
+            val fixes = getRemoveKeyQuickFixes(property)
+            val message = PropertiesBundle.message("duplicate.property.key.error.message")
+            problemsHolder.registerProblem(
+                psiElementKey, "$message: $duplicateKeys", GENERIC_ERROR, *fixes.toTypedArray()
+            )
+        }
+    }
+
+    abstract fun getKeyPsiElement(property: DefinedConfigurationProperty): PsiElement?
+
+    abstract fun getRemoveKeyQuickFixes(property: DefinedConfigurationProperty): List<LocalQuickFix>
 
     companion object {
         val PROHIBITED_IN_PROFILE_PROPERTIES =
