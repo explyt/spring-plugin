@@ -1,6 +1,6 @@
-## Spring Explyt Tools
+## Spring Explyt
 
-Epring Explyt Tools is an IntelliJ IDEA (Community Edition) plugin designed to enhance your experience with the Spring Framework.
+Epring Explyt is an IntelliJ IDEA (Community Edition) plugin designed to enhance your experience with the Spring Framework.
 
 ### Key Features Include:
 * **Autocompletion:** Autocomplete bean names and navigate through annotations, linking to relevant classes and files.
@@ -10,7 +10,7 @@ Epring Explyt Tools is an IntelliJ IDEA (Community Edition) plugin designed to e
 * **JPQL Support:** Maximize your efficiency in Java Persistence Query Language (JPQL) with syntax highlighting and detailed navigation options.
 * **Spring Profiles:** Easily manage and search for Spring profiles within your configuration files.
 
-Spring Explyt Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.
+Spring Explyt is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.
 
 This plugin is available free of charge.
 * [NON-COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
