@@ -13,10 +13,10 @@ Esprito Spring Tools is an IntelliJ IDEA (Community Edition) plugin designed to 
 Esprito Spring Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.
 
 This plugin is available free of charge.
-* [NON-COMMERCIAL LICENSE](https://github.com/esprito-plugin/plugin/blob/main/LICENSE.md)
-* [COMMERCIAL LICENSE](https://github.com/esprito-plugin/plugin/blob/main/LICENSE.md) - In 2024, it is free, but you will need to obtain a license key from our support team. Please contact us at sales@esprito.com.
+* [NON-COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
+* [COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/COMMERCE_LICENSE.md) - In 2024, it is free, but you will need to obtain a license key from our support team. Please contact us at sales@esprito.com.
 
-Our plugin is accessible through the standard plugin marketplace for IntelliJ IDEA plugins. (see [Installation Guide](https://github.com/esprito-plugin/plugin/blob/main/Installation%20Guide.md))
+Our plugin is accessible through the standard plugin marketplace for IntelliJ IDEA plugins. (see [Installation Guide](https://github.com/explyt/spring-plugin/blob/main/Installation%20Guide.md))
 
 For questions, please join one of our Telegram channels:
 * [ENGLISH](https://t.me/+70C48cdnvyczNTAy)
