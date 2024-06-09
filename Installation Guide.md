@@ -1,18 +1,18 @@
-# Espirito Spring Tools Installation Guide
+# Spring Explyt Installation Guide
 
-**Exciting news! Espirito Spring Tools is now available.**
+**Exciting news! Spring Explyt is now available.**
 
 Follow these simple steps to get started:
 
 ## 1. Preparation
 
-- Make sure you have IntelliJ IDEA CE version 233.11799.241 — 233.* installed.
+- Make sure you have IntelliJ IDEA CE version 233.11799.241 — 241.* installed.
 
-## 2. Install plugin Esprito Spring Tools
+## 2. Install Spring Explyt plugin
 
 ![](/images/installation-guide-4.png)
 
-- Type "Esprito" in search and find our plugin "Esprito Spring Tools"
+- Type "Explyt" in search and find our plugin "Spring Explyt"
 - Click "Install"
 
 ## 3. Restart Your IDE
