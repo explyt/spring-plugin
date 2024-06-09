@@ -1,6 +1,6 @@
-## Esprito Spring Tools
+## Spring Explyt Tools
 
-Esprito Spring Tools is an IntelliJ IDEA (Community Edition) plugin designed to enhance your experience with the Spring Framework.
+Epring Explyt Tools is an IntelliJ IDEA (Community Edition) plugin designed to enhance your experience with the Spring Framework.
 
 ### Key Features Include:
 * **Autocompletion:** Autocomplete bean names and navigate through annotations, linking to relevant classes and files.
@@ -10,11 +10,11 @@ Esprito Spring Tools is an IntelliJ IDEA (Community Edition) plugin designed to 
 * **JPQL Support:** Maximize your efficiency in Java Persistence Query Language (JPQL) with syntax highlighting and detailed navigation options.
 * **Spring Profiles:** Easily manage and search for Spring profiles within your configuration files.
 
-Esprito Spring Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.
+Spring Explyt Tools is designed to significantly increase your productivity and accelerate the development of Spring Boot applications.
 
 This plugin is available free of charge.
 * [NON-COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
-* [COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/COMMERCE_LICENSE.md) - In 2024, it is free, but you will need to obtain a license key from our support team. Please contact us at sales@esprito.com.
+* [COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/COMMERCE_LICENSE.md) - In 2024, it is free, but you will need to obtain a license key from our support team. Please contact us at sales@explyt.com.
 
 Our plugin is accessible through the standard plugin marketplace for IntelliJ IDEA plugins. (see [Installation Guide](https://github.com/explyt/spring-plugin/blob/main/Installation%20Guide.md))
 
