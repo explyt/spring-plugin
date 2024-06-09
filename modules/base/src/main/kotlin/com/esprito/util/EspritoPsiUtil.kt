@@ -108,11 +108,22 @@ object EspritoPsiUtil {
         return baseType.resolve()?.qualifiedName?.let { className -> this.isInheritorOf(className) } ?: false
     }
 
+    fun PsiArrayType.isEqualOrInheritor(baseType: PsiType): Boolean {
+        return baseType.resolvedPsiClass?.qualifiedName
+            ?.let { this.deepPsiClassType?.resolvedPsiClass?.isEqualOrInheritor(it) }
+            ?: false
+    }
+
     fun PsiClass.isGeneric(psiType: PsiType): Boolean {
         return psiType is PsiClassType
                 && this.typeParameters.isNotEmpty()
                 && (psiType.parameterCount == this.typeParameters.size)
                 && this.typeParameters.all { it.references.isEmpty() }
+    }
+
+    fun PsiClass.allSupers(): Set<PsiClass> {
+        val superPsiClass = this.supers.asSequence().flatMap { it.allSupers() }.toMutableSet()
+        return superPsiClass + this
     }
 
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
@@ -150,6 +161,22 @@ object EspritoPsiUtil {
 
     val PsiType.isString: Boolean
         get() = this.isInheritorOf(java.lang.String::class.java.canonicalName)
+
+    val PsiType.isObject: Boolean
+        get() {
+            when (this) {
+                is PsiWildcardType -> {
+                    if (isExtends) {
+                        return extendsBound.resolvedPsiClass?.qualifiedName == java.lang.Object::class.java.canonicalName
+                    }
+                    if (isSuper) {
+                        return superBound.resolvedPsiClass?.qualifiedName == java.lang.Object::class.java.canonicalName
+                    }
+                }
+            }
+            return this.resolvedPsiClass == null
+                    || this.resolvedPsiClass?.qualifiedName == java.lang.Object::class.java.canonicalName
+        }
 
     val PsiMember.returnPsiType: PsiType?
         get() = if (this is PsiMethod) {

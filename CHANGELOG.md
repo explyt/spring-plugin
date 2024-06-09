@@ -1,19 +1,52 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# Esprito Spring Tools Changelog
+# Spring Explyt Changelog
 
 
 ## [Unreleased]
 
 ### Spring Core/Boot
 
+- Fixed: Inspection: Duplicate properties keys in different relaxed binding forms do not show error
+- Find Usages: for property keys when used in different relaxed binding forms
+- Fixed: Navigate to autowired candidates and bean declarations for wildcard type
+- Fixed: Navigate to autowired candidates and bean declarations in Kotlin: arrays, collections and maps
+- Make Spring `@Scheduled` description human-readable
+- Inspection: property placeholder not in a kebab-case
+- Fixed: Inspection "Cannot resolve key property" for non-kebab-case keys
+- Fixed: Inspection "Autowire failed" for `ApplicationContext`
+- Inspection: Kotlin `internal` modifier mangling
+- The inspection text has been adjusted for `@ConfigurationProperties`
+- Intention: create property description in `additional-metadata.json`
+- Added reference from `DynamicPropertyRegistry.add` method to property
+- Fixed inspection `resource name must begin with a slash`. Added valid prefixes
+- Fixed `@Value` folding for Kotlin
+
+### Spring Web/MVC
+
+- Inspection: `WebController` `bodyToMono/Flux`, `awaitBody` type doesn't match endpoint
+- Add `WebController` `bodyToMono/Flux`, `awaitBody` methods autocompletion
+- Inspection: `WebController/WebTestController` uri parameters count
+- Add Navigation from `WebClient/WebTestClient` to Controller endpoints
+
+### Other
+
+- Migrate Esprito to Explyt
+- Update plugin description
+- Fixed: Stale UAST cache
+
+## [241.1.1303] - 2024-04-24
+
+### Spring Core/Boot
+
+- Added a gutter to the constructors of other classes that are used in the class with @ConfigurationProperties
 - Added autocompletion in properties files for all classes fields
 - Inspection `unresolved property key` supports Relaxed Binding
 - Fixed inspection for `@Retention` on Spring annotations. Supported meta-annotations
 - Fixed stackoverflow error while property calculation on some cases
-- Support @Scheduled annotation
+- Support `@Scheduled` annotation
 
-## [241.1.1263] - 2024-04-17
+## 241.1.1263 - 2024-04-17
 
 ### Spring Core/Boot
 
@@ -31,6 +64,7 @@
 
 ### Spring Core/Boot
 
+- Inspection `unresolved property key` supports Relaxed Binding
 - Fix: Kotlin constructor with default values counts as autowired
 - Inspection: Warning: Spring @Value annotation string should start with "#{" "${" or resource prefixes
 

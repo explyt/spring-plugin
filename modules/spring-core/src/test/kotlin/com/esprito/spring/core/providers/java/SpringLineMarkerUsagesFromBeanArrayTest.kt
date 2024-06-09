@@ -75,11 +75,41 @@ class SpringLineMarkerUsagesFromBeanArrayTest : EspritoJavaLightTestCase() {
         assertEquals(listOf("i"), gutterTargetString[0])
     }
 
-    //todo error
     fun testArrayBeanUsage() {
         myFixture.copyFileToProject("BeanUsagesClasses.java")
         myFixture.addClass(
             """                                    
+            @${SpringCoreClasses.COMPONENT}
+            class TestUsages {
+                @${SpringCoreClasses.AUTOWIRED}
+                B[] listsB;               
+            }
+        """.trimIndent()
+        )
+
+        @Language("JAVA") val text = """           
+            @${SpringCoreClasses.CONFIGURATION}
+            public class TestMarker {                               
+                @${SpringCoreClasses.BEAN}
+                B[] carr() { return new B[0]; }
+            }
+            """.trimIndent()
+
+        myFixture.configureByText("TestMarker.java", text)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("listsB"), gutterTargetString[0])
+    }
+
+    fun testListOfArrayBeanUsage() {
+        myFixture.copyFileToProject("BeanUsagesClasses.java")
+        myFixture.addClass(
+            """                
+            import java.util.List;
+            
             @${SpringCoreClasses.COMPONENT}
             class TestUsages {
                 @${SpringCoreClasses.AUTOWIRED}
@@ -101,7 +131,7 @@ class SpringLineMarkerUsagesFromBeanArrayTest : EspritoJavaLightTestCase() {
 
         val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
-        //assertEquals(1, gutterTargetString.size)
-        //assertEquals(listOf("listsB"), gutterTargetString[0])
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("listsB"), gutterTargetString[0])
     }
 }

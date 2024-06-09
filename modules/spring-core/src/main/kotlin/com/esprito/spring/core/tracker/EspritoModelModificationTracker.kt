@@ -16,7 +16,9 @@ import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtFunction
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.*
 import org.jetbrains.uast.util.ClassSet
 import org.jetbrains.uast.util.isInstanceOf
@@ -40,10 +42,20 @@ class EspritoAnnotationModificationTracker(project: Project) : SimpleModificatio
     }
 }
 
+@Suppress("UnstableApiUsage")
+class EspritoPropertyModificationTracker(project: Project) : SimpleModificationTracker() {
+    private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
+
+    override fun getModificationCount(): Long {
+        return super.getModificationCount() + javaLibraryTracker.modificationCount
+    }
+}
+
 internal class MyUastPsiTreeChangeAdapter(
     private val project: Project,
     private val modelTracker: EspritoModelModificationTracker,
-    private val annotationTracker: EspritoAnnotationModificationTracker
+    private val annotationTracker: EspritoAnnotationModificationTracker,
+    private val propertyTracker: EspritoPropertyModificationTracker,
 ) : PsiTreeChangeAdapter() {
     private val uastPsiPossibleTypes = HashMap<String, CachedValue<UastPsiPossibleTypes>>()
     private val beforeChildAddRemoveSet = setOf(BEFORE_CHILD_ADDITION, BEFORE_CHILD_REMOVAL)
@@ -77,11 +89,13 @@ internal class MyUastPsiTreeChangeAdapter(
         val psiFile = event.file
         if (psiFile is PropertiesFile) {
             modelTracker.incModificationCount()
+            propertyTracker.incModificationCount()
             return
         }
         val languageId = psiFile?.language?.id ?: return
         if ("yaml" == languageId) {
             modelTracker.incModificationCount()
+            propertyTracker.incModificationCount()
             return
         }
         if (psiFile !is PsiClassOwner) {
@@ -97,13 +111,20 @@ internal class MyUastPsiTreeChangeAdapter(
         }
 
         val eventType = (event as? PsiTreeChangeEventImpl)?.code
-        //added or removed class or method
-        if (eventType != null && beforeChildAddRemoveSet.contains(eventType) && isClassOrMethod(child)) {
+        //added or removed class or method or field
+        if (eventType != null && beforeChildAddRemoveSet.contains(eventType) && isClassOrMethodOrField(child)) {
             modelTracker.incModificationCount()
             return
         }
         //added or removed comment
         if (eventType == CHILD_REPLACED && isClassOrMethodCommented(event)) {
+            modelTracker.incModificationCount()
+            return
+        }
+
+        if (eventType == CHILD_REPLACED && ((event.newChild is PsiClass && event.oldChild is PsiClass)
+                    || (event.newChild is KtClassBody && event.oldChild is KtClassBody))
+        ) {
             modelTracker.incModificationCount()
             return
         }
@@ -123,6 +144,7 @@ internal class MyUastPsiTreeChangeAdapter(
             || isRelevantAnnotation(newChild, possiblePsiTypes) // added   annotation
             || getFirstParentIsRelevantAnnotation(parent, possiblePsiTypes) != null // change in  annotation
         ) {
+            //tracker for root package search
             modelTracker.incModificationCount()
             annotationTracker.incModificationCount()
             return
@@ -134,7 +156,7 @@ internal class MyUastPsiTreeChangeAdapter(
                     || methodRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || fieldRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
                     || parameterRename(parent, event.newChild, event.oldChild, possiblePsiTypes)
-                    || parameterStartInput(grandParent, event.newChild, possiblePsiTypes)
+                    || parameterAddedOrRemove(grandParent, event.newChild, event.oldChild, possiblePsiTypes)
                     || changedReturnStatement(newChild, parent, grandParent, possiblePsiTypes))
             || child is LazyParseablePsiElement
         ) {
@@ -180,11 +202,17 @@ internal class MyUastPsiTreeChangeAdapter(
                 && oldChild.isInstanceOf(possiblePsiTypes.forIdentifier)
     }
 
-    private fun parameterStartInput(
-        grandParent: PsiElement?, newChild: PsiElement?, possiblePsiTypes: UastPsiPossibleTypes
+    private fun parameterAddedOrRemove(
+        grandParent: PsiElement?,
+        newChild: PsiElement?,
+        oldChild: PsiElement?,
+        possiblePsiTypes: UastPsiPossibleTypes
     ): Boolean {
         return grandParent.isInstanceOf(possiblePsiTypes.forMethods)
-                && newChild.isInstanceOf(possiblePsiTypes.forParameters)
+                && (
+                newChild.isInstanceOf(possiblePsiTypes.forParameters)
+                        || oldChild.isInstanceOf(possiblePsiTypes.forParameters)
+                )
     }
 
     private fun innerClassChanged(
@@ -236,19 +264,16 @@ internal class MyUastPsiTreeChangeAdapter(
         return possibleTypesCachedValue.value
     }
 
-    private fun isClassOrMethod(child: PsiElement?) =
-        child is PsiClass || child is PsiMethod || child is KtFunction
-
-    private fun psiEventOfTypeBeforeChildAddOrRemove(event: PsiTreeChangeEvent): Boolean {
-        val eventType = (event as? PsiTreeChangeEventImpl)?.code ?: return false
-        return beforeChildAddRemoveSet.contains(eventType)
+    private fun isClassOrMethodOrField(child: PsiElement?): Boolean {
+        return child is PsiClass || child is PsiMethod || child is KtFunction
+                || child is PsiField || child is KtProperty
     }
 
     private fun isClassOrMethodCommented(event: PsiTreeChangeEvent): Boolean {
         val newChild = event.newChild ?: return false
         val oldChild = event.oldChild ?: return false
-        return (newChild is PsiComment && isClassOrMethod(oldChild))
-                || (oldChild is PsiComment && isClassOrMethod(newChild))
+        return (newChild is PsiComment && isClassOrMethodOrField(oldChild))
+                || (oldChild is PsiComment && isClassOrMethodOrField(newChild))
     }
 }
 

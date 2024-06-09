@@ -126,7 +126,7 @@
         <localInspection language="UAST"
                          shortName="SpringInjectionAutowiringInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.bean.autowired"
@@ -137,7 +137,7 @@
         <localInspection language="UAST"
                          shortName="SpringEventListenerInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.method.eventListener"
@@ -148,7 +148,7 @@
         <localInspection language="UAST"
                          shortName="SpringComponentScanInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.method.componentScan"
@@ -159,7 +159,7 @@
         <localInspection language="UAST"
                          shortName="SpringLookupBeanInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.bean.lookup"
@@ -170,7 +170,7 @@
         <localInspection language="UAST"
                          shortName="SpringDependsOnBeanInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.bean.dependsOn"
@@ -181,7 +181,7 @@
         <localInspection language="UAST"
                          shortName="SpringAliasBothInterchangeableSetInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.alias.key"
@@ -192,7 +192,7 @@
         <localInspection language="UAST"
                          shortName="SpringUnknownAliasMethodInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.alias.attribute"
@@ -203,7 +203,7 @@
         <localInspection language="UAST"
                          shortName="SpringAliasNotMetaAnnotatedInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.alias.annotation"
@@ -214,7 +214,7 @@
         <localInspection language="UAST"
                          shortName="SpringUnknownBeanMethodInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.bean.method"
@@ -225,7 +225,7 @@
         <localInspection language="UAST"
                          shortName="SpringConfigurationProxyMethodsInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.configuration"
@@ -236,7 +236,7 @@
         <localInspection language="Properties"
                          shortName="SpringPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.properties.key"
@@ -246,7 +246,7 @@
         <localInspection language="yaml"
                          shortName="SpringYamlInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.yaml.key"
@@ -256,7 +256,7 @@
         <localInspection language="Properties"
                          shortName="EnableAutoConfigureSpringFactoryInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.autoconfigure"
@@ -266,7 +266,7 @@
         <localInspection language="UAST"
                          shortName="SpringConditionalOnEmptyValueInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.conditionalOnProperty.empty"
@@ -277,7 +277,7 @@
         <localInspection language="UAST"
                          shortName="SpringConditionalOnWrongPlacementInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.conditionalOn.wrongPlacement"
@@ -287,7 +287,7 @@
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.property.resource.ref"
@@ -297,7 +297,7 @@
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.method.same.class"
@@ -307,7 +307,7 @@
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.property.source.classpath"
@@ -316,7 +316,7 @@
                          implementationClass="com.esprito.spring.core.inspections.SpringPropertySourceClasspathInspection"/>
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.property.source.file"
@@ -326,7 +326,7 @@
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.context.configuration.classpath"
@@ -335,7 +335,7 @@
                          implementationClass="com.esprito.spring.core.inspections.SpringContextConfigurationClasspathInspection"/>
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.context.configuration.file"
@@ -346,7 +346,7 @@
         <localInspection language="UAST"
                          shortName="SpringProfileWrongPlacementInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.profile.wrongPlacement"
@@ -357,7 +357,7 @@
         <localInspection language="UAST"
                          shortName="SpringProfileAnnotationInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.profile"
@@ -368,7 +368,7 @@
         <localInspection language="UAST"
                          shortName="SpringMetaAnnotationWithoutRuntimeInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.retention"
@@ -379,7 +379,7 @@
         <localInspection language="JSON"
                          shortName="AdditionalConfigPropertyInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.metadata.config.key"
@@ -389,7 +389,7 @@
         <localInspection language="UAST"
                          shortName="SpringAsyncReturnTypeInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.async"
@@ -400,7 +400,7 @@
         <localInspection language="UAST"
                          shortName="SpringCacheableAnnotationInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.cacheable"
@@ -410,7 +410,7 @@
         <localInspection language="UAST"
                          shortName="SpringConfigurationPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.config.properties"
@@ -420,7 +420,7 @@
         <localInspection language="UAST"
                          shortName="SpringKotlinObjectInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.kotlin.object"
@@ -431,7 +431,7 @@
         <localInspection language="UAST"
                          shortName="SpringCacheAnnotationsOnInterfaceInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.cache.interface.class"
@@ -442,7 +442,7 @@
         <localInspection language="UAST"
                          shortName="SpringConfigurationPropertiesNullableParametersInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.kotlin.constructor.nullable"
@@ -453,7 +453,7 @@
         <localInspection language="UAST"
                          shortName="SpringValueAnnotationInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.value"
@@ -464,13 +464,24 @@
         <localInspection language="UAST"
                          shortName="SpringScheduledInspection"
                          groupBundle="messages.SpringCoreBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.common.notifications.core"
                          bundle="messages.SpringCoreBundle"
                          key="esprito.spring.inspection.scheduled"
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.core.inspections.SpringScheduledInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringKotlinInternalBeanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Spring Explyt"
+                         groupKey="esprito.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="esprito.spring.inspection.kotlin.internal"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
 
 
         <postStartupActivity
@@ -564,6 +575,8 @@
         <psi.referenceContributor
                 implementation="com.esprito.spring.core.language.profiles.UastProfilesReferenceContributor"
                 language="UAST"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.esprito.spring.core.references.contributors.DynamicPropertyRegistryReferenceContributor"/>
 
         <lang.braceMatcher
                 language="Profiles"
@@ -572,18 +585,32 @@
         <codeInsight.declarativeInlayProvider
                 bundle="messages.SpringCoreBundle"
                 group="ANNOTATIONS_GROUP"
-                implementationClass="com.esprito.spring.core.profile.ProfileAnnotationHintsProvider"
+                implementationClass="com.esprito.spring.core.hint.ProfileAnnotationHintsProvider"
                 isEnabledByDefault="true"
                 language="UAST"
                 nameKey="esprito.editor.hints.annotation_profile"
                 descriptionKey="esprito.editor.hints.annotation_profile"
                 providerId="esprito.profile_annotation"/>
 
+        <referencesSearch implementation="com.esprito.spring.core.search.PropertyStringUsagesSearcher"/>
+
         <lang.inspectionSuppressor language="Properties"
                                    implementationClass="com.esprito.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
 
-        <registryKey key="esprito.spring.root.runConfiguration" defaultValue="false"
+        <registryKey key="esprito.spring.root.runConfiguration" defaultValue="true"
                      description="Use root class from run configuration for bean search"/>
+        <intentionAction>
+            <language>yaml</language>
+            <className>com.esprito.spring.core.intentions.CreateYamlMetaDescriptionIntention</className>
+        </intentionAction>
+        <intentionAction>
+            <language>Properties</language>
+            <className>com.esprito.spring.core.intentions.CreatePropertiesMetaDescriptionIntention</className>
+        </intentionAction>
+        <intentionAction>
+            <language>UAST</language>
+            <className>com.esprito.spring.core.intentions.CreateConfigurationMetaDescriptionIntention</className>
+        </intentionAction>
     </extensions>
 
     <actions>

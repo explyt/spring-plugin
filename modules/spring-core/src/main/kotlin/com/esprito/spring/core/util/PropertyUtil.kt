@@ -1,6 +1,8 @@
 package com.esprito.spring.core.util
 
 import com.esprito.spring.core.SpringProperties
+import com.esprito.spring.core.SpringProperties.PLACEHOLDER_PREFIX
+import com.esprito.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.PropertyHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
@@ -23,6 +25,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
+import com.intellij.util.text.PlaceholderTextRanges
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLValue
@@ -135,8 +138,8 @@ object PropertyUtil {
 
         // classpath: can start with "./"  or "/" or ""
         val lengthOfPrefix = prefix.length +
-            textWithoutClassPathPrefix.lengthPrefix("/") +
-            textWithoutClassPathPrefix.lengthPrefix("./")
+                textWithoutClassPathPrefix.lengthPrefix("/") +
+                textWithoutClassPathPrefix.lengthPrefix("./")
         val range = TextRange(textRange.startOffset + lengthOfPrefix, textRange.endOffset)
         return FileReferenceSetWithPrefixSupport(
             textWithoutClassPathPrefix,
@@ -278,7 +281,37 @@ object PropertyUtil {
         return toCommonPropertyForm(propertyName1) == toCommonPropertyForm(propertyName2)
     }
 
-    private fun toCommonPropertyForm(propertyName: String): String {
+    fun guessTypeFromValue(value: String?): String {
+        return when {
+            value == null -> CommonClassNames.JAVA_LANG_STRING
+            StringUtil.equalsIgnoreCase(value, "true") -> CommonClassNames.JAVA_LANG_BOOLEAN
+            StringUtil.equalsIgnoreCase(value, "false") -> CommonClassNames.JAVA_LANG_BOOLEAN
+            INT_REGEX.matches(value) -> CommonClassNames.JAVA_LANG_INTEGER
+            DOUBLE_REGEX.matches(value) -> CommonClassNames.JAVA_LANG_DOUBLE
+            else -> CommonClassNames.JAVA_LANG_STRING
+        }
+    }
+
+    fun <T> getPlaceholders(from: String, mapping: (placeholder: String, range: TextRange) -> T): List<T> {
+        val ranges = PlaceholderTextRanges.getPlaceholderRanges(
+            from,
+            PLACEHOLDER_PREFIX,
+            PLACEHOLDER_SUFFIX
+        )
+        val result = mutableListOf<T>()
+        for (range in ranges) {
+            val index = range.substring(from).indexOf(SpringProperties.COLON)
+            val textInRange =
+                if (index == -1) range.substring(from) else range.substring(from)
+                    .substringBefore(SpringProperties.COLON)
+
+            result.add(mapping.invoke(textInRange, range))
+        }
+        return result
+    }
+
+
+    fun toCommonPropertyForm(propertyName: String): String {
         return propertyName.lowercase()
             .replace("-", "")
             .replace("_", "")
@@ -296,5 +329,7 @@ object PropertyUtil {
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()
+    private val INT_REGEX = "[-+]?[0-9]+".toRegex()
+    private val DOUBLE_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?".toRegex()
 
 }

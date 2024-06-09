@@ -9,6 +9,7 @@ object SpringCoreClasses {
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val APPLICATION_LISTENER = "org.springframework.context.ApplicationListener"
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
+    const val APPLICATION_CONTEXT = "org.springframework.context.ApplicationContext"
 
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
     const val COMPONENT_SCANS = "org.springframework.context.annotation.ComponentScans"
@@ -28,6 +29,7 @@ object SpringCoreClasses {
 
     const val COMPONENT = "org.springframework.stereotype.Component"
     const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
+    const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
 
     const val IO_RESOURCE = "org.springframework.core.io.Resource"
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
@@ -90,6 +92,8 @@ object SpringCoreClasses {
     const val ENVIRONMENT = "org.springframework.core.env.Environment"
     const val CONVERSION_SERVICE = "org.springframework.core.convert.ConversionService"
     const val APPLICATION_ARGUMENTS = "org.springframework.boot.ApplicationArguments"
+
+    const val PARAMETERIZED_TYPE_REFERENCE = "org.springframework.core.ParameterizedTypeReference"
 
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)

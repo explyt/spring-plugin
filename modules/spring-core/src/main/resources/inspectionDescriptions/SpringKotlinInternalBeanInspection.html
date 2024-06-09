@@ -1,0 +1,19 @@
+<html>
+<body>
+<p>Kotlin internal bean methods inspection. Requires explicit specification of the bean name</p>
+
+<p><b>Examples:</b></p>
+<pre><code lang="kotlin">
+  // correctly configured
+  @Bean("testService")
+  internal fun testService(): TestService {
+      return Test3Service()
+  }
+
+  // warning - requires explicit specification of the bean name
+  internal fun testService(): TestService {
+      return Test3Service()
+  }
+</code></pre>
+</body>
+</html>

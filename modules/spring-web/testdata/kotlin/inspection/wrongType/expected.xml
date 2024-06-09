@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>WrongTypeTest.kt</file>
+        <line>25</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void simpleWrong()"/>
+        <problem_class id="WebClientMethodWrongType" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Type doesn't match endpoint's type for '/product/simple'. Possible types are: 'String'</description>
+        <highlighted_element>UUID</highlighted_element>
+        <language>kotlin</language>
+        <offset>25</offset>
+        <length>4</length>
+    </problem>
+
+
+    <problem>
+        <file>WrongTypeTest.kt</file>
+        <line>39</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.UriParametersTest void awaitFlowWrong()"/>
+        <problem_class id="WebClientMethodWrongType" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Type doesn't match endpoint's type for '/product/awaitFlow'. Possible types are: 'Optional&lt;String&gt;'</description>
+        <highlighted_element>Optional&lt;UUID&gt;</highlighted_element>
+        <language>kotlin</language>
+        <offset>24</offset>
+        <length>14</length>
+    </problem>
+
+</problems>

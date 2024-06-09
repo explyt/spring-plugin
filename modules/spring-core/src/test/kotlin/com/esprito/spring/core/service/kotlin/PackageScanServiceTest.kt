@@ -21,6 +21,11 @@ import junit.framework.TestCase
 class PackageScanServiceTest : EspritoKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
+    override fun setUp() {
+        super.setUp()
+        Registry.get("esprito.spring.root.runConfiguration").setValue(false)
+    }
+
     override fun tearDown() {
         super.tearDown()
         Registry.get("esprito.spring.root.runConfiguration").resetToDefault()

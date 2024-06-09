@@ -11,6 +11,7 @@ class SpringCoreAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
             getStaticBean(module, SpringCoreClasses.ENVIRONMENT, "environment"),
             getStaticBean(module, SpringCoreClasses.PROPERTY_RESOLVER, "propertyResolver"),
             getStaticBean(module, SpringCoreClasses.CONVERSION_SERVICE, "conversionService"),
+            getStaticBean(module, SpringCoreClasses.APPLICATION_CONTEXT, "applicationContext"),
         )
     }
 

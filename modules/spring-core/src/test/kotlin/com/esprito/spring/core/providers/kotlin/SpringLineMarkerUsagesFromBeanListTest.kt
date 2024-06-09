@@ -171,7 +171,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
             @${SpringCoreClasses.CONFIGURATION}
             class TestMarker {                               
                 @${SpringCoreClasses.BEAN}
-                fun b(): B { return B() }
+                open fun beanListI(): List<I> { return emptyList() }
             }
             """.trimIndent()
 
@@ -180,7 +180,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
 
         val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
-        assertEquals(2, gutterTargetString.size)
+        assertEquals(1, gutterTargetString.size)
         assertEquals(listOf("list"), gutterTargetString[0])
     }
 
@@ -273,7 +273,7 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
             @${SpringCoreClasses.COMPONENT}
             class TestUsages {
                 @${SpringCoreClasses.AUTOWIRED}
-                lateinit var list: List<in B>               
+                lateinit var list: List<B>               
             }
         """.trimIndent()
         myFixture.createFile("TestUsages.kt", usage)
@@ -292,5 +292,95 @@ class SpringLineMarkerUsagesFromBeanListTest : EspritoKotlinLightTestCase() {
         val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
         assertEquals(0, gutterTargetString.size)
+    }
+
+    fun testCollectionBeanUsage() {
+        myFixture.copyFileToProject("BeanUsagesClasses.kt")
+        @Language("kotlin") val usage = """                 
+            @${SpringCoreClasses.COMPONENT}
+            class TestUsages {
+                @${SpringCoreClasses.AUTOWIRED}
+                lateinit var iCollection: Collection<I>               
+            }
+        """.trimIndent()
+        myFixture.createFile("TestUsages.kt", usage)
+
+        @Language("kotlin") val text = """           
+            import java.util.*
+
+            @${SpringCoreClasses.CONFIGURATION}
+            class TestMarker {                               
+                @${SpringCoreClasses.BEAN}
+                fun e(): Collection<I> { return ArrayList() }
+            }
+            """.trimIndent()
+
+        myFixture.configureByText("TestMarker.kt", text)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("iCollection"), gutterTargetString[0])
+    }
+
+    fun testSetBeanUsage() {
+        myFixture.copyFileToProject("BeanUsagesClasses.kt")
+        @Language("kotlin") val usage = """                 
+            @${SpringCoreClasses.COMPONENT}
+            class TestUsages {
+                @${SpringCoreClasses.AUTOWIRED}
+                lateinit var iCollection: Collection<I>               
+            }
+        """.trimIndent()
+        myFixture.createFile("TestUsages.kt", usage)
+
+        @Language("kotlin") val text = """           
+            import java.util.*
+
+            @${SpringCoreClasses.CONFIGURATION}
+            class TestMarker {                               
+                @${SpringCoreClasses.BEAN}
+                fun e(): Set<I> { return HashSet() }
+            }
+            """.trimIndent()
+
+        myFixture.configureByText("TestMarker.kt", text)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("iCollection"), gutterTargetString[0])
+    }
+
+    fun testListBeanUsage() {
+        myFixture.copyFileToProject("BeanUsagesClasses.kt")
+        @Language("kotlin") val usage = """                 
+            @${SpringCoreClasses.COMPONENT}
+            class TestUsages {
+                @${SpringCoreClasses.AUTOWIRED}
+                lateinit var iCollection: Collection<I>               
+            }
+        """.trimIndent()
+        myFixture.createFile("TestUsages.kt", usage)
+
+        @Language("kotlin") val text = """           
+            import java.util.*
+
+            @${SpringCoreClasses.CONFIGURATION}
+            class TestMarker {                               
+                @${SpringCoreClasses.BEAN}
+                fun e(): List<I> { return ArrayList() }
+            }
+            """.trimIndent()
+
+        myFixture.configureByText("TestMarker.kt", text)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+        assertEquals(1, gutterTargetString.size)
+        assertEquals(listOf("iCollection"), gutterTargetString[0])
     }
 }

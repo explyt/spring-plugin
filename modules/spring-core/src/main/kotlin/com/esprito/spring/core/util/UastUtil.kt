@@ -10,11 +10,15 @@ object UastUtil {
         val value = this.evaluateString() ?: return null
         if (value.startsWith("#{")) return null
         if (value.startsWith("\${") && value.endsWith("}")) {
+            val matchResult = PropertyUtil.VALUE_REGEX.matchEntire(value) ?: return null
+            val (key, defaultValue) = matchResult.destructured
+
             val psiElement = this.sourcePsi ?: return null
             val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
-            return DefinedConfigurationPropertiesSearch.getInstance(module.project)
-                .findProperties(module, value.substring(2, value.length - 1))
-                .firstOrNull()?.value
+            val propertyInfo = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+                .findProperties(module, key)
+                .firstOrNull()
+            return (propertyInfo?.value ?: defaultValue).takeIf { it.isNotEmpty() }
         }
         return value
     }

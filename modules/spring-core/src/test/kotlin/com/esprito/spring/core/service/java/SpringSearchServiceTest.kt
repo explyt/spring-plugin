@@ -3,11 +3,22 @@ package com.esprito.spring.core.service.java
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
+import com.intellij.openapi.util.registry.Registry
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 
 class SpringSearchServiceTest : EspritoJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
+
+    override fun setUp() {
+        super.setUp()
+        Registry.get("esprito.spring.root.runConfiguration").setValue(false)
+    }
+
+    override fun tearDown() {
+        super.tearDown()
+        Registry.get("esprito.spring.root.runConfiguration").resetToDefault()
+    }
 
     fun testImportComponent() {
         val virtualFile = myFixture.copyDirectoryToProject("service/importComponent", "")

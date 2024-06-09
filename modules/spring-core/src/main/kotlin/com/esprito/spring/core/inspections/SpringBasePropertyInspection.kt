@@ -14,6 +14,7 @@ import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.*
 import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
+import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.PropertyUtil
@@ -23,9 +24,9 @@ import com.esprito.spring.core.util.PropertyUtil.propertyValue
 import com.esprito.spring.core.util.PropertyUtil.propertyValuePsiElement
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.util.CacheKeyStore
-import com.intellij.codeInspection.InspectionManager
-import com.intellij.codeInspection.ProblemDescriptor
-import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.*
+import com.intellij.codeInspection.ProblemHighlightType.GENERIC_ERROR
+import com.intellij.lang.properties.PropertiesBundle
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -70,6 +71,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val problems = mutableListOf<ProblemDescriptor>()
         problems += checkKey(module, file, manager, isOnTheFly)
         problems += checkValue(module, manager, isOnTheFly)
+        problems += checkDuplicateKeys(manager, file, isOnTheFly)
         return problems.toTypedArray()
 
     }
@@ -119,9 +121,15 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             }
 
             val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, fileProperty.key) }
+            val placeholders = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+                .getAllPlaceholders(module)
+
             if (foundProperties.isEmpty()
                 && !isPropertyMapKey(fileProperty, properties)
                 && !isPropertyListKey(fileProperty, properties)
+                && placeholders.none {
+                    PropertyUtil.isSameProperty(fileProperty.key, it)
+                }
             ) {
                 val psiReferences = SpringSearchService.getInstance(elementFileProperty.project)
                     .getAllReferencesToElement(elementFileProperty)
@@ -202,14 +210,37 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
+
+        for (property in fileProperties) {
+            val elementFileProperty = property.psiElement ?: continue
+            val psiValue = elementFileProperty.propertyValuePsiElement() ?: continue
+            val value = elementFileProperty.propertyValue() ?: continue
+
+
+            problems += PropertyUtil.getPlaceholders(value) { placeholder, range ->
+                PlaceholderWithRange(placeholder, range)
+            }.asSequence()
+                .filter { isNotSnakeCase(it.placeholder) }
+                .mapTo(mutableListOf()) {
+                    manager.createProblemDescriptor(
+                        psiValue,
+                        it.range,
+                        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.snaked"),
+                        ProblemHighlightType.WARNING,
+                        isOnTheFly,
+                        ReplacementStringQuickFix(it.placeholder, toSnakeCase(it.placeholder), psiValue, it.range)
+                    )
+                }
+        }
+
         val findInFileProperties = fileProperties.filter { property ->
             hints.asSequence()
                 .any { hint ->
                     (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_KEYS == hint.name)
-                        && hint.values.isNotEmpty()
-                        && (hint.providers.isEmpty()
-                        || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
-            }
+                            && hint.values.isNotEmpty()
+                            && (hint.providers.isEmpty()
+                            || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
+                }
         }
         if (findInFileProperties.isEmpty()) {
             return problems
@@ -246,6 +277,31 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         }
         return problems
     }
+
+    private fun isNotSnakeCase(placeholder: String): Boolean {
+        return placeholder.any { it.isUpperCase() || it == '_' }
+    }
+
+    private fun toSnakeCase(placeholder: String): String {
+        if (placeholder.isEmpty()) return ""
+
+        var prev: Char? = null
+        val stringBuilder = StringBuilder()
+        for (current in placeholder) {
+            if (current.isUpperCase()) {
+                if (prev != null && prev.isLowerCase()) {
+                    stringBuilder.append('_')
+                }
+            }
+            stringBuilder.append(current.lowercaseChar())
+
+            prev = current
+        }
+
+        return stringBuilder.replace(UNDERSCORES_REGEX, "-")
+    }
+
+    data class PlaceholderWithRange(val placeholder: String, val range: TextRange)
 
     private fun getProblemClassReference(
         module: Module,
@@ -541,7 +597,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             && !property.key.endsWith("]")
         ) {
             value.split(",").map { it.dropWhitespaces() }
-        } else if (value.contains(SpringProperties.PLACEHOLDER_PREFIX) && value.contains(SpringProperties.PLACEHOLDER_SUFFIX)) {
+        } else if (value.contains(PLACEHOLDER_PREFIX) && value.contains(PLACEHOLDER_SUFFIX)) {
             emptyList()
         } else {
             listOf(value)
@@ -663,10 +719,45 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return properties.filter { it.name == key }
     }
 
+    private fun checkDuplicateKeys(
+        manager: InspectionManager, file: PsiFile, isOnTheFly: Boolean
+    ): List<ProblemDescriptor> {
+        val duplicateKeyMap = fileProperties.asSequence()
+            .groupBy { PropertyUtil.toCommonPropertyForm(it.key) }
+            .filter { it.value.size > 1 }
+            .takeIf { it.isNotEmpty() } ?: return emptyList()
+
+        val problemsHolder = ProblemsHolder(manager, file, isOnTheFly)
+        duplicateKeyMap.forEach { processDuplicate(it.value, problemsHolder) }
+        return problemsHolder.results
+    }
+
+    private fun processDuplicate(properties: List<DefinedConfigurationProperty>, problemsHolder: ProblemsHolder) {
+        val duplicateProperties = properties
+            .associateBy { it.key }
+            .values
+            .takeIf { it.size > 1 } ?: return
+
+        val duplicateKeys = duplicateProperties.joinToString(", ") { it.key }
+        for (property in duplicateProperties) {
+            val psiElementKey = getKeyPsiElement(property) ?: continue
+            val fixes = getRemoveKeyQuickFixes(property)
+            val message = PropertiesBundle.message("duplicate.property.key.error.message")
+            problemsHolder.registerProblem(
+                psiElementKey, "$message: $duplicateKeys", GENERIC_ERROR, *fixes.toTypedArray()
+            )
+        }
+    }
+
+    abstract fun getKeyPsiElement(property: DefinedConfigurationProperty): PsiElement?
+
+    abstract fun getRemoveKeyQuickFixes(property: DefinedConfigurationProperty): List<LocalQuickFix>
+
     companion object {
         val PROHIBITED_IN_PROFILE_PROPERTIES =
             setOf("spring.profiles.include", "spring.profiles.active", "spring.profiles.default")
         val PROFILE_PROPERTIES_FILE_MASK = Regex("application-.*\\.(properties|yml|yaml)")
+        val UNDERSCORES_REGEX = Regex("_+")
     }
 
 }

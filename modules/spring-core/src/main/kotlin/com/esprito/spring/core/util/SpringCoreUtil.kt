@@ -10,6 +10,7 @@ import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
 import com.esprito.util.EspritoAnnotationUtil.getStringValue
+import com.esprito.util.EspritoPsiUtil.allSupers
 import com.esprito.util.EspritoPsiUtil.deepPsiClassType
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
@@ -20,6 +21,7 @@ import com.esprito.util.EspritoPsiUtil.isMap
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isNonPrivate
+import com.esprito.util.EspritoPsiUtil.isObject
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.isString
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
@@ -29,6 +31,8 @@ import com.esprito.util.runReadNonBlocking
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.json.psi.JsonFile
+import com.intellij.lang.Language
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -40,6 +44,7 @@ import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.PsiUtil
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.toUElement
 import java.util.*
@@ -145,7 +150,6 @@ object SpringCoreUtil {
                 || psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH))
     }
 
-    // TODO: value or basePackages
     fun existComponentScan(module: Module): Boolean =
         SpringSearchService.getInstance(module.project)
             .searchPsiClassesAnnotatedByComponentScan(module)
@@ -223,26 +227,70 @@ object SpringCoreUtil {
             return this
         }
 
-    fun PsiType.isMapWithStringKey(): Boolean {
+    val PsiType.beanPsiTypeKotlin: PsiType?
+        get() {
+            if (isCollection && isInterface && this is PsiClassType) {
+                val parameterType = parameters.firstOrNull()
+                if (parameterType != null && parameterType is PsiWildcardType) {
+                    if (parameterType.isExtends) {
+                        val extendsBound = parameterType.extendsBound
+                        if (extendsBound.isMap
+                            || extendsBound.isCollection
+                            || !extendsBound.isObject
+                        ) {
+                            return extendsBound
+                        }
+                    }
+                    if (parameterType.isSuper) {
+                        val superBound = parameterType.superBound
+                        if (superBound.isMap
+                            || superBound.isCollection
+                            || !superBound.isObject
+                        ) {
+                            return superBound
+                        }
+                    }
+                    return this
+                }
+                return parameters.firstOrNull() ?: this
+            }
+            if (isMap) {
+                return if (isMapWithStringKey(KotlinLanguage.INSTANCE) && this is PsiClassType)
+                    parameters[1]
+                else this
+            }
+            return this.beanPsiType
+        }
+
+    fun PsiType.isMapWithStringKey(language: Language = JavaLanguage.INSTANCE): Boolean {
         return isMap
                 && isInterface
                 && this is PsiClassType
                 && parameterCount == 2
                 && parameters[0].isString
+                && (language == JavaLanguage.INSTANCE
+                || (language == KotlinLanguage.INSTANCE && !parameters[1].isObject))
     }
 
     fun PsiClass?.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean =
         this != null && targetClasses.any { it == this }
 
-    fun PsiType.canResolveBeanClass(targetClasses: Set<PsiClass>): Boolean {
-        val beanPsiType = beanPsiType
-        return when (beanPsiType) {
-            is PsiClassType -> beanPsiType.resolvedPsiClass.canResolveBeanClass(targetClasses)
+    fun PsiType.canResolveBeanClass(
+        targetClasses: Set<PsiClass>,
+        language: Language,
+        targetClass: PsiClass? = null
+    ): Boolean {
+        val psiType = if (language == KotlinLanguage.INSTANCE) beanPsiTypeKotlin else beanPsiType
+        return when (psiType) {
+            is PsiClassType -> psiType.resolvedPsiClass.canResolveBeanClass(targetClasses)
             is PsiWildcardType -> {
-                if (!beanPsiType.isBounded) {
+                if (!psiType.isBounded && !psiType.extendsBound.isObject) {
                     return true
                 }
-                targetClasses.any { it.matchesWildcardType(beanPsiType) }
+                if (psiType.isSuper && targetClass != null) {
+                    return psiType.superBound.resolvedPsiClass?.allSupers()?.any { it == targetClass } == true
+                }
+                targetClasses.any { it.matchesWildcardType(psiType) }
             }
             else -> false
         }
@@ -253,6 +301,20 @@ object SpringCoreUtil {
             return this.isBounded
         }
         return true
+    }
+
+    private fun PsiType.supersWildcard(value: PsiType): Boolean {
+        if (this is PsiWildcardType && this.isSuper) {
+            return this.superBound == value || this.superBound in value.superTypes
+        }
+        return false
+    }
+
+    private fun PsiType.extendsWildcard(value: PsiType): Boolean {
+        if (this is PsiWildcardType && this.isExtends) {
+            return this.extendsBound == value || this.extendsBound in value.superTypes
+        }
+        return false
     }
 
     fun PsiType.possibleMultipleBean(): Boolean {
@@ -269,6 +331,16 @@ object SpringCoreUtil {
             return true
         }
         return false
+    }
+
+    fun PsiType.getArrayType(): PsiArrayType? {
+        var arrayPsiType: PsiArrayType? = null
+        if (this is PsiClassType) {
+            arrayPsiType = this.beanPsiType as? PsiArrayType
+        } else if (this is PsiArrayType) {
+            arrayPsiType = this
+        }
+        return arrayPsiType
     }
 
     private fun PsiModifierListOwner.resolveBeanNameByAnnotations(annotationNames: Collection<String>): String? {
@@ -311,15 +383,24 @@ object SpringCoreUtil {
         if (this == beanPsiType) {
             return true
         }
+        if (this is PsiArrayType && this.isEqualOrInheritor(beanPsiType) && beanPsiType.isObject) {
+            return true
+        }
         if (this !is PsiClassType) {
             return false
         }
         if (beanPsiType is PsiClassType) {
+            if (beanPsiType.isCollection) {
+                val parameter = beanPsiType.parameters.firstOrNull()
+                if (parameter != null && parameter is PsiClassType && this.isObject) {
+                    return parameter.isEqualOrInheritor(this)
+                }
+            }
             return this.isEqualOrInheritor(beanPsiType)
                     && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType))
         }
         if (beanPsiType is PsiWildcardType) {
-            return this.resolvedPsiClass?.matchesWildcardType(beanPsiType) ?: return false
+            return this.matchesWildcardType(beanPsiType)
         }
         return false
     }
@@ -329,7 +410,13 @@ object SpringCoreUtil {
             return false
         }
         return this.parameters.withIndex().all { (index, value) ->
-            otherPsiType.parameters[index].let { it == value || !it.isBounded() }
+            otherPsiType.parameters[index].let {
+                it == value
+                        || it.extendsWildcard(value)
+                        || value.extendsWildcard(it)
+                        || it.supersWildcard(value)
+                        || !it.isBounded()
+            }
         }
     }
 
@@ -340,10 +427,30 @@ object SpringCoreUtil {
                 return this.isEqualOrInheritor(extendsBeanPsiClass)
             }
         }
+        return isWildcardTypeSuper(this, beanPsiType)
+    }
+
+    fun PsiClassType.matchesWildcardType(beanPsiType: PsiWildcardType): Boolean {
+        val resolvedPsiClass = this.resolvedPsiClass ?: return false
+        if (beanPsiType.isExtends) {
+            val extendsBeanType = beanPsiType.extendsBound
+            val extendsBeanPsiClass = extendsBeanType.resolvedPsiClass
+            if (extendsBeanPsiClass != null) {
+                return if (extendsBeanType is PsiClassType) {
+                    resolvedPsiClass.isEqualOrInheritor(extendsBeanPsiClass)
+                            && (extendsBeanType.parameters.isEmpty() || this.equalParamsWithBound(extendsBeanType))
+
+                } else resolvedPsiClass.isEqualOrInheritor(extendsBeanPsiClass)
+            }
+        }
+        return isWildcardTypeSuper(resolvedPsiClass, beanPsiType)
+    }
+
+    private fun isWildcardTypeSuper(psiClass: PsiClass, beanPsiType: PsiWildcardType): Boolean {
         if (beanPsiType.isSuper) {
             val superBeanPsiClass = beanPsiType.superBound.resolvedPsiClass
             if (superBeanPsiClass != null) {
-                return superBeanPsiClass == this
+                return superBeanPsiClass == psiClass
             }
         }
         return false
@@ -366,7 +473,7 @@ object SpringCoreUtil {
             }
         }
 
-        return sequence.filter { psiMethod ->
+        return sequence.filter { psiMethod ->//
             val psiMethodReturnType = psiMethod.returnType
             psiMethod.findChildrenOfType<PsiReturnStatement>().any {
                 it.returnValue?.type?.let {

@@ -11,8 +11,12 @@ object SpringWebClasses {
     const val RESPONSE_BODY = "org.springframework.web.bind.annotation.ResponseBody"
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
+    const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
+    const val WEB_TEST_CLIENT_URI_SPEC = "org.springframework.test.web.reactive.server.WebTestClient.UriSpec"
+    const val WEB_CLIENT_URI_SPEC = "org.springframework.web.reactive.function.client.WebClient.UriSpec"
+    const val WEB_CLIENT_RESPONSE_SPEC = "org.springframework.web.reactive.function.client.WebClient.ResponseSpec"
 
     const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
     const val ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER =

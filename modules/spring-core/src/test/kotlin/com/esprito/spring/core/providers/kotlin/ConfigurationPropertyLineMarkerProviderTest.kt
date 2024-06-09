@@ -148,6 +148,45 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoKotlinLightTestCase()
         )
     }
 
+    fun testLineMarkerPropertiesInConstructors() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME, """
+                configuration.value=1
+                configuration.nested.value=2
+            """.trimIndent()
+        )
+
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.kt", """
+            import org.springframework.boot.context.properties.ConfigurationProperties
+            import org.springframework.context.annotation.Configuration
+
+            @ConfigurationProperties(prefix="configuration")
+            data class MainPropertiesConfiguration (
+                var value: Int?,
+                var nested: NestedProperties? = null
+            )
+            
+            data class NestedProperties (
+                var value: String? = null
+            )
+            """.trimIndent()
+        )
+
+        val allBeanGutters = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.SpringSetting }
+        val gutterTargetString = allBeanGutters.asSequence()
+            .map { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+            .filter { it.isNotEmpty() }
+            .toList()
+
+        val expectedElements = setOf("configuration.value", "configuration.nested.value")
+
+        assertTrue(allBeanGutters.isNotEmpty())
+        assertEquals(expectedElements.toSet(), gutterTargetString.flatten().toSet())
+    }
+
+
     companion object {
         const val APPLICATION_PROPERTIES_FILE_NAME = "application.properties"
     }

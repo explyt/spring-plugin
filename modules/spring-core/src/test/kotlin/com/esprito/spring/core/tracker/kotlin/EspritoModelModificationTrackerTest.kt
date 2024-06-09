@@ -376,6 +376,162 @@ class EspritoModelModificationTrackerTest : LightJavaCodeInsightFixtureTestCase(
         runModificationTriggeredTest { typeBackspaces(2) }
     }
 
+    fun testCommentField() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean
+                import org.springframework.context.annotation.Configuration
+                import org.springframework.stereotype.Component
+                import org.springframework.beans.factory.annotation.Autowired
+
+                @Configuration
+                class KotlinClass {                        
+                    @Bean fun getE(): E { return E() }
+                }                
+                class E {}
+                
+                @Component
+                class KotlinComponent {
+                    <caret>@Autowired lateinit var service: E                       
+                }
+                
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testUncommentField() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean
+                import org.springframework.context.annotation.Configuration
+                import org.springframework.stereotype.Component
+                import org.springframework.beans.factory.annotation.Autowired
+
+                @Configuration
+                class KotlinClass {                        
+                    @Bean fun getE(): E { return E() }
+                }                
+                class E {}
+                
+                @Component
+                class KotlinComponent {
+                    //<caret>@Autowired lateinit var service: E                       
+                }
+                
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
+    fun testCommentFieldConstructor() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean
+                import org.springframework.context.annotation.Configuration
+                import org.springframework.stereotype.Component
+                import org.springframework.beans.factory.annotation.Autowired
+
+                @Configuration
+                class KotlinClass {                        
+                    @Bean fun getE(): E { return E() }
+                }                
+                class E {}
+                
+                @Component
+                class KotlinComponent(
+                    <caret>val service: E
+                ) {}
+                
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testUncommentFieldConstructor() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean
+                import org.springframework.context.annotation.Configuration
+                import org.springframework.stereotype.Component
+                import org.springframework.beans.factory.annotation.Autowired
+
+                @Configuration
+                class KotlinClass {                        
+                    @Bean fun getE(): E { return E() }
+                }                
+                class E {}
+                
+                @Component
+                class KotlinComponent(
+                    //<caret>val service: E
+                ) {}
+                
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
+    fun testCommentFieldWithJavaDoc() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean
+                import org.springframework.context.annotation.Configuration
+                import org.springframework.stereotype.Component
+                import org.springframework.beans.factory.annotation.Autowired
+
+                @Configuration
+                class KotlinClass {                        
+                    @Bean fun getE(): E { return E() }
+                }                
+                class E {}
+                
+                @Component
+                class KotlinComponent {
+                    <caret>@Autowired lateinit var service: E   /** Target test {}*/                      
+                }
+                
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { myFixture.type("//") }
+    }
+
+    fun testUncommentFieldWithJavaDoc() {
+        myFixture.configureByText(
+            "KotlinClass.kt",
+            """
+                import org.springframework.context.annotation.Bean
+                import org.springframework.context.annotation.Configuration
+                import org.springframework.stereotype.Component
+                import org.springframework.beans.factory.annotation.Autowired
+
+                @Configuration
+                class KotlinClass {                        
+                    @Bean fun getE(): E { return E() }
+                }                
+                class E {}
+                
+                @Component
+                class KotlinComponent {
+                    //<caret>@Autowired lateinit var service: E      /** Target test {}*/                      
+                }
+                
+            """.trimMargin()
+        )
+
+        runModificationTriggeredTest { typeBackspaces(2) }
+    }
+
     private fun runModificationTriggeredTest() {
         runModificationTriggeredTest { myFixture.type('A') }
     }

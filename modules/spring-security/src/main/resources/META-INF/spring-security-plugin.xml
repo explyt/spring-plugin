@@ -4,7 +4,7 @@
         <localInspection language="UAST"
                          shortName="SpringSecurityAnnotationWithUserDetailsInspection"
                          groupBundle="messages.SpringSecurityBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.security.notifications"
                          bundle="messages.SpringSecurityBundle"
                          key="esprito.spring.security.inspection.bean"
