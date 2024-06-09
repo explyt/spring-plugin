@@ -1,6 +1,6 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# Esprito Spring Tools Changelog
+# Spring Explyt Changelog
 
 
 ## [Unreleased]

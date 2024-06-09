@@ -3,7 +3,7 @@
         <localInspection language="UAST"
                          shortName="SpringAopAnnotationInspection"
                          groupBundle="messages.SpringAopBundle"
-                         groupPath="Esprito Spring Tool"
+                         groupPath="Spring Explyt"
                          groupKey="esprito.spring.aop.notifications"
                          bundle="messages.SpringAopBundle"
                          key="esprito.spring.inspection.aop"

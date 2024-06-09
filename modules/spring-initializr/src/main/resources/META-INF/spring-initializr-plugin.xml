@@ -6,7 +6,7 @@
 
         <notificationGroup
                 id="espritoSpringInitializrNotificationGroup"
-                toolWindowId="Esprito Spring Initializr"
+                toolWindowId="Spring Explyt Initializr"
                 displayType="BALLOON"/>
     </extensions>
 
