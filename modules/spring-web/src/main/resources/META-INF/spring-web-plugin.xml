@@ -71,6 +71,17 @@
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.RequestMappingDuplicateInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="JavaWebClientMethodWrongType"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Esprito Spring Tool"
+                         groupKey="esprito.spring.web.notifications.core"
+                         bundle="messages.SpringWebBundle"
+                         key="esprito.spring.web.inspection.webClient.type"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.web.inspections.WebClientMethodWrongTypeInspection"/>
+
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
         <psi.referenceContributor language="UAST"

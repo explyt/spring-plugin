@@ -11,6 +11,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.lang.Language
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.editor.EditorModificationUtilEx
+import com.intellij.openapi.module.Module
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
@@ -40,48 +41,22 @@ class WebClientMethodCompletionContributor : CompletionContributor() {
             context: ProcessingContext,
             result: CompletionResultSet
         ) {
-            var receiver: UQualifiedReferenceExpression? =
+            val receiver: UQualifiedReferenceExpression =
                 parameters.position.getUastParentOfType<UQualifiedReferenceExpression>()
                     ?.receiver as? UQualifiedReferenceExpression
                     ?: return
 
-            if (receiver?.getExpressionType()?.canonicalText != SpringWebClasses.WEB_CLIENT_RESPONSE_SPEC) return
-
-            var uri: String? = null
-            var method: String? = null
-
-            while (receiver != null && (uri == null || method == null)) {
-                val psiMethod = receiver.tryResolve() as? PsiMethod
-                if (psiMethod != null) {
-                    val methodName = psiMethod.name
-                    if (method == null && methodName in SpringWebUtil.REQUEST_METHODS) {
-                        method = methodName.uppercase()
-                    }
-
-                    if (uri == null && methodName == "uri" && psiMethod.containingClass?.qualifiedName == SpringWebClasses.WEB_CLIENT_URI_SPEC) {
-                        uri = (receiver.selector as? UCallExpression)
-                            ?.getArgumentForParameter(0)
-                            ?.evaluateString()
-                    }
-                }
-                receiver = receiver.receiver as? UQualifiedReferenceExpression
-            }
-            if (uri == null || method == null) return
             val module = parameters.position.module ?: return
 
-            val endpointResults = SpringWebSearchService.getInstance(parameters.position.project)
-                .getEndpointElements(uri.replace("\"", ""), module)
-                .asSequence()
-                .filter { it.requestMethods.contains(method) }
-                .mapNotNull { it.psiElement as? PsiMethod }
-                .mapNotNull { it.returnType as? PsiClassReferenceType }
-                .mapNotNullTo(mutableSetOf()) { EndpointResult.of(it, parameters.position.language) }
-
-            for (endpointResult in endpointResults) {
-                if (parameters.position.language == JavaLanguage.INSTANCE) {
-                    addLookUpsJava(endpointResult, result)
-                } else if (parameters.position.language == KotlinLanguage.INSTANCE) {
-                    addLookUpsKotlin(endpointResult, result)
+            endpointsTypesForExpression(receiver, module)?.let { (_, endpointTypes) ->
+                val endpointResults = endpointTypes
+                    .mapNotNullTo(mutableSetOf()) { EndpointResult.of(it, parameters.position.language) }
+                for (endpointResult in endpointResults) {
+                    if (parameters.position.language == JavaLanguage.INSTANCE) {
+                        addLookUpsJava(endpointResult, result)
+                    } else if (parameters.position.language == KotlinLanguage.INSTANCE) {
+                        addLookUpsKotlin(endpointResult, result)
+                    }
                 }
             }
         }
@@ -148,6 +123,46 @@ class WebClientMethodCompletionContributor : CompletionContributor() {
         }
 
         companion object {
+            fun endpointsTypesForExpression(
+                referenceExpression: UQualifiedReferenceExpression?,
+                module: Module
+            ): UriWithEndpointTypes? {
+                var receiver = referenceExpression
+                if (receiver?.getExpressionType()?.canonicalText != SpringWebClasses.WEB_CLIENT_RESPONSE_SPEC) return null
+
+                var uri: String? = null
+                var method: String? = null
+
+                while (receiver != null && (uri == null || method == null)) {
+                    val psiMethod = receiver.tryResolve() as? PsiMethod
+                    if (psiMethod != null) {
+                        val methodName = psiMethod.name
+                        if (method == null && methodName in SpringWebUtil.REQUEST_METHODS) {
+                            method = methodName.uppercase()
+                        }
+
+                        if (uri == null && methodName == "uri" && psiMethod.containingClass?.qualifiedName == SpringWebClasses.WEB_CLIENT_URI_SPEC) {
+                            uri = (receiver.selector as? UCallExpression)
+                                ?.getArgumentForParameter(0)
+                                ?.evaluateString()
+                        }
+                    }
+                    receiver = receiver.receiver as? UQualifiedReferenceExpression
+                }
+                if (uri == null || method == null) return null
+
+                val endpointTypes = SpringWebSearchService.getInstance(module.project)
+                    .getEndpointElements(uri.replace("\"", ""), module)
+                    .asSequence()
+                    .filter { it.requestMethods.contains(method) }
+                    .mapNotNull { it.psiElement as? PsiMethod }
+                    .mapNotNull { it.returnType as? PsiClassReferenceType }
+
+                return UriWithEndpointTypes(uri, endpointTypes)
+            }
+
+            data class UriWithEndpointTypes(val uri: String, val endpointTypes: Sequence<PsiClassReferenceType>)
+
             private val SEPARATORS_REGEX = Regex("[<>(),]")
         }
 
