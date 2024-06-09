@@ -7,22 +7,33 @@
 
 ### Spring Core/Boot
 
+- Fixed: Inspection: Duplicate properties keys in different relaxed binding forms do not show error
+- Find Usages: for property keys when used in different relaxed binding forms
 - Fixed: Navigate to autowired candidates and bean declarations for wildcard type
-- Fixed: Navigate to autowired candidates and bean declarations in Kotlin
-- Inspection: property placeholder not in a snake-case
-- Fixed inspection "Cannot resolve key property" for non-snake-case keys
-- Fixed: Inspection "Autowire failed" for ApplicationContext
-- The inspection text has been adjusted for @ConfigurationProperties
+- Fixed: Navigate to autowired candidates and bean declarations in Kotlin: arrays, collections and maps
+- Make Spring `@Scheduled` description human-readable
+- Inspection: property placeholder not in a kebab-case
+- Fixed: Inspection "Cannot resolve key property" for non-kebab-case keys
+- Fixed: Inspection "Autowire failed" for `ApplicationContext`
+- Inspection: Kotlin `internal` modifier mangling
+- The inspection text has been adjusted for `@ConfigurationProperties`
 - Intention: create property description in `additional-metadata.json`
 - Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes
+- Fixed `@Value` folding for Kotlin
 
 ### Spring Web/MVC
 
 - Inspection: `WebController` `bodyToMono/Flux`, `awaitBody` type doesn't match endpoint
-- `WebController` `bodyToMono/Flux`, `awaitBody` methods autocompletion
+- Add `WebController` `bodyToMono/Flux`, `awaitBody` methods autocompletion
 - Inspection: `WebController/WebTestController` uri parameters count
 - Add Navigation from `WebClient/WebTestClient` to Controller endpoints
+
+### Other
+
+- Migrate Esprito to Explyt
+- Update plugin description
+- Fixed: Stale UAST cache
 
 ## [241.1.1303] - 2024-04-24
 
