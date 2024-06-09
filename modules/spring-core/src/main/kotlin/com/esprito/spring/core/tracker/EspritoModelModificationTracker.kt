@@ -16,6 +16,7 @@ import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtClassBody
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.*
@@ -117,6 +118,13 @@ internal class MyUastPsiTreeChangeAdapter(
         }
         //added or removed comment
         if (eventType == CHILD_REPLACED && isClassOrMethodCommented(event)) {
+            modelTracker.incModificationCount()
+            return
+        }
+
+        if (eventType == CHILD_REPLACED && ((event.newChild is PsiClass && event.oldChild is PsiClass)
+                    || (event.newChild is KtClassBody && event.oldChild is KtClassBody))
+        ) {
             modelTracker.incModificationCount()
             return
         }
