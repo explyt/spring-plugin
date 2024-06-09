@@ -1,0 +1,35 @@
+<html lang="en">
+<head>
+    <title>WebClient bodyToMono/Flux type inspection</title>
+</head>
+<body>
+
+<p>Reports wrong type</p>
+
+<p><b>Example:</b></p>
+
+<pre><code lang="java">
+   @RestController
+   public class WrongTypeController {
+
+       private WrongTypeService service;
+
+       @PutMapping(value={"/product"})
+       @ResponseBody
+       public Mono&ltString&gt product() {
+            return service.simple();
+       }
+   }
+</code></pre>
+
+Reports "Type doesn't match endpoint's type for '/product'. Possible types are: 'String'"
+<pre><code lang="java">
+    void productWrong() {
+        webClient.put().uri("/product").retrieve()
+            .bodyToMono(UUID.class);
+    }
+</code></pre>
+
+</body>
+</html>
+/html>
