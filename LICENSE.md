@@ -1,4 +1,4 @@
-Last updated: November 21, 2023
+Last updated: June 10, 2024
 
 End User License Agreement (EULA) of Esprito Spring Tools
 
