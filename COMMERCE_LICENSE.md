@@ -1,4 +1,4 @@
-Last updated: April 11, 2024
+Last updated: June 10, 2024
 
 License Agreement of Esprito Spring Tools
 
@@ -80,7 +80,7 @@ A certificate issued under the License Key, allowing individual users within the
 
 ### Site
 
-The official online presence of Esprito Spring Tools, which can be accessed via \[<https://esprito.com>].
+The official online presence of Esprito Spring Tools, which can be accessed via \[<https://explyt.com>].
 
 ## AGREEMENT COVERAGE
 
@@ -118,7 +118,7 @@ You are granted the right to employ the Plugin in congruence with the technical 
 
 ### Acceptance
 
-To accept this Agreement, you need to provide the Licensor (Esprito Tech sales team - <sales@esprito.com>) with a formal request for issuing a License Key using Your corporate email and providing the following:
+To accept this Agreement, you need to provide the Licensor (Esprito Tech sales team - <sales@explyt.com>) with a formal request for issuing a License Key using Your corporate email and providing the following:
 
 - required amount of active User Certificates; and
 - the Licensee company information (outlined below).
@@ -165,7 +165,7 @@ THE DEVELOPER SHALL NOT BE LIABLE TO YOU FOR ANY LOST PROFITS OR CONSEQUENTIAL D
 
 ### Inquiries
 
-For any additional commercial usage of Esprito Spring Tools, not covered by this License Agreement, a formal request must be submitted to Esprito Tech sales team ([sales@esprito.com](mailto:sales@esprito.com)) for the acquisition of appropriate licenses.
+For any additional commercial usage of Esprito Spring Tools, not covered by this License Agreement, a formal request must be submitted to Esprito Tech sales team ([sales@explyt.com](mailto:sales@explyt.com)) for the acquisition of appropriate licenses.
 
 ### Termination
 
