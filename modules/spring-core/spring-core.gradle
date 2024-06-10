@@ -39,7 +39,8 @@ def baseProject = project(":base")
 
 dependencies {
     api(baseProject)
-    implementation("com.cronutils:cron-utils:9.2.0")
+    implementation("com.cronutils:cron-utils:9.2.1")
+    implementation("javax.validation:validation-api:2.0.1.Final")
     testImplementation(project(":test-framework"))
 }
 
