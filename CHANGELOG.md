@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+
+## [241.1.1581] - 2024-06-10
+
 ### Spring Core/Boot
 
 - Fixed: Inspection: Duplicate properties keys in different relaxed binding forms do not show error
@@ -35,7 +38,7 @@
 - Update plugin description
 - Fixed: Stale UAST cache
 
-## [241.1.1303] - 2024-04-24
+## 241.1.1303 - 2024-04-24
 
 ### Spring Core/Boot
 
