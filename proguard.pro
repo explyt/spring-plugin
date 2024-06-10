@@ -74,3 +74,13 @@
 -dontwarn org.junit.**
 -dontwarn reactor.blockhound.**
 -dontwarn training.**
+-dontwarn org.slf4j.**
+
+# slf4j
+-assumenosideeffects class * implements org.slf4j.Logger {
+    public *** trace(...);
+    public *** debug(...);
+    public *** info(...);
+    public *** warn(...);
+    public *** error(...);
+}
