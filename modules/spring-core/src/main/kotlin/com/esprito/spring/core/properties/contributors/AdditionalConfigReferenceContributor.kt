@@ -13,6 +13,7 @@ import com.esprito.spring.core.properties.references.AdditionalConfigPropertyNam
 import com.esprito.spring.core.properties.references.AdditionalConfigValueProviderReference
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.json.psi.*
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.PatternCondition
@@ -90,11 +91,12 @@ class AdditionalConfigReferenceContributor : PsiReferenceContributor() {
     private fun getHintNameReferenceProvider(): PsiReferenceProvider =
         object : PsiReferenceProvider() {
             override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+                val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
                 val property = ElementManipulators.getValueText(element)
                 val prefixLength = getPrefixLength(property)
                 val textRange = if (prefixLength != -1) TextRange.from(1, prefixLength) else null
                 val propertyKey = if (prefixLength != -1) property.substring(0, prefixLength) else property
-                return arrayOf(ConfigurationPropertyKeyReference(element, propertyKey, textRange, "Hint"))
+                return arrayOf(ConfigurationPropertyKeyReference(element, module, propertyKey, textRange, "Hint"))
             }
 
             private fun getPrefixLength(property: String): Int {
