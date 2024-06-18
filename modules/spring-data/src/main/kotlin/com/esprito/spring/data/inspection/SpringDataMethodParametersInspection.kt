@@ -1,6 +1,5 @@
 package com.esprito.spring.data.inspection
 
-import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.SpringDataClasses.DOMAIN_PACKAGE_PREFIX
@@ -22,7 +21,7 @@ import org.springframework.data.repository.query.parser.PartTree
 import org.springframework.data.repository.query.parser.domain.PropertyPath
 
 
-class SpringDataMethodParametersInspection : SpringBaseUastLocalInspectionTool() {
+class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,

@@ -39,6 +39,17 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.data.inspection.SpringDataMethodParametersInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDataEnableInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupPath="Spring Explyt"
+                         groupKey="esprito.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="esprito.spring.data.inspection.enable"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.esprito.spring.data.inspection.SpringDataEnableInspection"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.esprito">

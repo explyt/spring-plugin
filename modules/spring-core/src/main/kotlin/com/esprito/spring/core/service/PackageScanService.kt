@@ -58,7 +58,7 @@ class PackageScanService(private val project: Project) {
         val allModuleRootDataList = moduleRootDataList + importModuleRootDataList
 
         val packagesByModuleName = allModuleRootDataList.groupingBy { it.moduleName }
-            .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { "$it." } }
+            .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { normalizePackage(it) } }
         val rootComponentQualified = moduleRootDataList.mapNotNullTo(mutableSetOf()) { it.rootComponentQualified }
         val importQualified = importClasses.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
 
@@ -275,6 +275,12 @@ class PackageScanService(private val project: Project) {
 
     companion object {
         fun getInstance(project: Project): PackageScanService = project.service()
+
+        fun normalizePackage(packageName: String): String {
+            if (packageName.endsWith(".")) return packageName
+            if (packageName.endsWith("*")) return normalizePackage(packageName.substring(0, packageName.length - 2))
+            return "$packageName."
+        }
     }
 
     data class ModuleRootData(
