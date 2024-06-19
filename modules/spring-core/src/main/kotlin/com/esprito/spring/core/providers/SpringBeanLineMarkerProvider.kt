@@ -123,6 +123,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             var result = false
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
                 result = isComponentCandidate(uParent.javaPsi) && !dependsOnIncorrectBean(uParent.javaPsi)
+                if (!result && hasSpringInterfaces(uParent)) {
+                    result = inSpringContext()
+                }
             }
             if (uParent is UMethod) {
                 result = isBeanMethodExpression(uParent.javaPsi)
@@ -142,6 +145,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     .map { it.psiClass }.contains(deepArrayPsiClass)
             }
             return findTargetClass() in springSearchService.getAllActiveBeans(module)
+        }
+
+        private fun hasSpringInterfaces(uParent: UClass): Boolean {
+            val interfaces = uParent.javaPsi.interfaces.takeIf { it.isNotEmpty() } ?: return false
+            return interfaces.any { it.qualifiedName?.startsWith(SpringProperties.BASE_SPRING_PACKAGE) == true }
         }
 
         fun isClassForBeanMethod(): Boolean {
@@ -327,7 +335,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allAutowiredAnnotations = springSearchService.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
-            val allBeans = springSearchService.getActiveBeansClasses(module)
+            val allBeans = springSearchService.getActiveBeansClasses(module) +
+                    springSearchService.getDependentBeanPsiClassesAnnotatedByComponent(module)
 
             val allFieldsWithAutowired = allBeans.asSequence()
                 .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }

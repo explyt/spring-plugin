@@ -150,11 +150,6 @@ object SpringCoreUtil {
                 || psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH))
     }
 
-    fun existComponentScan(module: Module): Boolean =
-        SpringSearchService.getInstance(module.project)
-            .searchPsiClassesAnnotatedByComponentScan(module)
-            .any { !it.isAnnotationType }
-
     fun PsiClass.getBeanName(): String? =
         name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
 

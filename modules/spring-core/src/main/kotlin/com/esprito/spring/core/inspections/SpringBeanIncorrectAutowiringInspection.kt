@@ -50,7 +50,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             if (isArrayBeanExist) return emptyArray()
         }
 
-        if (isBeanExist(module, field.containingClass) && SpringCoreUtil.existComponentScan(module)) {
+        val psiClass = field.containingClass ?: return emptyArray()
+        if (isBeanExist(module, psiClass)) {
             return getProblemAutowired(module, field, manager, isOnTheFly)
         }
         return ProblemDescriptor.EMPTY_ARRAY
@@ -62,8 +63,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor> {
         val aClass = uClass.javaPsi
-        val module = ModuleUtilCore.findModuleForPsiElement(aClass) ?: ProblemDescriptor.EMPTY_ARRAY
-        if (!SpringCoreUtil.existComponentScan(module as Module)) return ProblemDescriptor.EMPTY_ARRAY
+        val module = ModuleUtilCore.findModuleForPsiElement(aClass) ?: return ProblemDescriptor.EMPTY_ARRAY
         if (!SpringCoreUtil.isSpringBeanCandidateClass(aClass)) return ProblemDescriptor.EMPTY_ARRAY
 
         var problems = emptyArray<ProblemDescriptor>()
@@ -240,13 +240,9 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
     }
 
-    private fun isBeanExist(module: Module, psiClass: PsiClass?): Boolean {
-        if (psiClass == null) {
-            return false
-        }
-        if (SpringCoreUtil.isComponentCandidate(psiClass)) {
-            return true
-        }
+    private fun isBeanExist(module: Module, psiClass: PsiClass): Boolean {
+        if (SpringCoreUtil.isComponentCandidate(psiClass)) return true
+
         return SpringSearchService.getInstance(module.project).getActiveBeansClasses(module).asSequence()
             .filter { it.psiClass.qualifiedName == psiClass.qualifiedName }
             .toList().isNotEmpty()
