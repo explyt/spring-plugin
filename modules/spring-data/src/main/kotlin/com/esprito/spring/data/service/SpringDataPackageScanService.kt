@@ -5,21 +5,23 @@ import com.esprito.spring.core.SpringCoreClasses.COMPONENT
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.service.PackageScanService
+import com.esprito.spring.core.service.PackageScanService.Companion.getBasePackages
 import com.esprito.spring.core.service.PackageScanService.Companion.normalizePackage
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.data.SpringDataClasses.ENABLE_JPA_REPOSITORY
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import org.jetbrains.uast.*
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.getContainingUFile
+import org.jetbrains.uast.toUElementOfType
 
 @Service(Service.Level.PROJECT)
 class SpringDataPackageScanService(private val project: Project) {
@@ -46,7 +48,7 @@ class SpringDataPackageScanService(private val project: Project) {
         val holderComponent = SpringSearchService.getInstance(project).getMetaAnnotations(module, COMPONENT)
         val holderEnableJpa = SpringSearchService.getInstance(project).getMetaAnnotations(module, ENABLE_JPA_REPOSITORY)
 
-        val resultPackages = mutableSetOf<String>().also { it.addAll(packages) }
+        val resultPackages = mutableSetOf<String>()
         for (annotatedClass in annotatedClassesInPackages) {
             val uClass = annotatedClass.toUElementOfType<UClass>() ?: continue
             uClass.uAnnotations.find { holderComponent.contains(it) } ?: continue
@@ -92,7 +94,7 @@ class SpringDataPackageScanService(private val project: Project) {
                     qualifiedName, it.name ?: SpringProperties.VALUE, ENABLE_JPA_REPOSITORY, setOf("basePackageClasses")
                 )
             }
-            .flatMap { getClassPackages(it.expression) }
+            .flatMap { PackageScanService.getClassPackages(it.expression) }
             .toSet()
         val packages = basePackagesValue + basePackages + basePackageClasses
         //case with empty params. example: @ComponentScan
@@ -101,32 +103,6 @@ class SpringDataPackageScanService(private val project: Project) {
             return setOf(packageName)
         }
         return packages
-    }
-
-
-    private fun getBasePackages(uExpression: UExpression): List<String> {
-        return if (uExpression is UCallExpression) {
-            uExpression.valueArguments.mapNotNull { it.evaluate() as? String }
-        } else {
-            (uExpression.evaluate() as? String)?.let { listOf(it) } ?: emptyList()
-        }
-    }
-
-    private fun getClassPackages(uExpression: UExpression): List<String> {
-        return getPsiClasses(uExpression).mapNotNull { (it.containingFile as? PsiJavaFile)?.packageName }
-    }
-
-    private fun getPsiClasses(uExpression: UExpression): List<PsiClass> {
-        return if (uExpression is UCallExpression) {
-            uExpression.valueArguments.mapNotNull { getPsiClass(it) }
-        } else {
-            getPsiClass(uExpression)?.let { listOf(it) } ?: emptyList()
-        }
-    }
-
-    private fun getPsiClass(uExpression: UExpression): PsiClass? {
-        val uClassLiteralExpression = uExpression as? UClassLiteralExpression ?: return null
-        return uClassLiteralExpression.type?.resolvedPsiClass
     }
 
     private fun getEnableJpaRepositoryAnnotation(): PsiClass? {

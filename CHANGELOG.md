@@ -8,6 +8,10 @@
 ### Spring Core/Boot
 - Fixed: Yaml PropertyLineMarker only for leaf elements
 
+### Spring Data
+
+- Fixed: Repository injected through @Autowired and package enabled via @EnableJpaRespoitory
+
 ## [241.1.1581] - 2024-06-10
 
 ### Spring Core/Boot

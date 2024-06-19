@@ -214,31 +214,6 @@ class PackageScanService(private val project: Project) {
             .toSet()
     }
 
-    private fun getBasePackages(uExpression: UExpression): List<String> {
-        return if (uExpression is UCallExpression) {
-            uExpression.valueArguments.mapNotNull { it.evaluate() as? String }
-        } else {
-            (uExpression.evaluate() as? String)?.let { listOf(it) } ?: emptyList()
-        }
-    }
-
-    private fun getClassPackages(uExpression: UExpression): List<String> {
-        return getPsiClasses(uExpression).mapNotNull { (it.containingFile as? PsiJavaFile)?.packageName }
-    }
-
-    private fun getPsiClasses(uExpression: UExpression): List<PsiClass> {
-        return if (uExpression is UCallExpression) {
-            uExpression.valueArguments.mapNotNull { getPsiClass(it) }
-        } else {
-            getPsiClass(uExpression)?.let { listOf(it) } ?: emptyList()
-        }
-    }
-
-    private fun getPsiClass(uExpression: UExpression): PsiClass? {
-        val uClassLiteralExpression = uExpression as? UClassLiteralExpression ?: return null
-        return uClassLiteralExpression.type?.resolvedPsiClass
-    }
-
     private fun getComponentScanAnnotations(): ScanAnnotationHolder {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
@@ -280,6 +255,32 @@ class PackageScanService(private val project: Project) {
             if (packageName.endsWith(".")) return packageName
             if (packageName.endsWith("*")) return normalizePackage(packageName.substring(0, packageName.length - 2))
             return "$packageName."
+        }
+
+
+        fun getBasePackages(uExpression: UExpression): List<String> {
+            return if (uExpression is UCallExpression) {
+                uExpression.valueArguments.mapNotNull { it.evaluate() as? String }
+            } else {
+                (uExpression.evaluate() as? String)?.let { listOf(it) } ?: emptyList()
+            }
+        }
+
+        fun getClassPackages(uExpression: UExpression): List<String> {
+            return getPsiClasses(uExpression).mapNotNull { (it.containingFile as? PsiJavaFile)?.packageName }
+        }
+
+        private fun getPsiClasses(uExpression: UExpression): List<PsiClass> {
+            return if (uExpression is UCallExpression) {
+                uExpression.valueArguments.mapNotNull { getPsiClass(it) }
+            } else {
+                getPsiClass(uExpression)?.let { listOf(it) } ?: emptyList()
+            }
+        }
+
+        private fun getPsiClass(uExpression: UExpression): PsiClass? {
+            val uClassLiteralExpression = uExpression as? UClassLiteralExpression ?: return null
+            return uClassLiteralExpression.type?.resolvedPsiClass
         }
     }
 

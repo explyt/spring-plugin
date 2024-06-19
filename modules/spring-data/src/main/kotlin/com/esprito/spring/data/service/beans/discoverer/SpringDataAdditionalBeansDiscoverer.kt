@@ -2,11 +2,13 @@ package com.esprito.spring.data.service.beans.discoverer
 
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.service.PsiBean
+import com.esprito.spring.core.service.RootDataHolder
 import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.SpringDataClasses.SPRING_RESOURCE
+import com.esprito.spring.data.service.SpringDataPackageScanService
 import com.esprito.spring.data.util.SpringDataUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.search.searches.ClassInheritorsSearch
@@ -28,5 +30,11 @@ class SpringDataAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
         return listOfNotNull(
             getStaticBean(module, SpringDataClasses.JPA_CONTEXT, "jpaContext"),
         )
+    }
+
+    override fun additionalFilterBeans(module: Module, bean: PsiBean, rootDataHolder: RootDataHolder): Boolean {
+        val packages = SpringDataPackageScanService.getInstance(module.project).getPackages(module)
+        val qualifiedName = bean.psiClass.qualifiedName ?: return false
+        return packages.any { qualifiedName.startsWith(it) }
     }
 }
