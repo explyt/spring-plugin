@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 - Fixed: Yaml PropertyLineMarker only for leaf elements
+- Inspection: @EntityScan package support
 
 ### Spring Data
 

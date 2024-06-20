@@ -93,8 +93,7 @@ class PackageScanService(private val project: Project) {
     private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder): List<PsiClass> {
         return if (Registry.`is`("esprito.spring.root.runConfiguration")) {
             RunManager.getInstance(project).selectedConfiguration?.configuration
-                ?.let { RunConfigurationUtil.getRunPsiClass(it) }
-                ?.let { listOf(it) } ?: emptyList()
+                ?.let { RunConfigurationUtil.getRunPsiClass(it) } ?: emptyList()
         } else {
             annotationPsiClasses.rootAnnotationClass
                 .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
@@ -297,7 +296,7 @@ class PackageScanService(private val project: Project) {
 
 data class RootDataHolder(
     private val packagesByModuleName: Map<String, Set<String>>,
-    private val rootComponentQualified: Set<String>,
+    val rootComponentQualified: Set<String>,
     val importQualified: Set<String>
 ) {
     fun isEmpty() = packagesByModuleName.isEmpty()

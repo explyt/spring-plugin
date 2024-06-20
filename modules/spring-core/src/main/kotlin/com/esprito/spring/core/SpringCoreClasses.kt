@@ -94,6 +94,9 @@ object SpringCoreClasses {
     const val APPLICATION_ARGUMENTS = "org.springframework.boot.ApplicationArguments"
 
     const val PARAMETERIZED_TYPE_REFERENCE = "org.springframework.core.ParameterizedTypeReference"
+    const val ENTITY_SCAN = "org.springframework.boot.autoconfigure.domain.EntityScan"
+    const val ENTITY = "jakarta.persistence.Entity"
+    const val ENTITY_X = "javax.persistence.Entity"
 
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
