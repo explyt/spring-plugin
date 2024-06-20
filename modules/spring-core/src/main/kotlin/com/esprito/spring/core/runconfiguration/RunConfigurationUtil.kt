@@ -5,15 +5,26 @@ import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.psi.PsiClass
+import org.jetbrains.kotlin.asJava.classes.KtLightClassForFacade
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 
 object RunConfigurationUtil {
 
-    fun getRunPsiClass(runConfiguration: RunConfiguration?): PsiClass? {
+    fun getRunPsiClass(runConfiguration: RunConfiguration?): List<PsiClass> {
         return when (runConfiguration) {
-            is KotlinRunConfiguration -> runConfiguration.configurationModule.findClass(runConfiguration.runClass)
-            is SpringBootRunConfiguration -> runConfiguration.mainClass
-            else -> null
+            is KotlinRunConfiguration -> {
+                runConfiguration.findMainClassFile()?.classes?.toList() ?: emptyList()
+            }
+
+            is SpringBootRunConfiguration -> {
+                val mainClass = runConfiguration.mainClass
+                if (mainClass is KtLightClassForFacade) {
+                    return mainClass.files.flatMap { it.classes.toList() }
+                }
+                mainClass?.let { listOf(it) } ?: emptyList()
+            }
+
+            else -> emptyList()
         }
     }
 
