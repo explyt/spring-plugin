@@ -26,8 +26,8 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
+import com.intellij.psi.util.PsiMethodUtil
 import com.intellij.util.concurrency.AppExecutorUtil
-import org.jetbrains.kotlin.j2k.isMainMethod
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
 import java.util.concurrent.Callable
@@ -56,7 +56,7 @@ class SpringRunConfigurationDetectService(
     private fun searchForRunConfigurations(): List<SpringBootRunConfiguration> {
         return PsiShortNamesCache.getInstance(project)
             .getMethodsByName("main", GlobalSearchScope.projectScope(project)).asSequence()
-            .filter { it.isMainMethod() }
+            .filter { PsiMethodUtil.isMainMethod(it) }
             .filter { isBootApplicationMethod(it) }
             .mapNotNull { it.containingClass }
             .mapNotNullTo(mutableListOf()) { psiClass ->

@@ -7,6 +7,7 @@ import com.esprito.spring.core.completion.properties.SpringConfigurationProperti
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
+import com.esprito.util.EspritoPsiUtil.getContainingConstructor
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
@@ -16,7 +17,6 @@ import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import org.apache.logging.log4j.util.Strings
-import org.jetbrains.kotlin.j2k.getContainingConstructor
 import org.jetbrains.uast.*
 
 abstract class ConfigurationPropertyDataRetriever {
