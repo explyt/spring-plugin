@@ -225,4 +225,18 @@ object EspritoPsiUtil {
                 && psiMember.isNonPrivate
     }
 
+    fun PsiElement.getContainingMethod(): PsiMethod? {
+        var context = context
+        while (context != null) {
+            @Suppress("LocalVariableName") val _context = context
+            if (_context is PsiMethod) return _context
+            context = _context.context
+        }
+        return null
+    }
+
+    fun PsiElement.getContainingConstructor(): PsiMethod? {
+        val method = getContainingMethod()
+        return if (method?.isConstructor == true) method else null
+    }
 }
