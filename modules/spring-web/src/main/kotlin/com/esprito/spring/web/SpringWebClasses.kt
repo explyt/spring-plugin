@@ -43,4 +43,8 @@ object SpringWebClasses {
     const val WEB_APPLICATION_CONTEXT: String = "org.springframework.web.context.WebApplicationContext"
 
     const val INIT_BINDER: String = "org.springframework.web.bind.annotation.InitBinder"
+
+    const val ROUTE_FUNCTION = "org.springframework.web.reactive.function.server.RouterFunction"
+    const val ROUTE_FUNCTION_BUILDER = "org.springframework.web.reactive.function.server.RouterFunctions.Builder"
+
 }

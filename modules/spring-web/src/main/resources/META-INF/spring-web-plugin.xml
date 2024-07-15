@@ -1,8 +1,21 @@
 <idea-plugin>
 
-    <extensions defaultExtensionNs="com.esprito.spring.core">
+    <extensionPoints>
+        <extensionPoint qualifiedName="com.esprito.spring.web.springWebEndpointsLoader" dynamic="true"
+                        interface="com.esprito.spring.web.service.beans.discoverer.SpringWebEndpointsLoader"
+                        area="IDEA_PROJECT"/>
+    </extensionPoints>
+
+
+    <extensions defaultExtensionNs="com.esprito.spring.web">
         <additionalBeansDiscoverer
                 implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
+
+        <springWebEndpointsLoader
+                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebControllerLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebRouterFunctionLoader"/>
+
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

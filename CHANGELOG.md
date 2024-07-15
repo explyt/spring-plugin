@@ -13,6 +13,10 @@
 
 - Fixed: Repository injected through @Autowired and package enabled via @EnableJpaRespoitory
 
+### Spring Web/MVC
+
+- Add `RouterFunctions` `route` methods autocompletion
+
 ## [241.1.1581] - 2024-06-10
 
 ### Spring Core/Boot
