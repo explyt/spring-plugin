@@ -73,10 +73,18 @@ spring:
 </code></pre>
 
 
+<p>
+    You should always refer to property names in the placeholder using their canonical form (kebab-case using only
+    lowercase letters). This will allow Spring Boot to use the same logic as it does when relaxed binding
+    @ConfigurationProperties.
+    For example, ${demo.item-price} will pick up demo.item-price and demo.itemPrice forms from the
+    application.properties file, as well as DEMO_ITEMPRICE from the system environment. If you used ${demo.itemPrice}
+    instead, demo.item-price and DEMO_ITEMPRICE would not be considered.
+</p>
 <p><b>Example:</b></p>
 <pre><code lang="yaml">
 my:
   main:
-    name: ${not.in.A_snake_case}                                # Should be snake-case
+    name: ${not.in.A_kebab_case}                                # Should be kebab-case
 </code></pre>
 

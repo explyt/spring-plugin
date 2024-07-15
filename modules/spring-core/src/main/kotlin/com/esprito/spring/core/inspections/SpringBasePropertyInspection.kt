@@ -116,7 +116,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                     SpringCoreBundle.message("esprito.spring.inspection.properties.key.prohibited", fileProperty.key),
                     isOnTheFly,
                     emptyArray(),
-                    ProblemHighlightType.GENERIC_ERROR
+                    GENERIC_ERROR
                 )
             }
 
@@ -183,7 +183,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 SpringCoreBundle.message("esprito.spring.inspection.properties.key.deprecated", reason),
                 isOnTheFly,
                 arrayOf(ReplacementKeyQuickFix(replacement, psiElement)),
-                if (level == DeprecationInfoLevel.ERROR) ProblemHighlightType.GENERIC_ERROR else ProblemHighlightType.LIKE_DEPRECATED
+                if (level == DeprecationInfoLevel.ERROR) GENERIC_ERROR else ProblemHighlightType.LIKE_DEPRECATED
             )
         }
 
@@ -225,7 +225,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                     manager.createProblemDescriptor(
                         psiValue,
                         it.range,
-                        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.snaked"),
+                        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.kebab"),
                         ProblemHighlightType.WARNING,
                         isOnTheFly,
                         ReplacementStringQuickFix(it.placeholder, toSnakeCase(it.placeholder), psiValue, it.range)
