@@ -6,6 +6,7 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+- Fixed: kebab-case inspection description
 - Fixed: Yaml PropertyLineMarker only for leaf elements
 - Inspection: @EntityScan package support
 
