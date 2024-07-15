@@ -2,7 +2,7 @@ package com.esprito.spring.web.references.contributors
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.spring.web.service.beans.discoverer.SpringWebSearchService
+import com.esprito.spring.web.service.beans.discoverer.SpringWebEndpointsSearcher
 import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElement
@@ -151,8 +151,8 @@ class WebClientMethodCompletionContributor : CompletionContributor() {
                 }
                 if (uri == null || method == null) return null
 
-                val endpointTypes = SpringWebSearchService.getInstance(module.project)
-                    .getEndpointElements(uri.replace("\"", ""), module)
+                val endpointTypes = SpringWebEndpointsSearcher.getInstance(module.project)
+                    .getAllEndpointElements(uri.replace("\"", ""), module)
                     .asSequence()
                     .filter { it.requestMethods.contains(method) }
                     .mapNotNull { it.psiElement as? PsiMethod }

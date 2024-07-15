@@ -7,21 +7,16 @@ import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
-import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiElement
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
-@Service(Service.Level.PROJECT)
-class SpringWebSearchService(private val project: Project) {
+class SpringWebControllerLoader(private val project: Project) : SpringWebEndpointsLoader {
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
-    fun searchEndpoints(module: Module): List<EndpointElement> {
+    override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
                 doSearchEndpoints(module),
@@ -39,17 +34,6 @@ class SpringWebSearchService(private val project: Project) {
         return controllerAnnotations.asSequence().flatMap { searchAnnotatedClasses(it, module) }
             .flatMap { getEndpoints(it, requestMappingMah) }
             .toList()
-    }
-
-    fun getEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
-        val searchUrl = SpringWebUtil.simplifyUrl(urlPath)
-
-        return searchEndpoints(module).filter { it.path == searchUrl }
-    }
-
-    private fun searchAnnotatedClasses(annotation: PsiClass, module: Module): List<PsiClass> {
-        return AnnotatedElementsSearch.searchPsiClasses(annotation, module.moduleWithDependenciesScope)
-            .filter { !it.isAnnotationType }
     }
 
     private fun getEndpoints(
@@ -90,17 +74,8 @@ class SpringWebSearchService(private val project: Project) {
         return result
     }
 
-    data class EndpointElement(
-        val path: String,
-        val requestMethods: List<String>,
-        val psiElement: PsiElement,
-        val containingClass: PsiClass
-    )
-
     companion object {
-        fun getInstance(project: Project): SpringWebSearchService = project.service()
         private val TARGET_VALUE = setOf("value")
         private val TARGET_METHOD = setOf("method")
     }
-
 }
