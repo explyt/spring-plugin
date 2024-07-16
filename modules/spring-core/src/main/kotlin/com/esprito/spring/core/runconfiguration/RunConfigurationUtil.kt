@@ -1,9 +1,11 @@
 package com.esprito.spring.core.runconfiguration
 
 import com.intellij.execution.CommonJavaRunConfigurationParameters
+import com.intellij.execution.JavaTestConfigurationBase
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.psi.PsiClass
 import org.jetbrains.kotlin.asJava.classes.KtLightClassForFacade
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
@@ -42,6 +44,8 @@ object RunConfigurationUtil {
             is SpringBootRunConfiguration -> stringToProfile(runConfiguration.springProfiles)
             is ApplicationConfiguration -> stringToProfile(runConfiguration.envs["spring.profiles.active"])
             is KotlinRunConfiguration -> stringToProfile(runConfiguration.envs["spring.profiles.active"])
+            is ExternalSystemRunConfiguration -> stringToProfile(runConfiguration.settings.env["spring.profiles.active"])
+            is JavaTestConfigurationBase -> stringToProfile(runConfiguration.envs["spring.profiles.active"])
             else -> emptySet()
         }
     }

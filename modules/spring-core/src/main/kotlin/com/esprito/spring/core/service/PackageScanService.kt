@@ -308,6 +308,13 @@ data class RootDataHolder(
         val dependentModules = ModuleManager.getInstance(module.project).getModuleDependentModules(module)
         val dependentPackages = dependentModules
             .flatMapTo(mutableSetOf()) { packagesByModuleName.getOrDefault(it.name, emptySet()) }
-        return dependentPackages + packages
+        val resultPackages = dependentPackages + packages
+        if (resultPackages.isEmpty() && module.name.endsWith(".test")) {
+            val mainModuleName = module.name.substringBeforeLast(".test") + ".main"
+            val mainModule = ModuleManager.getInstance(module.project)
+                .findModuleByName(mainModuleName) ?: return emptySet()
+            return getPackages(mainModule)
+        }
+        return resultPackages
     }
 }
