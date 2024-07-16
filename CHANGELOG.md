@@ -5,6 +5,9 @@
 
 ## [Unreleased]
 
+### Spring Data
+- Fixed: support CoroutineCrudRepository
+
 ### Spring Core/Boot
 - Fixed: kebab-case inspection description
 - Fixed: Yaml PropertyLineMarker only for leaf elements

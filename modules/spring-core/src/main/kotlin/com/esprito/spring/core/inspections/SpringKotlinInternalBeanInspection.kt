@@ -5,6 +5,7 @@ import com.esprito.spring.core.SpringCoreBundle.message
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddAnnotationParameterKotlinFix
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.util.EspritoPsiUtil.containKotlinKeyword
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -12,7 +13,6 @@ import com.intellij.codeInspection.ProblemHighlightType.WARNING
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.module.ModuleUtilCore
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.uast.UMethod
 
 class SpringKotlinInternalBeanInspection : SpringBaseUastLocalInspectionTool() {
@@ -22,8 +22,8 @@ class SpringKotlinInternalBeanInspection : SpringBaseUastLocalInspectionTool() {
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
-        val ktNamedFunction = method.sourcePsi as? KtNamedFunction ?: return emptyArray()
-        ktNamedFunction.modifierList?.getModifier(KtTokens.INTERNAL_KEYWORD) ?: return emptyArray()
+        if (!method.containKotlinKeyword(KtTokens.INTERNAL_KEYWORD)) return emptyArray()
+
         method.findAnnotation(SpringCoreClasses.BEAN) ?: return emptyArray()
 
         val problems = ProblemsHolder(manager, method.javaPsi.containingFile, isOnTheFly)
