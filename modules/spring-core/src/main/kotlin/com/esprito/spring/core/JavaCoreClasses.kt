@@ -19,4 +19,6 @@ object JavaCoreClasses {
 
     const val MAP = "java.util.Map"
     const val LIST = "java.util.List"
+
+    const val KOTLIN_CONTINUATION = "kotlin.coroutines.Continuation"
 }
