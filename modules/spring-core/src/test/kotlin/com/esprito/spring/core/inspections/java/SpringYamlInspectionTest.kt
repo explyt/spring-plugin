@@ -34,8 +34,8 @@ foo:
             "application.yaml",
             """
 foo:
-    <warning descr="Cannot resolve key property 'foo.barBaz'">barBaz</warning>: some1
-    <warning descr="Cannot resolve key property 'foo.bar-Baz1'">bar-Baz1</warning>: some1
+    <warning descr="Cannot resolve key property 'foo.barBaz'"><warning descr="Should be kebab-case">barBaz</warning></warning>: some1
+    <warning descr="Cannot resolve key property 'foo.bar-Baz1'"><warning descr="Should be kebab-case">bar-Baz1</warning></warning>: some1
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
