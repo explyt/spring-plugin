@@ -26,6 +26,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.text.PlaceholderTextRanges
+import com.intellij.webSymbols.utils.NameCaseUtils
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLValue
@@ -317,6 +318,15 @@ object PropertyUtil {
             .replace("_", "")
     }
 
+    fun isNotKebabCase(placeholder: String): Boolean {
+        return placeholder.any { it.isUpperCase() || it == '_' }
+    }
+
+    fun toKebabCase(from: String): String {
+        return from.splitToSequence('.')
+            .map { NameCaseUtils.toKebabCase(it) }
+            .joinToString(".")
+    }
 
     private fun findMember(
         foundClass: PsiClass,
