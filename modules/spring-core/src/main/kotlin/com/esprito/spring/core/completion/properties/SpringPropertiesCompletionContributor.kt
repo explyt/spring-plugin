@@ -31,17 +31,17 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                 return
             }
 
-            if (psiElement is IProperty) {
-                completeKey(propertyPosition, parameters, result)
-            } else if (psiElement is YAMLKeyValue) {
-                completeKey(psiElement, parameters, result)
+            when (psiElement) {
+                is IProperty -> completeKey(propertyPosition, parameters, result)
+                is YAMLKeyValue -> completeKey(psiElement, parameters, result, isYaml = true)
             }
         }
 
         private fun completeKey(
             element: PsiElement,
             parameters: CompletionParameters,
-            result: CompletionResultSet
+            result: CompletionResultSet,
+            isYaml: Boolean = false
         ) {
             val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
             val currentKey = getCurrentKey(element, parameters) ?: return
@@ -59,26 +59,51 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                 .filter { it.name !in parameterKeys }
 
             for (property in reducedProperties) {
-                result.withPrefixMatcher(currentKey.startKey).addElement(
-                    LookupElementBuilder.create(property, property.name)
-                        .withRenderer(PropertyRenderer())
-                )
+                if (!isYaml
+                    ||
+                    (property.name.startsWith(currentKey.prefix)
+                            || (currentKey.prefix.isEmpty() && currentKey.startKey.isEmpty()))
+                ) {
+                    result
+                        .withPrefixMatcher(currentKey.startKey)
+                        .addElement(
+                            LookupElementBuilder.create(property, property.name)
+                                .withRenderer(PropertyRenderer())
+                                .withInsertHandler { insertionContext, _ ->
+                                    if (isYaml) {
+                                        handleInsertInYaml(currentKey, property, insertionContext)
+                                    }
+                                }
+                        )
+                }
             }
+        }
+
+        private fun handleInsertInYaml(
+            currentKey: CurrentKey,
+            property: ConfigurationProperty,
+            insertionContext: InsertionContext
+        ) {
+            val insertName =
+                if (currentKey.prefix.isEmpty())
+                    property.name else property.name.substringAfter("${currentKey.prefix}.")
+            handleInsert(insertionContext, insertName)
+        }
+
+        private fun handleInsert(context: InsertionContext, text: String) {
+            val startOffset = context.startOffset
+            val tailOffset = context.tailOffset
+
+            context.editor.document.replaceString(startOffset, tailOffset, text)
+            context.editor.caretModel.moveToOffset(startOffset + text.length)
+            context.commitDocument()
         }
 
         private fun getCurrentKey(element: PsiElement, parameters: CompletionParameters): CurrentKey? {
             return when (element) {
-                is PropertyKeyImpl -> {
-                    getCurrentKeyFromProperty(element, parameters)
-                }
-
-                is YAMLKeyValue -> {
-                    getCurrentKeyFromYaml(element)
-                }
-
-                else -> {
-                    null
-                }
+                is PropertyKeyImpl -> getCurrentKeyFromProperty(element, parameters)
+                is YAMLKeyValue -> getCurrentKeyFromYaml(element, parameters)
+                else -> null
             }
         }
 
@@ -90,17 +115,23 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             val keyStart = propertyKey.textOffset
 
             val key = propertyKey.text.substring(0, cursor - keyStart)
+            val prefix = key.substringBeforeLast(".")
             val fullKey = parameters.originalFile.text
                 .substring(keyStart)
                 .substringBefore("\n").substringBefore("=")
-            return CurrentKey(key, fullKey)
+            return CurrentKey(prefix, key, fullKey)
         }
 
-        private fun getCurrentKeyFromYaml(yamlKey: YAMLKeyValue): CurrentKey {
+        private fun getCurrentKeyFromYaml(yamlKey: YAMLKeyValue, parameters: CompletionParameters): CurrentKey {
+            val cursor = parameters.offset
+            val keyStart = parameters.position.textOffset
+            val key = parameters.position.text.substring(0, cursor - keyStart)
+
             val keyResult = YAMLUtil.getConfigFullName(yamlKey)
-            val key = keyResult.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
-            val fullKey = keyResult.replace(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED, "").replace(" ", "")
-            return CurrentKey(key, fullKey)
+            val prefix = keyResult.substringBefore(".$key")
+            val fullKey = keyResult
+                .replace(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED, "").replace(" ", "")
+            return CurrentKey(prefix, key, fullKey)
         }
 
         private fun getKeysFromFile(completionParameters: CompletionParameters): List<String> {
@@ -120,6 +151,7 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
     }
 
     data class CurrentKey(
+        val prefix: String,
         val startKey: String,
         val fullKey: String
     )

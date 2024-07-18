@@ -6,10 +6,13 @@
 ## [Unreleased]
 
 ### Spring Data
+
 - Fixed: support CoroutineCrudRepository
 
 ### Spring Core/Boot
+
 - Inspection: `Should be kebab-case` for property key
+- Fixed: Yaml property autocomplete inserts into previous line
 - Fixed: kebab-case inspection description
 - Fixed: Yaml PropertyLineMarker only for leaf elements
 - Inspection: @EntityScan package support
