@@ -23,6 +23,7 @@
 
 ### Spring Web/MVC
 
+- Add `RouterFunctions` `coRouter` methods autocompletion
 - Add `RouterFunctions` `route` methods autocompletion
 
 ## [241.1.1581] - 2024-06-10
