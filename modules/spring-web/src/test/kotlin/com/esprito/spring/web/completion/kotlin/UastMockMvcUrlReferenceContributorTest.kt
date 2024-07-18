@@ -5,6 +5,7 @@ import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.web.references.EspritoControllerMethodReference
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
+import org.jetbrains.kotlin.psi.KtCallExpression
 
 class UastMockMvcUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/mockMvc"
@@ -13,7 +14,8 @@ class UastMockMvcUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         get() = arrayOf(
             TestLibrary.springWeb_6_0_7,
             TestLibrary.springTest_6_0_7,
-            TestLibrary.springBootAutoConfigure_3_1_1
+            TestLibrary.springBootAutoConfigure_3_1_1,
+            TestLibrary.springReactiveWeb_3_1_1
         )
 
     fun testPut() {
@@ -160,5 +162,91 @@ class UastMockMvcUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         val memberName = resolvedElement?.name
         val classFqn = resolvedElement?.containingClass?.qualifiedName
         TestCase.assertEquals("OrderController#getOrders", "$classFqn#$memberName")
+    }
+
+    fun testGetCoRouterNest() {
+        myFixture.copyFileToProject("UserRouter.kt")
+        myFixture.configureByText(
+            "WebClientTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+            
+            class WebClientTest {
+                fun justForTest() {
+                    MockMvcRequestBuilders.get("/ap<caret>i/users/id")
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? KtCallExpression
+        assertNotNull(resolvedElement)
+    }
+
+    fun testPostCoRouterNest() {
+        myFixture.copyFileToProject("UserRouter.kt")
+        myFixture.configureByText(
+            "WebClientTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+            
+            class WebClientTest {
+                fun justForTest() {
+                    MockMvcRequestBuilders.post("/ap<caret>i/users")
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? KtCallExpression
+        assertNotNull(resolvedElement)
+    }
+
+    fun testDeleteCoRouter() {
+        myFixture.copyFileToProject("UserRouter.kt")
+        myFixture.configureByText(
+            "WebClientTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+            
+            class WebClientTest {
+                fun justForTest() {
+                    MockMvcRequestBuilders.delete("/user/i<caret>d")
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? KtCallExpression
+        assertNotNull(resolvedElement)
+    }
+
+    fun testPostCoRouterNotExist() {
+        myFixture.copyFileToProject("UserRouter.kt")
+        myFixture.configureByText(
+            "WebClientTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+            
+            class WebClientTest {
+                fun justForTest() {
+                    MockMvcRequestBuilders.post("/user/i<caret>d")
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(0, multiResolve.size)
     }
 }
