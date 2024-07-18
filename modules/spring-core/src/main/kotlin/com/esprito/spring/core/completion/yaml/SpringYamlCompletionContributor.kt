@@ -64,11 +64,11 @@ class SpringYamlCompletionContributor : CompletionContributor() {
             configFullName: String
         ): LookupElementBuilder {
             val propertyName = configurationProperty.name
-            return LookupElementBuilder.create(
-                configurationProperty, if (configFullName.isEmpty()) propertyName else propertyName.substringAfter(
-                    "$configFullName."
-                )
-            ).withInsertHandler(YamlKeyConfigurationPropertyInsertHandler())
+            val name = if (configFullName.isEmpty()) propertyName else propertyName.substringAfter(
+                "$configFullName."
+            )
+            return LookupElementBuilder.create(configurationProperty, name)
+                .withInsertHandler(YamlKeyConfigurationPropertyInsertHandler())
                 .withRenderer(PropertyRenderer())
         }
     }
