@@ -17,8 +17,13 @@ object SpringWebClasses {
     const val WEB_TEST_CLIENT_URI_SPEC = "org.springframework.test.web.reactive.server.WebTestClient.UriSpec"
     const val WEB_CLIENT_URI_SPEC = "org.springframework.web.reactive.function.client.WebClient.UriSpec"
     const val WEB_CLIENT_RESPONSE_SPEC = "org.springframework.web.reactive.function.client.WebClient.ResponseSpec"
+    const val WEB_TEST_CLIENT_RESPONSE_SPEC = "org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec"
 
-    const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
+    const val MONO = "reactor.core.publisher.Mono"
+    const val FLUX = "reactor.core.publisher.Flux"
+    const val FLOW = "kotlinx.coroutines.flow.Flow"
+
+        const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
     const val ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER =
         "org.thymeleaf.templateresolver.AbstractConfigurableTemplateResolver"
 

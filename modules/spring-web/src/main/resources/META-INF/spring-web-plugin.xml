@@ -27,7 +27,11 @@
 
         <completion.contributor language="UAST"
                                 order="first"
-                                implementationClass="com.esprito.spring.web.references.contributors.WebClientMethodCompletionContributor"/>
+                                implementationClass="com.esprito.spring.web.references.contributors.webClient.WebClientMethodCompletionContributor"/>
+
+        <completion.contributor language="UAST"
+                                order="first"
+                                implementationClass="com.esprito.spring.web.references.contributors.webClient.WebTestClientMethodCompletionContributor"/>
 
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
