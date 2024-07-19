@@ -4,10 +4,11 @@ import com.esprito.base.LibraryClassCache
 import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.spring.web.references.contributors.WebClientMethodCompletionContributor
-import com.esprito.spring.web.references.contributors.WebClientMethodCompletionContributor.WebClientMethodCompletionProvider.Companion.endpointsTypesForExpression
+import com.esprito.spring.web.references.contributors.webClient.EndpointResult
+import com.esprito.spring.web.references.contributors.webClient.WebClientMethodCompletionContributor.WebClientMethodCompletionProvider.Companion.endpointsTypesForExpression
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiClassObjectAccessExpression
 import com.intellij.psi.PsiElementVisitor
@@ -48,7 +49,13 @@ class WebClientBodyTypeVisitor(private val holder: ProblemsHolder) :
 
         endpointsTypesForExpression(receiver, module)?.let { (uri, endpointsTypes) ->
             val endpointResults = endpointsTypes
-                .mapNotNull { WebClientMethodCompletionContributor.EndpointResult.of(it, psiTypeExpression.language) }
+                .mapNotNull {
+                    EndpointResult.of(
+                        it,
+                        psiTypeExpression.language,
+                        psiTypeExpression.language == JavaLanguage.INSTANCE
+                    )
+                }
                 .mapTo(mutableSetOf()) { it.typeReferencePresentable }
 
             if (endpointResults.isEmpty()) return true
@@ -86,7 +93,13 @@ class WebClientBodyTypeVisitor(private val holder: ProblemsHolder) :
 
         endpointsTypesForExpression(receiver, module)?.let { (uri, endpointTypes) ->
             val endpointResults = endpointTypes
-                .mapNotNull { WebClientMethodCompletionContributor.EndpointResult.of(it, psiNode.language) }
+                .mapNotNull {
+                    EndpointResult.of(
+                        it,
+                        psiNode.language,
+                        psiNode.language == JavaLanguage.INSTANCE
+                    )
+                }
                 .mapTo(mutableSetOf()) { it.typeReferencePresentable }
 
             if (endpointResults.isEmpty()) return true

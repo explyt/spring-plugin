@@ -5,10 +5,6 @@
 
 ## [Unreleased]
 
-### Spring Data
-
-- Fixed: support CoroutineCrudRepository
-
 ### Spring Core/Boot
 
 - Inspection: `Should be kebab-case` for property key
@@ -19,10 +15,12 @@
 
 ### Spring Data
 
+- Fixed: support CoroutineCrudRepository
 - Fixed: Repository injected through @Autowired and package enabled via @EnableJpaRespoitory
 
 ### Spring Web/MVC
 
+- Add `WebTestController` `expectBody[List]` methods autocompletion
 - Add `RouterFunctions` `coRouter` methods autocompletion
 - Add `RouterFunctions` `route` methods autocompletion
 
