@@ -17,8 +17,6 @@ import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.psiClassType
-import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
-import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -124,7 +122,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
                 result = isComponentCandidate(uParent.javaPsi) && !dependsOnIncorrectBean(uParent.javaPsi)
                 if (!result && hasSpringInterfaces(uParent)) {
-                    result = inSpringContext()
+                    result = springSearchService.isInSpringContext(uParent, module)
                 }
             }
             if (uParent is UMethod) {
@@ -133,18 +131,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                         && !dependsOnIncorrectBean(uParent.javaPsi.containingClass)
             }
             if (result) {
-                inSpringContextClass = inSpringContext()
+                inSpringContextClass = springSearchService.isInSpringContext(uParent, module)
             }
             return result
-        }
-
-        private fun inSpringContext(): Boolean {
-            if (uParent is UMethod && uParent.returnType is PsiArrayType) {
-                val deepArrayPsiClass = uParent.returnType?.resolvedDeepPsiClass ?: return false
-                return springSearchService.searchArrayComponentPsiClassesByBeanMethods(module)
-                    .map { it.psiClass }.contains(deepArrayPsiClass)
-            }
-            return findTargetClass() in springSearchService.getAllActiveBeans(module)
         }
 
         private fun hasSpringInterfaces(uParent: UClass): Boolean {
@@ -154,7 +143,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun isClassForBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
-                val targetClass = findTargetClass() ?: return false
+                val targetClass = springSearchService.getBeanClass(uParent) ?: return false
                 val allBeans = springSearchService.getActiveBeansClasses(module)
                 return allBeans.any { it.psiClass == targetClass && it.psiClass != it.psiMember }
             }
@@ -287,17 +276,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .map { it.psiMember }.toList()
         }
 
-        private fun findTargetClass(isArray: Boolean = false): PsiClass? {
-            if (isArray) {
-                return (uParent as? UMethod)?.returnType?.resolvedDeepPsiClass
-            }
-            return when (uParent) {
-                is UMethod -> uParent.returnPsiClass
-                is UClass -> uParent.javaPsi
-                else -> null
-            }
-        }
-
         private fun findTargetType(): PsiType? {
             return if (uParent is UMethod) uParent.returnType else null
         }
@@ -328,7 +306,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             val isArrayType = uParent is UMethod && uParent.returnType is PsiArrayType
-            val targetClass = findTargetClass(isArrayType) ?: return emptyList()
+            val targetClass = springSearchService.getBeanClass(uParent, isArrayType) ?: return emptyList()
             val targetClasses = targetClass.allSupers()
             val targetType = findTargetType()
 
@@ -421,7 +399,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun findBeanDeclarations(): List<PsiElement> {
             if (uParent is UClass) {
-                val targetClass = findTargetClass() ?: return emptyList()
+                val targetClass = springSearchService.getBeanClass(uParent) ?: return emptyList()
                 return springSearchService.getActiveBeansClasses(module).asSequence()
                     .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
                     .map { it.psiMember }

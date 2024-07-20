@@ -44,6 +44,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.modules
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.SearchScope
@@ -56,9 +57,7 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
 import com.intellij.uast.UastModificationTracker
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.*
 
 @Service(Service.Level.PROJECT)
 class SpringSearchService(private val project: Project) {
@@ -83,6 +82,39 @@ class SpringSearchService(private val project: Project) {
                 )
             }
         }
+    }
+
+    fun getAllBeansClassesConsideringContext(project: Project): FoundBeans {
+        return cachedValuesManager.getCachedValue(project) {
+            CachedValueProvider.Result(
+                doGetAllBeansClassesConsideringContext(project),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    private fun doGetAllBeansClassesConsideringContext(project: Project): FoundBeans {
+        val active = mutableSetOf<PsiBean>()
+        val excluded = mutableSetOf<PsiBean>()
+        for (module in project.modules) {
+            val (foundActive, foundExcluded) = getAllBeansClasses(module)
+            excluded += foundExcluded
+            for (psiBean in foundActive) {
+                val uBeanMember = psiBean.psiMember.toUElement()
+                if (uBeanMember == null) {
+                    // может быть стоит для внешних бинов сделать отдельную иконку?
+                    active += psiBean
+                    continue
+                }
+                if (isInSpringContext(uBeanMember, module)) {
+                    active += psiBean
+                } else {
+                    excluded += psiBean
+                }
+            }
+        }
+
+        return FoundBeans(active, excluded)
     }
 
     private fun getAllBeansClasses(module: Module): FoundBeans {
@@ -133,6 +165,26 @@ class SpringSearchService(private val project: Project) {
                     ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )
             }
+        }
+    }
+
+    fun isInSpringContext(uBeanElement: UElement, module: Module): Boolean {
+        if (uBeanElement is UMethod && uBeanElement.returnType is PsiArrayType) {
+            val deepArrayPsiClass = uBeanElement.returnType?.resolvedDeepPsiClass ?: return false
+            return searchArrayComponentPsiClassesByBeanMethods(module)
+                .map { it.psiClass }.contains(deepArrayPsiClass)
+        }
+        return getBeanClass(uBeanElement) in getAllActiveBeans(module)
+    }
+
+    fun getBeanClass(uBeanElement: UElement, isArray: Boolean = false): PsiClass? {
+        if (isArray) {
+            return (uBeanElement as? UMethod)?.returnType?.resolvedDeepPsiClass
+        }
+        return when (uBeanElement) {
+            is UMethod -> uBeanElement.returnPsiClass
+            is UClass -> uBeanElement.javaPsi
+            else -> null
         }
     }
 
