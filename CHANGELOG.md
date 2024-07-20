@@ -12,6 +12,7 @@
 - Fixed: kebab-case inspection description
 - Fixed: Yaml PropertyLineMarker only for leaf elements
 - Inspection: @EntityScan package support
+- Added beans search by name in `Search Everywhere`
 
 ### Spring Data
 

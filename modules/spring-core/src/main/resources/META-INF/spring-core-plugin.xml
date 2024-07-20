@@ -123,6 +123,8 @@
         <languageInjectionContributor language="UAST"
                                       implementationClass="com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector"/>
 
+        <searchEverywhereContributor implementation="com.esprito.spring.core.search.BeanSearchEverywhereContributorFactory"/>
+
         <localInspection language="UAST"
                          shortName="SpringInjectionAutowiringInspection"
                          groupBundle="messages.SpringCoreBundle"
