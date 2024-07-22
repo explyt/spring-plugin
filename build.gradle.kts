@@ -6,14 +6,14 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.guardsquare:proguard-gradle:7.4.2")
+        classpath("com.guardsquare:proguard-gradle:7.5.0")
     }
 }
 
 plugins {
     java
     id("org.jetbrains.intellij") apply false
-    id("org.jetbrains.changelog") version "2.2.0" apply false
+    id("org.jetbrains.changelog") version "2.2.1" apply false
     kotlin("jvm") apply false
 }
 
