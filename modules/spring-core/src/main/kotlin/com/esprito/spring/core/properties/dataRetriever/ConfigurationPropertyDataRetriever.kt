@@ -64,6 +64,7 @@ abstract class ConfigurationPropertyDataRetriever {
             if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) {
                 return getPrefixFromAnnotation(psiClass, module)
             }
+
             val searchScope = psiClass.useScope as? GlobalSearchScope ?: return Strings.EMPTY
             val references = ReferencesSearch.search(psiClass, searchScope)
                 .mapNotNull { it.element }

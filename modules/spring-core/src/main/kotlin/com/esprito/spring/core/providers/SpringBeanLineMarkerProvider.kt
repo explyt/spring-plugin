@@ -13,9 +13,11 @@ import com.esprito.spring.core.util.SpringCoreUtil.isComponentCandidate
 import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.allSupers
+import com.esprito.util.EspritoPsiUtil.isAbstract
 import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.EspritoPsiUtil.isPrivate
 import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -93,7 +95,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getLineMarkerElementProcessor(element: PsiElement): LineMarkerElementProcessor? {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
         val uParent = getUParentForIdentifier(element) ?: return null
-        return LineMarkerElementProcessor(element, module, uParent)
+        if (uParent is UClass || uParent is UMethod || uParent is UField || uParent is UParameter) {
+            return LineMarkerElementProcessor(element, module, uParent)
+        }
+        return null
     }
 
     private fun getTooltipMessage(processor: LineMarkerElementProcessor) =
@@ -122,7 +127,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
                 result = isComponentCandidate(uParent.javaPsi) && !dependsOnIncorrectBean(uParent.javaPsi)
                 if (!result && hasSpringInterfaces(uParent)) {
-                    result = springSearchService.isInSpringContext(uParent, module)
+                    result = springSearchService.isInSpringContextLight(uParent, module)
                 }
             }
             if (uParent is UMethod) {
@@ -131,7 +136,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                         && !dependsOnIncorrectBean(uParent.javaPsi.containingClass)
             }
             if (result) {
-                inSpringContextClass = springSearchService.isInSpringContext(uParent, module)
+                inSpringContextClass = springSearchService.isInSpringContextLight(uParent, module)
             }
             return result
         }
@@ -144,14 +149,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         fun isClassForBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
                 val targetClass = springSearchService.getBeanClass(uParent) ?: return false
-                val allBeans = springSearchService.getActiveBeansClasses(module)
+                val allBeans = springSearchService.searchAllBeanLight(module)
                 return allBeans.any { it.psiClass == targetClass && it.psiClass != it.psiMember }
             }
             return false
         }
 
         private fun dependsOnIncorrectBean(member: PsiMember?): Boolean {
-            val beanNames = springSearchService.getAllBeanByNames(module)
+            val beanNames = springSearchService.getAllBeanByNamesLight(module)
 
             return member?.getMetaAnnotationMemberValues(SpringCoreClasses.DEPENDS_ON)
                 ?.any {
@@ -193,7 +198,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 if (!isClassIsComponentConstructed) {
                     return false
                 }
-                val allBeansClassesWithAncestors = getAllBeansClassesWithAncestors(module)
+                val allBeansClassesWithAncestors = getAllBeansClassesWithAncestorsLight(module)
                 if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors, psiVariable.language)) {
                     return true
                 }
@@ -229,22 +234,29 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 return (isAutowiredFieldExpression(psiField) || isLombokAnnotatedClassFieldExpression(psiField))
                         && !dependsOnIncorrectBean(psiField.containingClass)
             }
+
             if (uParent is UParameter) {
-                val uMethod = uParent.uastParent ?: return false
-                if (uMethod is UMethod) {
-                    val psiParameter =
-                        uParent.javaPsi.takeIf { it is PsiParameter }?.let { it as PsiParameter } ?: return false
-                    if (!checkParam(psiParameter)) {
-                        return false
-                    }
-                    val psiMethod = uMethod.javaPsi
-                    return (uMethod.isConstructor
-                            || isAutowiredMethodExpression(psiMethod)
-                            || isBeanMethodExpression(psiMethod)
-                            ) && !dependsOnIncorrectBean(uMethod.getContainingUClass()?.javaPsi)
+                val uMethod = (uParent.uastParent as? UMethod)?.takeIf { filterMethod(it) } ?: return false
+
+                val psiParameter =
+                    uParent.javaPsi.takeIf { it is PsiParameter }?.let { it as PsiParameter } ?: return false
+                if (!checkParam(psiParameter)) {
+                    return false
                 }
+                val psiMethod = uMethod.javaPsi
+                return (uMethod.isConstructor
+                        || isAutowiredMethodExpression(psiMethod)
+                        || isBeanMethodExpression(psiMethod)
+                        ) && !dependsOnIncorrectBean(uMethod.getContainingUClass()?.javaPsi)
             }
             return false
+        }
+
+        private fun filterMethod(it: UMethod): Boolean {
+            if (it.isPrivate) return false
+            if (it.isAbstract) return false
+            if (it.isConstructor) return true
+            return it.uAnnotations.isNotEmpty()
         }
 
         fun getBeanDeclarations(): Collection<PsiElement> {
