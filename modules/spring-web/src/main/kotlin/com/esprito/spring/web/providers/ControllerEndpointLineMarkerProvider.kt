@@ -11,16 +11,16 @@ import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.OPEN_API
 import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
+import com.esprito.util.EspritoKotlinUtil.mapToList
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
-import com.intellij.icons.AllIcons
-import com.intellij.json.psi.JsonElement
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
+import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -28,11 +28,14 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.*
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.GlobalSearchScopesCore
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
+import com.intellij.psi.util.parentsOfType
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUParentForIdentifier
+import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -45,11 +48,12 @@ class ControllerEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
         val uParent = getUParentForIdentifier(element)
-
         if (uParent !is UMethod) return
         val psiMethod = uParent.javaPsi
+
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
+
         if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return
         val psiClass = psiMethod.containingClass ?: return
         if (!psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)) return
@@ -57,7 +61,7 @@ class ControllerEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
         val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: return
+            .firstOrNull() ?: ""
 
         val prefix = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
             requestMappingMah.getAnnotationMemberValues(psiClass, setOf("path", "value")).asSequence()
@@ -90,12 +94,21 @@ class ControllerEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getTargetRenderer(): PsiTargetPresentationRenderer<PsiElement> {
         return object : PsiTargetPresentationRenderer<PsiElement>() {
             override fun getIcon(element: PsiElement): Icon? {
-                if (element is YAMLKeyValue)
-                    return AllIcons.FileTypes.Yaml
-                if (element is JsonElement)
-                    return AllIcons.FileTypes.Json
+                return element.language.associatedFileType?.icon ?: super.getIcon(element)
+            }
 
-                return super.getIcon(element)
+            override fun getElementText(element: PsiElement): String {
+                if (element is YAMLKeyValue)
+                    return YAMLUtil.getConfigFullName(element).removePrefix("paths.")
+                if (element is JsonProperty) {
+                    return element.parentsOfType<JsonProperty>()
+                        .mapToList { it.name }
+                        .reversed()
+                        .joinToString(".")
+                        .removePrefix("paths.")
+                }
+
+                return element.getUastParentOfType<UMethod>()?.name ?: super.getElementText(element)
             }
 
             override fun getContainerText(element: PsiElement): String {
@@ -228,7 +241,8 @@ class ControllerEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .filter { it.name.uppercase() in requestMethods }
             .filter { it.parameterList.getParameter(0)?.type?.canonicalText == "java.lang.String" }
             .flatMap {
-                SpringSearchService.getInstance(module.project).getAllReferencesToElement(it)
+                SpringSearchService.getInstance(module.project)
+                    .searchReferenceByMethod(module, it, GlobalSearchScopesCore.projectTestScope(module.project))
             }
             .filter { it is PsiReferenceExpression }
             .map { it.element }
@@ -254,7 +268,8 @@ class ControllerEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun doGetMockMvcMethods(module: Module): Array<PsiMethod> {
-        return SpringCoreUtil.getClassMethods(SpringWebClasses.MOCK_MVC_REQUEST_BUILDERS, module) ?: emptyArray()
+        return SpringCoreUtil.getClassMethodsFromLibraries(SpringWebClasses.MOCK_MVC_REQUEST_BUILDERS, module)
+            ?: emptyArray()
     }
 
     data class Referrer(val path: String, val method: String?, val psiElement: PsiElement)

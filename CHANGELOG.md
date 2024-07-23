@@ -21,6 +21,7 @@
 
 ### Spring Web/MVC
 
+- Fixed: navigation from endpoint's gutter
 - Add `WebTestController` `expectBody[List]` methods autocompletion
 - Add `RouterFunctions` `coRouter` methods autocompletion
 - Add `RouterFunctions` `route` methods autocompletion

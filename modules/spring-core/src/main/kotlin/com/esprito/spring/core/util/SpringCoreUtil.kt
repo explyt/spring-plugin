@@ -37,11 +37,11 @@ import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.impl.LibraryScopeCache
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -492,15 +492,15 @@ object SpringCoreUtil {
             .replace(" ", "")
     }
 
-    fun getClassMethods(fullyQualifiedName: String, module: Module): Array<PsiMethod>? {
+    fun getClassMethodsFromLibraries(fullyQualifiedName: String, module: Module): Array<PsiMethod>? {
         val shortName = fullyQualifiedName.split('.').last()
 
         return PsiShortNamesCache.getInstance(module.project)
             .getClassesByName(
                 shortName,
-                GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+                LibraryScopeCache.getInstance(module.project).librariesOnlyScope
             )
-            .firstOrNull() { it.qualifiedName == fullyQualifiedName }
+            .firstOrNull { it.qualifiedName == fullyQualifiedName }
             ?.methods
     }
 
