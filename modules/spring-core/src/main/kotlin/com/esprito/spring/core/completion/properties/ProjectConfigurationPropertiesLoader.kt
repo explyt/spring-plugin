@@ -241,7 +241,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         return assignmentExpressions
             .asSequence()
             .flatMap { it.asSequence() }
-            .filter { it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild.text }
+            .filter { it.lastChild != null }
+            .filter { it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild?.text }
             .map { it.firstChild }
             .filterIsInstance<PsiReferenceExpression>()
             .map { it.childrenOfType<PsiIdentifier>().firstOrNull() }

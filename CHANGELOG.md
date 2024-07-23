@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Fixed: @ConfigurationProperties with lombok @Setter and Lombok plugin installed produces an error
 - Inspection: `Should be kebab-case` for property key
 - Fixed: Yaml property autocomplete inserts into previous line
 - Fixed: kebab-case inspection description
