@@ -255,6 +255,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         }
         val expressions = codeBlock.flatMap { it.childrenOfType<PsiReturnStatement>() }
 
+        if (expressions.isEmpty()) return null
+
         return expressions.last()
             .childrenOfType<PsiReferenceExpression>().last()
             .childrenOfType<PsiIdentifier>().last()
