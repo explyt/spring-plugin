@@ -101,6 +101,9 @@
 
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
+
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
         <psi.referenceContributor language="UAST"

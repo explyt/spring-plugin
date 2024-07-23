@@ -6,14 +6,24 @@ import com.esprito.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.util.EspritoAnnotationUtil.getBooleanValue
 import com.esprito.util.EspritoAnnotationUtil.getStringValue
+import com.esprito.util.EspritoKotlinUtil.mapToList
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isOptional
+import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
+import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.psi.CommonClassNames
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.util.parentsOfType
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+import org.jetbrains.uast.*
+import org.jetbrains.yaml.YAMLUtil
+import org.jetbrains.yaml.psi.YAMLKeyValue
+import javax.swing.Icon
 
 object SpringWebUtil {
 
@@ -88,6 +98,72 @@ object SpringWebUtil {
 
     }
 
+    fun getTargetRenderer(): PsiTargetPresentationRenderer<PsiElement> {
+        return object : PsiTargetPresentationRenderer<PsiElement>() {
+            override fun getIcon(element: PsiElement): Icon? {
+                return element.language.associatedFileType?.icon ?: super.getIcon(element)
+            }
+
+            override fun getElementText(element: PsiElement): String {
+                if (element is YAMLKeyValue)
+                    return YAMLUtil.getConfigFullName(element).removePrefix("paths.")
+                if (element is JsonProperty) {
+                    return element.parentsOfType<JsonProperty>()
+                        .mapToList { it.name }
+                        .reversed()
+                        .joinToString(".")
+                        .removePrefix("paths.")
+                }
+
+                return element.getUastParentOfType<UMethod>()?.name ?: super.getElementText(element)
+            }
+
+            override fun getContainerText(element: PsiElement): String {
+                return element.containingFile.name
+            }
+        }
+    }
+
+    fun getPathFromCallExpression(callExpression: UCallExpression): String {
+        var path = ""
+
+        var currentNode = callExpression as? UElement
+        while (currentNode != null) {
+            if (currentNode is UCallExpression) {
+                if (currentNode.methodName == "nest") {
+                    val currentNodeParent = currentNode.uastParent
+                    if (currentNodeParent is UExpression) {
+                        val qualifiedExpression = currentNodeParent.sourcePsi
+                        if (qualifiedExpression is KtDotQualifiedExpression) {
+                            path = getUri(qualifiedExpression, path)
+                        }
+                    }
+                } else {
+                    val argument = currentNode.valueArguments.firstOrNull()
+                    if (argument is UPolyadicExpression) {
+                        val operand = argument.operands.firstOrNull()
+                        if (operand is ULiteralExpression) {
+                            path = "$path${operand.value}"
+                        }
+                    } else if (argument is ULiteralExpression) {
+                        path = "$path${argument.value}"
+                    }
+                }
+            }
+            currentNode = currentNode.uastParent
+        }
+        return path
+    }
+
+    private fun getUri(statement: KtDotQualifiedExpression, path: String): String {
+        val receiver = statement.receiverExpression
+        if (receiver is KtStringTemplateExpression) {
+            val uri = receiver.entries.joinToString("") { it.text }
+            return "$uri$path"
+        }
+        return path
+    }
+
     fun simplifyUrl(urlPath: String): String {
         var result = if (urlPath.startsWith("/")) urlPath else "/$urlPath"
 
@@ -103,6 +179,12 @@ object SpringWebUtil {
         psiMethod.parameterList
             .parameters
             .indexOfFirst { it.name == URL_TEMPLATE && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING }
+
+    fun isMatchingTemplate(template: String, url: String): Boolean {
+        val regexPattern = template.replace(Regex("\\{[^/]+\\}"), "[^/]+")
+        val regex = Regex("^$regexPattern$")
+        return regex.matches(url)
+    }
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
