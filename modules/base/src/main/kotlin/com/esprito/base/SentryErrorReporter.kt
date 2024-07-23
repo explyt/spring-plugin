@@ -12,7 +12,6 @@ import com.intellij.openapi.diagnostic.SubmittedReportInfo
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.Messages
 import com.intellij.util.Consumer
 import io.sentry.Sentry
 import io.sentry.SentryEvent
@@ -76,7 +75,6 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
                     // we're a bit lazy here.
                     // Alternatively, we could add a listener to the sentry client
                     // to be notified if the message was successfully send
-                    Messages.showInfoMessage(parentComponent, "Thank you for submitting your report!", "Error Report")
                     consumer.consume(SubmittedReportInfo(SubmittedReportInfo.SubmissionStatus.NEW_ISSUE))
                 }
             }
