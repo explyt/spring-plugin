@@ -4,13 +4,13 @@ import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.esprito.util.EspritoPsiUtil.isSetter
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.UMethod
 
 class MethodConfigurationPropertyDataRetriever private constructor(
     private val uMethod: UMethod,
-    private val psiMethod: PsiMethod
 ) : ConfigurationPropertyDataRetriever() {
+
+    val psiMethod = uMethod.javaPsi
 
     override fun getContainingClass(): PsiClass? {
         val psiClass = psiMethod.containingClass ?: return null
@@ -36,7 +36,7 @@ class MethodConfigurationPropertyDataRetriever private constructor(
 
     companion object {
         fun create(uMethod: UMethod): ConfigurationPropertyDataRetriever {
-            return MethodConfigurationPropertyDataRetriever(uMethod, uMethod.javaPsi)
+            return MethodConfigurationPropertyDataRetriever(uMethod)
         }
     }
 
