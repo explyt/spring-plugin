@@ -6,17 +6,16 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
-import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.childrenOfType
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.uast.*
 
 class FieldConfigurationPropertyDataRetriever private constructor(
-    private val uMethod: UMethod,
-    private val psiMethod: PsiMethod
+    private val uMethod: UMethod
 ) : ConfigurationPropertyDataRetriever() {
 
+    val psiMethod = uMethod.javaPsi
 
     override fun getContainingClass(): PsiClass? {
         val psiClass = psiMethod.containingClass ?: return null
@@ -46,9 +45,7 @@ class FieldConfigurationPropertyDataRetriever private constructor(
     companion object {
         fun create(uField: UField): ConfigurationPropertyDataRetriever? {
             val uMethod = getMethodFromKtField(uField) ?: return null
-            val psiMethod = uMethod.javaPsi
-
-            return FieldConfigurationPropertyDataRetriever(uMethod, psiMethod)
+            return FieldConfigurationPropertyDataRetriever(uMethod)
         }
 
         private fun getMethodFromKtField(uField: UField): UMethod? {
