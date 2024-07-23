@@ -12,4 +12,12 @@ object EspritoKotlinUtil {
         return mapTo(mutableSetOf(), transform)
     }
 
+    inline fun <T, R> Sequence<T>.mapToList(transform: (T) -> R): List<R> {
+        return mapTo(mutableListOf(), transform)
+    }
+
+    inline fun <T, reified R> Sequence<T>.mapToArray(transform: (T) -> R): Array<R> {
+        return mapToList { transform(it) }.toTypedArray()
+    }
+
 }

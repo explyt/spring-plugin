@@ -101,8 +101,8 @@ class ControllerEndpointToTemplateReferenceProvider : UastInjectionHostReference
     }
 
     private fun doGetTemplateResolverMethods(module: Module): Map<String, PsiMethod> {
-        val methods = SpringCoreUtil.getClassMethods(SpringWebClasses.ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER, module)
-            ?: SpringCoreUtil.getClassMethods(SpringWebClasses.URL_BASED_VIEW_RESOLVER, module)
+        val methods = SpringCoreUtil.getClassMethodsFromLibraries(SpringWebClasses.ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER, module)
+            ?: SpringCoreUtil.getClassMethodsFromLibraries(SpringWebClasses.URL_BASED_VIEW_RESOLVER, module)
             ?: emptyArray()
 
         return methods.associateBy { it.name }

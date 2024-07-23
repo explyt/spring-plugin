@@ -338,8 +338,11 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun searchReferenceByMethod(module: Module, method: PsiMethod): Collection<PsiReference> {
-        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+    fun searchReferenceByMethod(
+        module: Module,
+        method: PsiMethod,
+        scope: SearchScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+    ): Collection<PsiReference> {
         return MethodReferencesSearch.search(method, scope, true).findAll()
     }
 
