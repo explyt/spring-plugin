@@ -107,4 +107,18 @@ class SpringDataMethodNameInspectionTest : EspritoInspectionJavaTestCase() {
         )
         myFixture.testHighlighting("TestRepository.java")
     }
+
+    fun testDefaultMethod() {
+        myFixture.configureByText(
+            "TestRepository.java",
+            """            
+            public interface TestRepository extends org.springframework.data.repository.Repository<Entity, Integer> {
+            	default Entity findByNoName() {
+                    return null;            
+                }            	
+            }
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("TestRepository.java")
+    }
 }

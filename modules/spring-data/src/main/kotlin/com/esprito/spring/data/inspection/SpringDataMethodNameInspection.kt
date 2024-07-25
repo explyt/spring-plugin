@@ -4,6 +4,7 @@ import com.esprito.base.LibraryClassCache
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
+import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -28,6 +29,7 @@ class SpringDataMethodNameInspection : SpringDataBaseUastLocalInspectionTool() {
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
+        if (method.isNonAbstract || method.uastBody != null) return emptyArray()
         val javaMethodPsi = method.javaPsi
         val uClass = method.getParentOfType<UClass>() ?: return emptyArray()
         val typeParams = SpringDataRepositoryUtil.substituteRepositoryTypes(uClass.javaPsi) ?: return emptyArray()
