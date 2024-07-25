@@ -14,10 +14,12 @@ object SpringWebClasses {
     const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
-    const val WEB_TEST_CLIENT_URI_SPEC = "org.springframework.test.web.reactive.server.WebTestClient.UriSpec"
-    const val WEB_CLIENT_URI_SPEC = "org.springframework.web.reactive.function.client.WebClient.UriSpec"
-    const val WEB_CLIENT_RESPONSE_SPEC = "org.springframework.web.reactive.function.client.WebClient.ResponseSpec"
-    const val WEB_TEST_CLIENT_RESPONSE_SPEC = "org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec"
+    private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"
+    const val WEB_TEST_CLIENT = "org.springframework.test.web.reactive.server.WebTestClient"
+    const val WEB_TEST_CLIENT_URI_SPEC = "$WEB_TEST_CLIENT.UriSpec"
+    const val WEB_CLIENT_URI_SPEC = "$WEB_CLIENT.UriSpec"
+    const val WEB_CLIENT_RESPONSE_SPEC = "$WEB_CLIENT.ResponseSpec"
+    const val WEB_TEST_CLIENT_RESPONSE_SPEC = "$WEB_TEST_CLIENT.ResponseSpec"
 
     const val WEB_FLUX_TEST = "org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest"
 
@@ -25,7 +27,7 @@ object SpringWebClasses {
     const val FLUX = "reactor.core.publisher.Flux"
     const val FLOW = "kotlinx.coroutines.flow.Flow"
 
-        const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
+    const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
     const val ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER =
         "org.thymeleaf.templateresolver.AbstractConfigurableTemplateResolver"
 

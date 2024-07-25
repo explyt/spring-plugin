@@ -37,15 +37,16 @@ class RouteFunctionEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() 
         else getRouteFunction(element)
 
         if (parameter == null) return
+        val (path, methodNames) = parameter
 
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
         result += NavigationGutterIconBuilder.create(SpringIcons.ReadAccess)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy {
-                findOpenApiJsonEndpoints(parameter.path, listOf(parameter.methodNames), module) +
-                        findOpenApiYamlEndpoints(parameter.path, listOf(parameter.methodNames), module) +
-                        findMockMvcEndpointUsage(parameter.path, listOf(parameter.methodNames), module) +
-                        findWebTestClientEndpointUsage(parameter.path, parameter.methodNames, module)
+                findOpenApiJsonEndpoints(path, listOf(methodNames), module) +
+                        findOpenApiYamlEndpoints(path, listOf(methodNames), module) +
+                        findMockMvcEndpointUsage(path, listOf(methodNames), module) +
+                        findWebTestClientEndpointUsage(path, methodNames, module)
             })
             .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
             .setTooltipText(SpringWebBundle.message("esprito.spring.web.gutter.endpoint.tooltip"))

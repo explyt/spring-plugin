@@ -1,6 +1,5 @@
 package com.esprito.spring.web.providers
 
-import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
@@ -10,21 +9,22 @@ import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.OPEN_API
 import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
+import com.esprito.util.EspritoKotlinUtil.filterToSet
+import com.esprito.util.EspritoKotlinUtil.mapToList
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.impl.LibraryScopeCache
 import com.intellij.psi.*
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopesCore
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
-import org.jetbrains.uast.*
-import org.jetbrains.uast.visitor.AbstractUastVisitor
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UQualifiedReferenceExpression
+import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLMapping
@@ -39,7 +39,7 @@ object EndpointUsageSearcher {
         return getOpenApiJsonEndpoints(module).asSequence()
             .filter { it.path == path }
             .filter { it.method == null || requestMethods.contains(it.method) }
-            .mapTo(mutableListOf()) { it.psiElement }
+            .mapToList { it.psiElement }
     }
 
     private fun getOpenApiJsonEndpoints(module: Module): List<Referrer> {
@@ -89,7 +89,7 @@ object EndpointUsageSearcher {
         return getOpenApiYamlEndpoints(module).asSequence()
             .filter { it.path == path }
             .filter { it.method == null || requestMethods.contains(it.method) }
-            .mapTo(mutableListOf()) { it.psiElement }
+            .mapToList { it.psiElement }
     }
 
     private fun getOpenApiYamlEndpoints(module: Module): List<Referrer> {
@@ -124,7 +124,7 @@ object EndpointUsageSearcher {
         }
 
         val paths = topLevelKeys
-            .firstOrNull() { it.name == PATHS }
+            .firstOrNull { it.name == PATHS }
             ?.value as? YAMLMapping
             ?: return emptyList()
 
@@ -161,7 +161,7 @@ object EndpointUsageSearcher {
             .filter { it is PsiReferenceExpression }
             .map { it.element }
             .mapNotNull { it.context as? PsiMethodCallExpression }
-            .filterTo(mutableSetOf()) {
+            .filterToSet {
                 val firstArg = (it.childrenOfType<PsiExpressionList>()
                     .firstOrNull()?.expressions?.firstOrNull() as? PsiLiteralExpression)
                     ?.value as? String
@@ -187,27 +187,29 @@ object EndpointUsageSearcher {
     }
 
     fun findWebTestClientEndpointUsage(path: String, methodName: String, module: Module): List<PsiElement> {
-        val uris = mutableListOf<PsiElement>()
-        getGetWebTestMethods(module).forEach { method ->
-            method.accept(object : AbstractUastVisitor() {
-                override fun visitCallExpression(node: UCallExpression): Boolean {
-                    if (node.methodName?.uppercase() == methodName) {
-                        val parentCall = node.uastParent?.uastParent as? UQualifiedReferenceExpression
-                        if (parentCall != null && parentCall.selector is UCallExpression) {
-                            val uriCall = (parentCall.selector as UCallExpression).valueArguments.firstOrNull()
-                            val argument = uriCall?.evaluate()
-                            if (argument != null && argument is String
-                                && SpringWebUtil.isMatchingTemplate(path, argument)
-                            ) {
-                                uriCall.sourcePsi?.let { uris.add(it) }
-                            }
-                        }
-                    }
-                    return super.visitCallExpression(node)
-                }
-            })
-        }
-        return uris
+        return getGetWebTestMethods(module).asSequence()
+            .filter { it.name.uppercase() == methodName }
+            .flatMap {
+                SpringSearchService.getInstance(module.project)
+                    .searchReferenceByMethod(
+                        module,
+                        it.javaPsi,
+                        GlobalSearchScopesCore.projectTestScope(module.project)
+                    )
+            }
+            .mapNotNull {
+                it.element.parent?.parent?.parent
+                    ?.toUElementOfType<UQualifiedReferenceExpression>()
+            }
+            .mapNotNull { it.selector as? UCallExpression }
+            .filter { it.methodName == "uri" }
+            .filter {
+                val argument = it.valueArguments.firstOrNull()?.evaluate() as? String
+                    ?: return@filter false
+                SpringWebUtil.isMatchingTemplate(path, argument)
+            }
+            .mapNotNull { it.sourcePsi }
+            .toList()
     }
 
     private fun getGetWebTestMethods(module: Module): Collection<UMethod> {
@@ -221,26 +223,11 @@ object EndpointUsageSearcher {
     }
 
     private fun doGetWebTestMethods(module: Module): Collection<UMethod> {
-        val webFluxTestAnnotationClass =
-            findAnnotationClass(SpringWebClasses.WEB_FLUX_TEST, module.project) ?: return emptyList()
-        val springBootTestAnnotationClass =
-            findAnnotationClass(SpringCoreClasses.SPRING_BOOT_TEST, module.project) ?: return emptyList()
-        val annotatedClasses = listOf(webFluxTestAnnotationClass, springBootTestAnnotationClass)
-            .flatMap {
-                AnnotatedElementsSearch.searchPsiClasses(
-                    it, GlobalSearchScopesCore.projectTestScope(module.project)
-                )
-            }
-
-        return annotatedClasses.asSequence()
-            .mapNotNull { it.toUElementOfType<UClass>() }
-            .flatMap { it.methods.toList() }
-            .toList()
+        return SpringCoreUtil.getClassMethodsFromLibraries(SpringWebClasses.WEB_TEST_CLIENT, module)
+            ?.asSequence()
+            ?.mapNotNull { it.toUElementOfType<UMethod>() }
+            ?.filterToSet { it.name in REQUEST_METHODS }
+            ?: return emptyList()
     }
 
-    private fun findAnnotationClass(qualifiedName: String, project: Project) = JavaPsiFacade.getInstance(project)
-        .findClass(
-            qualifiedName,
-            LibraryScopeCache.getInstance(project).librariesOnlyScope
-        )
 }
