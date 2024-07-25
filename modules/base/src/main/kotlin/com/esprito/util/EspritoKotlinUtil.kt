@@ -17,7 +17,19 @@ object EspritoKotlinUtil {
     }
 
     inline fun <T, reified R> Sequence<T>.mapToArray(transform: (T) -> R): Array<R> {
-        return mapToList { transform(it) }.toTypedArray()
+        return mapToList(transform).toTypedArray()
+    }
+
+    inline fun <T> Sequence<T>.filterToSet(predicate: (T) -> Boolean): Set<T> {
+        return this.filterTo(mutableSetOf(), predicate)
+    }
+
+    inline fun <T> Sequence<T>.filterToList(predicate: (T) -> Boolean): List<T> {
+        return this.filterTo(mutableListOf(), predicate)
+    }
+
+    inline fun <reified T> Sequence<T>.filterToArray(predicate: (T) -> Boolean): Array<T> {
+        return this.filterToList(predicate).toTypedArray()
     }
 
 }
