@@ -14,6 +14,7 @@
 - Fixed: Yaml PropertyLineMarker only for leaf elements
 - Inspection: @EntityScan package support
 - Added beans search by name in `Search Everywhere`
+- Fixed: Spring Data method name inspection - not analyze default interface methods
 - Fixed: Performance improvements
 
 ### Spring Data
