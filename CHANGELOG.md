@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Fixed: Autocomplete in application.properties produces an error: NoSuchElementException: List is empty.
 - Fixed: @ConfigurationProperties with lombok @Setter and Lombok plugin installed produces an error
 - Inspection: `Should be kebab-case` for property key
 - Fixed: Yaml property autocomplete inserts into previous line
