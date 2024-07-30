@@ -242,7 +242,10 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             .asSequence()
             .flatMap { it.asSequence() }
             .filter { it.lastChild != null }
-            .filter { it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild?.text }
+            .filter {
+                it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild?.text
+                        || it.lastChild.text == psiMethod.parameterList.parameters[0].name
+            }
             .map { it.firstChild }
             .filterIsInstance<PsiReferenceExpression>()
             .map { it.childrenOfType<PsiIdentifier>().firstOrNull() }
