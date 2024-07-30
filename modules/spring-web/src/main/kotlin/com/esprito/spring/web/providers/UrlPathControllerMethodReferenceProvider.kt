@@ -1,8 +1,10 @@
 package com.esprito.spring.web.providers
 
+import com.esprito.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.references.EspritoControllerMethodReference
 import com.esprito.spring.web.util.SpringWebUtil
+import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiReference
@@ -31,17 +33,13 @@ class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvi
         var requestMethod: String? = (uExpression.uastParent as? UCallExpression)
             ?.methodName
             ?.uppercase() ?: return PsiReference.EMPTY_ARRAY
-        if (requestMethod in METHODS_WITH_TYPE) {
-            val httpMethodIndex = psiMethod.parameterList
-                .parameters
-                .indexOfFirst { it.name in SpringWebUtil.HTTP_METHOD_NAMES }
+        if (requestMethod in REQUEST_METHODS_WITH_TYPE) {
+            val httpMethodIndex = SpringWebUtil.getHttpMethodIndex(psiMethod)
             requestMethod = if (httpMethodIndex < 0) {
                 null
             } else {
                 uCallExpression
-                    .getArgumentForParameter(httpMethodIndex)?.asSourceString()
-                    ?.split('.')
-                    ?.last()
+                    .getArgumentValueAsEnumName(httpMethodIndex)
             }
         }
 
@@ -66,10 +64,6 @@ class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvi
         val expressionAtIndex = callExpression.valueArguments.getOrNull(urlTemplateIndex)
 
         return expressionAtIndex == argumentExpression
-    }
-
-    companion object {
-        private val METHODS_WITH_TYPE = listOf("MULTIPART", "REQUEST")
     }
 
 }

@@ -1,5 +1,6 @@
 package com.esprito.spring.web.providers
 
+import com.esprito.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.esprito.spring.web.references.EspritoControllerMethodReference
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiLanguageInjectionHost
@@ -17,14 +18,18 @@ class WebClientUrlPathControllerMethodReferenceProvider : UastInjectionHostRefer
         host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        val psiElement = uExpression.sourcePsi ?: return PsiReference.EMPTY_ARRAY
-        val uCallExpression = uExpression.uastParent as? UCallExpression ?: return PsiReference.EMPTY_ARRAY
-        val callReceiver = uCallExpression.receiver ?: return PsiReference.EMPTY_ARRAY
+        val psiElement = uExpression.sourcePsi ?: return emptyArray()
+        val uCallExpression = uExpression.uastParent as? UCallExpression ?: return emptyArray()
+        val callReceiver = uCallExpression.receiver ?: return emptyArray()
 
-        val requestMethod = callReceiver.getUCallExpression()?.methodName ?: return PsiReference.EMPTY_ARRAY
+        val uMethodCall = callReceiver.getUCallExpression() ?: return emptyArray()
+        var requestMethod = uMethodCall.methodName ?: return emptyArray()
+        if (requestMethod == "method") {
+            requestMethod = uMethodCall.getArgumentValueAsEnumName(0) ?: return emptyArray()
+        }
 
         val text = ElementManipulators.getValueText(psiElement)
-        if (text.isBlank()) return PsiReference.EMPTY_ARRAY
+        if (text.isBlank()) return emptyArray()
 
         return arrayOf(
             EspritoControllerMethodReference(

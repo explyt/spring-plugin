@@ -3,12 +3,15 @@ package com.esprito.spring.web.providers
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
+import com.esprito.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider.Referrer
 import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.OPEN_API
 import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
+import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
+import com.esprito.spring.web.util.SpringWebUtil.getUrlTemplateIndex
 import com.esprito.util.EspritoKotlinUtil.filterToSet
 import com.esprito.util.EspritoKotlinUtil.mapToList
 import com.intellij.json.psi.JsonFile
@@ -20,7 +23,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopesCore
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.childrenOfType
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UQualifiedReferenceExpression
@@ -151,24 +153,50 @@ object EndpointUsageSearcher {
         requestMethods: List<String>,
         module: Module
     ): List<PsiElement> {
-        val methods = getMockMvcMethods(module).asSequence()
-            .filter { it.name.uppercase() in requestMethods }
-            .filter { it.parameterList.getParameter(0)?.type?.canonicalText == "java.lang.String" }
-            .flatMap {
-                SpringSearchService.getInstance(module.project)
-                    .searchReferenceByMethod(module, it, GlobalSearchScopesCore.projectTestScope(module.project))
-            }
-            .filter { it is PsiReferenceExpression }
-            .map { it.element }
-            .mapNotNull { it.context as? PsiMethodCallExpression }
-            .filterToSet {
-                val firstArg = (it.childrenOfType<PsiExpressionList>()
-                    .firstOrNull()?.expressions?.firstOrNull() as? PsiLiteralExpression)
-                    ?.value as? String
-                firstArg != null && SpringWebUtil.simplifyUrl(firstArg) == fullPath
-            }
+        val methods = mutableSetOf<PsiElement>()
+
+        for (psiMethod in getMockMvcMethods(module)) {
+            if (!isInRequestMethods(psiMethod, requestMethods)) continue
+
+            methods += SpringSearchService.getInstance(module.project)
+                .searchReferenceByMethod(module, psiMethod, GlobalSearchScopesCore.projectTestScope(module.project))
+                .asSequence()
+                .filter { it is PsiReferenceExpression }
+                .map { it.element }
+                .mapNotNull { it.context as? PsiMethodCallExpression }
+                .filterToSet { psiCallExpr ->
+                    val uCallExpression = psiCallExpr.toUElementOfType<UCallExpression>() ?: return@filterToSet false
+
+                    val httpMethodIndex = SpringWebUtil.getHttpMethodIndex(psiMethod)
+                    if (httpMethodIndex >= 0) {
+                        if (uCallExpression
+                                .getArgumentValueAsEnumName(httpMethodIndex) !in requestMethods
+                        ) return@filterToSet false
+                    }
+
+                    val urlTemplateIndex = getUrlTemplateIndex(psiMethod)
+                    val urlArg =
+                        uCallExpression.getArgumentForParameter(urlTemplateIndex)?.sourcePsi ?: return@filterToSet false
+
+                    return@filterToSet SpringWebUtil.simplifyUrl(
+                        ElementManipulators.getValueText(urlArg)
+                    ) == fullPath
+                }
+        }
 
         return methods.toList()
+    }
+
+    private fun isInRequestMethods(psiMethod: PsiMethod, requestMethods: List<String>): Boolean {
+        val name = psiMethod.name
+        if (name !in REQUEST_METHODS) return false
+
+        val uppercaseName = name.uppercase()
+        if (uppercaseName !in REQUEST_METHODS_WITH_TYPE) {
+            if (uppercaseName !in requestMethods) return false
+        }
+
+        return getUrlTemplateIndex(psiMethod) != -1
     }
 
     private fun getMockMvcMethods(module: Module): Array<PsiMethod> {
@@ -188,7 +216,7 @@ object EndpointUsageSearcher {
 
     fun findWebTestClientEndpointUsage(path: String, methodName: String, module: Module): List<PsiElement> {
         return getGetWebTestMethods(module).asSequence()
-            .filter { it.name.uppercase() == methodName }
+            .filter { it.name.uppercase() == methodName || it.name == "method" }
             .flatMap {
                 SpringSearchService.getInstance(module.project)
                     .searchReferenceByMethod(
@@ -197,9 +225,14 @@ object EndpointUsageSearcher {
                         GlobalSearchScopesCore.projectTestScope(module.project)
                     )
             }
+            .mapNotNull { it.element.parent?.toUElementOfType<UCallExpression>() }
+            .filter {
+                if (it.methodName != "method") return@filter true
+
+                it.getArgumentValueAsEnumName(0) == methodName
+            }
             .mapNotNull {
-                it.element.parent?.parent?.parent
-                    ?.toUElementOfType<UQualifiedReferenceExpression>()
+                it.uastParent?.uastParent as? UQualifiedReferenceExpression
             }
             .mapNotNull { it.selector as? UCallExpression }
             .filter { it.methodName == "uri" }

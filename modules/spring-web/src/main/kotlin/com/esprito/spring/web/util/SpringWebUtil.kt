@@ -175,6 +175,12 @@ object SpringWebUtil {
         return result.split('?').first()
     }
 
+    fun getHttpMethodIndex(psiMethod: PsiMethod) =
+        psiMethod.parameterList
+            .parameters
+            .indexOfFirst { it.name in HTTP_METHOD_NAMES }
+
+
     fun getUrlTemplateIndex(psiMethod: PsiMethod) =
         psiMethod.parameterList
             .parameters
@@ -197,11 +203,12 @@ object SpringWebUtil {
     )
 
     val REQUEST_METHODS =
-        setOf("get", "head", "post", "put", "patch", "delete", "options", "trace", "request", "multipart")
+        setOf("get", "head", "post", "put", "patch", "delete", "options", "trace", "request", "multipart", "method")
+    val REQUEST_METHODS_WITH_TYPE = listOf("MULTIPART", "REQUEST")
     val HTTP_METHOD_NAMES = setOf("httpMethod", "method")
 
     const val OPEN_API = "openapi"
     const val PATHS = "paths"
-    const val URL_TEMPLATE = "urlTemplate"
+    private const val URL_TEMPLATE = "urlTemplate"
 
 }

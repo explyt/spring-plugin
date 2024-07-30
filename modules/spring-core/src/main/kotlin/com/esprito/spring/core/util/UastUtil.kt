@@ -2,6 +2,7 @@ package com.esprito.spring.core.util
 
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.intellij.openapi.module.ModuleUtilCore
+import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.evaluateString
 
@@ -22,4 +23,11 @@ object UastUtil {
         }
         return value
     }
+
+    fun UCallExpression.getArgumentValueAsEnumName(index: Int): String? =
+        getArgumentForParameter(index)
+            ?.asSourceString()
+            ?.split('.')
+            ?.last()
+
 }

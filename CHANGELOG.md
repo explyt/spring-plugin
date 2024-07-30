@@ -25,6 +25,7 @@
 
 ### Spring Web/MVC
 
+- Add navigation considering `WebTestClient.method` to endpoint. Add elements to endpoint's linemarker navigating to uri considering `WebTestClient.method`, `MockMvcBuilders.request`, `MockMvcBuilder.multipart`
 - Add a gutter to the methods `RouterFunctions`: `coRouter`, `route`
 - Fixed: navigation from endpoint's gutter
 - Add `WebTestController` `expectBody[List]` methods autocompletion

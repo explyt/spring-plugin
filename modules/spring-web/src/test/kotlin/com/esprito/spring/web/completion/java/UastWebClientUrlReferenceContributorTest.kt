@@ -44,6 +44,57 @@ class UastWebClientUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         TestCase.assertEquals("ProductController#update", "$classFqn#$memberName")
     }
 
+    fun testWebTestClientMethod_notFound() {
+        myFixture.copyFileToProject("ProductController.java")
+        myFixture.configureByText(
+            "ProductControllerTest.java", """
+            import org.springframework.http.HttpMethod;
+            import org.springframework.test.web.reactive.server.WebTestClient;
+
+            class ProductControllerTest {
+                private WebTestClient webClient;
+            
+                void justForTest() {
+                    webClient.method(HttpMethod.DELETE).uri("/product/{pro<caret>duct-id}");
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(0, multiResolve.size)
+    }
+
+    fun testWebTestClientMethod() {
+        myFixture.copyFileToProject("ProductController.java")
+        myFixture.configureByText(
+            "ProductControllerTest.java", """
+            import org.springframework.http.HttpMethod;
+            import org.springframework.test.web.reactive.server.WebTestClient;
+
+            class ProductControllerTest {
+                private WebTestClient webClient;
+            
+                void justForTest() {
+                    webClient.method(HttpMethod.PUT).uri("/product/{pro<caret>duct-id}");
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? PsiMember
+        assertNotNull(resolvedElement)
+        val memberName = resolvedElement?.name
+        val classFqn = resolvedElement?.containingClass?.qualifiedName
+        TestCase.assertEquals("ProductController#update", "$classFqn#$memberName")
+    }
+
     fun testWebTestClientPut() {
         myFixture.copyFileToProject("ProductController.java")
         myFixture.configureByText(
