@@ -63,7 +63,7 @@ class SpringConfigurationPropertiesSearch {
     private fun toConfigurationPropertyList(hint: PropertyHint): List<ConfigurationProperty> {
         val basePropertyName = hint.name.substringBefore(POSTFIX_KEYS)
         return hint.values.map {
-            ConfigurationProperty("$basePropertyName.${it.value}", null, null, it.description, null, null)
+            ConfigurationProperty("$basePropertyName.${it.value}", null, null, null, it.description, null, null)
         }
     }
 

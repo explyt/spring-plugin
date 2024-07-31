@@ -2,8 +2,12 @@ package com.esprito.spring.core.properties.dataRetriever
 
 import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.esprito.util.EspritoPsiUtil.isSetter
+import com.esprito.util.EspritoPsiUtil.returnPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiType
+import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.uast.UMethod
 
 class MethodConfigurationPropertyDataRetriever private constructor(
@@ -32,6 +36,16 @@ class MethodConfigurationPropertyDataRetriever private constructor(
 
     override fun getNameElementPsi(): PsiElement? {
         return uMethod.uastAnchor?.sourcePsi
+    }
+
+    override fun isMap(): Boolean {
+        val psiType = uMethod.returnPsiClass?.returnPsiType ?: return false
+        return InheritanceUtil.isInheritor(psiType, Iterable::class.java.name)
+    }
+
+    override fun isCollection(): Boolean {
+        val psiType = uMethod.returnPsiClass?.returnPsiType ?: return false
+        return InheritanceUtil.isInheritor(psiType, Iterable::class.java.name) || psiType is PsiArrayType
     }
 
     companion object {

@@ -1,5 +1,6 @@
 package com.esprito.spring.core.completion.properties
 
+import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.SpringProperties.NAME
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -14,6 +15,7 @@ import com.intellij.json.psi.JsonStringLiteral
 import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiManager
 
 abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Project) : ConfigurationPropertiesLoader {
@@ -64,6 +66,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
     }
 
     protected fun collectConfigurationProperties(
+        project: Project,
         metaDataFileText: String,
         metaDataFilePath: String,
         configurationProperties: MutableMap<String, ConfigurationProperty>
@@ -76,10 +79,12 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
             val propertyName = it.name
             if (propertyName != null) {
                 val existProperty = configurationProperties[propertyName]
+                val psiClass = getPsiClass(project, it.type)
                 if (existProperty == null) {
                     configurationProperties[propertyName] = ConfigurationProperty(
                         name = propertyName,
                         type = it.type,
+                        propertyType = ConfigurationPropertiesLoader.getPropertyType(psiClass),
                         sourceType = it.sourceType,
                         description = it.description,
                         defaultValue = it.defaultValue,
@@ -88,6 +93,9 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
                 } else {
                     if (existProperty.type.isNullOrEmpty()) {
                         existProperty.type = it.type
+                    }
+                    if (existProperty.propertyType == null) {
+                        existProperty.propertyType = ConfigurationPropertiesLoader.getPropertyType(psiClass)
                     }
                     if (existProperty.sourceType.isNullOrEmpty()) {
                         existProperty.sourceType = it.sourceType
@@ -106,7 +114,7 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
         }
     }
 
-    private fun deprecationInfo(deprecation: SpringConfigurationMetadataDeprecation?) : DeprecationInfo? {
+    private fun deprecationInfo(deprecation: SpringConfigurationMetadataDeprecation?): DeprecationInfo? {
         if (deprecation == null) return null
 
         val level = deprecation.level
@@ -140,6 +148,11 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
             }
             null
         }
+    }
+
+    private fun getPsiClass(project: Project, fqName: String?): PsiClass? {
+        val className = fqName?.substringBefore("<") ?: return null
+        return LibraryClassCache.searchForLibraryClass(project, className)
     }
 }
 

@@ -30,6 +30,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
 import com.intellij.util.ProcessingContext
+import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
@@ -129,15 +130,29 @@ class ConfigurationPropertyKeyReference(
     }
 
     private fun resultConfigKeyPsiElement(project: Project, module: Module): Array<ResolveResult> {
-        val foundProperty = SpringConfigurationPropertiesSearch.getInstance(project)
-            .findProperty(module, propertyKey) ?: return emptyArray()
+        val foundProperty = configurationProperty(project, module) ?: return emptyArray()
         val sourceType = foundProperty.sourceType ?: return emptyArray()
         val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project)
         val uElement = sourceMember.toUElement() ?: return emptyArray()
-        if (sourceMember != null && (uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())) {
+        if (sourceMember != null
+            && (uElement is UClass || uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())
+        ) {
             return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         }
         return emptyArray()
+    }
+
+    private fun configurationProperty(
+        project: Project,
+        module: Module
+    ): ConfigurationProperty? {
+        val findProperty = SpringConfigurationPropertiesSearch.getInstance(project)
+            .findProperty(module, propertyKey)
+        if (findProperty == null) {
+            return SpringConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
+                .find { propertyKey.startsWith(it.name) }
+        }
+        return findProperty
     }
 
     override fun getVariants(): Array<Any> {

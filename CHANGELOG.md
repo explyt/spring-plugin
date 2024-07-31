@@ -50,6 +50,7 @@
 - Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes
 - Fixed `@Value` folding for Kotlin
+- Fixed @ConfigurationProperties - navigation/line markers
 
 ### Spring Web/MVC
 
