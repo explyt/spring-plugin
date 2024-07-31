@@ -22,12 +22,26 @@ abstract class ConfigurationPropertyDataRetriever {
 
     abstract fun getNameElementPsi(): PsiElement?
 
+    abstract fun isMap(): Boolean
+
+    abstract fun isCollection(): Boolean
+
     fun getRelatedProperties(prefix: String, name: String, module: Module): List<PsiElement> {
         val propertyFqn = prefix + name
-        return DefinedConfigurationPropertiesSearch.getInstance(module.project)
-            .getAllProperties(module).asSequence()
-            .filter { PropertyUtil.isSameProperty(it.key, propertyFqn) }
-            .mapNotNull { it.psiElement }.toList()
+        return if (isMap() || isCollection()) {
+            DefinedConfigurationPropertiesSearch.getInstance(module.project)
+                .getAllProperties(module).asSequence()
+                .filter {
+                    PropertyUtil.toCommonPropertyForm(it.key)
+                        .startsWith(PropertyUtil.toCommonPropertyForm(propertyFqn))
+                }
+                .mapNotNull { it.psiElement }.toList()
+        } else {
+            DefinedConfigurationPropertiesSearch.getInstance(module.project)
+                .getAllProperties(module).asSequence()
+                .filter { PropertyUtil.isSameProperty(it.key, propertyFqn) }
+                .mapNotNull { it.psiElement }.toList()
+        }
     }
 
     fun getMetadataName(prefix: String, name: String, module: Module): List<PsiElement> {

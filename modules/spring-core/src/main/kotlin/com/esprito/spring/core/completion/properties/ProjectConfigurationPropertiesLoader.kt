@@ -87,7 +87,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     private fun loadPropertiesFromMetadata(module: Module): HashMap<String, ConfigurationProperty> {
         val result = hashMapOf<String, ConfigurationProperty>()
         findMetadataFiles(module).forEach {
-            collectConfigurationProperties(it.text, it.virtualFile.path, result)
+            collectConfigurationProperties(module.project, it.text, it.virtualFile.path, result)
         }
         return result
     }
@@ -141,6 +141,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             val name = "$prefix.$propertyName"
             result[name] = ConfigurationProperty(
                 name,
+                ConfigurationPropertiesLoader.getPropertyType(propertyWrapper.psiType),
                 propertyWrapper.type,
                 propertyWrapper.sourceType,
                 propertyWrapper.description,

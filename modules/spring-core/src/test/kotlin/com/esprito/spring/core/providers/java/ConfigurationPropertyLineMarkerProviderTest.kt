@@ -6,6 +6,7 @@ import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.GutterMark
 import junit.framework.TestCase
+import org.intellij.lang.annotations.Language
 
 class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
 
@@ -175,6 +176,194 @@ class ConfigurationPropertyLineMarkerProviderTest : EspritoJavaLightTestCase() {
         TestCase.assertEquals(
             listOf("configuration.value"),
             gutterTargetsStrings
+        )
+    }
+
+    fun testMapKeyGutter() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME,
+            """configuration.value.key.one=1
+               configuration.value.key-two=2""".trimMargin()
+        )
+
+        @Language("JAVA")
+        val text = """
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+            import org.springframework.context.annotation.Configuration;
+            import java.util.Map;
+
+            @ConfigurationProperties(prefix="configuration")
+            @Configuration
+            public class MainPropertiesConfiguration {
+    
+                private Map<String, String> value;
+    
+                public Map<String, String> getValue() {
+                    return value;
+                }
+    
+                public void setValue(Map<String, String> value) {
+                    this.value = value;
+                }
+            }
+            """
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.java",
+            text.trimIndent()
+        )
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
+        TestCase.assertEquals(
+            listOf("configuration.value.key.one", "configuration.value.key-two"),
+            gutterTargetsStrings
+        )
+    }
+
+    fun testPropertiesGutter() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME,
+            """configuration.value.key.one=1
+               configuration.value.key-two=2""".trimMargin()
+        )
+
+        @Language("JAVA")
+        val text = """
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+            import org.springframework.context.annotation.Configuration;
+            import java.util.Properties;
+
+            @ConfigurationProperties(prefix="configuration")
+            @Configuration
+            public class MainPropertiesConfiguration {
+    
+                private Properties value;
+    
+                public Properties getValue() {
+                    return value;
+                }
+    
+                public void setValue(Properties value) {
+                    this.value = value;
+                }
+            }
+            """
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.java",
+            text.trimIndent()
+        )
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.find { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = SpringGutterTestUtil.getGutterTargetsStrings(gutterMark)
+        TestCase.assertEquals(
+            listOf("configuration.value.key.one", "configuration.value.key-two"),
+            gutterTargetsStrings
+        )
+    }
+
+    fun testListGutter() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME,
+            """configuration.value1[0]=1
+               configuration.value1[1]=2
+               configuration.value2=1,2,3""".trimMargin()
+        )
+
+        @Language("JAVA")
+        val text = """
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+            import org.springframework.context.annotation.Configuration;
+            import java.util.List;
+
+            @ConfigurationProperties(prefix="configuration")
+            @Configuration
+            public class MainPropertiesConfiguration {
+    
+                private List<String> value1;
+                private List<String> value2;
+    
+                public List<String> getValue1() {
+                    return value1;
+                }
+    
+                public void setValue1(List<String> value) {
+                    this.value1 = value;
+                }
+                
+                public List<String> getValue2() {
+                    return value2;
+                }
+    
+                public void setValue2(List<String> value) {
+                    this.value2 = value;
+                }
+            }
+            """
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.java",
+            text.trimIndent()
+        )
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.filter { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = gutterMark.flatMap { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+        TestCase.assertEquals(
+            setOf("configuration.value1[0]", "configuration.value1[1]", "configuration.value2"),
+            gutterTargetsStrings.toSet()
+        )
+    }
+
+    fun testArrayGutter() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME,
+            """configuration.value1[0]=1
+               configuration.value1[1]=2
+               configuration.value2=1,2,3""".trimMargin()
+        )
+
+        @Language("JAVA")
+        val text = """
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+            import org.springframework.context.annotation.Configuration;
+            import java.util.List;
+
+            @ConfigurationProperties(prefix="configuration")
+            @Configuration
+            public class MainPropertiesConfiguration {
+    
+                private Integer[] value1;
+                private Integer[] value2;
+    
+                public Integer[] getValue1() {
+                    return value1;
+                }
+    
+                public void setValue1(Integer[] value) {
+                    this.value1 = value;
+                }
+                
+                public Integer[] getValue2() {
+                    return value2;
+                }
+    
+                public void setValue2(Integer[] value) {
+                    this.value2 = value;
+                }
+            }
+            """
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.java",
+            text.trimIndent()
+        )
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.filter { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = gutterMark.flatMap { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+        TestCase.assertEquals(
+            setOf("configuration.value1[0]", "configuration.value1[1]", "configuration.value2"),
+            gutterTargetsStrings.toSet()
         )
     }
 

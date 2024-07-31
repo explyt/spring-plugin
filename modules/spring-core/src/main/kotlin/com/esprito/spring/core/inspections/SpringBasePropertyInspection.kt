@@ -124,8 +124,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
 
             val key = fileProperty.key
             if (isNotKebabCase(key)) {
-                problems +=
-                    keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key)
+                problems += keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key)
             }
 
             val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key) }
@@ -133,11 +132,9 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 .getAllPlaceholders(module)
 
             if (foundProperties.isEmpty()
-                && !isPropertyMapKey(fileProperty, properties)
-                && !isPropertyListKey(fileProperty, properties)
-                && placeholders.none {
-                    PropertyUtil.isSameProperty(key, it)
-                }
+                && getMapKeys(fileProperty, properties).isEmpty()
+                && getListKeys(fileProperty, properties).isEmpty()
+                && placeholders.none { PropertyUtil.isSameProperty(key, it) }
             ) {
                 val psiReferences = SpringSearchService.getInstance(elementFileProperty.project)
                     .getAllReferencesToElement(elementFileProperty)
@@ -160,7 +157,6 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                             emptyArray(),
                             ProblemHighlightType.ERROR
                         )
-
                     }
                 }
             }
@@ -607,11 +603,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             return findProperty
         }
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
-        if (isPropertyListKey(property, properties)) {
-            return getConfigurationListProperties(property, properties).firstOrNull()
+        val listKey = getListKeys(property, properties)
+        if (listKey.isNotEmpty()) {
+            return listKey.first()
         }
-        if (isPropertyMapKey(property, properties)) {
-            return getConfigurationMapProperties(property, properties).firstOrNull()
+        val mapKey = getMapKeys(property, properties)
+        if (mapKey.isNotEmpty()) {
+            return mapKey.first()
         }
         return null
     }
@@ -665,49 +663,19 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         }.distinct()
 
 
-    private fun isPropertyMapKey(
-        fileProperty: DefinedConfigurationProperty,
-        properties: List<ConfigurationProperty>
-    ): Boolean {
-        val property = configurationTypeProperties(fileProperty, properties, ".")
-        if (property.isEmpty()) {
-            return false
-        }
-        return property.any { it.isMap() }
-    }
-
-    private fun isPropertyListKey(
-        fileProperty: DefinedConfigurationProperty,
-        properties: List<ConfigurationProperty>
-    ): Boolean {
-        val property = configurationTypeProperties(fileProperty, properties, "[")
-        if (property.isEmpty()) {
-            return false
-        }
-        return property.any { it.isList() }
-    }
-
-    private fun getConfigurationListProperties(
+    private fun getMapKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
-        return configurationTypeProperties(fileProperty, properties, "[")
+        return properties.asSequence().filter { it.isMap() }.filter { fileProperty.key.startsWith(it.name) }.toList()
     }
 
-    private fun getConfigurationMapProperties(
+    private fun getListKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
-        return configurationTypeProperties(fileProperty, properties, ".")
-    }
-
-    private fun configurationTypeProperties(
-        fileProperty: DefinedConfigurationProperty,
-        properties: List<ConfigurationProperty>,
-        separator: String
-    ): List<ConfigurationProperty> {
-        val key = fileProperty.key.substringBeforeLast(separator)
-        return properties.filter { it.name == key }
+        return properties.asSequence().filter { it.isList() || it.isArray() }
+            .filter { fileProperty.key.startsWith(it.name) }.toList()
     }
 
     private fun checkDuplicateKeys(
