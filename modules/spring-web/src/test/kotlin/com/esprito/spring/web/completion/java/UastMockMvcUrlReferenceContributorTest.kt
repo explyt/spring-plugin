@@ -239,4 +239,56 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         TestCase.assertEquals("WebClients#differentFunction", "$classFqn#$memberName")
     }
 
+    fun testTemplate() {
+        myFixture.copyFileToProject("ProductController.java")
+        myFixture.configureByText(
+            "ProductControllerTest.java", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+            
+            class ProductControllerTest {
+                void justForTest() {
+                    MockMvcRequestBuilders.put("/product/someProdu<caret>ctId");
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? PsiMember
+        assertNotNull(resolvedElement)
+        val memberName = resolvedElement?.name
+        val classFqn = resolvedElement?.containingClass?.qualifiedName
+        TestCase.assertEquals("ProductController#update", "$classFqn#$memberName")
+    }
+
+    fun testTemplateWithConst() {
+        myFixture.copyFileToProject("ProductController.java")
+        myFixture.configureByText(
+            "ProductControllerTest.java", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+            
+            public static final String ID = "someProductId";
+            
+            class ProductControllerTest {
+                void justForTest() {
+                    MockMvcRequestBuilders.put("/prod<caret>uct/" + ID);
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? PsiMember
+        assertNotNull(resolvedElement)
+        val memberName = resolvedElement?.name
+        val classFqn = resolvedElement?.containingClass?.qualifiedName
+        TestCase.assertEquals("ProductController#update", "$classFqn#$memberName")
+    }
+
 }

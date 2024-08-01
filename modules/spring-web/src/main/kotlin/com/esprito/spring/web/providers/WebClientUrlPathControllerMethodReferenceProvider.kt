@@ -7,9 +7,7 @@ import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiReference
 import com.intellij.psi.UastInjectionHostReferenceProvider
 import com.intellij.util.ProcessingContext
-import org.jetbrains.uast.UCallExpression
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.getUCallExpression
+import org.jetbrains.uast.*
 
 class WebClientUrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvider() {
 
@@ -18,8 +16,8 @@ class WebClientUrlPathControllerMethodReferenceProvider : UastInjectionHostRefer
         host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        val psiElement = uExpression.sourcePsi ?: return emptyArray()
-        val uCallExpression = uExpression.uastParent as? UCallExpression ?: return emptyArray()
+        val uFullExpression = uExpression.uastParent as? UPolyadicExpression ?: uExpression
+        val uCallExpression = uFullExpression.uastParent as? UCallExpression ?: return emptyArray()
         val callReceiver = uCallExpression.receiver ?: return emptyArray()
 
         val uMethodCall = callReceiver.getUCallExpression() ?: return emptyArray()
@@ -28,7 +26,7 @@ class WebClientUrlPathControllerMethodReferenceProvider : UastInjectionHostRefer
             requestMethod = uMethodCall.getArgumentValueAsEnumName(0) ?: return emptyArray()
         }
 
-        val text = ElementManipulators.getValueText(psiElement)
+        val text = uFullExpression.evaluateString() ?: return emptyArray()
         if (text.isBlank()) return emptyArray()
 
         return arrayOf(
@@ -36,7 +34,7 @@ class WebClientUrlPathControllerMethodReferenceProvider : UastInjectionHostRefer
                 host,
                 text,
                 requestMethod.uppercase(),
-                ElementManipulators.getValueTextRange(psiElement)
+                ElementManipulators.getValueTextRange(host)
             )
         )
     }

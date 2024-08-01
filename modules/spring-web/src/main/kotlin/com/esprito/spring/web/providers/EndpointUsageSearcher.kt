@@ -23,10 +23,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopesCore
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import org.jetbrains.uast.UCallExpression
-import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.UQualifiedReferenceExpression
-import org.jetbrains.uast.toUElementOfType
+import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLMapping
@@ -153,6 +150,7 @@ object EndpointUsageSearcher {
         requestMethods: List<String>,
         module: Module
     ): List<PsiElement> {
+        val endpoint = SpringWebUtil.simplifyUrl(fullPath)
         val methods = mutableSetOf<PsiElement>()
 
         for (psiMethod in getMockMvcMethods(module)) {
@@ -176,11 +174,9 @@ object EndpointUsageSearcher {
 
                     val urlTemplateIndex = getUrlTemplateIndex(psiMethod)
                     val urlArg =
-                        uCallExpression.getArgumentForParameter(urlTemplateIndex)?.sourcePsi ?: return@filterToSet false
+                        uCallExpression.getArgumentForParameter(urlTemplateIndex)?.evaluateString() ?: return@filterToSet false
 
-                    return@filterToSet SpringWebUtil.simplifyUrl(
-                        ElementManipulators.getValueText(urlArg)
-                    ) == fullPath
+                    return@filterToSet SpringWebUtil.isEndpointMatches(endpoint, urlArg)
                 }
         }
 
@@ -215,6 +211,7 @@ object EndpointUsageSearcher {
     }
 
     fun findWebTestClientEndpointUsage(path: String, methodName: String, module: Module): List<PsiElement> {
+        val endpoint = SpringWebUtil.simplifyUrl(path)
         return getGetWebTestMethods(module).asSequence()
             .filter { it.name.uppercase() == methodName || it.name == "method" }
             .flatMap {
@@ -239,7 +236,7 @@ object EndpointUsageSearcher {
             .filter {
                 val argument = it.valueArguments.firstOrNull()?.evaluate() as? String
                     ?: return@filter false
-                SpringWebUtil.isMatchingTemplate(path, argument)
+                SpringWebUtil.isEndpointMatches(endpoint, argument)
             }
             .mapNotNull { it.sourcePsi }
             .toList()

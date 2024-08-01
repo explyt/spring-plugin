@@ -39,4 +39,9 @@ public class ProductController {
     public Product update(@PathVariable("product-id") Integer productId, @RequestBody ProductModel productModel) {
         return productRepository.update(productId, productModel);
     }
+
+    @GetMapping("/{product-id}/price")
+    public Integer getPrice(@PathVariable("product-id") Integer productId, @RequestBody ProductModel productModel) {
+        return productRepository.getProduct(productId).getPrice();
+    }
 }

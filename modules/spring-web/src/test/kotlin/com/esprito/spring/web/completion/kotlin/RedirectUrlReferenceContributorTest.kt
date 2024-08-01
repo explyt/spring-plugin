@@ -41,7 +41,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
             "ProductControllerTest.kt", """
             class ProductControllerTest {
                 fun justForTest() {
-                    "redirect:/product/ge<caret>t"
+                    "redirect:/product/get/i<caret>t"
                 }
             }
         """.trimIndent()
@@ -105,7 +105,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
             "ProductControllerTest.kt", """
             class ProductControllerTest {
                 fun justForTest() {
-                    "forward:/product/ge<caret>t"
+                    "forward:/product/get/i<caret>t"
                 }
             }
         """.trimIndent()

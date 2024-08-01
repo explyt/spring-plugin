@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
+import java.util.concurrent.ConcurrentHashMap
 import javax.swing.Icon
 
 object SpringWebUtil {
@@ -181,16 +182,25 @@ object SpringWebUtil {
             .indexOfFirst { it.name in HTTP_METHOD_NAMES }
 
 
+    fun isEndpointMatches(endpoint: String, path: String): Boolean {
+        return getRegexByUri(simplifyUrl(endpoint)).matches(simplifyUrl(path))
+    }
+
+    fun dropRegexesByUri() {
+        endpointRegExByUri.clear()
+    }
+
+    private fun getRegexByUri(path: String): Regex {
+        return endpointRegExByUri.computeIfAbsent(path) {
+            val regex = path.replace(TEMPLATE_PARAM_REGEX, "[^/?]+")
+            Regex("^$regex(\\?.*)?\$")
+        }
+    }
+
     fun getUrlTemplateIndex(psiMethod: PsiMethod) =
         psiMethod.parameterList
             .parameters
             .indexOfFirst { it.name == URL_TEMPLATE && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING }
-
-    fun isMatchingTemplate(template: String, url: String): Boolean {
-        val regexPattern = template.replace(Regex("\\{[^/]+\\}"), "[^/]+")
-        val regex = Regex("^$regexPattern$")
-        return regex.matches(url)
-    }
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
@@ -211,4 +221,6 @@ object SpringWebUtil {
     const val PATHS = "paths"
     private const val URL_TEMPLATE = "urlTemplate"
 
+    private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()
+    private val TEMPLATE_PARAM_REGEX = Regex("\\{[^}]+}")
 }

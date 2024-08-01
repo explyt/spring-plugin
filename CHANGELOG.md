@@ -25,6 +25,7 @@
 
 ### Spring Web/MVC
 
+- Updated: navigation between endpoint with template parameters and  `WebTestClient`, `MockMvcBuilders` methods
 - Add navigation considering `WebTestClient.method` to endpoint. Add elements to endpoint's linemarker navigating to uri considering `WebTestClient.method`, `MockMvcBuilders.request`, `MockMvcBuilder.multipart`
 - Add a gutter to the methods `RouterFunctions`: `coRouter`, `route`
 - Fixed: navigation from endpoint's gutter
@@ -50,7 +51,6 @@
 - Added reference from `DynamicPropertyRegistry.add` method to property
 - Fixed inspection `resource name must begin with a slash`. Added valid prefixes
 - Fixed `@Value` folding for Kotlin
-- Fixed @ConfigurationProperties - navigation/line markers
 
 ### Spring Web/MVC
 

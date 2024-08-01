@@ -220,4 +220,61 @@ class UastWebClientUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         TestCase.assertEquals("OrderController#getOrders", "$classFqn#$memberName")
     }
 
+    fun testWebTestClientTemplate() {
+        myFixture.copyFileToProject("ProductController.java")
+        myFixture.configureByText(
+            "ProductControllerTest.java", """
+            import org.springframework.test.web.reactive.server.WebTestClient;
+            
+            class ProductControllerTest {
+                private WebTestClient webClient;
+                
+                void justForTest() {
+                    webClient.get().uri("/product/someProductId/pri<caret>ce");
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? PsiMember
+        assertNotNull(resolvedElement)
+        val memberName = resolvedElement?.name
+        val classFqn = resolvedElement?.containingClass?.qualifiedName
+        TestCase.assertEquals("ProductController#getPrice", "$classFqn#$memberName")
+    }
+
+    fun testWebTestClientTemplateWithConst() {
+        myFixture.copyFileToProject("ProductController.java")
+        myFixture.configureByText(
+            "ProductControllerTest.java", """
+            import org.springframework.test.web.reactive.server.WebTestClient;
+            
+            
+            public static final String ID = "someProductId";
+            
+            class ProductControllerTest {
+                private WebTestClient webClient;
+                
+                void justForTest() {
+                    webClient.get().uri("/product/" + ID + "/pri<caret>ce");
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolvedElement = (multiResolve[0].element) as? PsiMember
+        assertNotNull(resolvedElement)
+        val memberName = resolvedElement?.name
+        val classFqn = resolvedElement?.containingClass?.qualifiedName
+        TestCase.assertEquals("ProductController#getPrice", "$classFqn#$memberName")
+    }
+
 }
