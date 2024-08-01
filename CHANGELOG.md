@@ -17,6 +17,7 @@
 - Added beans search by name in `Search Everywhere`
 - Fixed: Spring Data method name inspection - not analyze default interface methods
 - Fixed: Performance improvements
+- Fixed: ConditionOnProperty is enabled even if it was disabled in properties
 
 ### Spring Data
 

@@ -21,24 +21,23 @@ class ConditionalOnClassStrategy(private val module: Module) : ExclusionStrategy
             return false
         }
 
-        val classAttributesQn = annotationHolder.getAnnotationMemberValues(dependant, setOf("value"))
+        val classAttributeTypes = annotationHolder.getAnnotationMemberValues(dependant, setOf("value"))
             .asSequence()
             .flatMap { it.childrenOfType<PsiTypeElement>() }
             .map { it.type }
-            .mapNotNull { it.resolvedPsiClass?.qualifiedName }
-            .toSet()
+            .toList()
+
+        if (classAttributeTypes.isNotEmpty() && classAttributeTypes.any { it.resolvedPsiClass == null }) {
+            return true
+        }
 
         val typesQn = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
             .asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
+            .takeIf { it.isNotEmpty() } ?: return false
 
-
-        if (classAttributesQn.isEmpty() && typesQn.isEmpty()) {
-            return false
-        }
-
-        for (typeQn in (classAttributesQn + typesQn)) {
+        for (typeQn in typesQn) {
             val className = typeQn.split('.').lastOrNull() ?: continue
 
             val classFound = PsiShortNamesCache.getInstance(module.project)
