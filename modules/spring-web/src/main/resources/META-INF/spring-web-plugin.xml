@@ -121,6 +121,12 @@
 
     </extensions>
 
+    <projectListeners>
+        <listener class="com.esprito.spring.web.listeners.EspritoWebProjectListener"
+                  topic="com.intellij.openapi.project.ProjectManagerListener"/>
+    </projectListeners>
+
+
     <actions>
 
     </actions>

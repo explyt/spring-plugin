@@ -14,7 +14,8 @@ interface SpringWebEndpointsLoader {
     fun getEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
         val searchUrl = SpringWebUtil.simplifyUrl(urlPath)
 
-        return searchEndpoints(module).filter { it.path == searchUrl }
+        return searchEndpoints(module)
+            .filter { SpringWebUtil.isEndpointMatches(it.path, searchUrl) }
     }
 
     fun searchAnnotatedClasses(annotation: PsiClass, module: Module): List<PsiClass> {
@@ -26,6 +27,7 @@ interface SpringWebEndpointsLoader {
         val EP_NAME = ProjectExtensionPointName<SpringWebEndpointsLoader>(
             "com.esprito.spring.web.springWebEndpointsLoader"
         )
+
     }
 }
 

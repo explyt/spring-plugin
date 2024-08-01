@@ -12,6 +12,8 @@ import com.intellij.psi.UastInjectionHostReferenceProvider
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UPolyadicExpression
+import org.jetbrains.uast.evaluateString
 
 class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvider() {
 
@@ -20,19 +22,19 @@ class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvi
         host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        val psiElement = uExpression.sourcePsi ?: return PsiReference.EMPTY_ARRAY
-        val uCallExpression = uExpression.uastParent as? UCallExpression ?: return PsiReference.EMPTY_ARRAY
-        val psiMethod = uCallExpression.resolve() ?: return PsiReference.EMPTY_ARRAY
+        val uFullExpression = uExpression.uastParent as? UPolyadicExpression ?: uExpression
+        val uCallExpression = uFullExpression.uastParent as? UCallExpression ?: return emptyArray()
+        val psiMethod = uCallExpression.resolve() ?: return emptyArray()
         val urlTemplateIndex = SpringWebUtil.getUrlTemplateIndex(psiMethod)
-        if (!isAtIndexIn(uCallExpression, urlTemplateIndex, uExpression)) return PsiReference.EMPTY_ARRAY
+        if (!isAtIndexIn(uCallExpression, urlTemplateIndex, uFullExpression)) return emptyArray()
         if (psiMethod
                 .containingClass
                 ?.qualifiedName != SpringWebClasses.MOCK_MVC_REQUEST_BUILDERS
-        ) return PsiReference.EMPTY_ARRAY
+        ) return emptyArray()
 
-        var requestMethod: String? = (uExpression.uastParent as? UCallExpression)
+        var requestMethod: String? = (uFullExpression.uastParent as? UCallExpression)
             ?.methodName
-            ?.uppercase() ?: return PsiReference.EMPTY_ARRAY
+            ?.uppercase() ?: return emptyArray()
         if (requestMethod in REQUEST_METHODS_WITH_TYPE) {
             val httpMethodIndex = SpringWebUtil.getHttpMethodIndex(psiMethod)
             requestMethod = if (httpMethodIndex < 0) {
@@ -43,15 +45,15 @@ class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvi
             }
         }
 
-        val text = ElementManipulators.getValueText(psiElement)
-        if (text.isBlank()) return PsiReference.EMPTY_ARRAY
+        val text = uFullExpression.evaluateString() ?: return emptyArray()
+        if (text.isBlank()) return emptyArray()
 
         return arrayOf(
             EspritoControllerMethodReference(
                 host,
                 text,
                 requestMethod,
-                ElementManipulators.getValueTextRange(psiElement)
+                ElementManipulators.getValueTextRange(host)
             )
         )
     }

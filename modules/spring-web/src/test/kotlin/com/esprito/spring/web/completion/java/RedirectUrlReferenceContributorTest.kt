@@ -41,7 +41,7 @@ class RedirectUrlReferenceContributorTest : EspritoJavaLightTestCase() {
             "ProductControllerTest.java", """
             class ProductControllerTest {
                 void justForTest() {
-                    "redirect:/product/ge<caret>t";
+                    "redirect:/product/get/i<caret>t";
                 }
             }
         """.trimIndent()
@@ -105,7 +105,7 @@ class RedirectUrlReferenceContributorTest : EspritoJavaLightTestCase() {
             "ProductControllerTest.java", """
             class ProductControllerTest {
                 void justForTest() {
-                    "forward:/product/ge<caret>t";
+                    "forward:/product/get/i<caret>t";
                 }
             }
         """.trimIndent()

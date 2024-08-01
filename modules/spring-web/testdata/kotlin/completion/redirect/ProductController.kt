@@ -17,7 +17,7 @@ class ProductController {
     @Autowired
     lateinit var productRepository: ProductRepository
 
-    @GetMapping("/get")
+    @GetMapping("/get/it")
     fun getProducts(pageable: Pageable): List<Product> {
         return productRepository.getProducts(pageable.getPageSize(), pageable.getPageNumber())
     }

@@ -20,7 +20,7 @@ public class ProductController {
     @Autowired
     ProductRepository productRepository;
 
-    @GetMapping("/get")
+    @GetMapping("/get/it")
     public List<Product> getProducts(Pageable pageable) {
         return productRepository.getProducts(pageable.getPageSize(), pageable.getPageNumber());
     }

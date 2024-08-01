@@ -17,6 +17,11 @@ class EspritoControllerMethodReference(
     private val webSearchService = SpringWebEndpointsSearcher.getInstance(element.project)
     private val module = lazy { ModuleUtilCore.findModuleForPsiElement(element) }
 
+    //FIXME: чревато, переработать через FindUsageProvider
+    override fun isReferenceTo(element: PsiElement): Boolean {
+        return false //Не даст переименовать
+    }
+
     override fun resolve(): PsiElement? {
         val resolveResults = multiResolve(false)
         return if (resolveResults.size == 1) resolveResults[0].element else null

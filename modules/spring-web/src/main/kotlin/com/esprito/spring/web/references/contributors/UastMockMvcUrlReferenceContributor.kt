@@ -1,5 +1,6 @@
 package com.esprito.spring.web.references.contributors
 
+import com.esprito.spring.core.util.UastUtil
 import com.esprito.spring.web.providers.UrlPathControllerMethodReferenceProvider
 import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.patterns.uast.callExpression
@@ -16,11 +17,16 @@ class UastMockMvcUrlReferenceContributor : PsiReferenceContributor() {
             callExpression()
                 .withMethodNames(SpringWebUtil.REQUEST_METHODS)
 
-        val injectionHostInsideHttpMethods = injectionHostUExpression(false)
-            .inCall(methodCall)
+        registrar.registerUastReferenceProvider(
+            injectionHostUExpression(false)
+                .inCall(methodCall)
+                .andNot(injectionHostUExpression(false).withUastParent(UastUtil.UPolyadicExpressionPattern())),
+            UrlPathControllerMethodReferenceProvider()
+        )
 
         registrar.registerUastReferenceProvider(
-            injectionHostInsideHttpMethods,
+            injectionHostUExpression(false)
+                .withUastParent(UastUtil.UPolyadicExpressionPattern().inCall(methodCall)),
             UrlPathControllerMethodReferenceProvider()
         )
     }
