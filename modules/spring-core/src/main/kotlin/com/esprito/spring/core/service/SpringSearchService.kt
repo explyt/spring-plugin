@@ -3,7 +3,6 @@ package com.esprito.spring.core.service
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.core.service.conditional.*
@@ -21,7 +20,6 @@ import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.CacheKeyStore
 import com.esprito.util.EspritoAnnotationUtil
 import com.esprito.util.EspritoAnnotationUtil.getLongValue
-import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isGeneric
@@ -53,7 +51,6 @@ import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.childrenOfType
 import com.intellij.uast.UastModificationTracker
 import com.jetbrains.rd.util.getOrCreate
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -645,73 +642,49 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun filterByConditionals(module: Module, foundBeans: Set<PsiBean>): FoundBeans {
+        if (!SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled) {
+            return FoundBeans(foundBeans, emptySet())
+        }
         val active = foundBeans.toMutableSet()
         val excluded = mutableSetOf<PsiBean>()
 
-        val beanFilterEnabled = SpringToolRunConfigurationsSettingsState.getInstance()
-            .isBeanFilterEnabled
-
-        val autoConfigurationsFqn = SpringConfigurationPropertiesSearch.getInstance(module.project)
-            .getAllFactoriesNames(module)
-
-        if (!beanFilterEnabled || autoConfigurationsFqn.isEmpty()) {
-            return FoundBeans(active, excluded)
-        }
-
         val exclusionStrategies = listOf(
-            ConditionalOnBeanStrategy(module),
-            ConditionalOnMissingBeanStrategy(module),
             ConditionalOnClassStrategy(module),
             ConditionalOnMissingClassStrategy(module),
-            ConditionalOnPropertyStrategy(module)
+            ConditionalOnBeanStrategy(module),
+            ConditionalOnMissingBeanStrategy(module),
+            ConditionalOnPropertyStrategy(module),
         )
 
-        val dependants = foundBeans.asSequence()
-            .filter { it.psiMember is PsiClass }
-            .filter { autoConfigurationsFqn.contains(it.psiClass.qualifiedName) }
-            .map { it.psiClass }
-            .toList()
-
-
-        var changed: Boolean
-        do {
-            changed = false
-            findToExclude(dependants, active, exclusionStrategies)
-                .forEach { psiMember ->
-                    val beansToExclude = active.filter { psiMember == it.psiMember }.toSet()
-                    if (beansToExclude.isNotEmpty()) {
-                        changed = true
-                        excluded.addAll(beansToExclude)
-                        active.removeAll(beansToExclude)
-                    }
-                }
-        } while (changed)
+        val beansGroupByClass = foundBeans.groupBy { getBeanGroupClassKey(it) }
+        beansGroupByClass.forEach { (key, value) ->
+            checkClassToExclude(key, value, active, excluded, exclusionStrategies)
+        }
+        active.filter { it.psiClass != it.psiMember }
+            .forEach { checkClassToExclude(it.psiMember, listOf(it), active, excluded, exclusionStrategies) }
 
         return FoundBeans(active, excluded)
     }
 
+    private fun getBeanGroupClassKey(it: PsiBean): PsiClass {
+        return if (it.psiMember is PsiMethod) it.psiMember.containingClass ?: it.psiClass else it.psiClass
+    }
+
     data class FoundBeans(val active: Set<PsiBean>, val excluded: Set<PsiBean>)
 
-    private fun findToExclude(
-        dependants: List<PsiMember>,
-        foundBeans: Set<PsiBean>,
+
+    private fun checkClassToExclude(
+        psiMember: PsiMember,
+        dependantsFromClassBeans: Collection<PsiBean>,
+        activeBeans: MutableSet<PsiBean>,
+        excludeBeans: MutableSet<PsiBean>,
         exclusionStrategies: List<ExclusionStrategy>
-    ): List<PsiMember> {
-        val toExclude = mutableListOf<PsiMember>()
-
-        for (dependant in dependants) {
-            val dependantWithAllNestedMembers = (dependant.findChildrenOfType<PsiMember>() + dependant).toSet()
-            val otherBeans = foundBeans.filter { !dependantWithAllNestedMembers.contains(it.psiMember) }
-
-            if (exclusionStrategies.any { it.shouldExclude(dependant, otherBeans) }) {
-                toExclude.addAll(dependantWithAllNestedMembers)
-            } else {
-                val nestedDependant = dependant.childrenOfType<PsiMember>()
-                toExclude.addAll(findToExclude(nestedDependant, foundBeans, exclusionStrategies))
-            }
+    ): Boolean {
+        if (exclusionStrategies.any { it.shouldExclude(psiMember, activeBeans) }) {
+            excludeBeans.addAll(dependantsFromClassBeans)
+            activeBeans.removeAll(dependantsFromClassBeans.toSet())
         }
-
-        return toExclude
+        return true
     }
 
     fun getMetaAnnotations(module: Module, annotationFqn: String): MetaAnnotationsHolder {

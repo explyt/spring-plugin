@@ -14,9 +14,8 @@ class ConditionalOnPropertyStrategy(val module: Module) : ExclusionStrategy {
         .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
 
     override fun shouldExclude(dependant: PsiMember, foundBeans: Collection<PsiBean>): Boolean {
-        if (dependant.annotations.none { annotationHolder.contains(it) }) {
-            return false
-        }
+        val psiAnnotation = dependant.annotations.firstOrNull { annotationHolder.contains(it) }
+        if (psiAnnotation == null) return false
 
         val prefix = annotationHolder.getAnnotationMemberValues(dependant, setOf("prefix"))
             .asSequence()
@@ -24,15 +23,32 @@ class ConditionalOnPropertyStrategy(val module: Module) : ExclusionStrategy {
             .firstOrNull()
         val prefixValue = PropertyUtil.prefixValue(prefix)
 
-        val propertyKeys = DefinedConfigurationPropertiesSearch.getInstance(module.project)
-            .getAllProperties(module)
-            .mapTo(mutableSetOf()) { it.key }
+        val propertyMap = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+            .getPropertiesCommonKeyMap(module)
 
-        return annotationHolder.getAnnotationMemberValues(dependant, setOf("name", "value"))
+        val propertyValue = annotationHolder.getAnnotationMemberValues(dependant, setOf("name", "value"))
             .asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .map { "$prefixValue$it" }
-            .any { !propertyKeys.contains(it) }
+            .map { PropertyUtil.toCommonPropertyForm("$prefixValue$it") }
+            .mapNotNull { propertyMap[it] }
+            .firstOrNull()
+
+        val havingValue = annotationHolder.getAnnotationMemberValues(dependant, setOf("havingValue"))
+            .asSequence()
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+            .firstOrNull()
+
+        if (havingValue != null) {
+            return havingValue != propertyValue?.map { it.value }?.firstOrNull()
+        }
+
+        if (propertyValue == null) {
+            val matchIfMissing = AnnotationUtil.getBooleanAttributeValue(psiAnnotation, "matchIfMissing") ?: false
+            if (matchIfMissing) {
+                return false
+            }
+        }
+        return propertyValue == null
     }
 
 }
