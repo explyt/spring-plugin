@@ -2,6 +2,7 @@
 
 Spring Explyt plugin provides solid support for Spring Data, Spring Web, Spring Reactive Web, Spring AOP (in progress) including AspectJ, Spring Security, Spring Integration (partly).
 
+
 The plugin creates a developer-friendly environment for programmers working with IntelliJ IDEA Community Edition, Android Studio, Aqua, and helps you better understand the context of your Spring applications.
 
 It highlights the mistakes, misbehavior, and possible problems and typos in your code using more than 50 inspections.
