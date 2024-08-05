@@ -50,6 +50,8 @@ object SpringCoreClasses {
     const val CACHE_MANAGER = "org.springframework.cache.CacheManager"
 
     const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
+    const val CONDITIONAL_ON_SINGLE_BEAN =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate"
     const val CONDITIONAL_ON_MISSING_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean"
     const val CONDITIONAL_ON_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnClass"
     const val CONDITIONAL_ON_MISSING_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass"
