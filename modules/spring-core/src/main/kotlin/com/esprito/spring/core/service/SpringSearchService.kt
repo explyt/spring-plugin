@@ -654,9 +654,12 @@ class SpringSearchService(private val project: Project) {
             ConditionalOnBeanStrategy(module),
             ConditionalOnMissingBeanStrategy(module),
             ConditionalOnPropertyStrategy(module),
+            OnWebApplicationConditionStrategy(module)
         )
 
-        val beansGroupByClass = foundBeans.groupBy { getBeanGroupClassKey(it) }
+        val beansGroupByClass = foundBeans.asSequence()
+            .flatMap { getRootPsiClasses(it).map { clazz -> Pair(clazz, it) } }
+            .groupBy({ it.first }, { it.second })
         beansGroupByClass.forEach { (key, value) ->
             checkClassToExclude(key, value, active, excluded, exclusionStrategies)
         }
@@ -666,8 +669,21 @@ class SpringSearchService(private val project: Project) {
         return FoundBeans(active, excluded)
     }
 
-    private fun getBeanGroupClassKey(it: PsiBean): PsiClass {
-        return if (it.psiMember is PsiMethod) it.psiMember.containingClass ?: it.psiClass else it.psiClass
+    private fun getRootPsiClasses(it: PsiBean): List<PsiClass> {
+        val psiClass = if (it.psiMember !is PsiClass) it.psiMember.containingClass ?: it.psiClass else it.psiClass
+        return getRootListPsiClass(psiClass)
+    }
+
+    private fun getRootListPsiClass(it: PsiClass): List<PsiClass> {
+        val rootClasses = mutableListOf(it)
+        var rootClass: PsiClass? = it
+        var depthCount = 0
+        while (rootClass?.containingClass != null && depthCount < 10) {
+            rootClass = rootClass.containingClass
+            rootClasses.add(rootClass!!)
+            depthCount++
+        }
+        return rootClasses
     }
 
     data class FoundBeans(val active: Set<PsiBean>, val excluded: Set<PsiBean>)
@@ -679,12 +695,13 @@ class SpringSearchService(private val project: Project) {
         activeBeans: MutableSet<PsiBean>,
         excludeBeans: MutableSet<PsiBean>,
         exclusionStrategies: List<ExclusionStrategy>
-    ): Boolean {
+    ) {
+        if (dependantsFromClassBeans.all { excludeBeans.contains(it) }) return
+
         if (exclusionStrategies.any { it.shouldExclude(psiMember, activeBeans) }) {
             excludeBeans.addAll(dependantsFromClassBeans)
             activeBeans.removeAll(dependantsFromClassBeans.toSet())
         }
-        return true
     }
 
     fun getMetaAnnotations(module: Module, annotationFqn: String): MetaAnnotationsHolder {

@@ -37,9 +37,8 @@ class ConditionalOnMissingBeanStrategy(module: Module) : ExclusionStrategy {
             setOfNotNull(dependant.resolvePsiClass?.qualifiedName)
         } else {
             PsiAnnotationUtils.getTypeNames(classAttributes)
-
         }
-        return classesQn.isNotEmpty() && foundBeans.any { classesQn.contains(it.psiClass.qualifiedName) }
+        return classesQn.isNotEmpty() && foundBeans.all { classesQn.contains(it.psiClass.qualifiedName) }
     }
 
 }
