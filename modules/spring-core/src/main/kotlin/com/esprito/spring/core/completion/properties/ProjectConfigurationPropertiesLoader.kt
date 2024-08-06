@@ -87,7 +87,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     private fun loadPropertiesFromMetadata(module: Module): HashMap<String, ConfigurationProperty> {
         val result = hashMapOf<String, ConfigurationProperty>()
         findMetadataFiles(module).forEach {
-            collectConfigurationProperties(it.text, it.virtualFile.path, result)
+            collectConfigurationProperties(module.project, it.text, it.virtualFile.path, result)
         }
         return result
     }
@@ -141,6 +141,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             val name = "$prefix.$propertyName"
             result[name] = ConfigurationProperty(
                 name,
+                ConfigurationPropertiesLoader.getPropertyType(propertyWrapper.psiType),
                 propertyWrapper.type,
                 propertyWrapper.sourceType,
                 propertyWrapper.description,
@@ -241,7 +242,11 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         return assignmentExpressions
             .asSequence()
             .flatMap { it.asSequence() }
-            .filter { it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild.text }
+            .filter { it.lastChild != null }
+            .filter {
+                it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild?.text
+                        || it.lastChild.text == psiMethod.parameterList.parameters[0].name
+            }
             .map { it.firstChild }
             .filterIsInstance<PsiReferenceExpression>()
             .map { it.childrenOfType<PsiIdentifier>().firstOrNull() }
@@ -255,9 +260,9 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         }
         val expressions = codeBlock.flatMap { it.childrenOfType<PsiReturnStatement>() }
 
-        return expressions.last()
-            .childrenOfType<PsiReferenceExpression>().last()
-            .childrenOfType<PsiIdentifier>().last()
+        return expressions.lastOrNull()
+            ?.childrenOfType<PsiReferenceExpression>()?.lastOrNull()
+            ?.childrenOfType<PsiIdentifier>()?.lastOrNull()
     }
 
     private fun getDeprecationInfo(module: Module, method: PsiMethod?): DeprecationInfo? {

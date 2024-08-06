@@ -39,6 +39,6 @@ class JpqlSpringDataQueryLanguageInjectorTest : EspritoJavaLightTestCase() {
     }
 
     companion object {
-        const val TEST_DATA_PATH = "src/testdata/java/langinjection"
+        const val TEST_DATA_PATH = "testdata/java/langinjection"
     }
 }

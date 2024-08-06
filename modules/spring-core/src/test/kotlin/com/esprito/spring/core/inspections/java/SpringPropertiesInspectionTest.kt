@@ -31,7 +31,7 @@ class SpringPropertiesInspectionTest : EspritoInspectionJavaTestCase() {
         myFixture.configureByText(
             "application.properties",
             """
-            <warning descr="Cannot resolve key property 'test.fooBar'">test.fooBar</warning>=1
+            <warning descr="Cannot resolve key property 'test.fooBar'"><warning descr="Should be kebab-case">test.fooBar</warning></warning>=1
             <warning descr="Cannot resolve key property 'test.foo-bar1'">test.foo-bar1</warning>=2
             """.trimIndent()
         )

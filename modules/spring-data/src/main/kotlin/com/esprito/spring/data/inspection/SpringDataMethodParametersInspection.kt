@@ -1,10 +1,11 @@
 package com.esprito.spring.data.inspection
 
-import com.esprito.inspection.SpringBaseUastLocalInspectionTool
+import com.esprito.spring.core.JavaCoreClasses.KOTLIN_CONTINUATION
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.SpringDataClasses.DOMAIN_PACKAGE_PREFIX
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
+import com.esprito.util.EspritoPsiUtil.containKotlinKeyword
 import com.esprito.util.TypeQuickFixUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
@@ -13,6 +14,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiType
 import com.intellij.psi.util.InheritanceUtil
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UParameter
@@ -22,7 +24,7 @@ import org.springframework.data.repository.query.parser.PartTree
 import org.springframework.data.repository.query.parser.domain.PropertyPath
 
 
-class SpringDataMethodParametersInspection : SpringBaseUastLocalInspectionTool() {
+class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,
@@ -71,25 +73,37 @@ class SpringDataMethodParametersInspection : SpringBaseUastLocalInspectionTool()
                 argCount++
             }
         }
-        validateRedundantParameters(argCount, method, uParameters, holder)
+        validateRedundantParameters(argCount, method, holder)
     }
 
     private fun validateRedundantParameters(
         argCount: Int,
         method: UMethod,
-        uParameters: List<UParameter>,
         holder: ProblemsHolder
     ) {
         if (holder.hasResults()) return
         val sourcePsi = method.uastAnchor?.sourcePsi ?: return
-        val parameterCount = uParameters
-            .count { it.typeReference?.type?.canonicalText?.startsWith(DOMAIN_PACKAGE_PREFIX) == false }
+        val parameterCount = getParameterCount(method)
         if (argCount < parameterCount) {
             holder.registerProblem(
                 sourcePsi,
                 message("esprito.spring.data.inspection.method.parameters.redundant", parameterCount, argCount)
             )
         }
+    }
+
+    private fun getParameterCount(uMethod: UMethod): Int {
+        val isKotlinSuspend = uMethod.containKotlinKeyword(KtTokens.SUSPEND_KEYWORD)
+        return uMethod.uastParameters
+            .count {
+                it.typeReference?.type?.canonicalText?.startsWith(DOMAIN_PACKAGE_PREFIX) == false
+                        && !isCoroutineContinuation(isKotlinSuspend, it)
+            }
+    }
+
+    private fun isCoroutineContinuation(kotlinSuspend: Boolean, it: UParameter): Boolean {
+        if (!kotlinSuspend) return false
+        return it.typeReference?.type?.canonicalText?.contains(KOTLIN_CONTINUATION) == true
     }
 
     private fun validateParametersType(method: UMethod, parts: List<Part>, holder: ProblemsHolder) {

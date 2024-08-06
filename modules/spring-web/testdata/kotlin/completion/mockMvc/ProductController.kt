@@ -36,4 +36,9 @@ class ProductController {
     fun update(@PathVariable("product-id") productId: Int?, @RequestBody productModel: ProductModel?): Product {
         return productRepository.update(productId, productModel)
     }
+
+    @GetMapping("/{product-id}/price")
+    fun getPrice(@PathVariable("product-id") productId: Int?, @RequestBody productModel: ProductModel?): Int {
+        return productRepository.getProduct(productId).price
+    }
 }

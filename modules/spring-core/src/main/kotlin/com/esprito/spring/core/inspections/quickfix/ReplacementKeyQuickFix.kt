@@ -1,4 +1,4 @@
-package com.esprito.spring.core.inspections.quickfix;
+package com.esprito.spring.core.inspections.quickfix
 
 import com.esprito.spring.core.SpringCoreBundle
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
@@ -8,11 +8,13 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 
-class ReplacementKeyQuickFix(val key: String, element: PsiElement)  : LocalQuickFixAndIntentionActionOnPsiElement(element) {
-    override fun getFamilyName(): String = SpringCoreBundle.message("esprito.spring.inspection.properties.replacement.quick.fix", key)
+class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
+    LocalQuickFixAndIntentionActionOnPsiElement(element) {
+    override fun getFamilyName(): String =
+        SpringCoreBundle.message("esprito.spring.inspection.properties.replacement.quick.fix", key)
 
     override fun getText(): String = familyName
 

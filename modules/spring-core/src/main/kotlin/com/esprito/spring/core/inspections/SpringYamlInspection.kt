@@ -1,10 +1,15 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.completion.properties.DefinedConfigurationProperty
 import com.esprito.spring.core.completion.properties.YamlPropertySource
+import com.esprito.spring.core.inspections.quickfix.YamlKeyToKebabQuickFix
+import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.project.Project
+import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import org.jetbrains.annotations.Nls
@@ -25,6 +30,20 @@ class SpringYamlInspection : SpringBasePropertyInspection() {
     override fun getRemoveKeyQuickFixes(property: DefinedConfigurationProperty): List<LocalQuickFix> {
         return listOf(RemoveDuplicatedKeyQuickFix())
     }
+
+    override fun keyShouldBeKebabProblemDescriptor(
+        manager: InspectionManager,
+        psiKey: PsiElement,
+        isOnTheFly: Boolean,
+        key: String
+    ): ProblemDescriptor = manager.createProblemDescriptor(
+        psiKey,
+        ElementManipulators.getValueTextRange(psiKey),
+        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.kebab"),
+        ProblemHighlightType.WARNING,
+        isOnTheFly,
+        YamlKeyToKebabQuickFix(psiKey.parent)
+    )
 }
 
 /**

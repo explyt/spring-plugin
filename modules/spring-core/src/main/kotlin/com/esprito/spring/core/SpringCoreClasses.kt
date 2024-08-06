@@ -50,10 +50,14 @@ object SpringCoreClasses {
     const val CACHE_MANAGER = "org.springframework.cache.CacheManager"
 
     const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
+    const val CONDITIONAL_ON_SINGLE_BEAN =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate"
     const val CONDITIONAL_ON_MISSING_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean"
     const val CONDITIONAL_ON_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnClass"
     const val CONDITIONAL_ON_MISSING_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass"
     const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
+    const val CONDITIONAL_ON_WEB_APPLICATION =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication"
 
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val NESTED_CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.NestedConfigurationProperty"
@@ -94,6 +98,9 @@ object SpringCoreClasses {
     const val APPLICATION_ARGUMENTS = "org.springframework.boot.ApplicationArguments"
 
     const val PARAMETERIZED_TYPE_REFERENCE = "org.springframework.core.ParameterizedTypeReference"
+    const val ENTITY_SCAN = "org.springframework.boot.autoconfigure.domain.EntityScan"
+    const val ENTITY = "jakarta.persistence.Entity"
+    const val ENTITY_X = "javax.persistence.Entity"
 
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)

@@ -30,7 +30,7 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
             .getCachedValue(module, key, {
                 val result = mutableMapOf<String, ConfigurationProperty>()
                 findMetadataFiles(module).forEach {
-                    collectConfigurationProperties(it.text, it.virtualFile.path, result)
+                    collectConfigurationProperties(project, it.text, it.virtualFile.path, result)
                 }
                 CachedValueProvider.Result.create(
                     result.values.toList(),

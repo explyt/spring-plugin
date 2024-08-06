@@ -7,6 +7,46 @@
 
 ### Spring Core/Boot
 
+- Fixed: Autocomplete in application.properties produces an error: NoSuchElementException: List is empty.
+- Fixed: @ConfigurationProperties with lombok @Setter and Lombok plugin installed produces an error
+- Added Inspection: `Should be kebab-case` for property key
+- Fixed: Yaml property autocomplete inserts into previous line
+- Fixed: kebab-case inspection description
+- Fixed: Yaml PropertyLineMarker only for leaf elements
+- Added beans search by name in `Search Everywhere`
+- Performance: ConfigurationProperty prefix calculation was too slow
+- Performance: Improves after performance tests on big projects
+- Fixed: ConditionOnProperty is enabled even if it was disabled in properties
+- Fixed @ConfigurationProperties - navigation/line markers
+
+### Spring Data
+
+- Fixed: support CoroutineCrudRepository
+- Fixed: Repository injected through @Autowired and package enabled via @EnableJpaRespoitory
+- Inspection: @EntityScan package support
+- Fixed: Spring Data method name inspection - default interface methods were not analyzed
+
+### Spring Web/MVC
+
+- Updated: navigation between endpoint with template parameters and  `WebTestClient`, `MockMvcBuilders` methods
+- Add navigation considering `WebTestClient.method` to endpoint. Add elements to endpoint's linemarker navigating to uri considering `WebTestClient.method`, `MockMvcBuilders.request`, `MockMvcBuilder.multipart`
+- Add a gutter to the methods `RouterFunctions`: `coRouter`, `route`
+- Fixed: navigation from endpoint's gutter
+- Add `WebTestController` `expectBody[List]` methods autocompletion
+- Add `RouterFunctions` `coRouter` methods autocompletion
+- Add `RouterFunctions` `route` methods autocompletion
+- Performance: endpoint usage search speed-up
+
+### Other
+
+- compatibility with internal 242 api 
+- gradle kotlin module test problem
+- Add error tracking via Sentry setup
+
+## [241.1.1581] - 2024-06-10
+
+### Spring Core/Boot
+
 - Fixed: Inspection: Duplicate properties keys in different relaxed binding forms do not show error
 - Find Usages: for property keys when used in different relaxed binding forms
 - Fixed: Navigate to autowired candidates and bean declarations for wildcard type
@@ -35,7 +75,7 @@
 - Update plugin description
 - Fixed: Stale UAST cache
 
-## [241.1.1303] - 2024-04-24
+## 241.1.1303 - 2024-04-24
 
 ### Spring Core/Boot
 

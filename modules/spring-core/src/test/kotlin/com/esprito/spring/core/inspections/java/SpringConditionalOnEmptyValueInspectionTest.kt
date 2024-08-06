@@ -1,7 +1,12 @@
 package com.esprito.spring.core.inspections.java
 
+import com.esprito.spring.core.SpringCoreClasses
+import com.esprito.spring.core.providers.kotlin.ConfigurationPropertyLineMarkerProviderTest.Companion.APPLICATION_PROPERTIES_FILE_NAME
+import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.test.EspritoInspectionJavaTestCase
 import com.esprito.spring.test.TestLibrary
+import junit.framework.TestCase
+import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringConditionalOnEmptyValueInspectionTest : EspritoInspectionJavaTestCase() {
@@ -9,5 +14,96 @@ class SpringConditionalOnEmptyValueInspectionTest : EspritoInspectionJavaTestCas
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     @TestMetadata("conditionalOnPropertyValue")
-    fun testConditionalOnPropertyValue() = doTest(com.esprito.spring.core.inspections.SpringConditionalOnEmptyValueInspection())
+    fun testConditionalOnPropertyValue() =
+        doTest(com.esprito.spring.core.inspections.SpringConditionalOnEmptyValueInspection())
+
+    fun testPropertyCondition() {
+        myFixture.addFileToProject(APPLICATION_PROPERTIES_FILE_NAME, "test.prop=1")
+
+        @Language("JAVA") val text = """           
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.CONDITIONAL_ON_PROPERTY}(name="test.prop")                
+            public class TestConditional { }
+            """.trimIndent()
+
+        val psiFile = myFixture.configureByText("TestConditional.java", text)
+
+        val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
+        TestCase.assertTrue(allActiveBeans.isNotEmpty())
+        TestCase.assertTrue(allActiveBeans.any { it.containingFile == psiFile })
+    }
+
+    fun testPropertyConditionMatchIfMissing() {
+        @Language("JAVA") val text = """           
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.CONDITIONAL_ON_PROPERTY}(name="test.prop")                
+            public class TestConditional { }
+            """.trimIndent()
+
+        val psiFile = myFixture.configureByText("TestConditional.java", text)
+
+        val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
+        TestCase.assertTrue(allActiveBeans.isNotEmpty())
+        TestCase.assertTrue(allActiveBeans.none { it.containingFile == psiFile })
+    }
+
+    fun testPropertyConditionMatchIfMissingNegative() {
+        @Language("JAVA") val text = """           
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.CONDITIONAL_ON_PROPERTY}(name="test.prop", matchIfMissing = true)                
+            public class TestConditional { }
+            """.trimIndent()
+
+        val psiFile = myFixture.configureByText("TestConditional.java", text)
+
+        val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
+        TestCase.assertTrue(allActiveBeans.isNotEmpty())
+        TestCase.assertTrue(allActiveBeans.any { it.containingFile == psiFile })
+    }
+
+    fun testPropertyConditionHavingValue() {
+        myFixture.addFileToProject(APPLICATION_PROPERTIES_FILE_NAME, "test.prop=1")
+
+        @Language("JAVA") val text = """           
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.CONDITIONAL_ON_PROPERTY}(name="test.prop", havingValue="1")                
+            public class TestConditional { }
+            """.trimIndent()
+
+        val psiFile = myFixture.configureByText("TestConditional.java", text)
+
+        val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
+        TestCase.assertTrue(allActiveBeans.isNotEmpty())
+        TestCase.assertTrue(allActiveBeans.any { it.containingFile == psiFile })
+    }
+
+    fun testPropertyConditionHavingValueNegative() {
+        myFixture.addFileToProject(APPLICATION_PROPERTIES_FILE_NAME, "test.prop=2")
+
+        @Language("JAVA") val text = """           
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.CONDITIONAL_ON_PROPERTY}(name="test.prop", havingValue="1")                
+            public class TestConditional { }
+            """.trimIndent()
+
+        val psiFile = myFixture.configureByText("TestConditional.java", text)
+
+        val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
+        TestCase.assertTrue(allActiveBeans.isNotEmpty())
+        TestCase.assertTrue(allActiveBeans.none { it.containingFile == psiFile })
+    }
+
+    fun testPropertyConditionHavingValueMissing() {
+        @Language("JAVA") val text = """           
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.CONDITIONAL_ON_PROPERTY}(name="test.prop", havingValue="1")                
+            public class TestConditional { }
+            """.trimIndent()
+
+        val psiFile = myFixture.configureByText("TestConditional.java", text)
+
+        val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeans(module)
+        TestCase.assertTrue(allActiveBeans.isNotEmpty())
+        TestCase.assertTrue(allActiveBeans.none { it.containingFile == psiFile })
+    }
 }

@@ -106,4 +106,16 @@ class SpringDataMethodNameInspectionTest : EspritoInspectionKotlinTestCase() {
         )
         myFixture.testHighlighting("TestRepository.kt")
     }
+
+    fun testDefaultMethod() {
+        myFixture.configureByText(
+            "TestRepository.kt",
+            """            
+            interface TestRepository : org.springframework.data.repository.Repository<Entity, Int> {
+            	fun findAll():Entity? { return null }
+            }
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("TestRepository.kt")
+    }
 }

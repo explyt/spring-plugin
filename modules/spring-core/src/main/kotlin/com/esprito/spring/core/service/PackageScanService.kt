@@ -58,7 +58,7 @@ class PackageScanService(private val project: Project) {
         val allModuleRootDataList = moduleRootDataList + importModuleRootDataList
 
         val packagesByModuleName = allModuleRootDataList.groupingBy { it.moduleName }
-            .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { "$it." } }
+            .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { normalizePackage(it) } }
         val rootComponentQualified = moduleRootDataList.mapNotNullTo(mutableSetOf()) { it.rootComponentQualified }
         val importQualified = importClasses.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
 
@@ -93,8 +93,7 @@ class PackageScanService(private val project: Project) {
     private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder): List<PsiClass> {
         return if (Registry.`is`("esprito.spring.root.runConfiguration")) {
             RunManager.getInstance(project).selectedConfiguration?.configuration
-                ?.let { RunConfigurationUtil.getRunPsiClass(it) }
-                ?.let { listOf(it) } ?: emptyList()
+                ?.let { RunConfigurationUtil.getRunPsiClass(it) } ?: emptyList()
         } else {
             annotationPsiClasses.rootAnnotationClass
                 .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
@@ -214,31 +213,6 @@ class PackageScanService(private val project: Project) {
             .toSet()
     }
 
-    private fun getBasePackages(uExpression: UExpression): List<String> {
-        return if (uExpression is UCallExpression) {
-            uExpression.valueArguments.mapNotNull { it.evaluate() as? String }
-        } else {
-            (uExpression.evaluate() as? String)?.let { listOf(it) } ?: emptyList()
-        }
-    }
-
-    private fun getClassPackages(uExpression: UExpression): List<String> {
-        return getPsiClasses(uExpression).mapNotNull { (it.containingFile as? PsiJavaFile)?.packageName }
-    }
-
-    private fun getPsiClasses(uExpression: UExpression): List<PsiClass> {
-        return if (uExpression is UCallExpression) {
-            uExpression.valueArguments.mapNotNull { getPsiClass(it) }
-        } else {
-            getPsiClass(uExpression)?.let { listOf(it) } ?: emptyList()
-        }
-    }
-
-    private fun getPsiClass(uExpression: UExpression): PsiClass? {
-        val uClassLiteralExpression = uExpression as? UClassLiteralExpression ?: return null
-        return uClassLiteralExpression.type?.resolvedPsiClass
-    }
-
     private fun getComponentScanAnnotations(): ScanAnnotationHolder {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
@@ -275,6 +249,38 @@ class PackageScanService(private val project: Project) {
 
     companion object {
         fun getInstance(project: Project): PackageScanService = project.service()
+
+        fun normalizePackage(packageName: String): String {
+            if (packageName.endsWith(".")) return packageName
+            if (packageName.endsWith("*")) return normalizePackage(packageName.substring(0, packageName.length - 2))
+            return "$packageName."
+        }
+
+
+        fun getBasePackages(uExpression: UExpression): List<String> {
+            return if (uExpression is UCallExpression) {
+                uExpression.valueArguments.mapNotNull { it.evaluate() as? String }
+            } else {
+                (uExpression.evaluate() as? String)?.let { listOf(it) } ?: emptyList()
+            }
+        }
+
+        fun getClassPackages(uExpression: UExpression): List<String> {
+            return getPsiClasses(uExpression).mapNotNull { (it.containingFile as? PsiJavaFile)?.packageName }
+        }
+
+        private fun getPsiClasses(uExpression: UExpression): List<PsiClass> {
+            return if (uExpression is UCallExpression) {
+                uExpression.valueArguments.mapNotNull { getPsiClass(it) }
+            } else {
+                getPsiClass(uExpression)?.let { listOf(it) } ?: emptyList()
+            }
+        }
+
+        private fun getPsiClass(uExpression: UExpression): PsiClass? {
+            val uClassLiteralExpression = uExpression as? UClassLiteralExpression ?: return null
+            return uClassLiteralExpression.type?.resolvedPsiClass
+        }
     }
 
     data class ModuleRootData(
@@ -290,7 +296,7 @@ class PackageScanService(private val project: Project) {
 
 data class RootDataHolder(
     private val packagesByModuleName: Map<String, Set<String>>,
-    private val rootComponentQualified: Set<String>,
+    val rootComponentQualified: Set<String>,
     val importQualified: Set<String>
 ) {
     fun isEmpty() = packagesByModuleName.isEmpty()
@@ -302,6 +308,13 @@ data class RootDataHolder(
         val dependentModules = ModuleManager.getInstance(module.project).getModuleDependentModules(module)
         val dependentPackages = dependentModules
             .flatMapTo(mutableSetOf()) { packagesByModuleName.getOrDefault(it.name, emptySet()) }
-        return dependentPackages + packages
+        val resultPackages = dependentPackages + packages
+        if (resultPackages.isEmpty() && module.name.endsWith(".test")) {
+            val mainModuleName = module.name.substringBeforeLast(".test") + ".main"
+            val mainModule = ModuleManager.getInstance(module.project)
+                .findModuleByName(mainModuleName) ?: return emptySet()
+            return getPackages(mainModule)
+        }
+        return resultPackages
     }
 }

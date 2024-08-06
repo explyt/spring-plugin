@@ -1,6 +1,7 @@
 package com.esprito.spring.web.references
 
-import com.esprito.spring.web.service.beans.discoverer.SpringWebSearchService
+import com.esprito.spring.web.service.beans.discoverer.EndpointElement
+import com.esprito.spring.web.service.beans.discoverer.SpringWebEndpointsSearcher
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.module.ModuleUtilCore
@@ -13,8 +14,13 @@ class EspritoControllerMethodReference(
     private val requestMethod: String?,
     rangeInElement: TextRange
 ) : PsiReferenceBase<PsiElement>(element, rangeInElement), PsiPolyVariantReference, HighlightedReference {
-    private val webSearchService = SpringWebSearchService.getInstance(element.project)
+    private val webSearchService = SpringWebEndpointsSearcher.getInstance(element.project)
     private val module = lazy { ModuleUtilCore.findModuleForPsiElement(element) }
+
+    //FIXME: чревато, переработать через FindUsageProvider
+    override fun isReferenceTo(element: PsiElement): Boolean {
+        return false //Не даст переименовать
+    }
 
     override fun resolve(): PsiElement? {
         val resolveResults = multiResolve(false)
@@ -24,7 +30,7 @@ class EspritoControllerMethodReference(
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val currentModule = module.value ?: return emptyArray()
 
-        return webSearchService.getEndpointElements(urlPath, currentModule).asSequence()
+        return webSearchService.getAllEndpointElements(urlPath, currentModule).asSequence()
             .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) { PsiElementResolveResult(it.psiElement) }
             .toTypedArray()
@@ -32,8 +38,8 @@ class EspritoControllerMethodReference(
 
     override fun getVariants(): Array<Any> {
         val currentModule = module.value ?: return emptyArray()
-
-        return webSearchService.searchEndpoints(currentModule).asSequence()
+        val endpoints = SpringWebEndpointsSearcher.getInstance(currentModule.project).getAllEndpoints(currentModule)
+        return endpoints.asSequence()
             .filter { it.path.isNotEmpty() }
             .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) {
@@ -43,7 +49,7 @@ class EspritoControllerMethodReference(
             .toTypedArray()
     }
 
-    private fun isRequestedMethod(it: SpringWebSearchService.EndpointElement) =
+    private fun isRequestedMethod(it: EndpointElement) =
         requestMethod == null || it.requestMethods.contains(requestMethod)
 
 }

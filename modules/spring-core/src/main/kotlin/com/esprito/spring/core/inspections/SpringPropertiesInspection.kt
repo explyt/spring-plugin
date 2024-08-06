@@ -1,11 +1,18 @@
 package com.esprito.spring.core.inspections
 
+import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.completion.properties.DefinedConfigurationProperty
 import com.esprito.spring.core.completion.properties.PropertiesPropertySource
+import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
+import com.esprito.spring.core.util.PropertyUtil.toKebabCase
+import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.properties.PropertiesQuickFixFactory
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.lang.properties.psi.Property
+import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 
@@ -24,4 +31,19 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
             ?.let { PropertiesQuickFixFactory.getInstance().createRemovePropertyLocalFix(it) }
             ?.let { listOf(it) } ?: emptyList()
     }
+
+    override fun keyShouldBeKebabProblemDescriptor(
+        manager: InspectionManager,
+        psiKey: PsiElement,
+        isOnTheFly: Boolean,
+        key: String
+    ): ProblemDescriptor = manager.createProblemDescriptor(
+        psiKey,
+        ElementManipulators.getValueTextRange(psiKey),
+        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.kebab"),
+        ProblemHighlightType.WARNING,
+        isOnTheFly,
+        ReplacementKeyQuickFix(toKebabCase(key), psiKey.parent)
+    )
+
 }

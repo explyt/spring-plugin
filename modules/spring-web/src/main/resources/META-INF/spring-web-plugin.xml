@@ -1,8 +1,21 @@
 <idea-plugin>
 
-    <extensions defaultExtensionNs="com.esprito.spring.core">
+    <extensionPoints>
+        <extensionPoint qualifiedName="com.esprito.spring.web.springWebEndpointsLoader" dynamic="true"
+                        interface="com.esprito.spring.web.service.beans.discoverer.SpringWebEndpointsLoader"
+                        area="IDEA_PROJECT"/>
+    </extensionPoints>
+
+
+    <extensions defaultExtensionNs="com.esprito.spring.web">
         <additionalBeansDiscoverer
                 implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
+
+        <springWebEndpointsLoader
+                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebControllerLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebBeanEndpointsLoader"/>
+
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
@@ -14,7 +27,11 @@
 
         <completion.contributor language="UAST"
                                 order="first"
-                                implementationClass="com.esprito.spring.web.references.contributors.WebClientMethodCompletionContributor"/>
+                                implementationClass="com.esprito.spring.web.references.contributors.webClient.WebClientMethodCompletionContributor"/>
+
+        <completion.contributor language="UAST"
+                                order="first"
+                                implementationClass="com.esprito.spring.web.references.contributors.webClient.WebTestClientMethodCompletionContributor"/>
 
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
@@ -84,6 +101,9 @@
 
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
+
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
         <psi.referenceContributor language="UAST"
@@ -100,6 +120,12 @@
                                   implementation="com.esprito.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor"/>
 
     </extensions>
+
+    <projectListeners>
+        <listener class="com.esprito.spring.web.listeners.EspritoWebProjectListener"
+                  topic="com.intellij.openapi.project.ProjectManagerListener"/>
+    </projectListeners>
+
 
     <actions>
 

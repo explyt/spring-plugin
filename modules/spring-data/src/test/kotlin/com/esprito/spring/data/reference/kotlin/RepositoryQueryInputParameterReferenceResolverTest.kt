@@ -118,7 +118,7 @@ class RepositoryQueryInputParameterReferenceResolverTest : EspritoJavaLightTestC
     }
 
     companion object {
-        const val TEST_DATA_PATH = "src/testdata/kotlin/reference"
+        const val TEST_DATA_PATH = "testdata/kotlin/reference"
     }
 }
 

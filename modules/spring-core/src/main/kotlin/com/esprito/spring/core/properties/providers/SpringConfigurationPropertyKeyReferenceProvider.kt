@@ -30,6 +30,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
 import com.intellij.util.ProcessingContext
+import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
@@ -52,20 +53,21 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
             }
             propertyKey.startsWith(hintName.substring(0, keysIdx))
         } ?: return arrayOf(
-            ConfigurationPropertyKeyReference(element, propertyKey),
-            MetaConfigKeyReference(element, propertyKey)
+            ConfigurationPropertyKeyReference(element, module, propertyKey),
+            MetaConfigKeyReference(element, module, propertyKey)
         )
 
-        val referencesByPrefixKey = getPsiReferencesByPrefixKeys(propertyKey, keyHint, element)
+        val referencesByPrefixKey = getPsiReferencesByPrefixKeys(propertyKey, module, keyHint, element)
         if (referencesByPrefixKey.isNotEmpty()) {
             return referencesByPrefixKey
         }
 
-        return arrayOf(ConfigurationPropertyKeyReference(element, propertyKey))
+        return arrayOf(ConfigurationPropertyKeyReference(element, module, propertyKey))
     }
 
     private fun getPsiReferencesByPrefixKeys(
         propertyKey: String,
+        module: Module,
         keyHint: PropertyHint,
         element: PsiElement
     ): Array<PsiReference> {
@@ -88,6 +90,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
             val result = mutableListOf<PsiReference>(
                 ConfigurationPropertyKeyReference(
                     element,
+                    module,
                     prefix,
                     TextRange.from(0, prefixLength)
                 )
@@ -105,19 +108,19 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
             return result.toTypedArray()
         }
 
-        return arrayOf(ConfigurationPropertyKeyReference(element, propertyKey))
+        return arrayOf(ConfigurationPropertyKeyReference(element, module, propertyKey))
     }
 }
 
 class ConfigurationPropertyKeyReference(
     element: PsiElement,
+    module: Module,
     private val propertyKey: String,
     textRange: TextRange? = null,
     private val mode: String? = null,
-) : MetaConfigKeyReference(element, propertyKey, textRange), EmptyResolveMessageProvider {
+) : MetaConfigKeyReference(element, module, propertyKey, textRange), EmptyResolveMessageProvider {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val project = element.project
         val results = resultConfigKeyPsiElement(project, module)
         if (results.isNotEmpty()) {
@@ -127,15 +130,29 @@ class ConfigurationPropertyKeyReference(
     }
 
     private fun resultConfigKeyPsiElement(project: Project, module: Module): Array<ResolveResult> {
-        val foundProperty = SpringConfigurationPropertiesSearch.getInstance(project)
-            .findProperty(module, propertyKey) ?: return emptyArray()
+        val foundProperty = configurationProperty(project, module) ?: return emptyArray()
         val sourceType = foundProperty.sourceType ?: return emptyArray()
         val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project)
         val uElement = sourceMember.toUElement() ?: return emptyArray()
-        if (sourceMember != null && (uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())) {
+        if (sourceMember != null
+            && (uElement is UClass || uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())
+        ) {
             return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         }
         return emptyArray()
+    }
+
+    private fun configurationProperty(
+        project: Project,
+        module: Module
+    ): ConfigurationProperty? {
+        val findProperty = SpringConfigurationPropertiesSearch.getInstance(project)
+            .findProperty(module, propertyKey)
+        if (findProperty == null) {
+            return SpringConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
+                .find { propertyKey.startsWith(it.name) }
+        }
+        return findProperty
     }
 
     override fun getVariants(): Array<Any> {
@@ -143,7 +160,6 @@ class ConfigurationPropertyKeyReference(
             return emptyArray()
         }
         val existingKeys = if (mode == "Hint") loadExistingNameKeys() else emptySet()
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getAllProperties(module)
 

@@ -3,8 +3,6 @@ package com.esprito.spring.core.service
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
-import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.core.service.conditional.*
@@ -22,7 +20,6 @@ import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.CacheKeyStore
 import com.esprito.util.EspritoAnnotationUtil
 import com.esprito.util.EspritoAnnotationUtil.getLongValue
-import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isGeneric
@@ -44,6 +41,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.modules
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.SearchScope
@@ -53,17 +51,18 @@ import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.childrenOfType
 import com.intellij.uast.UastModificationTracker
+import com.jetbrains.rd.util.getOrCreate
 import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.*
+import java.util.concurrent.ConcurrentHashMap
 
 @Service(Service.Level.PROJECT)
 class SpringSearchService(private val project: Project) {
 
     private val cachedValuesManager: CachedValuesManager = CachedValuesManager.getManager(project)
+    private val mutexSearchBeans = ConcurrentHashMap<String, String>()
+    private val mutexConditionalOn = ConcurrentHashMap<String, String>()
 
     private fun searchAllBeanClasses(module: Module): Set<PsiBean> {
         val allPsiClassesAnnotatedByComponent = getBeanPsiClassesAnnotatedByComponent(module)
@@ -73,7 +72,7 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun getStaticBeans(module: Module): Set<PsiBean> {
-        synchronized(module) {
+        synchronized(getMutexString(MutexType.SEARCH, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 CachedValueProvider.Result(
                     AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
@@ -85,11 +84,55 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun getAllBeansClassesConsideringContext(project: Project): FoundBeans {
+        return cachedValuesManager.getCachedValue(project) {
+            CachedValueProvider.Result(
+                doGetAllBeansClassesConsideringContext(project),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    private fun doGetAllBeansClassesConsideringContext(project: Project): FoundBeans {
+        val active = mutableSetOf<PsiBean>()
+        val excluded = mutableSetOf<PsiBean>()
+        for (module in project.modules) {
+            val (foundActive, foundExcluded) = getAllBeansClasses(module)
+            excluded += foundExcluded
+            for (psiBean in foundActive) {
+                val uBeanMember = psiBean.psiMember.toUElement()
+                if (uBeanMember == null) {
+                    // может быть стоит для внешних бинов сделать отдельную иконку?
+                    active += psiBean
+                    continue
+                }
+                if (isInSpringContext(uBeanMember, module)) {
+                    active += psiBean
+                } else {
+                    excluded += psiBean
+                }
+            }
+        }
+
+        return FoundBeans(active, excluded)
+    }
+
     private fun getAllBeansClasses(module: Module): FoundBeans {
-        synchronized(module) {
+        synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 CachedValueProvider.Result(
-                    filterByConditionals(module, searchAllBeanClasses(module)),
+                    filterByConditionals(module, searchAllBeanLight(module)),
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
+        }
+    }
+
+    fun searchAllBeanLight(module: Module): Set<PsiBean> {
+        synchronized(getMutexString(MutexType.SEARCH, module)) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    searchAllBeanClasses(module),
                     ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )
             }
@@ -113,8 +156,17 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getAllBeansClassesWithAncestors(module: Module): Set<PsiClass> {
-        synchronized(module) {
+    fun getAllBeanByNamesLight(module: Module): Map<String, List<PsiBean>> {
+        return cachedValuesManager.getCachedValue(module) {
+            CachedValueProvider.Result(
+                searchAllBeanLight(module).groupBy { it.name },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    private fun getAllBeansClassesWithAncestors(module: Module): Set<PsiClass> {
+        synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 CachedValueProvider.Result(
                     getActiveBeansClasses(module)
@@ -125,8 +177,20 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun getAllBeansClassesWithAncestorsLight(module: Module): Set<PsiClass> {
+        synchronized(getMutexString(MutexType.SEARCH, module)) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    searchAllBeanLight(module)
+                        .flatMapTo(mutableSetOf()) { it.psiClass.supers.asSequence() + it.psiClass },
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
+        }
+    }
+
     fun getAllActiveBeans(module: Module): Set<PsiClass> {
-        synchronized(module) {
+        synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 CachedValueProvider.Result(
                     getActiveBeansClasses(module).mapTo(mutableSetOf()) { it.psiClass },
@@ -136,17 +200,58 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun getAllActiveBeansLight(module: Module): Set<PsiClass> {
+        synchronized(getMutexString(MutexType.SEARCH, module)) {
+            return cachedValuesManager.getCachedValue(module) {
+                CachedValueProvider.Result(
+                    searchAllBeanLight(module).mapTo(mutableSetOf()) { it.psiClass },
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
+        }
+    }
+
+    private fun isInSpringContext(uBeanElement: UElement, module: Module): Boolean {
+        if (uBeanElement is UMethod && uBeanElement.returnType is PsiArrayType) {
+            val deepArrayPsiClass = uBeanElement.returnType?.resolvedDeepPsiClass ?: return false
+            return searchArrayComponentPsiClassesByBeanMethods(module)
+                .map { it.psiClass }.contains(deepArrayPsiClass)
+        }
+        return getBeanClass(uBeanElement) in getAllActiveBeans(module)
+    }
+
+    fun isInSpringContextLight(uBeanElement: UElement, module: Module): Boolean {
+        if (uBeanElement is UMethod && uBeanElement.returnType is PsiArrayType) {
+            val deepArrayPsiClass = uBeanElement.returnType?.resolvedDeepPsiClass ?: return false
+            return searchArrayComponentPsiClassesByBeanMethods(module)
+                .map { it.psiClass }.contains(deepArrayPsiClass)
+        }
+        return getBeanClass(uBeanElement) in getAllActiveBeansLight(module)
+    }
+
+    fun getBeanClass(uBeanElement: UElement, isArray: Boolean = false): PsiClass? {
+        if (isArray) {
+            return (uBeanElement as? UMethod)?.returnType?.resolvedDeepPsiClass
+        }
+        return when (uBeanElement) {
+            is UMethod -> uBeanElement.returnPsiClass
+            is UClass -> uBeanElement.javaPsi
+            else -> null
+        }
+    }
+
     fun getBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
-        synchronized(module) {
+        synchronized(getMutexString(MutexType.SEARCH, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
                 val annotationPsiClasses = getComponentClassAnnotations(module)
-                val allModuleWithDependenciesBeans =
-                    searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope) + getExtraComponents(module)
                 val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
-                val moduleWithDependenciesBeans = filterBeansByPackage(
-                    allModuleWithDependenciesBeans, modulePackagesHolder, module
+                val allModuleWithDependenciesBeans = filterBeansByPackage(
+                    searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
+                    modulePackagesHolder, module
                 )
+                val extraComponents = getExtraComponents(module, modulePackagesHolder)
+                val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
                 val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
                 val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
 
@@ -158,32 +263,28 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun getDependentBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
+        return cachedValuesManager.getCachedValue(module) {
+            val scope = GlobalSearchScope.moduleWithDependentsScope(module)
+            val annotationPsiClasses = getComponentClassAnnotations(module)
+            val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+            val dependentBeans = filterBeansByPackage(
+                searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
+                modulePackagesHolder, module
+            )
+
+            CachedValueProvider.Result(
+                filterByConditionals(module, dependentBeans).active,
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
     private fun getImportedBeans(modulePackagesHolder: RootDataHolder, module: Module) =
         modulePackagesHolder.importQualified.asSequence()
             .mapNotNull { JavaPsiFacade.getInstance(project).findClass(it, module.moduleWithDependenciesScope) }
             .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
             .toSet()
-
-    fun searchPsiClassesAnnotatedByComponentScan(module: Module): Set<PsiClass> {
-        synchronized(module) {
-            return cachedValuesManager.getCachedValue(module) {
-                val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-                val annotationPsiClasses = MetaAnnotationUtil
-                    .getAnnotationTypesWithChildren(module, COMPONENT_SCAN, false)
-                val allModuleWithDependenciesBeans =
-                    searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
-                val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
-                val moduleWithDependenciesBeans = filterBeansByPackage(
-                    allModuleWithDependenciesBeans, modulePackagesHolder, module
-                )
-                val moduleLibraryBeans = searchBeanPsiClassesByComponentScanAnnotationLibraryScopeCached(module)
-                CachedValueProvider.Result(
-                    (moduleWithDependenciesBeans + moduleLibraryBeans).map { it.psiClass }.toSet(),
-                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-                )
-            }
-        }
-    }
 
     private fun filterBeansByPackage(
         beanComponents: Set<PsiBean>, rootDataHolder: RootDataHolder, module: Module
@@ -234,8 +335,11 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun searchReferenceByMethod(module: Module, method: PsiMethod): Collection<PsiReference> {
-        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+    fun searchReferenceByMethod(
+        module: Module,
+        method: PsiMethod,
+        scope: SearchScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+    ): Collection<PsiReference> {
         return MethodReferencesSearch.search(method, scope, true).findAll()
     }
 
@@ -290,18 +394,6 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    private fun searchBeanPsiClassesByComponentScanAnnotationLibraryScopeCached(module: Module): Set<PsiBean> {
-        return cachedValuesManager.getCachedValue(module) {
-            val annotationPsiClasses = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, COMPONENT_SCAN, false)
-            CachedValueProvider.Result(
-                searchBeanPsiClassesByAnnotations(
-                    module, annotationPsiClasses, ModuleUtil.getOnlyLibrarySearchScope(module)
-                ),
-                ModificationTrackerManager.getInstance(project).getLibraryTracker()
-            )
-        }
-    }
-
     fun getComponentClassAnnotations(module: Module): Collection<PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
@@ -327,21 +419,16 @@ class SpringSearchService(private val project: Project) {
     }
 
     fun getAutowiredFieldAnnotations(module: Module): Collection<PsiClass> {
-        synchronized(module) {
-            return cachedValuesManager.getCachedValue(module) {
-                CachedValueProvider.Result(
-                    run {
-                        val annotations = MetaAnnotationUtil
-                            .getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
-                            .toMutableSet()
-                        annotations += LibraryClassCache.searchForLibraryClasses(
-                            module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns
-                        )
-                        return@run annotations
-                    },
-                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-                )
-            }
+        return cachedValuesManager.getCachedValue(module) {
+            val annotations = MetaAnnotationUtil
+                .getAnnotationTypesWithChildren(module, SpringCoreClasses.AUTOWIRED, false)
+            val annotationsLib = LibraryClassCache.searchForLibraryClasses(
+                module, JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns
+            )
+
+            CachedValueProvider.Result(
+                annotations + annotationsLib, ModificationTrackerManager.getInstance(project).getLibraryTracker()
+            )
         }
     }
 
@@ -520,7 +607,7 @@ class SpringSearchService(private val project: Project) {
         val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
         return this.asSequence().filter {
             it.returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
-            it.returnType == sourcePsiType
+                    it.returnType == sourcePsiType
                     || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
                     || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
                     && resolvedSourcePsiClass != null && it.returnPsiClass == resolvedSourcePsiClass
@@ -555,71 +642,66 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun filterByConditionals(module: Module, foundBeans: Set<PsiBean>): FoundBeans {
+        if (!SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled) {
+            return FoundBeans(foundBeans, emptySet())
+        }
         val active = foundBeans.toMutableSet()
         val excluded = mutableSetOf<PsiBean>()
 
-        val beanFilterEnabled = SpringToolRunConfigurationsSettingsState.getInstance()
-            .isBeanFilterEnabled
-
-        val autoConfigurationsFqn =
-            SpringConfigurationPropertiesSearch.getInstance(module.project)
-                .getAllFactoriesNames(module)
-        if (!beanFilterEnabled && autoConfigurationsFqn.isEmpty()) return FoundBeans(active, excluded)
-
         val exclusionStrategies = listOf(
-            ConditionalOnBeanStrategy(module),
-            ConditionalOnMissingBeanStrategy(module),
             ConditionalOnClassStrategy(module),
             ConditionalOnMissingClassStrategy(module),
-            ConditionalOnPropertyStrategy(module)
+            ConditionalOnBeanStrategy(module),
+            ConditionalOnMissingBeanStrategy(module),
+            ConditionalOnPropertyStrategy(module),
+            OnWebApplicationConditionStrategy(module)
         )
 
-        val dependants = foundBeans.asSequence()
-            .filter { it.psiMember is PsiClass }
-            .filter { beanFilterEnabled || autoConfigurationsFqn.contains(it.psiClass.qualifiedName) }
-            .map { it.psiClass }
-            .toList()
-
-
-        var changed: Boolean
-        do {
-            changed = false
-            findToExclude(dependants, active, exclusionStrategies)
-                .forEach { psiMember ->
-                    val beansToExclude = active.filter { psiMember == it.psiMember }.toSet()
-                    if (beansToExclude.isNotEmpty()) {
-                        changed = true
-                        excluded.addAll(beansToExclude)
-                        active.removeAll(beansToExclude)
-                    }
-                }
-        } while (changed)
+        val beansGroupByClass = foundBeans.asSequence()
+            .flatMap { getRootPsiClasses(it).map { clazz -> Pair(clazz, it) } }
+            .groupBy({ it.first }, { it.second })
+        beansGroupByClass.forEach { (key, value) ->
+            checkClassToExclude(key, value, active, excluded, exclusionStrategies)
+        }
+        active.filter { it.psiClass != it.psiMember }
+            .forEach { checkClassToExclude(it.psiMember, listOf(it), active, excluded, exclusionStrategies) }
 
         return FoundBeans(active, excluded)
     }
 
+    private fun getRootPsiClasses(it: PsiBean): List<PsiClass> {
+        val psiClass = if (it.psiMember !is PsiClass) it.psiMember.containingClass ?: it.psiClass else it.psiClass
+        return getRootListPsiClass(psiClass)
+    }
+
+    private fun getRootListPsiClass(it: PsiClass): List<PsiClass> {
+        val rootClasses = mutableListOf(it)
+        var rootClass: PsiClass? = it
+        var depthCount = 0
+        while (rootClass?.containingClass != null && depthCount < 10) {
+            rootClass = rootClass.containingClass
+            rootClasses.add(rootClass!!)
+            depthCount++
+        }
+        return rootClasses
+    }
+
     data class FoundBeans(val active: Set<PsiBean>, val excluded: Set<PsiBean>)
 
-    private fun findToExclude(
-        dependants: List<PsiMember>,
-        foundBeans: Set<PsiBean>,
+
+    private fun checkClassToExclude(
+        psiMember: PsiMember,
+        dependantsFromClassBeans: Collection<PsiBean>,
+        activeBeans: MutableSet<PsiBean>,
+        excludeBeans: MutableSet<PsiBean>,
         exclusionStrategies: List<ExclusionStrategy>
-    ): List<PsiMember> {
-        val toExclude = mutableListOf<PsiMember>()
+    ) {
+        if (dependantsFromClassBeans.all { excludeBeans.contains(it) }) return
 
-        for (dependant in dependants) {
-            val dependantWithAllNestedMembers = (dependant.findChildrenOfType<PsiMember>() + dependant).toSet()
-            val otherBeans = foundBeans.filter { !dependantWithAllNestedMembers.contains(it.psiMember) }
-
-            if (exclusionStrategies.any { it.shouldExclude(dependant, otherBeans) }) {
-                toExclude.addAll(dependantWithAllNestedMembers)
-            } else {
-                val nestedDependant = dependant.childrenOfType<PsiMember>()
-                toExclude.addAll(findToExclude(nestedDependant, foundBeans, exclusionStrategies))
-            }
+        if (exclusionStrategies.any { it.shouldExclude(psiMember, activeBeans) }) {
+            excludeBeans.addAll(dependantsFromClassBeans)
+            activeBeans.removeAll(dependantsFromClassBeans.toSet())
         }
-
-        return toExclude
     }
 
     fun getMetaAnnotations(module: Module, annotationFqn: String): MetaAnnotationsHolder {
@@ -646,7 +728,7 @@ class SpringSearchService(private val project: Project) {
         return null
     }
 
-    fun isBean(uClass: UClass): Boolean {
+    private fun isBean(uClass: UClass): Boolean {
         if (AnnotationUtil.isAnnotated(uClass.javaPsi, SpringCoreClasses.COMPONENT, AnnotationUtil.CHECK_HIERARCHY)) {
             return true
         }
@@ -687,11 +769,27 @@ class SpringSearchService(private val project: Project) {
             )
     }
 
-    private fun getExtraComponents(module: Module): Set<PsiBean> {
+    private fun getExtraComponents(module: Module, modulePackagesHolder: RootDataHolder): Set<PsiBean> {
         return AdditionalBeansDiscoverer.EP_NAME.getExtensions(project).asSequence()
-            .flatMap { it.getExtraComponents(module) }
+            .flatMap { getFilteredExtraBeans(it, module, modulePackagesHolder) }
             .filter { isActive(it.psiClass) }
             .toSet()
+    }
+
+    private fun getFilteredExtraBeans(
+        discoverer: AdditionalBeansDiscoverer, module: Module, rootDataHolder: RootDataHolder
+    ): Collection<PsiBean> {
+        val extraComponents = discoverer.getExtraComponents(module)
+        if (rootDataHolder.isEmpty()) return extraComponents
+        return extraComponents.filterTo(mutableSetOf()) { discoverer.additionalFilterBeans(module, it, rootDataHolder) }
+    }
+
+    private fun getMutexString(mutexType: MutexType, module: Module): String {
+        return when (mutexType) {
+            MutexType.SEARCH -> mutexSearchBeans.getOrCreate("search:" + module.name) { "search:" + module.name }
+            MutexType.CONDITIONAL_ON -> mutexConditionalOn
+                .getOrCreate("conditionalOn:" + module.name) { "conditionalOn:" + module.name }
+        }
     }
 
     companion object {
@@ -702,4 +800,8 @@ class SpringSearchService(private val project: Project) {
 
 data class MethodsInfoHolder(val beanPublicAnnotatedMethods: Set<PsiMethod>) {
     val beanPublicAnnotatedMethodNames: Set<String> = beanPublicAnnotatedMethods.map { it.name }.toSet()
+}
+
+private enum class MutexType {
+    SEARCH, CONDITIONAL_ON
 }

@@ -2,7 +2,10 @@ package com.esprito.spring.core.util
 
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.intellij.openapi.module.ModuleUtilCore
+import org.jetbrains.uast.UCallExpression
+import com.intellij.patterns.uast.UExpressionPattern
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.UPolyadicExpression
 import org.jetbrains.uast.evaluateString
 
 object UastUtil {
@@ -22,4 +25,16 @@ object UastUtil {
         }
         return value
     }
+
+    fun UCallExpression.getArgumentValueAsEnumName(index: Int): String? =
+        getArgumentForParameter(index)
+            ?.asSourceString()
+            ?.split('.')
+            ?.last()
+
+
+    class UPolyadicExpressionPattern : UExpressionPattern<UPolyadicExpression, UPolyadicExpressionPattern>(
+        UPolyadicExpression::class.java
+    )
+
 }

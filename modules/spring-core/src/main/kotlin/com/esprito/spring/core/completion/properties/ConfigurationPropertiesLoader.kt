@@ -1,9 +1,13 @@
 package com.esprito.spring.core.completion.properties
 
-import com.esprito.spring.core.JavaCoreClasses
+import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
+import com.intellij.psi.PsiArrayType
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiType
+import com.intellij.psi.util.InheritanceUtil
 
 interface ConfigurationPropertiesLoader {
 
@@ -19,11 +23,29 @@ interface ConfigurationPropertiesLoader {
         val EP_NAME = ProjectExtensionPointName<ConfigurationPropertiesLoader>(
             "com.esprito.spring.core.configurationPropertiesLoader"
         )
+
+        fun getPropertyType(psiType: PsiType?): PropertyType? {
+            if (psiType is PsiArrayType) return PropertyType.ARRAY
+            return getPropertyType(psiType?.resolvedPsiClass)
+        }
+
+        fun getPropertyType(psiClass: PsiClass?): PropertyType? {
+            return if (InheritanceUtil.isInheritor(psiClass, Map::class.java.name)) {
+                PropertyType.MAP
+            } else if (InheritanceUtil.isInheritor(psiClass, Iterable::class.java.name)) {
+                PropertyType.LIST
+            } else if (psiClass is PsiArrayType) {
+                PropertyType.ARRAY
+            } else {
+                null
+            }
+        }
     }
 }
 
 data class ConfigurationProperty(
     val name: String,
+    var propertyType: PropertyType?,
     var type: String?,
     var sourceType: String?,
     var description: String?,
@@ -31,17 +53,11 @@ data class ConfigurationProperty(
     var deprecation: DeprecationInfo?,
     val inLineYaml: Boolean = false
 ) {
-    fun isMap(): Boolean {
-        return type?.startsWith(JavaCoreClasses.MAP) == true
-    }
+    fun isMap() = propertyType == PropertyType.MAP
 
-    fun isList(): Boolean {
-        return type?.startsWith(JavaCoreClasses.LIST) == true
-    }
+    fun isList() = propertyType == PropertyType.LIST
 
-    fun isArray(): Boolean {
-        return type?.endsWith("[]") == true
-    }
+    fun isArray() = propertyType == PropertyType.ARRAY
 }
 
 data class PropertyHint(
@@ -54,3 +70,7 @@ data class ElementHint(
     val name: String,
     val jsonProperty: JsonProperty
 )
+
+enum class PropertyType {
+    LIST, MAP, ARRAY
+}

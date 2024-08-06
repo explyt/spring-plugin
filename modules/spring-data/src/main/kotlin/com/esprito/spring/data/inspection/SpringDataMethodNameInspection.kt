@@ -1,10 +1,10 @@
 package com.esprito.spring.data.inspection
 
 import com.esprito.base.LibraryClassCache
-import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
+import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -22,13 +22,14 @@ import org.springframework.data.repository.query.parser.PartTree
 import org.springframework.data.repository.query.parser.domain.PropertyPath
 
 
-class SpringDataMethodNameInspection : SpringBaseUastLocalInspectionTool() {
+class SpringDataMethodNameInspection : SpringDataBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
+        if (method.isNonAbstract || method.uastBody != null) return emptyArray()
         val javaMethodPsi = method.javaPsi
         val uClass = method.getParentOfType<UClass>() ?: return emptyArray()
         val typeParams = SpringDataRepositoryUtil.substituteRepositoryTypes(uClass.javaPsi) ?: return emptyArray()

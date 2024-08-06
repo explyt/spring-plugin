@@ -11,6 +11,8 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
+import com.intellij.psi.impl.source.tree.LeafPsiElement
+import org.jetbrains.yaml.YAMLLanguage
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
@@ -23,11 +25,17 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return
         }
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
+        var elementText = element.text
+
+        if (element is LeafPsiElement && element.language == YAMLLanguage.INSTANCE) {
+            val yamlKeyValue = element.parent as? YAMLKeyValue ?: return
+            if (yamlKeyValue.key != element) return
+            elementText = YAMLUtil.getConfigFullName(yamlKeyValue)
+        }
 
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
 
-        val elementText = if (element is YAMLKeyValue) YAMLUtil.getConfigFullName(element) else element.text
         val targets = hints.asSequence()
             .filter { it.name == elementText }
             .map { it.jsonProperty }
@@ -42,6 +50,5 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.metadata.usage"))
 
         result += builder.createLineMarkerInfo(element)
-
     }
 }

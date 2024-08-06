@@ -2,15 +2,19 @@ package com.esprito.spring.core.properties.dataRetriever
 
 import com.esprito.util.EspritoPsiUtil.isNonAbstract
 import com.esprito.util.EspritoPsiUtil.isSetter
+import com.esprito.util.EspritoPsiUtil.returnPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiType
+import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethod
+import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.uast.UMethod
 
 class MethodConfigurationPropertyDataRetriever private constructor(
     private val uMethod: UMethod,
-    private val psiMethod: PsiMethod
 ) : ConfigurationPropertyDataRetriever() {
+
+    val psiMethod = uMethod.javaPsi
 
     override fun getContainingClass(): PsiClass? {
         val psiClass = psiMethod.containingClass ?: return null
@@ -34,9 +38,19 @@ class MethodConfigurationPropertyDataRetriever private constructor(
         return uMethod.uastAnchor?.sourcePsi
     }
 
+    override fun isMap(): Boolean {
+        val psiType = uMethod.returnPsiClass?.returnPsiType ?: return false
+        return InheritanceUtil.isInheritor(psiType, Iterable::class.java.name)
+    }
+
+    override fun isCollection(): Boolean {
+        val psiType = uMethod.returnPsiClass?.returnPsiType ?: return false
+        return InheritanceUtil.isInheritor(psiType, Iterable::class.java.name) || psiType is PsiArrayType
+    }
+
     companion object {
         fun create(uMethod: UMethod): ConfigurationPropertyDataRetriever {
-            return MethodConfigurationPropertyDataRetriever(uMethod, uMethod.javaPsi)
+            return MethodConfigurationPropertyDataRetriever(uMethod)
         }
     }
 

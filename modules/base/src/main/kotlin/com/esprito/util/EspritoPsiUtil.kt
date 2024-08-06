@@ -8,6 +8,9 @@ import com.intellij.psi.*
 import com.intellij.psi.util.PropertyUtilBase
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
+import org.jetbrains.kotlin.lexer.KtModifierKeywordToken
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
@@ -225,4 +228,23 @@ object EspritoPsiUtil {
                 && psiMember.isNonPrivate
     }
 
+    fun PsiElement.getContainingMethod(): PsiMethod? {
+        var context = context
+        while (context != null) {
+            @Suppress("LocalVariableName") val _context = context
+            if (_context is PsiMethod) return _context
+            context = _context.context
+        }
+        return null
+    }
+
+    fun PsiElement.getContainingConstructor(): PsiMethod? {
+        val method = getContainingMethod()
+        return if (method?.isConstructor == true) method else null
+    }
+
+    fun UMethod.containKotlinKeyword(ktModifierKeywordToken: KtModifierKeywordToken): Boolean {
+        val ktNamedFunction = this.sourcePsi as? KtNamedFunction ?: return false
+        return ktNamedFunction.modifierList?.getModifier(ktModifierKeywordToken) != null
+    }
 }

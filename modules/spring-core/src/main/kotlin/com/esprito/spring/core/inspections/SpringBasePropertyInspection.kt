@@ -18,10 +18,12 @@ import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.PropertyUtil
+import com.esprito.spring.core.util.PropertyUtil.isNotKebabCase
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
 import com.esprito.spring.core.util.PropertyUtil.propertyKeyPsiElement
 import com.esprito.spring.core.util.PropertyUtil.propertyValue
 import com.esprito.spring.core.util.PropertyUtil.propertyValuePsiElement
+import com.esprito.spring.core.util.PropertyUtil.toKebabCase
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.util.CacheKeyStore
 import com.intellij.codeInspection.*
@@ -116,25 +118,27 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                     SpringCoreBundle.message("esprito.spring.inspection.properties.key.prohibited", fileProperty.key),
                     isOnTheFly,
                     emptyArray(),
-                    ProblemHighlightType.GENERIC_ERROR
+                    GENERIC_ERROR
                 )
             }
 
-            val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, fileProperty.key) }
+            val key = fileProperty.key
+            if (isNotKebabCase(key)) {
+                problems += keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key)
+            }
+
+            val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key) }
             val placeholders = DefinedConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllPlaceholders(module)
 
             if (foundProperties.isEmpty()
-                && !isPropertyMapKey(fileProperty, properties)
-                && !isPropertyListKey(fileProperty, properties)
-                && placeholders.none {
-                    PropertyUtil.isSameProperty(fileProperty.key, it)
-                }
+                && getMapKeys(fileProperty, properties).isEmpty()
+                && getListKeys(fileProperty, properties).isEmpty()
+                && placeholders.none { PropertyUtil.isSameProperty(key, it) }
             ) {
                 val psiReferences = SpringSearchService.getInstance(elementFileProperty.project)
                     .getAllReferencesToElement(elementFileProperty)
                 if (psiReferences.isEmpty()) {
-                    val key = fileProperty.key
                     problems += manager.createProblemDescriptor(
                         psiKey,
                         SpringCoreBundle.message("esprito.spring.inspection.properties.key.unresolved", key),
@@ -153,13 +157,19 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                             emptyArray(),
                             ProblemHighlightType.ERROR
                         )
-
                     }
                 }
             }
         }
         return problems
     }
+
+    abstract fun keyShouldBeKebabProblemDescriptor(
+        manager: InspectionManager,
+        psiKey: PsiElement,
+        isOnTheFly: Boolean,
+        key: String
+    ): ProblemDescriptor
 
     private fun getProblemPropertyDeprecated(
         manager: InspectionManager,
@@ -183,7 +193,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 SpringCoreBundle.message("esprito.spring.inspection.properties.key.deprecated", reason),
                 isOnTheFly,
                 arrayOf(ReplacementKeyQuickFix(replacement, psiElement)),
-                if (level == DeprecationInfoLevel.ERROR) ProblemHighlightType.GENERIC_ERROR else ProblemHighlightType.LIKE_DEPRECATED
+                if (level == DeprecationInfoLevel.ERROR) GENERIC_ERROR else ProblemHighlightType.LIKE_DEPRECATED
             )
         }
 
@@ -220,15 +230,15 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             problems += PropertyUtil.getPlaceholders(value) { placeholder, range ->
                 PlaceholderWithRange(placeholder, range)
             }.asSequence()
-                .filter { isNotSnakeCase(it.placeholder) }
+                .filter { isNotKebabCase(it.placeholder) }
                 .mapTo(mutableListOf()) {
                     manager.createProblemDescriptor(
                         psiValue,
                         it.range,
-                        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.snaked"),
+                        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.kebab"),
                         ProblemHighlightType.WARNING,
                         isOnTheFly,
-                        ReplacementStringQuickFix(it.placeholder, toSnakeCase(it.placeholder), psiValue, it.range)
+                        ReplacementStringQuickFix(it.placeholder, toKebabCase(it.placeholder), psiValue, it.range)
                     )
                 }
         }
@@ -276,29 +286,6 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             }
         }
         return problems
-    }
-
-    private fun isNotSnakeCase(placeholder: String): Boolean {
-        return placeholder.any { it.isUpperCase() || it == '_' }
-    }
-
-    private fun toSnakeCase(placeholder: String): String {
-        if (placeholder.isEmpty()) return ""
-
-        var prev: Char? = null
-        val stringBuilder = StringBuilder()
-        for (current in placeholder) {
-            if (current.isUpperCase()) {
-                if (prev != null && prev.isLowerCase()) {
-                    stringBuilder.append('_')
-                }
-            }
-            stringBuilder.append(current.lowercaseChar())
-
-            prev = current
-        }
-
-        return stringBuilder.replace(UNDERSCORES_REGEX, "-")
     }
 
     data class PlaceholderWithRange(val placeholder: String, val range: TextRange)
@@ -616,11 +603,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             return findProperty
         }
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
-        if (isPropertyListKey(property, properties)) {
-            return getConfigurationListProperties(property, properties).firstOrNull()
+        val listKey = getListKeys(property, properties)
+        if (listKey.isNotEmpty()) {
+            return listKey.first()
         }
-        if (isPropertyMapKey(property, properties)) {
-            return getConfigurationMapProperties(property, properties).firstOrNull()
+        val mapKey = getMapKeys(property, properties)
+        if (mapKey.isNotEmpty()) {
+            return mapKey.first()
         }
         return null
     }
@@ -674,49 +663,19 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         }.distinct()
 
 
-    private fun isPropertyMapKey(
-        fileProperty: DefinedConfigurationProperty,
-        properties: List<ConfigurationProperty>
-    ): Boolean {
-        val property = configurationTypeProperties(fileProperty, properties, ".")
-        if (property.isEmpty()) {
-            return false
-        }
-        return property.any { it.isMap() }
-    }
-
-    private fun isPropertyListKey(
-        fileProperty: DefinedConfigurationProperty,
-        properties: List<ConfigurationProperty>
-    ): Boolean {
-        val property = configurationTypeProperties(fileProperty, properties, "[")
-        if (property.isEmpty()) {
-            return false
-        }
-        return property.any { it.isList() }
-    }
-
-    private fun getConfigurationListProperties(
+    private fun getMapKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
-        return configurationTypeProperties(fileProperty, properties, "[")
+        return properties.asSequence().filter { it.isMap() }.filter { fileProperty.key.startsWith(it.name) }.toList()
     }
 
-    private fun getConfigurationMapProperties(
+    private fun getListKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
-        return configurationTypeProperties(fileProperty, properties, ".")
-    }
-
-    private fun configurationTypeProperties(
-        fileProperty: DefinedConfigurationProperty,
-        properties: List<ConfigurationProperty>,
-        separator: String
-    ): List<ConfigurationProperty> {
-        val key = fileProperty.key.substringBeforeLast(separator)
-        return properties.filter { it.name == key }
+        return properties.asSequence().filter { it.isList() || it.isArray() }
+            .filter { fileProperty.key.startsWith(it.name) }.toList()
     }
 
     private fun checkDuplicateKeys(
@@ -757,7 +716,6 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val PROHIBITED_IN_PROFILE_PROPERTIES =
             setOf("spring.profiles.include", "spring.profiles.active", "spring.profiles.default")
         val PROFILE_PROPERTIES_FILE_MASK = Regex("application-.*\\.(properties|yml|yaml)")
-        val UNDERSCORES_REGEX = Regex("_+")
     }
 
 }
