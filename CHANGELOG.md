@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [241.1.1834] - 2024-08-06
+
 ### Spring Core/Boot
 
 - Fixed: Autocomplete in application.properties produces an error: NoSuchElementException: List is empty.
@@ -43,7 +45,7 @@
 - gradle kotlin module test problem
 - Add error tracking via Sentry setup
 
-## [241.1.1581] - 2024-06-10
+## 241.1.1581 - 2024-06-10
 
 ### Spring Core/Boot
 
