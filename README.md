@@ -19,7 +19,9 @@
 - Spring Framework
 - Spring Data
 - Spring Web
-- Spring AOP (in progress), including AspectJ, Spring Security, and Spring Integration (partly).
+- Spring AOP (in progress), including AspectJ
+- Spring Security
+- Spring Integration (partly)
 
 ### Spring core:
 - Spring Beans
