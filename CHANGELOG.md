@@ -9,20 +9,22 @@
 
 - Fixed: Autocomplete in application.properties produces an error: NoSuchElementException: List is empty.
 - Fixed: @ConfigurationProperties with lombok @Setter and Lombok plugin installed produces an error
-- Inspection: `Should be kebab-case` for property key
+- Added Inspection: `Should be kebab-case` for property key
 - Fixed: Yaml property autocomplete inserts into previous line
 - Fixed: kebab-case inspection description
 - Fixed: Yaml PropertyLineMarker only for leaf elements
-- Inspection: @EntityScan package support
 - Added beans search by name in `Search Everywhere`
-- Fixed: Spring Data method name inspection - not analyze default interface methods
-- Fixed: Performance improvements
+- Performance: ConfigurationProperty prefix calculation was too slow
+- Performance: Improves after performance tests on big projects
 - Fixed: ConditionOnProperty is enabled even if it was disabled in properties
+- Fixed @ConfigurationProperties - navigation/line markers
 
 ### Spring Data
 
 - Fixed: support CoroutineCrudRepository
 - Fixed: Repository injected through @Autowired and package enabled via @EnableJpaRespoitory
+- Inspection: @EntityScan package support
+- Fixed: Spring Data method name inspection - default interface methods were not analyzed
 
 ### Spring Web/MVC
 
@@ -33,6 +35,13 @@
 - Add `WebTestController` `expectBody[List]` methods autocompletion
 - Add `RouterFunctions` `coRouter` methods autocompletion
 - Add `RouterFunctions` `route` methods autocompletion
+- Performance: endpoint usage search speed-up
+
+### Other
+
+- compatibility with internal 242 api 
+- gradle kotlin module test problem
+- Add error tracking via Sentry setup
 
 ## [241.1.1581] - 2024-06-10
 
