@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+ - Fixed: properties completion for class-reference provider from libraries
+
 ## [241.1.1834] - 2024-08-06
 
 ### Spring Core/Boot
