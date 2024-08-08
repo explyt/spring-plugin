@@ -7,6 +7,7 @@ import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
+import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
@@ -39,7 +40,16 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val targets = hints.asSequence()
             .filter { it.name == elementText }
             .map { it.jsonProperty }
-            .toList()
+            .groupingBy { it.containingFile.virtualFile.path.replace(SOURCES_SUFFIX, "") }
+            .aggregate { _, acc: JsonProperty?, elem: JsonProperty, _ ->
+                when {
+                    acc == null -> elem
+                    acc.containingFile.virtualFile.path.contains(SOURCES_SUFFIX) -> acc
+                    else -> elem
+                }
+            }
+            .values
+
         if (targets.isEmpty()) return
 
         val builder = NavigationGutterIconBuilder.create(SpringIcons.Hint)
@@ -51,4 +61,9 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         result += builder.createLineMarkerInfo(element)
     }
+
+    companion object {
+        const val SOURCES_SUFFIX = "-sources"
+    }
+
 }

@@ -2,6 +2,7 @@ package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.SpringProperties.CONFIGURATION_METADATA_FILE_NAME
+import com.esprito.spring.core.SpringProperties.HINTS
 import com.esprito.spring.core.SpringProperties.PROPERTIES
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.util.CacheKeyStore
@@ -70,7 +71,10 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
     }
 
     override fun loadMetadataElements(module: Module): List<ElementHint> {
-        return emptyList()
+        return findMetadataFiles(module).asSequence()
+            .filterIsInstance<JsonFile>()
+            .flatMap { collectElementMetadataName(it, HINTS) }
+            .toList()
     }
 
     private fun findMetadataFiles(module: Module, onlyAdditional: Boolean = false): List<PsiFile> {
