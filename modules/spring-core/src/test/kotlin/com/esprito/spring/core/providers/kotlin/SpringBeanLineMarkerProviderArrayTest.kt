@@ -1,10 +1,10 @@
 package com.esprito.spring.core.providers.kotlin
 
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.core.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
-import com.esprito.spring.core.util.SpringGutterTestUtil.getGutterTargetString
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
+import com.esprito.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
+import com.esprito.spring.test.util.SpringGutterTestUtil.getGutterTargetString
 
 class SpringBeanLineMarkerProviderArrayTest : EspritoJavaLightTestCase() {
 

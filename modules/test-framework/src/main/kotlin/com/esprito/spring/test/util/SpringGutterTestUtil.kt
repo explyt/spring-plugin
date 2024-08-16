@@ -1,4 +1,4 @@
-package com.esprito.spring.core.util
+package com.esprito.spring.test.util
 
 import com.intellij.codeInsight.daemon.GutterMark
 import com.intellij.codeInsight.daemon.LineMarkerInfo

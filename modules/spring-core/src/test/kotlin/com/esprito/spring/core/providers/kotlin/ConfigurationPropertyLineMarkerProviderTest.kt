@@ -2,9 +2,9 @@ package com.esprito.spring.core.providers.kotlin
 
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.providers.java.ConfigurationPropertyLineMarkerProviderTest
-import com.esprito.spring.core.util.SpringGutterTestUtil
 import com.esprito.spring.test.EspritoKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
+import com.esprito.spring.test.util.SpringGutterTestUtil
 import com.intellij.codeInsight.daemon.GutterMark
 import junit.framework.TestCase
 import org.intellij.lang.annotations.Language

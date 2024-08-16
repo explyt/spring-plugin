@@ -2,9 +2,9 @@ package com.esprito.spring.core.providers.java
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.core.util.SpringGutterTestUtil
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
+import com.esprito.spring.test.util.SpringGutterTestUtil
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
 

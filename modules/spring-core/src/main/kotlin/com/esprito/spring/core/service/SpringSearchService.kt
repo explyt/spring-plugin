@@ -7,6 +7,7 @@ import com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationsSetti
 import com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.esprito.spring.core.service.conditional.*
 import com.esprito.spring.core.tracker.ModificationTrackerManager
+import com.esprito.spring.core.util.GlobalSearchScopeTestAware
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiTypeKotlin
@@ -340,7 +341,8 @@ class SpringSearchService(private val project: Project) {
         method: PsiMethod,
         scope: SearchScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
     ): Collection<PsiReference> {
-        return MethodReferencesSearch.search(method, scope, true).findAll()
+        return MethodReferencesSearch.search(method, GlobalSearchScopeTestAware.getScope(module, scope), true)
+            .findAll()
     }
 
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
