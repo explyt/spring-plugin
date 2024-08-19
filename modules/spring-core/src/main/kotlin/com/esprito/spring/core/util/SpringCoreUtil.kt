@@ -506,5 +506,7 @@ object SpringCoreUtil {
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"
     const val SPRING_BOOT_ACTUATOR_MAVEN = "org.springframework.boot:spring-boot-actuator"
+    const val BASE_PACKAGES = "basePackages"
+    const val SCAN_BASE_PACKAGES = "scanBasePackages"
 
 }

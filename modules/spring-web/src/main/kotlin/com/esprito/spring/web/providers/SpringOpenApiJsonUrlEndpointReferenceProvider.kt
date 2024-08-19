@@ -41,7 +41,8 @@ class SpringOpenApiJsonUrlEndpointReferenceProvider : PsiReferenceProvider() {
                 nameElement,
                 key,
                 null,
-                ElementManipulators.getValueTextRange(nameElement)
+                ElementManipulators.getValueTextRange(nameElement),
+                true
             )
         )
     }
@@ -62,7 +63,8 @@ class SpringOpenApiJsonUrlEndpointReferenceProvider : PsiReferenceProvider() {
                 nameElement,
                 url,
                 key.uppercase(),
-                ElementManipulators.getValueTextRange(nameElement)
+                ElementManipulators.getValueTextRange(nameElement),
+                true
             )
         )
     }

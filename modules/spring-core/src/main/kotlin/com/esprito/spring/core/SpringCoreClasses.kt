@@ -20,6 +20,7 @@ object SpringCoreClasses {
     const val SCOPE = "org.springframework.context.annotation.Scope"
     const val IMPORT = "org.springframework.context.annotation.Import"
     const val BEAN_FACTORY = "org.springframework.beans.factory.BeanFactory"
+    const val CONFIGURATION_PROPERTIES_SCAN = "org.springframework.boot.context.properties.ConfigurationPropertiesScan"
 
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
@@ -105,7 +106,6 @@ object SpringCoreClasses {
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
-    val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN, SPRING_BOOT_APPLICATION)
     val ANNOTATIONS_CACHE = setOf(CACHEABLE, CACHEPUT, CACHEEVICT, CACHECONFIG, CACHING)
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns

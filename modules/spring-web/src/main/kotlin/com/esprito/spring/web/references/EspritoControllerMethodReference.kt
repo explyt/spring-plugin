@@ -12,12 +12,12 @@ class EspritoControllerMethodReference(
     element: PsiElement,
     private val urlPath: String,
     private val requestMethod: String?,
-    rangeInElement: TextRange
-) : PsiReferenceBase<PsiElement>(element, rangeInElement), PsiPolyVariantReference, HighlightedReference {
+    rangeInElement: TextRange,
+    isSoft: Boolean = false
+) : PsiReferenceBase<PsiElement>(element, rangeInElement, isSoft), PsiPolyVariantReference, HighlightedReference {
     private val webSearchService = SpringWebEndpointsSearcher.getInstance(element.project)
     private val module = lazy { ModuleUtilCore.findModuleForPsiElement(element) }
 
-    //FIXME: чревато, переработать через FindUsageProvider
     override fun isReferenceTo(element: PsiElement): Boolean {
         return false //Не даст переименовать
     }
