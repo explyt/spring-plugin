@@ -37,7 +37,8 @@ class SpringOpenApiYamlUrlEndpointReferenceProvider : PsiReferenceProvider() {
                 keyElement,
                 key,
                 null,
-                ElementManipulators.getValueTextRange(keyElement)
+                ElementManipulators.getValueTextRange(keyElement),
+                true
             )
         )
     }
@@ -54,7 +55,8 @@ class SpringOpenApiYamlUrlEndpointReferenceProvider : PsiReferenceProvider() {
                 keyElement,
                 url,
                 key.uppercase(),
-                ElementManipulators.getValueTextRange(keyElement)
+                ElementManipulators.getValueTextRange(keyElement),
+                true
             )
         )
     }

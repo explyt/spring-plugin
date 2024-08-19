@@ -38,5 +38,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @ComponentScan(basePackages = "com.?7.?")
 @ComponentScan({"com.2.4", "com.?.?", "com.2.6"})
 @ComponentScan(basePackages = {"com.2.4", "com.?.?", "com.2.6"})
+@ComponentScan("**.3")
+@SpringBootApplication("**.4")
 public class TestComponentScan {
 }

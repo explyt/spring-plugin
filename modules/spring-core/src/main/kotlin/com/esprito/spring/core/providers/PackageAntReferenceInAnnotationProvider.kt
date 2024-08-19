@@ -1,48 +1,29 @@
 package com.esprito.spring.core.providers
 
-import com.esprito.spring.core.references.InAnnotationPackageAntReference
-import com.intellij.openapi.util.TextRange
+import com.esprito.spring.core.references.PackageAntReferenceSet
 import com.intellij.psi.ElementManipulators
-import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiReference
-import com.intellij.psi.PsiReferenceProvider
+import com.intellij.psi.UastInjectionHostReferenceProvider
+import com.intellij.psi.search.ProjectScope
 import com.intellij.util.ProcessingContext
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.getParentOfType
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.sourceInjectionHost
 
-class PackageAntReferenceInAnnotationProvider(private val possibleAnnotations: Set<String>) : PsiReferenceProvider() {
-    override fun getReferencesByElement(
-        psiElement: PsiElement,
+class PackageAntReferenceInAnnotationProvider() : UastInjectionHostReferenceProvider() {
+    override fun getReferencesForInjectionHost(
+        uExpression: UExpression,
+        host: PsiLanguageInjectionHost,
         context: ProcessingContext
     ): Array<PsiReference> {
-        val uAnnotation = psiElement.toUElement()?.getParentOfType<UAnnotation>() ?: return PsiReference.EMPTY_ARRAY
-        if (!acceptPsiElement(uAnnotation)) return PsiReference.EMPTY_ARRAY
+        val psiElement = uExpression.sourceInjectionHost ?: return emptyArray()
 
-        val text = ElementManipulators.getValueText(psiElement)
-        val words = text.split(".")
-
-        val references = mutableListOf<PsiReference>()
-
-        var path = ""
-        for (word in words) {
-            path += word
-            references.add(
-                InAnnotationPackageAntReference(
-                    psiElement,
-                    TextRange(
-                        path.length - word.length,
-                        path.length
-                    ).shiftRight(ElementManipulators.getValueTextRange(psiElement).startOffset)
-                )
-            )
-            path += "."
-        }
-
-        return references.toTypedArray()
+        return PackageAntReferenceSet(
+            ElementManipulators.getValueText(psiElement),
+            psiElement,
+            ElementManipulators.getValueTextRange(psiElement).startOffset,
+            ProjectScope.getContentScope(psiElement.project)
+        ).psiReferences
     }
 
-    private fun acceptPsiElement(uAnnotation: UAnnotation): Boolean {
-        return possibleAnnotations.contains(uAnnotation.qualifiedName)
-    }
 }
