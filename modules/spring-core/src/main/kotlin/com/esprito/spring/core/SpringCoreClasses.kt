@@ -103,6 +103,11 @@ object SpringCoreClasses {
     const val ENTITY = "jakarta.persistence.Entity"
     const val ENTITY_X = "javax.persistence.Entity"
 
+    const val POST_CONSTRUCT_J = "jakarta.annotation.PostConstruct"
+    const val POST_CONSTRUCT_X = "javax.annotation.PostConstruct"
+    const val PRE_DESTROY_J = "jakarta.annotation.PreDestroy"
+    const val PRE_DESTROY_X = "javax.annotation.PreDestroy"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)

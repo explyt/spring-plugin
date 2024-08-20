@@ -212,7 +212,7 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    private fun isInSpringContext(uBeanElement: UElement, module: Module): Boolean {
+    fun isInSpringContext(uBeanElement: UElement, module: Module): Boolean {
         if (uBeanElement is UMethod && uBeanElement.returnType is PsiArrayType) {
             val deepArrayPsiClass = uBeanElement.returnType?.resolvedDeepPsiClass ?: return false
             return searchArrayComponentPsiClassesByBeanMethods(module)
