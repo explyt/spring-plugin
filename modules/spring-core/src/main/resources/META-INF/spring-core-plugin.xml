@@ -630,6 +630,21 @@
                 class="com.esprito.spring.core.action.UastModelTrackerInvalidateAction">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
         </action>
+
+        <action id="PostConstructGenerateAction" class="com.esprito.spring.core.action.PostConstructJavaGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PreDestroyGenerateAction" class="com.esprito.spring.core.action.PreDestroyJavaGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PostConstructGenerateActionKotlin"
+                class="com.esprito.spring.core.action.PostConstructKotlinGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PreDestroyKotlinGenerateAction"
+                class="com.esprito.spring.core.action.PreDestroyKotlinGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
     </actions>
 
     <projectListeners>
