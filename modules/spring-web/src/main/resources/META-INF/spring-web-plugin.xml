@@ -33,6 +33,14 @@
                                 order="first"
                                 implementationClass="com.esprito.spring.web.references.contributors.webClient.WebTestClientMethodCompletionContributor"/>
 
+        <completion.contributor language="yaml"
+                                order="first"
+                                implementationClass="com.esprito.spring.web.references.contributors.OpenApiYamlRefCompletionContributor"/>
+
+        <completion.contributor language="JSON"
+                                order="first"
+                                implementationClass="com.esprito.spring.web.references.contributors.OpenApiJsonRefCompletionContributor"/>
+
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
                          groupBundle="messages.SpringWebBundle"
@@ -118,6 +126,12 @@
 
         <psi.referenceContributor language="JSON"
                                   implementation="com.esprito.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor"/>
+
+        <psi.referenceContributor language="yaml"
+                                  implementation="com.esprito.spring.web.references.contributors.OpenApiYamlInnerReferenceContributor"/>
+
+        <psi.referenceContributor language="JSON"
+                                  implementation="com.esprito.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
 
     </extensions>
 
