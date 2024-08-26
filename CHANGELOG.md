@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Spring Web/MVC
+
+- Added openapi `$ref` navigation and completion for .yaml/.json formats
+
 ### Spring Core/Boot
 
 - Added reference to package from annotation parameters with names `basePackages`, `scanBasePackages`. AntPattern supported
