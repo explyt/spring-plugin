@@ -153,6 +153,7 @@ class SpringRunConfigurationDetectService(
             SpringBootLifecycleManager.getInstance(project)
             PropertiesComponent.getInstance().setValue("framework.suggestion.dismissed.spring.boot", true)
             PropertiesComponent.getInstance().setValue("promo.framework.suggestion.dismissed.spring.boot", true)
+            PropertiesComponent.getInstance().setValue("swagger.suggestion.dismissed", true)
 
             val runConfigurationsSettingsState = SpringToolRunConfigurationsSettingsState.getInstance()
 
