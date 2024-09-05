@@ -1,0 +1,53 @@
+name: "TESTS: Compilation error"
+description: "Compilation errors in code, generated with Explyt Tests plugin"
+title: ''
+labels: test-ce
+assignees: ''
+
+body:
+  - type: markdown
+    attributes:
+      value: ''
+
+  - type: textarea
+    id: message
+    attributes:
+      label: Error message
+      description: "Or the informative description if message text is not detailed enough.
+        |
+        | For example: 
+        |   - Cannot resolve method 'post(int)' on line 75
+        |   - Candidates for method call MockMvcRequestBuilders. post(3) are:
+        "
+      placeholder: ''
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: quickfix
+    attributes:
+      label: Error fix difficulty
+      description: ''
+      options:
+        - label: Can be fixed with Alt+Enter
+          required: false
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Test class code
+      description: "Show the origin of this error, please. 
+        | It can be a code snippet or an attached file with the generated code.
+        "
+      placeholder: ''
+    validations:
+      required: false
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Fixed test class code (if possible)
+      description: "Show how the error should be fixed, please, if possible."
+      placeholder: ''
+    validations:
+      required: false

@@ -1,0 +1,126 @@
+name: "TESTS: Plugin bug"
+description: "Any problem in Explyt Tests plugin and not in generated tests quality"
+title: ''
+labels: test-plugin-bug
+assignees: ''
+
+body:
+  - type: markdown
+    attributes:
+      value: ''
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Problem details
+      description: "Describe the problem you faced. For example: 
+        | - Test class was created outside the package source class is located in
+        | - Mock framework was not detected in test module
+        | - Slow operation on EDT error was thrown during test generation
+        "
+      placeholder: ''
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: "Please provide us as more details on how to reproduce this issue, as you can.
+        |
+        | If your project is open-sourced, show the name of your target (class, method, test class), please, and a link on GitHub. 
+        "
+      placeholder: ''
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots, etc.
+      description: "Any additional information that can help us to investigate the reported problem"
+      placeholder: ''
+    validations:
+      required: false
+
+  - type: textarea
+    id: plugin_version
+    attributes:
+      label: Plugin version
+      description: ''
+      placeholder: '1.2.0'
+    validations:
+      required: false
+
+  - type: dropdown
+    id: build_system
+    attributes:
+      label: Project build system
+      description: ''
+      options:
+        - Gradle
+        - Maven
+        - IntelliJ
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: llm_provider
+    attributes:
+      label: LLM provider
+      description: ''
+      options:
+        - Open AI (Default)
+        - DeepSeek
+        - Ollama
+        - Another
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: llm_model
+    attributes:
+      label: LLM model
+      description: ''
+      placeholder: 'Default'
+    validations:
+      required: false
+
+  - type: dropdown
+    id: test_framework
+    attributes:
+      label: Test framework
+      description: ''
+      options:
+        - Not important
+        - JUnit 5
+        - TestNG
+        - JUnit 4
+        - Kotlin-test
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mock_framework
+    attributes:
+      label: Mock framework
+      description: ''
+      options:
+        - Not important
+        - Mockito
+        - MockK
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: 'Any other information that can help us (context size, source language, etc.)'
+      placeholder: ''
+    validations:
+      required: false
