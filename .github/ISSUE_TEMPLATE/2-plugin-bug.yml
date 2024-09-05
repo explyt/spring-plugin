@@ -1,4 +1,4 @@
-name: "TESTS: Plugin bug"
+name: "Explyt Tests: Plugin bug"
 description: "Any problem in Explyt Tests plugin and not in generated tests quality"
 title: ''
 labels: test-plugin-bug

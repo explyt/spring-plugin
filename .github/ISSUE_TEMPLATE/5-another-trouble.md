@@ -1,5 +1,5 @@
 ---
-name: "TESTS: Another trouble"
+name: "Explyt Tests: Another trouble"
 about: "Report us a trouble with Explyt Tests not covered by other templates"
 title: ''
 labels: test-another-trouble

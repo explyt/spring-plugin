@@ -1,4 +1,4 @@
-name: "TESTS: Quality complaint"
+name: "Explyt Tests: Quality complaint"
 description: "Poor quality of generated with Explyt Tests code, related to its semantics"
 title: ''
 labels: test-quality

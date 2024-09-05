@@ -1,5 +1,5 @@
 ---
-name: "TESTS: UI/UX complaint"
+name: "Explyt Tests: UI/UX complaint"
 about: "Any ideas how to improve UI/UX of Explyt Tests"
 title: ''
 labels: test-ux

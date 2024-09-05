@@ -1,5 +1,5 @@
 ---
-name: "TESTS: Success story"
+name: "Explyt Tests: Success story"
 about: "Tell us about successful test generation with Explyt Tests"
 title: ''
 labels: test-success

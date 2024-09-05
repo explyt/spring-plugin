@@ -1,4 +1,4 @@
-name: "TESTS: Compilation error"
+name: "Explyt Tests: Compilation error"
 description: "Compilation errors in code, generated with Explyt Tests plugin"
 title: ''
 labels: test-ce
