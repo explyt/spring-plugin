@@ -1,24 +1,26 @@
 name: "Explyt Tests: Plugin bug"
 description: "Any problem in Explyt Tests plugin and not in generated tests quality"
-title: ''
+title: "[BUG] "
 labels: test-plugin-bug
-assignees: ''
+assignees: []
 
 body:
   - type: markdown
     attributes:
-      value: ''
+      value: |
+        Thanks for taking the time to fill out this bug report!
 
   - type: textarea
     id: details
     attributes:
       label: Problem details
-      description: "Describe the problem you faced. For example: 
-        | - Test class was created outside the package source class is located in
-        | - Mock framework was not detected in test module
-        | - Slow operation on EDT error was thrown during test generation
-        "
-      placeholder: ''
+      description: "Describe the problem you faced"
+      placeholder: |
+        Example:
+        - Test class was created outside the package source class is located in
+        - Mock framework was not detected in test module
+        - Slow operation on EDT error was thrown during test generation
+
     validations:
       required: false
 
@@ -26,20 +28,18 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: "Please provide us as more details on how to reproduce this issue, as you can.
-        |
-        | If your project is open-sourced, show the name of your target (class, method, test class), please, and a link on GitHub. 
-        "
-      placeholder: ''
+      description: "Please provide us as more details on how to reproduce this issue, as you can"
+      placeholder: |
+        If your project is open-sourced, show the name of your target (class, method, test class), please, and a link on GitHub.
     validations:
       required: false
 
   - type: textarea
     id: logs
     attributes:
-      label: Logs, screenshots, etc.
+      label: "Additional information"
       description: "Any additional information that can help us to investigate the reported problem"
-      placeholder: ''
+      placeholder: "Logs, screenshots, etc."
     validations:
       required: false
 
@@ -47,16 +47,16 @@ body:
     id: plugin_version
     attributes:
       label: Plugin version
-      description: ''
-      placeholder: '1.2.0'
+      description: "Type plugin version here"
+      placeholder: "Example: 1.2.0"
     validations:
       required: false
 
   - type: dropdown
     id: build_system
     attributes:
-      label: Project build system
-      description: ''
+      label: Build system
+      description: "Build system where project was built"
       options:
         - Gradle
         - Maven
@@ -69,7 +69,7 @@ body:
     id: llm_provider
     attributes:
       label: LLM provider
-      description: ''
+      description: "Choose LLM provider"
       options:
         - Open AI (Default)
         - DeepSeek
@@ -83,8 +83,8 @@ body:
     id: llm_model
     attributes:
       label: LLM model
-      description: ''
-      placeholder: 'Default'
+      description: "Type LLM model here"
+      placeholder: "Default"
     validations:
       required: false
 
@@ -92,7 +92,7 @@ body:
     id: test_framework
     attributes:
       label: Test framework
-      description: ''
+      description: "Choose test framework"
       options:
         - Not important
         - JUnit 5
@@ -107,7 +107,7 @@ body:
     id: mock_framework
     attributes:
       label: Mock framework
-      description: ''
+      description: "Choose Mock framework"
       options:
         - Not important
         - Mockito
@@ -120,7 +120,7 @@ body:
     id: additional_context
     attributes:
       label: Additional context
-      description: 'Any other information that can help us (context size, source language, etc.)'
-      placeholder: ''
+      description: 'Example: context size, source language, etc.'
+      placeholder: "Any other information that can help us"
     validations:
       required: false
