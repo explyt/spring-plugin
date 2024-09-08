@@ -1,19 +1,19 @@
 name: "Explyt Tests: Quality complaint"
 description: "Poor quality of generated with Explyt Tests code, related to its semantics"
-title: ''
+title: "[Quality complaint] "
 labels: test-quality
-assignees: ''
+assignees: []
 
 body:
   - type: markdown
     attributes:
-      value: ''
+      value: "Thank you for improving spring-plugin"
 
   - type: dropdown
     id: target_type
     attributes:
       label: Test generation target type
-      description: What did you generate tests for?
+      description: "What did you generate tests for?"
       options:
         - Method
         - Class
@@ -26,8 +26,8 @@ body:
     id: target_name
     attributes:
       label: Test generation target type
-      description: "If your project is open-sourced, show the name of your target (class, method, test class), please, and a link on GitHub."
-      placeholder: ''
+      description: "If your project is open-sourced, show the name of your target (class, method, test class), please, and a link to GitHub"
+      placeholder: "Provide test generation target type"
     validations:
       required: false
 
@@ -35,21 +35,21 @@ body:
     id: description
     attributes:
       label: Description
-      description: "Describe the problem you faced. For example: 
-        | - The field in test class is autowired and mocked at the same time
-        | - A mock statement is missed in generated tests, so they fail
-        | - Integration tests are generated, even though unit tests were expected
-        "
-      placeholder: ''
+      description: "Describe the problem you faced"
+      placeholder: |
+        Example: 
+        - The field in test class is autowired and mocked at the same time
+        - A mock statement is missed in generated tests, so they fail
+        - Integration tests are generated, even though unit tests were expected
     validations:
       required: false
 
   - type: textarea
     id: logs
     attributes:
-      label: Logs, screenshots, etc.
+      label: "Additional information"
       description: "Any additional information that can help us to investigate the reported problem"
-      placeholder: ''
+      placeholder: "Logs, screenshots, etc."
     validations:
       required: false
 
@@ -57,7 +57,7 @@ body:
     id: plugin_version
     attributes:
       label: Plugin version
-      description: ''
+      description: 'Provide plugin version'
       placeholder: '1.2.0'
     validations:
       required: false
@@ -65,8 +65,8 @@ body:
   - type: dropdown
     id: build_system
     attributes:
-      label: Project build system
-      description: ''
+      label: "Project build system"
+      description: "Choose build system"
       options:
         - Gradle
         - Maven
@@ -78,8 +78,8 @@ body:
   - type: dropdown
     id: llm_provider
     attributes:
-      label: LLM provider
-      description: ''
+      label: "LLM provider"
+      description: "Choose LLM provider"
       options:
         - Open AI (Default)
         - DeepSeek
@@ -92,17 +92,17 @@ body:
   - type: textarea
     id: llm_model
     attributes:
-      label: LLM model
-      description: ''
-      placeholder: 'Default'
+      label: "LLM model"
+      description: "Choose LLM model"
+      placeholder: "Default"
     validations:
       required: false
 
   - type: dropdown
     id: test_framework
     attributes:
-      label: Test framework
-      description: ''
+      label: "Test framework"
+      description: "Choose Test framework"
       options:
         - Not important
         - JUnit 5
@@ -116,8 +116,8 @@ body:
   - type: dropdown
     id: mock_framework
     attributes:
-      label: Mock framework
-      description: ''
+      label: "Mock framework"
+      description: "Choose mock framework"
       options:
         - Not important
         - Mockito
@@ -127,21 +127,19 @@ body:
       required: true
 
   - type: textarea
-    id: code
+    id: text-class-code
     attributes:
-      label: Test class code
-      description: "Show the origin of this error, please. 
-        | It can be a code snippet or an attached file with the generated code.
-        "
-      placeholder: ''
+      label: "Test class code"
+      description: "Provide the origin of this error, please"
+      placeholder: "It can be a code snippet or an attached file with the generated code"
     validations:
       required: false
 
   - type: textarea
-    id: code
+    id: fixed-text-class-code
     attributes:
-      label: Fixed test class code (if possible)
-      description: "Show how the error should be fixed, please, if possible."
-      placeholder: ''
+      label: "Fixed test class code (if possible)"
+      description: "Show how the error should be fixed, please, if possible"
+      placeholder: "Provide a fix"
     validations:
       required: false
