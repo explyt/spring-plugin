@@ -1,53 +1,49 @@
 name: "Explyt Tests: Compilation error"
 description: "Compilation errors in code, generated with Explyt Tests plugin"
-title: ''
+title: "[Compilation error] "
 labels: test-ce
-assignees: ''
+assignees: []
 
 body:
   - type: markdown
     attributes:
-      value: ''
+      value: "Thank you for reporting spring-plugin compilation error!"
 
   - type: textarea
     id: message
     attributes:
       label: Error message
-      description: "Or the informative description if message text is not detailed enough.
-        |
-        | For example: 
-        |   - Cannot resolve method 'post(int)' on line 75
-        |   - Candidates for method call MockMvcRequestBuilders. post(3) are:
-        "
-      placeholder: ''
+      description: "Provide error message or informative description if message text is not detailed enough"
+      placeholder: |
+        Example: 
+        - Cannot resolve method 'post(int)' on line 75
+        - Candidates for method call MockMvcRequestBuilders. post(3) are:
     validations:
       required: false
 
   - type: checkboxes
     id: quickfix
     attributes:
-      label: Error fix difficulty
-      description: ''
+      label: Error fix complexity
+      description: "Error fix complexity"
       options:
         - label: Can be fixed with Alt+Enter
           required: false
 
   - type: textarea
-    id: code
+    id: test-class-code
     attributes:
-      label: Test class code
-      description: "Show the origin of this error, please. 
-        | It can be a code snippet or an attached file with the generated code.
-        "
-      placeholder: ''
+      label: "Test class code"
+      description: "Show the origin of this error"
+      placeholder: "It can be a code snippet or an attached file with the generated code"
     validations:
       required: false
 
   - type: textarea
-    id: code
+    id: fixed-test-class-code
     attributes:
-      label: Fixed test class code (if possible)
-      description: "Show how the error should be fixed, please, if possible."
-      placeholder: ''
+      label: "Fixed test class code (if possible)"
+      description: "Show how the error might be fixed if possible."
+      placeholder: "Provide a fix"
     validations:
       required: false
