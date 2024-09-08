@@ -7,8 +7,7 @@ assignees: []
 body:
   - type: markdown
     attributes:
-      value: |
-        Thanks for taking the time to fill out this bug report!
+      value: "Thanks for reporting spring-plugin bug!"
 
   - type: textarea
     id: details
@@ -107,7 +106,7 @@ body:
     id: mock_framework
     attributes:
       label: Mock framework
-      description: "Choose Mock framework"
+      description: "Choose mock framework"
       options:
         - Not important
         - Mockito
