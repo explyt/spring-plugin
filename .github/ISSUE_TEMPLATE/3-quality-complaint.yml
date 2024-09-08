@@ -130,7 +130,7 @@ body:
     id: text-class-code
     attributes:
       label: "Test class code"
-      description: "Provide the origin of this error, please"
+      description: "Provide the origin of this error"
       placeholder: "It can be a code snippet or an attached file with the generated code"
     validations:
       required: false
@@ -139,7 +139,7 @@ body:
     id: fixed-text-class-code
     attributes:
       label: "Fixed test class code (if possible)"
-      description: "Show how the error should be fixed, please, if possible"
+      description: "Show how the error should be fixed if possible"
       placeholder: "Provide a fix"
     validations:
       required: false
