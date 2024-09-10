@@ -133,6 +133,20 @@
         <psi.referenceContributor language="JSON"
                                   implementation="com.esprito.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
 
+        <fileEditorProvider implementation="com.esprito.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
+
+        <httpRequestHandler implementation="com.esprito.spring.web.editor.openapi.OpenApiRequestHandler"/>
+        <httpRequestHandler implementation="com.esprito.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>
+
+        <registryKey
+                defaultValue="500000"
+                description="Timeout (ms) for proxied request"
+                key="openapi.ui.proxy.timeout"/>
+        <registryKey
+                defaultValue="true"
+                description="Enable internal proxy for requests run from OpenAPI UI editor"
+                key="openapi.ui.proxy.enable"/>
+
     </extensions>
 
     <projectListeners>

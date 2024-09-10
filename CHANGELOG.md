@@ -7,6 +7,7 @@
 
 ### Spring Web/MVC
 
+- Added openapi files preview (SwaggerUi panel)
 - Added openapi `$ref` navigation and completion for .yaml/.json formats
 
 ### Spring Core/Boot
