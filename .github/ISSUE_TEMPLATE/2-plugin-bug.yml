@@ -1,5 +1,5 @@
-name: "Explyt Tests: Plugin bug"
-description: "Any problem in Explyt Tests plugin and not in generated tests quality"
+name: "Plugin bug"
+description: "Any problem in Explyt Spring plugin and not in generated tests quality"
 title: "[BUG] "
 labels: test-plugin-bug
 assignees: []
@@ -76,7 +76,7 @@ body:
         - Another
       default: 0
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: llm_model
@@ -100,7 +100,7 @@ body:
         - Kotlin-test
       default: 0
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: mock_framework
@@ -113,7 +113,7 @@ body:
         - MockK
       default: 0
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: additional_context
