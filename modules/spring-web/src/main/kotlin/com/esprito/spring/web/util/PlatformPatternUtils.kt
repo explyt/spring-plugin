@@ -1,6 +1,6 @@
 package com.esprito.spring.web.util
 
-import com.esprito.spring.web.util.SpringWebUtil.OPEN_API
+import com.esprito.spring.web.editor.openapi.OpenApiUtils
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonProperty
 import com.intellij.json.psi.JsonPsiUtil
@@ -10,9 +10,7 @@ import com.intellij.patterns.PatternCondition
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.util.childrenOfType
 import com.intellij.util.ProcessingContext
-import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLScalar
@@ -37,9 +35,7 @@ object PlatformPatternUtils {
         return PlatformPatterns.psiFile(YAMLFile::class.java)
             .with(object : PatternCondition<YAMLFile>("isOpenApiYamlFile") {
                 override fun accepts(yamlFile: YAMLFile, context: ProcessingContext?): Boolean {
-                    return YAMLUtil.getTopLevelKeys(yamlFile).any {
-                        it.keyText == OPEN_API
-                    }
+                    return OpenApiUtils.isOpenApi(yamlFile)
                 }
             })
     }
@@ -70,8 +66,7 @@ object PlatformPatternUtils {
         return PlatformPatterns.psiFile(JsonFile::class.java)
             .with(object : PatternCondition<JsonFile>("isOpenApiJsonFile") {
                 override fun accepts(jsonFile: JsonFile, context: ProcessingContext?): Boolean {
-                    return jsonFile.topLevelValue?.childrenOfType<JsonProperty>()
-                        ?.any { it.name == OPEN_API } ?: false
+                    return OpenApiUtils.isOpenApi(jsonFile)
                 }
             })
     }
