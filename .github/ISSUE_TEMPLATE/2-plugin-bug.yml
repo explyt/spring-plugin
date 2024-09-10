@@ -16,9 +16,10 @@ body:
       description: "Describe the problem you faced"
       placeholder: |
         Example:
-        - Test class was created outside the package source class is located in
-        - Mock framework was not detected in test module
-        - Slow operation on EDT error was thrown during test generation
+        - Invalid inspection: false positive in class
+        - Inspection is not showing warning in true case on class and method
+        - Navigation gutter does not navigate to valid bean (show example)
+        - Slow operation on EDT error was thrown while using spring code
 
     validations:
       required: false
@@ -74,6 +75,7 @@ body:
         - DeepSeek
         - Ollama
         - Another
+        - Not important
       default: 0
     validations:
       required: false
