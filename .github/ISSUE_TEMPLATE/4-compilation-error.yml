@@ -1,5 +1,5 @@
-name: "Explyt Tests: Compilation error"
-description: "Compilation errors in code, generated with Explyt Tests plugin"
+name: "Test Generation: Compilation error"
+description: "Compilation errors in code, generated with Explyt plugin"
 title: "[Compilation error] "
 labels: test-ce
 assignees: []
