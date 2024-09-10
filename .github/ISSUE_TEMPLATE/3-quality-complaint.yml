@@ -1,5 +1,5 @@
-name: "Explyt Tests: Quality complaint"
-description: "Poor quality of generated with Explyt Tests code, related to its semantics"
+name: "Test Generation: Quality complaint"
+description: "Poor quality of generated with Explyt Spring code, related to its semantics"
 title: "[Quality complaint] "
 labels: test-quality
 assignees: []
