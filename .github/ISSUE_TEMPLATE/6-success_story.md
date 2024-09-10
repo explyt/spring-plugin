@@ -1,6 +1,6 @@
 ---
-name: "Explyt Tests: Success story"
-about: "Tell us about successful test generation with Explyt Tests"
+name: "Test Generation: Success story"
+about: "Tell us about successful test generation with Explyt plugin"
 title: ''
 labels: test-success
 assignees: ''
