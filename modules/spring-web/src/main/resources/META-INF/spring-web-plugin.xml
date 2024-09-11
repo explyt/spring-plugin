@@ -112,6 +112,11 @@
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
 
+        <runLineMarkerContributor language="yaml"
+                                  implementationClass="com.esprito.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
+        <runLineMarkerContributor language="JSON"
+                                  implementationClass="com.esprito.spring.web.providers.JsonRunEndpointLineMarkerProvider"/>
+
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
         <psi.referenceContributor language="UAST"
@@ -154,8 +159,4 @@
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </projectListeners>
 
-
-    <actions>
-
-    </actions>
 </idea-plugin>
