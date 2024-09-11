@@ -7,7 +7,9 @@
 
 ### Spring Web/MVC
 
-- Added openapi files preview (SwaggerUi panel)
+- Supported dark theme for SwaggerUI panel
+- Added navigation from openapi http request to preview (SwaggerUI panel)
+- Added openapi files preview (SwaggerUI panel)
 - Added openapi `$ref` navigation and completion for .yaml/.json formats
 
 ### Spring Core/Boot

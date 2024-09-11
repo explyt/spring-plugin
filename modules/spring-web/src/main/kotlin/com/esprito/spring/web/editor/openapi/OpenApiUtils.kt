@@ -1,8 +1,12 @@
 package com.esprito.spring.web.editor.openapi
 
 import com.esprito.spring.web.util.SpringWebUtil.OPEN_API
+import com.intellij.icons.AllIcons
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonProperty
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -63,6 +67,16 @@ object OpenApiUtils {
     fun proxyUrl(): String =
         "http://localhost:${BuiltInServerManager.getInstance().port}$OPENAPI_INTERNAL_CORS"
 
+    fun createPreviewAction(tag: String, operationId: String): AnAction {
+        return object : AnAction({ "Open in UI" }, AllIcons.RunConfigurations.TestState.Run) {
+            override fun actionPerformed(e: AnActionEvent) {
+                val editor = PlatformDataKeys.FILE_EDITOR.getData(e.dataContext)
+                    ?.let { OpenApiUIEditor.from(it) } ?: return
+                editor.showPreviewFor(tag, operationId)
+            }
+
+        }
+    }
 
     const val OPENAPI_INTERNAL_CORS = "/__explyt-openapi_internal-cors"
     const val OPENAPI_ORIGINAL_URL = "__explyt-openapi_original-url"

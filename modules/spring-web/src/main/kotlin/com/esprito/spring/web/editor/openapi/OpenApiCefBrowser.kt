@@ -12,7 +12,7 @@ import java.beans.PropertyChangeListener
 import java.util.*
 
 class OpenApiCefBrowser(
-    private val file: VirtualFile
+    file: VirtualFile
 ) : UserDataHolderBase(), FileEditor {
 
     private val specKey = UUID.randomUUID()
@@ -29,12 +29,12 @@ class OpenApiCefBrowser(
 
         jbCefClient.addRequestHandler(OpenApiCefRequestHandlerAdapter(), browser.cefBrowser)
 
+        OpenApiUtils.cacheFile(specKey, file)
         loadHtml()
     }
 
-    private fun loadHtml() {
-        OpenApiUtils.cacheFile(specKey, file)
-        val path = OpenApiUtils.resourceUrl(specKey, "index.html")
+    fun loadHtml(anchor: String = "") {
+        val path = OpenApiUtils.resourceUrl(specKey, "index.html$anchor")
 
         runAsync {
             browser.loadURL(path)

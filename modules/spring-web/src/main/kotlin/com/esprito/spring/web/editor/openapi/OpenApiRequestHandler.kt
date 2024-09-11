@@ -4,6 +4,7 @@ import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.ui.JBColor
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.EmptyHttpHeaders
 import io.netty.handler.codec.http.FullHttpRequest
@@ -26,13 +27,17 @@ class OpenApiRequestHandler : HttpRequestHandler() {
         resourceFile.charset = Charsets.UTF_8
         val content = resourceFile.contentsToByteArray().decodeToString()
 
+        val themeFolder = if (JBColor.isBright()) "light" else "dark"
+
         val toSend =
             if (resource == "index.html") {
                 val resourceUrl = OpenApiUtils.resourceUrl(key)
-                content.replace("{RESOURCE_URL}", resourceUrl)
+                content
+                    .replace("{RESOURCE_URL}", resourceUrl)
             } else {
                 content
             }
+                .replace("{THEME_FOLDER}", themeFolder)
 
         sendData(
             toSend.toByteArray(Charsets.UTF_8),
