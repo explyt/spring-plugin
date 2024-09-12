@@ -26,6 +26,7 @@ evaluationDependsOn(":spring-messaging")
 evaluationDependsOn(":spring-aop")
 evaluationDependsOn(":jpa")
 evaluationDependsOn(":test-framework")
+evaluationDependsOn(":llm-integration")
 
 fun Project.optProperty(prop: String): String? {
     if (this.hasProperty(prop)) {
@@ -65,6 +66,7 @@ val buildArchiveName = "${springPluginName}-${distFilePostfix}.zip"
 val launchUltimate = rootProject.hasProperty("launchUltimate")
 //Add "-Pobfuscate" to obfuscate
 val obfuscate = rootProject.hasProperty("obfuscate")
+val includeLlmIntegrationModule = false
 
 val baseProject = project(":base")
 val springCoreProject = project(":spring-core")
@@ -79,10 +81,18 @@ val springMessagingProject = project(":spring-messaging")
 val springAopProject = project(":spring-aop")
 val jpaProject = project(":jpa")
 val springBootstrapModule = project(":spring-bootstrap")
+val llmIntegrationProject = project(":llm-integration")
 val testFramework = project(":test-framework")
 
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.github.com/explyt/ai-backend")
+        credentials {
+            username = "EgorkaKulikov"
+            password = "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"
+        }
+    }
 }
 
 dependencies {
@@ -98,6 +108,9 @@ dependencies {
     implementation(springMessagingProject)
     implementation(springAopProject)
     implementation(jpaProject)
+    if (includeLlmIntegrationModule) {
+        implementation(llmIntegrationProject)
+    }
     testImplementation(testFramework)
 }
 
@@ -120,6 +133,9 @@ intellij {
     pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
     pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
     pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
+    if (includeLlmIntegrationModule) {
+        pluginDependencies += llmIntegrationProject.ext["intellijPlugins"] as Iterable<String>
+    }
     plugins.set(pluginDependencies)
     downloadSources.set(true)
     if (launchUltimate) {
@@ -325,6 +341,7 @@ tasks {
             springIntegrationProject.tasks.test,
             springMessagingProject.tasks.test,
             springAopProject.tasks.test,
+            llmIntegrationProject.tasks.test,
             jpaProject.tasks.test
         )
     }

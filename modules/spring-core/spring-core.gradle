@@ -5,10 +5,10 @@ plugins {
 }
 
 ext.intellijPlugins = [
-    "com.intellij.java",
-    "com.intellij.properties",
-    "org.jetbrains.plugins.yaml",
-    "org.jetbrains.kotlin"
+        "com.intellij.java",
+        "com.intellij.properties",
+        "org.jetbrains.plugins.yaml",
+        "org.jetbrains.kotlin"
 ]
 
 evaluationDependsOn(":base")
