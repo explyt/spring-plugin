@@ -28,6 +28,7 @@ includeProject("spring-bootstrap", "modules/spring-bootstrap", true, true)
 includeProject("jpa", "modules/jpa")
 includeProject("test-framework", "modules/test-framework")
 includeProject("spring-gradle", "modules/spring-gradle")
+includeProject("llm-integration", "modules/llm-integration")
 
 fun includeProject(name: String, path: String, changeBuildFileName: Boolean = true, ktScript: Boolean = false) {
     include(":$name")

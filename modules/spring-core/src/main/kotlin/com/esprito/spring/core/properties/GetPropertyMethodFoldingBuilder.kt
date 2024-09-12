@@ -30,7 +30,7 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
         val descriptors = mutableListOf<FoldingDescriptor>()
         val uRoot = root.toUElement() ?: return emptyArray()
 
-        uRoot.accept(object : AbstractUastVisitor() {
+        val visitor = object : AbstractUastVisitor() {
             override fun visitLiteralExpression(node: ULiteralExpression): Boolean {
                 val callExpression = node.uastParent as? UCallExpression ?: return false
                 if (callExpression.methodIdentifier?.name !in propertyMethodNames) return false
@@ -55,7 +55,11 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
                 }
                 return super.visitLiteralExpression(node)
             }
-        })
+        }
+        try {
+            uRoot.accept(visitor)
+        } catch (_: Exception) {
+        }
 
         return descriptors.toTypedArray()
     }

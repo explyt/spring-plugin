@@ -6,7 +6,6 @@ import com.esprito.spring.core.runconfiguration.clients.EspritoLicenseClient
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.observable.properties.PropertyGraph
-import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.ui.GroupHeaderSeparator
 import com.intellij.ui.JBColor
@@ -16,7 +15,7 @@ import java.awt.*
 import javax.swing.*
 
 
-class SpringToolRunConfigurationConfigurable : Configurable, SearchableConfigurable {
+class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     private val settingsState = SpringToolRunConfigurationsSettingsState.getInstance()
 
     private val propertyGraph = PropertyGraph()
