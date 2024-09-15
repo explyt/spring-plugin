@@ -14,8 +14,8 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
     }
 
     fun showPreviewFor(tag: String, operationId: String) {
-        if (layout == Layout.SHOW_EDITOR) {
-            layout = DEFAULT_LAYOUT
+        if (getLayout() == Layout.SHOW_EDITOR) {
+            setLayout(layout = DEFAULT_LAYOUT)
         }
 
         val browser = previewEditor as? OpenApiCefBrowser ?: return

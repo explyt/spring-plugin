@@ -57,6 +57,7 @@ class SpringYamlCompletionContributor : CompletionContributor() {
                 val property = it.copy(inLineYaml = positionText.contains("."))
                 result.withPrefixMatcher(positionText).addElement(createLookupElement(property, configFullName))
             }
+            result.stopHere()
         }
 
         private fun createLookupElement(

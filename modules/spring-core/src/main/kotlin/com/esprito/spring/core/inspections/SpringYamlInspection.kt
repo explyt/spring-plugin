@@ -12,7 +12,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import org.jetbrains.annotations.Nls
 import org.jetbrains.yaml.YAMLBundle
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -50,7 +49,7 @@ class SpringYamlInspection : SpringBasePropertyInspection() {
  * Copied from org.jetbrains.yaml.inspections.YAMLDuplicatedKeysInspection
  */
 private class RemoveDuplicatedKeyQuickFix : LocalQuickFix {
-    override fun getFamilyName(): @Nls String {
+    override fun getFamilyName(): String {
         return YAMLBundle.message("YAMLDuplicatedKeysInspection.remove.key.quickfix.name")
     }
 

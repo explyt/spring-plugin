@@ -56,7 +56,6 @@
                                 implementationClass="com.esprito.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
 
         <completion.contributor language="yaml"
-                                id="com.esprito.spring.core.yamlCompletionContributor"
                                 implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
         <completion.contributor language="UAST"
