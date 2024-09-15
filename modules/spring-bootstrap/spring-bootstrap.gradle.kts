@@ -1,7 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.date
-import org.jetbrains.intellij.tasks.PrepareSandboxTask
-import org.jetbrains.intellij.tasks.RunPluginVerifierTask
+import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import proguard.gradle.ProGuardTask
 import java.net.URI
 import java.nio.file.FileSystems
@@ -9,7 +8,8 @@ import java.nio.file.Files
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.intellij")
+    id("org.jetbrains.intellij.platform")
+    //id("org.jetbrains.intellij.platform.migration")
     id("org.jetbrains.changelog")
 }
 
@@ -50,8 +50,8 @@ version = fun(): String {
         }
         return bv
     }
-    val ideaPlatformVersion = "${ext["sinceVersion"]}".substring(0, 3)
-    return "${ideaPlatformVersion}.${ext["pluginVersion"]}.${ext["snapshotVersion"]}"
+    val ideaPlatformVersion = "${rootProject.ext["sinceVersion"]}".substring(0, 3)
+    return "${ideaPlatformVersion}.${rootProject.ext["pluginVersion"]}.${ext["snapshotVersion"]}"
     //return "2024.${ideaPlatformVersion}.${ext["snapshotVersion"]}"
 }.invoke()
 
@@ -84,6 +84,7 @@ val springBootstrapModule = project(":spring-bootstrap")
 val llmIntegrationProject = project(":llm-integration")
 val testFramework = project(":test-framework")
 
+
 repositories {
     mavenCentral()
     maven {
@@ -93,6 +94,14 @@ repositories {
             password = "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"
         }
     }
+    intellijPlatform {
+        defaultRepositories()
+        localPlatformArtifacts()
+    }
+}
+
+afterEvaluate {
+    println("evaluated")
 }
 
 dependencies {
@@ -112,36 +121,115 @@ dependencies {
         implementation(llmIntegrationProject)
     }
     testImplementation(testFramework)
+    testImplementation("junit:junit:4.13.2")
+
+    intellijPlatform {
+        instrumentationTools()
+        zipSigner()
+
+        localPlugin(project(":base"))
+        localPlugin(project(":spring-core"))
+        localPlugin(project(":spring-gradle"))
+        localPlugin(project(":spring-data"))
+        localPlugin(project(":spring-security"))
+        localPlugin(project(":spring-web"))
+        localPlugin(project(":spring-cloud"))
+        localPlugin(project(":spring-initializr"))
+        localPlugin(project(":spring-integration"))
+        localPlugin(project(":spring-messaging"))
+        localPlugin(project(":spring-aop"))
+        localPlugin(project(":jpa"))
+        if (includeLlmIntegrationModule) {
+            localPlugin(project(":llm-integration"))
+        }
+
+        val pluginDependencies = mutableSetOf<String>()
+        pluginDependencies += baseProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springCoreProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springGradleProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springDataProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springSecurityProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springWebProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springCloudProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springInitializrProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springIntegrationProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
+        if (includeLlmIntegrationModule) {
+            pluginDependencies += llmIntegrationProject.ext["intellijPlugins"] as Iterable<String>
+        }
+
+        bundledPlugins(pluginDependencies.toList())
+
+        create("IC", rootProject.ext["defaultIdeaVersion"] as String)
+//        if (launchUltimate) {
+//            create("IC", rootProject.ext["defaultIdeaVersion"] as String)
+//        } else {
+//            create("IU", rootProject.ext["defaultIdeaVersion"] as String)
+//        }
+    }
 }
+
+
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 @Suppress("UNCHECKED_CAST")
-intellij {
+intellijPlatform {
     //version = project.ext["defaultIdeaVersion"]
-    pluginName.set(springPluginName)
-    version.set(rootProject.ext["defaultIdeaVersion"] as String)
-    val pluginDependencies = mutableSetOf<String>()
-    pluginDependencies += baseProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springCoreProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springGradleProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springDataProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springSecurityProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springWebProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springCloudProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springInitializrProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springIntegrationProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
-    if (includeLlmIntegrationModule) {
-        pluginDependencies += llmIntegrationProject.ext["intellijPlugins"] as Iterable<String>
+    pluginConfiguration {
+        name = springPluginName
+        version = rootProject.ext["defaultIdeaVersion"] as String
+        version.set(springBootstrapModule.version as String)
+        //changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
+        description = rootProject.file("README.md").readText()
+            .let { org.jetbrains.changelog.markdownToHTML(it) }
+        changeNotes.set(provider {
+            changelog.renderItem(
+                changelog
+                    .getUnreleased()
+                    .withHeader(false)
+                    .withEmptySections(false),
+                Changelog.OutputType.HTML
+            )
+        })
+        ideaVersion {
+            sinceBuild.set(rootProject.ext["sinceVersion"] as String)
+            //        untilBuild.set(optProperty("setUntilVersion") ?: "")
+            untilBuild.set(rootProject.ext["untilVersion"] as String)
+        }
     }
-    plugins.set(pluginDependencies)
-    downloadSources.set(true)
-    if (launchUltimate) {
-        type.set("IU")
+
+    instrumentCode = false
+    buildSearchableOptions = false
+
+    pluginVerification {
+        ides {
+            recommended()
+        }
+        //ignoreWarnings = true
+        //        failureLevel.set(listOf(
+        //            RunPluginVerifierTask.FailureLevel.INVALID_PLUGIN,
+        //            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+        //            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_WARNINGS
+        //        ))
+
+        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
+        //        distributionFile.set(buildArchivePath.get().asFile)
+
     }
-    instrumentCode.set(false)
+    // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
+    signing {
+        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
+        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
+        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
+    }
+    publishing {
+        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
+        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
+        //distributionFile.set(buildArchivePath.get().asFile)
+        hidden = true
+    }
 }
 
 val sandboxLibPath = layout.buildDirectory.dir("idea-sandbox/plugins/${springPluginName}/lib")
@@ -178,9 +266,10 @@ fun removeFromJar(pathToJar: String, fileToRemove: String) {
 
 val extractJar by tasks.registering(Copy::class) {
     val prepareSandbox = tasks.named<PrepareSandboxTask>("prepareSandbox");
-    val libDir = prepareSandbox.map { it.defaultDestinationDir }.flatMap {
-        objects.directoryProperty().fileProvider(it)
-    }
+    val libDir = prepareSandbox.flatMap { it.defaultDestinationDirectory }
+//    .flatMap {
+//        objects.directoryProperty().fileProvider(it)
+//    }
     val outputDir = extractedDirPath
     doFirst {
         val dir = outputDir.get().asFile
@@ -286,27 +375,6 @@ changelog {
 }
 
 tasks {
-    buildSearchableOptions {
-        enabled = false
-    }
-
-    patchPluginXml {
-        version.set(springBootstrapModule.version as String)
-        sinceBuild.set(ext["sinceVersion"] as String)
-        //        untilBuild.set(optProperty("setUntilVersion") ?: "")
-        untilBuild.set(ext["untilVersion"] as String)
-        //changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
-        changeNotes.set(provider {
-            changelog.renderItem(
-                changelog
-                    .getUnreleased()
-                    .withHeader(false)
-                    .withEmptySections(false),
-                Changelog.OutputType.HTML
-            )
-        })
-
-    }
 
     runIde {
         // Customize in ~/.gradle/gradle.properties:
@@ -315,18 +383,6 @@ tasks {
             val xmx = rootProject.property("runIdeXmx")
             jvmArgs("-Xmx$xmx")
         }
-    }
-
-    runPluginVerifier {
-        ideVersions.set(listOf(ext["pluginVerifierIdeVersion"] as String))
-        failureLevel.set(listOf(
-            RunPluginVerifierTask.FailureLevel.INVALID_PLUGIN,
-            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_PROBLEMS,
-            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_WARNINGS
-        ))
-
-        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
-        distributionFile.set(buildArchivePath.get().asFile)
     }
 
     test {
@@ -344,20 +400,6 @@ tasks {
             llmIntegrationProject.tasks.test,
             jpaProject.tasks.test
         )
-    }
-
-    // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
-    signPlugin {
-        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
-        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
-        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
-    }
-
-    publishPlugin {
-        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
-        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
-        distributionFile.set(buildArchivePath.get().asFile)
-        hidden = true
     }
 
     //TODO

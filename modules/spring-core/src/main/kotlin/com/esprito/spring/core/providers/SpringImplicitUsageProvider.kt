@@ -24,6 +24,10 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
         if (element is PsiMethod) {
             if (element.isConstructor) {
                 return element.isMetaAnnotatedBy(IMPLICIT_CONSTRUCTOR_ANNOTATIONS)
+                        || element.containingClass?.let {
+                            it.isMetaAnnotatedBy(IMPLICIT_CLASS_ANNOTATIONS)
+                            && it.constructors.size == 1
+                        } ?: false
             }
             if (isDynamicPropertySource(element)) {
                 return true

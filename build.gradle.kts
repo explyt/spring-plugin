@@ -5,6 +5,7 @@ buildscript {
         mavenLocal()
         mavenCentral()
     }
+
     dependencies {
         classpath("com.guardsquare:proguard-gradle:7.5.0")
     }
@@ -12,14 +13,15 @@ buildscript {
 
 plugins {
     java
-    id("org.jetbrains.intellij") apply false
+    id("org.jetbrains.intellij.platform") apply false
+    id("org.jetbrains.intellij.platform.module") apply false
     id("org.jetbrains.changelog") version "2.2.1" apply false
     kotlin("jvm") apply false
 }
 
 subprojects {
     apply(plugin = "java")
-    apply(plugin = "org.jetbrains.intellij")
+    apply(plugin = "org.jetbrains.intellij.platform")
 
     repositories {
         mavenCentral()
@@ -28,7 +30,7 @@ subprojects {
     // This syntax is used to avoid duplicated in compileKotlin and compileTestKotlin settings
     //noinspection GroovyAssignabilityCheck
 
-    java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+    java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
     tasks.withType<KotlinJvmCompile>().configureEach {
         kotlinOptions {
@@ -45,6 +47,7 @@ subprojects {
     }
 
 }
+
 dependencies {
 }
 repositories {

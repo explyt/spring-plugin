@@ -9,7 +9,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTypesUtil
-import com.intellij.uast.UastMetaLanguage
 import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.uast.*
 
@@ -31,7 +30,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
     }
 
     override fun isAvailable(file: PsiFile): Boolean {
-        return UastMetaLanguage.getRegisteredLanguages().contains(file.language)
+        return UastLanguagePlugin.byLanguage(file.language) != null
     }
 
     override fun rootArrayName(): String = "hints"

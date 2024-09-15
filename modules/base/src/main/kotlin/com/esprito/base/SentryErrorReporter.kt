@@ -30,7 +30,7 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
             options.isDebug = true
             options.tags += "ide.build" to ApplicationInfo.getInstance().build.asString()
             if (pluginDescriptor is IdeaPluginDescriptor) {
-                options.tags += "ide.build" to (pluginDescriptor as IdeaPluginDescriptor).version
+                options.tags += "plugin.build" to (pluginDescriptor as IdeaPluginDescriptor).version
             }
         }
     }
@@ -41,7 +41,7 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
         val context = DataManager.getInstance().getDataContext(parentComponent)
         val project: Project? = CommonDataKeys.PROJECT.getData(context)
 
-        object : Task.Backgroundable(project, "Sending Error Report") {
+        object : Task.Backgroundable(project, BaseBundle.message("esprito.base.report.background")) {
             override fun run(indicator: ProgressIndicator) {
                 for (ideaEvent in events) {
                     val event = SentryEvent()

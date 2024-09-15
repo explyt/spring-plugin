@@ -13,7 +13,7 @@ private const val TEST_DATA_PATH = "testdata/"
 @TestDataPath("\$CONTENT_ROOT/../../$TEST_DATA_PATH")
 abstract class EspritoBaseLightTestCase : LightJavaCodeInsightFixtureTestCase() {
 
-    open val languageLevel = LanguageLevel.JDK_17
+    open val languageLevel = LanguageLevel.JDK_21
 
     open val libraries: Array<TestLibrary> = arrayOf()
 
