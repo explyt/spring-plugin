@@ -622,6 +622,8 @@
             <language>UAST</language>
             <className>com.esprito.spring.core.intentions.CreateConfigurationMetaDescriptionIntention</className>
         </intentionAction>
+
+        <iconProvider implementation="com.esprito.spring.core.providers.SpringPropertyFileIconProvider"/>
     </extensions>
 
     <actions>
