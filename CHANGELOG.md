@@ -14,6 +14,7 @@
 
 ### Spring Core/Boot
 
+- Added icon for configuration file for Spring Boot application
 - Added reference to package from annotation parameters with names `basePackages`, `scanBasePackages`. AntPattern supported
 - Changed behaviour of `Can't find package` inspection. Now it shows inspection till first unknown segment. AntPattern supported
 - Added linemarker from property to library hint
