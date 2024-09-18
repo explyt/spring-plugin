@@ -18,7 +18,13 @@
 
     </extensions>
 
+    <extensions defaultExtensionNs="JavaScript.JsonSchema">
+        <ProviderFactory implementation="com.esprito.spring.web.providers.OpenApiJsonSchemaFileProviderFactory"/>
+    </extensions>
+
     <extensions defaultExtensionNs="com.intellij">
+
+        <iconProvider implementation="com.esprito.spring.web.providers.OpenApiFileIconProvider"/>
 
         <psi.referenceContributor language="UAST"
                                   implementation="com.esprito.spring.web.references.contributors.UastRequestMappingReferenceContributor"/>

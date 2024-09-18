@@ -7,6 +7,7 @@
 
 ### Spring Web/MVC
 
+- Automatically apply OpenAPI JSON schema (Specification 3.0.0/3.1.0)
 - Supported dark theme for SwaggerUI panel
 - Added navigation from openapi http request to preview (SwaggerUI panel)
 - Added openapi files preview (SwaggerUI panel)
