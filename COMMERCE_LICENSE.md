@@ -1,12 +1,12 @@
 Last updated: June 10, 2024
 
-License Agreement of Esprito Spring Tools
+License Agreement of Spring Explyt Plugin
 
 ## IMPORTANT
 
 Be sure to carefully read and understand all of the rights, obligations and restrictions set forth in this License Agreement (also “License”, also “Agreement”).
 
-BY ACCEPTING THE TERMS OF THIS LICENSE AGREEMENT THROUGH ACTIVATING YOUR LICENSE KEY WITH TELEGRAM BOT AT THE LINK \[<https://t.me/esprito_plugin_license_bot>], AND INSTALLING OR USING THE SOFTWARE (ESPRITO SPRING TOOLS) FOR PURPOSES DESCRIBED IN THIS LICENSE AGREEMENT, THE ENTITY YOU REPRESENT (HEREINAFTER REFERRED TO AS "LICENSEE") AGREES TO BE BOUND BY THE TERMS OF THIS AGREEMENT. IF YOU DO NOT ACCEPT THESE TERMS, DO NOT USE, INSTALL, OR DOWNLOAD THE ESPRITO SPRING TOOLS.
+BY ACCEPTING THE TERMS OF THIS LICENSE AGREEMENT THROUGH ACTIVATING YOUR LICENSE KEY WITH TELEGRAM BOT AT THE LINK \[<https://t.me/esprito_plugin_license_bot>], AND INSTALLING OR USING THE SOFTWARE (SPRING EXPLYT PLUGIN) FOR PURPOSES DESCRIBED IN THIS LICENSE AGREEMENT, THE ENTITY YOU REPRESENT (HEREINAFTER REFERRED TO AS "LICENSEE") AGREES TO BE BOUND BY THE TERMS OF THIS AGREEMENT. IF YOU DO NOT ACCEPT THESE TERMS, DO NOT USE, INSTALL, OR DOWNLOAD THE SPRING EXPLYT PLUGIN.
 
 ADDITIONALLY, YOU AGREE THAT YOU ARE DULY AUTHORIZED TO ACCEPT THIS LICENSE ON BEHALF OF YOUR COMPANY. IF YOU ARE NOT SO AUTHORIZED, YOU SHALL NOT ACCEPT THIS LICENSE.
 
@@ -14,15 +14,15 @@ ADDITIONALLY, LICENSEE AND ESPRITO TECH WAIVE ANY RIGHT TO PARTICIPATE IN A CLAS
 
 To accept this license agreement, you are required to use a corporate email address. The Licensor (Esprito Tech) identifies the actual user (Your company) based on the email domain. The Licensor reserves the right to deny or terminate this License and Subscription at any point if it determines that you have used inaccurate email data, and/or if the website corresponding to the company domain does not function or lacks a verifiable actual company information provided on the site.
 
-## PLEASE REMEMBER THAT YOU CAN USE ESPRITO SPRING TOOLS FOR NON-COMMERCIAL PURPOSES, SUBJECT TO THE TERMS OF THIS EULA (<https://github.com/esprito-plugin/plugin/blob/main/LICENSE.md>)
+## PLEASE REMEMBER THAT YOU CAN USE SPRING EXPLYT PLUGIN FOR NON-COMMERCIAL PURPOSES, SUBJECT TO THE TERMS OF THIS EULA (<https://github.com/explyt/spring-plugin/blob/main/LICENSE.md>)
 
 ## DEFINITIONS
 
 ### Developer ("Licensor")
 
-Esprito Tech QFZ LLC, copyright owner and developer of the Esprito Spring Tools, with a principal place of business at (Office 62, Ras Bufontas Admin Building Building 43, Street 517, Zone 49 Ras Bufontas Free Zone, Doha, The State of Qatar), company incorporated under the laws of The State of Qatar License No. FZA 578.
+Esprito Tech QFZ LLC, copyright owner and developer of the Spring Explyt Plugin, with a principal place of business at (Office 62, Ras Bufontas Admin Building Building 43, Street 517, Zone 49 Ras Bufontas Free Zone, Doha, The State of Qatar), company incorporated under the laws of The State of Qatar License No. FZA 578.
 
-### Esprito Spring Tools ("Plugin")
+### Spring Explyt Plugin ("Plugin")
 
 A Plugin developed by Esprito Tech that is designed to enhance the coding and development experience within JetBrains Products, specifically for Spring Framework, Spring Boot, Spring Data JPA, Spring Security, Spring Web, among others. This Plugin provides functionalities which are explicitly intended to aid the development process by generating code and facilitating Spring technology implementations.
 
@@ -60,7 +60,7 @@ The suite of software programs and services offered by JetBrains, which includes
 
 ### IntelliJ IDEA
 
-The IntelliJ IDEA is a JetBrains-owned IDE that supports the development of software across various programming languages, including the functionality to extend its capabilities via Plugins such as Esprito Spring Tools.
+The IntelliJ IDEA is a JetBrains-owned IDE that supports the development of software across various programming languages, including the functionality to extend its capabilities via Plugins such as Spring Explyt Plugin.
 
 ### User(s)
 
@@ -80,7 +80,7 @@ A certificate issued under the License Key, allowing individual users within the
 
 ### Site
 
-The official online presence of Esprito Spring Tools, which can be accessed via \[<https://explyt.com>].
+The official online presence of Spring Explyt Plugin, which can be accessed via \[<https://explyt.com>].
 
 ## AGREEMENT COVERAGE
 
@@ -114,7 +114,7 @@ Each User within the Licensee’s organization must have their own active User C
 
 ### Usage Rights
 
-You are granted the right to employ the Plugin in congruence with the technical documentation provided on the Site or the Esprito Spring Tools page on the Plugin Marketplace, over the duration specified by Esprito Tech in any jurisdiction where JetBrains Products are legally accessible.
+You are granted the right to employ the Plugin in congruence with the technical documentation provided on the Site or the Spring Explyt Plugin page on the Plugin Marketplace, over the duration specified by Esprito Tech in any jurisdiction where JetBrains Products are legally accessible.
 
 ### Acceptance
 
@@ -165,7 +165,7 @@ THE DEVELOPER SHALL NOT BE LIABLE TO YOU FOR ANY LOST PROFITS OR CONSEQUENTIAL D
 
 ### Inquiries
 
-For any additional commercial usage of Esprito Spring Tools, not covered by this License Agreement, a formal request must be submitted to Esprito Tech sales team ([sales@explyt.com](mailto:sales@explyt.com)) for the acquisition of appropriate licenses.
+For any additional commercial usage of Spring Explyt Plugin, not covered by this License Agreement, a formal request must be submitted to Esprito Tech sales team ([sales@explyt.com](mailto:sales@explyt.com)) for the acquisition of appropriate licenses.
 
 ### Termination
 
