@@ -1,6 +1,6 @@
 Last updated: June 10, 2024
 
-End User License Agreement (EULA) of Spring Exlyt Plugin
+End User License Agreement (EULA) of Spring Explyt Plugin
 
 ## IMPORTANT!
 Be sure to carefully read and understand all of the rights, obligations and restrictions set forth in this EULA. 
@@ -11,9 +11,9 @@ ADDITIONALY YOU AND EXPLYT TECH WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION
 
 ## DEFINITIONS
 ### Developer
-Esprito Tech QFZ LLC, copyright owner and developer of the Spring Exlyt Plugin, with a principal place of business at (Office 62, Ras Bufontas Admin Building Building 43, Street 517, Zone 49 Ras Bufontas Free Zone, Doha, The State of Qatar), company incorporated under the laws of The State of Qatar License No. FZA 578.
+Esprito Tech QFZ LLC, copyright owner and developer of the Spring Explyt Plugin, with a principal place of business at (Office 62, Ras Bufontas Admin Building Building 43, Street 517, Zone 49 Ras Bufontas Free Zone, Doha, The State of Qatar), company incorporated under the laws of The State of Qatar License No. FZA 578.
 
-### Spring Exlyt Plugin ("Plugin")
+### Spring Explyt Plugin ("Plugin")
 A Plugin developed by Esprito Tech that is designed to enhance the coding and development experience within JetBrains Products, specifically for Spring Framework, Spring Boot, Spring Data JPA, Spring Security, Spring Web, among others. This Plugin provides functionalities which are explicitly intended to aid the development process by generating code and facilitating Spring technology implementations.
 
 ### JetBrains
@@ -29,7 +29,7 @@ The digital distribution service provided by JetBrains or an JetBrains Affiliate
 The suite of software programs and services offered by JetBrains, which includes IntelliJ IDEA and other integrated development environments (IDEs).
 
 ### IntelliJ IDEA
-The IntelliJ IDEA is a JetBrains-owned IDE that supports the development of software across various programming languages, including the functionality to extend its capabilities via Plugins such as Spring Exlyt Plugin.
+The IntelliJ IDEA is a JetBrains-owned IDE that supports the development of software across various programming languages, including the functionality to extend its capabilities via Plugins such as Spring Explyt Plugin.
 
 ### User(s)
 The end users who have the ability to access and concurrently utilize the Plugin under this EULA.
@@ -55,7 +55,7 @@ Nothing in his EULA constitutes or may be construed as permission:
 - to assert or imply that You are, or that Your use of the the Plugin is, connected with, or sponsored, endorsed, or granted official status by, the Espirito Tech or others designated to receive attribution hereunder.
 
 ### Usage Rights
-You are granted the right to employ the Plugin in congruence with the technical documentation provided on the Site or the Spring Exlyt Plugin page on the Plugin Marketplace, over the duration specified by Esprito Tech in any jurisdiction where JetBrains Products are legally accessible.
+You are granted the right to employ the Plugin in congruence with the technical documentation provided on the Site or the Spring Explyt Plugin page on the Plugin Marketplace, over the duration specified by Esprito Tech in any jurisdiction where JetBrains Products are legally accessible.
 
 ### Plugin functionality
 The Plugin is subject to functionality limitations as outlined on the Site, which Esprito Tech reserves the right to modify without prior notification.
@@ -73,7 +73,7 @@ Esprito Tech provides the Plugin on an "as is" and "as available" basis. Esprito
 Under no circumstances shall Esprito Tech be liable for any direct, indirect, incidental, or consequential damages arising out of the use or inability to use the Plugin. Esprito Tech's total liability under this EULA shall not exceed the amount You have paid for the Plugin, if any, in the three months preceding any claim.
 
 ### Commercial Use and Inquiries
-For any commercial usage of Spring Exlyt Plugin, a formal request must be submitted to Esprito Tech sales team (sales@explyt.com) for the acquisition of appropriate licenses.
+For any commercial usage of Spring Explyt Plugin, a formal request must be submitted to Esprito Tech sales team (sales@explyt.com) for the acquisition of appropriate licenses.
 
 ### Termination
 This EULA may be terminated unilaterally by Esprito Tech in the event of any breach by the User of its terms and conditions. Upon termination, the User may be required, under applicable law, to compensate Esprito Tech for any damages or pay statuary compensation for any breaches of the terms and conditions that constitute an infringement of Esprito Tech's exclusive rights to the Plugin.
