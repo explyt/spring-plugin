@@ -90,12 +90,12 @@ class OpenApiFileHelper {
         return name.contains("openapi")
     }
 
-    private fun isSuitableFile(virtualFile: VirtualFile, psiFile: PsiFile?): Boolean {
+    fun isSuitableFile(virtualFile: VirtualFile, psiFile: PsiFile?): Boolean {
         return !virtualFile.isDirectory
                 && virtualFile.isValid
                 && isSuitableFileType(virtualFile)
                 && !SingleRootFileViewProvider.isTooLargeForIntelligence(virtualFile)
-                && (psiFile == null || this.isSpecificationFastCheck(virtualFile, psiFile))
+                && (psiFile == null || isSpecificationFastCheck(virtualFile, psiFile))
     }
 
     private fun computeSpecificationType(virtualFile: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {

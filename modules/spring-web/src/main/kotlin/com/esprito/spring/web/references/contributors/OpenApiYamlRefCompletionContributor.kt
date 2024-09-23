@@ -1,11 +1,9 @@
 package com.esprito.spring.web.references.contributors
 
+import com.esprito.spring.web.references.contributors.providers.OpenApiVersionCompletionProvider
 import com.esprito.spring.web.util.PlatformPatternUtils
 import com.esprito.util.EspritoKotlinUtil.mapToList
-import com.intellij.codeInsight.completion.CompletionContributor
-import com.intellij.codeInsight.completion.CompletionParameters
-import com.intellij.codeInsight.completion.CompletionProvider
-import com.intellij.codeInsight.completion.CompletionResultSet
+import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.util.childrenOfType
@@ -26,6 +24,8 @@ class OpenApiYamlRefCompletionContributor : CompletionContributor() {
                 ),
             OpenApiYamlRefCompletionProvider()
         )
+
+        extend(CompletionType.BASIC, psiElement(), OpenApiVersionCompletionProvider())
     }
 
 
