@@ -1,11 +1,9 @@
 package com.esprito.spring.web.references.contributors
 
 import com.esprito.spring.web.references.OpenApiJsonInnerReference.Companion.getProperty
+import com.esprito.spring.web.references.contributors.providers.OpenApiVersionCompletionProvider
 import com.esprito.spring.web.util.PlatformPatternUtils
-import com.intellij.codeInsight.completion.CompletionContributor
-import com.intellij.codeInsight.completion.CompletionParameters
-import com.intellij.codeInsight.completion.CompletionProvider
-import com.intellij.codeInsight.completion.CompletionResultSet
+import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
@@ -27,6 +25,8 @@ class OpenApiJsonRefCompletionContributor : CompletionContributor() {
                 ),
             OpenApiJsonRefCompletionProvider()
         )
+
+        extend(CompletionType.BASIC, psiElement(), OpenApiVersionCompletionProvider())
     }
 
 
