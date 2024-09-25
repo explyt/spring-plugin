@@ -4,6 +4,7 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.SpringProperties.COLON
 import com.esprito.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
+import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -27,6 +28,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        if (!SpringCoreUtil.isSpringProject(element.project)) return
         val uParent = getUParentForIdentifier(element) ?: return
         val dataRetriever = ConfigurationPropertyDataRetrieverFactory.createFor(uParent) ?: return
         val psiClass = dataRetriever.getContainingClass() ?: return
@@ -34,7 +36,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
         val nameElement = dataRetriever.getNameElementPsi() ?: return
 
-        val prefixValue = DataRetriever.getPrefixValue(psiClass, module)
+        val prefixValue = DataRetriever.getPrefixValue(psiClass)
         if (prefixValue.isBlank()) return
 
         val properties = dataRetriever.getRelatedProperties(prefixValue, memberName, module)
