@@ -20,7 +20,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
         val psiClass = dataRetriever.getContainingClass() ?: return false
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return false
 
-        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass, module)
+        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass)
         val memberName = dataRetriever.getMemberName() ?: return false
         if (prefixValue.isBlank()) return false
 
@@ -50,8 +50,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
     override fun getPropertyInfo(editor: Editor, file: PsiFile): PropertyInfo? {
         val dataRetriever = getPropertyDataRetriever(editor, file) ?: return null
         val psiClass = dataRetriever.getContainingClass() ?: return null
-        val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
-        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass, module)
+        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass)
         val memberName = dataRetriever.getMemberName() ?: return null
         val nameElement = dataRetriever.getNameElementPsi() ?: return null
 

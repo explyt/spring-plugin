@@ -9,6 +9,7 @@ import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
@@ -58,17 +59,18 @@ abstract class ConfigurationPropertyDataRetriever {
 
     companion object {
 
-        fun getPrefixValue(psiClass: PsiClass, module: Module): String {
-            return CachedValuesManager.getManager(module.project)
+        fun getPrefixValue(psiClass: PsiClass): String {
+            return CachedValuesManager.getManager(psiClass.project)
                 .getCachedValue(psiClass) {
                     CachedValueProvider.Result(
-                        getPrefixFromUsage(psiClass, module),
-                        ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                        getPrefixFromUsage(psiClass),
+                        ModificationTrackerManager.getInstance(psiClass.project).getUastModelAndLibraryTracker()
                     )
                 }
         }
 
-        private fun getPrefixFromUsage(psiClass: PsiClass, module: Module): String {
+        private fun getPrefixFromUsage(psiClass: PsiClass): String {
+            val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return ""
             if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) {
                 return ConfigurationPropertiesService.getPrefixFromAnnotation(psiClass, module)
             }
