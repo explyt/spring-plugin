@@ -36,6 +36,8 @@ val defaultIdeaVersion: String by rootProject
 
 dependencies {
     implementation(springCoreProject)
+    implementation("com.networknt:json-schema-validator:1.5.2")
+
     intellijPlatform {
         create(defaultIdeaType, defaultIdeaVersion)
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)

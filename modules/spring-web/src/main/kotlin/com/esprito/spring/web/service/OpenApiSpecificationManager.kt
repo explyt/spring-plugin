@@ -1,34 +1,32 @@
 package com.esprito.spring.web.service
 
+import com.esprito.spring.web.jsonSchema.OpenApiJsonSchemaReader
 import com.esprito.spring.web.model.OpenApiSpecificationType
 import com.intellij.json.JsonLanguage
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.fileTypes.FileTypeManager
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiManager
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.util.containers.ConcurrentFactoryMap
-import com.jetbrains.jsonSchema.impl.JsonSchemaObject
-import com.jetbrains.jsonSchema.impl.JsonSchemaReader
+import com.networknt.schema.JsonSchema
 import java.util.concurrent.ConcurrentMap
 
 
 @Service(Service.Level.PROJECT)
-class OpenApiSpecificationManager(private val project: Project) {
+class OpenApiSpecificationManager {
 
-    private val schemasBySpecificationType: ConcurrentMap<OpenApiSpecificationType, Pair<VirtualFile, JsonSchemaObject>> =
+    private val schemasBySpecificationType: ConcurrentMap<OpenApiSpecificationType, Pair<VirtualFile, JsonSchema>> =
         ConcurrentFactoryMap.createMap { type -> getSchemasBySpecificationType(type) }
 
-    private fun getSchemasBySpecificationType(specificationType: OpenApiSpecificationType): Pair<VirtualFile, JsonSchemaObject> {
+    private fun getSchemasBySpecificationType(specificationType: OpenApiSpecificationType): Pair<VirtualFile, JsonSchema> {
         val schemaFile = getSchemaFile(specificationType)
-        val schemaObject = computeSchemaObject(schemaFile, project)
+        val schemaObject = computeSchemaObject(schemaFile)
         return schemaFile to schemaObject
     }
 
-    fun getSchemaFor(specificationType: OpenApiSpecificationType): Pair<VirtualFile, JsonSchemaObject>? {
+    fun getSchemaFor(specificationType: OpenApiSpecificationType): Pair<VirtualFile, JsonSchema>? {
         return if (specificationType is OpenApiSpecificationType.NONE) null
         else schemasBySpecificationType[specificationType]
     }
@@ -40,23 +38,16 @@ class OpenApiSpecificationManager(private val project: Project) {
 
         val defaultSchemaContent = FileUtil.loadTextAndClose(inputStream)
 
-//        val patchedSchemaContent = OpenApiJsonSchemaPatchUtils.INSTANCE.applySuitablePatches(defaultSchemaContent, specificationType)
-
         val jsonFileType = FileTypeManager.getInstance().findFileTypeByLanguage(JsonLanguage.INSTANCE)
         return LightVirtualFile("${specificationType.presentableName}.json", jsonFileType, defaultSchemaContent)
     }
 
-    private fun computeSchemaObject(schemaFile: VirtualFile, project: Project): JsonSchemaObject =
+    private fun computeSchemaObject(schemaFile: VirtualFile): JsonSchema =
         runReadAction {
-            val schemaPsiFile = PsiManager.getInstance(project).findFile(schemaFile)
-                ?: throw AssertionError("Error created PSI schema file")
-
-            //FIXME: rewrite schema loading
-            @Suppress("DEPRECATION")
-            val schemaObject = JsonSchemaReader(schemaFile).read(schemaPsiFile)
+            val jsonSchema = OpenApiJsonSchemaReader.INSTANCE.readFromFile(schemaFile)
                 ?: throw AssertionError("Error creates Schema instance from its JSON representation")
 
-            return@runReadAction schemaObject
+            return@runReadAction jsonSchema
         }
 
     private fun getRootSchemaResourcePath(specificationType: OpenApiSpecificationType): String {
