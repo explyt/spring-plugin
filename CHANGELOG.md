@@ -7,6 +7,7 @@
 
 ### Spring Web/MVC
 
+- Fixed: PatternSyntaxException while parsing controller
 - Added inspection for supported version of OpenApi
 - Added completion in openapi specification
 - Automatically apply OpenAPI JSON schema (Specification 3.0.0/3.1.0)
