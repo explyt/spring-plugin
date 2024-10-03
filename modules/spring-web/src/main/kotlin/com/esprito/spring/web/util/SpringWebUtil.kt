@@ -192,7 +192,9 @@ object SpringWebUtil {
 
     private fun getRegexByUri(path: String): Regex {
         return endpointRegExByUri.computeIfAbsent(path) {
-            val regex = path.replace(TEMPLATE_PARAM_REGEX, "[^/?]+")
+            val regex = path
+                .replace(TEMPLATE_PARAM_REGEX, "[^/?]+")
+                .replace(MULTIPLE_ASTERISKS, "*")
             Regex("^$regex(\\?.*)?\$")
         }
     }
@@ -223,4 +225,5 @@ object SpringWebUtil {
 
     private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()
     private val TEMPLATE_PARAM_REGEX = Regex("\\{[^}]+}")
+    private val MULTIPLE_ASTERISKS = Regex("\\*{2,}")
 }
