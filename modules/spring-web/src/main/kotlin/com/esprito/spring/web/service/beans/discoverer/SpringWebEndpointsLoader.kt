@@ -11,6 +11,8 @@ interface SpringWebEndpointsLoader {
 
     fun searchEndpoints(module: Module): List<EndpointElement>
 
+    fun getType(): EndpointType
+
     fun getEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
         val searchUrl = SpringWebUtil.simplifyUrl(urlPath)
 
@@ -35,5 +37,11 @@ data class EndpointElement(
     val path: String,
     val requestMethods: List<String>,
     val psiElement: PsiElement,
-    val containingClass: PsiClass
+    val containingClass: PsiClass,
+    val type: EndpointType
 )
+
+enum class EndpointType {
+    SPRING_MVC,
+    SPRING_WEBFLUX
+}

@@ -53,6 +53,6 @@ class SpringWebCoRouterLoader : EndpointHandler {
         val requestMethods = listOf(callExpression.methodName ?: return null)
         val psiElement = callExpression.sourcePsi ?: return null
 
-        return EndpointElement(path, requestMethods, psiElement, psiClass)
+        return EndpointElement(path, requestMethods, psiElement, psiClass, EndpointType.SPRING_WEBFLUX)
     }
 }

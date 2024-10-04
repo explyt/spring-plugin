@@ -25,6 +25,10 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
         }
     }
 
+    override fun getType(): EndpointType {
+        return EndpointType.SPRING_MVC
+    }
+
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
         val controllerAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
             module, SpringWebClasses.CONTROLLER, false
@@ -66,7 +70,8 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
                         SpringWebUtil.simplifyUrl("$prefix/$value"),
                         requestMethods,
                         method,
-                        controllerPsiClass
+                        controllerPsiClass,
+                        EndpointType.SPRING_MVC
                     )
                 }
             }
