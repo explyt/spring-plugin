@@ -16,8 +16,9 @@ class SpringWebEndpointsSearcher {
             .flatMapTo(mutableListOf()) { it.searchEndpoints(module) }
     }
 
-    fun getAllEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
+    fun getAllEndpointElements(urlPath: String, module: Module, type: EndpointType? = null): List<EndpointElement> {
         return SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project)
+            .filter { type == null || it.getType() == type }
             .flatMapTo(mutableListOf()) { it.getEndpointElements(urlPath, module) }
     }
 }

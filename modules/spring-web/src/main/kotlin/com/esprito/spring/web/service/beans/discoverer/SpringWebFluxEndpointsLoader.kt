@@ -9,7 +9,7 @@ import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
-class SpringWebBeanEndpointsLoader(private val project: Project) : SpringWebEndpointsLoader {
+class SpringWebFluxEndpointsLoader(private val project: Project) : SpringWebEndpointsLoader {
     private val cachedValuesManager = CachedValuesManager.getManager(project)
     private val handler = EndpointHandlerChain(
         listOf(
@@ -25,6 +25,10 @@ class SpringWebBeanEndpointsLoader(private val project: Project) : SpringWebEndp
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
+    }
+
+    override fun getType(): EndpointType {
+        return EndpointType.SPRING_WEBFLUX
     }
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {

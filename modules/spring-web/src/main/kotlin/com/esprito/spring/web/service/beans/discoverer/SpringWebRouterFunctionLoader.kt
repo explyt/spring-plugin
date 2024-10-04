@@ -43,7 +43,13 @@ class SpringWebRouterFunctionLoader : EndpointHandler {
             if (psiLiteralExpression != null && psiLiteralExpression is PsiLiteralExpression) {
                 val url = PsiLiteralUtil.getStringLiteralContent(psiLiteralExpression)
                 if (url != null) {
-                    result += EndpointElement(url, listOf(methods.name), psiMethod, containingClass)
+                    result += EndpointElement(
+                        url,
+                        listOf(methods.name),
+                        psiMethod,
+                        containingClass,
+                        EndpointType.SPRING_WEBFLUX
+                    )
                     result += findSimpleRouteMethod(methodCallException, psiMethod, containingClass)
                 }
             }
