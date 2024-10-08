@@ -2,7 +2,7 @@ name: "Compatibility"
 description: "Explyt Spring plugin compatibility issues"
 title: "[COMPATIBILITY]"
 labels: ["compatibility"]
-assignees: ''
+assignees: []
 
 body:
   - type: textarea
