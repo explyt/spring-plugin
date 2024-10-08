@@ -2,7 +2,7 @@
 name: "Documentation request"
 about: "Documentation for Explyt Spring plugin"
 title: ''
-labels: ["documentation-request"]
+labels: documentation-request
 assignees: ''
 
 ---

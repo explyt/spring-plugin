@@ -2,7 +2,7 @@
 name: "Feature request"
 about: "Suggest an idea for the Explyt Spring plugin"
 title: ''
-labels: ["feature-request"]
+labels: feature-request
 assignees: ''
 
 ---
