@@ -1,7 +1,7 @@
 name: "Plugin bug"
-description: "Any problem in Explyt Spring plugin and not in generated tests quality"
+description: "Any problem in Explyt Spring plugin"
 title: "[BUG] "
-labels: test-plugin-bug
+labels: spring-plugin-bug
 assignees: []
 
 body:
