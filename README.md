@@ -1,10 +1,10 @@
 ## Spring Explyt
 
-[Spring Explyt plugin](https://github.com/explyt/spring-plugin) for Spring with Java and Kotlin support makes your development with IntelliJ IDEA Community a more productive and enjoyable experience.
+Spring Explyt plugin for Spring with Java and Kotlin support makes your development with IntelliJ IDEA Community a more productive and enjoyable experience.
 
 ## Spring Explyt plugin will:
 - accelerate the development of your Spring and Spring Boot applications
-- allow you to create Spring projects inside IDE using [Spring Initializr](https://start.spring.io/) and intuitive wizards
+- allow you to create Spring projects inside IDE using Spring Initializr and intuitive wizards
 - support Spring Boot profiles, configurations, and properties
 - highlight Spring Core Beans dependencies and usages
 - validate that Spring Beans injections are used correctly
