@@ -1,19 +1,14 @@
 package com.esprito.spring.web.model
 
 import com.esprito.spring.web.SpringWebBundle
-import com.esprito.spring.web.SpringWebIcons
 import com.esprito.spring.web.util.OpenApiFileHelper
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
-import javax.swing.Icon
 
-open class OpenApiSpecificationType(val presentableName: String, val icon: Icon) {
+open class OpenApiSpecificationType(val presentableName: String) {
 
-    open class RestAPI(presentableName: String, icon: Icon) :
-        OpenApiSpecificationType(presentableName, icon) {}
-
-    open class OpenAPI3Family(presentableName: String) : RestAPI(presentableName, SpringWebIcons.OpenApi)
+    open class OpenAPI3Family(presentableName: String) :
+        OpenApiSpecificationType(presentableName)
 
     open class OpenAPI30Family :
         OpenAPI3Family(SpringWebBundle.message("esprito.openapi.3.0.schema.name")) {
@@ -49,10 +44,7 @@ open class OpenApiSpecificationType(val presentableName: String, val icon: Icon)
 
 
     open class NONE(private val stringValue: String) :
-        OpenApiSpecificationType(
-            SpringWebBundle.message("esprito.openapi.unknown.specification"),
-            AllIcons.Nodes.Unknown
-        ) {
+        OpenApiSpecificationType(SpringWebBundle.message("esprito.openapi.unknown.specification")) {
 
         override fun toString(): String {
             return this.stringValue

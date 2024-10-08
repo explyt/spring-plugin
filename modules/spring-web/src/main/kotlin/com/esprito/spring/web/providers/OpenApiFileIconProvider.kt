@@ -1,5 +1,6 @@
 package com.esprito.spring.web.providers
 
+import com.esprito.spring.web.SpringWebIcons
 import com.esprito.spring.web.model.OpenApiSpecificationDetection
 import com.esprito.spring.web.model.OpenApiSpecificationType
 import com.intellij.ide.IconProvider
@@ -13,7 +14,19 @@ class OpenApiFileIconProvider : IconProvider() {
 
         val virtualFile = element.virtualFile ?: return null
         val specificationType = OpenApiSpecificationDetection.detectSpecificationType(virtualFile, element)
+        val extension = virtualFile.extension ?: return null
 
-        return if (specificationType is OpenApiSpecificationType.NONE) null else specificationType.icon
+        return if (specificationType is OpenApiSpecificationType.NONE) null
+        else getIconForExtension(extension)
+    }
+
+    private fun getIconForExtension(extension: String): Icon? {
+        if (extension.isBlank()) return null
+        if (extension == "yaml" || extension == "yml") {
+            return SpringWebIcons.OpenApiYaml
+        } else if (extension == "json") {
+            return SpringWebIcons.OpenApiJson
+        }
+        return null
     }
 }
