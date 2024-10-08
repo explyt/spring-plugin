@@ -2,7 +2,7 @@
 name: "Compatibility"
 about: "Explyt Spring plugin compatibility issues"
 title: ''
-labels: ["compatibility"]
+labels: compatibility
 assignees: ''
 
 ---
