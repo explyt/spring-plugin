@@ -74,15 +74,6 @@ body:
       required: true
 
   - type: textarea
-    id: llm_model
-    attributes:
-      label: LLM model
-      description: "Type LLM model here"
-      placeholder: "Default"
-    validations:
-      required: false
-
-  - type: textarea
     id: additional_context
     attributes:
       label: Additional context
