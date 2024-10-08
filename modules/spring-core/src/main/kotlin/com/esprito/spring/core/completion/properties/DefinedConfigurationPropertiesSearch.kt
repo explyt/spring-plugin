@@ -77,9 +77,7 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
         return getAllProperties(module).asSequence()
             .mapNotNull { it.value }
             .flatMap {
-                PropertyUtil.getPlaceholders(it) { placeholder, _ ->
-                    placeholder
-                }
+                PropertyUtil.getPlaceholders(it) { placeholder, _ -> placeholder }
             }
             .toList()
     }

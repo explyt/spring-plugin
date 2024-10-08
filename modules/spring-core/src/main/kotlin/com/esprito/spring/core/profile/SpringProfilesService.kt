@@ -37,12 +37,14 @@ class SpringProfilesService(
                     it.searchProfiles(module)
                 }
             }
+            .filter { !it.startsWith("\${") }
             .toSet()
             .sorted()
-            .ifEmpty { listOf("default") }
+            .ifEmpty { DEFAULT_PROFILE_LIST }
     }
 
     companion object {
+        val DEFAULT_PROFILE_LIST = listOf("default")
         fun getInstance(project: Project): SpringProfilesService = project.service()
     }
 }

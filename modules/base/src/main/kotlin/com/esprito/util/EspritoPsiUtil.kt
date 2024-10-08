@@ -129,6 +129,10 @@ object EspritoPsiUtil {
         return superPsiClass + this
     }
 
+    fun PsiClass.onlyAllSupers(): Set<PsiClass> {
+        return this.supers.asSequence().flatMap { it.allSupers() }.toMutableSet()
+    }
+
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
 
     inline fun <reified T : PsiElement> PsiElement.findChildrenOfType(): List<T> {
