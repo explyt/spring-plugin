@@ -14,6 +14,11 @@ body:
       options:
         - Inspection
         - Navigation gutter
+        - References
+        - Autocompletion
+        - Usages
+        - Properties
+        - OpenAPI
         - Slow operation on EDT
         - Other
       default: 0
