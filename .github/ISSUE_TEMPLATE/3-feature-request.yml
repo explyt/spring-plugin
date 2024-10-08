@@ -28,20 +28,16 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem
-      description: "Please describe the problem"
-      placeholder: |
-        A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]"
+      label: Describe the problem
+      description: "A clear and concise description of what the problem is"
     validations:
       required: false
 
   - type: textarea
     id: solution
     attributes:
-      label: Solution
-      description: "Describe the solution you want"
-      placeholder: |
-        A clear and concise description of what you want to happen
+      label: Describe the solution
+      description: "A clear and concise description of what you want to happen"
     validations:
       required: false
 
@@ -49,7 +45,6 @@ body:
     id: context
     attributes:
       label: Additional context
-      placeholder: |
-        Add any relevant screenshots, sketches, or links to explain the request further. This could include similar features in other plugins or IDEs, performance implications, etc.
+      description: "Add any relevant screenshots, sketches, or links to explain the request further. This could include similar features in other plugins or IDEs, performance implications, etc."
     validations:
       required: false
