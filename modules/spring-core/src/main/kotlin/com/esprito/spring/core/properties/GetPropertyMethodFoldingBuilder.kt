@@ -3,10 +3,12 @@ package com.esprito.spring.core.properties
 import com.esprito.spring.core.SpringCoreClasses.PROPERTY_RESOLVER
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.esprito.spring.core.completion.properties.DefinedConfigurationProperty
+import com.esprito.spring.core.util.SpringCoreUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.lang.ASTNode
 import com.intellij.lang.folding.FoldingBuilderEx
 import com.intellij.lang.folding.FoldingDescriptor
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.FoldingGroup
 import com.intellij.openapi.module.Module
@@ -24,6 +26,7 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
     private val propertyMethodNames = setOf("getProperty", "containsProperty", "getRequiredProperty")
 
     override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> {
+        if (!SpringCoreUtil.isSpringProject(root.project)) return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(root) ?: return emptyArray()
 
         val group = FoldingGroup.newGroup("PropertyValue")
@@ -65,14 +68,15 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
     }
 
     override fun getPlaceholderText(node: ASTNode): String? {
-        val module = ModuleUtilCore.findModuleForPsiElement(node.psi) ?: return null
-
+        if (!SpringCoreUtil.isSpringProject(node.psi.project)) return null
         val key = ElementManipulators.getValueText(node.psi)
         if (key.isBlank()) return null
+        val propertyValue = ReadAction.computeCancellable<DefinedConfigurationProperty, Throwable> {
+            val module = ModuleUtilCore.findModuleForPsiElement(node.psi) ?: return@computeCancellable null
+            getPropertyInfo(module, key) ?: return@computeCancellable null
+        }
 
-        val propertyValue = getPropertyInfo(module, key) ?: return null
-
-        return propertyValue.value
+        return propertyValue?.value
     }
 
     private fun getPropertyInfo(

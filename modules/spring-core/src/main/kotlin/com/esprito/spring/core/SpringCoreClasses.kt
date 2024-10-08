@@ -29,6 +29,11 @@ object SpringCoreClasses {
     const val ANNOTATION_CONFIG_CONTEXT = "org.springframework.context.annotation.AnnotationConfigApplicationContext"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
+    const val SERVICE = "org.springframework.stereotype.Service"
+    const val CONTROLLER = "org.springframework.stereotype.Controller"
+    const val REST_CONTROLLER = "org.springframework.web.bind.annotation.RestController"
+    const val REPOSITORY = "org.springframework.stereotype.Repository"
+
     const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
     const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
 

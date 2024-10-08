@@ -51,6 +51,7 @@ dependencies {
     api(baseProject)
     implementation("com.cronutils:cron-utils:9.2.1")
     implementation("javax.validation:validation-api:2.0.1.Final")
+    implementation(fileTree("libs") { include("*.jar") })
 
     intellijPlatform {
         create(defaultIdeaType, defaultIdeaVersion)

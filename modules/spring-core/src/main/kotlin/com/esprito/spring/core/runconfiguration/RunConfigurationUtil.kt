@@ -10,6 +10,7 @@ import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunCo
 import com.intellij.psi.PsiClass
 import org.jetbrains.kotlin.asJava.classes.KtLightClassForFacade
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
+import org.jetbrains.kotlin.psi.KtFile
 
 
 object RunConfigurationUtil {
@@ -17,6 +18,7 @@ object RunConfigurationUtil {
     fun getRunPsiClass(runConfiguration: RunConfiguration?): List<PsiClass> {
         return when (runConfiguration) {
             is KotlinRunConfiguration -> {
+                runConfiguration.findMainClassFile()
                 runConfiguration.findMainClassFile()?.classes?.toList() ?: emptyList()
             }
 
@@ -24,6 +26,9 @@ object RunConfigurationUtil {
                 val mainClass = runConfiguration.mainClass
                 if (mainClass is KtLightClassForFacade) {
                     return mainClass.files.flatMap { it.classes.toList() }
+                }
+                if (mainClass?.containingFile is KtFile) {
+                    return (mainClass.containingFile as KtFile).classes.toList()
                 }
                 mainClass?.let { listOf(it) } ?: emptyList()
             }
@@ -52,8 +57,8 @@ object RunConfigurationUtil {
         }
     }
 
-    private fun stringToProfile(string: String?): Set<String> {
-        return string?.split(',')
+    fun stringToProfile(string: String?): Set<String> {
+        return string?.split(',')?.map { it.trim() }
             ?.filterTo(mutableSetOf()) { it.isNotBlank() }
             ?: emptySet()
     }
