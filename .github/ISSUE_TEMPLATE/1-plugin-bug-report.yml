@@ -9,17 +9,25 @@ body:
     attributes:
       value: "Thanks for reporting spring-plugin bug!"
 
+  - type: dropdown
+    id: type-problem
+    attributes:
+      label: Problem details
+      description: "Select the problem you faced"
+      options:
+        - Inspection
+        - Navigation gutter
+        - Slow operation on EDT
+        - Other
+      default: 0
+    validations:
+      required: false
+
   - type: textarea
     id: details
     attributes:
       label: Problem details
       description: "Describe the problem you faced"
-      placeholder: |
-        Example:
-        - Invalid inspection: false positive in class
-        - Inspection is not showing warning in true case on class and method
-        - Navigation gutter does not navigate to valid bean (show example)
-        - Slow operation on EDT error was thrown while using spring code
 
     validations:
       required: false
@@ -64,21 +72,6 @@ body:
       default: 0
     validations:
       required: true
-
-  - type: dropdown
-    id: llm_provider
-    attributes:
-      label: LLM provider
-      description: "Choose LLM provider"
-      options:
-        - Open AI (Default)
-        - DeepSeek
-        - Ollama
-        - Another
-        - Not important
-      default: 0
-    validations:
-      required: false
 
   - type: textarea
     id: llm_model
