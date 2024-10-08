@@ -1,7 +1,7 @@
 name: "Plugin bug"
 description: "Any problem in Explyt Spring plugin"
 title: "[BUG] "
-labels: spring-plugin-bug
+labels: ["plugin-bug"]
 assignees: []
 
 body:
@@ -86,34 +86,6 @@ body:
       label: LLM model
       description: "Type LLM model here"
       placeholder: "Default"
-    validations:
-      required: false
-
-  - type: dropdown
-    id: test_framework
-    attributes:
-      label: Test framework
-      description: "Choose test framework"
-      options:
-        - Not important
-        - JUnit 5
-        - TestNG
-        - JUnit 4
-        - Kotlin-test
-      default: 0
-    validations:
-      required: false
-
-  - type: dropdown
-    id: mock_framework
-    attributes:
-      label: Mock framework
-      description: "Choose mock framework"
-      options:
-        - Not important
-        - Mockito
-        - MockK
-      default: 0
     validations:
       required: false
 
