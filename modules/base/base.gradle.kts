@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.jetbrains.intellij.platform")
+    id("org.jetbrains.intellij.platform.module")
     kotlin("jvm")
     id("io.sentry.jvm.gradle") version("4.10.0")
 }
@@ -53,6 +53,7 @@ kotlin {
     jvmToolchain(21)
 }
 
+/*
 sentry {
     // Generates a JVM (Java, Kotlin, etc.) source bundle and uploads your source code to Sentry.
     // This enables source context, allowing you to see your source
@@ -63,6 +64,7 @@ sentry {
     projectName = "esprito-plugin"
     authToken = "sntrys_eyJpYXQiOjE3MjE2ODAyODQuMDExMTI5LCJ1cmwiOiJodHRwczovL3NlbnRyeS5pbyIsInJlZ2lvbl91cmwiOiJodHRwczovL2RlLnNlbnRyeS5pbyIsIm9yZyI6ImlseWEtbXVyb210c2V2In0"
 }
+*/
 
 //sourceSets {
 //    main.kotlin.srcDirs += "src/main/kotlin"

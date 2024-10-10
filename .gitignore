@@ -20,3 +20,4 @@ modules/buildsystem/gradle/build
 /idea-flex.skeleton
 out.map
 *.hprof
+.intellijPlatform
