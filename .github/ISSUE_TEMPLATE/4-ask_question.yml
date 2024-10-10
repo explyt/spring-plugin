@@ -17,7 +17,7 @@ body:
       label: "Your Question"
       description: "Please describe your question in detail"
       placeholder: "Enter your question here"
-      value: ""
+      value: " "
       render: text
 
   - type: markdown
@@ -31,7 +31,7 @@ body:
     attributes:
       label: "Context"
       description: "What were you doing before you encountered this question?"
-      value: ""
+      value: " "
       render: text
 
   - type: markdown
@@ -45,7 +45,7 @@ body:
     attributes:
       label: "Steps or Code"
       description: "Provide the steps or code related to your question (if applicable)"
-      value: ""
+      value: " "
       render: text
 
   - type: markdown
@@ -89,5 +89,5 @@ body:
     attributes:
       label: "Additional Information"
       description: "Provide any additional details that may help answer your question"
-      value: ""
+      value: " "
       render: text
