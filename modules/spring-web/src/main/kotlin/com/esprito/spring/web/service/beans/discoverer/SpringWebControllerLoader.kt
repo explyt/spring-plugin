@@ -71,6 +71,7 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
                         requestMethods,
                         method,
                         controllerPsiClass,
+                        null,
                         EndpointType.SPRING_MVC
                     )
                 }

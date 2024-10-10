@@ -6,7 +6,11 @@ import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.editor.openapi.OpenApiUtils
-import com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider.Referrer
+import com.esprito.spring.web.service.beans.discoverer.EndpointElement
+import com.esprito.spring.web.service.beans.discoverer.EndpointResult
+import com.esprito.spring.web.service.beans.discoverer.EndpointType
+import com.esprito.spring.web.service.beans.discoverer.Referrer
+import com.esprito.spring.web.tracker.OpenApiLanguagesModificationTracker
 import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
@@ -17,6 +21,7 @@ import com.esprito.util.EspritoKotlinUtil.mapToList
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.util.ModificationTracker
 import com.intellij.psi.*
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
@@ -36,45 +41,60 @@ object EndpointUsageSearcher {
         module: Module
     ): List<PsiElement> {
         return getOpenApiJsonEndpoints(module).asSequence()
+            .filterIsInstance<EndpointResult.ReferrerResult>()
+            .map { it.referrer }
             .filter { it.path == path }
             .filter { it.method == null || requestMethods.contains(it.method) }
             .mapToList { it.psiElement }
     }
 
-    private fun getOpenApiJsonEndpoints(module: Module): List<Referrer> {
-        val psiManager = PsiManager.getInstance(module.project)
+    fun getOpenApiJsonEndpoints(module: Module): List<EndpointResult> {
+        val project = module.project
+        val psiManager = PsiManager.getInstance(project)
 
-        return CachedValuesManager.getManager(module.project)
+        return CachedValuesManager.getManager(project)
             .getCachedValue(module) {
+                val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
+                    ?: ModificationTracker.NEVER_CHANGED
                 CachedValueProvider.Result(
                     FilenameIndex.getAllFilesByExt(module.project, "json", GlobalSearchScope.moduleScope(module))
                         .mapNotNull { psiManager.findFile(it) }
                         .filterIsInstance<JsonFile>()
                         .flatMap { collectOpenApiJsonEndpoints(it) },
-                    ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                    modificationTracker
                 )
             }
     }
 
-    private fun collectOpenApiJsonEndpoints(file: JsonFile): List<Referrer> {
+    private fun collectOpenApiJsonEndpoints(file: JsonFile): List<EndpointResult> {
         if (!OpenApiUtils.isOpenApi(file)) return emptyList()
 
         val topValue = file.topLevelValue as? JsonObject ?: return emptyList()
         val paths = topValue.findProperty(PATHS)?.value as? JsonObject ?: return emptyList()
 
-        val endpoints = mutableListOf<Referrer>()
+        val endpoints = mutableListOf<EndpointResult>()
 
         for (pathElement in paths.propertyList) {
             val path = SpringWebUtil.simplifyUrl(pathElement.name)
-            endpoints.add(Referrer(path, null, pathElement))
+            endpoints.add(EndpointResult.ReferrerResult(Referrer(path, null, pathElement)))
 
             val pathElementValue = pathElement.value as? JsonObject ?: continue
 
+            val requestMethods = mutableListOf<String>()
             for (method in pathElementValue.propertyList) {
                 val methodName = method.name
                 if (methodName in REQUEST_METHODS) {
-                    endpoints.add(Referrer(path, methodName.uppercase(), method))
+                    requestMethods.add(methodName.uppercase())
+                    endpoints.add(EndpointResult.ReferrerResult(Referrer(path, methodName.uppercase(), method)))
                 }
+            }
+
+            if (requestMethods.isNotEmpty()) {
+                endpoints.add(
+                    EndpointResult.EndpointElementResult(
+                        EndpointElement(path, requestMethods, pathElement, null, file, EndpointType.OPENAPI)
+                    )
+                )
             }
         }
 
@@ -87,16 +107,21 @@ object EndpointUsageSearcher {
         module: Module
     ): List<PsiElement> {
         return getOpenApiYamlEndpoints(module).asSequence()
+            .filterIsInstance<EndpointResult.ReferrerResult>()
+            .map { it.referrer }
             .filter { it.path == path }
             .filter { it.method == null || requestMethods.contains(it.method) }
             .mapToList { it.psiElement }
     }
 
-    private fun getOpenApiYamlEndpoints(module: Module): List<Referrer> {
-        val psiManager = PsiManager.getInstance(module.project)
+    fun getOpenApiYamlEndpoints(module: Module): List<EndpointResult> {
+        val project = module.project
+        val psiManager = PsiManager.getInstance(project)
 
-        return CachedValuesManager.getManager(module.project)
+        return CachedValuesManager.getManager(project)
             .getCachedValue(module) {
+                val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
+                    ?: ModificationTracker.NEVER_CHANGED
                 CachedValueProvider.Result(
                     (FilenameIndex.getAllFilesByExt(
                         module.project, "yaml",
@@ -108,13 +133,13 @@ object EndpointUsageSearcher {
                         .mapNotNull { psiManager.findFile(it) }
                         .filterIsInstance<YAMLFile>()
                         .flatMap { collectOpenApiYamlEndpoints(it) },
-                    ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                    modificationTracker
                 )
             }
     }
 
-    private fun collectOpenApiYamlEndpoints(file: YAMLFile): List<Referrer> {
-        val endpoints = mutableListOf<Referrer>()
+    private fun collectOpenApiYamlEndpoints(file: YAMLFile): List<EndpointResult> {
+        val endpoints = mutableListOf<EndpointResult>()
 
         if (!OpenApiUtils.isOpenApi(file)) return emptyList()
 
@@ -130,15 +155,25 @@ object EndpointUsageSearcher {
         for (pathElement in paths.keyValues) {
             val urlPath = pathElement.name ?: continue
             val path = SpringWebUtil.simplifyUrl(urlPath)
-            endpoints.add(Referrer(path, null, pathElement))
+            endpoints.add(EndpointResult.ReferrerResult(Referrer(path, null, pathElement)))
 
             val pathElementValue = pathElement.value as? YAMLMapping ?: continue
 
+            val requestMethods = mutableListOf<String>()
             for (method in pathElementValue.keyValues) {
                 val methodName = method.name ?: continue
                 if (methodName in REQUEST_METHODS) {
-                    endpoints.add(Referrer(path, methodName.uppercase(), method))
+                    requestMethods.add(methodName.uppercase())
+                    endpoints.add(EndpointResult.ReferrerResult(Referrer(path, methodName.uppercase(), method)))
                 }
+            }
+
+            if (requestMethods.isNotEmpty()) {
+                endpoints.add(
+                    EndpointResult.EndpointElementResult(
+                        EndpointElement(path, requestMethods, pathElement, null, file, EndpointType.OPENAPI)
+                    )
+                )
             }
         }
 

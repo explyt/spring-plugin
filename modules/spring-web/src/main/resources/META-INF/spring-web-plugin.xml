@@ -15,6 +15,8 @@
                 implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebControllerLoader"/>
         <springWebEndpointsLoader
                 implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebFluxEndpointsLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebOpenApiEndpointsLoader"/>
 
     </extensions>
 

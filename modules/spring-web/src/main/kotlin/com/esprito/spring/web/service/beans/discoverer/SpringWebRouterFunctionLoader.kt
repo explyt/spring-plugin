@@ -48,6 +48,7 @@ class SpringWebRouterFunctionLoader : EndpointHandler {
                         listOf(methods.name),
                         psiMethod,
                         containingClass,
+                        null,
                         EndpointType.SPRING_WEBFLUX
                     )
                     result += findSimpleRouteMethod(methodCallException, psiMethod, containingClass)
