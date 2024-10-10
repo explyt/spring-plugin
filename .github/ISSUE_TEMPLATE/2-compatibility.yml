@@ -27,7 +27,7 @@ body:
     attributes:
       label: IntelliJ IDEA Version
       description: "Type IntelliJ IDEA  version here"
-      placeholder: "Example: 2024.2.11"
+      placeholder: "example: 2024.2.1"
     validations:
       required: false
 
@@ -36,7 +36,7 @@ body:
     attributes:
       label: Plugin version
       description: "Type plugin version here"
-      placeholder: "Example: 2024.233.1861"
+      placeholder: "example: 2024.233.1861"
     validations:
       required: false
 
@@ -45,7 +45,7 @@ body:
     attributes:
       label: Operating System
       description: "Type Operating System here"
-      placeholder: "Example: macOS 12.3, Windows 10"
+      placeholder: "example: macOS 12.3, Windows 10"
     validations:
       required: false
 
@@ -54,6 +54,6 @@ body:
     attributes:
       label: Other Dependencies
       description: "Type other Dependencies (if applicable)"
-      placeholder: "Example: JDK, plugins ..."
+      placeholder: "example: JDK, plugins ..."
     validations:
       required: false
