@@ -1,0 +1,93 @@
+name: "Ask a Question"
+description: "Ask any question about using the Explyt Spring plugin"
+title: "[QUESTION] "
+labels: ["question"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Question**  
+        _Write your question below. Make sure to include as much detail as possible so we can help you effectively._
+
+  - type: textarea
+    id: question
+    attributes:
+      label: "Your Question"
+      description: "Please describe your question in detail"
+      placeholder: "Enter your question here"
+      value: ""
+      render: text
+
+  - type: markdown
+    attributes:
+      value: |
+        **Context**  
+        _Provide context or background about your question. What were you trying to accomplish?_
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Context"
+      description: "What were you doing before you encountered this question?"
+      value: ""
+      render: text
+
+  - type: markdown
+    attributes:
+      value: |
+        **Steps or Code (if applicable)**  
+        _If your question is related to a specific issue with the plugin, describe the steps you followed or share relevant code._
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps or Code"
+      description: "Provide the steps or code related to your question (if applicable)"
+      value: ""
+      render: text
+
+  - type: markdown
+    attributes:
+      value: |
+        **Versions**  
+        _Please provide the following version information._
+
+  - type: input
+    id: intellij_version
+    attributes:
+      label: "IntelliJ IDEA Version"
+      placeholder: "e.g. 2024.1"
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: "Plugin Version"
+      placeholder: "e.g. 1.2.3"
+
+  - type: input
+    id: os_version
+    attributes:
+      label: "Operating System"
+      placeholder: "e.g. macOS 12.3, Windows 10"
+
+  - type: input
+    id: other_dependencies
+    attributes:
+      label: "Other Dependencies"
+      placeholder: "e.g. JDK, additional plugins"
+
+  - type: markdown
+    attributes:
+      value: |
+        **Additional Information**  
+        _Any additional information that could help us understand your question better?_
+
+  - type: textarea
+    id: additional_information
+    attributes:
+      label: "Additional Information"
+      description: "Provide any additional details that may help answer your question"
+      value: ""
+      render: text
