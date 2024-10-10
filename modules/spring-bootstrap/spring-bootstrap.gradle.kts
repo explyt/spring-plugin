@@ -104,6 +104,53 @@ afterEvaluate {
     println("evaluated")
 }
 
+configurations {
+    runtimeClasspath {
+        // IDE provides Kotlin
+        exclude(group = "org.jetbrains.kotlin")
+        exclude(group = "org.jetbrains.kotlinx")
+    }
+
+    configureEach {
+        // IDE provides netty
+        exclude("io.netty")
+
+        if (name.startsWith("detekt")) {
+            return@configureEach
+        }
+
+        // Exclude dependencies that ship with iDE
+        exclude(group = "org.slf4j")
+        // we want kotlinx-coroutines-debug and kotlinx-coroutines-test
+        exclude(group = "org.jetbrains.kotlinx", "kotlinx-coroutines-core-jvm")
+        exclude(group = "org.jetbrains.kotlinx", "kotlinx-coroutines-core")
+        exclude(group = "org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8")
+
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-core")
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-databind")
+        exclude(group = "com.fasterxml.jackson.module", module = "jackson-module-kotlin")
+
+        exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j2-impl")
+
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.jetbrains.kotlinx" && requested.name.startsWith("kotlinx-coroutines")) {
+                useVersion("1.8.0")
+                because("resolve kotlinx-coroutines version conflicts in favor of local version catalog")
+            }
+
+            if (requested.group == "org.jetbrains.kotlin" && requested.name.startsWith("kotlin")) {
+                useVersion("1.9.24")
+                because("resolve kotlin version conflicts in favor of local version catalog")
+            }
+        }
+    }
+
+    testRuntimeClasspath {
+        exclude(group = "org.codehaus.groovy", module = "groovy")
+    }
+}
+
 dependencies {
     implementation(baseProject)
     implementation(springCoreProject)
@@ -123,25 +170,10 @@ dependencies {
     testImplementation(testFramework)
     testImplementation("junit:junit:4.13.2")
 
+    @Suppress("UNCHECKED_CAST")
     intellijPlatform {
         instrumentationTools()
         zipSigner()
-
-        localPlugin(project(":base"))
-        localPlugin(project(":spring-core"))
-        localPlugin(project(":spring-gradle"))
-        localPlugin(project(":spring-data"))
-        localPlugin(project(":spring-security"))
-        localPlugin(project(":spring-web"))
-        localPlugin(project(":spring-cloud"))
-        localPlugin(project(":spring-initializr"))
-        localPlugin(project(":spring-integration"))
-        localPlugin(project(":spring-messaging"))
-        localPlugin(project(":spring-aop"))
-        localPlugin(project(":jpa"))
-        if (includeLlmIntegrationModule) {
-            localPlugin(project(":llm-integration"))
-        }
 
         val pluginDependencies = mutableSetOf<String>()
         pluginDependencies += baseProject.ext["intellijPlugins"] as Iterable<String>
@@ -178,12 +210,12 @@ dependencies {
 intellijPlatform {
     //version = project.ext["defaultIdeaVersion"]
     pluginConfiguration {
-        name = springPluginName
-        version = rootProject.ext["defaultIdeaVersion"] as String
+        name.set(springPluginName)
+        //version = rootProject.ext["defaultIdeaVersion"] as String
         version.set(springBootstrapModule.version as String)
         //changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
-        description = rootProject.file("README.md").readText()
-            .let { org.jetbrains.changelog.markdownToHTML(it) }
+        description.set(rootProject.file("README.md").readText()
+            .let { org.jetbrains.changelog.markdownToHTML(it) })
         changeNotes.set(provider {
             changelog.renderItem(
                 changelog
@@ -200,8 +232,8 @@ intellijPlatform {
         }
     }
 
-    instrumentCode = false
-    buildSearchableOptions = false
+    instrumentCode.set(false)
+    buildSearchableOptions.set(false)
 
     pluginVerification {
         ides {
@@ -415,7 +447,7 @@ tasks {
 
 
     buildPlugin {
-        archiveFileName = buildArchiveName
+        archiveFileName.set(buildArchiveName)
     }
 
     prepareSandbox {

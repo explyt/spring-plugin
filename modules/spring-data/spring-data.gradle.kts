@@ -2,7 +2,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     java
-    id("org.jetbrains.intellij.platform")
+    id("org.jetbrains.intellij.platform.module")
     kotlin("jvm")
 }
 

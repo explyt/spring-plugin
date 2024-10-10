@@ -2,7 +2,7 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     java
-    id("org.jetbrains.intellij.platform")
+    id("org.jetbrains.intellij.platform.module")
     kotlin("jvm")
 }
 
@@ -43,7 +43,7 @@ val defaultIdeaVersion: String by rootProject
 dependencies {
     api(baseProject)
     implementation("com.vladsch.flexmark:flexmark:0.64.8")
-    implementation("com.explyt.ai-backend:ai-backend:v1.7.0")
+    implementation("com.explyt.ai-backend:ai-backend:v1.14.1")
 
     //----jar hell with ai-backend
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.1")

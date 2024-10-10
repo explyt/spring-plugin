@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.jetbrains.intellij.platform")
+    id("org.jetbrains.intellij.platform.module")
     kotlin("jvm")
 }
 

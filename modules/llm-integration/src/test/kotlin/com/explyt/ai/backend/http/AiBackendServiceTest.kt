@@ -23,7 +23,7 @@ class AiBackendServiceTest {
                     )
                 )
             }
-        Assert.assertTrue(response.price >= 0.0)
+        Assert.assertTrue(response.usage.price >= 0.0)
         //assertContains(response.response, "4")
     }
 
