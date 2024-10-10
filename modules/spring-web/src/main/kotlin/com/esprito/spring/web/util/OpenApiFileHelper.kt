@@ -31,9 +31,12 @@ class OpenApiFileHelper {
             key,
             {
                 val result = computeSpecificationType(virtualFile, psiFile)
+                val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
+                    ?: ModificationTracker.NEVER_CHANGED
+
                 CachedValueProvider.Result.create(
                     result,
-                    getYamlJsonModificationTracker(project),
+                    modificationTracker,
                     CacheKeyStore.cacheReset
                 )
             },
@@ -65,9 +68,6 @@ class OpenApiFileHelper {
         val service = project.getService(OpenApiUserDefinedSpecifications::class.java)
         return service?.getSpecificationType(fileUrl) ?: OpenApiSpecificationType.UNKNOWN
     }
-
-    private fun getYamlJsonModificationTracker(project: Project): ModificationTracker =
-        project.getService(OpenApiLanguagesModificationTracker::class.java)
 
     private fun isSuitableFileType(virtualFile: VirtualFile): Boolean {
         return if (virtualFile.fileType is YAMLFileType) {

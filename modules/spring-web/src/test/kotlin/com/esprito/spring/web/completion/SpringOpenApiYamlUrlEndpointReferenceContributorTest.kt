@@ -4,6 +4,7 @@ import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.web.references.EspritoControllerMethodReference
 import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.ResolveResult
 import junit.framework.TestCase
 
@@ -33,7 +34,7 @@ class SpringOpenApiYamlUrlEndpointReferenceContributorTest : EspritoJavaLightTes
 
         val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
         assertNotNull(ref)
-        val multiResolve = ref!!.multiResolve(true)
+        val multiResolve = ref!!.multiResolve(true).filter { it.element is PsiMethod }
         assertEquals(1, multiResolve.size)
         val resolvedText = getResolvedText(multiResolve.first())
         assertNotNull(resolvedText)
@@ -57,7 +58,7 @@ class SpringOpenApiYamlUrlEndpointReferenceContributorTest : EspritoJavaLightTes
 
         val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
         assertNotNull(ref)
-        val multiResolve = ref!!.multiResolve(true)
+        val multiResolve = ref!!.multiResolve(true).filter { it.element is PsiMethod }
         assertEquals(0, multiResolve.size)
     }
 

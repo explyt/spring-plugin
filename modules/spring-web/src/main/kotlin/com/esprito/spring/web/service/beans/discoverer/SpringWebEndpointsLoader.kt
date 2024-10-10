@@ -5,6 +5,7 @@ import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 
 interface SpringWebEndpointsLoader {
@@ -33,15 +34,28 @@ interface SpringWebEndpointsLoader {
     }
 }
 
+data class Referrer(
+    val path: String,
+    val method: String?,
+    val psiElement: PsiElement
+)
+
 data class EndpointElement(
     val path: String,
     val requestMethods: List<String>,
     val psiElement: PsiElement,
-    val containingClass: PsiClass,
+    val containingClass: PsiClass?,
+    val containingFile: PsiFile?,
     val type: EndpointType
 )
 
+sealed class EndpointResult {
+    data class ReferrerResult(val referrer: Referrer) : EndpointResult()
+    data class EndpointElementResult(val endpointElement: EndpointElement) : EndpointResult()
+}
+
 enum class EndpointType {
     SPRING_MVC,
-    SPRING_WEBFLUX
+    SPRING_WEBFLUX,
+    OPENAPI
 }

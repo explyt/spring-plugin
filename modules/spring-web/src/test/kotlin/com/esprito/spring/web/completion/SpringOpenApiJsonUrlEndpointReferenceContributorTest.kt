@@ -4,6 +4,7 @@ import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.web.references.EspritoControllerMethodReference
 import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.ResolveResult
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import junit.framework.TestCase
@@ -39,7 +40,7 @@ class SpringOpenApiJsonUrlEndpointReferenceContributorTest : EspritoJavaLightTes
 
         val ref = getControllerMethodReference()
         assertNotNull(ref)
-        val multiResolve = ref!!.multiResolve(true)
+        val multiResolve = ref!!.multiResolve(true).filter { it.element is PsiMethod }
         assertEquals(1, multiResolve.size)
         val resolvedText = getResolvedText(multiResolve.first())
         assertNotNull(resolvedText)
@@ -68,7 +69,7 @@ class SpringOpenApiJsonUrlEndpointReferenceContributorTest : EspritoJavaLightTes
 
         val ref = getControllerMethodReference()
         assertNotNull(ref)
-        val multiResolve = ref!!.multiResolve(true)
+        val multiResolve = ref!!.multiResolve(true).filter { it.element is PsiMethod }
         assertEquals(0, multiResolve.size)
     }
 
