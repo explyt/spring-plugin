@@ -1,5 +1,6 @@
 package com
 
+import org.springframework.boot.context.properties.bind.ConstructorBinding
 import org.springframework.stereotype.Component
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -23,4 +24,11 @@ data class SomeProperties3(
     var first: String?,
     var notAProblemA: String = "A",
     val notAProblemB: String = "B"
+)
+
+@Component
+@ConfigurationProperties(prefix = "some.prefix")
+data class SomeProperties4 @ConstructorBinding constructor(
+    var first: String,
+    var second: Long
 )

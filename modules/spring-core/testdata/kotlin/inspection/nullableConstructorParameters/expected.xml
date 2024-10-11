@@ -3,7 +3,7 @@
 
     <problem>
         <file>CacheOnInterface.kt</file>
-        <line>10</line>
+        <line>11</line>
         <module>light_idea_test_case</module>
         <package>com</package>
         <entry_point TYPE="method"
