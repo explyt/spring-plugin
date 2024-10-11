@@ -68,6 +68,7 @@ object SpringCoreClasses {
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val NESTED_CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.NestedConfigurationProperty"
     const val DEPRECATED_CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.DeprecatedConfigurationProperty"
+    const val CONSTRUCTOR_BINDING = "org.springframework.boot.context.properties.bind.ConstructorBinding"
 
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"
     const val PROPERTY_SOURCE = "org.springframework.context.annotation.PropertySource"

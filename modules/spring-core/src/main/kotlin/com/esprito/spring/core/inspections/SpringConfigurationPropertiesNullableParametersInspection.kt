@@ -31,10 +31,12 @@ class SpringConfigurationPropertiesNullableParametersInspection : SpringBaseUast
             if (node.isFinal) return true
             val ktParameter = node.sourcePsi as? KtParameter ?: return true
             if (ktParameter.hasDefaultValue()) return true
-            if (node.getContainingUClass()?.javaPsi
-                    ?.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES) != true
-            ) return true
+            val psiClass = node.getContainingUClass()?.javaPsi ?: return true
+            if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return true
             if (ktParameter.typeReference?.typeElement is KtNullableType) return true
+            if (psiClass.constructors.firstOrNull()
+                    ?.isMetaAnnotatedBy(SpringCoreClasses.CONSTRUCTOR_BINDING) == true
+            ) return true
 
             problemsHolder.registerProblem(
                 problemsHolder.manager.createProblemDescriptor(

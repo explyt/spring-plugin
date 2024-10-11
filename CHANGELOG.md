@@ -7,6 +7,8 @@
 
 ### Spring Web/MVC
 
+- Fixed: Inspection in @ConfigurationProperties with @ConstructorBinding is in use, by binding to the constructor
+  parameters
 - Fixed: PatternSyntaxException while parsing controller
 - Added inspection for supported version of OpenApi
 - Added completion in openapi specification
