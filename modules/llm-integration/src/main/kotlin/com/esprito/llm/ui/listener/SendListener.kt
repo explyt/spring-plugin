@@ -4,12 +4,14 @@ import com.esprito.llm.LlmBundle
 import com.esprito.llm.model.LlmChat
 import com.esprito.llm.model.LlmMessage
 import com.esprito.llm.service.ChatsService
+import com.esprito.llm.service.LlmConfigurationException
 import com.esprito.llm.service.LlmHttpExplytService
 import com.esprito.llm.ui.AttachedFiles
 import com.esprito.llm.ui.ChatMessagePanel
 import com.esprito.llm.ui.SendMessagePanel
 import com.esprito.llm.util.GptUtil
 import com.explyt.ai.backend.http.ChatResponse
+import com.intellij.openapi.project.Project
 import kotlinx.coroutines.Deferred
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
@@ -24,15 +26,15 @@ class SendListener(private val sendMessagePanel: SendMessagePanel) : ActionListe
     private val chat = sendMessagePanel.chat
 
     @Volatile
-    private var requestAsyncDeferrd: Deferred<ChatResponse>? = null
+    private var requestAsyncDeferred: Deferred<ChatResponse>? = null
 
     override fun actionPerformed(e: ActionEvent?) {
         actionPerformed()
     }
 
     private fun actionPerformed() {
-        if (requestAsyncDeferrd != null) {
-            requestAsyncDeferrd?.cancel()
+        if (requestAsyncDeferred != null) {
+            requestAsyncDeferred?.cancel()
             return
         }
         val editTextMessage = sendMessagePanel.jbTextArea.text?.takeIf { it.isNotEmpty() } ?: return
@@ -67,16 +69,15 @@ class SendListener(private val sendMessagePanel: SendMessagePanel) : ActionListe
     private fun performRequest(message: LlmMessage, selectedFiles: AttachedFiles, threadPanel: JPanel) {
         val finalPrompt = getFinalPrompt(selectedFiles, message) ?: return
         message.userFinalPrompt = finalPrompt
-        val imagePath = selectedFiles.imageFile
 
-        requestAsyncDeferrd = LlmHttpExplytService.getInstance().perform(chat)
-        requestAsyncDeferrd?.invokeOnCompletion { throwable ->
+        requestAsyncDeferred = LlmHttpExplytService.getInstance().perform(chat)
+        requestAsyncDeferred?.invokeOnCompletion { throwable ->
             if (throwable != null) {
                 throwable.printStackTrace()
                 revertStateToSend()
-                onError(threadPanel, throwable.localizedMessage)
+                onError(threadPanel, throwable, sendMessagePanel.project)
             } else {
-                val response = requestAsyncDeferrd?.getCompleted()?.response ?: return@invokeOnCompletion
+                val response = requestAsyncDeferred?.getCompleted()?.response ?: return@invokeOnCompletion
                 onComplete(response, message, threadPanel)
             }
         }
@@ -114,9 +115,16 @@ class SendListener(private val sendMessagePanel: SendMessagePanel) : ActionListe
         }
     }
 
-    private fun onError(threadPanel: JPanel, errorMessage: String) {
+    private fun onError(threadPanel: JPanel, error: Throwable, project: Project) {
         SwingUtilities.invokeLater {
-            threadPanel.add(ChatMessagePanel(errorMessage, false))
+            threadPanel.add(
+                ChatMessagePanel(
+                    error.localizedMessage,
+                    false,
+                    configException = error as? LlmConfigurationException,
+                    project = project
+                )
+            )
             sendMessagePanel.messageScrollablePanel.update()
         }
     }
@@ -134,7 +142,7 @@ class SendListener(private val sendMessagePanel: SendMessagePanel) : ActionListe
     }
 
     private fun revertStateToSend() {
-        requestAsyncDeferrd = null
+        requestAsyncDeferred = null
         SwingUtilities.invokeLater {
             sendMessagePanel.button.text = LlmBundle.message("esprito.gpt.chat.button.send")
             sendMessagePanel.button.invalidate()
