@@ -1,8 +1,14 @@
 package com.esprito.llm.ui
 
+import com.esprito.llm.LlmBundle
+import com.esprito.llm.service.LlmConfigurationException
+import com.esprito.llm.settings.LlmIntegrationConfigurator
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.options.ShowSettingsUtil
+import com.intellij.openapi.project.Project
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
+import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
@@ -10,7 +16,10 @@ import java.awt.BorderLayout
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 
-class ChatMessagePanel(text: String, private val user: Boolean = true, showUser: Boolean = true) :
+class ChatMessagePanel(
+    text: String, private val user: Boolean = true, showUser: Boolean = true,
+    configException: LlmConfigurationException? = null, project: Project? = null
+) :
     JPanel(BorderLayout()) {
     init {
         val headerPanel = JPanel(BorderLayout())
@@ -24,7 +33,15 @@ class ChatMessagePanel(text: String, private val user: Boolean = true, showUser:
         )
         background = ColorUtil.brighter(background, if (user) 4 else 2)
         add(headerPanel, BorderLayout.NORTH)
-        add(createResponseBody(text), BorderLayout.SOUTH)
+        val createResponseBody = createResponseBody(text)
+        add(createResponseBody, BorderLayout.SOUTH)
+        if (configException != null && project != null) {
+            val openSettingsLink = ActionLink(LlmBundle.message("explyt.llm.settings.open")) {
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, LlmIntegrationConfigurator::class.java)
+            }
+            openSettingsLink.setFont(JBUI.Fonts.smallFont())
+            headerPanel.add(openSettingsLink, BorderLayout.LINE_END)
+        }
     }
 
     private fun createDisplayNameLabel(): JBLabel {

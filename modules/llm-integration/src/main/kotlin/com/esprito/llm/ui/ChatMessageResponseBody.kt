@@ -47,7 +47,9 @@ class ChatMessageResponseBody : JPanel(BorderLayout()) {
 
     private fun copyButton(markdownInput: String): JComponent {
         val copyButton = ActionLink(LlmBundle.message("esprito.gpt.chat.copy")) {
-            val stringSelection = StringSelection(markdownInput.replace("```", ""))
+            val stringSelection = StringSelection(
+                markdownInput.substringAfter(System.lineSeparator()).replace("```", "")
+            )
             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
             clipboard.setContents(stringSelection, null)
         }
@@ -58,8 +60,7 @@ class ChatMessageResponseBody : JPanel(BorderLayout()) {
     }
 
     private fun getLanguage(markdownInput: String): Language {
-        val firstSymbols = markdownInput.substring(0, 10).replace("```", "").trimIndent()
-        return if (firstSymbols.startsWith("<?xml")) {
+        return if (markdownInput.startsWith("<?xml")) {
             XMLLanguage.INSTANCE
         } else if (markdownInput.contains("fun ")) {
             KotlinLanguage.INSTANCE
