@@ -1,11 +1,11 @@
 package com.esprito.spring.core.externalsystem.action
 
 import com.esprito.spring.core.SpringCoreBundle.message
+import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.externalsystem.process.SpringBootOpenProjectProvider
 import com.esprito.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.intellij.execution.RunManager
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
@@ -23,7 +23,7 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
     init {
         templatePresentation.text = message("explyt.external.project.link.text")
         templatePresentation.setDescription(message("explyt.external.project.link.text"))
-        templatePresentation.icon = AllIcons.CodeStyle.AddNewSectionRule
+        templatePresentation.icon = SpringIcons.SpringExplorer
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread {
