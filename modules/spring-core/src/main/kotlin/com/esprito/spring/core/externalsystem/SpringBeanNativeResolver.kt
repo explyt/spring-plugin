@@ -38,13 +38,16 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.isFile
 import com.intellij.psi.PsiClass
 import com.intellij.serviceContainer.AlreadyDisposedException
+import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit.MINUTES
 import javax.swing.JPanel
 
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
@@ -93,8 +96,14 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             .runReadAction(Computable { NativeBootUtils.getMainClass(runConfiguration) })
             ?: throw ExternalSystemException("No main class run configuration found")
 
+        val modules = runConfiguration.modules
+        val buildPromise = ProjectTaskManager.getInstance(settings.project).build(*modules)
+        val buildResult = buildPromise.blockingGet(10, MINUTES)
+        if (buildResult == null || buildResult.hasErrors() || buildResult.isAborted) {
+            throw ExternalSystemException("Build failed. Try build project: Build -> Build Project (Ctrl + F9) and see log")
+        }
+
         val clone = runConfiguration.clone() as SpringBootRunConfiguration
-        clone.beforeRunTasks = runConfiguration.beforeRunTasks
         clone.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
             .runReadAction(Computable { mainClass.qualifiedName })
         clone.mainClassName = SpringBootBeanReaderStarter::class.qualifiedName
@@ -102,12 +111,13 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
         val descriptor = getDescriptor()
+        val environment = getEnvironment(id, clone, processAdapter, descriptor)
         try {
-            val environment = getEnvironment(id, clone, processAdapter, descriptor)
             ProgramRunnerUtil.executeConfiguration(environment, false, false)
             processAdapter.await()
         } finally {
-            descriptor.dispose()
+            Disposer.dispose(environment)
+            Disposer.dispose(descriptor)
         }
         val beans = processAdapter.getBeans()
 
