@@ -1,6 +1,6 @@
 package com.esprito.spring.web.references.contributors.webClient
 
-import com.esprito.spring.web.service.beans.discoverer.SpringWebEndpointsSearcher
+import com.esprito.spring.web.service.SpringWebEndpointsSearcher
 import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMethod

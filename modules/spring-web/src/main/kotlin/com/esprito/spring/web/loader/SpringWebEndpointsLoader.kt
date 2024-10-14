@@ -1,4 +1,4 @@
-package com.esprito.spring.web.service.beans.discoverer
+package com.esprito.spring.web.loader
 
 import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.openapi.extensions.ProjectExtensionPointName
@@ -49,13 +49,14 @@ data class EndpointElement(
     val type: EndpointType
 )
 
-sealed class EndpointResult {
-    data class ReferrerResult(val referrer: Referrer) : EndpointResult()
-    data class EndpointElementResult(val endpointElement: EndpointElement) : EndpointResult()
+sealed class EndpointData {
+    data class ReferrerData(val referrer: Referrer) : EndpointData()
+    data class EndpointElementData(val endpointElement: EndpointElement) : EndpointData()
 }
 
 enum class EndpointType {
     SPRING_MVC,
     SPRING_WEBFLUX,
-    OPENAPI
+    OPENAPI,
+    SPRING_OPEN_FEIGN
 }

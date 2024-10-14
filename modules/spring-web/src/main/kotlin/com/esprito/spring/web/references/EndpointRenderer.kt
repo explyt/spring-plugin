@@ -1,6 +1,6 @@
 package com.esprito.spring.web.references
 
-import com.esprito.spring.web.service.beans.discoverer.EndpointElement
+import com.esprito.spring.web.loader.EndpointElement
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.codeInsight.lookup.LookupElementRenderer

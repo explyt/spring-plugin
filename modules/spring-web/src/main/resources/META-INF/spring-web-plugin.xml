@@ -2,7 +2,7 @@
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.esprito.spring.web.springWebEndpointsLoader" dynamic="true"
-                        interface="com.esprito.spring.web.service.beans.discoverer.SpringWebEndpointsLoader"
+                        interface="com.esprito.spring.web.loader.SpringWebEndpointsLoader"
                         area="IDEA_PROJECT"/>
     </extensionPoints>
 
@@ -12,11 +12,13 @@
                 implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
 
         <springWebEndpointsLoader
-                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebControllerLoader"/>
+                implementation="com.esprito.spring.web.loader.SpringWebControllerLoader"/>
         <springWebEndpointsLoader
-                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebFluxEndpointsLoader"/>
+                implementation="com.esprito.spring.web.loader.SpringWebFluxEndpointsLoader"/>
         <springWebEndpointsLoader
-                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebOpenApiEndpointsLoader"/>
+                implementation="com.esprito.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.esprito.spring.web.loader.SpringWebFeignClientLoader"/>
 
     </extensions>
 
