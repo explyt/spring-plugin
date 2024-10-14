@@ -1,7 +1,8 @@
 package com.esprito.spring.web.references
 
-import com.esprito.spring.web.service.beans.discoverer.EndpointElement
-import com.esprito.spring.web.service.beans.discoverer.SpringWebEndpointsSearcher
+import com.esprito.spring.web.loader.EndpointElement
+import com.esprito.spring.web.loader.EndpointType
+import com.esprito.spring.web.service.SpringWebEndpointsSearcher
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.module.ModuleUtilCore
@@ -30,7 +31,11 @@ class EspritoControllerMethodReference(
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val currentModule = module.value ?: return emptyArray()
 
-        return webSearchService.getAllEndpointElements(urlPath, currentModule).asSequence()
+        return webSearchService.getAllEndpointElements(
+            urlPath,
+            currentModule,
+            listOf(EndpointType.SPRING_MVC, EndpointType.SPRING_WEBFLUX)
+        ).asSequence()
             .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) { PsiElementResolveResult(it.psiElement) }
             .toTypedArray()
@@ -38,8 +43,8 @@ class EspritoControllerMethodReference(
 
     override fun getVariants(): Array<Any> {
         val currentModule = module.value ?: return emptyArray()
-        val endpoints = SpringWebEndpointsSearcher.getInstance(currentModule.project).getAllEndpoints(currentModule)
-        return endpoints.asSequence()
+        return SpringWebEndpointsSearcher.getInstance(currentModule.project)
+            .getAllEndpoints(currentModule, listOf(EndpointType.SPRING_MVC, EndpointType.SPRING_WEBFLUX)).asSequence()
             .filter { it.path.isNotEmpty() }
             .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) {

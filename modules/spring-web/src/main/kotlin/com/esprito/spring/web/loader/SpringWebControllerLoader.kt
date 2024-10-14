@@ -1,4 +1,4 @@
-package com.esprito.spring.web.service.beans.discoverer
+package com.esprito.spring.web.loader
 
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.tracker.ModificationTrackerManager
@@ -14,6 +14,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
 class SpringWebControllerLoader(private val project: Project) : SpringWebEndpointsLoader {
+
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {

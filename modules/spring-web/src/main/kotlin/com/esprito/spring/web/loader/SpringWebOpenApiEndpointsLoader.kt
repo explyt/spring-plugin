@@ -1,4 +1,4 @@
-package com.esprito.spring.web.service.beans.discoverer
+package com.esprito.spring.web.loader
 
 import com.esprito.spring.web.providers.EndpointUsageSearcher.getOpenApiJsonEndpoints
 import com.esprito.spring.web.providers.EndpointUsageSearcher.getOpenApiYamlEndpoints
@@ -33,7 +33,7 @@ class SpringWebOpenApiEndpointsLoader(private val project: Project) : SpringWebE
             getOpenApiYamlEndpoints(module)
         )
             .flatMap { result ->
-                result.filterIsInstance<EndpointResult.EndpointElementResult>()
+                result.filterIsInstance<EndpointData.EndpointElementData>()
                     .map { it.endpointElement }
             }
     }

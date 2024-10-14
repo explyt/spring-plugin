@@ -1,4 +1,4 @@
-package com.esprito.spring.web.service.beans.discoverer
+package com.esprito.spring.web.loader
 
 import com.intellij.psi.PsiClass
 
