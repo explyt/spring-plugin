@@ -1,0 +1,25 @@
+<html>
+<body>
+Feign can handle load balancing via service registration and service discovery itself.
+<p>
+    In the @FeignClient annotation the String value is an arbitrary client name, which is used to create a Spring Cloud
+    LoadBalancer client.
+</p>
+<p>
+    See https://docs.spring.io/spring-cloud-openfeign/docs/current/reference/html/#netflix-feign-starter
+</p>
+<pre>
+    <code lang="java">
+    @FeignClient("stores")
+    public interface StoreClient {
+        @LoadBalanced // @LoadBalanced annotation does not need to be used in the FeignClient interface
+        @RequestMapping(method = RequestMethod.GET, value = "/stores")
+        List<Store> getStores();
+    }
+    </code>
+</pre>
+<p>If you want to load balance services registered in a service registry (for example, Eureka),
+    you only need to specify the service name in the @FeignClient via the name (or value) parameter.</p>
+
+</body>
+</html>

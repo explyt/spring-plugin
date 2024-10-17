@@ -324,6 +324,9 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (isAutowiredByRequiredTrue() == true) {
             return true
         }
+        if (isMetaAnnotatedBy(SpringCoreClasses.LOAD_BALANCED)) {
+            return false
+        }
         return isMetaAnnotatedBy(SpringCoreClasses.QUALIFIERS) || isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH)
     }
 

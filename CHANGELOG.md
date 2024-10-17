@@ -7,6 +7,7 @@
 
 ### Spring Web/MVC
 
+- Added inspection for @LoadBalanced annotation in the FeignClient interface
 - Fixed: Inspection in @ConfigurationProperties with @ConstructorBinding is in use, by binding to the constructor
   parameters
 - Fixed: PatternSyntaxException while parsing controller
