@@ -114,6 +114,10 @@ object SpringCoreClasses {
     const val PRE_DESTROY_J = "jakarta.annotation.PreDestroy"
     const val PRE_DESTROY_X = "javax.annotation.PreDestroy"
 
+    const val NETFLIX_FEIGN_CLIENT = "org.springframework.cloud.netflix.feign.FeignClient"
+    const val OPEN_FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
+    const val LOAD_BALANCED = "org.springframework.cloud.client.loadbalancer.LoadBalanced"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)

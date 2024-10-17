@@ -137,6 +137,16 @@
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.spring.web.inspections.OpenApiYamlSpecificationVersionInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="OpenFeignInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Spring Explyt"
+                         groupKey="esprito.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="esprito.spring.web.inspection.openfeign.client"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.esprito.spring.web.inspections.OpenFeignInspection"/>
+
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"

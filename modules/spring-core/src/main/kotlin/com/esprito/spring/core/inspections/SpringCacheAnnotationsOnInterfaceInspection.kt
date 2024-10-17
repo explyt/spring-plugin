@@ -2,6 +2,7 @@ package com.esprito.spring.core.inspections
 
 import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
+import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_CACHE
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
@@ -69,8 +70,8 @@ class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectio
         return psiClass.isEqualOrInheritor("org.springframework.data.repository.Repository")
                 || psiClass.isMetaAnnotatedBy(
             listOf(
-                "org.springframework.cloud.netflix.feign.FeignClient",
-                "org.springframework.cloud.openfeign.FeignClient"
+                SpringCoreClasses.NETFLIX_FEIGN_CLIENT,
+                SpringCoreClasses.OPEN_FEIGN_CLIENT
             )
         )
     }
