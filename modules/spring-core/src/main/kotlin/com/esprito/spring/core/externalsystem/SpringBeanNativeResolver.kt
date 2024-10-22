@@ -1,6 +1,8 @@
 package com.esprito.spring.core.externalsystem
 
 
+import com.esprito.base.LibraryClassCache
+import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.REST_CONTROLLER
 import com.esprito.spring.core.externalsystem.model.SpringBeanData
@@ -14,6 +16,7 @@ import com.esprito.spring.core.externalsystem.utils.NativeBootUtils
 import com.esprito.spring.core.profile.SpringProfilesService
 import com.esprito.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
 import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.boot.bean.reader.SpringBootBeanEnhancerReaderStarter
 import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.execution.ProgramRunnerUtil
@@ -39,6 +42,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.isFile
 import com.intellij.psi.PsiClass
@@ -49,6 +53,8 @@ import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit.MINUTES
 import javax.swing.JPanel
+
+private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.config.ConfigData"
 
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
 
@@ -100,13 +106,14 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val buildPromise = ProjectTaskManager.getInstance(settings.project).build(*modules)
         val buildResult = buildPromise.blockingGet(10, MINUTES)
         if (buildResult == null || buildResult.hasErrors() || buildResult.isAborted) {
-            throw ExternalSystemException("Build failed. Try build project: Build -> Build Project (Ctrl + F9) and see log")
+            throw ExternalSystemException(SpringCoreBundle.message("explyt.external.project.sync.build.error"))
         }
 
         val clone = runConfiguration.clone() as SpringBootRunConfiguration
         clone.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
             .runReadAction(Computable { mainClass.qualifiedName })
-        clone.mainClassName = SpringBootBeanReaderStarter::class.qualifiedName
+
+        clone.mainClassName = getMainClassName(modules, id, listener)
         clone.classpathModifications.add(getClasspathExplytModification())
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
@@ -120,6 +127,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             Disposer.dispose(descriptor)
         }
         val beans = processAdapter.getBeans()
+        checkErrors(beans, processAdapter)
 
         val projectData = projectData(projectPath, runConfiguration)
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
@@ -127,6 +135,36 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         fillProfiles(projectDataNode, projectPath, settings.project, runConfiguration)
         return projectDataNode
+    }
+
+    private fun getMainClassName(
+        modules: Array<Module>,
+        id: ExternalSystemTaskId,
+        listener: ExternalSystemTaskNotificationListener
+    ): String {
+        if (!Registry.`is`("explyt.spring.native.old")) return SpringBootBeanReaderStarter::class.qualifiedName!!
+        val isSpringBoot24 = ApplicationManager.getApplication()
+            .runReadAction(Computable {
+                modules.any { LibraryClassCache.searchForLibraryClass(it, SPRING_BOOT_2_4_CLASS) != null }
+            }) ?: false
+        return if (isSpringBoot24) {
+            SpringBootBeanReaderStarter::class.qualifiedName!!
+        } else {
+            listener.onTaskOutput(id, "WARNING! Using Spring Boot Bean Enhancer for old versions before 2.4.0", true)
+            listener.onTaskOutput(id, System.lineSeparator(), true)
+            listener.onTaskOutput(id, System.lineSeparator(), true)
+            SpringBootBeanEnhancerReaderStarter::class.qualifiedName!!
+        }
+    }
+
+    private fun checkErrors(beans: List<BeanInfo>, processAdapter: ExplytCapturingProcessAdapter) {
+        if (!Registry.`is`("explyt.spring.native.old") && processAdapter.classNotFoundError) {
+            throw ExternalSystemException(
+                SYSTEM_ID.readableName + ": " + SpringCoreBundle.message("explyt.external.project.sync.old.error")
+            )
+        } else if (beans.isEmpty()) {
+            throw ExternalSystemException(SpringCoreBundle.message("explyt.external.project.sync.empty.error"))
+        }
     }
 
     private fun fillProfiles(
@@ -138,7 +176,8 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val module = getModule(projectPath, project) ?: return
         val profiles = SpringProfilesService.getInstance(project).loadExistingProfiles(module)
         if (profiles == DEFAULT_PROFILE_LIST) return
-        profiles.map { SpringProfileData(it, runConfiguration.name) }
+        profiles.asSequence().filter { it.isNotEmpty() }
+            .map { SpringProfileData(it, runConfiguration.name) }
             .forEach { projectDataNode.createChild(SpringProfileData.KEY, it) }
     }
 

@@ -1,6 +1,6 @@
 package com.esprito.spring.core.externalsystem.process
 
-import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
+import com.explyt.spring.boot.bean.reader.BeanPrinter
 import com.google.gson.Gson
 import com.intellij.execution.process.CapturingProcessAdapter
 import com.intellij.execution.process.ProcessEvent
@@ -17,6 +17,7 @@ class ExplytCapturingProcessAdapter(
     private val latch = CountDownLatch(1)
     private var explytLog = false
     private val gson = Gson()
+    var classNotFoundError = false;
 
     override fun processTerminated(event: ProcessEvent) {
         super.processTerminated(event)
@@ -31,6 +32,9 @@ class ExplytCapturingProcessAdapter(
                 listener.onTaskOutput(id, event.text, true)
             }
         } else {
+            if (event.text.contains("NoClassDefFoundError")) {
+                classNotFoundError = true
+            }
             listener.onTaskOutput(id, event.text, true)
         }
     }
@@ -42,8 +46,8 @@ class ExplytCapturingProcessAdapter(
     fun getBeans(): List<BeanInfo> {
         latch.await()
         return output.stdoutLines.asSequence()
-            .filter { it.startsWith(SpringBootBeanReaderStarter.EXPLYT_BEAN_INFO) }
-            .map { it.substringAfter(SpringBootBeanReaderStarter.EXPLYT_BEAN_INFO) }
+            .filter { it.startsWith(BeanPrinter.EXPLYT_BEAN_INFO) }
+            .map { it.substringAfter(BeanPrinter.EXPLYT_BEAN_INFO) }
             .mapNotNull { getBeanInfo(it) }
             .toList()
     }
@@ -55,7 +59,7 @@ class ExplytCapturingProcessAdapter(
     }
 
     private fun checkExplytLogStart(text: String?) {
-        if (!explytLog && text?.contains(SpringBootBeanReaderStarter.EXPLYT_BEAN_INFO_START) == true) {
+        if (!explytLog && text?.contains(BeanPrinter.EXPLYT_BEAN_INFO_START) == true) {
             explytLog = true
         }
     }
