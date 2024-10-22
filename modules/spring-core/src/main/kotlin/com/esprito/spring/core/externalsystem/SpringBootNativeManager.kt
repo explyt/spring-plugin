@@ -12,19 +12,6 @@ import com.intellij.util.Function
 class SpringBootNativeManager :
     ExternalSystemManager<NativeProjectSettings, SettingsListener, NativeSettings, LocalSettings, NativeExecutionSettings> {
 
-    /*override fun getProjectRepresentationName(targetProjectPath: String, rootProjectPath: String?): String {
-        return ExternalSystemApiUtil.getProjectRepresentationName(targetProjectPath, rootProjectPath)
-    }
-
-    override fun getExternalProjectConfigDescriptor(): FileChooserDescriptor {
-        return FileChooserDescriptorFactory.createSingleFolderDescriptor()
-    }
-
-    override fun getProjectIcon() = AllIcons.FileTypes.Json
-
-    override fun getTaskIcon() = AllIcons.Nodes.ConfigFolder
-*/
-
     override fun enhanceRemoteProcessing(parameters: SimpleJavaParameters) =
         throw java.lang.UnsupportedOperationException()
 
