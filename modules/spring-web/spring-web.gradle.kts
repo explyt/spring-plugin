@@ -39,21 +39,14 @@ dependencies {
     implementation("com.networknt:json-schema-validator:1.5.2")
 
     intellijPlatform {
-        create(defaultIdeaType, defaultIdeaVersion)
+        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
+        jetbrainsRuntime()
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
     }
     testImplementation(project(":test-framework"))
     testImplementation("junit:junit:4.13.2")
-}
-
-repositories {
-    mavenCentral()
-    intellijPlatform {
-        defaultRepositories()
-        localPlatformArtifacts()
-    }
 }
 
 kotlin {

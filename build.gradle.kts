@@ -24,10 +24,6 @@ subprojects {
     apply(plugin = "java")
     apply(plugin = "org.jetbrains.intellij.platform")
 
-    repositories {
-        mavenCentral()
-    }
-
     // This syntax is used to avoid duplicated in compileKotlin and compileTestKotlin settings
     //noinspection GroovyAssignabilityCheck
 
@@ -50,7 +46,4 @@ subprojects {
 }
 
 dependencies {
-}
-repositories {
-    mavenCentral()
 }

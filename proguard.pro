@@ -49,6 +49,8 @@
 -keep class com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
 -keep class com.esprito.spring.core.profile.ProfileSearcher
 -keep class com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
+# spring-web
+-keep class com.esprito.spring.web.loader.SpringWebEndpointsLoader
 
 # here is list of class that persistence state to file (data mapping is broken)
 -keep class com.esprito.spring.core.runconfiguration.SpringBootConfigurationOptions { *; }
@@ -57,6 +59,10 @@
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
    <fields>;
 }
+
+# classes which run in user context
+-keep class com.explyt.spring.** { *; }
+-dontwarn com.explyt.spring.**
 
 # to reflect obfuscated class refs in plugin.xml
 -adaptresourcefilecontents **.xml
@@ -75,6 +81,7 @@
 -dontwarn kotlin.coroutines.**
 -dontwarn org.gradle.internal.**
 -dontwarn org.jetbrains.kotlin.**
+-dontwarn org.jetbrains.annotations.**
 -dontwarn org.junit.**
 -dontwarn org.yaml.snakeyaml.**
 -dontwarn reactor.blockhound.**
