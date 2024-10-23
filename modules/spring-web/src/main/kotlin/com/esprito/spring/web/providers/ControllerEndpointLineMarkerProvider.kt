@@ -69,6 +69,4 @@ class ControllerEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .createLineMarkerInfo(element)
     }
 
-    data class Referrer(val path: String, val method: String?, val psiElement: PsiElement)
-
 }

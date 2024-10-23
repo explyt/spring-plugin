@@ -1,11 +1,13 @@
 package com.esprito.spring.core.runconfiguration
 
 import com.esprito.spring.core.action.UastModelTrackerInvalidateAction
+import com.esprito.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.esprito.spring.core.service.ProfilesService
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
 
 class EspritoRunManagerListener(val project: Project) : RunManagerListener {
@@ -34,6 +36,7 @@ class EspritoRunManagerListener(val project: Project) : RunManagerListener {
 
         if (isChanged) {
             ApplicationManager.getApplication().invokeLater {
+                ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, SYSTEM_ID)
                 UastModelTrackerInvalidateAction.invalidate(project)
                 //InlayHintsPassFactoryInternal.clearModificationStamp(editor)
                 // TODO: use it for updating hints only instead of dropping all psi caches

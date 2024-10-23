@@ -186,8 +186,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             val psiElement = fileProperties.firstOrNull { it.key == property.name }?.psiElement ?: continue
             val psiKey = psiElement.propertyKeyPsiElement() ?: continue
             val level = property.deprecation?.level ?: continue
-            val reason = property.deprecation?.reason ?: " "
             val replacement = property.deprecation?.replacement ?: " "
+            val reason = property.deprecation?.reason
+                ?: if (replacement.isNotEmpty()) "replacement to \"$replacement\""
+                else "reason unknown"
             problems += manager.createProblemDescriptor(
                 psiKey,
                 SpringCoreBundle.message("esprito.spring.inspection.properties.key.deprecated", reason),
@@ -605,11 +607,11 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
         val listKey = getListKeys(property, properties)
         if (listKey.isNotEmpty()) {
-            return listKey.first()
+            return listKey.firstOrNull()
         }
         val mapKey = getMapKeys(property, properties)
         if (mapKey.isNotEmpty()) {
-            return mapKey.first()
+            return mapKey.firstOrNull()
         }
         return null
     }

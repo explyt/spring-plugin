@@ -14,7 +14,7 @@
 - minimize your routine tasks
 - make sure your code follows best practices
 
-### [Spring Explyt plugin](https://github.com/explyt/spring-plugin) provides solid support for:
+### Spring Explyt plugin provides solid support for:
 - Spring Boot
 - Spring Framework
 - Spring Data
@@ -56,11 +56,12 @@
 - errorChannel
 - integrationFlowContext
 
-To use the Spring Explyt plugin in IntelliJ IDEA Ultimate, you must turn off the Spring plugin (conflict functionality). The plugin supports Spring 6 and higher.
+To use the Spring Explyt plugin in IntelliJ IDEA Ultimate, you must turn off the Spring plugin (conflict functionality). 
+The plugin supports Spring 6 and higher.
 
 * [NON-COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
 * [COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/COMMERCE_LICENSE.md)
 
-The plugin is free for both non-commercial and commercial use. You may download it from [here](https://plugins.jetbrains.com/plugin/23273-spring-explyt/versions#tabs) for non-commercial use. If you need the plugin for commercial work, please contact us at sales@explyt.com, and we’ll send you the license key.
+The plugin is free for both non-commercial and commercial use. You may download it from [here](https://github.com/explyt/spring-plugin) for non-commercial use. If you need the plugin for commercial work, please contact us at sales@explyt.com, and we’ll send you the license key.
 
 Feel free to share your feedback and report issues on [GitHub](https://github.com/explyt/spring-plugin/issues).

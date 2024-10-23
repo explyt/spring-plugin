@@ -1,0 +1,23 @@
+input.download-url-input {
+    visibility: hidden;
+}
+
+a.link {
+    visibility: hidden;
+}
+
+button.download-url-button {
+    visibility: hidden;
+}
+button.download-url-button:after {
+    visibility: visible;
+    content: 'Update';
+    background: #62a03f;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 10px;
+}

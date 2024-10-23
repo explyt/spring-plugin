@@ -28,7 +28,9 @@
 -keepdirectories
 
 # keep attributes
--keepattributes InnerClasses,LineNumberTable,*Annotation*,SourceFile,Signature,EnclosingMethod
+#-keepattributes InnerClasses,LineNumberTable,*Annotation*,SourceFile,Signature,EnclosingMethod
+# preserve all possible attributes
+-keepattributes Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,LocalVariable*Table,*Annotation*,Synthetic,EnclosingMethod
 
 # we potentially could have desktop related logic with createUI method, which have to be saved
 -keep class * extends javax.swing.plaf.ComponentUI {
@@ -36,8 +38,6 @@
 }
 
 # Entry point to the app.
-#-keep class com.esprito.** { *; }
-
 # all classes we can obfuscate
 -keep,allowobfuscation class com.esprito.** { *; }
 
@@ -49,6 +49,8 @@
 -keep class com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
 -keep class com.esprito.spring.core.profile.ProfileSearcher
 -keep class com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
+# spring-web
+-keep class com.esprito.spring.web.loader.SpringWebEndpointsLoader
 
 # here is list of class that persistence state to file (data mapping is broken)
 -keep class com.esprito.spring.core.runconfiguration.SpringBootConfigurationOptions { *; }
@@ -57,6 +59,10 @@
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
    <fields>;
 }
+
+# classes which run in user context
+-keep class com.explyt.spring.** { *; }
+-dontwarn com.explyt.spring.**
 
 # to reflect obfuscated class refs in plugin.xml
 -adaptresourcefilecontents **.xml
@@ -67,14 +73,26 @@
 
 -dontwarn com.intellij.ui.mac.**
 -dontwarn com.jetbrains.performancePlugin.**
+-dontwarn com.jetbrains.codeInspection.**
 -dontwarn com.jetbrains.rd.**
+-dontwarn com.networknt.**
 -dontwarn com.sun.tools.attach.**
 -dontwarn io.kinference.core.operators.ml.trees.KICoreTreeEnsemble
+-dontwarn kotlin.coroutines.**
+-dontwarn org.gradle.internal.**
 -dontwarn org.jetbrains.kotlin.**
+-dontwarn org.jetbrains.annotations.**
 -dontwarn org.junit.**
+-dontwarn org.yaml.snakeyaml.**
 -dontwarn reactor.blockhound.**
 -dontwarn training.**
+
+-keep class org.slf4j.**
 -dontwarn org.slf4j.**
+
+-keep class org.yaml.snakeyaml.** {
+   public org.yaml.snakeyaml.** <init>(long);
+}
 
 # slf4j
 -assumenosideeffects class * implements org.slf4j.Logger {

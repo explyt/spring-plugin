@@ -10,10 +10,10 @@ import org.springframework.graphql.data.method.annotation.SchemaMapping
 import org.springframework.stereotype.Controller
 
 @Controller
-class ProductGraphQLController(productRepository: ProductRepository, orderRepository: OrderRepository) {
-    private val productRepository: ProductRepository = productRepository
-
-    private val orderRepository: OrderRepository = orderRepository
+class ProductGraphQLController(
+    private val productRepository: ProductRepository,
+    private val orderRepository: OrderRepository
+) {
 
     @QueryMapping
     fun products(@Argument size: Int, @Argument page: Int): List<Product> {

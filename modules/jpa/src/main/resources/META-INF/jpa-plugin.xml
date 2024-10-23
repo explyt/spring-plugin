@@ -8,7 +8,7 @@
 
 
     <extensionPoints>
-        <extensionPoint
+        <extensionPoint dynamic="true"
                 qualifiedName="com.esprito.jpa.ql.reference.inputParameterReferenceResolver"
                 interface="com.esprito.jpa.ql.reference.InputParameterReferenceResolver"
                 area="IDEA_PROJECT"/>

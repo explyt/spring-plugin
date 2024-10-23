@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
+
 rootProject.name = "esprito-studio"
 
 pluginManagement {
@@ -6,34 +8,51 @@ pluginManagement {
 
     plugins {
         kotlin("jvm") version kotlinVersion apply false
-        id("org.jetbrains.intellij") version gradleIntellijPluginVersion apply false
+        id("org.jetbrains.intellij.platform") version gradleIntellijPluginVersion apply false
+        id("org.jetbrains.intellij.platform.module") version gradleIntellijPluginVersion apply false
+        id("org.jetbrains.intellij.platform.migration") version gradleIntellijPluginVersion apply false
     }
 }
 
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
+    id("org.jetbrains.intellij.platform.settings") version "2.0.1"
 }
 
-includeProject("base", "modules/base")
-includeProject("spring-core", "modules/spring-core")
-includeProject("spring-data", "modules/spring-data")
-includeProject("spring-security", "modules/spring-security")
-includeProject("spring-web", "modules/spring-web")
-includeProject("spring-cloud", "modules/spring-cloud")
-includeProject("spring-initializr", "modules/spring-initializr")
-includeProject("spring-integration", "modules/spring-integration")
-includeProject("spring-messaging", "modules/spring-messaging")
-includeProject("spring-aop", "modules/spring-aop")
-includeProject("spring-bootstrap", "modules/spring-bootstrap", true, true)
-includeProject("jpa", "modules/jpa")
-includeProject("test-framework", "modules/test-framework")
-includeProject("spring-gradle", "modules/spring-gradle")
+@Suppress("UnstableApiUsage")
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositories {
+        mavenLocal()
+        mavenCentral()
 
-fun includeProject(name: String, path: String, changeBuildFileName: Boolean = true, ktScript: Boolean = false) {
-    include(":$name")
-    project(":$name").projectDir = File(settingsDir, "$path")
+        intellijPlatform {
+            defaultRepositories()
+            jetbrainsRuntime()
+            localPlatformArtifacts()
+        }
 
-    if (changeBuildFileName) {
-        project(":$name").buildFileName = "${name}.gradle" + if (ktScript) ".kts" else ""
     }
+}
+
+includeProject("base")
+includeProject("spring-core")
+includeProject("spring-data")
+includeProject("spring-security")
+includeProject("spring-web")
+includeProject("spring-cloud")
+includeProject("spring-initializr")
+includeProject("spring-integration")
+includeProject("spring-messaging")
+includeProject("spring-aop")
+includeProject("jpa")
+includeProject("test-framework")
+includeProject("spring-gradle")
+includeProject("spring-bootstrap")
+
+fun includeProject(name: String, path: String = "modules/$name") {
+    include(":$name")
+    project(":$name").projectDir = File(settingsDir, path)
+
+    project(":$name").buildFileName = "${name}.gradle.kts"
 }

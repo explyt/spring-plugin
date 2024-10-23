@@ -20,6 +20,7 @@ object SpringCoreClasses {
     const val SCOPE = "org.springframework.context.annotation.Scope"
     const val IMPORT = "org.springframework.context.annotation.Import"
     const val BEAN_FACTORY = "org.springframework.beans.factory.BeanFactory"
+    const val CONFIGURATION_PROPERTIES_SCAN = "org.springframework.boot.context.properties.ConfigurationPropertiesScan"
 
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"
@@ -28,6 +29,11 @@ object SpringCoreClasses {
     const val ANNOTATION_CONFIG_CONTEXT = "org.springframework.context.annotation.AnnotationConfigApplicationContext"
 
     const val COMPONENT = "org.springframework.stereotype.Component"
+    const val SERVICE = "org.springframework.stereotype.Service"
+    const val CONTROLLER = "org.springframework.stereotype.Controller"
+    const val REST_CONTROLLER = "org.springframework.web.bind.annotation.RestController"
+    const val REPOSITORY = "org.springframework.stereotype.Repository"
+
     const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
     const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
 
@@ -62,6 +68,7 @@ object SpringCoreClasses {
     const val CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties"
     const val NESTED_CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.NestedConfigurationProperty"
     const val DEPRECATED_CONFIGURATION_PROPERTIES = "org.springframework.boot.context.properties.DeprecatedConfigurationProperty"
+    const val CONSTRUCTOR_BINDING = "org.springframework.boot.context.properties.bind.ConstructorBinding"
 
     const val PROPERTY_SOURCES = "org.springframework.context.annotation.PropertySources"
     const val PROPERTY_SOURCE = "org.springframework.context.annotation.PropertySource"
@@ -102,10 +109,18 @@ object SpringCoreClasses {
     const val ENTITY = "jakarta.persistence.Entity"
     const val ENTITY_X = "javax.persistence.Entity"
 
+    const val POST_CONSTRUCT_J = "jakarta.annotation.PostConstruct"
+    const val POST_CONSTRUCT_X = "javax.annotation.PostConstruct"
+    const val PRE_DESTROY_J = "jakarta.annotation.PreDestroy"
+    const val PRE_DESTROY_X = "javax.annotation.PreDestroy"
+
+    const val NETFLIX_FEIGN_CLIENT = "org.springframework.cloud.netflix.feign.FeignClient"
+    const val OPEN_FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
+    const val LOAD_BALANCED = "org.springframework.cloud.client.loadbalancer.LoadBalanced"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
-    val ANNOTATIONS_WITH_PACKAGE_ANT_REFERENCES = setOf(COMPONENT_SCAN, SPRING_BOOT_APPLICATION)
     val ANNOTATIONS_CACHE = setOf(CACHEABLE, CACHEPUT, CACHEEVICT, CACHECONFIG, CACHING)
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns

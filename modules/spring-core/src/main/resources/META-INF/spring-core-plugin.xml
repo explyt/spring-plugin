@@ -46,6 +46,22 @@
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
+        <!--Spring Boot External System-->
+        <externalSystemManager implementation="com.esprito.spring.core.externalsystem.SpringBootNativeManager"/>
+        <externalSystemUnlinkedProjectAware
+                implementation="com.esprito.spring.core.externalsystem.process.UnlinkedProjectAware"/>
+        <toolWindow id="ExplytSpringBoot" anchor="right"
+                    factoryClass="com.esprito.spring.core.externalsystem.view.SpringBootToolWindowFactory"/>
+        <projectImportProvider
+                implementation="com.esprito.spring.core.externalsystem.process.SpringBootProjectImportProvider"/>
+        <projectOpenProcessor
+                implementation="com.esprito.spring.core.externalsystem.process.SpringBootProjectOpenProcessor"/>
+        <externalSystemViewContributor id="ExplytSpringBoot"
+                                       implementation="com.esprito.spring.core.externalsystem.view.SpringBootExternalSystemViewContributor"/>
+        <externalSystemDependencyAnalyzer
+                implementation="com.esprito.spring.core.externalsystem.analyzer.BeanAnalyzerExtension"/>
+        <!--Spring Boot External System-->
+
         <notificationGroup id="com.esprito.spring.notification"
                            displayType="BALLOON"
                            bundle="messages.SpringCoreBundle"
@@ -56,7 +72,6 @@
                                 implementationClass="com.esprito.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
 
         <completion.contributor language="yaml"
-                                id="com.esprito.spring.core.yamlCompletionContributor"
                                 implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
         <completion.contributor language="UAST"
@@ -611,6 +626,14 @@
 
         <registryKey key="esprito.spring.root.runConfiguration" defaultValue="true"
                      description="Use root class from run configuration for bean search"/>
+        <registryKey key="explyt.spring.process.log.all" defaultValue="false"
+                     description="Show all spring log in bean resolve process"/>
+        <registryKey key="explyt.spring.native" defaultValue="true"
+                     description="Enable Spring explyt native bean retriever"/>
+        <registryKey key="explyt.spring.native.old" defaultValue="false"
+                     description="Support Spring Boot old versions before 2.4"/>
+        <registryKey key="EXPLYTSPRINGBOOT.system.in.process" defaultValue="true"
+                     description="Whether IDEA should use 'in-process' mode for interaction with plugin api"/>
         <intentionAction>
             <language>yaml</language>
             <className>com.esprito.spring.core.intentions.CreateYamlMetaDescriptionIntention</className>
@@ -623,12 +646,54 @@
             <language>UAST</language>
             <className>com.esprito.spring.core.intentions.CreateConfigurationMetaDescriptionIntention</className>
         </intentionAction>
+
+        <iconProvider implementation="com.esprito.spring.core.providers.SpringPropertyFileIconProvider"/>
     </extensions>
 
     <actions>
+        <action id="NavigateToSpringBean" class="com.esprito.spring.core.externalsystem.action.BeanNavigationAction"/>
+        <action id="Explyt.ExternalView.ProfileChanged"
+                class="com.esprito.spring.core.externalsystem.action.ChangeProfileStateAction"/>
+        <action id="SpringBootExplyt.ExternalSystem.AttachProject"
+                class="com.esprito.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
+        <action id="SpringBootExplyt.ToolbarDependencyAnalyzer"
+                class="com.esprito.spring.core.externalsystem.analyzer.ToolbarDependencyAnalyzerAction"/>
+        <group id="SpringBootExplyt.View.ActionsToolbar.CenterPanel">
+            <separator/>
+            <reference id="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
+            <separator/>
+            <add-to-group group-id="ExternalSystemView.ActionsToolbar.CenterPanel" anchor="last"/>
+        </group>
+        <group id="SpringBootExplyt.View.ActionsToolbar.LeftPanel">
+            <reference id="SpringBootExplyt.ExternalSystem.AttachProject"/>
+            <add-to-group group-id="ExternalSystemView.ActionsToolbar.LeftPanel" anchor="after"
+                          relative-to-action="ExternalSystem.RefreshAllProjects"/>
+        </group>
+        <action id="SpringBootExplyt.ExternalSystem.Toolbar.AttachProject"
+                class="com.esprito.spring.core.externalsystem.action.AttachSpringBootToolbarProjectAction">
+            <!--<add-to-group group-id="ToolbarRunGroup" anchor="after" relative-to-action="RunnerActions"/>-->
+            <add-to-group group-id="ToolbarMakeGroup" anchor="before" relative-to-action="CompileDirty"/>
+            <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="SearchEverywhere"/>
+        </action>
+
         <action id="Esprito.UastModelTrackerInvalidateAction"
                 class="com.esprito.spring.core.action.UastModelTrackerInvalidateAction">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
+        </action>
+
+        <action id="PostConstructGenerateAction" class="com.esprito.spring.core.action.PostConstructJavaGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PreDestroyGenerateAction" class="com.esprito.spring.core.action.PreDestroyJavaGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PostConstructGenerateActionKotlin"
+                class="com.esprito.spring.core.action.PostConstructKotlinGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PreDestroyKotlinGenerateAction"
+                class="com.esprito.spring.core.action.PreDestroyKotlinGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
     </actions>
 

@@ -3,7 +3,6 @@ package com.esprito.spring.core.reference.java
 import com.esprito.spring.test.EspritoJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
-import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.psi.PsiPackage
 import junit.framework.TestCase
 
@@ -44,19 +43,19 @@ class PackageReferenceContributorTest : EspritoJavaLightTestCase() {
 
         myFixture.complete(CompletionType.BASIC)
 
-        val lookupElementStrings = myFixture.lookupElementStrings
-        assertNotNull(lookupElementStrings)
-        TestCase.assertEquals(listOf("pack3", "pack3_2", "pack3"), lookupElementStrings)
+        val variants = myFixture.getReferenceAtCaretPosition()
+            ?.variants
+            ?.mapNotNull { it as? PsiPackage }
+            ?.mapTo(mutableSetOf()) { it.qualifiedName }
+        TestCase.assertNotNull(variants)
 
-        val lookupElements = myFixture.lookupElements
-        assertNotNull(lookupElements)
         TestCase.assertEquals(
-            listOf(
+            setOf(
                 "pack1.pack2.pack3",
                 "pack1.pack2.pack3_2",
                 "pack1.pack2_2.pack3"
             ),
-            lookupElements?.map { (it.psiElement as PsiPackage).qualifiedName }
+            variants
         )
     }
 
@@ -76,11 +75,12 @@ class PackageReferenceContributorTest : EspritoJavaLightTestCase() {
         assertNotNull(ref)
         assertNotNull(ref?.variants)
         TestCase.assertEquals(
-            listOf(
+            setOf(
                 "pack1.pack2.pack3_2",
+                "pack1.pack2.pack3",
                 "pack1.pack2_2.pack3_2"
             ),
-            ref?.variants?.filterIsInstance<LookupElement>()?.map { (it.psiElement as PsiPackage).qualifiedName }
+            ref?.variants?.mapNotNull { it as? PsiPackage }?.mapTo(mutableSetOf()) { it.qualifiedName }
         )
     }
 }

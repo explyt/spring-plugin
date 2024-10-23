@@ -176,6 +176,7 @@ class ValueHintReference(
         val targetPsiClass =
             JavaPsiFacade.getInstance(element.project).findClass(targetClassFqn, resolveScope) ?: return emptyList()
         return ClassInheritorsSearch.search(targetPsiClass, resolveScope, true).asSequence()
+            .plus(targetPsiClass)
             .map { psiClass ->
                 psiClass?.qualifiedName?.let {
                     LookupElementBuilder.create(psiClass, it)

@@ -27,6 +27,7 @@ import com.esprito.util.EspritoPsiUtil.isString
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
+import com.esprito.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.esprito.util.runReadNonBlocking
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.java.library.JavaLibraryUtil
@@ -111,6 +112,10 @@ object SpringCoreUtil {
 
     private fun isSpringProject(module: Module): Boolean {
         return LibraryClassCache.searchForLibraryClass(module, SpringCoreClasses.COMPONENT) != null
+    }
+
+    fun isSpringProject(project: Project): Boolean {
+        return LibraryClassCache.searchForLibraryClass(project, CORE_ENVIRONMENT) != null
     }
 
     fun isSpringBootProject(project: Project): Boolean {
@@ -506,5 +511,7 @@ object SpringCoreUtil {
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"
     const val SPRING_BOOT_ACTUATOR_MAVEN = "org.springframework.boot:spring-boot-actuator"
+    const val BASE_PACKAGES = "basePackages"
+    const val SCAN_BASE_PACKAGES = "scanBasePackages"
 
 }

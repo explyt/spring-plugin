@@ -9,7 +9,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTypesUtil
-import com.intellij.uast.UastMetaLanguage
 import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.uast.*
 
@@ -21,7 +20,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
         val psiClass = dataRetriever.getContainingClass() ?: return false
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return false
 
-        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass, module)
+        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass)
         val memberName = dataRetriever.getMemberName() ?: return false
         if (prefixValue.isBlank()) return false
 
@@ -31,7 +30,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
     }
 
     override fun isAvailable(file: PsiFile): Boolean {
-        return UastMetaLanguage.getRegisteredLanguages().contains(file.language)
+        return UastLanguagePlugin.byLanguage(file.language) != null
     }
 
     override fun rootArrayName(): String = "hints"
@@ -51,8 +50,7 @@ class CreateConfigurationMetaDescriptionIntention : BaseCreateMetaDescriptionInt
     override fun getPropertyInfo(editor: Editor, file: PsiFile): PropertyInfo? {
         val dataRetriever = getPropertyDataRetriever(editor, file) ?: return null
         val psiClass = dataRetriever.getContainingClass() ?: return null
-        val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
-        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass, module)
+        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass)
         val memberName = dataRetriever.getMemberName() ?: return null
         val nameElement = dataRetriever.getNameElementPsi() ?: return null
 

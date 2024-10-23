@@ -127,7 +127,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
                 result = isComponentCandidate(uParent.javaPsi) && !dependsOnIncorrectBean(uParent.javaPsi)
                 if (!result && hasSpringInterfaces(uParent)) {
-                    result = springSearchService.isInSpringContextLight(uParent, module)
+                    result = springSearchService.isInSpringContext(uParent, module)
                 }
             }
             if (uParent is UMethod) {
@@ -136,7 +136,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                         && !dependsOnIncorrectBean(uParent.javaPsi.containingClass)
             }
             if (result) {
-                inSpringContextClass = springSearchService.isInSpringContextLight(uParent, module)
+                inSpringContextClass = springSearchService.isInSpringContext(uParent, module)
             }
             return result
         }

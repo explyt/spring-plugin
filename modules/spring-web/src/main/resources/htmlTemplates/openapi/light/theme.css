@@ -1,0 +1,39 @@
+html {
+  overflow: auto; !important;
+}
+
+body {
+  font-size: 14px !important;
+  font-weight: 200 !important;
+  font-family: sans-serif;
+}
+
+h1 {
+  font-size: 2.2em !important;
+  line-height: 1.4em;
+}
+
+h2 {
+  font-size: 1.8em !important;
+  line-height: 1.2em;
+}
+
+h3 {
+  font-size: 1.3em !important;
+  line-height: 1em;
+}
+
+.version {
+  line-height: normal !important;
+}
+
+p {
+  line-height: 1.6em !important;
+}
+
+.topbar {display: none;}
+.information-container .info {margin: 25px 0;}
+.information-container .info .main .link {display: none}
+.swagger-ui .download-contents {display: none;}
+.swagger-ui input[type=file] {pointer-events: none;}
+input[type=text] {outline: 0;}

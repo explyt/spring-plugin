@@ -1,4 +1,4 @@
-image: amazoncorretto:17.0.7
+image: amazoncorretto:21.0.5
 
 variables:
   BRANCH_NAME: $CI_COMMIT_REF_NAME
@@ -16,6 +16,7 @@ test:
       when: never                                             # Do not run this job when a tag is created manually
     - when: always
   script:
+    - yum -y install e2fsprogs
     - ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:test -Dfile.encoding=UTF8
   artifacts:
     reports:

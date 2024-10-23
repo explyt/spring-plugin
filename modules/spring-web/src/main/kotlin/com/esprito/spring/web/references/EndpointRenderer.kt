@@ -1,6 +1,6 @@
 package com.esprito.spring.web.references
 
-import com.esprito.spring.web.service.beans.discoverer.EndpointElement
+import com.esprito.spring.web.loader.EndpointElement
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.codeInsight.lookup.LookupElementRenderer
@@ -10,13 +10,13 @@ class EndpointRenderer : LookupElementRenderer<LookupElement>() {
         val endpointElement = element.`object` as? EndpointElement ?: return
 
         presentation.itemText = endpointElement.path
-        val className = endpointElement.containingClass.name
+        val containing = endpointElement.containingClass?.name ?: endpointElement.containingFile?.name ?: ""
         val requestMethodsView = if (endpointElement.requestMethods.isEmpty()) {
             ""
         } else {
             endpointElement.requestMethods.joinToString(prefix = "[", separator = ", ", postfix = "]")
         }
 
-        presentation.typeText = "$requestMethodsView $className"
+        presentation.typeText = "$requestMethodsView $containing"
     }
 }

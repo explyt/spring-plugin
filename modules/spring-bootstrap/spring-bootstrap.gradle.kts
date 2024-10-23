@@ -1,7 +1,7 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.date
-import org.jetbrains.intellij.tasks.PrepareSandboxTask
-import org.jetbrains.intellij.tasks.RunPluginVerifierTask
+import org.jetbrains.intellij.platform.gradle.Constants
+import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import proguard.gradle.ProGuardTask
 import java.net.URI
 import java.nio.file.FileSystems
@@ -9,7 +9,8 @@ import java.nio.file.Files
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.intellij")
+    id("org.jetbrains.intellij.platform")
+    //id("org.jetbrains.intellij.platform.migration")
     id("org.jetbrains.changelog")
 }
 
@@ -49,8 +50,8 @@ version = fun(): String {
         }
         return bv
     }
-    val ideaPlatformVersion = "${ext["sinceVersion"]}".substring(0, 3)
-    return "${ideaPlatformVersion}.${ext["pluginVersion"]}.${ext["snapshotVersion"]}"
+    val ideaPlatformVersion = "${rootProject.ext["sinceVersion"]}".substring(0, 3)
+    return "${ideaPlatformVersion}.${rootProject.ext["pluginVersion"]}.${ext["snapshotVersion"]}"
     //return "2024.${ideaPlatformVersion}.${ext["snapshotVersion"]}"
 }.invoke()
 
@@ -81,8 +82,59 @@ val jpaProject = project(":jpa")
 val springBootstrapModule = project(":spring-bootstrap")
 val testFramework = project(":test-framework")
 
-repositories {
-    mavenCentral()
+
+configurations {
+    runtimeClasspath {
+        // IDE provides Kotlin
+        exclude(group = "org.jetbrains.kotlin")
+        exclude(group = "org.jetbrains.kotlinx")
+    }
+
+    configureEach {
+        // IDE provides netty
+        exclude("io.netty")
+
+        if (name.startsWith("detekt")) {
+            return@configureEach
+        }
+
+        // Exclude dependencies that ship with iDE
+        exclude(group = "org.slf4j")
+        exclude(group = "org.jetbrains", module = "annotations")
+        exclude(group = "io.ktor")
+        exclude(group = "org.apache.groovy", module = "groovy")
+        exclude(group = "org.codehaus.groovy", module = "groovy")
+        exclude(group = "org.codehaus.groovy", module = "groovy-json")
+        exclude(group = "org.apache.groovy", module = "groovy-json")
+
+        // we want kotlinx-coroutines-debug and kotlinx-coroutines-test
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-jdk8")
+
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-core")
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-databind")
+        exclude(group = "com.fasterxml.jackson.module", module = "jackson-module-kotlin")
+
+        exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j2-impl")
+
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.jetbrains.kotlinx" && requested.name.startsWith("kotlinx-coroutines")) {
+                useVersion("1.8.0")
+                because("resolve kotlinx-coroutines version conflicts in favor of local version catalog")
+            }
+
+            if (requested.group == "org.jetbrains.kotlin" && requested.name.startsWith("kotlin")) {
+                useVersion("1.9.24")
+                because("resolve kotlin version conflicts in favor of local version catalog")
+            }
+        }
+    }
+
+    testRuntimeClasspath {
+        exclude(group = "org.codehaus.groovy", module = "groovy")
+    }
 }
 
 dependencies {
@@ -99,33 +151,89 @@ dependencies {
     implementation(springAopProject)
     implementation(jpaProject)
     testImplementation(testFramework)
+    testImplementation("junit:junit:4.13.2")
+
+    @Suppress("UNCHECKED_CAST")
+    intellijPlatform {
+        instrumentationTools()
+        zipSigner()
+
+        val pluginDependencies = mutableSetOf<String>()
+        pluginDependencies += baseProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springCoreProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springGradleProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springDataProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springSecurityProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springWebProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springCloudProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springInitializrProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springIntegrationProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
+        pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
+        bundledPlugins(pluginDependencies.toList())
+
+        create("IC", rootProject.ext["defaultIdeaVersion"] as String)
+//        if (launchUltimate) {
+//            create("IC", rootProject.ext["defaultIdeaVersion"] as String)
+//        } else {
+//            create("IU", rootProject.ext["defaultIdeaVersion"] as String)
+//        }
+    }
 }
+
+
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 @Suppress("UNCHECKED_CAST")
-intellij {
+intellijPlatform {
     //version = project.ext["defaultIdeaVersion"]
-    pluginName.set(springPluginName)
-    version.set(rootProject.ext["defaultIdeaVersion"] as String)
-    val pluginDependencies = mutableSetOf<String>()
-    pluginDependencies += baseProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springCoreProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springGradleProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springDataProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springSecurityProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springWebProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springCloudProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springInitializrProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springIntegrationProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
-    pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
-    plugins.set(pluginDependencies)
-    downloadSources.set(true)
-    if (launchUltimate) {
-        type.set("IU")
+    pluginConfiguration {
+        version.set(springBootstrapModule.version as String)
+        //changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
+        description.set(rootProject.file("README.md").readText()
+            .let { org.jetbrains.changelog.markdownToHTML(it) })
+        changeNotes.set(provider {
+            changelog.renderItem(
+                changelog
+                    .getUnreleased()
+                    .withHeader(false)
+                    .withEmptySections(false),
+                Changelog.OutputType.HTML
+            )
+        })
+        ideaVersion {
+            sinceBuild.set(rootProject.ext["sinceVersion"] as String)
+            //        untilBuild.set(optProperty("setUntilVersion") ?: "")
+            untilBuild.set(rootProject.ext["untilVersion"] as String)
+        }
     }
+
     instrumentCode.set(false)
+    buildSearchableOptions.set(false)
+
+    pluginVerification {
+        ides {
+            recommended()
+        }
+        //ignoreWarnings = true
+        //        failureLevel.set(listOf(
+        //            RunPluginVerifierTask.FailureLevel.INVALID_PLUGIN,
+        //            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+        //            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_WARNINGS
+        //        ))
+
+    }
+    // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
+    signing {
+        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
+        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
+        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
+    }
+    publishing {
+        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
+        hidden = true
+    }
 }
 
 val sandboxLibPath = layout.buildDirectory.dir("idea-sandbox/plugins/${springPluginName}/lib")
@@ -161,10 +269,11 @@ fun removeFromJar(pathToJar: String, fileToRemove: String) {
 }
 
 val extractJar by tasks.registering(Copy::class) {
-    val prepareSandbox = tasks.named<PrepareSandboxTask>("prepareSandbox");
-    val libDir = prepareSandbox.map { it.defaultDestinationDir }.flatMap {
-        objects.directoryProperty().fileProvider(it)
-    }
+    val prepareSandbox = tasks.named<PrepareSandboxTask>(Constants.Tasks.PREPARE_SANDBOX);
+    val libDir = prepareSandbox.flatMap { it.defaultDestinationDirectory }
+//    .flatMap {
+//        objects.directoryProperty().fileProvider(it)
+//    }
     val outputDir = extractedDirPath
     doFirst {
         val dir = outputDir.get().asFile
@@ -193,6 +302,9 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     if (!obfuscate) {
         return@registering
     }
+    val prepareSandbox = tasks.named<PrepareSandboxTask>(Constants.Tasks.PREPARE_SANDBOX);
+    val libDir = prepareSandbox.flatMap { it.pluginDirectory }
+
     configuration(file("../../proguard.pro"))
 
     injars(extractJar.map { it.outputs.files.singleFile })
@@ -240,10 +352,10 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     doLast {
         removeFromJar(obfuscatedJarPath.get().asFile.path, "kotlin")
         delete(extractedDirPath)
-        delete(sandboxLibPath)
+        delete(libDir)
         copy {
             from(obfuscatedJarPath)
-            into(sandboxLibPath)
+            into(libDir)
         }
         delete(obfuscatedJarPath)
     }
@@ -270,27 +382,6 @@ changelog {
 }
 
 tasks {
-    buildSearchableOptions {
-        enabled = false
-    }
-
-    patchPluginXml {
-        version.set(springBootstrapModule.version as String)
-        sinceBuild.set(ext["sinceVersion"] as String)
-        //        untilBuild.set(optProperty("setUntilVersion") ?: "")
-        untilBuild.set(ext["untilVersion"] as String)
-        //changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
-        changeNotes.set(provider {
-            changelog.renderItem(
-                changelog
-                    .getUnreleased()
-                    .withHeader(false)
-                    .withEmptySections(false),
-                Changelog.OutputType.HTML
-            )
-        })
-
-    }
 
     runIde {
         // Customize in ~/.gradle/gradle.properties:
@@ -299,18 +390,6 @@ tasks {
             val xmx = rootProject.property("runIdeXmx")
             jvmArgs("-Xmx$xmx")
         }
-    }
-
-    runPluginVerifier {
-        ideVersions.set(listOf(ext["pluginVerifierIdeVersion"] as String))
-        failureLevel.set(listOf(
-            RunPluginVerifierTask.FailureLevel.INVALID_PLUGIN,
-            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_PROBLEMS,
-            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_WARNINGS
-        ))
-
-        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
-        distributionFile.set(buildArchivePath.get().asFile)
     }
 
     test {
@@ -329,20 +408,6 @@ tasks {
         )
     }
 
-    // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
-    signPlugin {
-        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
-        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
-        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
-    }
-
-    publishPlugin {
-        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
-        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
-        distributionFile.set(buildArchivePath.get().asFile)
-        hidden = true
-    }
-
     //TODO
     //if (rootProject.hasProperty("pluginRepoToken") && rootProject.hasProperty("pluginRepoChannel")) {
     //    publishPlugin {
@@ -356,7 +421,11 @@ tasks {
 
 
     buildPlugin {
-        archiveFileName = buildArchiveName
+        if (obfuscate) {
+            dependsOn(proGuardTask)
+        }
+
+        archiveFileName.set(buildArchiveName)
     }
 
     prepareSandbox {
@@ -365,6 +434,9 @@ tasks {
             outputs.doNotCacheIf("Cache is disable") { true }
             finalizedBy(extractJar, proGuardTask)
         }
+    }
+
+    composedJar {
     }
 
 }

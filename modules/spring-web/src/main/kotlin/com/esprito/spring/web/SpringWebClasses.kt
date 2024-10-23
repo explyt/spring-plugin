@@ -12,6 +12,7 @@ object SpringWebClasses {
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
     const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
+    const val FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"
@@ -20,8 +21,6 @@ object SpringWebClasses {
     const val WEB_CLIENT_URI_SPEC = "$WEB_CLIENT.UriSpec"
     const val WEB_CLIENT_RESPONSE_SPEC = "$WEB_CLIENT.ResponseSpec"
     const val WEB_TEST_CLIENT_RESPONSE_SPEC = "$WEB_TEST_CLIENT.ResponseSpec"
-
-    const val WEB_FLUX_TEST = "org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest"
 
     const val MONO = "reactor.core.publisher.Mono"
     const val FLUX = "reactor.core.publisher.Flux"
@@ -55,6 +54,8 @@ object SpringWebClasses {
 
     const val ROUTE_FUNCTION = "org.springframework.web.reactive.function.server.RouterFunction"
     const val ROUTE_FUNCTION_BUILDER = "org.springframework.web.reactive.function.server.RouterFunctions.Builder"
+
+    const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
     val URI_TYPE = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
 

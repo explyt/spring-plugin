@@ -15,7 +15,6 @@ import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMethod
@@ -26,7 +25,7 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
-class RouteFunctionEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
+open class RouteFunctionEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() {
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
@@ -42,12 +41,13 @@ class RouteFunctionEndpointLineMarkerProvider : RelatedItemLineMarkerProvider() 
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
         result += NavigationGutterIconBuilder.create(SpringIcons.ReadAccess)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(NotNullLazyValue.lazy {
+            .setTargets(//NotNullLazyValue.lazy {
                 findOpenApiJsonEndpoints(path, listOf(methodNames), module) +
                         findOpenApiYamlEndpoints(path, listOf(methodNames), module) +
                         findMockMvcEndpointUsage(path, listOf(methodNames), module) +
                         findWebTestClientEndpointUsage(path, methodNames, module)
-            })
+            )
+            //})
             .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
             .setTooltipText(SpringWebBundle.message("esprito.spring.web.gutter.endpoint.tooltip"))
             .setPopupTitle(SpringWebBundle.message("esprito.spring.web.gutter.endpoint.popup"))

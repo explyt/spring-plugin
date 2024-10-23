@@ -5,6 +5,46 @@
 
 ## [Unreleased]
 
+### Spring Web/MVC
+
+- Added inspection for @LoadBalanced annotation in the FeignClient interface
+- Fixed: Inspection in @ConfigurationProperties with @ConstructorBinding is in use, by binding to the constructor
+  parameters
+- Fixed: PatternSyntaxException while parsing controller
+- Added endpoint loaders for FeignClient, RestClient, and WebClients
+
+### OpenAPI
+
+- Added inspection for a supported version of OpenApi
+- Added completion in OpenAPI specification
+- Automatically apply OpenAPI JSON schema (Specification 3.0.0/3.1.0)
+- Supported dark theme for SwaggerUI panel
+- Added navigation from OpenAPI http request to preview (SwaggerUI panel)
+- Added OpenAPI files preview (SwaggerUI panel)
+- Added OpenAPI `$ref` navigation and completion for .yaml/.json formats
+- Added endpoint loaders for OpenAPI
+- Added special icons for OpenAPI files
+- Fixed: Dismiss Ultimate promo bar for OpenAPI files
+
+### Spring Core/Boot
+
+- Added the Spring Native Beans panel for Spring Boot applications
+- Added support Spring Boot versions before 2.4.0 via explyt.spring.native.old flag 
+- Added icon for a configuration file for Spring Boot application
+- Added reference to package from annotation parameters with names `basePackages`, `scanBasePackages`. AntPattern supported
+- Changed behaviour of `Can't find package` inspection. Now it shows inspection till first unknown segment. AntPattern supported
+- Added linemarker from property to library hint
+- Fixed: property completion for class-reference provider from libraries
+- Fixed: prefixFromUsage cache bug
+- Fixed: AlreadyDisposedException
+- Added: Generator for @PostConstruct methods
+
+### Other
+
+- Upgrade to intellij 242 branch
+
+## [241.1.1834] - 2024-08-06
+
 ### Spring Core/Boot
 
 - Fixed: Autocomplete in application.properties produces an error: NoSuchElementException: List is empty.
@@ -43,7 +83,7 @@
 - gradle kotlin module test problem
 - Add error tracking via Sentry setup
 
-## [241.1.1581] - 2024-06-10
+## 241.1.1581 - 2024-06-10
 
 ### Spring Core/Boot
 
