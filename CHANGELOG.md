@@ -7,6 +7,7 @@
 
 ### Spring Web/MVC
 
+- Added ToolWindow with endpoints
 - Added inspection for @LoadBalanced annotation in the FeignClient interface
 - Fixed: Inspection in @ConfigurationProperties with @ConstructorBinding is in use, by binding to the constructor
   parameters
