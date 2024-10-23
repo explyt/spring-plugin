@@ -36,16 +36,9 @@ dependencies {
     intellijPlatform {
         instrumentationTools()
 
-        create(defaultIdeaType, defaultIdeaVersion)
+        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
+        jetbrainsRuntime()
         bundledPlugins(intellijPlugins)
-    }
-}
-
-repositories {
-    mavenCentral()
-    intellijPlatform {
-        defaultRepositories()
-        localPlatformArtifacts()
     }
 }
 

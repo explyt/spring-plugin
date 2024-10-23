@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
+
 rootProject.name = "esprito-studio"
 
 pluginManagement {
@@ -14,6 +16,23 @@ pluginManagement {
 
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
+    id("org.jetbrains.intellij.platform.settings") version "2.0.1"
+}
+
+@Suppress("UnstableApiUsage")
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositories {
+        mavenLocal()
+        mavenCentral()
+
+        intellijPlatform {
+            defaultRepositories()
+            jetbrainsRuntime()
+            localPlatformArtifacts()
+        }
+
+    }
 }
 
 includeProject("base")
@@ -30,7 +49,6 @@ includeProject("jpa")
 includeProject("test-framework")
 includeProject("spring-gradle")
 includeProject("spring-bootstrap")
-includeProject("llm-integration")
 
 fun includeProject(name: String, path: String = "modules/$name") {
     include(":$name")

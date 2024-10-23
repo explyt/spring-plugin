@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.date
+import org.jetbrains.intellij.platform.gradle.Constants
 import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
 import proguard.gradle.ProGuardTask
 import java.net.URI
@@ -26,7 +27,6 @@ evaluationDependsOn(":spring-messaging")
 evaluationDependsOn(":spring-aop")
 evaluationDependsOn(":jpa")
 evaluationDependsOn(":test-framework")
-evaluationDependsOn(":llm-integration")
 
 fun Project.optProperty(prop: String): String? {
     if (this.hasProperty(prop)) {
@@ -66,7 +66,6 @@ val buildArchiveName = "${springPluginName}-${distFilePostfix}.zip"
 val launchUltimate = rootProject.hasProperty("launchUltimate")
 //Add "-Pobfuscate" to obfuscate
 val obfuscate = rootProject.hasProperty("obfuscate")
-val includeLlmIntegrationModule = false
 
 val baseProject = project(":base")
 val springCoreProject = project(":spring-core")
@@ -81,28 +80,8 @@ val springMessagingProject = project(":spring-messaging")
 val springAopProject = project(":spring-aop")
 val jpaProject = project(":jpa")
 val springBootstrapModule = project(":spring-bootstrap")
-val llmIntegrationProject = project(":llm-integration")
 val testFramework = project(":test-framework")
 
-
-repositories {
-    mavenCentral()
-    maven {
-        url = uri("https://maven.pkg.github.com/explyt/ai-backend")
-        credentials {
-            username = "EgorkaKulikov"
-            password = "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"
-        }
-    }
-    intellijPlatform {
-        defaultRepositories()
-        localPlatformArtifacts()
-    }
-}
-
-afterEvaluate {
-    println("evaluated")
-}
 
 configurations {
     runtimeClasspath {
@@ -121,10 +100,17 @@ configurations {
 
         // Exclude dependencies that ship with iDE
         exclude(group = "org.slf4j")
+        exclude(group = "org.jetbrains", module = "annotations")
+        exclude(group = "io.ktor")
+        exclude(group = "org.apache.groovy", module = "groovy")
+        exclude(group = "org.codehaus.groovy", module = "groovy")
+        exclude(group = "org.codehaus.groovy", module = "groovy-json")
+        exclude(group = "org.apache.groovy", module = "groovy-json")
+
         // we want kotlinx-coroutines-debug and kotlinx-coroutines-test
-        exclude(group = "org.jetbrains.kotlinx", "kotlinx-coroutines-core-jvm")
-        exclude(group = "org.jetbrains.kotlinx", "kotlinx-coroutines-core")
-        exclude(group = "org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-jdk8")
 
         exclude(group = "com.fasterxml.jackson.core", module = "jackson-core")
         exclude(group = "com.fasterxml.jackson.core", module = "jackson-annotations")
@@ -164,9 +150,6 @@ dependencies {
     implementation(springMessagingProject)
     implementation(springAopProject)
     implementation(jpaProject)
-    if (includeLlmIntegrationModule) {
-        implementation(llmIntegrationProject)
-    }
     testImplementation(testFramework)
     testImplementation("junit:junit:4.13.2")
 
@@ -188,10 +171,6 @@ dependencies {
         pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
         pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
         pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
-        if (includeLlmIntegrationModule) {
-            pluginDependencies += llmIntegrationProject.ext["intellijPlugins"] as Iterable<String>
-        }
-
         bundledPlugins(pluginDependencies.toList())
 
         create("IC", rootProject.ext["defaultIdeaVersion"] as String)
@@ -210,8 +189,6 @@ dependencies {
 intellijPlatform {
     //version = project.ext["defaultIdeaVersion"]
     pluginConfiguration {
-        name.set(springPluginName)
-        //version = rootProject.ext["defaultIdeaVersion"] as String
         version.set(springBootstrapModule.version as String)
         //changeNotes.set(springCoreProject.file("CHANGELOG.html").readText())
         description.set(rootProject.file("README.md").readText()
@@ -246,9 +223,6 @@ intellijPlatform {
         //            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_WARNINGS
         //        ))
 
-        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
-        //        distributionFile.set(buildArchivePath.get().asFile)
-
     }
     // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
     signing {
@@ -258,8 +232,6 @@ intellijPlatform {
     }
     publishing {
         token.set(providers.environmentVariable("PUBLISH_TOKEN"))
-        val buildArchivePath = layout.buildDirectory.file("distributions/${buildArchiveName}")
-        //distributionFile.set(buildArchivePath.get().asFile)
         hidden = true
     }
 }
@@ -297,7 +269,7 @@ fun removeFromJar(pathToJar: String, fileToRemove: String) {
 }
 
 val extractJar by tasks.registering(Copy::class) {
-    val prepareSandbox = tasks.named<PrepareSandboxTask>("prepareSandbox");
+    val prepareSandbox = tasks.named<PrepareSandboxTask>(Constants.Tasks.PREPARE_SANDBOX);
     val libDir = prepareSandbox.flatMap { it.defaultDestinationDirectory }
 //    .flatMap {
 //        objects.directoryProperty().fileProvider(it)
@@ -330,6 +302,9 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     if (!obfuscate) {
         return@registering
     }
+    val prepareSandbox = tasks.named<PrepareSandboxTask>(Constants.Tasks.PREPARE_SANDBOX);
+    val libDir = prepareSandbox.flatMap { it.pluginDirectory }
+
     configuration(file("../../proguard.pro"))
 
     injars(extractJar.map { it.outputs.files.singleFile })
@@ -377,10 +352,10 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     doLast {
         removeFromJar(obfuscatedJarPath.get().asFile.path, "kotlin")
         delete(extractedDirPath)
-        delete(sandboxLibPath)
+        delete(libDir)
         copy {
             from(obfuscatedJarPath)
-            into(sandboxLibPath)
+            into(libDir)
         }
         delete(obfuscatedJarPath)
     }
@@ -429,7 +404,6 @@ tasks {
             springIntegrationProject.tasks.test,
             springMessagingProject.tasks.test,
             springAopProject.tasks.test,
-            llmIntegrationProject.tasks.test,
             jpaProject.tasks.test
         )
     }
@@ -447,6 +421,10 @@ tasks {
 
 
     buildPlugin {
+        if (obfuscate) {
+            dependsOn(proGuardTask)
+        }
+
         archiveFileName.set(buildArchiveName)
     }
 
@@ -456,6 +434,9 @@ tasks {
             outputs.doNotCacheIf("Cache is disable") { true }
             finalizedBy(extractJar, proGuardTask)
         }
+    }
+
+    composedJar {
     }
 
 }

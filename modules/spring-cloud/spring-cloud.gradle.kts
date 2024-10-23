@@ -34,16 +34,9 @@ val defaultIdeaVersion: String by rootProject
 dependencies {
     implementation(springCoreProject)
     intellijPlatform {
-        create(defaultIdeaType, defaultIdeaVersion)
+        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
+        jetbrainsRuntime()
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
-    }
-}
-
-repositories {
-    mavenCentral()
-    intellijPlatform {
-        defaultRepositories()
-        localPlatformArtifacts()
     }
 }
 
