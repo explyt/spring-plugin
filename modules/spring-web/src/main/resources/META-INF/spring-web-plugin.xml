@@ -192,6 +192,11 @@
                 description="Enable internal proxy for requests run from OpenAPI UI editor"
                 key="openapi.ui.proxy.enable"/>
 
+        <toolWindow id="Explyt Endpoints"
+                    anchor="right"
+                    icon="/com/esprito/spring/web/icons/endpointsSidebar.svg"
+                    factoryClass="com.esprito.spring.web.EndpointsToolWindowFactory"/>
+
     </extensions>
 
     <projectListeners>
