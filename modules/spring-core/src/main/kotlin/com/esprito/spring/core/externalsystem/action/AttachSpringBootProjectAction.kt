@@ -22,7 +22,7 @@ import com.intellij.openapi.util.Computable
 class AttachSpringBootProjectAction : DumbAwareAction() {
     init {
         templatePresentation.text = message("explyt.external.project.link.text")
-        templatePresentation.setDescription(message("explyt.external.project.link.text"))
+        templatePresentation.description = message("explyt.external.project.link.text")
         templatePresentation.icon = SpringIcons.SpringExplorer
     }
 

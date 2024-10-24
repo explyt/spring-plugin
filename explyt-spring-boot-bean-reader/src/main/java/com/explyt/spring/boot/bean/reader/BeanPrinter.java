@@ -10,26 +10,46 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.ClassMetadata;
 import org.springframework.core.type.MethodMetadata;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 
 public class BeanPrinter {
 
     public static final String EXPLYT_BEAN_INFO_START = "ExplytBeanInfoStart";
     public static final String EXPLYT_BEAN_INFO_END = "ExplytBeanInfoEnd";
     public static final String EXPLYT_BEAN_INFO = "ExplytBeanInfo:";
+    public static final String EXPLYT_AOP_INFO = "ExplytBeanAopInfo:";
 
     public static void printBeans(ConfigurableApplicationContext context) {
         ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
         String[] definitionNames = beanFactory.getBeanDefinitionNames();
 
         System.out.println(EXPLYT_BEAN_INFO_START);
+        Map<String, String> map = new TreeMap<>();
         for (String beanName : definitionNames) {
             BeanDefinition beanDefinition = beanFactory.getBeanDefinition(beanName);
             BeanInfo beanInfo = getBeanInfo(beanDefinition, beanName);
             if (beanInfo.className == null) continue;
             System.out.println(beanInfo);
+            map.put(beanName, beanInfo.methodType != null ? beanInfo.methodType : beanInfo.className);
         }
+        printAopData(beanFactory, map);
         System.out.println(EXPLYT_BEAN_INFO_END);
+    }
+
+    private static void printAopData(ConfigurableListableBeanFactory beanFactory, Map<String, String> map) {
+        try {
+            Class<?> aopReaderClass = Class.forName("com.explyt.spring.boot.bean.reader.SpringAopReader");
+            Method printAopData = Arrays.stream(aopReaderClass.getMethods())
+                    .filter(it -> it.getName().equals("printAopData"))
+                    .findFirst().orElse(null);
+            printAopData.invoke(null, beanFactory, map);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static BeanInfo getBeanInfo(BeanDefinition definition, String definitionName) {

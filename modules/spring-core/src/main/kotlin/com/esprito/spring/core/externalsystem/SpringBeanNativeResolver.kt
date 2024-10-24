@@ -5,9 +5,11 @@ import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.REST_CONTROLLER
+import com.esprito.spring.core.externalsystem.model.SpringAspectData
 import com.esprito.spring.core.externalsystem.model.SpringBeanData
 import com.esprito.spring.core.externalsystem.model.SpringBeanType
 import com.esprito.spring.core.externalsystem.model.SpringProfileData
+import com.esprito.spring.core.externalsystem.process.AspectInfo
 import com.esprito.spring.core.externalsystem.process.BeanInfo
 import com.esprito.spring.core.externalsystem.process.ExplytCapturingProcessAdapter
 import com.esprito.spring.core.externalsystem.setting.NativeExecutionSettings
@@ -103,11 +105,8 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             ?: throw ExternalSystemException("No main class run configuration found")
 
         val modules = runConfiguration.modules
-        val buildPromise = ProjectTaskManager.getInstance(settings.project).build(*modules)
-        val buildResult = buildPromise.blockingGet(10, MINUTES)
-        if (buildResult == null || buildResult.hasErrors() || buildResult.isAborted) {
-            throw ExternalSystemException(SpringCoreBundle.message("explyt.external.project.sync.build.error"))
-        }
+
+        buildProject(settings, modules)
 
         val clone = runConfiguration.clone() as SpringBootRunConfiguration
         clone.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
@@ -117,24 +116,47 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         clone.classpathModifications.add(getClasspathExplytModification())
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
-        val descriptor = getDescriptor()
-        val environment = getEnvironment(id, clone, processAdapter, descriptor)
-        try {
-            ProgramRunnerUtil.executeConfiguration(environment, false, false)
-            processAdapter.await()
-        } finally {
-            Disposer.dispose(environment)
-            Disposer.dispose(descriptor)
-        }
-        val beans = processAdapter.getBeans()
-        checkErrors(beans, processAdapter)
+        executeRunConfiguration(id, clone, processAdapter)
+
+        val contextInfo = processAdapter.getSpringContextInfo()
+        val beans = contextInfo.beans
+        val aspects = contextInfo.aspects
+        val aspectBeanInfoByName = getAspectBeanInfoMapByName(beans, aspects)
 
         val projectData = projectData(projectPath, runConfiguration)
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
         beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
             .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
+        aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
+            .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
         fillProfiles(projectDataNode, projectPath, settings.project, runConfiguration)
         return projectDataNode
+    }
+
+    private fun buildProject(
+        settings: NativeExecutionSettings,
+        modules: Array<out Module>
+    ) {
+        val buildPromise = ProjectTaskManager.getInstance(settings.project).build(*modules)
+        val buildResult = buildPromise.blockingGet(10, MINUTES)
+        if (buildResult == null || buildResult.hasErrors() || buildResult.isAborted) {
+            throw ExternalSystemException(SpringCoreBundle.message("explyt.external.project.sync.build.error"))
+        }
+    }
+
+    private fun executeRunConfiguration(
+        id: ExternalSystemTaskId, clone: SpringBootRunConfiguration, processAdapter: ExplytCapturingProcessAdapter
+    ) {
+        val descriptor = getDescriptor()
+        val environment = getEnvironment(id, clone, processAdapter, descriptor)
+        try {
+            ProgramRunnerUtil.executeConfiguration(environment, false, false)
+            processAdapter.await()
+            checkErrors(processAdapter)
+        } finally {
+            Disposer.dispose(environment)
+            Disposer.dispose(descriptor)
+        }
     }
 
     private fun getMainClassName(
@@ -157,14 +179,34 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
     }
 
-    private fun checkErrors(beans: List<BeanInfo>, processAdapter: ExplytCapturingProcessAdapter) {
+    private fun checkErrors(processAdapter: ExplytCapturingProcessAdapter) {
         if (!Registry.`is`("explyt.spring.native.old") && processAdapter.classNotFoundError) {
             throw ExternalSystemException(
                 SYSTEM_ID.readableName + ": " + SpringCoreBundle.message("explyt.external.project.sync.old.error")
             )
-        } else if (beans.isEmpty()) {
+        } else if (processAdapter.getSpringContextInfo().beans.isEmpty()) {
             throw ExternalSystemException(SpringCoreBundle.message("explyt.external.project.sync.empty.error"))
         }
+    }
+
+    private fun getAspectBeanInfoMapByName(beans: List<BeanInfo>, aspects: List<AspectInfo>): Map<String, BeanInfo> {
+        if (aspects.isEmpty()) return emptyMap()
+        val aspectsBeanNames = aspects.flatMapTo(mutableSetOf()) { setOf(it.aspectName, it.beanName) }
+        return beans.filter { aspectsBeanNames.contains(it.beanName) }.associateBy { it.beanName }
+    }
+
+    private fun toSpringAspectData(
+        aspect: AspectInfo, aspectBeanInfoByName: Map<String, BeanInfo>
+    ): SpringAspectData? {
+        val aspectBean = aspectBeanInfoByName[aspect.aspectName] ?: return null
+        val wrappedBean = aspectBeanInfoByName[aspect.beanName] ?: return null
+        return SpringAspectData(
+            NativeBootUtils.toQualifiedClassName(aspectBean.className),
+            aspect.aspectMethodName,
+            NativeBootUtils.toQualifiedClassName(wrappedBean.methodType ?: wrappedBean.className),
+            aspect.methodName,
+            if (aspect.methodParams.isEmpty()) emptyList() else aspect.methodParams.split(",")
+        )
     }
 
     private fun fillProfiles(

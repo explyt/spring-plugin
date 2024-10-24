@@ -43,6 +43,15 @@ class EspritoAnnotationModificationTracker(project: Project) : SimpleModificatio
 }
 
 @Suppress("UnstableApiUsage")
+class SpringBootExternalSystemTracker(project: Project) : SimpleModificationTracker() {
+    private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
+
+    override fun getModificationCount(): Long {
+        return super.getModificationCount() + javaLibraryTracker.modificationCount
+    }
+}
+
+@Suppress("UnstableApiUsage")
 class EspritoPropertyModificationTracker(project: Project) : SimpleModificationTracker() {
     private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
 
