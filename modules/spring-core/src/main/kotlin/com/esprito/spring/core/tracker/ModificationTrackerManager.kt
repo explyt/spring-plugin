@@ -15,6 +15,7 @@ class ModificationTrackerManager(val project: Project) : Disposable {
     private val uastModelTracker = EspritoModelModificationTracker(project)
     private val uastAnnotationTracker = EspritoAnnotationModificationTracker(project)
     private val propertyTracker = EspritoPropertyModificationTracker(project)
+    private val externalSystemTracker = SpringBootExternalSystemTracker(project)
 
     init {
         PsiManager.getInstance(project).addPsiTreeChangeListener(
@@ -38,9 +39,12 @@ class ModificationTrackerManager(val project: Project) : Disposable {
 
     fun getPropertyTracker() = propertyTracker
 
+    fun getExternalSystemTracker() = externalSystemTracker
+
     fun invalidateAll() {
         uastModelTracker.incModificationCount()
         uastAnnotationTracker.incModificationCount()
+        externalSystemTracker.incModificationCount()
     }
 
     fun getLibraryTracker(): ModificationTracker = JavaLibraryModificationTracker.getInstance(project)

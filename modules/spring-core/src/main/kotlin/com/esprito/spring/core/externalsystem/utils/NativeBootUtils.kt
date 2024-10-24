@@ -38,8 +38,14 @@ object NativeBootUtils {
         return psiClass(beanClassQualifiedName, project)
     }
 
+    fun toQualifiedClassName(className: String) = className.replace("$", ".")
+
+    fun findProjectClass(classQualifiedName: String, project: Project): PsiClass? {
+        return JavaPsiFacade.getInstance(project).findClass(classQualifiedName, project.projectScope())
+    }
+
     private fun psiClass(className: String, project: Project): PsiClass? {
-        val classNameInner = className.replace("$", ".")
+        val classNameInner = toQualifiedClassName(className)
         return LibraryClassCache.searchForLibraryClass(project, classNameInner)
             ?: JavaPsiFacade.getInstance(project).findClass(classNameInner, project.projectScope())
     }

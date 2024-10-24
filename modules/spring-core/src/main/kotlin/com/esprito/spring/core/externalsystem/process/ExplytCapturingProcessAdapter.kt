@@ -43,17 +43,30 @@ class ExplytCapturingProcessAdapter(
         latch.await()
     }
 
-    fun getBeans(): List<BeanInfo> {
+    fun getSpringContextInfo(): SpringContextInfo {
         latch.await()
-        return output.stdoutLines.asSequence()
-            .filter { it.startsWith(BeanPrinter.EXPLYT_BEAN_INFO) }
-            .map { it.substringAfter(BeanPrinter.EXPLYT_BEAN_INFO) }
-            .mapNotNull { getBeanInfo(it) }
-            .toList()
+        val beanInfos = mutableListOf<BeanInfo>()
+        val aspectInfos = mutableListOf<AspectInfo>()
+        for (line in output.stdoutLines) {
+            if (line.startsWith(BeanPrinter.EXPLYT_BEAN_INFO)) {
+                val jsonString = line.substringAfter(BeanPrinter.EXPLYT_BEAN_INFO)
+                getBeanInfo(jsonString)?.let { beanInfos.add(it) }
+            } else if (line.startsWith(BeanPrinter.EXPLYT_AOP_INFO)) {
+                val jsonString = line.substringAfter(BeanPrinter.EXPLYT_AOP_INFO)
+                getAopInfo(jsonString)?.let { aspectInfos.add(it) }
+            }
+        }
+        return SpringContextInfo(beanInfos, aspectInfos)
     }
 
     private fun getBeanInfo(it: String) = try {
         gson.fromJson(it, BeanInfo::class.java)
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun getAopInfo(it: String) = try {
+        gson.fromJson(it, AspectInfo::class.java)
     } catch (e: Exception) {
         null
     }
@@ -65,6 +78,8 @@ class ExplytCapturingProcessAdapter(
     }
 }
 
+data class SpringContextInfo(val beans: List<BeanInfo>, val aspects: List<AspectInfo>)
+
 data class BeanInfo(
     var beanName: String,
     var className: String,
@@ -74,4 +89,12 @@ data class BeanInfo(
     var scope: String,
     var primary: Boolean,
     var rootBean: Boolean
+)
+
+data class AspectInfo(
+    var aspectName: String,
+    var aspectMethodName: String,
+    var beanName: String,
+    var methodName: String,
+    var methodParams: String,
 )
