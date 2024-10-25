@@ -10,22 +10,27 @@ import java.nio.file.Files
 plugins {
     kotlin("jvm")
     id("org.jetbrains.intellij.platform")
-    //id("org.jetbrains.intellij.platform.migration")
     id("org.jetbrains.changelog")
 }
 
-evaluationDependsOn(":base")
-evaluationDependsOn(":spring-core")
-evaluationDependsOn(":spring-gradle")
-evaluationDependsOn(":spring-data")
-evaluationDependsOn(":spring-security")
-evaluationDependsOn(":spring-web")
-evaluationDependsOn(":spring-cloud")
-evaluationDependsOn(":spring-initializr")
-evaluationDependsOn(":spring-integration")
-evaluationDependsOn(":spring-messaging")
-evaluationDependsOn(":spring-aop")
-evaluationDependsOn(":jpa")
+val allCompileProjects = listOf(
+    "base",
+    "spring-core",
+    "spring-gradle",
+    "spring-data",
+    "spring-security",
+    "spring-web",
+    "spring-cloud",
+    "spring-initializr",
+    "spring-integration",
+    "spring-messaging",
+    "spring-aop",
+    "jpa"
+)
+
+allCompileProjects.forEach {
+    evaluationDependsOn(":$it")
+}
 evaluationDependsOn(":test-framework")
 
 fun Project.optProperty(prop: String): String? {
@@ -67,18 +72,6 @@ val launchUltimate = rootProject.hasProperty("launchUltimate")
 //Add "-Pobfuscate" to obfuscate
 val obfuscate = rootProject.hasProperty("obfuscate")
 
-val baseProject = project(":base")
-val springCoreProject = project(":spring-core")
-val springGradleProject = project(":spring-gradle")
-val springDataProject = project(":spring-data")
-val springSecurityProject = project(":spring-security")
-val springWebProject = project(":spring-web")
-val springCloudProject = project(":spring-cloud")
-val springInitializrProject = project(":spring-initializr")
-val springIntegrationProject = project(":spring-integration")
-val springMessagingProject = project(":spring-messaging")
-val springAopProject = project(":spring-aop")
-val jpaProject = project(":jpa")
 val springBootstrapModule = project(":spring-bootstrap")
 val testFramework = project(":test-framework")
 
@@ -138,18 +131,9 @@ configurations {
 }
 
 dependencies {
-    implementation(baseProject)
-    implementation(springCoreProject)
-    implementation(springGradleProject)
-    implementation(springDataProject)
-    implementation(springSecurityProject)
-    implementation(springWebProject)
-    implementation(springCloudProject)
-    implementation(springInitializrProject)
-    implementation(springIntegrationProject)
-    implementation(springMessagingProject)
-    implementation(springAopProject)
-    implementation(jpaProject)
+    allCompileProjects.forEach {
+        implementation(project(":$it"))
+    }
     testImplementation(testFramework)
     testImplementation("junit:junit:4.13.2")
 
@@ -159,18 +143,9 @@ dependencies {
         zipSigner()
 
         val pluginDependencies = mutableSetOf<String>()
-        pluginDependencies += baseProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springCoreProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springGradleProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springDataProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springSecurityProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springWebProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springCloudProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springInitializrProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springIntegrationProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springMessagingProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += springAopProject.ext["intellijPlugins"] as Iterable<String>
-        pluginDependencies += jpaProject.ext["intellijPlugins"] as Iterable<String>
+        allCompileProjects.forEach {
+            pluginDependencies += project.project(":$it").ext["intellijPlugins"] as Iterable<String>
+        }
         bundledPlugins(pluginDependencies.toList())
 
         create("IC", rootProject.ext["defaultIdeaVersion"] as String)
@@ -236,8 +211,8 @@ intellijPlatform {
     }
 }
 
-val sandboxLibPath = layout.buildDirectory.dir("idea-sandbox/plugins/${springPluginName}/lib")
 val extractedDirPath = layout.buildDirectory.dir("extracted")
+val extractedLibDepsPath = layout.buildDirectory.dir("libdeps")
 val obfuscatedJarPath = layout.buildDirectory.file("libs/${springPluginName}-obfuscated.jar")
 
 fun deleteDirectory(pathToBeDeleted: java.nio.file.Path) {
@@ -271,9 +246,6 @@ fun removeFromJar(pathToJar: String, fileToRemove: String) {
 val extractJar by tasks.registering(Copy::class) {
     val prepareSandbox = tasks.named<PrepareSandboxTask>(Constants.Tasks.PREPARE_SANDBOX);
     val libDir = prepareSandbox.flatMap { it.defaultDestinationDirectory }
-//    .flatMap {
-//        objects.directoryProperty().fileProvider(it)
-//    }
     val outputDir = extractedDirPath
     doFirst {
         val dir = outputDir.get().asFile
@@ -284,9 +256,14 @@ val extractJar by tasks.registering(Copy::class) {
     }
 
     val zipFiles = libDir.map {
-        it.asFileTree
+        val allJars = it.asFileTree
             .matching { include("**/*.jar") }
             .files
+
+        val bootBeanReader = allJars.filter { it.endsWith("explyt-spring-boot-bean-reader-0.1.jar") }.toSet()
+
+        allJars
+            .minus(bootBeanReader)
             .map { zipTree(it) }
     }
 
@@ -296,6 +273,14 @@ val extractJar by tasks.registering(Copy::class) {
     if (obfuscate) {
         outputs.doNotCacheIf("Cache is disable") { true }
     }
+    doLast {
+        copy {
+            from(libDir.map {
+                it.asFileTree.matching { include("**/explyt-spring-boot-bean-reader-0.1.jar")}.files
+            })
+            into(extractedLibDepsPath)
+        }
+    }
 }
 
 val proGuardTask by tasks.registering(ProGuardTask::class) {
@@ -303,7 +288,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
         return@registering
     }
     val prepareSandbox = tasks.named<PrepareSandboxTask>(Constants.Tasks.PREPARE_SANDBOX);
-    val libDir = prepareSandbox.flatMap { it.pluginDirectory }
+    val libDir = prepareSandbox.flatMap { it.pluginDirectory }.map { it.dir("lib") }
 
     configuration(file("../../proguard.pro"))
 
@@ -324,6 +309,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
         .minus(toFilter)
         .minus(invalidFiles)
     libraryjars(classPath)
+    libraryjars(extractedLibDepsPath.get().asFileTree.files)
 
     val filterArgs = mapOf(
         "jarfilter" to "!**.jar"
@@ -355,9 +341,11 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
         delete(libDir)
         copy {
             from(obfuscatedJarPath)
+            from(extractedLibDepsPath.get().asFileTree.files)
             into(libDir)
         }
         delete(obfuscatedJarPath)
+        delete(extractedLibDepsPath)
     }
 }
 
@@ -394,31 +382,9 @@ tasks {
 
     test {
         dependsOn(
-            springCoreProject.tasks.test,
-            springGradleProject.tasks.test,
-            springDataProject.tasks.test,
-            springSecurityProject.tasks.test,
-            springWebProject.tasks.test,
-            springCloudProject.tasks.test,
-            springInitializrProject.tasks.test,
-            springIntegrationProject.tasks.test,
-            springMessagingProject.tasks.test,
-            springAopProject.tasks.test,
-            jpaProject.tasks.test
+            allCompileProjects.map { project.project(":$it").tasks.test }.toTypedArray()
         )
     }
-
-    //TODO
-    //if (rootProject.hasProperty("pluginRepoToken") && rootProject.hasProperty("pluginRepoChannel")) {
-    //    publishPlugin {
-    //        token.set(pluginRepoToken)
-    //        channels.set([pluginRepoChannel])
-    //        if (rootProject.hasProperty("pluginDistributionFile")) {
-    //            distributionFile.set(pluginDistributionFile)
-    //        }
-    //    }
-    //}
-
 
     buildPlugin {
         if (obfuscate) {

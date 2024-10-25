@@ -40,6 +40,10 @@
 - Fixed: AlreadyDisposedException
 - Added: Generator for @PostConstruct methods
 
+### Spring AOP
+
+- Added Spring AOP processing using Spring Boot Native
+
 ### Other
 
 - Upgrade to intellij 242 branch

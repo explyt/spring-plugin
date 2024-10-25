@@ -54,6 +54,12 @@
 
 # here is list of class that persistence state to file (data mapping is broken)
 -keep class com.esprito.spring.core.runconfiguration.SpringBootConfigurationOptions { *; }
+-keep class com.esprito.spring.core.externalsystem.setting.** { *; }
+-keep class com.esprito.spring.core.externalsystem.model.** { *; }
+
+# serialized from JSON:
+-keep class com.esprito.spring.core.externalsystem.process.BeanInfo { *; }
+-keep class com.esprito.spring.core.externalsystem.process.AspectInfo { *; }
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {
