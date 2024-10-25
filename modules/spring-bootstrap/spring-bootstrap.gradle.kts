@@ -226,12 +226,7 @@ fun removeFromJar(pathToJar: String, fileToRemove: String) {
         /* Get the Path inside ZIP File to delete the ZIP Entry */
         val pathInZipfile = zipfs.getPath("/$fileToRemove")
         println("About to delete an entry from ZIP File" + pathInZipfile.toUri())
-
         deleteDirectory(pathInZipfile)
-
-        /* Execute Delete */
-        //Files.delete(pathInZipfile)
-        println("File successfully deleted")
     }
 }
 
@@ -252,10 +247,12 @@ val extractJar by tasks.registering(Copy::class) {
             .matching { include("**/*.jar") }
             .files
 
-        val bootBeanReader = allJars.filter { it.endsWith("explyt-spring-boot-bean-reader-0.1.jar") }.toSet()
+        val projectJars = allJars.filter { jar ->
+            jar.endsWith("${project.name}-${project.version}.jar")
+                    || allCompileProjects.any { jar.endsWith("$it.jar") }
+        }.toSet()
 
-        allJars
-            .minus(bootBeanReader)
+        projectJars
             .map { zipTree(it) }
     }
 
@@ -268,7 +265,14 @@ val extractJar by tasks.registering(Copy::class) {
     doLast {
         copy {
             from(libDir.map {
-                it.asFileTree.matching { include("**/explyt-spring-boot-bean-reader-0.1.jar")}.files
+                val allJars = it.asFileTree
+                    .matching { include("**/*.jar") }
+                    .files
+
+                allJars.filterNot { jar ->
+                    jar.endsWith("${project.name}-${version}.jar")
+                            || allCompileProjects.any { jar.endsWith("$it.jar") }
+                }
             })
             into(extractedLibDepsPath)
         }
@@ -300,8 +304,9 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     val classPath = configurations.compileClasspath.get()
         .minus(toFilter)
         .minus(invalidFiles)
-    libraryjars(classPath)
-    libraryjars(extractedLibDepsPath.get().asFileTree.files)
+    libraryjars(classPath +
+            extractedLibDepsPath.get().asFileTree.matching { include("**/*.jar") }.files
+    )
 
     val filterArgs = mapOf(
         "jarfilter" to "!**.jar"
@@ -329,7 +334,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     outputs.files.files.add(extractedDirPath.get().asFile)
     doLast {
         removeFromJar(obfuscatedJarPath.get().asFile.path, "kotlin")
-        removeFromJar(obfuscatedJarPath.get().asFile.path, "META-INF/maven")
+        //removeFromJar(obfuscatedJarPath.get().asFile.path, "META-INF/maven")
         delete(extractedDirPath)
         delete(libDir)
         copy {
