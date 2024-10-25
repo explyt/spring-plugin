@@ -20,6 +20,12 @@ plugins {
     kotlin("jvm") apply false
 }
 
+tasks.register("runIde") {
+    doFirst {
+        throw GradleException("Use project specific runIde command, i.e. :spring-bootstrap:runIde")
+    }
+}
+
 subprojects {
     apply(plugin = "java")
     apply(plugin = "org.jetbrains.intellij.platform")
@@ -32,18 +38,17 @@ subprojects {
     tasks.withType<KotlinJvmCompile>().configureEach {
         kotlinOptions {
             jvmTarget = java.toolchain.languageVersion.get().toString()
-            freeCompilerArgs += listOf("-Xjvm-default=all-compatibility")
+            freeCompilerArgs += listOf("-Xjvm-default=all-compatibility", "-Xjsr305=strict")
         }
     }
 
     tasks.withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
+        options.compilerArgs = options.compilerArgs + "-Xlint:all"
+
         javaCompiler = javaToolchains.compilerFor {
             languageVersion = java.toolchain.languageVersion
         }
         sourceCompatibility = java.toolchain.languageVersion.get().toString()
     }
-
-}
-
-dependencies {
 }

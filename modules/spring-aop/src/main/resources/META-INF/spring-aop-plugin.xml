@@ -1,5 +1,10 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.aop.service.AspectMethodsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.esprito.spring.aop.service.PointCutMethodsLineMarkerProvider"/>
+
         <localInspection language="UAST"
                          shortName="SpringAopAnnotationInspection"
                          groupBundle="messages.SpringAopBundle"

@@ -30,7 +30,7 @@ release:
     - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
-    - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
+    - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate | tee build.log
     - ./gradlew :spring-bootstrap:runPluginVerifier
   artifacts:
     reports:
@@ -39,6 +39,7 @@ release:
       - modules/spring-bootstrap/build/reports/pluginVerifier
       - modules/spring-bootstrap/build/distributions/*.zip
       - modules/spring-bootstrap/build/distributions/source.map
+      - build.log
 
 #TODO: It will be better if we can attach artifacts by uploading to storage: generic package registry
 release_job:

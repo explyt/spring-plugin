@@ -60,6 +60,8 @@
                                        implementation="com.esprito.spring.core.externalsystem.view.SpringBootExternalSystemViewContributor"/>
         <externalSystemDependencyAnalyzer
                 implementation="com.esprito.spring.core.externalsystem.analyzer.BeanAnalyzerExtension"/>
+        <externalProjectDataService
+                implementation="com.esprito.spring.core.externalsystem.process.CacheTrackerDataService"/>
         <!--Spring Boot External System-->
 
         <notificationGroup id="com.esprito.spring.notification"

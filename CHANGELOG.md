@@ -7,6 +7,7 @@
 
 ### Spring Web/MVC
 
+- Added ToolWindow with endpoints
 - Added inspection for @LoadBalanced annotation in the FeignClient interface
 - Fixed: Inspection in @ConfigurationProperties with @ConstructorBinding is in use, by binding to the constructor
   parameters
@@ -38,6 +39,10 @@
 - Fixed: prefixFromUsage cache bug
 - Fixed: AlreadyDisposedException
 - Added: Generator for @PostConstruct methods
+
+### Spring AOP
+
+- Added Spring AOP processing using Spring Boot Native
 
 ### Other
 

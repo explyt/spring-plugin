@@ -60,8 +60,7 @@ abstract class ConfigurationPropertyDataRetriever {
     companion object {
 
         fun getPrefixValue(psiClass: PsiClass): String {
-            return CachedValuesManager.getManager(psiClass.project)
-                .getCachedValue(psiClass) {
+            return CachedValuesManager.getManager(psiClass.project).getCachedValue(psiClass) {
                     CachedValueProvider.Result(
                         getPrefixFromUsage(psiClass),
                         ModificationTrackerManager.getInstance(psiClass.project).getUastModelAndLibraryTracker()

@@ -54,9 +54,9 @@ sealed class EndpointData {
     data class EndpointElementData(val endpointElement: EndpointElement) : EndpointData()
 }
 
-enum class EndpointType {
-    SPRING_MVC,
-    SPRING_WEBFLUX,
-    OPENAPI,
-    SPRING_OPEN_FEIGN
+enum class EndpointType(val readable: String) {
+    SPRING_MVC("Spring MVC"),
+    SPRING_WEBFLUX("WebFlux"),
+    OPENAPI("OpenAPI"),
+    SPRING_OPEN_FEIGN("OpenFeign")
 }

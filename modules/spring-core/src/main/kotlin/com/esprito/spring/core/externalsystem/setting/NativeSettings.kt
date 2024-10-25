@@ -6,6 +6,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.externalSystem.settings.AbstractExternalSystemSettings
+import com.intellij.openapi.externalSystem.settings.DelegatingExternalSystemSettingsListener
 import com.intellij.openapi.externalSystem.settings.ExternalSystemSettingsListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
@@ -51,9 +52,9 @@ class NativeSettings(project: Project) :
     }
 
     override fun subscribe(
-        listener: ExternalSystemSettingsListener<NativeProjectSettings?>, parentDisposable: Disposable
-    ) {
-    }
+        listener: ExternalSystemSettingsListener<NativeProjectSettings>, parentDisposable: Disposable
+    ) = doSubscribe(DelegatingNativeSettingsListenerAdapter(listener), parentDisposable)
+
 }
 
 class SystemSettingsState : AbstractExternalSystemSettings.State<NativeProjectSettings> {
@@ -77,3 +78,7 @@ interface SettingsListener : ExternalSystemSettingsListener<NativeProjectSetting
         val TOPIC = Topic(SettingsListener::class.java, Topic.BroadcastDirection.NONE)
     }
 }
+
+class DelegatingNativeSettingsListenerAdapter
+    (delegate: ExternalSystemSettingsListener<NativeProjectSettings>) :
+    DelegatingExternalSystemSettingsListener<NativeProjectSettings>(delegate), SettingsListener
