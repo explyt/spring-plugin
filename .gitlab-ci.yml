@@ -33,6 +33,7 @@ release:
     - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate | tee build.log
     - ./gradlew :spring-bootstrap:runPluginVerifier
   artifacts:
+    when: always
     reports:
       dotenv: variables.env                                   # Use artifacts:reports:dotenv to expose the variables to other jobs
     paths:
