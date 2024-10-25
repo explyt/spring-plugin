@@ -304,9 +304,8 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     val classPath = configurations.compileClasspath.get()
         .minus(toFilter)
         .minus(invalidFiles)
-    libraryjars(classPath +
-            extractedLibDepsPath.get().asFileTree.matching { include("**/*.jar") }.files
-    )
+    val libFiles = extractedLibDepsPath.get().asFileTree.matching { include("**/*.jar") }.files
+    libraryjars(classPath + libFiles)
 
     val filterArgs = mapOf(
         "jarfilter" to "!**.jar"
