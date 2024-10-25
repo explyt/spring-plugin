@@ -130,6 +130,9 @@ configurations {
     }
 }
 
+val defaultIdeaType: String by rootProject
+val defaultIdeaVersion: String by rootProject
+
 dependencies {
     allCompileProjects.forEach {
         implementation(project(":$it"))
@@ -148,12 +151,8 @@ dependencies {
         }
         bundledPlugins(pluginDependencies.toList())
 
-        create("IC", rootProject.ext["defaultIdeaVersion"] as String)
-//        if (launchUltimate) {
-//            create("IC", rootProject.ext["defaultIdeaVersion"] as String)
-//        } else {
-//            create("IU", rootProject.ext["defaultIdeaVersion"] as String)
-//        }
+        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
+        jetbrainsRuntime()
     }
 }
 
@@ -191,13 +190,6 @@ intellijPlatform {
         ides {
             recommended()
         }
-        //ignoreWarnings = true
-        //        failureLevel.set(listOf(
-        //            RunPluginVerifierTask.FailureLevel.INVALID_PLUGIN,
-        //            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_PROBLEMS,
-        //            RunPluginVerifierTask.FailureLevel.COMPATIBILITY_WARNINGS
-        //        ))
-
     }
     // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
     signing {
@@ -337,6 +329,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     outputs.files.files.add(extractedDirPath.get().asFile)
     doLast {
         removeFromJar(obfuscatedJarPath.get().asFile.path, "kotlin")
+        removeFromJar(obfuscatedJarPath.get().asFile.path, "META-INF/maven")
         delete(extractedDirPath)
         delete(libDir)
         copy {

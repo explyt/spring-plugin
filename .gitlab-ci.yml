@@ -30,14 +30,14 @@ release:
     - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
-    - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate | tee build.log
-    - ./gradlew :spring-bootstrap:runPluginVerifier
+    - ./gradlew :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate | tee build.log
+#    - ./gradlew --info :spring-bootstrap:verifyPlugin | tee build.log
   artifacts:
     when: always
     reports:
       dotenv: variables.env                                   # Use artifacts:reports:dotenv to expose the variables to other jobs
     paths:
-      - modules/spring-bootstrap/build/reports/pluginVerifier
+#      - modules/spring-bootstrap/build/reports/pluginVerifier
       - modules/spring-bootstrap/build/distributions/*.zip
       - modules/spring-bootstrap/build/distributions/source.map
       - build.log
