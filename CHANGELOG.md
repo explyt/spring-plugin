@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+## [242.1.2239] - 2024-10-26
+
 ### Spring Web/MVC
 
 - Added ToolWindow with endpoints
@@ -48,7 +52,7 @@
 
 - Upgrade to intellij 242 branch
 
-## [241.1.1834] - 2024-08-06
+## 241.1.1834 - 2024-08-06
 
 ### Spring Core/Boot
 
