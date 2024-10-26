@@ -264,7 +264,7 @@ val extractJar by tasks.registering(Copy::class) {
     }
     doLast {
         copy {
-            from(libDir.map {
+            val allLibJarsProvider = libDir.map {
                 val allJars = it.asFileTree
                     .matching { include("**/*.jar") }
                     .files
@@ -273,7 +273,9 @@ val extractJar by tasks.registering(Copy::class) {
                     jar.endsWith("${project.name}-${version}.jar")
                             || allCompileProjects.any { jar.endsWith("$it.jar") }
                 }
-            })
+            }.get()
+            println("Copy libs: $allLibJarsProvider")
+            from(allLibJarsProvider.toTypedArray())
             into(extractedLibDepsPath)
         }
     }
@@ -305,6 +307,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
         .minus(toFilter)
         .minus(invalidFiles)
     val libFiles = extractedLibDepsPath.get().asFileTree.matching { include("**/*.jar") }.files
+    println(libFiles)
     libraryjars(classPath + libFiles)
 
     val filterArgs = mapOf(
@@ -329,8 +332,10 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     val sourceMap = layout.buildDirectory.file("distributions/source.map")
     printmapping(sourceMap)
     outputs.files.files.add(obfuscatedJarPath.get().asFile)
+    outputs.files.files.add(extractedLibDepsPath.get().asFile)
     outputs.files.files.add(sourceMap.get().asFile)
     outputs.files.files.add(extractedDirPath.get().asFile)
+    outputs.files.files.add(libDir.get().asFile)
     doLast {
         removeFromJar(obfuscatedJarPath.get().asFile.path, "kotlin")
         //removeFromJar(obfuscatedJarPath.get().asFile.path, "META-INF/maven")
@@ -338,7 +343,10 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
         delete(libDir)
         copy {
             from(obfuscatedJarPath)
-            from(extractedLibDepsPath.get().asFileTree.files)
+            into(libDir)
+        }
+        copy {
+            from(extractedLibDepsPath.get().asFileTree.matching { include("**/*.jar") }.files.toTypedArray())
             into(libDir)
         }
         delete(obfuscatedJarPath)
