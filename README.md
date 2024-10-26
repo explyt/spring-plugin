@@ -1,33 +1,31 @@
-## Spring Explyt
-
-Spring Explyt plugin for Spring with Java and Kotlin support makes your development with IntelliJ IDEA Community a more productive and enjoyable experience.
+[Spring Explyt plugin](https://explyt.com/spring) for Spring development with Java and Kotlin support enhances your experience in IntelliJ IDEA Community, making it more productive and enjoyable.
 
 ## Spring Explyt plugin will:
 - accelerate the development of your Spring and Spring Boot applications
-- allow you to create Spring projects inside IDE using Spring Initializr and intuitive wizards
+- allow you to create Spring projects directly within the IDE using Spring Initializr and intuitive wizards
 - support Spring Boot profiles, configurations, and properties
-- highlight Spring Core Beans dependencies and usages
-- validate that Spring Beans injections are used correctly
-- highlight the mistakes, misbehavior, and possible problems and typos in your code using more than 50 inspections to make your code better
+- highlight dependencies and usages of Spring Core Beans throughout your code
+- validate the correct use of Spring Beans injections
+- highlight errors, misbehaviors, potential issues, and typos in your code with over 50 inspections to improve code quality
 - help you better understand the context of your Spring applications
 - support Java, Kotlin, and Scala
-- enable syntax support for JPQL, OpenAPI
-- lower barrier to entry into development with Spring Framework
+- enable syntax support for JPQL and OpenAPI
+- lower the barrier to entry for development with the Spring Framework
 - minimize your routine tasks
 - make sure your code follows best practices
 
 ### Spring Explyt plugin provides solid support for:
 - Spring Boot
 - Spring Framework
-- Spring Data
-- Spring Web
-- Spring AOP (in progress), including AspectJ
-- Spring Security
-- Spring Integration (partly)
+- Spring Data (JPQL language injection in @Query, Repository support)
+- Spring Web (Spring Web RequestMapping Controllers, OpenApi, MockMvc)
+- Spring AOP, including AspectJ
+- Spring Security (Detect UserDetailsService)
+- Spring Integration (nullChannel, errorChannel, integrationFlowContext)
 
 ### Spring core:
 - Spring Beans
-- Support Lombok library for Java Spring projects
+- Lombok library support for Java Spring projects
 - Spring Profiles
 - Spring Events
 - Scheduling
@@ -36,34 +34,16 @@ Spring Explyt plugin for Spring with Java and Kotlin support makes your developm
 - Cache
 
 ### Spring Boot:
-- Auto-detect Run configurations with @SpringBootApplication
+- Auto-detect run configurations with @SpringBootApplication
 - Configuration Properties
 - Auto-Configurations and Spring-Boot-Starters
 - Spring Boot Tests
 
-### Spring Web:
-- Spring Web RequestMapping Controllers
-- OpenApi
-- MockMvc
-
-### Spring Data:
-- JPQL - language injection to @Query
-- Repository support
-
-### Spring Security:
-- Detect UserDetailsService
-
-### Spring Integration:
-- nullChannel
-- errorChannel
-- integrationFlowContext
-
-To use the Spring Explyt plugin in IntelliJ IDEA Ultimate, you must turn off the Spring plugin (conflict functionality). 
+To use the Spring Explyt plugin in IntelliJ IDEA Ultimate, you must disable the Spring plugin (to avoid conflicts). 
 The plugin supports Spring 6 and higher.
 
-* [NON-COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
-* [COMMERCIAL LICENSE](https://github.com/explyt/spring-plugin/blob/main/COMMERCE_LICENSE.md)
+[LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
 
-The plugin is free for both non-commercial and commercial use. You may download it from [here](https://github.com/explyt/spring-plugin) for non-commercial use. If you need the plugin for commercial work, please contact us at sales@explyt.com, and we’ll send you the license key.
+The plugin is completely FREE for both non-commercial and commercial use.
 
 Feel free to share your feedback and report issues on [GitHub](https://github.com/explyt/spring-plugin/issues).
