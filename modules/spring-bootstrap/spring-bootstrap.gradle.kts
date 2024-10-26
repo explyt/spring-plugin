@@ -248,7 +248,7 @@ val extractJar by tasks.registering(Copy::class) {
             .files
 
         val projectJars = allJars.filter { jar ->
-            jar.endsWith("${project.name}-${project.version}.jar")
+            jar.endsWith("${project.name}-${version}.jar")
                     || allCompileProjects.any { jar.endsWith("$it.jar") }
         }.toSet()
 
@@ -287,6 +287,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     }
     val prepareSandbox = tasks.named<PrepareSandboxTask>(Constants.Tasks.PREPARE_SANDBOX);
     val libDir = prepareSandbox.flatMap { it.pluginDirectory }.map { it.dir("lib") }
+    dependsOn(extractJar)
 
     configuration(file("../../proguard.pro"))
 
@@ -306,9 +307,8 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     val classPath = configurations.compileClasspath.get()
         .minus(toFilter)
         .minus(invalidFiles)
-    val libFiles = extractedLibDepsPath.get().asFileTree.matching { include("**/*.jar") }.files
-    println(libFiles)
-    libraryjars(classPath + libFiles)
+    libraryjars(classPath)
+    libraryjars(extractedLibDepsPath)
 
     val filterArgs = mapOf(
         "jarfilter" to "!**.jar"
@@ -335,7 +335,6 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
     outputs.files.files.add(extractedLibDepsPath.get().asFile)
     outputs.files.files.add(sourceMap.get().asFile)
     outputs.files.files.add(extractedDirPath.get().asFile)
-    outputs.files.files.add(libDir.get().asFile)
     doLast {
         removeFromJar(obfuscatedJarPath.get().asFile.path, "kotlin")
         //removeFromJar(obfuscatedJarPath.get().asFile.path, "META-INF/maven")
@@ -346,7 +345,7 @@ val proGuardTask by tasks.registering(ProGuardTask::class) {
             into(libDir)
         }
         copy {
-            from(extractedLibDepsPath.get().asFileTree.matching { include("**/*.jar") }.files.toTypedArray())
+            from(extractedLibDepsPath.get().asFileTree.files.toTypedArray())
             into(libDir)
         }
         delete(obfuscatedJarPath)
@@ -402,6 +401,7 @@ tasks {
     prepareSandbox {
         if (obfuscate) {
             delete(extractedDirPath)
+            delete(extractedLibDepsPath)
             outputs.doNotCacheIf("Cache is disable") { true }
             finalizedBy(extractJar, proGuardTask)
         }
