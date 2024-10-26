@@ -1,4 +1,6 @@
-[Spring Explyt plugin](https://explyt.com/spring) for Spring development with Java and Kotlin support enhances your experience in IntelliJ IDEA Community, making it more productive and enjoyable.
+The [Spring Explyt plugin](https://explyt.com/spring) enhances your IntelliJ IDEA Community experience, making Spring development in Java and Kotlin more productive and enjoyable.
+
+![Screen](https://github.com/explyt/spring-plugin/blob/main/images/screen1.jpg)
 
 ## Spring Explyt plugin will:
 - accelerate the development of your Spring and Spring Boot applications
