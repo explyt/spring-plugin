@@ -15,6 +15,7 @@ import com.esprito.util.EspritoPsiUtil.allSupers
 import com.esprito.util.EspritoPsiUtil.deepPsiClassType
 import com.esprito.util.EspritoPsiUtil.findChildrenOfType
 import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
+import com.esprito.util.EspritoPsiUtil.isAbstract
 import com.esprito.util.EspritoPsiUtil.isCollection
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.esprito.util.EspritoPsiUtil.isInterface
@@ -47,6 +48,7 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.PsiShortNamesCache
+import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.util.PsiUtil
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.getContainingUClass
@@ -154,9 +156,22 @@ object SpringCoreUtil {
     }
 
     private fun isComponentCandidateForClass(psiClass: PsiClass?): Boolean {
-        return psiClass != null && (psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)
-                || psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH))
+        psiClass ?: return false
+
+        if (psiClass.hasComponentAnnotation()) return true
+        if (!psiClass.isAbstract) return false
+        if (psiClass.isInterface) return false
+
+        val moduleScope = ModuleUtilCore.findModuleForPsiElement(psiClass)?.moduleWithDependenciesScope ?: return false
+        return ClassInheritorsSearch.search(psiClass, moduleScope, true)
+            .filterNotNull()
+            .any { it.hasComponentAnnotation() }
     }
+
+    private fun PsiClass.hasComponentAnnotation(): Boolean {
+        return isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) || isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH)
+    }
+
 
     fun PsiClass.getBeanName(): String? =
         name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
