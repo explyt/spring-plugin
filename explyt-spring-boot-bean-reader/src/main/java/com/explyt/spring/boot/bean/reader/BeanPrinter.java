@@ -11,10 +11,7 @@ import org.springframework.core.type.ClassMetadata;
 import org.springframework.core.type.MethodMetadata;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Optional;
-import java.util.TreeMap;
+import java.util.*;
 
 public class BeanPrinter {
 
@@ -45,7 +42,7 @@ public class BeanPrinter {
             Class<?> aopReaderClass = Class.forName("com.explyt.spring.boot.bean.reader.SpringAopReader");
             Method printAopData = Arrays.stream(aopReaderClass.getMethods())
                     .filter(it -> it.getName().equals("printAopData"))
-                    .findFirst().orElseThrow();
+                    .findFirst().orElse(null);
             printAopData.invoke(null, beanFactory, map);
         } catch (Exception e) {
             e.printStackTrace();
@@ -60,7 +57,14 @@ public class BeanPrinter {
         beanInfo.scope = Optional.ofNullable(definition.getScope()).filter(it -> !it.isEmpty()).orElse("singleton");
 
         String beanClassName = definition.getBeanClassName();
-        if (beanClassName != null && definition instanceof AnnotatedBeanDefinition) {
+        //todo rework factoryBeanObjectType
+        if (Objects.equals(beanClassName, "org.springframework.cloud.openfeign.FeignClientFactoryBean")) {
+            beanInfo.className = null;
+            Object factoryBeanObjectType = definition.getAttribute("factoryBeanObjectType");
+            if (factoryBeanObjectType instanceof String) {
+                beanInfo.className = (String) factoryBeanObjectType;
+            }
+        } else if (beanClassName != null && definition instanceof AnnotatedBeanDefinition) {
             Optional<AnnotationMetadata> metadata = Optional.of(((AnnotatedBeanDefinition) definition).getMetadata());
             beanInfo.className = metadata.map(ClassMetadata::getClassName).orElse(beanClassName);
         } else if (definition instanceof AnnotatedBeanDefinition
