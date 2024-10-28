@@ -6,6 +6,7 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddQualifierQuickFix
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.getArrayType
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
@@ -43,7 +44,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         val arrayType = uField.returnPsiType?.getArrayType()
         if (arrayType != null) {
-            val isArrayBeanExist = SpringSearchService.getInstance(manager.project)
+            val isArrayBeanExist = SpringSearchServiceFacade.getInstance(manager.project)
                 .searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
                 .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
                 .any { arrayType.isAssignableFrom(it) }
@@ -143,7 +144,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         val nameClass = (psiType.resolveBeanPsiClass ?: psiType.resolvedPsiClass)?.name ?: return ProblemDescriptor.EMPTY_ARRAY
         val problemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
 
-        val springSearchService = SpringSearchService.getInstance(module.project)
+        val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
         val beanDeclarations = springSearchService
             .findActiveBeanDeclarations(
                 module,
@@ -217,7 +218,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (element.type.resolvedPsiClass == null) return ProblemDescriptor.EMPTY_ARRAY
 
         val qualifier = element.getQualifierAnnotation() ?: return ProblemDescriptor.EMPTY_ARRAY
-        val beanDeclarations = SpringSearchService.getInstance(module.project)
+        val beanDeclarations = SpringSearchServiceFacade.getInstance(module.project)
             .findActiveBeanDeclarations(module, element.name ?: "", element.language, element.type, qualifier)
 
         if (beanDeclarations.isNotEmpty()) {
@@ -243,7 +244,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
     private fun isBeanExist(module: Module, psiClass: PsiClass): Boolean {
         if (SpringCoreUtil.isComponentCandidate(psiClass)) return true
 
-        return SpringSearchService.getInstance(module.project).getActiveBeansClasses(module).asSequence()
+        return SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module).asSequence()
             .filter { it.psiClass.qualifiedName == psiClass.qualifiedName }
             .toList().isNotEmpty()
     }

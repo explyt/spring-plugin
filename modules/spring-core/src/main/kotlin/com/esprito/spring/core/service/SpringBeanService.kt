@@ -25,17 +25,18 @@ class SpringBeanService {
     ): Set<PsiBean> {
         val beanPsiType = psiType.beanPsiType ?: return emptySet()
         val beanPsiClass = psiType.resolveBeanPsiClass ?: return emptySet() // TODO: recheck the code here
-        val searchService = SpringSearchService.getInstance(module.project)
+        val searchServiceFacade = SpringSearchServiceFacade.getInstance(module.project)
 
-        val excludedBeans = searchService.getExcludedBeansClasses(module)
-        val classInheritors = searchService.searchClassInheritors(beanPsiClass)
+        val excludedBeans = searchServiceFacade.getExcludedBeansClasses(module)
+        val classInheritors = SpringSearchUtils.searchClassInheritors(beanPsiClass)
             .asSequence()
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) }
             .filter { inheritor -> excludedBeans.none { it.psiMember == inheritor } }
             .toSet()
-        val allBeansPsiMethods = searchService.getComponentBeanPsiMethods(module)
+        val allBeansPsiMethods = searchServiceFacade.getComponentBeanPsiMethods(module)
             .filterTo(mutableSetOf()) { psiMethod -> excludedBeans.none { it.psiMember == psiMethod } }
-        val beansPsiMethods = searchService.getBeansPsiMethodsCheckMultipleBean(psiType, allBeansPsiMethods, beanPsiType).toSet()
+        val beansPsiMethods = SpringSearchUtils
+            .getBeansPsiMethodsCheckMultipleBean(psiType, allBeansPsiMethods, beanPsiType).toSet()
 
         val beanCandidatesByComponent = getBeanCandidatesInPsiModifierListOwner(module, classInheritors, SpringCoreClasses.COMPONENT)
         val beanCandidatesByMethod = getBeanCandidatesInPsiModifierListOwner(module, beansPsiMethods, SpringCoreClasses.BEAN)

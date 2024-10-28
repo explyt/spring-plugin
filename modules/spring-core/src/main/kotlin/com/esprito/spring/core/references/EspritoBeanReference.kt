@@ -1,6 +1,6 @@
 package com.esprito.spring.core.references
 
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -17,7 +17,7 @@ class EspritoBeanReference(
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-        val springSearchService = SpringSearchService.getInstance(element.project)
+        val springSearchService = SpringSearchServiceFacade.getInstance(element.project)
         val foundBeanDeclarations = springSearchService.findActiveBeanDeclarations(module, beanName, element.language)
         return foundBeanDeclarations.map { PsiElementResolveResult(it) }.toTypedArray()
     }
@@ -30,7 +30,7 @@ class EspritoBeanReference(
     override fun getVariants(): Array<Any> {
         val project: Project = myElement.project
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-        val allBeans = SpringSearchService.getInstance(project).getActiveBeansClasses(module)
+        val allBeans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
         return allBeans.map { bean ->
             LookupElementBuilder.create(bean.name)
                 .withIcon(AllIcons.Nodes.Class)

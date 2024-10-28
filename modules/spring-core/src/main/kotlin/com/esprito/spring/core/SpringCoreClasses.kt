@@ -55,6 +55,7 @@ object SpringCoreClasses {
     const val CACHE_KEY_GENERATOR = "org.springframework.cache.interceptor.KeyGenerator"
     const val CACHE_MANAGER = "org.springframework.cache.CacheManager"
 
+    const val CONDITIONAL = "org.springframework.context.annotation.Conditional"
     const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
     const val CONDITIONAL_ON_SINGLE_BEAN =
         "org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate"

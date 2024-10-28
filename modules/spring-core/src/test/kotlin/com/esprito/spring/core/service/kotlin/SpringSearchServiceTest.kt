@@ -1,6 +1,7 @@
 package com.esprito.spring.core.service.kotlin
 
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.spring.test.EspritoKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
@@ -35,7 +36,7 @@ class SpringSearchServiceTest : EspritoKotlinLightTestCase() {
         val virtualFile = myFixture.copyDirectoryToProject("service/importComponentWithBean", "")
         val module = virtualFile.getModule(project)
         TestCase.assertNotNull(module)
-        val beans = SpringSearchService.getInstance(project).getActiveBeansClasses(module!!)
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module!!)
         val beanNames = beans.filter { it.psiClass.qualifiedName?.startsWith("com.") == true }
             .mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
         TestCase.assertTrue(beanNames.contains("com.app.Application"))
@@ -47,7 +48,7 @@ class SpringSearchServiceTest : EspritoKotlinLightTestCase() {
         val virtualFile = myFixture.copyDirectoryToProject("service/importComplexWithComponentScan", "")
         val module = virtualFile.getModule(project)
         TestCase.assertNotNull(module)
-        val beans = SpringSearchService.getInstance(project).getActiveBeansClasses(module!!)
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module!!)
         val beanNames = beans.filter { it.psiClass.qualifiedName?.startsWith("com.") == true }
             .mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
         TestCase.assertTrue(beanNames.contains("com.app.Application"))

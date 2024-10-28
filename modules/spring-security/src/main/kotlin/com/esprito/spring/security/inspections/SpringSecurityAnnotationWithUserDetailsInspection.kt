@@ -1,6 +1,7 @@
 package com.esprito.spring.security.inspections
 
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.spring.security.SpringSecurityBundle
 import com.esprito.spring.security.SpringSecurityClasses
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
@@ -56,7 +57,7 @@ class SpringSecurityAnnotationWithUserDetailsInspection : AbstractBaseUastLocalI
         val beanName = AnnotationUtil.getStringAttributeValue(details) ?: return emptyArray()
 
 
-        val beanPsiClass = SpringSearchService.getInstance(module.project).getAllBeanByNames(module)
+        val beanPsiClass = SpringSearchServiceFacade.getInstance(module.project).getAllBeanByNames(module)
             .filter { it.key == beanName }
             .map { it.value.firstOrNull()?.psiClass }
             .firstOrNull()

@@ -91,7 +91,7 @@ class ConfigurationPropertiesService(private val project: Project) {
 
         val fields = psiClass.fields.takeIf { it.isNotEmpty() } ?: return
         val module = ModuleUtil.findModuleForPsiElement(psiClass) ?: return
-        val allActiveBeans = SpringSearchService.getInstance(project).getAllActiveBeansLight(module)
+        val allActiveBeans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeansLight(module)
 
         for (field in fields) {
             val resolvedPsiClass = field.type.resolvedPsiClass ?: continue

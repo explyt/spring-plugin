@@ -7,7 +7,8 @@ import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchUtils
+import com.esprito.util.EspritoAnnotationUtil
 import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
 import com.esprito.util.EspritoAnnotationUtil.getStringValue
 import com.esprito.util.EspritoPsiUtil.allSupers
@@ -24,8 +25,10 @@ import com.esprito.util.EspritoPsiUtil.isNonPrivate
 import com.esprito.util.EspritoPsiUtil.isObject
 import com.esprito.util.EspritoPsiUtil.isOptional
 import com.esprito.util.EspritoPsiUtil.isString
+import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
+import com.esprito.util.EspritoPsiUtil.returnPsiType
 import com.esprito.util.ModuleUtil
 import com.esprito.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.esprito.util.runReadNonBlocking
@@ -159,9 +162,7 @@ object SpringCoreUtil {
         name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }
 
     fun PsiClass.resolveBeanName(module: Module): String {
-        return resolveBeanNameByPsiAnnotations(
-            SpringSearchService.getInstance(module.project).getComponentClassAnnotations(module)
-        )
+        return resolveBeanNameByPsiAnnotations(SpringSearchUtils.getComponentClassAnnotations(module))
     }
 
     private fun PsiClass.resolveBeanNameByPsiAnnotations(annotationPsiClasses: Collection<PsiClass>): String {
@@ -369,17 +370,17 @@ object SpringCoreUtil {
     }
 
     val PsiModifierListOwner.resolvePsiClass: PsiClass?
-            get() {
-                if (this is PsiClass) return this
-                if (this is PsiMethod) return this.returnPsiClass
-                return null
-            }
+        get() {
+            if (this is PsiClass) return this
+            if (this is PsiMethod) return this.returnPsiClass
+            return null
+        }
 
     fun PsiModifierListOwner.getQualifierAnnotation(): PsiAnnotation? {
         return this.getMetaAnnotation(SpringCoreClasses.QUALIFIERS)
     }
 
-    fun PsiType.isEqualOrInheritorBeanType(beanPsiType: PsiType): Boolean {
+    private fun PsiType.isEqualOrInheritorBeanType(beanPsiType: PsiType): Boolean {
         if (this == beanPsiType) {
             return true
         }
@@ -456,18 +457,25 @@ object SpringCoreUtil {
         return false
     }
 
-    fun Collection<PsiMethod>.filterByInheritedTypes(sourcePsiType: PsiType, beanPsiType: PsiType?): Sequence<PsiMethod> {
+    fun Collection<PsiMethod>.filterByInheritedTypes(
+        sourcePsiType: PsiType,
+        beanPsiType: PsiType?
+    ): Sequence<PsiMethod> {
         var sequence = this.asSequence()
         if (this.isEmpty()) {
             return sequence
         }
         val beanPsiClass = beanPsiType?.resolvedPsiClass
         if (beanPsiClass != null && beanPsiType != sourcePsiType) {
-            val possibleCustomInheritors = SpringSearchService.getInstance(this.first().project).searchClassInheritors(beanPsiClass)
+            val possibleCustomInheritors = SpringSearchUtils.searchClassInheritors(beanPsiClass)
             if (possibleCustomInheritors.isNotEmpty()) {
                 sequence = sequence.filter {
                     it.returnPsiClass?.let {
-                        it in possibleCustomInheritors || possibleCustomInheritors.any { inheritorClass -> inheritorClass.isEqualOrInheritor(it) }
+                        it in possibleCustomInheritors || possibleCustomInheritors.any { inheritorClass ->
+                            inheritorClass.isEqualOrInheritor(
+                                it
+                            )
+                        }
                     } == true
                 }
             }
@@ -478,9 +486,11 @@ object SpringCoreUtil {
             psiMethod.findChildrenOfType<PsiReturnStatement>().any {
                 it.returnValue?.type?.let {
                     it != psiMethodReturnType && (
-                        it.isEqualOrInheritorBeanType(sourcePsiType)
-                                || beanPsiType != null && beanPsiType != sourcePsiType && it.isEqualOrInheritorBeanType(beanPsiType)
-                    )
+                            it.isEqualOrInheritorBeanType(sourcePsiType)
+                                    || beanPsiType != null && beanPsiType != sourcePsiType && it.isEqualOrInheritorBeanType(
+                                beanPsiType
+                            )
+                            )
                 } == true
             }
         }
@@ -507,6 +517,81 @@ object SpringCoreUtil {
             )
             .firstOrNull { it.qualifiedName == fullyQualifiedName }
             ?.methods
+    }
+
+    fun PsiField.isCandidate(
+        targetType: PsiType?,
+        targetClasses: Set<PsiClass>,
+        targetClass: PsiClass
+    ): Boolean {
+        if (targetType == this.type) return true
+        if (targetType != null && targetType.isEqualOrInheritorBeanType(this.type)) return true
+        if (targetType != null && this.type.isAssignableFrom(targetType)) return true
+
+        if (targetType is PsiArrayType) {
+            return if (this.language == KotlinLanguage.INSTANCE) getPsiType(this) == targetType
+            else getPsiType(this)?.isAssignableFrom(targetType) == true
+        }
+
+        val isResolved = this.type.canResolveBeanClass(targetClasses, this.language, targetClass)
+        if (!isResolved) return false
+        if (targetType == null) return true
+
+        if (targetType !is PsiClassType) return true
+        val psiClassType = getPsiType(this)
+        return if (targetType.parameters.isNotEmpty()) {
+            psiClassType?.isEqualOrInheritorBeanType(targetType) == true
+        } else true
+    }
+
+    private fun getPsiType(field: PsiField): PsiType? {
+        val type = field.type.beanPsiType
+        if (type is PsiClassType) {
+            return type.psiClassType
+        }
+        if (type is PsiArrayType) {
+            return type
+        }
+        if (field.language == KotlinLanguage.INSTANCE && type is PsiWildcardType) {
+            if (type.isExtends) return type.extendsBound
+            if (type.isSuper) return type.superBound
+        }
+        return null
+    }
+
+    fun Collection<PsiMethod>.filterByExactMatch(sourcePsiType: PsiType): Sequence<PsiMethod> {
+        val isSourcePsiTypeHasParameters = sourcePsiType.psiClassType?.let { it.parameterCount > 0 } == true
+        val isSourcePsiTypeHasSingleUnboundedWildcardType = sourcePsiType.psiClassType?.let {
+            it.parameterCount == 1 && !it.parameters[0].isBounded()
+        } == true
+
+        val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
+        return this.asSequence().filter {
+            it.returnType?.isEqualOrInheritorBeanType(sourcePsiType) ?: false ||
+                    it.returnType == sourcePsiType
+                    || it.returnPsiType?.isEqualOrInheritorBeanType(sourcePsiType) == true
+                    || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
+                    && resolvedSourcePsiClass != null && it.returnPsiClass == resolvedSourcePsiClass
+        }
+    }
+
+    fun Collection<PsiMethod>.filterByBeanPsiType(beanPsiType: PsiType): Sequence<PsiMethod> {
+        val inheritedPsiMethods = this.asSequence().filter {
+            it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
+        }
+        // This function added a candidate to the beans, where returned other type.
+        // Example: @Bean E dBean() { return new D(); }
+        // val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
+        return inheritedPsiMethods // + filterByInheritedTypes
+    }
+
+
+    fun PsiMember.filterByQualifier(
+        module: Module, qualifier: PsiAnnotation?, beanNameFromQualifier: String?
+    ): Boolean {
+        return qualifier == null
+                || beanNameFromQualifier != null && beanNameFromQualifier in this.resolveBeanName(module)
+                || EspritoAnnotationUtil.equal(qualifier, this.getAnnotation(qualifier.qualifiedName!!))
     }
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"

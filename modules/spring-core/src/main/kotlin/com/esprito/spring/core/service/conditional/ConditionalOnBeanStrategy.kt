@@ -68,6 +68,9 @@ class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
         if (classAttributes.isNotEmpty() && classesQn.isEmpty()) {
             return true
         }
+        if (classAttributes.isNotEmpty() && classesQn.isEmpty()) {
+            return true
+        }
         return classesQn.isNotEmpty() && classesQn.any { !foundBeanClassQn.contains(it) }
     }
 

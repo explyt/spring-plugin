@@ -10,6 +10,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.lang.java.JavaLanguage
+import com.intellij.openapi.externalSystem.dependency.analyzer.DAArtifact
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -43,6 +44,9 @@ object NativeBootUtils {
     fun findProjectClass(classQualifiedName: String, project: Project): PsiClass? {
         return JavaPsiFacade.getInstance(project).findClass(classQualifiedName, project.projectScope())
     }
+
+    fun psiClass(daArtifact: DAArtifact, project: Project) =
+        psiClass(daArtifact.groupId + "." + daArtifact.artifactId, project)
 
     private fun psiClass(className: String, project: Project): PsiClass? {
         val classNameInner = toQualifiedClassName(className)

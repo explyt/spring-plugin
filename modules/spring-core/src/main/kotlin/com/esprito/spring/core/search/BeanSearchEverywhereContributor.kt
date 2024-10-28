@@ -1,6 +1,6 @@
 package com.esprito.spring.core.search
 
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.intellij.ide.actions.searcheverywhere.FoundItemDescriptor
 import com.intellij.ide.actions.searcheverywhere.WeightedSearchEverywhereContributor
 import com.intellij.ide.util.NavigationItemListCellRenderer
@@ -44,7 +44,7 @@ class BeanSearchEverywhereContributor(private val project: Project) :
         consumer: Processor<in FoundItemDescriptor<BeanNavigationItem>>
     ) {
         val matcher = NameUtil.buildMatcher("*$pattern*", NameUtil.MatchingCaseSensitivity.NONE)
-        val searchService = SpringSearchService.getInstance(project)
+        val searchService = SpringSearchServiceFacade.getInstance(project)
 
         val navItemList = ApplicationManager.getApplication().runReadAction<List<BeanNavigationItem>, Throwable?> {
             val (active, excluded) = searchService.getAllBeansClassesConsideringContext(project)
