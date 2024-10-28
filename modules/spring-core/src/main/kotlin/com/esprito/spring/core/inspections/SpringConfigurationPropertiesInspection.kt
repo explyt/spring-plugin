@@ -5,7 +5,7 @@ import com.esprito.spring.core.SpringCoreBundle.message
 import com.esprito.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES
 import com.esprito.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil.extractConfigurationPropertyPrefix
 import com.esprito.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil.getAnnotatedElements
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchUtils
 import com.intellij.codeInsight.navigation.getPsiElementPopup
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
@@ -48,8 +48,8 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         val module = ModuleUtilCore.findModuleForFile(file) ?: return emptyArray()
-        val uAnnotation = SpringSearchService.getInstance(manager.project)
-            .findUAnnotation(module, uAnnotations, CONFIGURATION_PROPERTIES) ?: return emptyArray()
+        val uAnnotation = SpringSearchUtils.findUAnnotation(module, uAnnotations, CONFIGURATION_PROPERTIES)
+            ?: return emptyArray()
         return collectProblems(uAnnotation, module, manager, isOnTheFly)
     }
 

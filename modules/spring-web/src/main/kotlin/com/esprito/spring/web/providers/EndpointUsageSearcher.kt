@@ -1,6 +1,6 @@
 package com.esprito.spring.web.providers
 
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchUtils
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.UastUtil.getArgumentValueAsEnumName
@@ -191,7 +191,7 @@ object EndpointUsageSearcher {
         for (psiMethod in getMockMvcMethods(module)) {
             if (!isInRequestMethods(psiMethod, requestMethods)) continue
 
-            methods += SpringSearchService.getInstance(module.project)
+            methods += SpringSearchUtils
                 .searchReferenceByMethod(module, psiMethod, GlobalSearchScopesCore.projectTestScope(module.project))
                 .asSequence()
                 .filter { it is PsiReferenceExpression }
@@ -251,8 +251,7 @@ object EndpointUsageSearcher {
         return getGetWebTestMethods(module).asSequence()
             .filter { it.name.uppercase() == methodName || it.name == "method" }
             .flatMap {
-                SpringSearchService.getInstance(module.project)
-                    .searchReferenceByMethod(
+                SpringSearchUtils.searchReferenceByMethod(
                         module,
                         it.javaPsi,
                         GlobalSearchScopesCore.projectTestScope(module.project)

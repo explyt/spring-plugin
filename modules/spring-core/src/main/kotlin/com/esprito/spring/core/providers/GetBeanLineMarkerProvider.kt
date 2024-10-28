@@ -3,7 +3,7 @@ package com.esprito.spring.core.providers
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -55,7 +55,7 @@ class GetBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun getBeans(psiElement: PsiElement, name: String, requiredType: PsiType?): Collection<PsiElement> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return emptyList()
-        return SpringSearchService.getInstance(psiElement.project)
+        return SpringSearchServiceFacade.getInstance(psiElement.project)
             .findActiveBeanDeclarations(module, name, psiElement.language, requiredType)
     }
 

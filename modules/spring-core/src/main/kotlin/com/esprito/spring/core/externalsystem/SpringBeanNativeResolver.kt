@@ -79,7 +79,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfiguration), null)
         }
         settings ?: throw ExternalSystemException("No settings")
-        runConfiguration ?: throw ExternalSystemException("No run configuration")
+        runConfiguration ?: nothingException(settings)
         try {
             return synchronized(this::class.java) {
                 try {
@@ -91,6 +91,13 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         } finally {
             cancellationMap.remove(id)
         }
+    }
+
+    private fun nothingException(settings: NativeExecutionSettings): Nothing {
+        if (settings.runConfigurationName != null) {
+            throw ExternalSystemException("No run configuration found by name: " + settings.runConfigurationName)
+        }
+        throw ExternalSystemException("No run configuration found by path: " + settings.externalProjectMainFilePath)
     }
 
     private fun getProjectDataNode(

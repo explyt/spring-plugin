@@ -3,7 +3,7 @@ package com.esprito.spring.core.inspections
 import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.LOOKUP
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.returnPsiClass
@@ -26,7 +26,7 @@ class SpringLookupBeanInspection : SpringBaseUastLocalInspectionTool() {
         val method = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(method) ?: return null
         val returnClassQN = method.returnPsiClass?.qualifiedName ?: return null
-        val service = SpringSearchService.getInstance(module.project)
+        val service = SpringSearchServiceFacade.getInstance(module.project)
         val beanByNames = service.getAllBeanByNames(module)
 
         val problems = mutableListOf<ProblemDescriptor>()

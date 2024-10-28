@@ -3,14 +3,18 @@ package com.esprito.spring.core.providers
 import com.esprito.spring.core.*
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
+import com.esprito.spring.core.service.SpringSearchUtils
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.core.util.SpringCoreUtil.beanPsiType
 import com.esprito.spring.core.util.SpringCoreUtil.canResolveBeanClass
+import com.esprito.spring.core.util.SpringCoreUtil.filterByBeanPsiType
+import com.esprito.spring.core.util.SpringCoreUtil.filterByExactMatch
 import com.esprito.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.esprito.spring.core.util.SpringCoreUtil.getArrayType
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
+import com.esprito.spring.core.util.SpringCoreUtil.isCandidate
 import com.esprito.spring.core.util.SpringCoreUtil.isComponentCandidate
-import com.esprito.spring.core.util.SpringCoreUtil.isEqualOrInheritorBeanType
 import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
 import com.esprito.util.EspritoPsiUtil.allSupers
 import com.esprito.util.EspritoPsiUtil.isAbstract
@@ -18,8 +22,8 @@ import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isFinal
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
 import com.esprito.util.EspritoPsiUtil.isPrivate
-import com.esprito.util.EspritoPsiUtil.psiClassType
 import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.LOG
@@ -43,12 +47,27 @@ import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.pom.PomTargetPsiElement
 import com.intellij.psi.*
 import com.intellij.util.TextWithIcon
-import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.uast.*
 import java.util.regex.Pattern
 
 class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        if (isExternalProjectExist(elements)) {
+            SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
+        } else {
+            super.collectSlowLineMarkers(elements, result)
+        }
+    }
+
+    private fun isExternalProjectExist(elements: MutableList<out PsiElement>): Boolean {
+        return elements.firstOrNull()
+            ?.let { SpringSearchServiceFacade.isExternalProjectExist(it.project) } ?: false
+    }
+
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
@@ -148,7 +167,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun isClassForBeanMethod(): Boolean {
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
-                val targetClass = springSearchService.getBeanClass(uParent) ?: return false
+                val targetClass = SpringSearchUtils.getBeanClass(uParent) ?: return false
                 val allBeans = springSearchService.searchAllBeanLight(module)
                 return allBeans.any { it.psiClass == targetClass && it.psiClass != it.psiMember }
             }
@@ -164,25 +183,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                         AnnotationUtil.getStringAttributeValue(it)
                     )
                 } ?: false
-        }
-
-        private fun isAutowiredFieldExpression(javaPsi: PsiField): Boolean {
-            return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
-                    || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
-                    || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
-        }
-
-        private fun isLombokAnnotatedClassFieldExpression(psiField: PsiField): Boolean {
-            return psiField.containingClass?.let {
-                it.isMetaAnnotatedBy(LombokClasses.ALL_ARGS_CONSTRUCTOR)
-                        || it.isMetaAnnotatedBy(LombokClasses.REQUIRED_ARGS_CONSTRUCTOR) && psiField.isFinal
-            } == true
-        }
-
-        private fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {
-            return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
-                    || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
-                    || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
         }
 
         private fun isBeanMethodExpression(javaPsi: PsiMethod): Boolean {
@@ -215,7 +215,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 }
                 val beanPsiType = psiVariable.type.beanPsiType
                 val foundInheritedTypes = if (beanPsiType != null) {
-                    componentBeanPsiMethods.filterByBeanPsiType(psiVariable.type, beanPsiType).isNotEmpty()
+                    componentBeanPsiMethods.filterByBeanPsiType(beanPsiType).isNotEmpty()
                 } else {
                     componentBeanPsiMethods.filterByInheritedTypes(psiVariable.type, null).isNotEmpty()
                 }
@@ -266,7 +266,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val qualifierAnnotation = uField.getQualifierAnnotation()
 
             val activeBean = springSearchService.findActiveBeanDeclarations(
-                module, beanName, uField.language, beanPsiType, qualifierAnnotation
+                module, beanName, element.language, beanPsiType, qualifierAnnotation
             )
             if (activeBean.isNotEmpty()) {
                 return activeBean
@@ -318,11 +318,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             val isArrayType = uParent is UMethod && uParent.returnType is PsiArrayType
-            val targetClass = springSearchService.getBeanClass(uParent, isArrayType) ?: return emptyList()
+            val targetClass = SpringSearchUtils.getBeanClass(uParent, isArrayType) ?: return emptyList()
             val targetClasses = targetClass.allSupers()
             val targetType = findTargetType()
 
-            val allAutowiredAnnotations = springSearchService.getAutowiredFieldAnnotations(module)
+            val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
             val allBeans = springSearchService.getActiveBeansClasses(module) +
@@ -369,49 +369,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             }
         }
 
-        private fun PsiField.isCandidate(
-            targetType: PsiType?,
-            targetClasses: Set<PsiClass>,
-            targetClass: PsiClass
-        ): Boolean {
-            if (targetType == this.type) return true
-            if (targetType != null && targetType.isEqualOrInheritorBeanType(this.type)) return true
-            if (targetType != null && this.type.isAssignableFrom(targetType)) return true
-
-            if (targetType is PsiArrayType) {
-                return if (this.language == KotlinLanguage.INSTANCE) getPsiType(this) == targetType
-                else getPsiType(this)?.isAssignableFrom(targetType) == true
-            }
-
-            val isResolved = this.type.canResolveBeanClass(targetClasses, this.language, targetClass)
-            if (!isResolved) return false
-            if (targetType == null) return true
-
-            if (targetType !is PsiClassType) return true
-            val psiClassType = getPsiType(this)
-            return if (targetType.parameters.isNotEmpty()) {
-                psiClassType?.isEqualOrInheritorBeanType(targetType) == true
-            } else true
-        }
-
-        private fun getPsiType(field: PsiField): PsiType? {
-            val type = field.type.beanPsiType
-            if (type is PsiClassType) {
-                return type.psiClassType
-            }
-            if (type is PsiArrayType) {
-                return type
-            }
-            if (field.language == KotlinLanguage.INSTANCE && type is PsiWildcardType) {
-                if (type.isExtends) return type.extendsBound
-                if (type.isSuper) return type.superBound
-            }
-            return null
-        }
-
         fun findBeanDeclarations(): List<PsiElement> {
             if (uParent is UClass) {
-                val targetClass = springSearchService.getBeanClass(uParent) ?: return emptyList()
+                val targetClass = SpringSearchUtils.getBeanClass(uParent) ?: return emptyList()
                 return springSearchService.getActiveBeansClasses(module).asSequence()
                     .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
                     .map { it.psiMember }
@@ -424,7 +384,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     /**
      * code from /com/intellij/codeInsight/navigation/util.kt:targetPresentation
      */
-    private fun getTargetRender(): PsiTargetPresentationRenderer<PsiElement> {
+    fun getTargetRender(): PsiTargetPresentationRenderer<PsiElement> {
         return object : PsiTargetPresentationRenderer<PsiElement>() {
 
             override fun getPresentation(element: PsiElement): TargetPresentation {
@@ -485,5 +445,24 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     companion object {
         private val CONTAINER_PATTERN = Pattern.compile("(\\(in |\\()?([^)]*)(\\))?")
+
+        fun isLombokAnnotatedClassFieldExpression(psiField: PsiField): Boolean {
+            return psiField.containingClass?.let {
+                it.isMetaAnnotatedBy(LombokClasses.ALL_ARGS_CONSTRUCTOR)
+                        || it.isMetaAnnotatedBy(LombokClasses.REQUIRED_ARGS_CONSTRUCTOR) && psiField.isFinal
+            } == true
+        }
+
+        fun isAutowiredFieldExpression(javaPsi: PsiField): Boolean {
+            return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
+        }
+
+        fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {
+            return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
+                    || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
+        }
     }
 }

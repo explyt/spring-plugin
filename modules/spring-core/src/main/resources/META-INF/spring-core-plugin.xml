@@ -660,6 +660,16 @@
                 class="com.esprito.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
         <action id="SpringBootExplyt.ToolbarDependencyAnalyzer"
                 class="com.esprito.spring.core.externalsystem.analyzer.ToolbarDependencyAnalyzerAction"/>
+        <action id="SpringBootExplyt.DependencyAnalyzer.GoTo"
+                class="com.esprito.spring.core.externalsystem.analyzer.BeanGoToAction">
+            <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyListGroup"/>
+            <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyTreeGroup"/>
+            <add-to-group group-id="ExternalSystem.DependencyAnalyzer.UsagesTreeGroup"/>
+        </action>
+        <action id="SpringBootExplyt.ActiveExternalProjectAction"
+                class="com.esprito.spring.core.externalsystem.action.ActiveExternalProjectAction">
+            <add-to-group group-id="ExternalSystemView.BaseProjectMenu"/>
+        </action>
         <group id="SpringBootExplyt.View.ActionsToolbar.CenterPanel">
             <separator/>
             <reference id="SpringBootExplyt.ToolbarDependencyAnalyzer"/>

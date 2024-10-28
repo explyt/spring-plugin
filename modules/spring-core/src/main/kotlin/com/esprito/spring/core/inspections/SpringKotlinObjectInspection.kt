@@ -4,7 +4,7 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.KotlinObjectToClassQuickFix
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchUtils
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -24,8 +24,8 @@ class SpringKotlinObjectInspection : SpringBaseUastLocalInspectionTool() {
         val sourcePsi = uClass.sourcePsi ?: return emptyArray()
         val file = sourcePsi.containingFile ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForFile(file) ?: return emptyArray()
-        SpringSearchService.getInstance(manager.project)
-            .findUAnnotation(module, uClass.uAnnotations, SpringCoreClasses.COMPONENT) ?: return emptyArray()
+        SpringSearchUtils.findUAnnotation(module, uClass.uAnnotations, SpringCoreClasses.COMPONENT)
+            ?: return emptyArray()
 
         val objectDeclaration = (sourcePsi as? KtObjectDeclaration) ?: return emptyArray()
         val objectKeywordPsi = objectDeclaration.getObjectKeyword() ?: return emptyArray()
