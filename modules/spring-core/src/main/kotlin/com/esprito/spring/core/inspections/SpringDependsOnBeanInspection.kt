@@ -4,6 +4,7 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.DEPENDS_ON
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.util.EspritoPsiUtil.getHighlightRange
 import com.esprito.util.EspritoPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
@@ -41,10 +42,10 @@ class SpringDependsOnBeanInspection : SpringBaseUastLocalInspectionTool() {
     ): Array<ProblemDescriptor>? {
         val member = uMember.javaPsi ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(member) ?: return null
-        val service = SpringSearchService.getInstance(module.project)
+        val service = SpringSearchServiceFacade.getInstance(module.project)
         val beanNames = service.getAllBeanByNames(module)
 
-        val metaHolder = service.getMetaAnnotations(module, DEPENDS_ON)
+        val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, DEPENDS_ON)
         val psiAnnotation = uMember.uAnnotations.asSequence()
             .mapNotNull { it.javaPsi }
             .firstOrNull { metaHolder.contains(it) }

@@ -2,7 +2,7 @@ package com.esprito.spring.core.action
 
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -34,7 +34,7 @@ class UastModelTrackerInvalidateAction : AnAction() {
         }
         val file = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
         val module = ModuleUtilCore.findModuleForFile(file, project) ?: return
-        val activeBeans = SpringSearchService.getInstance(project).getActiveBeansClasses(module)
+        val activeBeans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
         p.setVisible(activeBeans.isNotEmpty())
     }
 

@@ -64,7 +64,8 @@ class BeansDependencyAnalyzerContributor(private val project: Project) : Depende
         parentNode: DADependency,
         leafsDADependencies: MutableList<DADependency>
     ) {
-        val psiClass = NativeBootUtils.getBeanTypePsiClass(project, it) ?: return
+        val psiClass = ApplicationManager.getApplication()
+            .runReadAction(Computable { NativeBootUtils.getBeanTypePsiClass(project, it) }) ?: return
         val scope = scope(it.scope)
         toDaDependency(psiClass, scope, parentNode, leafsDADependencies)
     }

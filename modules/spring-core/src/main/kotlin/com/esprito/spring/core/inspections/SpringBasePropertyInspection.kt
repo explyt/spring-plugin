@@ -16,7 +16,8 @@ import com.esprito.spring.core.completion.properties.*
 import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
 import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
+import com.esprito.spring.core.service.SpringSearchUtils
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.isNotKebabCase
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
@@ -136,8 +137,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 && getListKeys(fileProperty, properties).isEmpty()
                 && placeholders.none { PropertyUtil.isSameProperty(key, it) }
             ) {
-                val psiReferences = SpringSearchService.getInstance(elementFileProperty.project)
-                    .getAllReferencesToElement(elementFileProperty)
+                val psiReferences = SpringSearchUtils.getAllReferencesToElement(elementFileProperty)
                 if (psiReferences.isEmpty()) {
                     problems += manager.createProblemDescriptor(
                         psiKey,
@@ -436,8 +436,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             return problems
         }
 
-        val springSearchService = SpringSearchService.getInstance(module.project)
-        val foundActiveBeans = springSearchService.getActiveBeansClasses(module)
+        val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
+        val foundActiveBeans = springSearchService.getAllActiveBeans(module)
 
         for (property in springBeanReferenceProperties) {
             val elementFileProperty = property.psiElement ?: continue

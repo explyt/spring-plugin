@@ -9,6 +9,7 @@ import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.SpringProperties.ON_APPLICATION_EVENT
 import com.esprito.spring.core.SpringProperties.PUBLISH_EVENT_METHOD
 import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchUtils
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
@@ -167,7 +168,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val publishMethods = getPublishMethods(module)
         return publishMethods
             .asSequence()
-            .map { SpringSearchService.getInstance(module.project).searchReferenceByMethod(module, it) }
+            .map { SpringSearchUtils.searchReferenceByMethod(module, it) }
             .flatMap { it.asSequence() }
             .mapNotNull { toMethodCallArgumentTypes(it) }
             .toList()
@@ -227,8 +228,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun getMethodsByApplicationEvent(module: Module): List<MethodArgumentClasses> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-        val listenerClass =
-            SpringSearchService.getInstance(module.project).findAnnotationClassesByQualifiedName(module, APPLICATION_LISTENER)
+        val listenerClass = SpringSearchUtils.findAnnotationClassesByQualifiedName(module, APPLICATION_LISTENER)
         return listenerClass.asSequence()
             .flatMap { ClassInheritorsSearch.search(it, scope, true).findAll() }
             .filterNotNull()

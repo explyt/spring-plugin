@@ -9,7 +9,7 @@ import com.esprito.spring.core.completion.properties.PropertyValueRenderer
 import com.esprito.spring.core.completion.properties.ProviderHint
 import com.esprito.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.esprito.spring.core.properties.ClassReferencePropertyRenderer
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.spring.core.util.PropertyUtil
 import com.esprito.spring.core.util.PropertyUtil.propertyKey
 import com.esprito.spring.core.util.PropertyUtil.propertyValue
@@ -61,7 +61,7 @@ class ValueHintReference(
     }
 
     private fun getSpringBeanReference(module: Module, propertyValue: String): List<PsiElement> {
-        val springSearchService = SpringSearchService.getInstance(element.project)
+        val springSearchService = SpringSearchServiceFacade.getInstance(element.project)
         return springSearchService.findActiveBeanDeclarations(module, propertyValue, element.language)
     }
 
@@ -188,8 +188,8 @@ class ValueHintReference(
 
     private fun getBeanReferences(targetClassFqn: String): List<Any> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyList()
-        val springSearchService = SpringSearchService.getInstance(module.project)
-        val foundActiveBeans = springSearchService.getActiveBeansClasses(module)
+        val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
+        val foundActiveBeans = springSearchService.getAllActiveBeans(module)
         return foundActiveBeans.asSequence()
             .filter { targetClassFqn.isBlank() || it.psiClass.qualifiedName == targetClassFqn }
             .map {

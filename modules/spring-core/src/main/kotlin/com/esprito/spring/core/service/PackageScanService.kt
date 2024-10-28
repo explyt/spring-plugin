@@ -8,6 +8,7 @@ import com.esprito.spring.core.SpringCoreClasses.IMPORT
 import com.esprito.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.runconfiguration.RunConfigurationUtil
+import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
@@ -91,13 +92,16 @@ class PackageScanService(private val project: Project) {
     }
 
     private fun searchRootClasses(annotationPsiClasses: ScanAnnotationHolder): List<PsiClass> {
-        return if (Registry.`is`("esprito.spring.root.runConfiguration")) {
-            RunManager.getInstance(project).selectedConfiguration?.configuration
-                ?.let { RunConfigurationUtil.getRunPsiClass(it) } ?: emptyList()
-        } else {
-            annotationPsiClasses.rootAnnotationClass
-                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+        if (Registry.`is`("esprito.spring.root.runConfiguration")) {
+            val runConfiguration = RunManager.getInstance(project).selectedConfiguration
+                ?.configuration as? SpringBootRunConfiguration
+            if (runConfiguration != null) {
+                return RunConfigurationUtil.getRunPsiClass(runConfiguration)
+            }
         }
+
+        return annotationPsiClasses.rootAnnotationClass
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
     }
 
     private fun filterComponentScanClass(rootPackages: Set<String>, it: PsiClass?): Boolean {

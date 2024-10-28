@@ -21,4 +21,5 @@ object SpringIcons {
     val SpringFactories = LayeredIcon.layeredIcon(arrayOf(Spring, AllIcons.Actions.New))
     val SpringExplorer = load("com/esprito/spring/core/icons/springBootExplorer.svg")
     val SpringBoot = load("com/esprito/spring/core/icons/spring-promo.svg")
+    val SpringBootToolWindow = load("com/esprito/spring/core/icons/springToolWindow.svg")
 }

@@ -6,7 +6,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.CACHE_KEY_GENERATOR
 import com.esprito.spring.core.SpringCoreClasses.CACHE_MANAGER
 import com.esprito.spring.core.SpringCoreClasses.CACHE_RESOLVER
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
 import com.esprito.util.EspritoPsiUtil.isPublic
 import com.intellij.codeInspection.InspectionManager
@@ -67,7 +67,7 @@ class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() 
 
         val className = getClassNameByParameterName(parameterName)
         val module = ModuleUtilCore.findModuleForPsiElement(sourcePsi) ?: return
-        val service = SpringSearchService.getInstance(module.project)
+        val service = SpringSearchServiceFacade.getInstance(module.project)
         val beans = service.getAllBeanByNames(module)[valueText]
         if (beans.isNullOrEmpty()) {
             holder.registerProblem(

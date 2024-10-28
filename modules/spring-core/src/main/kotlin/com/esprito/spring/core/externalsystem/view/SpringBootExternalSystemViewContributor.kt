@@ -38,6 +38,7 @@ class SpringBootExternalSystemViewContributor : ExternalSystemViewContributor() 
             SpringProfileNodes(externalProjectsView, profileViewNodes),
             ProjectBeanNodes(externalProjectsView, toChildNodes(splitProjectBeans, externalProjectsView)),
             LibraryBeanNodes(externalProjectsView, toChildNodes(splitLibraryBeans, externalProjectsView)),
+            *splitProjectBeans.applications.toTypedArray(),
         )
     }
 }
@@ -85,7 +86,7 @@ private fun toChildNodes(
 ): List<ExternalSystemNode<*>> {
     val result = mutableListOf<ExternalSystemNode<*>>()
     if (splitBeanHolder.applications.isNotEmpty()) {
-        result.addAll(splitBeanHolder.applications)
+        result.add(OtherBeanNodes(view, splitBeanHolder.applications))
     }
     if (splitBeanHolder.repositories.isNotEmpty()) {
         result.add(RepositoryBeanNodes(view, splitBeanHolder.repositories))

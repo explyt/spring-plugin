@@ -1,7 +1,7 @@
 package com.esprito.spring.web.providers
 
 import com.esprito.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
-import com.esprito.spring.core.service.SpringSearchService
+import com.esprito.spring.core.service.SpringSearchUtils
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.web.SpringWebClasses
@@ -78,7 +78,7 @@ class ControllerEndpointToTemplateReferenceProvider : UastInjectionHostReference
     }
 
     private fun findPathInUsage(psiMethod: PsiMethod): String? {
-        return SpringSearchService.getInstance(psiMethod.project).getAllReferencesToElement(psiMethod).asSequence()
+        return SpringSearchUtils.getAllReferencesToElement(psiMethod).asSequence()
             .filterIsInstance<PsiReferenceExpression>()
             .map { it.element }
             .mapNotNull { it.context as? PsiMethodCallExpression }

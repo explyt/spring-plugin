@@ -45,7 +45,7 @@ public class BeanPrinter {
             Class<?> aopReaderClass = Class.forName("com.explyt.spring.boot.bean.reader.SpringAopReader");
             Method printAopData = Arrays.stream(aopReaderClass.getMethods())
                     .filter(it -> it.getName().equals("printAopData"))
-                    .findFirst().orElse(null);
+                    .findFirst().orElseThrow();
             printAopData.invoke(null, beanFactory, map);
         } catch (Exception e) {
             e.printStackTrace();
