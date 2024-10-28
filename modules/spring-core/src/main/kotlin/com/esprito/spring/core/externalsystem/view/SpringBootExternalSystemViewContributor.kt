@@ -85,9 +85,6 @@ private fun toChildNodes(
     splitBeanHolder: SplitBeanHolder, view: ExternalProjectsView
 ): List<ExternalSystemNode<*>> {
     val result = mutableListOf<ExternalSystemNode<*>>()
-    if (splitBeanHolder.applications.isNotEmpty()) {
-        result.add(OtherBeanNodes(view, splitBeanHolder.applications))
-    }
     if (splitBeanHolder.repositories.isNotEmpty()) {
         result.add(RepositoryBeanNodes(view, splitBeanHolder.repositories))
     }
