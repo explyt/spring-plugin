@@ -626,7 +626,7 @@
         <lang.inspectionSuppressor language="Properties"
                                    implementationClass="com.esprito.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
 
-        <registryKey key="esprito.spring.root.runConfiguration" defaultValue="true"
+        <registryKey key="esprito.spring.root.runConfiguration" defaultValue="false"
                      description="Use root class from run configuration for bean search"/>
         <registryKey key="explyt.spring.process.log.all" defaultValue="false"
                      description="Show all spring log in bean resolve process"/>
