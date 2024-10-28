@@ -30,7 +30,7 @@
 ### Spring Core/Boot
 
 - Added the Spring Native Beans panel for Spring Boot applications
-- Added support Spring Boot versions before 2.4.0 via explyt.spring.native.old flag 
+- Added support Spring Boot versions before 2.4.0 via explyt.spring.native.old flag
 - Added icon for a configuration file for Spring Boot application
 - Added reference to package from annotation parameters with names `basePackages`, `scanBasePackages`. AntPattern supported
 - Changed behaviour of `Can't find package` inspection. Now it shows inspection till first unknown segment. AntPattern supported
@@ -39,6 +39,8 @@
 - Fixed: prefixFromUsage cache bug
 - Fixed: AlreadyDisposedException
 - Added: Generator for @PostConstruct methods
+- Fixed: autowired fields in abstract class
+- Fixed: esprito.spring.root.runConfiguration  
 
 ### Spring AOP
 
@@ -47,6 +49,7 @@
 ### Other
 
 - Upgrade to intellij 242 branch
+- Endpoints tool icon light
 
 ## [241.1.1834] - 2024-08-06
 
