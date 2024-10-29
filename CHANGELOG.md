@@ -5,10 +5,6 @@
 
 ## [Unreleased]
 
-### Spring Core/Boot
-
-## [242.1.2239] - 2024-10-26
-
 ### Spring Web/MVC
 
 - Added ToolWindow with endpoints
