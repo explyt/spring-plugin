@@ -9,8 +9,6 @@ import com.intellij.openapi.project.Project
 
 class SpringBootToolWindowFactory : AbstractExternalSystemToolWindowFactory(SYSTEM_ID) {
 
-    override val icon = SpringIcons.SpringBootToolWindow
-
     override fun getSettings(project: Project): AbstractExternalSystemSettings<*, *, *> =
         project.getService(NativeSettings::class.java)
 }

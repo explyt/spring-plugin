@@ -51,6 +51,7 @@
         <externalSystemUnlinkedProjectAware
                 implementation="com.esprito.spring.core.externalsystem.process.UnlinkedProjectAware"/>
         <toolWindow id="ExplytSpringBoot" anchor="right"
+                    icon="com.esprito.spring.core.SpringIcons.SpringBootToolWindow"
                     factoryClass="com.esprito.spring.core.externalsystem.view.SpringBootToolWindowFactory"/>
         <projectImportProvider
                 implementation="com.esprito.spring.core.externalsystem.process.SpringBootProjectImportProvider"/>
