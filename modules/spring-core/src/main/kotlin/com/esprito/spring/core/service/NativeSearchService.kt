@@ -136,21 +136,13 @@ class NativeSearchService(private val project: Project) {
         }
     }
 
-    private fun getExternalProjectPath(): String? {
+    fun getActiveProjectsNode(): List<DataNode<ProjectData>> {
         return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
             .asSequence()
             .mapNotNull { it.externalProjectStructure }
             .filter { !it.isIgnored }
             .filter { it.children.isNotEmpty() }
-            .map { it.data }
-            .firstOrNull()?.linkedExternalProjectPath
-    }
-
-    fun getExternalProjectNode(): DataNode<ProjectData>? {
-        val externalProjectPath = getExternalProjectPath() ?: return null
-        return ProjectDataManager.getInstance()
-            .getExternalProjectData(project, SYSTEM_ID, externalProjectPath)
-            ?.externalProjectStructure
+            .toList()
     }
 
     private fun getProjectBeans(module: Module): List<PsiBean> {
@@ -172,22 +164,23 @@ class NativeSearchService(private val project: Project) {
     }
 
     private fun getProjectBeansInner(module: Module): List<PsiBean> {
-        val externalProjectPath = getExternalProjectPath() ?: return emptyList()
-        val beansData = ProjectDataManager.getInstance()
-            .getExternalProjectData(project, SYSTEM_ID, externalProjectPath)
-            ?.externalProjectStructure?.findAll(SpringBeanData.KEY)?.map { it.data } ?: return emptyList()
+        val activeProjectsNode = getActiveProjectsNode()
+        val beansData = activeProjectsNode
+            .flatMapTo(mutableSetOf()) { it.findAll(SpringBeanData.KEY).map { beanData -> beanData.data } }
         val beans = getBeans(beansData, true)
         val nativePsiClasses = beans.map { it.psiClass }.toSet()
-        val createdBeans = searchCreatedSimpleBeans(externalProjectPath, module, nativePsiClasses)
+        val createdBeans = activeProjectsNode
+            .flatMapTo(mutableSetOf()) { searchCreatedSimpleBeans(it, module, nativePsiClasses) }
         return beans + createdBeans
     }
 
     private fun getLibraryBeansInner(): List<PsiBean> {
-        val beansData = getExternalProjectNode()?.findAll(SpringBeanData.KEY)?.map { it.data } ?: return emptyList()
+        val beansData = getActiveProjectsNode()
+            .flatMapTo(mutableSetOf()) { it.findAll(SpringBeanData.KEY).map { beanData -> beanData.data } }
         return getBeans(beansData, false)
     }
 
-    private fun getBeans(beansData: List<SpringBeanData>, isProjectBean: Boolean): List<PsiBean> {
+    private fun getBeans(beansData: Collection<SpringBeanData>, isProjectBean: Boolean): List<PsiBean> {
         return beansData.asSequence()
             .filter { it.projectBean == isProjectBean }
             .filter { !it.rootBean }
@@ -226,9 +219,14 @@ class NativeSearchService(private val project: Project) {
     }
 
     private fun searchCreatedSimpleBeans(
-        externalProjectPath: String, module: Module, nativePsiClasses: Set<PsiClass>
+        projectNode: DataNode<ProjectData>, module: Module, nativePsiClasses: Set<PsiClass>
     ): List<PsiBean> {
         if (nativePsiClasses.isEmpty()) return emptyList()
+
+        val externalProjectPath = projectNode.data.linkedExternalProjectPath
+        val mainModule = getMainModule(externalProjectPath)
+        if (!isDependentModule(module, mainModule)) return emptyList()
+
         val packages = getPackages(externalProjectPath)
         val componentForNative = SpringSearchService.getInstance(project)
             .getBeanPsiClassesAnnotatedByComponentForNative(module)
@@ -237,7 +235,18 @@ class NativeSearchService(private val project: Project) {
     }
 
     private fun isDependentModule(module: Module): Boolean {
-        val mainModule = getMainModule() ?: return false
+        val projectPaths = getActiveProjectsNode().map { it.data.linkedExternalProjectPath }
+        if (projectPaths.isEmpty()) return false
+        for (projectPath in projectPaths) {
+            if (isDependentModule(module, getMainModule(projectPath))) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun isDependentModule(module: Module, mainModule: Module?): Boolean {
+        mainModule ?: return false
         if (mainModule == module) return true
         val moduleManager = ModuleManager.getInstance(project)
         val moduleDependent = moduleManager.isModuleDependent(mainModule, module)
@@ -245,8 +254,7 @@ class NativeSearchService(private val project: Project) {
         return moduleDependent
     }
 
-    private fun getMainModule(): Module? {
-        val externalProjectPath = getExternalProjectPath() ?: return null
+    private fun getMainModule(externalProjectPath: String): Module? {
         return LocalFileSystem.getInstance().findFileByPath(externalProjectPath)?.getModule(project)
     }
 
@@ -278,10 +286,10 @@ class NativeSearchService(private val project: Project) {
     }
 
     private fun getSpringMethodBeansInner(): List<SpringBeanData> {
-        return getExternalProjectNode()?.findAll(SpringBeanData.KEY)?.asSequence()
-            ?.map { it.data }
-            ?.filter { !it.rootBean && it.methodName != null }
-            ?.toList() ?: return emptyList()
+        return getActiveProjectsNode()
+            .flatMap { it.findAll(SpringBeanData.KEY).map { beanData -> beanData.data } }
+            .filter { !it.rootBean && it.methodName != null }
+            .toList()
     }
 
     fun findActiveBeanDeclarations(

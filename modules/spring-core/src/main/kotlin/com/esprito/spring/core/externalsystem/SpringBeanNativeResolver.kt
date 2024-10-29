@@ -48,6 +48,7 @@ import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.isFile
 import com.intellij.psi.PsiClass
+import com.intellij.psi.util.InheritanceUtil
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
@@ -342,8 +343,6 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     private fun getBeanType(psiClass: PsiClass, bean: BeanInfo): SpringBeanType {
         return if (bean.methodName != null) {
             SpringBeanType.METHOD
-        } else if (bean.type == "DATA" || isAnnotated(psiClass, SpringCoreClasses.REPOSITORY)) {
-            SpringBeanType.REPOSITORY
         } else if (isAnnotated(psiClass, SpringCoreClasses.SPRING_BOOT_APPLICATION)) {
             SpringBeanType.APPLICATION
         } else if (isAnnotated(psiClass, SpringCoreClasses.CONTROLLER) || isAnnotated(psiClass, REST_CONTROLLER)) {
@@ -356,6 +355,11 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             SpringBeanType.CONFIGURATION_PROPERTIES
         } else if (isAnnotated(psiClass, SpringCoreClasses.CONFIGURATION)) {
             SpringBeanType.CONFIGURATION
+        } else if (isAnnotated(psiClass, SpringCoreClasses.REPOSITORY)
+            || InheritanceUtil.isInheritor(psiClass, "org.springframework.data.repository.Repository")
+            || isAnnotated(psiClass, "org.springframework.data.repository.RepositoryDefinition")
+        ) {
+            SpringBeanType.REPOSITORY
         } else {
             SpringBeanType.OTHER
         }

@@ -85,7 +85,6 @@ data class BeanInfo(
     var className: String,
     var methodName: String?,
     var methodType: String?,
-    var type: String?,
     var scope: String,
     var primary: Boolean,
     var rootBean: Boolean
