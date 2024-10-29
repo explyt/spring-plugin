@@ -659,6 +659,8 @@
                 class="com.esprito.spring.core.externalsystem.action.ChangeProfileStateAction"/>
         <action id="SpringBootExplyt.ExternalSystem.AttachProject"
                 class="com.esprito.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
+        <action id="SpringBootExplyt.ExternalSystem.DetachAllProjects"
+                class="com.esprito.spring.core.externalsystem.action.DetachAllProjectsAction"/>
         <action id="SpringBootExplyt.ToolbarDependencyAnalyzer"
                 class="com.esprito.spring.core.externalsystem.analyzer.ToolbarDependencyAnalyzerAction"/>
         <action id="SpringBootExplyt.DependencyAnalyzer.GoTo"
@@ -667,10 +669,10 @@
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyTreeGroup"/>
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.UsagesTreeGroup"/>
         </action>
-        <action id="SpringBootExplyt.ActiveExternalProjectAction"
+        <!--<action id="SpringBootExplyt.ActiveExternalProjectAction"
                 class="com.esprito.spring.core.externalsystem.action.ActiveExternalProjectAction">
             <add-to-group group-id="ExternalSystemView.BaseProjectMenu"/>
-        </action>
+        </action>-->
         <group id="SpringBootExplyt.View.ActionsToolbar.CenterPanel">
             <separator/>
             <reference id="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
@@ -679,6 +681,7 @@
         </group>
         <group id="SpringBootExplyt.View.ActionsToolbar.LeftPanel">
             <reference id="SpringBootExplyt.ExternalSystem.AttachProject"/>
+            <reference id="SpringBootExplyt.ExternalSystem.DetachAllProjects"/>
             <add-to-group group-id="ExternalSystemView.ActionsToolbar.LeftPanel" anchor="after"
                           relative-to-action="ExternalSystem.RefreshAllProjects"/>
         </group>

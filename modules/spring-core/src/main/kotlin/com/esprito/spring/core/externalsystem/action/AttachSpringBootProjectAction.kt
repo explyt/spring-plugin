@@ -23,7 +23,7 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
     init {
         templatePresentation.text = message("explyt.external.project.link.text")
         templatePresentation.description = message("explyt.external.project.link.text")
-        templatePresentation.icon = SpringIcons.SpringExplorer
+        templatePresentation.icon = SpringIcons.SpringBootToolWindow
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread {

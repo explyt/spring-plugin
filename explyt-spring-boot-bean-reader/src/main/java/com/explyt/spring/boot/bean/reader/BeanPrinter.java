@@ -11,7 +11,10 @@ import org.springframework.core.type.ClassMetadata;
 import org.springframework.core.type.MethodMetadata;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
 
 public class BeanPrinter {
 
@@ -57,13 +60,10 @@ public class BeanPrinter {
         beanInfo.scope = Optional.ofNullable(definition.getScope()).filter(it -> !it.isEmpty()).orElse("singleton");
 
         String beanClassName = definition.getBeanClassName();
-        //todo rework factoryBeanObjectType
-        if (Objects.equals(beanClassName, "org.springframework.cloud.openfeign.FeignClientFactoryBean")) {
-            beanInfo.className = null;
-            Object factoryBeanObjectType = definition.getAttribute("factoryBeanObjectType");
-            if (factoryBeanObjectType instanceof String) {
-                beanInfo.className = (String) factoryBeanObjectType;
-            }
+        String factoryBeanObjectType = getFactoryBeanObjectType(definition);
+
+        if (factoryBeanObjectType != null) {
+            beanInfo.className = factoryBeanObjectType;
         } else if (beanClassName != null && definition instanceof AnnotatedBeanDefinition) {
             Optional<AnnotationMetadata> metadata = Optional.of(((AnnotatedBeanDefinition) definition).getMetadata());
             beanInfo.className = metadata.map(ClassMetadata::getClassName).orElse(beanClassName);
@@ -92,7 +92,6 @@ public class BeanPrinter {
                 if (baseDataRepoFactoryClass.isAssignableFrom(targetType)) {
                     ResolvableType generic = resolvableType.getGeneric(0);
                     beanInfo.className = generic.toClass().getName();
-                    beanInfo.type = "DATA";
                     return true;
                 }
             } catch (Exception ignore) {
@@ -101,13 +100,17 @@ public class BeanPrinter {
         return false;
     }
 
+    private static String getFactoryBeanObjectType(BeanDefinition definition) {
+        Object factoryBeanObjectType = definition.getAttribute("factoryBeanObjectType");
+        return factoryBeanObjectType instanceof String ? (String) factoryBeanObjectType : null;
+    }
+
     static class BeanInfo {
         public String beanName;
         public String className;
         public String methodName;
         public String methodType;
         public String scope;
-        public String type;
         public boolean primary;
         public boolean rootBean;
 
@@ -118,7 +121,6 @@ public class BeanPrinter {
                     "\"beanName\": \"" + beanName + "\"," +
                     "\"methodName\": " + getToStringValue(methodName) + "," +
                     "\"methodType\": " + getToStringValue(methodType) + "," +
-                    "\"type\": " + getToStringValue(type) + "," +
                     "\"scope\": \"" + scope + "\"," +
                     "\"primary\": " + primary + "," +
                     "\"rootBean\": " + rootBean + "}";

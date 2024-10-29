@@ -152,7 +152,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(uClass, null, module) })
             .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate"))
             .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
-            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.autowired.candidate"))
+            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title"))
             .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
         result.add(builder.createLineMarkerInfo(sourcePsi))
     }

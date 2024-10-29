@@ -16,10 +16,8 @@ class AspectSearchService(private val project: Project) {
 
     fun getAspectQualifiedClasses(): Set<String> {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
-            val aspectNodes = NativeSearchService.getInstance(project).getExternalProjectNode()
-                ?.findAll(SpringAspectData.KEY) ?: emptyList()
             CachedValueProvider.Result(
-                aspectNodes.mapTo(mutableSetOf()) { it.data.aspectQualifiedClassName },
+                getAspectsData().mapTo(mutableSetOf()) { it.aspectQualifiedClassName },
                 ModificationTrackerManager.getInstance(project).getExternalSystemTracker()
             )
         }
@@ -27,18 +25,17 @@ class AspectSearchService(private val project: Project) {
 
     fun getPointCutQualifiedClasses(): Set<String> {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
-            val aspectNodes = NativeSearchService.getInstance(project).getExternalProjectNode()
-                ?.findAll(SpringAspectData.KEY) ?: emptyList()
             CachedValueProvider.Result(
-                aspectNodes.mapTo(mutableSetOf()) { it.data.beanQualifiedClassName },
+                getAspectsData().mapTo(mutableSetOf()) { it.beanQualifiedClassName },
                 ModificationTrackerManager.getInstance(project).getExternalSystemTracker()
             )
         }
     }
 
+
     fun getAspectsData(): List<SpringAspectData> {
-        return NativeSearchService.getInstance(project).getExternalProjectNode()
-            ?.findAll(SpringAspectData.KEY)?.map { it.data } ?: emptyList()
+        return NativeSearchService.getInstance(project).getActiveProjectsNode()
+            .flatMap { it.findAll(SpringAspectData.KEY).map { it.data } }
     }
 
     companion object {
