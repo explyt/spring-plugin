@@ -194,7 +194,7 @@
 
         <toolWindow id="Explyt Endpoints"
                     anchor="right"
-                    icon="/com/esprito/spring/web/icons/endpointsSidebar.svg"
+                    icon="com.esprito.spring.web.SpringWebIcons.Endpoints"
                     factoryClass="com.esprito.spring.web.EndpointsToolWindowFactory"/>
 
     </extensions>
