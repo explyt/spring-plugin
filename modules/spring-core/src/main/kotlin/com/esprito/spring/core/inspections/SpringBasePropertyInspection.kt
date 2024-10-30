@@ -14,7 +14,6 @@ import com.esprito.spring.core.SpringProperties.POSTFIX_KEYS
 import com.esprito.spring.core.SpringProperties.POSTFIX_VALUES
 import com.esprito.spring.core.completion.properties.*
 import com.esprito.spring.core.inspections.quickfix.ReplacementKeyQuickFix
-import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.spring.core.service.SpringSearchUtils
@@ -24,7 +23,6 @@ import com.esprito.spring.core.util.PropertyUtil.propertyKey
 import com.esprito.spring.core.util.PropertyUtil.propertyKeyPsiElement
 import com.esprito.spring.core.util.PropertyUtil.propertyValue
 import com.esprito.spring.core.util.PropertyUtil.propertyValuePsiElement
-import com.esprito.spring.core.util.PropertyUtil.toKebabCase
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.util.CacheKeyStore
 import com.intellij.codeInspection.*
@@ -222,29 +220,6 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-
-        for (property in fileProperties) {
-            val elementFileProperty = property.psiElement ?: continue
-            val psiValue = elementFileProperty.propertyValuePsiElement() ?: continue
-            val value = elementFileProperty.propertyValue() ?: continue
-
-
-            problems += PropertyUtil.getPlaceholders(value) { placeholder, range ->
-                PlaceholderWithRange(placeholder, range)
-            }.asSequence()
-                .filter { isNotKebabCase(it.placeholder) }
-                .mapTo(mutableListOf()) {
-                    manager.createProblemDescriptor(
-                        psiValue,
-                        it.range,
-                        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.kebab"),
-                        ProblemHighlightType.WARNING,
-                        isOnTheFly,
-                        ReplacementStringQuickFix(it.placeholder, toKebabCase(it.placeholder), psiValue, it.range)
-                    )
-                }
-        }
-
         val findInFileProperties = fileProperties.filter { property ->
             hints.asSequence()
                 .any { hint ->
@@ -289,8 +264,6 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         }
         return problems
     }
-
-    data class PlaceholderWithRange(val placeholder: String, val range: TextRange)
 
     private fun getProblemClassReference(
         module: Module,
@@ -552,16 +525,19 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
 
     private fun getPropertyType(configurationProperty: ConfigurationProperty): String? {
         val propertyType = configurationProperty.type ?: return null
-        if (configurationProperty.isList()) {
-            return propertyType.substringAfter("<").substringBefore(">")
-        } else if (configurationProperty.isMap()) {
-            return propertyType.substringAfter(",").substringBefore(">")
-        } else if (configurationProperty.isArray()) {
-            return propertyType.substringBefore("[]")
-        }
-        return propertyType.replace('$', '.')
-    }
+        return when {
+            configurationProperty.isList() ->
+                propertyType.substringAfter("<").substringBefore(">")
 
+            configurationProperty.isMap() ->
+                propertyType.substringAfter(",").substringBefore(">")
+
+            configurationProperty.isArray() ->
+                propertyType.substringBefore("[]")
+
+            else -> propertyType.replace('$', '.')
+        }
+    }
 
     private fun isProblemPropertyType(propertyType: String, value: String): Boolean {
         return when (propertyType) {
