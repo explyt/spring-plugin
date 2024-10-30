@@ -105,9 +105,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             }
 
             if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) continue
-            val isMethodBean = NativeSearchService.getInstance(module.project)
-                .getAllActiveBeans(module).any { it.psiMember == method.sourcePsi }
-            if (isMethodBean) {
+            if (isMethodBean(module, method)) {
                 val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(null, method, module) })
@@ -120,6 +118,11 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             }
         }
     }
+
+    private fun isMethodBean(module: Module, method: UMethod) =
+        NativeSearchService.getInstance(module.project)
+            .getAllActiveBeans(module)
+            .any { it.psiMember == method.sourcePsi || it.psiMember == method.javaPsi }
 
     private fun checkMethodParameters(
         method: UMethod,
