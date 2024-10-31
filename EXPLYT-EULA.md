@@ -7,7 +7,9 @@ Be sure to carefully read and understand all of the rights, obligations and rest
 
 BY AGREEING TO THE TERMS OF THIS EULA, USING, INSTALLING OR DOWNLOADING THE SOFTWARE (SPRING EXPLYT PLUGIN), YOU (AS DEFINED BELOW) ACCEPT AND AGREE TO BE BOUND BY THE TERMS AND CONDITIONS OF THIS EULA. IF YOU DO NOT ACCEPT THE TERMS AND CONDITIONS OF THIS EULA, THEN DO NOT USE, INSTALL OR DOWNLOAD THE EXPLYT SPRING TOOLS. IF YOU HAVE ALREADY DOWNLOADED OR INSTALLED THE EXPLYT SPRING TOOLS YOU SHOULD REMOVE THEM FROM YOUR SYSTEM AND DESTROY ALL COPIES.
 
-ADDITIONALY YOU AND EXPLYT TECH WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION LAWSUIT OR CLASS-WIDE ARBITRATION.
+ADDITIONALY YOU AND DEVELOPER WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION LAWSUIT OR CLASS-WIDE ARBITRATION.
+
+IN CASE YOU WANT TO USE PLUGIN SOURCE CODE YOU MUST ACCEPT THE EXPLYT SOURCE LICENSE WHICH IS AVAILIBLE HERE https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
 
 ## DEFINITIONS
 ### Developer
@@ -75,7 +77,7 @@ The Plugin is safeguarded by copyright and intellectual property laws internatio
 Developer provides the Plugin on an "as is" and "as available" basis. Developer makes no warranties regarding the Plugin's performance or its congruence with Your requirements. To the fullest extent permitted by law, Developer disclaims all warranties, whether express or implied, including, but not limited to, the implied warranties of merchantability, fitness for a particular purpose, and non-infringement.
 
 ### Limitation of Liability
-Under no circumstances shall Developer be liable for any direct, indirect, incidental, or consequential damages arising out of the use or inability to use the Plugin. Developer's total liability under this EULA shall not exceed the amount You have paid for the Plugin, if any, in the three months preceding any claim.
+IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR USE, INCURRED BY LICENSEE OR ANY THIRD PARTY, WHETHER IN AN ACTION IN CONTRACT OR TORT, ARISING FROM LICENSEE'S ACCESS TO, OR USE OF, THE SOFTWARE.
 
 ### Commercial Use and Inquiries
 Commercial use of the Spring Explyt Plugin is permitted under this EULA, provided that all terms and conditions are met.
