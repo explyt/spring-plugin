@@ -89,7 +89,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         if (!result) {
             Messages.showWarningDialog(
                 contentToolWindow,
-                SpringInitializrBundle.message("esprito.spring.initializr.download.archive.message"),
+                SpringInitializrBundle.message("explyt.spring.initializr.download.archive.message"),
                 "Warning"
             )
         }
@@ -121,7 +121,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         locationPanel.layout = BorderLayout(25, 0)
 
         if (serverUrl.isNullOrEmpty()) {
-            serverUrl = SpringInitializrBundle.message("esprito.spring.initializr.url")
+            serverUrl = SpringInitializrBundle.message("explyt.spring.initializr.url")
         }
         val label = JLabel("Server url:")
         urlPanel.add(label, BorderLayout.WEST)
@@ -139,7 +139,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
 
         val labelLocation = JLabel("Location:")
         labelLocation.toolTipText =
-            SpringInitializrBundle.message("esprito.spring.initializr.label.location.tool.tip.text")
+            SpringInitializrBundle.message("explyt.spring.initializr.label.location.tool.tip.text")
         locationPanel.add(labelLocation, BorderLayout.WEST)
 
         val extendable = ExtendableTextField(10)
@@ -156,7 +156,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
 
     private fun addAction(textFieldLocation: TextFieldWithBrowseButton) {
         val descriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
-        descriptor.title = SpringInitializrBundle.message("esprito.spring.initializr.label.descriptor.title")
+        descriptor.title = SpringInitializrBundle.message("explyt.spring.initializr.label.descriptor.title")
 
         textFieldLocation.addBrowseFolderListener(object : TextBrowseFolderListener(descriptor, activeProject) {
             override fun onFileChosen(chosenFile: VirtualFile) {
@@ -204,7 +204,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         val result = Messages.showInputDialog(
             this.component,
             null,
-            SpringInitializrBundle.message("esprito.spring.initializr.show.input.dialog.title"),
+            SpringInitializrBundle.message("explyt.spring.initializr.show.input.dialog.title"),
             null,
             serverUrl,
             null
@@ -265,7 +265,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         val eFileName = if (info.components.size > 1) info.components[1] as? JTextField else null
         val btnDelete = info.components.last() as? JButton
 
-        val url = serverUrl ?: SpringInitializrBundle.message("esprito.spring.initializr.url")
+        val url = serverUrl ?: SpringInitializrBundle.message("explyt.spring.initializr.url")
         val browser = JBCefBrowser(url)
         if (activeProject == null) {
             return browser
@@ -309,7 +309,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
             parent.cursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
             progressBar?.isIndeterminate = true
             progressBarLabel?.text = SpringInitializrBundle.message(
-                "esprito.spring.initializr.progress.label.text",
+                "explyt.spring.initializr.progress.label.text",
                 suggestedName
             )
 

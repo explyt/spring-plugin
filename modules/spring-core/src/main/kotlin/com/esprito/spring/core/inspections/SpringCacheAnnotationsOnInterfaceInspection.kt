@@ -4,8 +4,8 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringCoreClasses.ANNOTATIONS_CACHE
-import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isEqualOrInheritor
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -34,7 +34,7 @@ class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectio
         return arrayOf(
             manager.createProblemDescriptor(
                 identifyingElement,
-                SpringCoreBundle.message("esprito.spring.inspection.cache.interface.method"),
+                SpringCoreBundle.message("explyt.spring.inspection.cache.interface.method"),
                 isOnTheFly,
                 emptyArray(),
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING
@@ -57,7 +57,7 @@ class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectio
         return arrayOf(
             manager.createProblemDescriptor(
                 identifyingElement,
-                SpringCoreBundle.message("esprito.spring.inspection.cache.interface.class"),
+                SpringCoreBundle.message("explyt.spring.inspection.cache.interface.class"),
                 isOnTheFly,
                 emptyArray(),
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING

@@ -1,6 +1,6 @@
 package com.esprito.spring.core.properties.dataRetriever
 
-import com.esprito.util.EspritoPsiUtil.isNonAbstract
+import com.esprito.util.ExplytPsiUtil.isNonAbstract
 import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement

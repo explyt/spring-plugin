@@ -39,7 +39,7 @@ class SpringDataReturnTypeInspection : SpringBaseUastLocalInspectionTool() {
             if (!SpringDataRepositoryUtil.isNumberType(returnType)) {
                 holder.registerProblem(
                     returnTypeReference,
-                    message("esprito.spring.data.inspection.return.type.count"),
+                    message("explyt.spring.data.inspection.return.type.count"),
                     *TypeQuickFixUtil.getQuickFixesReturnType(method, PsiTypes.longType())
                 )
             }
@@ -47,7 +47,7 @@ class SpringDataReturnTypeInspection : SpringBaseUastLocalInspectionTool() {
             if (!SpringDataRepositoryUtil.isBooleanType(returnType)) {
                 holder.registerProblem(
                     returnTypeReference,
-                    message("esprito.spring.data.inspection.return.type.boolean"),
+                    message("explyt.spring.data.inspection.return.type.boolean"),
                     *TypeQuickFixUtil.getQuickFixesReturnType(method, PsiTypes.booleanType())
                 )
             }
@@ -57,7 +57,7 @@ class SpringDataReturnTypeInspection : SpringBaseUastLocalInspectionTool() {
             ) {
                 holder.registerProblem(
                     returnTypeReference,
-                    message("esprito.spring.data.inspection.return.type.remove"),
+                    message("explyt.spring.data.inspection.return.type.remove"),
                     *TypeQuickFixUtil.getQuickFixesReturnType(method, PsiTypes.voidType(), PsiTypes.longType())
                 )
             }

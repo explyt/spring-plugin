@@ -2,13 +2,13 @@ package com.esprito.spring.core.service.kotlin
 
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.service.SpringSearchServiceFacade
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 
-class SpringSearchServiceTest : EspritoKotlinLightTestCase() {
+class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     override fun setUp() {

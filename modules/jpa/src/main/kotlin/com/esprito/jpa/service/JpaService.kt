@@ -1,8 +1,8 @@
 package com.esprito.jpa.service
 
 import com.esprito.jpa.JpaClasses
-import com.esprito.util.EspritoPsiUtil.isStatic
-import com.esprito.util.EspritoPsiUtil.isTransient
+import com.esprito.util.ExplytPsiUtil.isStatic
+import com.esprito.util.ExplytPsiUtil.isTransient
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project

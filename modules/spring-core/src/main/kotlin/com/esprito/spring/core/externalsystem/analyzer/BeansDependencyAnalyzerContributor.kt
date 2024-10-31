@@ -3,7 +3,7 @@ package com.esprito.spring.core.externalsystem.analyzer
 import com.esprito.spring.core.externalsystem.model.SpringBeanData
 import com.esprito.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.esprito.spring.core.externalsystem.utils.NativeBootUtils
-import com.esprito.util.EspritoPsiUtil.onlyAllSupers
+import com.esprito.util.ExplytPsiUtil.onlyAllSupers
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager

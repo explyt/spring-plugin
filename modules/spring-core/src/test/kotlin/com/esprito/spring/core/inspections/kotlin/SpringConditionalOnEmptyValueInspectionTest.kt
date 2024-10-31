@@ -4,13 +4,13 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.SpringConditionalOnEmptyValueInspection
 import com.esprito.spring.core.providers.kotlin.ConfigurationPropertyLineMarkerProviderTest.Companion.APPLICATION_PROPERTIES_FILE_NAME
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.test.EspritoInspectionKotlinTestCase
+import com.esprito.spring.test.ExplytInspectionKotlinTestCase
 import com.esprito.spring.test.TestLibrary
 import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
 
-class SpringConditionalOnEmptyValueInspectionTest : EspritoInspectionKotlinTestCase() {
+class SpringConditionalOnEmptyValueInspectionTest : ExplytInspectionKotlinTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 

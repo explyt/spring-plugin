@@ -5,7 +5,7 @@ import com.esprito.spring.web.loader.EndpointElement
 import com.esprito.spring.web.loader.EndpointType
 import com.esprito.spring.web.service.SpringWebEndpointsSearcher
 import com.esprito.spring.web.view.EndpointToolModelEventListener.EventType
-import com.esprito.util.EspritoKotlinUtil.mapToList
+import com.esprito.util.ExplytKotlinUtil.mapToList
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ModalityState

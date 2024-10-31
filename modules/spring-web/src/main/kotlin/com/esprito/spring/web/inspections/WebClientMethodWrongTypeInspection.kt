@@ -64,7 +64,7 @@ class WebClientBodyTypeVisitor(private val holder: ProblemsHolder) :
                 holder.registerProblem(
                     psiTypeExpression,
                     SpringWebBundle.message(
-                        "esprito.spring.web.inspection.webClient.type.doesnt.match",
+                        "explyt.spring.web.inspection.webClient.type.doesnt.match",
                         uri, endpointResults.joinToString()
                     ),
                     ProblemHighlightType.WEAK_WARNING
@@ -108,7 +108,7 @@ class WebClientBodyTypeVisitor(private val holder: ProblemsHolder) :
                 holder.registerProblem(
                     psiNode,
                     SpringWebBundle.message(
-                        "esprito.spring.web.inspection.webClient.type.doesnt.match",
+                        "explyt.spring.web.inspection.webClient.type.doesnt.match",
                         uri, endpointResults.joinToString()
                     ),
                     ProblemHighlightType.WEAK_WARNING

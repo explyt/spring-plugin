@@ -35,13 +35,13 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
         }
     }
 
-    override fun getReportActionText(): String = BaseBundle.message("esprito.base.report.action")
+    override fun getReportActionText(): String = BaseBundle.message("explyt.base.report.action")
 
     override fun submit(events: Array<out IdeaLoggingEvent>, additionalInfo: String?, parentComponent: Component, consumer: Consumer<in SubmittedReportInfo>): Boolean {
         val context = DataManager.getInstance().getDataContext(parentComponent)
         val project: Project? = CommonDataKeys.PROJECT.getData(context)
 
-        object : Task.Backgroundable(project, BaseBundle.message("esprito.base.report.background")) {
+        object : Task.Backgroundable(project, BaseBundle.message("explyt.base.report.background")) {
             override fun run(indicator: ProgressIndicator) {
                 for (ideaEvent in events) {
                     val event = SentryEvent()

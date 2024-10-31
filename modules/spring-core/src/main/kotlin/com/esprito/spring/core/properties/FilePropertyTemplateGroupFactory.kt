@@ -11,7 +11,8 @@ class FilePropertyTemplateGroupFactory : FileTemplateGroupDescriptorFactory {
     override fun getFileTemplatesDescriptor(): FileTemplateGroupDescriptor {
         val template = FileTemplateDescriptor(SpringProperties.SPRING_XML_TEMPLATE)
         val groupDescriptor = FileTemplateGroupDescriptor(
-            SpringRunConfigurationBundle.message("esprito.spring.group.property.xml"), AllIcons.FileTypes.Xml)
+            SpringRunConfigurationBundle.message("explyt.spring.group.property.xml"), AllIcons.FileTypes.Xml
+        )
         groupDescriptor.addTemplate(template)
         return groupDescriptor
     }

@@ -1,9 +1,9 @@
 package com.esprito.spring.web.completion
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.intellij.testFramework.UsefulTestCase
 
-class OpenApiYamlRefCompletionContributorTest : EspritoJavaLightTestCase() {
+class OpenApiYamlRefCompletionContributorTest : ExplytJavaLightTestCase() {
 
     fun testSuccess() {
         myFixture.configureByText(

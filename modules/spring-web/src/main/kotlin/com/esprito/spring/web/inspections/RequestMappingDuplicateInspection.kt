@@ -4,9 +4,9 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
@@ -67,7 +67,7 @@ private class RequestMappingVisitor(
                 psiExpression,
                 psiExpression.getHighlightRange(),
                 SpringWebBundle.message(
-                    "esprito.spring.web.inspection.requestMapping.duplicate.methods",
+                    "explyt.spring.web.inspection.requestMapping.duplicate.methods",
                     conflictingEndpoints.joinToReadableString()
                 ),
                 ProblemHighlightType.GENERIC_ERROR,

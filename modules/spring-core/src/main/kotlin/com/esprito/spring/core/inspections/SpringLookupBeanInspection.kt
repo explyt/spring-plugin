@@ -4,10 +4,10 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.LOOKUP
 import com.esprito.spring.core.service.SpringSearchServiceFacade
-import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.returnPsiClass
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytAnnotationUtil.getMetaAnnotationMemberValues
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.returnPsiClass
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -41,7 +41,7 @@ class SpringLookupBeanInspection : SpringBaseUastLocalInspectionTool() {
                 problems += manager.createProblemDescriptor(
                     valueSourcePsi,
                     valueSourcePsi.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.unknown", lookupValue),
+                    SpringCoreBundle.message("explyt.spring.inspection.bean.lookup.unknown", lookupValue),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly
                 )
@@ -49,7 +49,8 @@ class SpringLookupBeanInspection : SpringBaseUastLocalInspectionTool() {
                 problems += manager.createProblemDescriptor(
                     valueSourcePsi,
                     valueSourcePsi.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.bean.lookup.wrongType",
+                    SpringCoreBundle.message(
+                        "explyt.spring.inspection.bean.lookup.wrongType",
                         returnClassQN,
                         psiBeans[0].psiClass.qualifiedName.toString()),
                     ProblemHighlightType.GENERIC_ERROR,

@@ -4,7 +4,7 @@ import com.esprito.base.LibraryClassCache
 import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
-import com.esprito.util.EspritoPsiUtil.isNonAbstract
+import com.esprito.util.ExplytPsiUtil.isNonAbstract
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -76,7 +76,7 @@ class SpringDataMethodNameInspection : SpringDataBaseUastLocalInspectionTool() {
             holder.registerProblem(
                 psiIdentifier,
                 TextRange(part.offset, part.endOffset),
-                message("esprito.spring.data.inspection.method.name.unknown.property", propertyName)
+                message("explyt.spring.data.inspection.method.name.unknown.property", propertyName)
             )
         }
     }
@@ -94,12 +94,12 @@ class SpringDataMethodNameInspection : SpringDataBaseUastLocalInspectionTool() {
             val msg: String = getEmptyPropertyMessage(methodName, range)
             holder.registerProblem(
                 psiIdentifier,
-                message("esprito.spring.data.inspection.method.name.empty.property", msg)
+                message("explyt.spring.data.inspection.method.name.empty.property", msg)
             )
         } else {
             holder.registerProblem(
                 psiIdentifier, range,
-                message("esprito.spring.data.inspection.method.name.empty.property", "")
+                message("explyt.spring.data.inspection.method.name.empty.property", "")
             )
         }
     }
@@ -116,13 +116,13 @@ class SpringDataMethodNameInspection : SpringDataBaseUastLocalInspectionTool() {
                     val msg = getEmptyPropertyMessage(uMethod.name, range)
                     holder.registerProblem(
                         identifier,
-                        message("esprito.spring.data.inspection.method.name.empty.property", msg)
+                        message("explyt.spring.data.inspection.method.name.empty.property", msg)
                     )
                 } else {
                     holder.registerProblem(
                         identifier,
                         TextRange.create(order.offset, order.endOffset),
-                        message("esprito.spring.data.inspection.method.name.unknown.property", propertyName)
+                        message("explyt.spring.data.inspection.method.name.unknown.property", propertyName)
                     )
                 }
             }

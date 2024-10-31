@@ -61,7 +61,7 @@ class SpringProfileAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         if (valueText.isEmpty()) {
             return listOf(
                 manager.createProblemDescriptor(
-                    sourcePsi, SpringCoreBundle.message("esprito.spring.inspection.profile.empty"),
+                    sourcePsi, SpringCoreBundle.message("explyt.spring.inspection.profile.empty"),
                     isOnTheFly, emptyArray(), ProblemHighlightType.GENERIC_ERROR
                 )
             )

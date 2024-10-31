@@ -41,7 +41,7 @@ class RewriteAnnotationQuickFix(
     private val annotationsToRemove: Array<String>
 
     @FileModifier.SafeFieldForPreview
-    val myPairs: Array<PsiNameValuePair> // not used when registering local quick fix
+    val myPairs: Array<PsiNameValuePair>
     private var myText: @IntentionName String
     private val myAnnotationPlace: ExternalAnnotationsManager.AnnotationPlace
     private val myExistsTypeUseTarget: Boolean

@@ -1,9 +1,9 @@
 package com.esprito.jpa.ql.usage
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 
-abstract class JpaEntityAttributeUsageSearchTest : EspritoJavaLightTestCase() {
+abstract class JpaEntityAttributeUsageSearchTest : ExplytJavaLightTestCase() {
     class Jakarta : JpaEntityAttributeUsageSearchTest() {
         override val libraries = arrayOf(
             TestLibrary.jakarta_persistence_3_1_0

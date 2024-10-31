@@ -40,7 +40,7 @@ class SpringDataEnableInspection : SpringBaseUastLocalInspectionTool() {
         if (enabledProperty != null) {
             val settingNioPath = enabledProperty.psiElement?.containingFile?.virtualFile ?: return
             val fix = NavigateToFileQuickFix(settingNioPath, JPA_REPOSITORY_ENABLE)
-            holder.registerProblem(sourcePsi, message("esprito.spring.data.inspection.enable.false"), fix)
+            holder.registerProblem(sourcePsi, message("explyt.spring.data.inspection.enable.false"), fix)
         }
     }
 
@@ -54,7 +54,7 @@ class SpringDataEnableInspection : SpringBaseUastLocalInspectionTool() {
         if (nonePackage) {
             val fixes = packages.map { MoveToPackageFix(uClass.javaPsi.containingFile, it) }
             holder.registerProblem(
-                sourcePsi, message("esprito.spring.data.inspection.enable.package"), *fixes.toTypedArray()
+                sourcePsi, message("explyt.spring.data.inspection.enable.package"), *fixes.toTypedArray()
             )
         }
     }

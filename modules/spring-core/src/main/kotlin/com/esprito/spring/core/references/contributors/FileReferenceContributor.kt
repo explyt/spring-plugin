@@ -14,7 +14,7 @@ import com.esprito.spring.core.providers.FileReferenceProvider
 import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.SIMPLE_VALUE
 import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.VALUE_LOCATIONS
 import com.esprito.spring.core.references.contributors.FileReferenceContributor.AnnotationParamsConstants.VALUE_SCRIPTS
-import com.esprito.util.EspritoContributorUtil.addAnnotationValueContributor
+import com.esprito.util.ExplytContributorUtil.addAnnotationValueContributor
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.patterns.PsiJavaPatterns
 import com.intellij.patterns.uast.UExpressionPattern

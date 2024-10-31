@@ -4,7 +4,7 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.service.SpringSearchServiceFacade
-import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
+import com.esprito.util.ExplytPsiUtil.isEqualOrInheritor
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -39,15 +39,14 @@ class GetBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             is UQualifiedReferenceExpression -> (arg.receiver as? UClassLiteralExpression)?.type
             is UClassLiteralExpression -> arg.type
             else -> null
-            //Метод возвращает Object, учитываем приведение типа
         } ?: psiElement.getUastParentOfType<UBinaryExpressionWithType>()?.type
 
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { getBeans(psiElement, name, requiredType) })
-            .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
-            .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
-            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
+            .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+            .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+            .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
 
         result.add(builder.createLineMarkerInfo(psiElement))
     }

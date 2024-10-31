@@ -81,13 +81,13 @@ class OpenApiFileHelper {
     }
 
     private fun isSpecificationFastCheck(virtualFile: VirtualFile, psiFile: PsiFile): Boolean {
-        if (virtualFile.nameWithoutExtension == "openapi") {
+        if (virtualFile.nameWithoutExtension == SpringWebUtil.OPEN_API) {
             return true
         }
 
         val name = psiFile.text ?: return false
 
-        return name.contains("openapi")
+        return name.contains(SpringWebUtil.OPEN_API)
     }
 
     fun isSuitableFile(virtualFile: VirtualFile, psiFile: PsiFile?): Boolean {
@@ -140,12 +140,12 @@ class OpenApiFileHelper {
 
         init {
             val openApiVersionPattern30 = "[\"']?%s[\"']?\\s*:\\s*[\"']?%s[\"']?"
-            val placeholders30 = arrayOf("openapi", "3\\.0\\.\\d+(-.+)?")
+            val placeholders30 = arrayOf(SpringWebUtil.OPEN_API, "3\\.0\\.\\d+(-.+)?")
             val formattedPattern30 = String.format(openApiVersionPattern30, *placeholders30)
             OPENAPI_3_0_PATTERN = Regex(formattedPattern30)
 
             val openApiVersionPattern31 = "[\"']?%s[\"']?\\s*:\\s*[\"']?%s[\"']?"
-            val placeholders31 = arrayOf("openapi", "3\\.1\\.\\d+(-.+)?")
+            val placeholders31 = arrayOf(SpringWebUtil.OPEN_API, "3\\.1\\.\\d+(-.+)?")
             val formattedPattern31 = String.format(openApiVersionPattern31, *placeholders31)
             OPENAPI_3_1_PATTERN = Regex(formattedPattern31)
         }

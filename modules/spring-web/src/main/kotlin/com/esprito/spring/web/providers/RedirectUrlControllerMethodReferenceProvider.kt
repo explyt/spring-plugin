@@ -1,6 +1,6 @@
 package com.esprito.spring.web.providers
 
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiLanguageInjectionHost
@@ -27,7 +27,7 @@ class RedirectUrlControllerMethodReferenceProvider : UastInjectionHostReferenceP
             if (!text.startsWith(prefix)) continue
 
             return arrayOf(
-                EspritoControllerMethodReference(
+                ExplytControllerMethodReference(
                     host,
                     text.removePrefix(prefix),
                     null,

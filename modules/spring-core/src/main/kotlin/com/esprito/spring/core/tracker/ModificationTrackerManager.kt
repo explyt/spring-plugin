@@ -12,9 +12,9 @@ import com.intellij.psi.PsiManager
 
 @Service(Service.Level.PROJECT)
 class ModificationTrackerManager(val project: Project) : Disposable {
-    private val uastModelTracker = EspritoModelModificationTracker(project)
-    private val uastAnnotationTracker = EspritoAnnotationModificationTracker(project)
-    private val propertyTracker = EspritoPropertyModificationTracker(project)
+    private val uastModelTracker = ExplytModelModificationTracker(project)
+    private val uastAnnotationTracker = ExplytAnnotationModificationTracker(project)
+    private val propertyTracker = ExplytPropertyModificationTracker(project)
     private val externalSystemTracker = SpringBootExternalSystemTracker(project)
 
     init {

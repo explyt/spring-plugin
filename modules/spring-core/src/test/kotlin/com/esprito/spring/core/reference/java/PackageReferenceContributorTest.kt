@@ -1,12 +1,12 @@
 package com.esprito.spring.core.reference.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.psi.PsiPackage
 import junit.framework.TestCase
 
-class PackageReferenceContributorTest : EspritoJavaLightTestCase() {
+class PackageReferenceContributorTest : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + "reference/package"
 

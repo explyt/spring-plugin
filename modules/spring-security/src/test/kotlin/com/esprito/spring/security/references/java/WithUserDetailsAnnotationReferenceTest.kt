@@ -1,6 +1,6 @@
 package com.esprito.spring.security.references.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.psi.PsiMember
@@ -8,7 +8,7 @@ import com.intellij.psi.PsiPolyVariantReference
 
 private const val TEST_DATA_PATH = "references"
 
-class WithUserDetailsAnnotationReferenceTest : EspritoJavaLightTestCase() {
+class WithUserDetailsAnnotationReferenceTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springContext_6_0_7,
         TestLibrary.springSecurityTest_6_0_7

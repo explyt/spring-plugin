@@ -1,6 +1,6 @@
 package com.esprito.spring.web.providers.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
 import junit.framework.TestCase
@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.test.TestMetadata
 private const val TEST_DATA_PATH = "providers/linemarkers"
 
 @TestMetadata(TEST_DATA_PATH)
-class ControllerEndpointLineMarkerProviderTest : EspritoJavaLightTestCase() {
+class ControllerEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 

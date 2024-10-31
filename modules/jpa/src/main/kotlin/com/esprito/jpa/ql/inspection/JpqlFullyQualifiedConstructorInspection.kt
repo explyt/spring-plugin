@@ -27,13 +27,13 @@ class JpqlFullyQualifiedConstructorInspection : LocalInspectionTool() {
             if (fqConstructor.identifierList.size == 1) {
                 holder.registerProblem(
                     fqConstructor,
-                    JpaBundle.message("esprito.jpa.inspection.constructor.not.qualified"),
+                    JpaBundle.message("explyt.jpa.inspection.constructor.not.qualified"),
                     ProblemHighlightType.WARNING
                 )
             } else {
                 holder.registerProblem(
                     fqConstructor,
-                    JpaBundle.message("esprito.jpa.inspection.constructor.entity.not.found", fqConstructorText),
+                    JpaBundle.message("explyt.jpa.inspection.constructor.entity.not.found", fqConstructorText),
                     ProblemHighlightType.WARNING
                 )
             }

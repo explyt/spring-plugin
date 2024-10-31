@@ -21,7 +21,7 @@ class AddAnnotationParameterKotlinFix(
     private val argumentValue: String
 ) : LocalQuickFixAndIntentionActionOnPsiElement(psiElement) {
     override fun getText() = message(
-        "esprito.spring.inspection.kotlin.internal.fix",
+        "explyt.spring.inspection.kotlin.internal.fix",
         "@" + ClassId.topLevel(FqName(annotationFqName)).shortClassName
     )
 

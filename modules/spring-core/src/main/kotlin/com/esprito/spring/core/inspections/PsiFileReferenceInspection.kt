@@ -4,7 +4,7 @@ import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.inspections.utils.ResourceFileInspectionUtil
-import com.esprito.util.EspritoPsiUtil.isString
+import com.esprito.util.ExplytPsiUtil.isString
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.psi.ElementManipulators

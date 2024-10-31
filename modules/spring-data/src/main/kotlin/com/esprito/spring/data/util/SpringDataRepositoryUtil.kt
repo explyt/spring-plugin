@@ -5,7 +5,7 @@ import com.esprito.spring.core.util.PsiAnnotationUtils
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.SpringDataClasses.SPRING_RESOURCE
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*

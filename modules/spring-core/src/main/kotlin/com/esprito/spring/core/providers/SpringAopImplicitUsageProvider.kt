@@ -1,6 +1,6 @@
 package com.esprito.spring.core.providers
 
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod

@@ -14,7 +14,7 @@ import com.intellij.psi.PsiFile
 class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
     override fun getFamilyName(): String =
-        SpringCoreBundle.message("esprito.spring.inspection.properties.replacement.quick.fix", key)
+        SpringCoreBundle.message("explyt.spring.inspection.properties.quick.fix.replacement", key)
 
     override fun getText(): String = familyName
 

@@ -1,6 +1,6 @@
 package com.esprito.spring.core.properties.kotlin
 
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.lang.properties.IProperty
@@ -16,7 +16,7 @@ import java.io.File
 private const val TEST_DATA_PATH = "properties"
 
 @TestMetadata(TEST_DATA_PATH)
-class ConfigurationPropertyReferenceContributorTest : EspritoKotlinLightTestCase() {
+class ConfigurationPropertyReferenceContributorTest : ExplytKotlinLightTestCase() {
 
     companion object {
         const val PLACE_TO_INSERT = "<PLACE_TO_INSERT>"

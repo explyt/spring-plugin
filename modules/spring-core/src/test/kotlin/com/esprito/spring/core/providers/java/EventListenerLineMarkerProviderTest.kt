@@ -1,7 +1,7 @@
 package com.esprito.spring.core.providers.java
 
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.test.TestMetadata
 private const val TEST_DATA_PATH = "providers/linemarkers"
 
 @TestMetadata(TEST_DATA_PATH)
-class EventListenerLineMarkerProviderTest : EspritoJavaLightTestCase() {
+class EventListenerLineMarkerProviderTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)

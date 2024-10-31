@@ -7,7 +7,7 @@ import com.esprito.spring.core.completion.properties.SpringConfigurationProperti
 import com.esprito.spring.core.service.ConfigurationPropertiesService
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.PropertyUtil
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiClass

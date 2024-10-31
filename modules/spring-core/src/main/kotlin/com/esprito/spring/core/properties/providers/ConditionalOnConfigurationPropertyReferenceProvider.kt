@@ -1,10 +1,10 @@
 package com.esprito.spring.core.properties.providers
 
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.properties.references.EspritoLibraryPropertyReference
+import com.esprito.spring.core.properties.references.ExplytLibraryPropertyReference
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.PropertyUtil
-import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
+import com.esprito.util.ExplytAnnotationUtil.getStringMemberValues
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
@@ -53,14 +53,14 @@ class ConditionalOnConfigurationPropertyReferenceProvider : UastInjectionHostRef
         return values
             .mapNotNull { value ->
                 if (value.isBlank()) {
-                    EspritoLibraryPropertyReference(host, "", TextRange.from(1, 0), prefixValue)
+                    ExplytLibraryPropertyReference(host, "", TextRange.from(1, 0), prefixValue)
                 } else {
                     val startOffset = host.text.indexOf(value)
                     if (startOffset == -1) return@mapNotNull null
 
                     val range = TextRange.allOf(value)
 
-                    EspritoLibraryPropertyReference(
+                    ExplytLibraryPropertyReference(
                         host,
                         value,
                         range.shiftRight(startOffset),

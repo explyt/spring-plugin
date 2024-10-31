@@ -2,7 +2,7 @@ package com.esprito.spring.core.providers.kotlin
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.test.util.SpringGutterTestUtil
 import org.intellij.lang.annotations.Language
@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.test.TestMetadata
 private const val TEST_DATA_PATH = "providers/linemarkers/beans"
 
 @TestMetadata(TEST_DATA_PATH)
-class SpringLineMarkerUsagesFromBeanMapTest : EspritoKotlinLightTestCase() {
+class SpringLineMarkerUsagesFromBeanMapTest : ExplytKotlinLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 

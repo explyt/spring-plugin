@@ -16,8 +16,8 @@ import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
 import com.esprito.spring.web.util.SpringWebUtil.getUrlTemplateIndex
-import com.esprito.util.EspritoKotlinUtil.filterToSet
-import com.esprito.util.EspritoKotlinUtil.mapToList
+import com.esprito.util.ExplytKotlinUtil.filterToSet
+import com.esprito.util.ExplytKotlinUtil.mapToList
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.module.Module

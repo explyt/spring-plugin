@@ -1,6 +1,6 @@
 package com.esprito.spring.core.langinjection.kotlin
 
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 import org.jetbrains.kotlin.test.TestMetadata
@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.test.TestMetadata
 private const val TEST_DATA_PATH = "langinjection"
 
 @TestMetadata(TEST_DATA_PATH)
-class ProfilesAnnotationLanguageInjectorTest : EspritoKotlinLightTestCase() {
+class ProfilesAnnotationLanguageInjectorTest : ExplytKotlinLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(

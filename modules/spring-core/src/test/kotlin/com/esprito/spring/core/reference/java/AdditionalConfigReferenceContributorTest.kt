@@ -1,12 +1,12 @@
 package com.esprito.spring.core.reference.java
 
 import com.esprito.spring.core.properties.providers.ConfigurationPropertyKeyReference
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReference
 import junit.framework.TestCase
 
-class AdditionalConfigReferenceContributorTest : EspritoJavaLightTestCase() {
+class AdditionalConfigReferenceContributorTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + "reference/json"
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)

@@ -3,7 +3,7 @@ package com.esprito.spring.web.inspections
 import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
 import com.intellij.codeInsight.daemon.impl.quickfix.MethodReturnTypeFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -26,7 +26,7 @@ class SpringInitBinderNonVoidInspection : SpringBaseUastLocalInspectionTool() {
         return arrayOf(
             manager.createProblemDescriptor(
                 identifierElement,
-                SpringWebBundle.message("esprito.spring.web.inspection.initBinder"),
+                SpringWebBundle.message("explyt.spring.web.inspection.initBinder"),
                 isOnTheFly,
                 arrayOf(
                     MethodReturnTypeFix(psiMethod, PsiTypes.voidType(), true)

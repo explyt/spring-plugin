@@ -1,6 +1,6 @@
 package com.esprito.spring.core.completion.properties
 
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module

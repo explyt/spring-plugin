@@ -9,7 +9,9 @@
         <package>com</package>
         <entry_point TYPE="method" FQNAME="com.ProxyMethodsConfiguration com.ProxyBeanAA proxyBeanAAIncorrect()" />
         <problem_class id="SpringConfigurationProxyMethods" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
-        <description>Method annotated with @Bean is called directly in a @Configuration where proxyBeanMethods set to false</description>
+        <description>@Bean method is called directly in a @Configuration where proxyBeanMethods has been disabled (set
+            to false)
+        </description>
         <highlighted_element>proxyBeanA</highlighted_element>
         <language>kotlin</language>
         <offset>45</offset>
@@ -23,7 +25,7 @@
         <package>com</package>
         <entry_point TYPE="method" FQNAME="com.ProxyMethodsComponent com.ProxyBeanAA proxyBeanAA()" />
         <problem_class id="SpringConfigurationProxyMethods" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
-        <description>Method annotated with @Bean is called directly</description>
+        <description>Method annotated with @Bean is invoked directly</description>
         <highlighted_element>proxyBeanAFromComponent</highlighted_element>
         <language>kotlin</language>
         <offset>36</offset>

@@ -108,7 +108,7 @@ class ProfilesService(private val project: Project) {
                     while (!operationStack.isEmpty() && operationStack.peek() !is LParen) {
                         result.add(operationStack.pop())
                     }
-                    if (operationStack.isEmpty()) return emptyList() //нет парной скобки
+                    if (operationStack.isEmpty()) return emptyList() // no matching bracket
                     operationStack.pop()
                 }
 

@@ -5,7 +5,7 @@ import com.esprito.spring.core.SpringCoreClasses.VALUE
 import com.esprito.spring.core.properties.providers.ConditionalOnConfigurationPropertyReferenceProvider
 import com.esprito.spring.core.properties.providers.GetPropertyMethodPropertyReferenceProvider
 import com.esprito.spring.core.properties.providers.ValueConfigurationPropertyReferenceProvider
-import com.esprito.util.EspritoContributorUtil
+import com.esprito.util.ExplytContributorUtil
 import com.intellij.patterns.PsiJavaPatterns
 import com.intellij.patterns.uast.callExpression
 import com.intellij.patterns.uast.injectionHostUExpression
@@ -17,10 +17,10 @@ class UastConfigurationPropertyReferenceContributor : PsiReferenceContributor() 
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         val injection = injectionHostUExpression()
 
-        EspritoContributorUtil.addAnnotationValueContributor(
+        ExplytContributorUtil.addAnnotationValueContributor(
             registrar, injection, VALUE, ValueConfigurationPropertyReferenceProvider()
         )
-        EspritoContributorUtil.addAnnotationValueContributor(
+        ExplytContributorUtil.addAnnotationValueContributor(
             registrar, injection, SCHEDULED, ValueConfigurationPropertyReferenceProvider(), VALUE_SCHEDULED
         )
         registrar.registerUastReferenceProvider(

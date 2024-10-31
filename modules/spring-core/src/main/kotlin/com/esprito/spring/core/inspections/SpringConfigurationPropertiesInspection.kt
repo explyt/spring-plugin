@@ -62,9 +62,9 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
         val valueText = extractConfigurationPropertyPrefix(module, javaPsiAnnotation)
         val holder = ProblemsHolder(manager, sourcePsi.containingFile, isOnTheFly)
         if (valueText.isNullOrEmpty()) {
-            holder.registerProblem(sourcePsi, message("esprito.spring.inspection.config.prefix.empty"))
+            holder.registerProblem(sourcePsi, message("explyt.spring.inspection.config.prefix.empty"))
         } else if (isNotKebabCase(valueText)) {
-            holder.registerProblem(sourcePsi, message("esprito.spring.inspection.config.prefix.kebab"))
+            holder.registerProblem(sourcePsi, message("explyt.spring.inspection.config.prefix.kebab"))
         }
 
         val duplicateElements = findDuplicate(module, valueText)
@@ -81,12 +81,12 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
         valueText: String?
     ) {
         holder.registerProblem(
-            sourcePsi, message("esprito.spring.inspection.config.prefix.duplicate"),
+            sourcePsi, message("explyt.spring.inspection.config.prefix.duplicate"),
             object : LocalQuickFix {
 
                 override fun startInWriteAction(): Boolean = false
 
-                override fun getFamilyName(): String = message("esprito.spring.inspection.config.prefix.duplicate.show")
+                override fun getFamilyName(): String = message("explyt.spring.inspection.config.prefix.duplicate.show")
 
                 override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
                     val result = findDuplicate(module, valueText).toTypedArray()
@@ -94,7 +94,7 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
                         when {
                             result.size > 1 -> getPsiElementPopup(result, null)
                             else -> JBPopupFactory.getInstance()
-                                .createMessage(message("esprito.spring.inspection.config.prefix.duplicate.no"))
+                                .createMessage(message("explyt.spring.inspection.config.prefix.duplicate.no"))
                         }.showInBestPositionFor(context)
                     }
                 }

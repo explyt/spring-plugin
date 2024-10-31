@@ -1,11 +1,11 @@
 package com.esprito.jpa.ql.langinjection.kotlin
 
 import com.esprito.jpa.ql.JpqlLanguage
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 
-abstract class JpqlEntityManagerLanguageInjectorTest : EspritoJavaLightTestCase() {
+abstract class JpqlEntityManagerLanguageInjectorTest : ExplytJavaLightTestCase() {
     class Jakarta : JpqlEntityManagerLanguageInjectorTest() {
         override val libraries = arrayOf(
             TestLibrary.jakarta_persistence_3_1_0

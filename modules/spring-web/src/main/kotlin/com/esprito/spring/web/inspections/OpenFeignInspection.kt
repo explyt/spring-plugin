@@ -3,7 +3,7 @@ package com.esprito.spring.web.inspections
 import com.esprito.inspection.SpringBaseLocalInspectionTool
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.web.SpringWebBundle
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.ProblemHighlightType.WARNING
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
@@ -34,7 +34,7 @@ private class LoadBalancedVisitor(private val holder: ProblemsHolder) : Abstract
         val psiElement = node.sourcePsi ?: return
         holder.registerProblem(
             psiElement,
-            SpringWebBundle.message("esprito.spring.web.inspection.openfeign.client"),
+            SpringWebBundle.message("explyt.spring.web.inspection.openfeign.client"),
             WARNING
         )
     }

@@ -5,7 +5,7 @@ import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
@@ -63,7 +63,7 @@ private class MockMvcRequestBuilderVisitor(
                 problemsHolder.manager.createProblemDescriptor(
                     psiUrlTemplate,
                     psiUrlTemplate.getHighlightRange(),
-                    SpringWebBundle.message("esprito.spring.web.inspection.mockMvc.parameters.many"),
+                    SpringWebBundle.message("explyt.spring.web.inspection.mockMvc.parameters.many"),
                     ProblemHighlightType.WEAK_WARNING,
                     isOnTheFly
                 )
@@ -73,7 +73,7 @@ private class MockMvcRequestBuilderVisitor(
                 problemsHolder.manager.createProblemDescriptor(
                     psiUrlTemplate,
                     psiUrlTemplate.getHighlightRange(),
-                    SpringWebBundle.message("esprito.spring.web.inspection.mockMvc.parameters.few"),
+                    SpringWebBundle.message("explyt.spring.web.inspection.mockMvc.parameters.few"),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly
                 )

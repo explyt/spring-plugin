@@ -14,7 +14,7 @@ import org.jetbrains.yaml.psi.impl.YAMLKeyValueImpl
 
 class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionActionOnPsiElement(element) {
     override fun getFamilyName(): String =
-        SpringCoreBundle.message("esprito.spring.inspection.properties.key.yaml.fix.case")
+        SpringCoreBundle.message("explyt.spring.inspection.properties.key.yaml.fix.case")
 
     override fun getText(): String = familyName
 

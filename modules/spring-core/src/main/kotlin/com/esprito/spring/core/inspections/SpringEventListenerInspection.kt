@@ -3,10 +3,10 @@ package com.esprito.spring.core.inspections
 import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.EVENT_LISTENER
-import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isPublic
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getMetaAnnotation
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isPublic
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -29,7 +29,7 @@ class SpringEventListenerInspection : SpringBaseUastLocalInspectionTool() {
                 problems +=
                     manager.createProblemDescriptor(
                         eventListenerAnnotation,
-                        SpringCoreBundle.message("esprito.spring.inspection.method.eventListener.public"),
+                        SpringCoreBundle.message("explyt.spring.inspection.method.eventListener.public"),
                         ChangeModifierFix(PsiModifier.PUBLIC),
                         ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                         true
@@ -39,7 +39,7 @@ class SpringEventListenerInspection : SpringBaseUastLocalInspectionTool() {
                 problems +=
                     manager.createProblemDescriptor(
                         eventListenerAnnotation,
-                        SpringCoreBundle.message("esprito.spring.inspection.method.eventListener.parameters"),
+                        SpringCoreBundle.message("explyt.spring.inspection.method.eventListener.parameters"),
                         null as LocalQuickFix?,
                         ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                         true

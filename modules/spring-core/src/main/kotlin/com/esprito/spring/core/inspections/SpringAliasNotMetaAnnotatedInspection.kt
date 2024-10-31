@@ -4,9 +4,9 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.service.AliasUtils
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.intention.AddAnnotationFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -45,7 +45,7 @@ class SpringAliasNotMetaAnnotatedInspection : SpringBaseUastLocalInspectionTool(
             manager.createProblemDescriptor(
                 annotationMemberValue,
                 annotationMemberValue.getHighlightRange(),
-                SpringCoreBundle.message("esprito.spring.inspection.alias.annotation"),
+                SpringCoreBundle.message("explyt.spring.inspection.alias.annotation"),
                 ProblemHighlightType.GENERIC_ERROR,
                 isOnTheFly,
                 AddAnnotationFix(aliasedClassQn, parentClass)

@@ -1,13 +1,13 @@
 package com.esprito.spring.web.completion.kotlin
 
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.editor.ID
 
-class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
+class UastWebClientUrlReferenceContributorTest : ExplytKotlinLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/webClient"
 
     override val libraries: Array<TestLibrary>
@@ -34,7 +34,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -62,7 +62,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -85,7 +85,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -112,7 +112,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -139,7 +139,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -161,7 +161,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -183,7 +183,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -210,7 +210,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -237,7 +237,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -267,7 +267,7 @@ class UastWebClientUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)

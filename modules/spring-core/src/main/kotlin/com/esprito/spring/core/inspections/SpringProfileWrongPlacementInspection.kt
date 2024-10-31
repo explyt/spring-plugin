@@ -6,9 +6,9 @@ import com.esprito.spring.core.SpringCoreClasses.BEAN
 import com.esprito.spring.core.SpringCoreClasses.COMPONENT
 import com.esprito.spring.core.SpringCoreClasses.PROFILE
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -64,7 +64,7 @@ class SpringProfileWrongPlacementInspection : SpringBaseUastLocalInspectionTool(
                 manager.createProblemDescriptor(
                     annotation,
                     annotation.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.profile.wrongPlacement"),
+                    SpringCoreBundle.message("explyt.spring.inspection.profile.wrongPlacement"),
                     ProblemHighlightType.WARNING,
                     isOnTheFly
                 )

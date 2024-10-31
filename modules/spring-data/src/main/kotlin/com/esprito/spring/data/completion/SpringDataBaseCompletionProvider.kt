@@ -4,7 +4,7 @@ import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.data.util.RepositoryTypes
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
 import com.esprito.spring.data.util.SpringDataUtil
-import com.esprito.util.EspritoPsiUtil.returnPsiType
+import com.esprito.util.ExplytPsiUtil.returnPsiType
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElement

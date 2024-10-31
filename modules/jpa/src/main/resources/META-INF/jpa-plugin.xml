@@ -40,15 +40,15 @@
 
         <localInspection language="JPQL"
                          shortName="JpqlInsertStatementInspection"
-                         groupBundle="messages.JpaBundle" groupKey="esprito.jpa.inspection.group"
-                         bundle="messages.JpaBundle" key="esprito.jpa.inspection.insert.statement"
+                         groupBundle="messages.JpaBundle" groupKey="explyt.jpa.inspection.group"
+                         bundle="messages.JpaBundle" key="explyt.jpa.inspection.insert.statement"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.jpa.ql.inspection.JpqlInsertStatementInspection"/>
 
         <localInspection language="JPQL"
                          shortName="JpqlFullyQualifiedConstructorInspection"
-                         groupBundle="messages.JpaBundle" groupKey="esprito.jpa.inspection.group"
-                         bundle="messages.JpaBundle" key="esprito.jpa.inspection.constructor.expression"
+                         groupBundle="messages.JpaBundle" groupKey="explyt.jpa.inspection.group"
+                         bundle="messages.JpaBundle" key="explyt.jpa.inspection.constructor.expression"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.jpa.ql.inspection.JpqlFullyQualifiedConstructorInspection"/>
 

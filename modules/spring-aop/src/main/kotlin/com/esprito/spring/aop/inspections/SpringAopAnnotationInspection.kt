@@ -42,7 +42,7 @@ class SpringAopAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         val springBeanAnnotations = uClass.uAnnotations.filter { holderSpringBoot.contains(it) }
         if (springBeanAnnotations.isNotEmpty()) return emptyArray()
         val problemDescriptor = manager.createProblemDescriptor(
-            sourcePsiAspectAnnotation, SpringAopBundle.message("esprito.spring.inspection.aop.component"),
+            sourcePsiAspectAnnotation, SpringAopBundle.message("explyt.spring.inspection.aop.component"),
             isOnTheFly, addClassAnnotationFix(uClass, SpringCoreClasses.COMPONENT), ProblemHighlightType.WARNING
         )
         return arrayOf(problemDescriptor)
@@ -61,7 +61,7 @@ class SpringAopAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         val springBeanAnnotations = uClass.uAnnotations.filter { it.qualifiedName == SpringAopClasses.ASPECT }
         if (springBeanAnnotations.isNotEmpty()) return emptyArray()
         val problemDescriptor = manager.createProblemDescriptor(
-            sourcePsiAspectAnnotation, SpringAopBundle.message("esprito.spring.inspection.aop.aspect"),
+            sourcePsiAspectAnnotation, SpringAopBundle.message("explyt.spring.inspection.aop.aspect"),
             isOnTheFly, addClassAnnotationFix(uClass, SpringAopClasses.ASPECT), ProblemHighlightType.WARNING
         )
         return arrayOf(problemDescriptor)
@@ -78,7 +78,7 @@ class SpringAopAnnotationInspection : SpringBaseUastLocalInspectionTool() {
 
 class AddClassAnnotationKotlinFix(private val annotationFqName: String) : LocalQuickFix {
     override fun getName() = SpringAopBundle.message(
-        "esprito.spring.inspection.aop.fix.annotate",
+        "explyt.spring.inspection.aop.fix.annotate",
         "@" + ClassId.topLevel(FqName(annotationFqName)).shortClassName
     )
 

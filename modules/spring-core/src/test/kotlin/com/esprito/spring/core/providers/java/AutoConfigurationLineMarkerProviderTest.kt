@@ -3,11 +3,11 @@ package com.esprito.spring.core.providers.java
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.SpringProperties
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
 
-class AutoConfigurationLineMarkerProviderTest : EspritoJavaLightTestCase() {
+class AutoConfigurationLineMarkerProviderTest : ExplytJavaLightTestCase() {
 
     fun testSpringFactories() {
         myFixture.addFileToProject(

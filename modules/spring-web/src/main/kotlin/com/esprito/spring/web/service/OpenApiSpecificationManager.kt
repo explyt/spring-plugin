@@ -52,11 +52,11 @@ class OpenApiSpecificationManager {
 
     private fun getRootSchemaResourcePath(specificationType: OpenApiSpecificationType): String {
         val resourcePath = when (specificationType) {
-            is OpenApiSpecificationType.OpenAPI30Family -> {
+            is OpenApiSpecificationType.OpenAPI30Components -> {
                 "schema/openapi_3_0_0.json"
             }
 
-            is OpenApiSpecificationType.OpenAPI31Family -> {
+            is OpenApiSpecificationType.OpenAPI31Components -> {
                 "schema/openapi_3_1_0.json"
             }
 

@@ -1,10 +1,10 @@
 package com.esprito.spring.web.completion
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.web.references.OpenApiJsonInnerReference
 import com.intellij.json.psi.JsonProperty
 
-class OpenApiJsonInnerReferenceContributorTest : EspritoJavaLightTestCase() {
+class OpenApiJsonInnerReferenceContributorTest : ExplytJavaLightTestCase() {
 
     fun testResolved() {
         myFixture.configureByText(

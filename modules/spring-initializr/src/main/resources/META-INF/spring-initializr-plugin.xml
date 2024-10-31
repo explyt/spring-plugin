@@ -2,11 +2,11 @@
     <extensions defaultExtensionNs="com.intellij">
 
         <moduleType id="ESPRITO_SPRING_INITIALIZR"
-                    implementationClass="com.esprito.spring.initializr.EspritoSpringInitializrModuleType"/>
+                    implementationClass="com.esprito.spring.initializr.ExplytSpringInitializrModuleType"/>
 
         <notificationGroup
                 id="espritoSpringInitializrNotificationGroup"
-                toolWindowId="Spring Explyt Initializr"
+                toolWindowId="Explyt Spring Initializr"
                 displayType="BALLOON"/>
     </extensions>
 

@@ -5,7 +5,7 @@ import com.esprito.spring.data.SpringDataBundle.message
 import com.esprito.spring.data.SpringDataClasses
 import com.esprito.spring.data.SpringDataClasses.DOMAIN_PACKAGE_PREFIX
 import com.esprito.spring.data.util.SpringDataRepositoryUtil
-import com.esprito.util.EspritoPsiUtil.containKotlinKeyword
+import com.esprito.util.ExplytPsiUtil.containKotlinKeyword
 import com.esprito.util.TypeQuickFixUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
@@ -87,7 +87,7 @@ class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTo
         if (argCount < parameterCount) {
             holder.registerProblem(
                 sourcePsi,
-                message("esprito.spring.data.inspection.method.parameters.redundant", parameterCount, argCount)
+                message("explyt.spring.data.inspection.method.parameters.redundant", parameterCount, argCount)
             )
         }
     }
@@ -140,7 +140,7 @@ class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTo
         holder.registerProblem(
             psiParameter,
             message(
-                "esprito.spring.data.inspection.method.parameters.scalar",
+                "explyt.spring.data.inspection.method.parameters.scalar",
                 part.type.name, part.property.toDotPath(), psiType.presentableText
             ),
             *TypeQuickFixUtil.getQuickFixes(uParameter, expectedEntityType)
@@ -160,7 +160,7 @@ class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTo
         holder.registerProblem(
             psiParameter,
             message(
-                "esprito.spring.data.inspection.method.parameters.collection",
+                "explyt.spring.data.inspection.method.parameters.collection",
                 part.type.name, part.property.toDotPath(), psiType.presentableText
             ),
             *TypeQuickFixUtil.getQuickFixes(uParameter, wrapToCollection)
@@ -177,7 +177,7 @@ class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTo
         holder.registerProblem(
             psiIdentifier,
             message(
-                "esprito.spring.data.inspection.method.parameters.count",
+                "explyt.spring.data.inspection.method.parameters.count",
                 i + 1, i, part.type.name, part.property.toDotPath()
             )
         )
@@ -218,7 +218,7 @@ class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTo
             "Collection<${expectedEntityType.presentableText}>" else expectedEntityType.presentableText
         holder.registerProblem(
             sourcePsi,
-            message("esprito.spring.data.inspection.method.parameters.expected", expectedTypeString),
+            message("explyt.spring.data.inspection.method.parameters.expected", expectedTypeString),
             *TypeQuickFixUtil.getQuickFixes(uParameter, quickFixeType)
         )
     }

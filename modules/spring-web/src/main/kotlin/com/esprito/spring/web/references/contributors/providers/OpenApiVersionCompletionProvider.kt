@@ -2,6 +2,7 @@ package com.esprito.spring.web.references.contributors.providers
 
 import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.util.OpenApiFileHelper
+import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
@@ -44,7 +45,7 @@ class OpenApiVersionCompletionProvider : CompletionProvider<CompletionParameters
 
         val keyText = property.name
 
-        if (keyText == "openapi" && isJsonObject && isJsonFile && property.value?.text == element.text) {
+        if (keyText == SpringWebUtil.OPEN_API && isJsonObject && isJsonFile && property.value?.text == element.text) {
             addLookup(result, true)
         }
 
@@ -56,15 +57,15 @@ class OpenApiVersionCompletionProvider : CompletionProvider<CompletionParameters
 
         val parent = element.parent.parent as? YAMLKeyValue ?: return
 
-        if (parent.keyText == "openapi" && parent.parent is YAMLMapping && (isTypeDString || isTypeText)) {
+        if (parent.keyText == SpringWebUtil.OPEN_API && parent.parent is YAMLMapping && (isTypeDString || isTypeText)) {
             addLookup(result)
         }
     }
 
     private fun addLookup(result: CompletionResultSet, quotes: Boolean = false) {
         val openApiVersions = listOf(
-            "3.0.0" to SpringWebBundle.message("esprito.openapi.3.0.schema.name"),
-            "3.1.0" to SpringWebBundle.message("esprito.openapi.3.1.schema.name")
+            "3.0.0" to SpringWebBundle.message("explyt.openapi.3.0.schema.name"),
+            "3.1.0" to SpringWebBundle.message("explyt.openapi.3.1.schema.name")
         )
 
         openApiVersions.forEach { (version, message) ->

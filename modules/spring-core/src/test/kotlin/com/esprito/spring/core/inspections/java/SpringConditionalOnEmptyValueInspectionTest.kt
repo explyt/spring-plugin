@@ -3,13 +3,13 @@ package com.esprito.spring.core.inspections.java
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.providers.kotlin.ConfigurationPropertyLineMarkerProviderTest.Companion.APPLICATION_PROPERTIES_FILE_NAME
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.test.EspritoInspectionJavaTestCase
+import com.esprito.spring.test.ExplytInspectionJavaTestCase
 import com.esprito.spring.test.TestLibrary
 import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
 
-class SpringConditionalOnEmptyValueInspectionTest : EspritoInspectionJavaTestCase() {
+class SpringConditionalOnEmptyValueInspectionTest : ExplytInspectionJavaTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 

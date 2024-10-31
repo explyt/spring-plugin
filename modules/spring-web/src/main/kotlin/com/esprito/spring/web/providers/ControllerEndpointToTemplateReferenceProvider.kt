@@ -6,7 +6,7 @@ import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.references.RestTemplateReferenceSet
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.fileTypes.FileTypeRegistry

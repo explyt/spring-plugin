@@ -2,9 +2,9 @@ package com.esprito.spring.core.service
 
 import com.esprito.spring.core.JavaCoreClasses
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.util.EspritoAnnotationUtil.getMemberValues
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytAnnotationUtil.getMemberValues
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module

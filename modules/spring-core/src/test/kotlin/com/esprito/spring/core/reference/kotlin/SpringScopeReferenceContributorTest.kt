@@ -1,11 +1,11 @@
 package com.esprito.spring.core.reference.kotlin
 
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElement
 
-class SpringScopeReferenceContributorTest : EspritoKotlinLightTestCase() {
+class SpringScopeReferenceContributorTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     fun testScopeVariantsValue() {

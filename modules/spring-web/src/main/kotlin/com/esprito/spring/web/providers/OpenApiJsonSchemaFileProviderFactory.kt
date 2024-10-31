@@ -11,14 +11,14 @@ class OpenApiJsonSchemaFileProviderFactory : JsonSchemaProviderFactory {
         return mutableListOf(
             SpecificationJsonSchemaFileProvider(
                 OpenApiSpecificationType.OpenApi30.INSTANCE,
-                SpringWebBundle.message("esprito.openapi.3.0.schema.remote.url"),
-                SpringWebBundle.message("esprito.openapi.3.0.schema.name"),
+                SpringWebBundle.message("explyt.openapi.3.0.schema.remote.url"),
+                SpringWebBundle.message("explyt.openapi.3.0.schema.name"),
                 project
             ),
             SpecificationJsonSchemaFileProvider(
                 OpenApiSpecificationType.OpenApi31.INSTANCE,
-                SpringWebBundle.message("esprito.openapi.3.1.schema.remote.url"),
-                SpringWebBundle.message("esprito.openapi.3.1.schema.name"),
+                SpringWebBundle.message("explyt.openapi.3.1.schema.remote.url"),
+                SpringWebBundle.message("explyt.openapi.3.1.schema.name"),
                 project
             ),
         )

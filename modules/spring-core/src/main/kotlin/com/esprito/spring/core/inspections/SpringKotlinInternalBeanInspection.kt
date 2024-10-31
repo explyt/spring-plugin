@@ -5,7 +5,7 @@ import com.esprito.spring.core.SpringCoreBundle.message
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddAnnotationParameterKotlinFix
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.util.EspritoPsiUtil.containKotlinKeyword
+import com.esprito.util.ExplytPsiUtil.containKotlinKeyword
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -40,7 +40,7 @@ class SpringKotlinInternalBeanInspection : SpringBaseUastLocalInspectionTool() {
         val psiElement = method.uastAnchor?.sourcePsi ?: return
         val methodName = psiElement.text ?: return
         problems.registerProblem(
-            psiElement, message("esprito.spring.inspection.kotlin.internal.warning"), WARNING,
+            psiElement, message("explyt.spring.inspection.kotlin.internal.warning"), WARNING,
             AddAnnotationParameterKotlinFix(psiElement, SpringCoreClasses.BEAN, methodName)
         )
     }

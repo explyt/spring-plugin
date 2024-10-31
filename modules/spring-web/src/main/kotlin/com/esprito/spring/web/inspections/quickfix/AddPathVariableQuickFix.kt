@@ -17,7 +17,7 @@ class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: Stri
     LocalQuickFixAndIntentionActionOnPsiElement(psiMethod) {
 
     override fun getFamilyName(): String =
-        SpringWebBundle.message("esprito.spring.web.inspection.pathVariable.omittedParameter.fix")
+        SpringWebBundle.message("explyt.spring.web.inspection.pathVariable.omittedParameter.fix")
 
     override fun getText(): String = familyName
 

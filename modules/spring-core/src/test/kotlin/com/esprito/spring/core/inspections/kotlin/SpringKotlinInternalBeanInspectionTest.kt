@@ -2,10 +2,10 @@ package com.esprito.spring.core.inspections.kotlin
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.SpringKotlinInternalBeanInspection
-import com.esprito.spring.test.EspritoInspectionKotlinTestCase
+import com.esprito.spring.test.ExplytInspectionKotlinTestCase
 import com.esprito.spring.test.TestLibrary
 
-class SpringKotlinInternalBeanInspectionTest : EspritoInspectionKotlinTestCase() {
+class SpringKotlinInternalBeanInspectionTest : ExplytInspectionKotlinTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     override fun setUp() {

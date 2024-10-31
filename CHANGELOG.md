@@ -1,6 +1,6 @@
 <!-- Keep a Changelog guide -> https://keepachangelog.com -->
 
-# Spring Explyt Changelog
+# Explyt Spring Changelog
 
 
 ## [Unreleased]

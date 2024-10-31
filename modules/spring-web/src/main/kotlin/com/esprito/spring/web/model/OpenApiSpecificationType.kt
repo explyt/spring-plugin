@@ -7,44 +7,44 @@ import com.intellij.psi.PsiFile
 
 open class OpenApiSpecificationType(val presentableName: String) {
 
-    open class OpenAPI3Family(presentableName: String) :
+    open class OpenAPI3Components(presentableName: String) :
         OpenApiSpecificationType(presentableName)
 
-    open class OpenAPI30Family :
-        OpenAPI3Family(SpringWebBundle.message("esprito.openapi.3.0.schema.name")) {
+    open class OpenAPI30Components :
+        OpenAPI3Components(SpringWebBundle.message("explyt.openapi.3.0.schema.name")) {
         override fun toString(): String {
-            return SpringWebBundle.message("esprito.openapi.3.0.schema.type")
+            return SpringWebBundle.message("explyt.openapi.3.0.schema.type")
         }
     }
 
-    open class OpenAPI31Family :
-        OpenAPI3Family(SpringWebBundle.message("esprito.openapi.3.1.schema.name")) {
+    open class OpenAPI31Components :
+        OpenAPI3Components(SpringWebBundle.message("explyt.openapi.3.1.schema.name")) {
         override fun toString(): String {
-            return SpringWebBundle.message("esprito.openapi.3.1.schema.type")
+            return SpringWebBundle.message("explyt.openapi.3.1.schema.type")
         }
     }
 
-    object OpenApi30 : OpenAPI30Family() {
+    object OpenApi30 : OpenAPI30Components() {
         val INSTANCE: OpenApi30 = OpenApi30
     }
 
-    object OpenApi31 : OpenAPI31Family() {
+    object OpenApi31 : OpenAPI31Components() {
         val INSTANCE: OpenApi31 = OpenApi31
     }
 
-    interface SecondarySpecificationPart {
+    interface SpecificationExtension {
         val partSchemaId: String
     }
 
-    data class Openapi30SecondarySpecificationPart(override val partSchemaId: String) : OpenAPI30Family(),
-        SecondarySpecificationPart
+    data class OpenAPI30SpecificationExtension(override val partSchemaId: String) : OpenAPI30Components(),
+        SpecificationExtension
 
-    data class Openapi31SecondarySpecificationPart(override val partSchemaId: String) : OpenAPI30Family(),
-        SecondarySpecificationPart
+    data class Openapi31SpecificationExtension(override val partSchemaId: String) : OpenAPI30Components(),
+        SpecificationExtension
 
 
     open class NONE(private val stringValue: String) :
-        OpenApiSpecificationType(SpringWebBundle.message("esprito.openapi.unknown.specification")) {
+        OpenApiSpecificationType(SpringWebBundle.message("explyt.openapi.unknown.specification")) {
 
         override fun toString(): String {
             return this.stringValue

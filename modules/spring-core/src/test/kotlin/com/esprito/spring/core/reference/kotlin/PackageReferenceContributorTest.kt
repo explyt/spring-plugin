@@ -1,12 +1,12 @@
 package com.esprito.spring.core.reference.kotlin
 
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.psi.PsiPackage
 import junit.framework.TestCase
 
-class PackageReferenceContributorTest : EspritoKotlinLightTestCase() {
+class PackageReferenceContributorTest : ExplytKotlinLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + "reference/package"
 

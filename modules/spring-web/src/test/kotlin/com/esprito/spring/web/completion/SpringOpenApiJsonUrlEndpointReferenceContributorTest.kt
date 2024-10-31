@@ -1,15 +1,15 @@
 package com.esprito.spring.web.completion
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.ResolveResult
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import junit.framework.TestCase
 
-class SpringOpenApiJsonUrlEndpointReferenceContributorTest : EspritoJavaLightTestCase() {
+class SpringOpenApiJsonUrlEndpointReferenceContributorTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/openApi"
 
     override val libraries: Array<TestLibrary>
@@ -106,7 +106,7 @@ class SpringOpenApiJsonUrlEndpointReferenceContributorTest : EspritoJavaLightTes
         (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references?.asSequence()
             ?.mapNotNull {
-                it as? EspritoControllerMethodReference
+                it as? ExplytControllerMethodReference
             }?.firstOrNull()
 
     private fun getResolvedText(resolveResult: ResolveResult): String? {

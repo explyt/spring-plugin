@@ -2,7 +2,7 @@ package com.esprito.spring.web.references.contributors
 
 import com.esprito.spring.core.references.contributors.CommonAnnotationReferenceProvider
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.spring.web.references.EspritoPathVariableReference
+import com.esprito.spring.web.references.ExplytPathVariableReference
 import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.uast.injectionHostUExpression
@@ -20,7 +20,7 @@ class PathVariableReferenceProvider : CommonAnnotationReferenceProvider(annotati
         host: PsiLanguageInjectionHost,
         valueText: String,
         rangeInElement: TextRange
-    ): PsiReference = EspritoPathVariableReference(host, valueText, rangeInElement)
+    ): PsiReference = ExplytPathVariableReference(host, valueText, rangeInElement)
 
     override fun getReferences(
         host: PsiLanguageInjectionHost,

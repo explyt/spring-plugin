@@ -43,7 +43,7 @@ import javax.swing.Icon
 abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorityAction, Iconable {
 
     override fun getFamilyName(): String {
-        return SpringCoreBundle.message("esprito.spring.intention.create.property.description.familyName")
+        return SpringCoreBundle.message("explyt.spring.intention.create.property.description.familyName")
     }
 
     override fun getIcon(flags: Int): Icon {
@@ -51,7 +51,7 @@ abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorit
     }
 
     override fun getText(): String {
-        return SpringCoreBundle.message("esprito.spring.intention.create.property.description")
+        return SpringCoreBundle.message("explyt.spring.intention.create.property.description")
     }
 
     override fun startInWriteAction(): Boolean {
@@ -105,10 +105,10 @@ abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorit
                 Messages.showWarningDialog(
                     project,
                     SpringCoreBundle.message(
-                        "esprito.spring.intention.create.property.description.no.roots",
+                        "explyt.spring.intention.create.property.description.no.roots",
                         moduleName
                     ),
-                    SpringCoreBundle.message("esprito.spring.common.notifications.boot")
+                    SpringCoreBundle.message("explyt.spring.common.notifications.boot")
                 )
             }
             return
@@ -140,13 +140,13 @@ abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorit
             .createPopupChooserBuilder(resourceRoots)
             .setTitle(
                 SpringCoreBundle.message(
-                    "esprito.spring.intention.create.property.description.new.file",
+                    "explyt.spring.intention.create.property.description.new.file",
                     propertyInfo.name
                 )
             )
             .setAdText(
                 SpringCoreBundle.message(
-                    "esprito.spring.intention.create.property.not.found"
+                    "explyt.spring.intention.create.property.not.found"
                 )
             )
             .setRenderer(renderer)
@@ -201,7 +201,7 @@ abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorit
         WriteCommandAction.writeCommandAction(project)
             .withName(
                 SpringCoreBundle.message(
-                    "esprito.spring.intention.create.property.description.new.file",
+                    "explyt.spring.intention.create.property.description.new.file",
                     propertyInfo.name
                 )
             )
@@ -233,11 +233,11 @@ abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorit
                             Messages.showWarningDialog(
                                 project,
                                 SpringCoreBundle.message(
-                                    "esprito.spring.intention.create.property.not.associated",
+                                    "explyt.spring.intention.create.property.not.associated",
                                     fileName,
                                     JsonFileType.INSTANCE.name
                                 ),
-                                SpringCoreBundle.message("esprito.spring.common.notifications.boot")
+                                SpringCoreBundle.message("explyt.spring.common.notifications.boot")
                             )
                         }
                     }
@@ -258,10 +258,10 @@ abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorit
             Messages.showWarningDialog(
                 project,
                 SpringCoreBundle.message(
-                    "esprito.spring.intention.create.property.json.invalid",
+                    "explyt.spring.intention.create.property.json.invalid",
                     additionalJson.virtualFile.path
                 ),
-                SpringCoreBundle.message("esprito.spring.common.notifications.boot")
+                SpringCoreBundle.message("explyt.spring.common.notifications.boot")
             )
             return
         }

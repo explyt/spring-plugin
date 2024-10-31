@@ -22,7 +22,7 @@ class ReplacementStringQuickFix(
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
 
     override fun getFamilyName(): String = SpringCoreBundle
-        .message("esprito.spring.inspection.value.replacement.fix", oldValue, newValue)
+        .message("explyt.spring.inspection.value.replacement.fix", oldValue, newValue)
 
     override fun getText(): String = familyName
 

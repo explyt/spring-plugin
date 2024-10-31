@@ -2,17 +2,15 @@ package com.esprito.spring.core.providers
 
 import com.esprito.spring.core.JavaEeClasses
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isOrdinaryClass
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isOrdinaryClass
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMethod
 
-// TODO: add statemachine annotations
-// TODO: add jackson annotations
 class SpringImplicitUsageProvider : ImplicitUsageProvider {
     override fun isImplicitUsage(element: PsiElement): Boolean {
         if (element is PsiClass) {
@@ -51,8 +49,6 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
     }
 
     private fun isDynamicPropertySource(element: PsiMethod): Boolean {
-        // TODO: check for static
-        // if (element.isStatic) // doesn't work in Kotlin
         return /*element.isStatic && */ element.isAnnotatedBy("org.springframework.test.context.DynamicPropertySource")
     }
 

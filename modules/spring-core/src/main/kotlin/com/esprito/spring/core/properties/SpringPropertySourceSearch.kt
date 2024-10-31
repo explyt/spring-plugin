@@ -2,7 +2,7 @@ package com.esprito.spring.core.properties
 
 import com.esprito.module.ExternalSystemModule
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.util.EspritoAnnotationUtil
+import com.esprito.util.ExplytAnnotationUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -40,7 +40,7 @@ class SpringPropertySourceSearch(private val project: Project) {
                 val propertySourceAnnotations = AnnotationUtil
                     .findAllAnnotations(annotatedElement, listOf(SpringCoreClasses.PROPERTY_SOURCE), false)
                 propertySourceAnnotations.flatMap { propertySourceAnn ->
-                    EspritoAnnotationUtil.getArrayAttributeValue(propertySourceAnn, "value")
+                    ExplytAnnotationUtil.getArrayAttributeValue(propertySourceAnn, "value")
                 }
             }
 
@@ -49,8 +49,8 @@ class SpringPropertySourceSearch(private val project: Project) {
                 val propertySourcesAnnotation = AnnotationUtil
                     .findAnnotation(annotatedElement, listOf(SpringCoreClasses.PROPERTY_SOURCES), false)
                     ?: return emptySet()
-                EspritoAnnotationUtil.getArrayValueAnnotations(propertySourcesAnnotation, "value").flatMap {
-                    EspritoAnnotationUtil.getArrayAttributeValue(it, "value")
+                ExplytAnnotationUtil.getArrayValueAnnotations(propertySourcesAnnotation, "value").flatMap {
+                    ExplytAnnotationUtil.getArrayAttributeValue(it, "value")
                 }
             }
 

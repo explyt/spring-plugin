@@ -2,9 +2,9 @@ package com.esprito.spring.data.providers
 
 import com.esprito.spring.data.SpringDataClasses.SPRING_DATA_REST_RESOURCE
 import com.esprito.spring.data.util.SpringDataUtil
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isNonStatic
-import com.esprito.util.EspritoPsiUtil.isOrdinaryClass
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isNonStatic
+import com.esprito.util.ExplytPsiUtil.isOrdinaryClass
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.openapi.module.ModuleUtilCore

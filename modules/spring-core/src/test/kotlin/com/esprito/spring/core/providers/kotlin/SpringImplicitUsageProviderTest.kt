@@ -1,6 +1,6 @@
 package com.esprito.spring.core.providers.kotlin
 
-import com.esprito.spring.test.EspritoInspectionKotlinTestCase
+import com.esprito.spring.test.ExplytInspectionKotlinTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInspection.deadCode.UnusedDeclarationInspection
 import org.jetbrains.kotlin.test.TestMetadata
@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.test.TestMetadata
 private const val TEST_DATA_PATH = "suppresses"
 
 @TestMetadata(TEST_DATA_PATH)
-class SpringImplicitUsageProviderTest : EspritoInspectionKotlinTestCase() {
+class SpringImplicitUsageProviderTest : ExplytInspectionKotlinTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 

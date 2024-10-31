@@ -20,24 +20,6 @@ class SpringToolRunConfigurationsSettingsState :
     @get:Property(surroundWithTag = true)
     var isBeanFilterEnabled by property(true)
 
-    @get:Property(surroundWithTag = true)
-    var stateLicenseConfigurations by property(-1)
-
-    @get:Property(surroundWithTag = true)
-    var textLicenseConfigurations by string("")
-
-    @get:Property(surroundWithTag = true)
-    var licenseOrganizationName by string("")
-
-    @get:Property(surroundWithTag = true)
-    var licenseFullName by string("")
-
-    @get:Property(surroundWithTag = true)
-    var licenseEmail by string("")
-
-    @get:Property(surroundWithTag = true)
-    var licenseEndDate by string("")
-
     override fun getState(): SpringToolRunConfigurationsSettingsState = this
 
     override fun loadState(state: SpringToolRunConfigurationsSettingsState) {

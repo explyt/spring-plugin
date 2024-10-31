@@ -29,7 +29,7 @@
 file ::= profile_expr_ | nested_expr_
 
 private nested_expr_ ::= LPAREN profile_expr_ RPAREN
-private profile_expr_ ::= /*nested_expr_ |*/ //Если нужно поддержать такие странные конструкции как ((abc))
+private profile_expr_ ::= /*nested_expr_ |*/
     and_expression
     | or_expression
     | not_expression

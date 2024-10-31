@@ -4,7 +4,7 @@ import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.util.SpringWebUtil
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module

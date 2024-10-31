@@ -37,7 +37,7 @@ class JpqlInsertStatementInspection : LocalInspectionTool() {
                         holder.registerProblem(
                             it.first,
                             JpaBundle.message(
-                                "esprito.jpa.inspection.insert.type.mismatch",
+                                "explyt.jpa.inspection.insert.type.mismatch",
                                 it.second,
                                 it.first.expression.type
                             ),
@@ -56,7 +56,7 @@ class JpqlInsertStatementInspection : LocalInspectionTool() {
                     holder.registerProblem(
                         it.first,
                         JpaBundle.message(
-                            "esprito.jpa.inspection.insert.type.mismatch",
+                            "explyt.jpa.inspection.insert.type.mismatch",
                             it.second,
                             it.first.expression.type
                         ),
@@ -74,7 +74,7 @@ class JpqlInsertStatementInspection : LocalInspectionTool() {
                 if (identifier.name in names) {
                     holder.registerProblem(
                         identifier,
-                        JpaBundle.message("esprito.jpa.inspection.insert.duplicated.field"),
+                        JpaBundle.message("explyt.jpa.inspection.insert.duplicated.field"),
                         ProblemHighlightType.GENERIC_ERROR
                     )
                 }
@@ -90,7 +90,10 @@ class JpqlInsertStatementInspection : LocalInspectionTool() {
                     insertTuple.insertValueList.drop(identifiers.size).forEach {
                         holder.registerProblem(
                             it,
-                            JpaBundle.message("esprito.jpa.inspection.insert.parameters.count.unexpected", identifiers.size),
+                            JpaBundle.message(
+                                "explyt.jpa.inspection.insert.parameters.count.unexpected",
+                                identifiers.size
+                            ),
                             ProblemHighlightType.GENERIC_ERROR
                         )
                     }
@@ -99,7 +102,7 @@ class JpqlInsertStatementInspection : LocalInspectionTool() {
                 if (insertTuple.insertValueList.size < identifiers.size) {
                     holder.registerProblem(
                         insertTuple.lastChild,
-                        JpaBundle.message("esprito.jpa.inspection.insert.parameters.count.lack", identifiers.size),
+                        JpaBundle.message("explyt.jpa.inspection.insert.parameters.count.lack", identifiers.size),
                         ProblemHighlightType.GENERIC_ERROR
                     )
                 }
@@ -111,7 +114,7 @@ class JpqlInsertStatementInspection : LocalInspectionTool() {
                 selectItems.drop(identifiers.size).forEach {
                     holder.registerProblem(
                         it,
-                        JpaBundle.message("esprito.jpa.inspection.insert.parameters.count.unexpected", identifiers.size),
+                        JpaBundle.message("explyt.jpa.inspection.insert.parameters.count.unexpected", identifiers.size),
                         ProblemHighlightType.GENERIC_ERROR
                     )
                 }
@@ -120,7 +123,7 @@ class JpqlInsertStatementInspection : LocalInspectionTool() {
             if (selectItems.size < identifiers.size) {
                 holder.registerProblem(
                     selectClause.firstChild,
-                    JpaBundle.message("esprito.jpa.inspection.insert.parameters.count.lack", identifiers.size),
+                    JpaBundle.message("explyt.jpa.inspection.insert.parameters.count.lack", identifiers.size),
                     ProblemHighlightType.GENERIC_ERROR
                 )
             }

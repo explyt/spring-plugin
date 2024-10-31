@@ -69,7 +69,7 @@ class EnableAutoConfigureSpringFactoryInspection : SpringBaseLocalInspectionTool
             val movePropertyFix = MovePropertyFix(values)
             problems += manager.createProblemDescriptor(
                 property.psiElement,
-                SpringCoreBundle.message("esprito.spring.inspection.properties.auto.configuration.move.fix"),
+                SpringCoreBundle.message("explyt.spring.inspection.properties.auto.configuration.move.fix"),
                 isOnTheFly,
                 arrayOf(movePropertyFix),
                 ProblemHighlightType.WARNING
@@ -84,7 +84,7 @@ class EnableAutoConfigureSpringFactoryInspection : SpringBaseLocalInspectionTool
 
         problems += manager.createProblemDescriptor(
             property.psiElement,
-            SpringCoreBundle.message("esprito.spring.inspection.properties.auto.configuration.problem"),
+            SpringCoreBundle.message("explyt.spring.inspection.properties.auto.configuration.problem"),
             isOnTheFly,
             arrayOf(fix),
             ProblemHighlightType.WARNING
@@ -124,7 +124,7 @@ private class CreateFilePathSpringFactoriesFix(
 
 private class MovePropertyFix(private val movedValues: List<String>) : LocalQuickFix {
     override fun getFamilyName(): String {
-        return SpringCoreBundle.message("esprito.spring.inspection.properties.auto.configuration.move.fix")
+        return SpringCoreBundle.message("explyt.spring.inspection.properties.auto.configuration.move.fix")
     }
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {

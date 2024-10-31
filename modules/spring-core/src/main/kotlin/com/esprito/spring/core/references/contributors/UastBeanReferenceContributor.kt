@@ -1,7 +1,7 @@
 package com.esprito.spring.core.references.contributors
 
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.references.EspritoBeanReference
+import com.esprito.spring.core.references.ExplytBeanReference
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.uast.injectionHostUExpression
 import com.intellij.psi.*
@@ -18,7 +18,7 @@ class BeanReferenceProvider : CommonAnnotationReferenceProvider(annotationToBean
         host: PsiLanguageInjectionHost,
         valueText: String,
         rangeInElement: TextRange
-    ): PsiReference = EspritoBeanReference(host, valueText, rangeInElement)
+    ): PsiReference = ExplytBeanReference(host, valueText, rangeInElement)
 
     companion object {
         val annotationToBeanProperties = mapOf(

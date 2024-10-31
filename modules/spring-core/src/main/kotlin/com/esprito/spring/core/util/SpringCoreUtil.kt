@@ -8,28 +8,28 @@ import com.esprito.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADAT
 import com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.esprito.spring.core.properties.SpringPropertySourceSearch
 import com.esprito.spring.core.service.SpringSearchUtils
-import com.esprito.util.EspritoAnnotationUtil
-import com.esprito.util.EspritoAnnotationUtil.getStringMemberValues
-import com.esprito.util.EspritoAnnotationUtil.getStringValue
-import com.esprito.util.EspritoPsiUtil.allSupers
-import com.esprito.util.EspritoPsiUtil.deepPsiClassType
-import com.esprito.util.EspritoPsiUtil.findChildrenOfType
-import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
-import com.esprito.util.EspritoPsiUtil.isAbstract
-import com.esprito.util.EspritoPsiUtil.isCollection
-import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
-import com.esprito.util.EspritoPsiUtil.isInterface
-import com.esprito.util.EspritoPsiUtil.isMap
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
-import com.esprito.util.EspritoPsiUtil.isNonPrivate
-import com.esprito.util.EspritoPsiUtil.isObject
-import com.esprito.util.EspritoPsiUtil.isOptional
-import com.esprito.util.EspritoPsiUtil.isString
-import com.esprito.util.EspritoPsiUtil.psiClassType
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
-import com.esprito.util.EspritoPsiUtil.returnPsiClass
-import com.esprito.util.EspritoPsiUtil.returnPsiType
+import com.esprito.util.ExplytAnnotationUtil
+import com.esprito.util.ExplytAnnotationUtil.getStringMemberValues
+import com.esprito.util.ExplytAnnotationUtil.getStringValue
+import com.esprito.util.ExplytPsiUtil.allSupers
+import com.esprito.util.ExplytPsiUtil.deepPsiClassType
+import com.esprito.util.ExplytPsiUtil.findChildrenOfType
+import com.esprito.util.ExplytPsiUtil.getMetaAnnotation
+import com.esprito.util.ExplytPsiUtil.isAbstract
+import com.esprito.util.ExplytPsiUtil.isCollection
+import com.esprito.util.ExplytPsiUtil.isEqualOrInheritor
+import com.esprito.util.ExplytPsiUtil.isInterface
+import com.esprito.util.ExplytPsiUtil.isMap
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
+import com.esprito.util.ExplytPsiUtil.isNonPrivate
+import com.esprito.util.ExplytPsiUtil.isObject
+import com.esprito.util.ExplytPsiUtil.isOptional
+import com.esprito.util.ExplytPsiUtil.isString
+import com.esprito.util.ExplytPsiUtil.psiClassType
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.returnPsiClass
+import com.esprito.util.ExplytPsiUtil.returnPsiType
 import com.esprito.util.ModuleUtil
 import com.esprito.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.esprito.util.runReadNonBlocking
@@ -606,7 +606,7 @@ object SpringCoreUtil {
     ): Boolean {
         return qualifier == null
                 || beanNameFromQualifier != null && beanNameFromQualifier in this.resolveBeanName(module)
-                || EspritoAnnotationUtil.equal(qualifier, this.getAnnotation(qualifier.qualifiedName!!))
+                || ExplytAnnotationUtil.equal(qualifier, this.getAnnotation(qualifier.qualifiedName!!))
     }
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"

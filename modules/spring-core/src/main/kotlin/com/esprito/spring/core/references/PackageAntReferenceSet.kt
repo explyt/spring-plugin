@@ -108,7 +108,8 @@ class PackageAntReference(
         processor: CommonProcessors.CollectProcessor<PsiPackage>,
         maxDeep: Int
     ) {
-        if (maxDeep == 0) return //Проверка не на <= специально, чтобы можно было задать "бесконечную максимальную глубину через -1
+        // The check is not for <= on purpose so that you can set "infinite maximum depth via -1"
+        if (maxDeep == 0) return
 
         for (subPackage in psiPackage.getSubPackages(scope)) {
             processor.process(subPackage)

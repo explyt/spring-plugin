@@ -12,9 +12,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.codeStyle.CodeStyleManager
 
-class AddJsonElementQuickFix(element: PsiElement, val list: List<String>) : LocalQuickFixOnPsiElement(element) {
+class AddJsonElementQuickFix(element: PsiElement, val parameters: List<String>) : LocalQuickFixOnPsiElement(element) {
     override fun getFamilyName(): String =
-        SpringCoreBundle.message("esprito.spring.inspection.metadata.config.quickfix")
+        SpringCoreBundle.message("explyt.spring.inspection.metadata.config.quickfix")
 
     override fun getText(): String = familyName
 
@@ -33,7 +33,7 @@ class AddJsonElementQuickFix(element: PsiElement, val list: List<String>) : Loca
 
         WriteCommandAction.runWriteCommandAction(project, "", null, {
             val generator = JsonElementGenerator(project)
-            list.forEach {
+            parameters.forEach {
                 val hasProperty = jsonObject.propertyList.isNotEmpty()
                 if (hasProperty) {
                     jsonObject.addBefore(generator.createComma(), jsonObject.lastChild)
