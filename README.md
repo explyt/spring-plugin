@@ -60,4 +60,4 @@ The Plugin is completely FREE for both non-commercial and commercial use.
 
 Before any use of the Plugin You must read and accept our [End User License Agreement (EULA)](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md). 
 
-And if You want to utilise the source code of the Plugin, you must read and accept our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
+And if You want to utilise the source code of the Plugin, you must read and accept our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
