@@ -19,8 +19,9 @@ class SpringProfileViewNode(
         super.update(presentation)
         presentation.setIcon(AllIcons.Diff.GutterCheckBox)
         val profileData = data ?: return
-        val springRunConfiguration = RunManager.getInstance(project)
-            .allConfigurationsList.find { it.name == profileData.configurationName } as? SpringBootRunConfiguration
+        val springRunConfiguration = RunManager.getInstance(project).allConfigurationsList
+            .find { it is SpringBootRunConfiguration && it.name == profileData.configurationName }
+                as? SpringBootRunConfiguration
         if (springRunConfiguration == null) {
             presentation.setIcon(AllIcons.Diff.GutterCheckBox)
         } else {
