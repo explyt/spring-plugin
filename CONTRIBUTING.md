@@ -1,6 +1,6 @@
 # Contributing to Explyt Spring Plugin
 
-Thank you for your interest in contributing to Explyt Spring Plugin! This document provides guidelines for submitting contributions. By contributing, you agree to abide by our [Explyt Source License](https://explyt.com/explyt-source-license) and follow best practices to keep the project clean, efficient, and secure.
+Thank you for your interest in contributing to Explyt Spring Plugin! This document provides guidelines for submitting contributions. By contributing, you agree to abide by our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md) and follow best practices to keep the project clean, efficient, and secure.
 
 ## Table of Contents
 1. [Code of Conduct](#1-code-of-conduct)
