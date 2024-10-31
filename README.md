@@ -56,4 +56,6 @@ Thank you for helping us make Explyt Spring Plugin better! ⭐
 
 ## License
 
-The plugin is completely FREE for both non-commercial and commercial use. See the full [LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md) for more details.
+The Plugin is completely FREE for both non-commercial and commercial use. 
+Before use the Plugin you must read and accept our [End User License Agreement (EULA)](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md). 
+In case you want have to utilise the source code of the Plugin, you must read and accept our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
