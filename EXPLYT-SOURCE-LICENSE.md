@@ -26,7 +26,7 @@ In consideration of the License, Licensee's distribution of the Software is subj
 (a) Licensee must retain all copyright and proprietary notices in the Software;  
 (b) Licensee must include the following notice with each copy of the Software:
 
-> "This software is made available by Explyt Ltd under the terms of the Explyt Source License Version 1.0, available at [https://github.com/explyt/spring-plugin/blob/main/Explyt-Source-License.md](https://github.com/explyt/spring-plugin/blob/main/Explyt-Source-License.md) BY INSTALLING, DOWNLOADING, ACCESSING, USING, OR DISTRIBUTING THE SOFTWARE, YOU AGREE TO THE TERMS OF THIS LICENSE."
+> "This software is made available by Explyt Ltd under the terms of the Explyt Source License Version 1.0, available at [https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md](https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md) BY INSTALLING, DOWNLOADING, ACCESSING, USING, OR DISTRIBUTING THE SOFTWARE, YOU AGREE TO THE TERMS OF THIS LICENSE."
 
 ### 1.3 Contributions to Licensor's Repository
 
