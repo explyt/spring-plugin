@@ -22,7 +22,8 @@ class ChangeProfileStateAction : ExternalSystemNodeAction<SpringProfileData>(Spr
         ApplicationManager.getApplication().runWriteAction {
             val configurationName = profileData.configurationName
             val springRunConfiguration = RunManager.getInstance(project).allConfigurationsList
-                .find { it.name == configurationName } as? SpringBootRunConfiguration ?: return@runWriteAction
+                .filterIsInstance<SpringBootRunConfiguration>()
+                .find { it.name == configurationName } ?: return@runWriteAction
             val profileSet = RunConfigurationUtil.stringToProfile(springRunConfiguration.springProfiles)
             val profilesString = getUpdatedProfilesString(profileSet, profileData)
             springRunConfiguration.springProfiles = profilesString
