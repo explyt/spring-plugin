@@ -4,7 +4,7 @@ This Explyt Source License Version 1.0 ("Agreement") sets forth the terms under 
 
 **BY INSTALLING, DOWNLOADING, ACCESSING, USING, OR DISTRIBUTING THE SOFTWARE, YOU AGREE TO THE TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT ACCEPT THESE TERMS AND CONDITIONS, YOU MUST NOT USE THE SOFTWARE. IF YOU ARE RECEIVING THE SOFTWARE ON BEHALF OF A LEGAL ENTITY, YOU REPRESENT AND WARRANT THAT YOU HAVE THE AUTHORITY TO AGREE TO THE TERMS AND CONDITIONS OF THIS AGREEMENT ON BEHALF OF SUCH ENTITY.**
 
-ADDITIONALY YOU AND DEVELOPER WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION LAWSUIT OR CLASS-WIDE ARBITRATION.
+ADDITIONALY LICENSEE AND LICENSOR WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION LAWSUIT OR CLASS-WIDE ARBITRATION.
 
 **Notice**: This is a "source-available" type of license, essentially our custom made open license for the community and you, as the Licensee, may accept it to use the Software and its source code. This license is not certified by the Open Source Initiative and cannot be certified because it prohibits any source code modifications, including the creation of derivative works. However, you are free to use our Software "as is" for both commercial and non-commercial purposes. We would be grateful if you could also contribute to the improvement of our Software, according to the terms of this Agreement, in the official repository [https://github.com/explyt/spring-plugin/](https://github.com/explyt/spring-plugin/), to enhance the experience for everyone. Detailed process of contribution is described at [https://github.com/explyt/spring-plugin/blob/main/CONTRIBUTING.md](https://github.com/explyt/spring-plugin/blob/main/CONTRIBUTING.md).
 
