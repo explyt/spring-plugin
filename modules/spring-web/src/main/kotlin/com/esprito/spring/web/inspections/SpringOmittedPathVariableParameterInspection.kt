@@ -6,9 +6,9 @@ import com.esprito.spring.web.SpringWebBundle
 import com.esprito.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.esprito.spring.web.inspections.quickfix.AddPathVariableQuickFix
 import com.esprito.spring.web.util.SpringWebUtil
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
@@ -51,7 +51,7 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
                 problems += manager.createProblemDescriptor(
                     pathVariableSourcePsi,
                     pathVariableSourcePsi.getHighlightRange(),
-                    SpringWebBundle.message("esprito.spring.web.inspection.pathVariable"),
+                    SpringWebBundle.message("explyt.spring.web.inspection.pathVariable"),
                     ProblemHighlightType.WARNING,
                     isOnTheFly,
                 )
@@ -74,7 +74,7 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
                         problems += manager.createProblemDescriptor(
                             urlPathParamSourcePsi,
                             nameAndRange.range,
-                            SpringWebBundle.message("esprito.spring.web.inspection.pathVariable"),
+                            SpringWebBundle.message("explyt.spring.web.inspection.pathVariable"),
                             ProblemHighlightType.WARNING,
                             isOnTheFly,
                             *fixes.toTypedArray()

@@ -20,11 +20,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ExampleListener {
 
-    @EventListener // Method annotated with @EventListener must be public
+    @EventListener // @EventListener annotation requires the method to be public
     private void handleEvent(Object event) {
     }
 
-    @EventListener // Method must have maximum one parameter
+    @EventListener // @EventListener annotation requires the method to have a maximum of one parameter
     public void processEvent(Object event, String additionalData) {
     }
 }

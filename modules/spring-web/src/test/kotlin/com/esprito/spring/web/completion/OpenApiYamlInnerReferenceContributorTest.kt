@@ -1,10 +1,10 @@
 package com.esprito.spring.web.completion
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.web.references.OpenApiYamlInnerReference
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
-class OpenApiYamlInnerReferenceContributorTest : EspritoJavaLightTestCase() {
+class OpenApiYamlInnerReferenceContributorTest : ExplytJavaLightTestCase() {
 
     fun testResolved() {
         myFixture.configureByText(

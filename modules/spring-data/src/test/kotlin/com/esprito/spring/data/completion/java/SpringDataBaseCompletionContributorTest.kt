@@ -1,11 +1,11 @@
 package com.esprito.spring.data.completion.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import junit.framework.TestCase
 
-class SpringDataBaseCompletionContributorTest : EspritoJavaLightTestCase() {
+class SpringDataBaseCompletionContributorTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1, TestLibrary.springContext_6_0_7, TestLibrary.springDataJpa_3_1_0
     )

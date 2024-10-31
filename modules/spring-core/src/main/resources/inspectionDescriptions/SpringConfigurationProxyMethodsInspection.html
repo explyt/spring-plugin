@@ -14,7 +14,7 @@ class ProxyMethodsConfiguration {
 
   @Bean
   public BeanB beanB() {
-    return new BeanB(beanA()); // Method annotated with @Bean is called directly in a @Configuration where proxyBeanMethods set to false
+    return new BeanB(beanA()); // @Bean method is called directly in a @Configuration where proxyBeanMethods has been disabled (set to false)
   }
 }</code>
 </pre>
@@ -29,7 +29,7 @@ class BeanLightComponent {
 
   @Bean
   public BeanB beanB() {
-    return new BeanB(beanA()); // Method annotated with @Bean is called directly
+    return new BeanB(beanA()); // Method annotated with @Bean is invoked directly
   }
 }</code>
 </pre>

@@ -1,12 +1,12 @@
 package com.esprito.spring.core.providers.kotlin
 
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
 import com.esprito.spring.test.util.SpringGutterTestUtil.getGutterTargetString
 
-class SpringBeanLineMarkerProviderOptionalTest : EspritoKotlinLightTestCase() {
+class SpringBeanLineMarkerProviderOptionalTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springContext_6_0_7,
     )

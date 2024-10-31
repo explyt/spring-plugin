@@ -3,8 +3,8 @@ package com.esprito.spring.core.inspections
 import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
@@ -43,7 +43,7 @@ class SpringConfigurationPropertiesNullableParametersInspection : SpringBaseUast
                     ktParameter,
                     ktParameter.getHighlightRange(),
                     SpringCoreBundle.message(
-                        "esprito.spring.inspection.kotlin.constructor.nullable"
+                        "explyt.spring.inspection.kotlin.constructor.nullable"
                     ),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly

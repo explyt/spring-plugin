@@ -13,12 +13,12 @@ import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.spring.core.util.SpringCoreUtil.targetClass
-import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isOptional
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
-import com.esprito.util.EspritoPsiUtil.returnPsiType
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getMetaAnnotation
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isOptional
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.returnPsiType
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -105,7 +105,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
                     val psiElement = getIdentifyingElement(aClass)?.navigationElement ?: return problems
                     problems += manager.createProblemDescriptor(
                         psiElement,
-                        SpringCoreBundle.message("esprito.spring.inspection.constructor.without.autowiring"),
+                        SpringCoreBundle.message("explyt.spring.inspection.constructor.without.autowiring"),
                         isOnTheFly,
                         emptyArray(),
                         ProblemHighlightType.GENERIC_ERROR
@@ -117,7 +117,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
                     .forEach {
                         problems += manager.createProblemDescriptor(
                             it,
-                            SpringCoreBundle.message("esprito.spring.inspection.constructor.multiple.autowiring"),
+                            SpringCoreBundle.message("explyt.spring.inspection.constructor.multiple.autowiring"),
                             isOnTheFly,
                             emptyArray(),
                             ProblemHighlightType.GENERIC_ERROR
@@ -162,7 +162,10 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
                         manager.createProblemDescriptor(
                             problemElement,
                             getWarningMessageInheritor(module, beanDeclarations,
-                                SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.optional.too-many", nameClass)
+                                SpringCoreBundle.message(
+                                    "explyt.spring.inspection.bean.autowired.optional.too-many",
+                                    nameClass
+                                )
                             ),
                             isOnTheFly,
                             emptyArray(),
@@ -198,7 +201,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             problems += manager.createProblemDescriptor(
                 problemElement,
                 getWarningMessageInheritor(module, beanDeclarations,
-                    SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.too-many", nameClass)
+                    SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.too-many", nameClass)
                 ),
                 AddQualifierQuickFix(SpringCoreClasses.QUALIFIER, problemElement),
                 ProblemHighlightType.GENERIC_ERROR, isOnTheFly
@@ -230,7 +233,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             manager.createProblemDescriptor(
                 qualifier,
                 SpringCoreBundle.message(
-                    "esprito.spring.inspection.bean.class.unknown.qualifier.bean",
+                    "explyt.spring.inspection.bean.class.unknown.qualifier.bean",
                     qualifier.text
                 ),
                 isOnTheFly,
@@ -260,7 +263,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (method.isAutowiredByRequiredTrue() == true && params.isEmpty() && identifier != null) {
             problems += manager.createProblemDescriptor(
                 identifier,
-                SpringCoreBundle.message("esprito.spring.inspection.method.without.autowiring"),
+                SpringCoreBundle.message("explyt.spring.inspection.method.without.autowiring"),
                 isOnTheFly,
                 emptyArray(),
                 ProblemHighlightType.GENERIC_ERROR
@@ -289,7 +292,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
                 val identifier = getIdentifyingElement(it) ?: return@map
                 problems += manager.createProblemDescriptor(
                     identifier,
-                    SpringCoreBundle.message("esprito.spring.inspection.class.without.component"),
+                    SpringCoreBundle.message("explyt.spring.inspection.class.without.component"),
                     isOnTheFly,
                     emptyArray(),
                     ProblemHighlightType.GENERIC_ERROR
@@ -333,7 +336,6 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
     private fun PsiModifierListOwner.isAutowiredByRequiredTrue(): Boolean? {
         if (isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)) {
-            // TODO: support several autowired annotations.
             return getMetaAnnotation(SpringCoreClasses.AUTOWIRED)?.let {
                 AnnotationUtil.getBooleanAttributeValue(it, "required")
             }
@@ -344,12 +346,12 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
     private fun getMessageTypeNone(psiType: PsiType, className: String): String {
         if (psiType.presentableText != className) {
             return SpringCoreBundle.message(
-                "esprito.spring.inspection.bean.autowired.type.none.or",
+                "explyt.spring.inspection.bean.autowired.type.none.or",
                 className,
                 psiType.presentableText
             )
         }
-        return SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.type.none", psiType.presentableText)
+        return SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.type.none", psiType.presentableText)
     }
 
     private fun getIdentifyingElement(namedElement: PsiNameIdentifierOwner): PsiElement? {

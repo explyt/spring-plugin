@@ -52,10 +52,10 @@ class ScheduledCronCompletionContributor : CompletionContributor() {
     companion object {
         private val BASIC_CRON_LIST =
             listOf(
-                Pair("* * * * * *", message("esprito.spring.inspection.scheduled.cron.seconds", "")),
-                Pair("*/5 * * * * *", message("esprito.spring.inspection.scheduled.cron.seconds", "5 ")),
-                Pair("0 * * * * *", message("esprito.spring.inspection.scheduled.cron.minute", "")),
-                Pair("0 */5 * * * *", message("esprito.spring.inspection.scheduled.cron.minute", "5 ")),
+                Pair("* * * * * *", message("explyt.spring.inspection.scheduled.cron.seconds", "")),
+                Pair("*/5 * * * * *", message("explyt.spring.inspection.scheduled.cron.seconds", "5 ")),
+                Pair("0 * * * * *", message("explyt.spring.inspection.scheduled.cron.minute", "")),
+                Pair("0 */5 * * * *", message("explyt.spring.inspection.scheduled.cron.minute", "5 ")),
             )
 
         private val MACROS: Array<String> = arrayOf(

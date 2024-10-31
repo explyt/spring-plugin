@@ -33,7 +33,7 @@ class SpringKotlinObjectInspection : SpringBaseUastLocalInspectionTool() {
         return arrayOf(
             manager.createProblemDescriptor(
                 objectKeywordPsi,
-                SpringCoreBundle.message("esprito.spring.inspection.kotlin.object.title"),
+                SpringCoreBundle.message("explyt.spring.inspection.kotlin.object.title"),
                 isOnTheFly,
                 arrayOf(KotlinObjectToClassQuickFix(objectDeclaration)),
                 ProblemHighlightType.WARNING

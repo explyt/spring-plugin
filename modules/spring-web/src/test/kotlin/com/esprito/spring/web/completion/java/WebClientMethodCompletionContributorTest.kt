@@ -1,11 +1,11 @@
 package com.esprito.spring.web.completion.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 
-class WebClientMethodCompletionContributorTest : EspritoJavaLightTestCase() {
+class WebClientMethodCompletionContributorTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/bodyToMethod"
 
     override val libraries: Array<TestLibrary>
@@ -152,7 +152,7 @@ class WebClientMethodCompletionContributorTest : EspritoJavaLightTestCase() {
 
             fun of(builder: LookupElementBuilder): LookupDetails? {
                 val key = builder.get().keys
-                    .firstOrNull { it.toString() == "LAST_COMPUTED_PRESENTATION" } //Не нашёл адекватного способа вытащить значение из билдера
+                    .firstOrNull { it.toString() == "LAST_COMPUTED_PRESENTATION" }
                     ?: return null
                 val presentation = builder.getUserData(key) as? LookupElementPresentation ?: return null
 

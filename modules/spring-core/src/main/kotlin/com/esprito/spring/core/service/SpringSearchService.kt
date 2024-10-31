@@ -21,16 +21,16 @@ import com.esprito.spring.core.util.SpringCoreUtil.possibleMultipleBean
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.util.CacheKeyStore
-import com.esprito.util.EspritoAnnotationUtil.getLongValue
-import com.esprito.util.EspritoPsiUtil.getMetaAnnotation
-import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
-import com.esprito.util.EspritoPsiUtil.isGeneric
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isNonStatic
-import com.esprito.util.EspritoPsiUtil.isPublic
-import com.esprito.util.EspritoPsiUtil.resolvedDeepPsiClass
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
-import com.esprito.util.EspritoPsiUtil.returnPsiClass
+import com.esprito.util.ExplytAnnotationUtil.getLongValue
+import com.esprito.util.ExplytPsiUtil.getMetaAnnotation
+import com.esprito.util.ExplytPsiUtil.isEqualOrInheritor
+import com.esprito.util.ExplytPsiUtil.isGeneric
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isNonStatic
+import com.esprito.util.ExplytPsiUtil.isPublic
+import com.esprito.util.ExplytPsiUtil.resolvedDeepPsiClass
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.returnPsiClass
 import com.esprito.util.ModuleUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
@@ -109,7 +109,6 @@ class SpringSearchService(private val project: Project) {
             for (psiBean in foundActive) {
                 val uBeanMember = psiBean.psiMember.toUElement()
                 if (uBeanMember == null) {
-                    // может быть стоит для внешних бинов сделать отдельную иконку?
                     active += psiBean
                     continue
                 }
@@ -460,7 +459,7 @@ class SpringSearchService(private val project: Project) {
                 beanPsiClass != null && it.isEqualOrInheritor(beanPsiClass)
                         || beanPsiType is PsiWildcardType && it.matchesWildcardType(beanPsiType)
             }
-            .filter { !it.isGeneric(sourcePsiType) || !byTypeBeanMethodsIsEmpty } //TODO: check why we are checking against byTypeBeanMethods
+            .filter { !it.isGeneric(sourcePsiType) || !byTypeBeanMethodsIsEmpty }
         return byTypeComponents
     }
 

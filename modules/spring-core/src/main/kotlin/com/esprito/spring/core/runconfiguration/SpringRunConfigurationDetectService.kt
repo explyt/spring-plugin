@@ -5,7 +5,7 @@ import com.esprito.spring.core.SpringRunConfigurationBundle
 import com.esprito.spring.core.notifications.SpringToolNotificationGroup
 import com.esprito.spring.core.runconfiguration.lifecycle.SpringBootLifecycleManager
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.ide.util.PropertiesComponent

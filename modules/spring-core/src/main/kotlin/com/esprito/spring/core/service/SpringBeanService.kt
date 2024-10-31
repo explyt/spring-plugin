@@ -6,8 +6,8 @@ import com.esprito.spring.core.util.SpringCoreUtil.getBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.esprito.spring.core.util.SpringCoreUtil.resolvePsiClass
-import com.esprito.util.EspritoPsiUtil.isGeneric
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isGeneric
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -24,7 +24,7 @@ class SpringBeanService {
         beanName: String
     ): Set<PsiBean> {
         val beanPsiType = psiType.beanPsiType ?: return emptySet()
-        val beanPsiClass = psiType.resolveBeanPsiClass ?: return emptySet() // TODO: recheck the code here
+        val beanPsiClass = psiType.resolveBeanPsiClass ?: return emptySet()
         val searchServiceFacade = SpringSearchServiceFacade.getInstance(module.project)
 
         val excludedBeans = searchServiceFacade.getExcludedBeansClasses(module)

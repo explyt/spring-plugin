@@ -1,12 +1,12 @@
 package com.esprito.spring.core.completion.properties.java
 
 import com.esprito.spring.core.properties.providers.ConfigKeyPsiElement
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.psi.PsiMember
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 
-class LibrarySpringConfigurationPropertiesReferenceContributorTest : EspritoJavaLightTestCase() {
+class LibrarySpringConfigurationPropertiesReferenceContributorTest : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + "completion/properties"
 

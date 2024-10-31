@@ -10,9 +10,9 @@ import com.esprito.spring.core.SpringCoreClasses.CONDITIONAL_ON_MISSING_BEAN
 import com.esprito.spring.core.SpringCoreClasses.CONDITIONAL_ON_MISSING_CLASS
 import com.esprito.spring.core.SpringCoreClasses.CONDITIONAL_ON_PROPERTY
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -77,7 +77,7 @@ class SpringConditionalOnWrongPlacementInspection : SpringBaseUastLocalInspectio
                 manager.createProblemDescriptor(
                     sourcePsi,
                     sourcePsi.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.conditionalOn.wrongPlacement"),
+                    SpringCoreBundle.message("explyt.spring.inspection.conditionalOn.wrongPlacement"),
                     ProblemHighlightType.WARNING,
                     isOnTheFly
                 )

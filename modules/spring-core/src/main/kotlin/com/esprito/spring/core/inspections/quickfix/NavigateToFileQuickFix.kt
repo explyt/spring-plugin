@@ -20,7 +20,7 @@ class NavigateToFileQuickFix(val file: VirtualFile, val search: String? = null) 
 
     override fun startInWriteAction(): Boolean = false
 
-    override fun getFamilyName(): String = message("esprito.spring.quick.fix.navigate", fileName)
+    override fun getFamilyName(): String = message("explyt.spring.quick.fix.navigate", fileName)
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
         ApplicationManager.getApplication().invokeLater {

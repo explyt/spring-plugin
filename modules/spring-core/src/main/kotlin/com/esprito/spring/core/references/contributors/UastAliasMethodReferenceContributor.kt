@@ -1,7 +1,7 @@
 package com.esprito.spring.core.references.contributors
 
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.references.EspritoAliasMethodReference
+import com.esprito.spring.core.references.ExplytAliasMethodReference
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.uast.injectionHostUExpression
 import com.intellij.psi.*
@@ -18,7 +18,7 @@ class AliasMethodReferenceProvider : CommonAnnotationReferenceProvider(annotatio
         host: PsiLanguageInjectionHost,
         valueText: String,
         rangeInElement: TextRange
-    ): PsiReference = EspritoAliasMethodReference(host, valueText, rangeInElement)
+    ): PsiReference = ExplytAliasMethodReference(host, valueText, rangeInElement)
 
     companion object {
         val annotationToMethodProperties = mapOf(

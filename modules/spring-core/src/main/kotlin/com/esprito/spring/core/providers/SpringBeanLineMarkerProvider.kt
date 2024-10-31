@@ -15,13 +15,13 @@ import com.esprito.spring.core.util.SpringCoreUtil.getArrayType
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.isCandidate
 import com.esprito.spring.core.util.SpringCoreUtil.isComponentCandidate
-import com.esprito.util.EspritoAnnotationUtil.getMetaAnnotationMemberValues
-import com.esprito.util.EspritoPsiUtil.allSupers
-import com.esprito.util.EspritoPsiUtil.isAbstract
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isFinal
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isPrivate
+import com.esprito.util.ExplytAnnotationUtil.getMetaAnnotationMemberValues
+import com.esprito.util.ExplytPsiUtil.allSupers
+import com.esprito.util.ExplytPsiUtil.isAbstract
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isFinal
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isPrivate
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -79,25 +79,25 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findFieldsAndMethodsWithAutowired() })
                 .setTooltipText(getTooltipMessage(processor))
-                .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
-                .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title"))
                 .setTargetRenderer { getTargetRender() }
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isClassForBeanMethod()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findBeanDeclarations() })
-                .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
-                .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
-                .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isFieldOrAutowiredParameter()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.getBeanDeclarations() })
-                .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
-                .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
-                .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
 
             result.add(builder.createLineMarkerInfo(element))
         }
@@ -105,8 +105,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringFactories)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findFactoriesMetadataFiles() })
-                .setTooltipText(SpringCoreBundle.message("esprito.spring.factories.gutter.tooltip"))
-                .setPopupTitle(SpringCoreBundle.message("esprito.spring.factories.gutter.popup.title"))
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.factories.gutter.tooltip"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.factories.gutter.popup.title"))
             result.add(builder.createLineMarkerInfo(element))
         }
     }
@@ -122,9 +122,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun getTooltipMessage(processor: LineMarkerElementProcessor) =
         if (processor.inSpringContextClass == true)
-            SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate")
+            SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate")
         else
-            SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate.innactive")
+            SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate.innactive")
 
     private fun getComponentIcom(processor: LineMarkerElementProcessor) =
         if (processor.inSpringContextClass == true)
@@ -381,9 +381,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
     }
 
-    /**
-     * code from /com/intellij/codeInsight/navigation/util.kt:targetPresentation
-     */
     fun getTargetRender(): PsiTargetPresentationRenderer<PsiElement> {
         return object : PsiTargetPresentationRenderer<PsiElement>() {
 

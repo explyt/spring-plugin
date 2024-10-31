@@ -4,7 +4,7 @@ import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.runconfiguration.SpringBootConfigurationFactory
 import com.esprito.spring.core.service.AnnotationConfigApplicationService
 import com.esprito.spring.core.service.PackageScanService
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.execution.RunManager
 import com.intellij.execution.impl.RunManagerImpl
@@ -18,7 +18,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import junit.framework.TestCase
 
 
-class PackageScanServiceTest : EspritoKotlinLightTestCase() {
+class PackageScanServiceTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     override fun setUp() {

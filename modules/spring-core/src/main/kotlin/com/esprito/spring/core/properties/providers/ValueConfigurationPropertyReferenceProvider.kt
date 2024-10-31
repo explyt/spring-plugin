@@ -1,6 +1,6 @@
 package com.esprito.spring.core.properties.providers
 
-import com.esprito.spring.core.properties.references.EspritoPropertyReference
+import com.esprito.spring.core.properties.references.ExplytPropertyReference
 import com.esprito.spring.core.util.SpringCoreUtil.removeDummyIdentifier
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiLanguageInjectionHost
@@ -34,7 +34,7 @@ class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferencePr
             val startPosition =
                 if (uExpression.lang == KotlinLanguage.INSTANCE) 4 else 3
             return arrayOf(
-                EspritoPropertyReference(
+                ExplytPropertyReference(
                     host, "", TextRange.from(startPosition, 0)
                 )
             )
@@ -45,7 +45,7 @@ class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferencePr
                 val text = host.text.removeDummyIdentifier()
                 val startOffset = text.indexOf(referenceProperty.key)
 
-                EspritoPropertyReference(
+                ExplytPropertyReference(
                     host, referenceProperty.key,
                     TextRange.from(startOffset, referenceProperty.key.length)
                 )

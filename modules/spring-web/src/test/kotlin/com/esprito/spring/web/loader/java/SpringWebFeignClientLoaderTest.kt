@@ -1,13 +1,13 @@
 package com.esprito.spring.web.loader.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.web.loader.SpringWebEndpointsLoader
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "loader/src"
 
-class SpringWebFeignClientLoaderTest : EspritoJavaLightTestCase() {
+class SpringWebFeignClientLoaderTest : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 

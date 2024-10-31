@@ -40,7 +40,7 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
     ): ProblemDescriptor = manager.createProblemDescriptor(
         psiKey,
         ElementManipulators.getValueTextRange(psiKey),
-        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.kebab"),
+        SpringCoreBundle.message("explyt.spring.inspection.properties.value.should.be.kebab"),
         ProblemHighlightType.WARNING,
         isOnTheFly,
         ReplacementKeyQuickFix(toKebabCase(key), psiKey.parent)

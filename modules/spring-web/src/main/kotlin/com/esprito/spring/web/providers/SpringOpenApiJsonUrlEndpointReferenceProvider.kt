@@ -1,6 +1,6 @@
 package com.esprito.spring.web.providers
 
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.intellij.json.psi.JsonProperty
@@ -32,7 +32,7 @@ class SpringOpenApiJsonUrlEndpointReferenceProvider : PsiReferenceProvider() {
         val key = nameElement.value
 
         return arrayOf(
-            EspritoControllerMethodReference(
+            ExplytControllerMethodReference(
                 nameElement,
                 key,
                 null,
@@ -54,7 +54,7 @@ class SpringOpenApiJsonUrlEndpointReferenceProvider : PsiReferenceProvider() {
         if (pathElement.name != PATHS) return emptyArray()
 
         return arrayOf(
-            EspritoControllerMethodReference(
+            ExplytControllerMethodReference(
                 nameElement,
                 url,
                 key.uppercase(),

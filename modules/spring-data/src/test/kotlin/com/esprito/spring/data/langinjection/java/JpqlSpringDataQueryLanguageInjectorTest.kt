@@ -1,13 +1,13 @@
 package com.esprito.spring.data.langinjection.java
 
 import com.esprito.jpa.ql.JpqlLanguage
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 
 @TestDataPath(JpqlSpringDataQueryLanguageInjectorTest.TEST_DATA_PATH)
-class JpqlSpringDataQueryLanguageInjectorTest : EspritoJavaLightTestCase() {
+class JpqlSpringDataQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(

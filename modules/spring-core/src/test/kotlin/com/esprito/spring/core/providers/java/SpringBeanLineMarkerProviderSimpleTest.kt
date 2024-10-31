@@ -2,7 +2,7 @@ package com.esprito.spring.core.providers.java
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
 import com.esprito.spring.test.util.SpringGutterTestUtil.getGutterTargetString
@@ -10,7 +10,7 @@ import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "providers/linemarkers/beans"
 
-class SpringBeanLineMarkerProviderSimpleTest : EspritoJavaLightTestCase() {
+class SpringBeanLineMarkerProviderSimpleTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(

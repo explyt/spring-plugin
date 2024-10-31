@@ -38,16 +38,13 @@ class SpringYamlInspection : SpringBasePropertyInspection() {
     ): ProblemDescriptor = manager.createProblemDescriptor(
         psiKey,
         ElementManipulators.getValueTextRange(psiKey),
-        SpringCoreBundle.message("esprito.spring.inspection.properties.value.should.be.kebab"),
+        SpringCoreBundle.message("explyt.spring.inspection.properties.value.should.be.kebab"),
         ProblemHighlightType.WARNING,
         isOnTheFly,
         YamlKeyToKebabQuickFix(psiKey.parent)
     )
 }
 
-/**
- * Copied from org.jetbrains.yaml.inspections.YAMLDuplicatedKeysInspection
- */
 private class RemoveDuplicatedKeyQuickFix : LocalQuickFix {
     override fun getFamilyName(): String {
         return YAMLBundle.message("YAMLDuplicatedKeysInspection.remove.key.quickfix.name")

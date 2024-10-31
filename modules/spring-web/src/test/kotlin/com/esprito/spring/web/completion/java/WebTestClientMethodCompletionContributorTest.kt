@@ -1,11 +1,11 @@
 package com.esprito.spring.web.completion.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 
-class WebTestClientMethodCompletionContributorTest : EspritoJavaLightTestCase() {
+class WebTestClientMethodCompletionContributorTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/bodyToMethod"
 
     override val libraries: Array<TestLibrary>

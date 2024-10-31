@@ -9,7 +9,7 @@ import com.esprito.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEnd
 import com.esprito.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
 import com.esprito.spring.web.providers.EndpointUsageSearcher.findWebTestClientEndpointUsage
 import com.esprito.spring.web.util.SpringWebUtil
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -49,9 +49,9 @@ open class RouteFunctionEndpointLineMarkerProvider : RelatedItemLineMarkerProvid
             )
             //})
             .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
-            .setTooltipText(SpringWebBundle.message("esprito.spring.web.gutter.endpoint.tooltip"))
-            .setPopupTitle(SpringWebBundle.message("esprito.spring.web.gutter.endpoint.popup"))
-            .setEmptyPopupText(SpringWebBundle.message("esprito.spring.web.gutter.endpoint.empty"))
+            .setTooltipText(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.tooltip"))
+            .setPopupTitle(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.popup"))
+            .setEmptyPopupText(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.empty"))
             .createLineMarkerInfo(element)
     }
 

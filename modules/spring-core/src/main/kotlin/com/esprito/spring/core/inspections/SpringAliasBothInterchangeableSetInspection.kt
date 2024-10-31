@@ -4,8 +4,8 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.ALIAS_FOR
 import com.esprito.spring.core.service.AliasUtils
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -63,7 +63,7 @@ class SpringAliasBothInterchangeableSetInspection : SpringBaseUastLocalInspectio
                                 attributeValue,
                                 attributeValue.getHighlightRange(),
                                 SpringCoreBundle.message(
-                                    "esprito.spring.inspection.alias.interchangeable",
+                                    "explyt.spring.inspection.alias.interchangeable",
                                     rootQn,
                                     attribute.attributeName,
                                     conflictedNames.toString()
@@ -97,7 +97,7 @@ class SpringAliasBothInterchangeableSetInspection : SpringBaseUastLocalInspectio
             while (true) {
                 val aliasAnnotation = AnnotationUtil.findAnnotation(aliasedMethod, ALIAS_FOR)
                 if (aliasAnnotation == null) {
-                    //Добрались до самой глубокой, больше ни на кого не ссылаемся
+                    // deepest part, we don’t refer to anyone else
                     attributesByRoot.addValue(
                         aliasedClassQn,
                         AttributeInfo(attribute, setOf(aliasedName))
@@ -111,7 +111,7 @@ class SpringAliasBothInterchangeableSetInspection : SpringBaseUastLocalInspectio
                     || topAliasedClass.qualifiedName == aliasedClassQn
                     || nextAliasedMethodName == null
                 ) {
-                    // Ссылаемся на другой метод на том же уровне
+                    // referring to another method at the same level
                     attributesByRoot.addValue(
                         aliasedClassQn,
                         AttributeInfo(

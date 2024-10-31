@@ -1,13 +1,13 @@
 package com.esprito.spring.web.loader.kotlin
 
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.web.loader.SpringWebEndpointsLoader
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "loader/src"
 
-class SpringWebFeignClientLoaderTest : EspritoKotlinLightTestCase() {
+class SpringWebFeignClientLoaderTest : ExplytKotlinLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 

@@ -210,7 +210,7 @@ class ConfigurationPropertyKeyReference(
 
     override fun getUnresolvedMessagePattern(): String {
         return SpringCoreBundle.message(
-            "esprito.spring.inspection.metadata.config.unresolved.key.reference",
+            "explyt.spring.inspection.metadata.config.unresolved.key.reference",
             this.value
         )
     }

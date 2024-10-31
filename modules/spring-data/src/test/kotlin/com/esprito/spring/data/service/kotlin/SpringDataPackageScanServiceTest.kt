@@ -1,12 +1,12 @@
 package com.esprito.spring.data.service.kotlin
 
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
 import junit.framework.TestCase
 
-class SpringDataPackageScanServiceTest : EspritoKotlinLightTestCase() {
+class SpringDataPackageScanServiceTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1, TestLibrary.springContext_6_0_7, TestLibrary.springDataJpa_3_1_0
     )

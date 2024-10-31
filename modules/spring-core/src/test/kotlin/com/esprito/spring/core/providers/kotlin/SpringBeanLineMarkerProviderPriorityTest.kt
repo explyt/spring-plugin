@@ -1,14 +1,14 @@
 package com.esprito.spring.core.providers.kotlin
 
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "providers/linemarkers/beans"
 
-class SpringBeanLineMarkerProviderPriorityTest : EspritoKotlinLightTestCase() {
+class SpringBeanLineMarkerProviderPriorityTest : ExplytKotlinLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)

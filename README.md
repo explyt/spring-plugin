@@ -1,6 +1,7 @@
-The [Spring Explyt plugin](https://explyt.com/spring) enhances your IntelliJ IDEA Community experience, making Spring development in Java and Kotlin more productive and enjoyable.
+The [Explyt Spring plugin](https://explyt.com/spring) enhances your IntelliJ IDEA Community experience, making Spring
+development in Java and Kotlin more productive and enjoyable.
 
-## Spring Explyt plugin will:
+## Explyt Spring plugin will:
 - accelerate the development of your Spring and Spring Boot applications
 - allow you to create Spring projects directly within the IDE using Spring Initializr and intuitive wizards
 - support Spring Boot profiles, configurations, and properties
@@ -14,7 +15,7 @@ The [Spring Explyt plugin](https://explyt.com/spring) enhances your IntelliJ IDE
 - minimize your routine tasks
 - make sure your code follows best practices
 
-### Spring Explyt plugin provides solid support for:
+### Explyt Spring plugin provides solid support for:
 - Spring Boot
 - Spring Framework
 - Spring Data (JPQL language injection in @Query, Repository support)
@@ -39,7 +40,7 @@ The [Spring Explyt plugin](https://explyt.com/spring) enhances your IntelliJ IDE
 - Auto-Configurations and Spring-Boot-Starters
 - Spring Boot Tests
 
-To use the Spring Explyt plugin in IntelliJ IDEA Ultimate, you must disable the Spring plugin (to avoid conflicts). 
+To use the Explyt Spring plugin in IntelliJ IDEA Ultimate, you must disable the Spring plugin (to avoid conflicts).
 The plugin supports Spring 6 and higher.
 
 [LICENSE](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)

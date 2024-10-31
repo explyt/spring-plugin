@@ -1,14 +1,14 @@
 package com.esprito.spring.web.providers.java
 
 import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.esprito.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "providers/linemarkers"
 
-class RouteFunctionEndpointLineMarkerProviderTest : EspritoJavaLightTestCase() {
+class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(

@@ -5,20 +5,20 @@
       url="https://nexus.veeroute.com/repository/esprito-spring-tools/files/esprito-spring-tools-plugin-2023.1.356-232.zip"
       version="2023.1.356-232">
     <idea-version since-build="232.9921.47" until-build="232.*"/>
-    <name>Spring Explyt</name>
+    <name>Explyt Spring</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor email="info@explyt.com" url="https://explyt.com/plugin/">Explyt</vendor>
     <category>JVM Frameworks</category>
     
 <description><![CDATA[
-<p><a href="https://explyt.com/plugin/">Spring Explyt plugin</a> (former Esprito Spring Tools) accelerates development of your Spring and Spring Boot applications by minimizing routine tasks, supporting Spring Boot profiles, configurations and properties, highlighting Spring Core Beans dependencies and usages. Moreover, it validates that Spring Beans injections are used correctly.</p>
-<p>Spring Explyt plugin provides solid support for Spring Data, Spring Web, Spring Reactive Web, Spring AOP (in progress) including AspectJ, Spring Security, Spring Integration (partly).</p>
+<p><a href="https://explyt.com/plugin/">Explyt Spring plugin</a> (former Esprito Spring Tools) accelerates development of your Spring and Spring Boot applications by minimizing routine tasks, supporting Spring Boot profiles, configurations and properties, highlighting Spring Core Beans dependencies and usages. Moreover, it validates that Spring Beans injections are used correctly.</p>
+<p>Explyt Spring plugin provides solid support for Spring Data, Spring Web, Spring Reactive Web, Spring AOP (in progress) including AspectJ, Spring Security, Spring Integration (partly).</p>
 <p>The plugin creates a developer-friendly environment for programmers working with IntelliJ IDEA Community Edition, Android Studio, Aqua, and helps you better understand the context of your Spring applications.</p>
 <p>It highlights the mistakes, misbehavior, and possible problems and typos in your code using more than 50 inspections.</p>
-<p>Spring Explyt plugin allows you to create Spring projects inside IDE using <a href="https://start.spring.io/">Spring Initializr</a>.</p>
+<p>Explyt Spring plugin allows you to create Spring projects inside IDE using <a href="https://start.spring.io/">Spring Initializr</a>.</p>
 <p>It supports Java and other JVM languages (Kotlin, Scala, etc), enables syntax support  for JPQL, OpenAPI (swagger).</p>
-<p>To use Spring Explyt plugin in IntelliJ IDEA Ultimate please disable Spring plugin (conflict functionality). The plugin supports Spring 6 and higher.</p>
+<p>To use Explyt Spring plugin in IntelliJ IDEA Ultimate please disable Spring plugin (conflict functionality). The plugin supports Spring 6 and higher.</p>
 <p>This plugin is available for free for non-commercial use. </p>
 <p>This plugin is available free of charge.</p>
 <ul>

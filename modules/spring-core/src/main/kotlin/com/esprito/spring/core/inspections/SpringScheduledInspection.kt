@@ -80,7 +80,7 @@ class SpringScheduledInspection : SpringBaseUastLocalInspectionTool() {
             && isPresentValue(annotation.findAttributeValue(INITIAL_DELAY_STRING))
         ) {
             val psiElement = annotation.sourcePsi ?: return
-            problems.registerProblem(psiElement, message("esprito.spring.inspection.scheduling.initial.both"), WARNING)
+            problems.registerProblem(psiElement, message("explyt.spring.inspection.scheduling.initial.both"), WARNING)
         }
     }
 
@@ -100,7 +100,7 @@ class SpringScheduledInspection : SpringBaseUastLocalInspectionTool() {
         } catch (e: Exception) {
             val errorString = e.message ?: return
             val finalMessage = errorString + System.lineSeparator() +
-                    message("esprito.spring.inspection.scheduled.cron.hint")
+                    message("explyt.spring.inspection.scheduled.cron.hint")
             problems.registerProblem(psiElement, finalMessage)
         }
     }
@@ -127,7 +127,7 @@ class SpringScheduledInspection : SpringBaseUastLocalInspectionTool() {
             } catch (e: Exception) {
                 val psiElement = uExpression.sourcePsi ?: return
                 problems.registerProblem(
-                    psiElement, message("esprito.spring.inspection.scheduled.parse.long", value), WARNING
+                    psiElement, message("explyt.spring.inspection.scheduled.parse.long", value), WARNING
                 )
             }
         }
@@ -135,7 +135,7 @@ class SpringScheduledInspection : SpringBaseUastLocalInspectionTool() {
 
     private fun registerExactlyOneProblem(annotation: UAnnotation, problems: ProblemsHolder) {
         val psiElement = annotation.sourcePsi ?: return
-        problems.registerProblem(psiElement, message("esprito.spring.inspection.scheduling.required"), WARNING)
+        problems.registerProblem(psiElement, message("explyt.spring.inspection.scheduling.required"), WARNING)
     }
 
     private fun isDurationString(value: String): Boolean {

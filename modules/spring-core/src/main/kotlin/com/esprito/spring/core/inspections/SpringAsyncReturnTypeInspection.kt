@@ -3,8 +3,8 @@ package com.esprito.spring.core.inspections
 import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isPrivate
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isPrivate
 import com.intellij.codeInsight.daemon.impl.quickfix.MethodReturnTypeFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -56,7 +56,7 @@ class SpringAsyncReturnTypeInspection : SpringBaseUastLocalInspectionTool() {
         return listOf(
             manager.createProblemDescriptor(
                 psiIdentifier,
-                SpringCoreBundle.message("esprito.spring.inspection.async.signature.incorrect"),
+                SpringCoreBundle.message("explyt.spring.inspection.async.signature.incorrect"),
                 isOnTheFly,
                 arrayOf(
                     MethodReturnTypeFix(psiMethod, createReturnType(genericPsiClass, psiMethod, returnType), true)

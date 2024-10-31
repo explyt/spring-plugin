@@ -4,8 +4,8 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.service.SpringSearchServiceFacade
 import com.esprito.spring.security.SpringSecurityBundle
 import com.esprito.spring.security.SpringSecurityClasses
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.codeInspection.InspectionManager
@@ -67,7 +67,7 @@ class SpringSecurityAnnotationWithUserDetailsInspection : AbstractBaseUastLocalI
             problems += manager.createProblemDescriptor(
                 element,
                 element.getHighlightRange(),
-                SpringSecurityBundle.message("esprito.spring.inspection.bean.error.message", beanName),
+                SpringSecurityBundle.message("explyt.spring.inspection.bean.error.message", beanName),
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                 isOnTheFly
             )
@@ -77,7 +77,7 @@ class SpringSecurityAnnotationWithUserDetailsInspection : AbstractBaseUastLocalI
                     element,
                     element.getHighlightRange(),
                     SpringSecurityBundle.message(
-                        "esprito.spring.inspection.bean.must.type",
+                        "explyt.spring.inspection.bean.must.type",
                         SpringSecurityClasses.USER_DETAILS_SERVICE
                     ),
                     ProblemHighlightType.GENERIC_ERROR_OR_WARNING,

@@ -8,14 +8,11 @@ import com.intellij.psi.*
 import com.intellij.psi.util.parentOfType
 
 
-/**
- * This class provides a solution to inspection
- */
 class AddAsMethodArgQuickFix(identifier: PsiIdentifier) :
     LocalQuickFixAndIntentionActionOnPsiElement(identifier) {
 
     override fun getFamilyName(): String =
-        SpringCoreBundle.message("esprito.spring.inspection.configuration.proxy.quickfix")
+        SpringCoreBundle.message("explyt.spring.inspection.configuration.proxy.quickfix")
 
     override fun getText(): String = familyName
 

@@ -36,7 +36,7 @@ private class CallExpressionVisitor(private val holder: ProblemsHolder) : Abstra
         val psiMethod = node.resolve() ?: return
         if (!methodsInfo.beanPublicAnnotatedMethods.contains(psiMethod)) return
 
-        holder.registerProblem(sourcePsi, message("esprito.spring.inspection.method.same.class.title"), WARNING)
+        holder.registerProblem(sourcePsi, message("explyt.spring.inspection.method.same.class.title"), WARNING)
     }
 
 }

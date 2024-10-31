@@ -1,10 +1,10 @@
 package com.esprito.spring.core.completion.properties.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.intellij.codeInsight.completion.CompletionType
 import org.jetbrains.kotlin.test.TestMetadata
 
-abstract class AbstractSpringPropertiesCompletionContributorTestCase : EspritoJavaLightTestCase() {
+abstract class AbstractSpringPropertiesCompletionContributorTestCase : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + "completion/properties"
 

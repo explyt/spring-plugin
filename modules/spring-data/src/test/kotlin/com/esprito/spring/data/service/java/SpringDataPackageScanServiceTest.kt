@@ -1,12 +1,12 @@
 package com.esprito.spring.data.service.java
 
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
 import junit.framework.TestCase
 
-class SpringDataPackageScanServiceTest : EspritoJavaLightTestCase() {
+class SpringDataPackageScanServiceTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1, TestLibrary.springContext_6_0_7, TestLibrary.springDataJpa_3_1_0
     )

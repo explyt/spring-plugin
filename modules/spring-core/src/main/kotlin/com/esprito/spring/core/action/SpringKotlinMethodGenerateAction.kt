@@ -33,7 +33,7 @@ import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 
 class PostConstructKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandler()) {
     init {
-        getTemplatePresentation().text = message("esprito.spring.action.post.construct.generate.kotlin")
+        getTemplatePresentation().text = message("explyt.spring.action.post.construct.generate.kotlin")
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
@@ -43,7 +43,7 @@ class PostConstructKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandl
 
 class PreDestroyKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandler(false)) {
     init {
-        getTemplatePresentation().text = message("esprito.spring.action.pre.destroy.kotlin")
+        getTemplatePresentation().text = message("explyt.spring.action.pre.destroy.kotlin")
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {

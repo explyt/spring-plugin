@@ -2,10 +2,10 @@ package com.esprito.spring.web.providers
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.util.EspritoPsiUtil.inClassMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isStatic
+import com.esprito.util.ExplytPsiUtil.inClassMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isStatic
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement

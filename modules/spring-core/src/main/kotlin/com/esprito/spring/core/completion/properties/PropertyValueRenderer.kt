@@ -1,7 +1,7 @@
 package com.esprito.spring.core.completion.properties
 
 import com.esprito.spring.core.SpringIcons
-import com.esprito.util.EspritoTextUtil.getFirstSentenceWithoutDot
+import com.esprito.util.ExplytTextUtil.getFirstSentenceWithoutDot
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.codeInsight.lookup.LookupElementRenderer

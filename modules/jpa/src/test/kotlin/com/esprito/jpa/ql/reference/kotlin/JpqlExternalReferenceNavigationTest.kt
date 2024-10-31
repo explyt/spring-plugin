@@ -1,6 +1,6 @@
 package com.esprito.jpa.ql.reference.kotlin
 
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.codeInsight.TargetElementUtilBase
@@ -17,7 +17,7 @@ private const val TEST_DATA_PATH = "reference/external"
  * Tests references from jpql to jpa entities
  */
 @TestMetadata(TEST_DATA_PATH)
-abstract class JpqlExternalReferenceNavigationTest : EspritoKotlinLightTestCase() {
+abstract class JpqlExternalReferenceNavigationTest : ExplytKotlinLightTestCase() {
     class Jakarta : JpqlExternalReferenceNavigationTest() {
         override val libraries = arrayOf(
             TestLibrary.jakarta_persistence_3_1_0

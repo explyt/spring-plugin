@@ -1,12 +1,12 @@
 package com.esprito.spring.web.completion.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
 
-class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
+class UastMockMvcUrlReferenceContributorTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/mockMvc"
 
     override val libraries: Array<TestLibrary>
@@ -31,7 +31,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -56,7 +56,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(2, multiResolve.size)
@@ -81,7 +81,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -107,7 +107,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -132,7 +132,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -152,7 +152,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -177,7 +177,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -203,7 +203,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -228,7 +228,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -253,7 +253,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -280,7 +280,7 @@ class UastMockMvcUrlReferenceContributorTest : EspritoJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)

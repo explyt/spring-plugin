@@ -121,11 +121,11 @@ class OpenApiUserDefinedSpecifications : PersistentStateComponent<OpenApiUserDef
 
         return when {
             partId != null && typeId != null -> when (typeId) {
-                SpringWebBundle.message("esprito.openapi.3.0.schema.type") ->
-                    OpenApiSpecificationType.Openapi30SecondarySpecificationPart(partId)
+                SpringWebBundle.message("explyt.openapi.3.0.schema.type") ->
+                    OpenApiSpecificationType.OpenAPI30SpecificationExtension(partId)
 
-                SpringWebBundle.message("esprito.openapi.3.1.schema.type") ->
-                    OpenApiSpecificationType.Openapi31SecondarySpecificationPart(partId)
+                SpringWebBundle.message("explyt.openapi.3.1.schema.type") ->
+                    OpenApiSpecificationType.Openapi31SpecificationExtension(partId)
 
                 else -> OpenApiSpecificationType.UNKNOWN
             }
@@ -136,7 +136,7 @@ class OpenApiUserDefinedSpecifications : PersistentStateComponent<OpenApiUserDef
 
     private fun serializeSpecificationType(type: OpenApiSpecificationType): SerializedSpecificationType {
         val typeId = type.toString()
-        val partId = (type as? OpenApiSpecificationType.SecondarySpecificationPart)?.partSchemaId
+        val partId = (type as? OpenApiSpecificationType.SpecificationExtension)?.partSchemaId
 
         return SerializedSpecificationType(typeId, partId)
     }

@@ -12,11 +12,11 @@ import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.service.SpringSearchUtils
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.esprito.util.EspritoPsiUtil.isEqualOrInheritor
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isPublic
-import com.esprito.util.EspritoPsiUtil.isStatic
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.isEqualOrInheritor
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isPublic
+import com.esprito.util.ExplytPsiUtil.isStatic
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -49,9 +49,9 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val builder = NavigationGutterIconBuilder.create(SpringIcons.EventPublisher)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findPublishEvents(psiMethod) })
-                    .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.event.publisher"))
-                    .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.event.publisher"))
-                    .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.event.publisher"))
+                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.event.publisher"))
+                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.event.publisher"))
+                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.event.publisher"))
 
                 result += builder.createLineMarkerInfo(element)
 
@@ -68,9 +68,9 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     val builder = NavigationGutterIconBuilder.create(SpringIcons.EventListener)
                         .setAlignment(GutterIconRenderer.Alignment.LEFT)
                         .setTargets(NotNullLazyValue.createValue { findEventListeners(sourcePsi) })
-                        .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.event.listener"))
-                        .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.event.listener"))
-                        .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.event.listener"))
+                        .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.event.listener"))
+                        .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.event.listener"))
+                        .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.event.listener"))
 
                     result.add(builder.createLineMarkerInfo(sourceElement))
                 }
@@ -84,14 +84,12 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun isEventListenerMethod(psiMethod: PsiMethod): Boolean {
         if (!psiMethod.isMetaAnnotatedBy(EVENT_LISTENER)) return false
-        // @EventListener - method with parameters
         val eventListenerWithParameter = psiMethod.parameterList.parametersCount == 1
                 && psiMethod.parameterList.parameters[0].type is PsiClassType
         if (eventListenerWithParameter) {
             return true
         }
 
-        // @EventListener - annotation value or classes
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, EVENT_LISTENER)
         val annotationValues = metaHolder.getAnnotationMemberValues(psiMethod, setOf("value", "classes"))

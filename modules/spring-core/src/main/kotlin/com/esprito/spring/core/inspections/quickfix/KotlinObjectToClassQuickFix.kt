@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 
 class KotlinObjectToClassQuickFix(element: PsiElement) : LocalQuickFixAndIntentionActionOnPsiElement(element) {
-    override fun getFamilyName(): String = SpringCoreBundle.message("esprito.spring.inspection.kotlin.object.fix")
+    override fun getFamilyName(): String = SpringCoreBundle.message("explyt.spring.inspection.kotlin.object.fix")
 
     override fun getText(): String = familyName
 

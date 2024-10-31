@@ -75,7 +75,7 @@ class SpringValueAnnotationInspection : SpringBaseUastLocalInspectionTool() {
 
         val fixes = getReplacementStringQuickFix(property, sourcePsi, valueText)
         return manager.createProblemDescriptor(
-            sourcePsi, SpringCoreBundle.message("esprito.spring.inspection.value.prefix"),
+            sourcePsi, SpringCoreBundle.message("explyt.spring.inspection.value.prefix"),
             isOnTheFly, fixes, ProblemHighlightType.WARNING
         )
     }

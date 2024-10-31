@@ -38,15 +38,6 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
     }
 }
 
-/**
- * This was copied from `com.intellij.testFramework.fixtures.MavenDependencyUtil#addFromMaven`, and modified to remove the call to
- * `getRemoteRepositoryDescriptions()` which only works when the `intellij-community` repo is available, and the `idea.home.path`
- * environment variable points to it.
- *
- * For this to work a "mock jdk" must still be present in `<idea.home.path>/java/mockJDK-1.7/jre/lib/rt.jar`.
- *
- * See https://jetbrains-platform.slack.com/archives/CPL5291JP/p1664105522154139 and https://youtrack.jetbrains.com/issue/IJSDK-321
- */
 fun addFromMaven(
     model: ModifiableRootModel,
     mavenCoordinates: String,

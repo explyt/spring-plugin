@@ -1,7 +1,7 @@
 package com.esprito.spring.web.providers
 
 import com.esprito.spring.core.util.UastUtil.getArgumentValueAsEnumName
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiReference
@@ -30,7 +30,7 @@ class WebClientUrlPathControllerMethodReferenceProvider : UastInjectionHostRefer
         if (text.isBlank()) return emptyArray()
 
         return arrayOf(
-            EspritoControllerMethodReference(
+            ExplytControllerMethodReference(
                 host,
                 text,
                 requestMethod.uppercase(),

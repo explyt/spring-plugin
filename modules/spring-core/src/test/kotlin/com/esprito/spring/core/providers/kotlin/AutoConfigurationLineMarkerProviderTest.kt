@@ -4,12 +4,12 @@ package com.esprito.spring.core.providers.kotlin
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.SpringIcons
 import com.esprito.spring.core.SpringProperties
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
 
 
-class AutoConfigurationLineMarkerProviderTest : EspritoKotlinLightTestCase() {
+class AutoConfigurationLineMarkerProviderTest : ExplytKotlinLightTestCase() {
 
     fun testSpringFactories() {
         myFixture.addFileToProject(

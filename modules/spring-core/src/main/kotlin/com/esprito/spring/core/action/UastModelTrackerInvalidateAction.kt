@@ -15,7 +15,7 @@ import com.intellij.psi.PsiManager
 
 class UastModelTrackerInvalidateAction : AnAction() {
     init {
-        getTemplatePresentation().text = SpringCoreBundle.message("esprito.spring.action.uast.model.cache.invalidate")
+        getTemplatePresentation().text = SpringCoreBundle.message("explyt.spring.action.uast.model.cache.invalidate")
         getTemplatePresentation().icon = SpringIcons.Spring
     }
 

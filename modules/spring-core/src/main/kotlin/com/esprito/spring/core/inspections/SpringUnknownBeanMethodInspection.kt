@@ -5,9 +5,9 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.BEAN
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.esprito.util.EspritoPsiUtil.fitsForReference
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.fitsForReference
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.impl.quickfix.createVoidMethodFixes
 import com.intellij.codeInspection.InspectionManager
@@ -55,7 +55,7 @@ class SpringUnknownBeanMethodInspection : SpringBaseUastLocalInspectionTool() {
             problems += manager.createProblemDescriptor(
                 memberSourcePsi,
                 memberSourcePsi.getHighlightRange(),
-                SpringCoreBundle.message("esprito.spring.inspection.bean.method"),
+                SpringCoreBundle.message("explyt.spring.inspection.bean.method"),
                 ProblemHighlightType.GENERIC_ERROR,
                 isOnTheFly,
                 *fixes.toTypedArray()

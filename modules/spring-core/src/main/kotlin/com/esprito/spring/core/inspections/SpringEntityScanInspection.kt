@@ -44,7 +44,7 @@ class SpringEntityScanInspection : SpringBaseUastLocalInspectionTool() {
             val fixes = getFixes(packages, uClass, packageName)
             holder.registerProblem(
                 sourcePsi,
-                SpringCoreBundle.message("esprito.spring.inspection.entity.scan.problem", packageName),
+                SpringCoreBundle.message("explyt.spring.inspection.entity.scan.problem", packageName),
                 *fixes
             )
         }

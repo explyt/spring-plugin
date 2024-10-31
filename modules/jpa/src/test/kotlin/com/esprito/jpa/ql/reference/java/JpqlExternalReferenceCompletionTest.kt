@@ -1,6 +1,6 @@
 package com.esprito.jpa.ql.reference.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.codeInsight.TargetElementUtilBase
@@ -18,7 +18,7 @@ private const val TEST_DATA_PATH = "reference/external"
  */
 @TestMetadata(TEST_DATA_PATH)
 @Ignore
-abstract class JpqlExternalReferenceCompletionTest : EspritoJavaLightTestCase() {
+abstract class JpqlExternalReferenceCompletionTest : ExplytJavaLightTestCase() {
     class Jakarta : JpqlExternalReferenceCompletionTest() {
         override val libraries = arrayOf(
             TestLibrary.jakarta_persistence_3_1_0

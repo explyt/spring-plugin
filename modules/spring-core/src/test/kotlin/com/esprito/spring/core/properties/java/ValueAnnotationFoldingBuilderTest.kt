@@ -1,11 +1,11 @@
 package com.esprito.spring.core.properties.java
 
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import junit.framework.TestCase
 
-class ValueAnnotationFoldingBuilderTest : EspritoJavaLightTestCase() {
+class ValueAnnotationFoldingBuilderTest : ExplytJavaLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 

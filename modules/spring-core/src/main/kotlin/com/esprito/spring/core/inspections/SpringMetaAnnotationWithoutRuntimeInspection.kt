@@ -69,7 +69,7 @@ class SpringMetaAnnotationWithoutRuntimeInspection : SpringBaseUastLocalInspecti
         return arrayOf(
             manager.createProblemDescriptor(
                 psiElement,
-                SpringCoreBundle.message("esprito.spring.inspection.retention.incorrect"),
+                SpringCoreBundle.message("explyt.spring.inspection.retention.incorrect"),
                 RewriteAnnotationQuickFix(
                     "$RETENTION($RETENTION_POLICY.RUNTIME)",
                     psiClass,

@@ -4,8 +4,8 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.CONDITIONAL_ON_PROPERTY
 import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -59,7 +59,7 @@ class SpringConditionalOnEmptyValueInspection : SpringBaseUastLocalInspectionToo
                 manager.createProblemDescriptor(
                     sourcePsi,
                     sourcePsi.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.conditionalOnProperty.empty"),
+                    SpringCoreBundle.message("explyt.spring.inspection.conditionalOnProperty.empty"),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly
                 )

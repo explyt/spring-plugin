@@ -5,8 +5,8 @@ import com.esprito.spring.aop.SpringAopClasses
 import com.esprito.spring.aop.SpringAopIcons
 import com.esprito.spring.core.externalsystem.model.SpringAspectData
 import com.esprito.spring.core.externalsystem.utils.NativeBootUtils
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isPrivate
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isPrivate
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -42,7 +42,7 @@ class AspectMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     val builder = NavigationGutterIconBuilder.create(SpringAopIcons.Advice)
                         .setAlignment(GutterIconRenderer.Alignment.LEFT)
                         .setTargets(NotNullLazyValue.lazy { findMethods(aspectData, method) })
-                        .setTooltipText(SpringAopBundle.message("esprito.spring.gutter.aop.tooltip.aspect.method"))
+                        .setTooltipText(SpringAopBundle.message("explyt.spring.gutter.aop.tooltip.aspect.method"))
                         .setPopupTitle(SpringAopBundle.message("explyt.spring.gutter.aop.title.aspect.method"))
                         .setEmptyPopupText(SpringAopBundle.message("explyt.spring.gutter.aop.title.aspect.method.empty"))
                     result.add(builder.createLineMarkerInfo(method.javaPsi))

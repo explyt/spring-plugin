@@ -1,12 +1,12 @@
 package com.esprito.spring.web.completion.kotlin
 
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
 
-class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
+class RedirectUrlReferenceContributorTest : ExplytKotlinLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/redirect"
 
     override val libraries: Array<TestLibrary>
@@ -28,7 +28,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -47,7 +47,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -70,7 +70,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(2, multiResolve.size)
@@ -92,7 +92,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -111,7 +111,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -134,7 +134,7 @@ class RedirectUrlReferenceContributorTest : EspritoKotlinLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(2, multiResolve.size)

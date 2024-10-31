@@ -13,12 +13,9 @@ import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 
 
-/**
- * This class provides a solution to inspection
- */
 class AddQualifierQuickFix(val annotation: String, element: PsiElement) : LocalQuickFixAndIntentionActionOnPsiElement(element) {
     override fun getFamilyName(): String =
-        SpringCoreBundle.message("esprito.spring.inspection.bean.autowired.use.quickfix")
+        SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.use.quickfix")
 
     override fun getText(): String = familyName
     override fun invoke(project: Project, file: PsiFile, editor: Editor?, startElement: PsiElement, endElement: PsiElement) {

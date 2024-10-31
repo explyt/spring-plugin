@@ -48,9 +48,9 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringSetting)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { targets })
-            .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.property.usage"))
-            .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.property.usage"))
-            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.property.usage"))
+            .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.property.usage"))
+            .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.property.usage"))
+            .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.property.usage"))
             .setTargetRenderer { getTargetRender() }
 
         result += builder.createLineMarkerInfo(nameElement)

@@ -1,6 +1,6 @@
 package com.esprito.spring.core.search
 
-import com.esprito.spring.core.properties.references.EspritoPropertyReference.Companion.PROPERTY_REFERENCE_ORIGINAL_TEXT
+import com.esprito.spring.core.properties.references.ExplytPropertyReference.Companion.PROPERTY_REFERENCE_ORIGINAL_TEXT
 import com.esprito.spring.core.util.PropertyUtil
 import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.application.QueryExecutorBase

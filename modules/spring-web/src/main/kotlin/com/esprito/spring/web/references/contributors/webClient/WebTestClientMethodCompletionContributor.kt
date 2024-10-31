@@ -1,8 +1,8 @@
 package com.esprito.spring.web.references.contributors.webClient
 
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.util.EspritoKotlinUtil
-import com.esprito.util.EspritoKotlinUtil.mapToSet
+import com.esprito.util.ExplytKotlinUtil
+import com.esprito.util.ExplytKotlinUtil.mapToSet
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -106,7 +106,7 @@ class WebTestClientMethodCompletionContributor : CompletionContributor() {
                     .replace(SEPARATORS_REGEX, " ")
                     .split(' ').asSequence()
                     .filter { it.isNotBlank() }
-                    .map { EspritoKotlinUtil.toKotlinType(it) }
+                    .map { ExplytKotlinUtil.toKotlinType(it) }
                     .mapToSet { FqName(it) }
 
             val insertPartKotlin = createInsertPartKotlin(

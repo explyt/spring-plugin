@@ -1,5 +1,6 @@
 package com.esprito.spring.web.inspections
 
+import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.psi.PsiFile
@@ -16,7 +17,7 @@ class OpenApiYamlSpecificationVersionInspection : OpenApiVersionInspectionBase()
 
         val topLevelValue = documents[0].topLevelValue
         if (topLevelValue is YAMLMapping) {
-            val versionKey = topLevelValue.keyValues.find { it.keyText == "openapi" }
+            val versionKey = topLevelValue.keyValues.find { it.keyText == SpringWebUtil.OPEN_API }
                 ?: return ProblemDescriptor.EMPTY_ARRAY
             val versionKeyValue = versionKey.value ?: return ProblemDescriptor.EMPTY_ARRAY
             if (versionKeyValue.text != "3.0.0" && versionKeyValue.text != "3.1.0") {

@@ -1,6 +1,6 @@
 package com.esprito.spring.core.references.contributors
 
-import com.esprito.spring.core.properties.references.EspritoLibraryPropertyReference
+import com.esprito.spring.core.properties.references.ExplytLibraryPropertyReference
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiReference
@@ -19,7 +19,7 @@ class DynamicPropertyRegistryReferenceProvider : UastInjectionHostReferenceProvi
         val path = uExpression.evaluateString() ?: return emptyArray()
 
         return arrayOf(
-            EspritoLibraryPropertyReference(
+            ExplytLibraryPropertyReference(
                 host,
                 path,
                 ElementManipulators.getValueTextRange(psiElement)

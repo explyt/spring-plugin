@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.psi.psiUtil.endOffset
 
 class PostConstructJavaGenerateAction : BaseGenerateAction(PostConstructMethodHandler()) {
     init {
-        getTemplatePresentation().text = SpringCoreBundle.message("esprito.spring.action.post.construct.generate")
+        getTemplatePresentation().text = SpringCoreBundle.message("explyt.spring.action.post.construct.generate")
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
@@ -40,7 +40,7 @@ class PostConstructJavaGenerateAction : BaseGenerateAction(PostConstructMethodHa
 
 class PreDestroyJavaGenerateAction : BaseGenerateAction(PostConstructMethodHandler(false)) {
     init {
-        getTemplatePresentation().text = SpringCoreBundle.message("esprito.spring.action.pre.destroy")
+        getTemplatePresentation().text = SpringCoreBundle.message("explyt.spring.action.pre.destroy")
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {

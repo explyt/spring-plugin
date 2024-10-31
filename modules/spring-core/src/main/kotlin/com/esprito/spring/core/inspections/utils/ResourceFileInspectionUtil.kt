@@ -99,7 +99,7 @@ object ResourceFileInspectionUtil {
             return listOf(
                 manager.createProblemDescriptor(
                     element,
-                    SpringCoreBundle.message("esprito.spring.inspection.resource.error.start.with.slash"),
+                    SpringCoreBundle.message("explyt.spring.inspection.resource.error.start.with.slash"),
                     isOnTheFly,
                     emptyArray(),
                     ProblemHighlightType.WARNING
@@ -156,7 +156,7 @@ object ResourceFileInspectionUtil {
         return listOf(
             manager.createProblemDescriptor(
                 element,
-                SpringCoreBundle.message("esprito.spring.inspection.file.resolve.error.message", fileName),
+                SpringCoreBundle.message("explyt.spring.inspection.file.resolve.error.message", fileName),
                 isOnTheFly,
                 arrayOf(fix),
                 highlightType

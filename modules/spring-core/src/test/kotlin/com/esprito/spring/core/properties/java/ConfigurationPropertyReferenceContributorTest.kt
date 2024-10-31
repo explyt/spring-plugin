@@ -1,6 +1,6 @@
 package com.esprito.spring.core.properties.java
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.lang.properties.IProperty
@@ -16,7 +16,7 @@ import java.io.File
 private const val TEST_DATA_PATH = "properties"
 
 @TestMetadata(TEST_DATA_PATH)
-class ConfigurationPropertyReferenceContributorTest : EspritoJavaLightTestCase() {
+class ConfigurationPropertyReferenceContributorTest : ExplytJavaLightTestCase() {
 
     companion object {
         const val PLACE_TO_INSERT = "<PLACE_TO_INSERT>"

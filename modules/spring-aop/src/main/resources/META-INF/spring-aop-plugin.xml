@@ -8,10 +8,10 @@
         <localInspection language="UAST"
                          shortName="SpringAopAnnotationInspection"
                          groupBundle="messages.SpringAopBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.aop.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.aop.notifications"
                          bundle="messages.SpringAopBundle"
-                         key="esprito.spring.inspection.aop"
+                         key="explyt.spring.inspection.aop"
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.aop.inspections.SpringAopAnnotationInspection"/>

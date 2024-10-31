@@ -2,7 +2,7 @@ package com.esprito.spring.web.providers
 
 import com.esprito.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
 import com.intellij.psi.ElementManipulators
@@ -49,7 +49,7 @@ class UrlPathControllerMethodReferenceProvider : UastInjectionHostReferenceProvi
         if (text.isBlank()) return emptyArray()
 
         return arrayOf(
-            EspritoControllerMethodReference(
+            ExplytControllerMethodReference(
                 host,
                 text,
                 requestMethod,

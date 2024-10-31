@@ -2,7 +2,7 @@ package com.esprito.spring.core.references.contributors
 
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.references.CompleteBeanReference
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.util.TextRange
 import com.intellij.patterns.uast.injectionHostUExpression
 import com.intellij.psi.*

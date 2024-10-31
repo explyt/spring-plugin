@@ -7,8 +7,8 @@ import com.esprito.spring.core.SpringCoreClasses.CACHE_KEY_GENERATOR
 import com.esprito.spring.core.SpringCoreClasses.CACHE_MANAGER
 import com.esprito.spring.core.SpringCoreClasses.CACHE_RESOLVER
 import com.esprito.spring.core.service.SpringSearchServiceFacade
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedByOrSelf
-import com.esprito.util.EspritoPsiUtil.isPublic
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
+import com.esprito.util.ExplytPsiUtil.isPublic
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
@@ -38,7 +38,7 @@ class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() 
 
         if (cacheAnnotationIsFound && !method.isPublic) {
             val sourcePsi = method.uastAnchor?.sourcePsi ?: return holder.resultsArray
-            holder.registerProblem(sourcePsi, message("esprito.spring.inspection.cache.public"))
+            holder.registerProblem(sourcePsi, message("explyt.spring.inspection.cache.public"))
         }
         return holder.resultsArray
     }
@@ -72,7 +72,7 @@ class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() 
         if (beans.isNullOrEmpty()) {
             holder.registerProblem(
                 sourcePsi,
-                message("esprito.spring.inspection.cache.bean.parameter", parameterName, className)
+                message("explyt.spring.inspection.cache.bean.parameter", parameterName, className)
             )
             return
         }
@@ -81,7 +81,7 @@ class SpringCacheableAnnotationInspection : SpringBaseUastLocalInspectionTool() 
         if (!InheritanceUtil.isInheritor(cacheResolverBean.psiClass, className)) {
             holder.registerProblem(
                 sourcePsi,
-                message("esprito.spring.inspection.cache.bean.parameter", parameterName, className)
+                message("explyt.spring.inspection.cache.bean.parameter", parameterName, className)
             )
         }
     }

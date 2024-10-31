@@ -17,6 +17,6 @@ class JpqlUsageTypeProvider : UsageTypeProvider {
     }
 
     companion object {
-        private val myUsageType = UsageType { JpaBundle.message("esprito.jpa.usage.type") }
+        private val myUsageType = UsageType { JpaBundle.message("explyt.jpa.usage.type") }
     }
 }

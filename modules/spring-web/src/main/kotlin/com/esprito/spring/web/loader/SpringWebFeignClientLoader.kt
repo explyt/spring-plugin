@@ -5,8 +5,8 @@ import com.esprito.spring.core.service.MetaAnnotationsHolder
 import com.esprito.spring.core.tracker.ModificationTrackerManager
 import com.esprito.spring.core.util.UastUtil.getPropertyValue
 import com.esprito.spring.web.SpringWebClasses
-import com.esprito.util.EspritoAnnotationUtil.getStringValue
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytAnnotationUtil.getStringValue
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
@@ -84,7 +84,7 @@ class SpringWebFeignClientLoader(val project: Project) : SpringWebEndpointsLoade
                 .toList()
         if (urlProperties.size != 1) return ""
 
-        return urlProperties.first() ?: ""
+        return urlProperties.firstOrNull() ?: ""
     }
 
     private fun getEndpoints(module: Module, psiClass: PsiClass): List<EndpointElement> {

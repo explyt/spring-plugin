@@ -1,14 +1,14 @@
 package com.esprito.spring.web.completion
 
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.ResolveResult
 import junit.framework.TestCase
 
-class SpringOpenApiYamlUrlEndpointReferenceContributorTest : EspritoJavaLightTestCase() {
+class SpringOpenApiYamlUrlEndpointReferenceContributorTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = "${super.getTestDataPath()}/completion/openApi"
 
     override val libraries: Array<TestLibrary>
@@ -32,7 +32,7 @@ class SpringOpenApiYamlUrlEndpointReferenceContributorTest : EspritoJavaLightTes
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true).filter { it.element is PsiMethod }
         assertEquals(1, multiResolve.size)
@@ -56,7 +56,7 @@ class SpringOpenApiYamlUrlEndpointReferenceContributorTest : EspritoJavaLightTes
 
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true).filter { it.element is PsiMethod }
         assertEquals(0, multiResolve.size)
@@ -76,7 +76,7 @@ class SpringOpenApiYamlUrlEndpointReferenceContributorTest : EspritoJavaLightTes
 
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? EspritoControllerMethodReference
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(2, multiResolve.size)

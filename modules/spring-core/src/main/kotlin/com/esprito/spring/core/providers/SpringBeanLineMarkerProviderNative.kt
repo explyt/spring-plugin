@@ -20,9 +20,9 @@ import com.esprito.spring.core.util.SpringCoreUtil.getArrayType
 import com.esprito.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.esprito.spring.core.util.SpringCoreUtil.isCandidate
 import com.esprito.spring.core.util.SpringCoreUtil.isComponentCandidate
-import com.esprito.util.EspritoPsiUtil.allSupers
-import com.esprito.util.EspritoPsiUtil.isAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.allSupers
+import com.esprito.util.ExplytPsiUtil.isAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -64,8 +64,8 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringFactories)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findFactoriesMetadataFiles(uElement, module) })
-                    .setTooltipText(SpringCoreBundle.message("esprito.spring.factories.gutter.tooltip"))
-                    .setPopupTitle(SpringCoreBundle.message("esprito.spring.factories.gutter.popup.title"))
+                    .setTooltipText(SpringCoreBundle.message("explyt.spring.factories.gutter.tooltip"))
+                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.factories.gutter.popup.title"))
                 result.add(builder.createLineMarkerInfo(element))
             }
         }
@@ -84,9 +84,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, module) })
-                    .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
+                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
                 result.add(builder.createLineMarkerInfo(sourcePsi))
             }
         }
@@ -109,9 +109,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(null, method, module) })
-                    .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.autowired.candidate"))
+                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
+                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
+                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
                     .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
                 result.add(builder.createLineMarkerInfo(psiElement))
                 checkMethodParameters(method, module, result)
@@ -136,9 +136,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, module) })
-                    .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
+                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
                 result.add(builder.createLineMarkerInfo(sourcePsi))
             }
         }
@@ -153,9 +153,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(uClass, null, module) })
-            .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate"))
-            .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
-            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title"))
+            .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
+            .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
+            .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title"))
             .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
         result.add(builder.createLineMarkerInfo(sourcePsi))
     }
@@ -169,9 +169,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findBeanDeclarations(uClass, module) })
-            .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.bean.candidate"))
-            .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.bean.candidate"))
-            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.bean.candidate"))
+            .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+            .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+            .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
         result.add(builder.createLineMarkerInfo(sourcePsi))
     }
 
@@ -184,9 +184,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val builder = NavigationGutterIconBuilder.create(SpringIcons.springBeanInactive)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(uClass, null, module) })
-            .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.autowired.candidate.innactive"))
-            .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.autowired.candidate"))
-            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.autowired.candidate"))
+            .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate.innactive"))
+            .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
+            .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
             .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
         result.add(builder.createLineMarkerInfo(sourcePsi))
     }

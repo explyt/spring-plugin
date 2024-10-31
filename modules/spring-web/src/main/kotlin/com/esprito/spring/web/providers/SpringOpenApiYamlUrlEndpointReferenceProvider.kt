@@ -1,6 +1,6 @@
 package com.esprito.spring.web.providers
 
-import com.esprito.spring.web.references.EspritoControllerMethodReference
+import com.esprito.spring.web.references.ExplytControllerMethodReference
 import com.esprito.spring.web.util.SpringWebUtil
 import com.esprito.spring.web.util.SpringWebUtil.PATHS
 import com.intellij.psi.ElementManipulators
@@ -28,7 +28,7 @@ class SpringOpenApiYamlUrlEndpointReferenceProvider : PsiReferenceProvider() {
         val key = YAMLUtil.getConfigFullNameParts(keyElement).lastOrNull() ?: return emptyArray()
 
         return arrayOf(
-            EspritoControllerMethodReference(
+            ExplytControllerMethodReference(
                 keyElement,
                 key,
                 null,
@@ -46,7 +46,7 @@ class SpringOpenApiYamlUrlEndpointReferenceProvider : PsiReferenceProvider() {
         if (YAMLUtil.getConfigFullName(pathElement) != PATHS) return emptyArray()
 
         return arrayOf(
-            EspritoControllerMethodReference(
+            ExplytControllerMethodReference(
                 keyElement,
                 url,
                 key.uppercase(),

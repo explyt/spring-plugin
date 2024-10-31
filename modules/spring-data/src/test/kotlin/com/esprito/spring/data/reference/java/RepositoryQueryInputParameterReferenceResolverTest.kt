@@ -1,7 +1,7 @@
 package com.esprito.spring.data.reference.java
 
 import com.esprito.jpa.ql.psi.JpqlInputParameterExpression
-import com.esprito.spring.test.EspritoJavaLightTestCase
+import com.esprito.spring.test.ExplytJavaLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.PsiParameter
@@ -9,7 +9,7 @@ import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 
 @TestDataPath(RepositoryQueryInputParameterReferenceResolverTest.TEST_DATA_PATH)
-class RepositoryQueryInputParameterReferenceResolverTest : EspritoJavaLightTestCase() {
+class RepositoryQueryInputParameterReferenceResolverTest : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = TEST_DATA_PATH
 

@@ -10,7 +10,7 @@ import com.esprito.spring.core.SpringProperties
 import com.esprito.spring.core.runconfiguration.RunConfigurationUtil
 import com.esprito.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.esprito.spring.core.tracker.ModificationTrackerManager
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.execution.RunManager

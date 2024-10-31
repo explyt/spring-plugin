@@ -3,7 +3,7 @@ package com.esprito.spring.web.loader
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.web.SpringWebClasses
 import com.esprito.spring.web.util.SpringWebUtil
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.psi.PsiClass
 import org.jetbrains.uast.*

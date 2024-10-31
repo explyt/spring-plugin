@@ -5,8 +5,8 @@ import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses.DEPENDS_ON
 import com.esprito.spring.core.service.SpringSearchService
 import com.esprito.spring.core.service.SpringSearchServiceFacade
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -65,7 +65,7 @@ class SpringDependsOnBeanInspection : SpringBaseUastLocalInspectionTool() {
                 manager.createProblemDescriptor(
                     sourcePsi,
                     sourcePsi.getHighlightRange(),
-                    SpringCoreBundle.message("esprito.spring.inspection.bean.dependsOn.incorrect"),
+                    SpringCoreBundle.message("explyt.spring.inspection.bean.dependsOn.incorrect"),
                     ProblemHighlightType.GENERIC_ERROR,
                     isOnTheFly
                 )

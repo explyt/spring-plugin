@@ -54,10 +54,10 @@
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.pathVariable"
+                         key="explyt.spring.web.inspection.pathVariable"
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.web.inspections.SpringOmittedPathVariableParameterInspection"/>
@@ -65,10 +65,10 @@
         <localInspection language="UAST"
                          shortName="SpringInitBinderNonVoidInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.initBinder"
+                         key="explyt.spring.web.inspection.initBinder"
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
@@ -76,10 +76,10 @@
         <localInspection language="UAST"
                          shortName="MockMvcTemplateParametersInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.mockMvc.parameters"
+                         key="explyt.spring.web.inspection.mockMvc.parameters"
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.MockMvcTemplateParametersInspection"/>
@@ -87,10 +87,10 @@
         <localInspection language="UAST"
                          shortName="WebClientTemplateParametersInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.webClient.parameters"
+                         key="explyt.spring.web.inspection.webClient.parameters"
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.WebClientUriParametersInspection"/>
@@ -98,10 +98,10 @@
         <localInspection language="UAST"
                          shortName="RequestMappingDuplicateInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.requestMapping.duplicate"
+                         key="explyt.spring.web.inspection.requestMapping.duplicate"
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.esprito.spring.web.inspections.RequestMappingDuplicateInspection"/>
@@ -109,10 +109,10 @@
         <localInspection language="UAST"
                          shortName="JavaWebClientMethodWrongType"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.webClient.type"
+                         key="explyt.spring.web.inspection.webClient.type"
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="com.esprito.spring.web.inspections.WebClientMethodWrongTypeInspection"/>
@@ -120,30 +120,30 @@
         <localInspection language="JSON"
                          shortName="OpenApiJsonSpecificationVersionInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.openapi.json.version"
+                         key="explyt.spring.web.inspection.openapi.json.version"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.spring.web.inspections.OpenApiJsonSpecificationVersionInspection"/>
 
         <localInspection language="yaml"
                          shortName="OpenApiYamlSpecificationVersionInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.openapi.yaml.version"
+                         key="explyt.spring.web.inspection.openapi.yaml.version"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.spring.web.inspections.OpenApiYamlSpecificationVersionInspection"/>
 
         <localInspection language="UAST"
                          shortName="OpenFeignInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.openfeign.client"
+                         key="explyt.spring.web.inspection.openfeign.client"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.esprito.spring.web.inspections.OpenFeignInspection"/>
 
@@ -200,7 +200,7 @@
     </extensions>
 
     <projectListeners>
-        <listener class="com.esprito.spring.web.listeners.EspritoWebProjectListener"
+        <listener class="com.esprito.spring.web.listeners.ExplytWebProjectListener"
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </projectListeners>
 

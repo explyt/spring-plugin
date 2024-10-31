@@ -1,5 +1,6 @@
 package com.esprito.spring.web.inspections
 
+import com.esprito.spring.web.util.SpringWebUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.json.JsonFileType
@@ -24,7 +25,7 @@ class OpenApiJsonSpecificationVersionInspection : OpenApiVersionInspectionBase()
     }
 
     private fun findOpenApiVersion(jsonObject: JsonObject): JsonValue? {
-        val openApiProperty = jsonObject.propertyList.find { it.name == "openapi" }
+        val openApiProperty = jsonObject.propertyList.find { it.name == SpringWebUtil.OPEN_API }
         return openApiProperty?.value
     }
 

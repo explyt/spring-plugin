@@ -6,7 +6,7 @@ import com.esprito.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.esprito.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES_SCAN
 import com.esprito.spring.core.search.PsiPackageFqnSearchService
 import com.esprito.spring.core.util.SpringCoreUtil
-import com.esprito.util.EspritoAnnotationUtil
+import com.esprito.util.ExplytAnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -30,7 +30,7 @@ class SpringComponentScanInvalidPackageInspection : SpringBaseUastLocalInspectio
                         COMPONENT_SCAN, CONFIGURATION_PROPERTIES_SCAN -> setOf("value", SpringCoreUtil.BASE_PACKAGES)
                         else -> setOf(SpringCoreUtil.BASE_PACKAGES, SpringCoreUtil.SCAN_BASE_PACKAGES)
                     }
-                val attributesAsPsiLiteral = EspritoAnnotationUtil.getAttributeValues(annotation, attributesName)
+                val attributesAsPsiLiteral = ExplytAnnotationUtil.getAttributeValues(annotation, attributesName)
 
                 attributesAsPsiLiteral.mapNotNull { it.sourcePsi }.forEach attributes@{ sourcePsi ->
                     val text = ElementManipulators.getValueText(sourcePsi)
@@ -51,7 +51,7 @@ class SpringComponentScanInvalidPackageInspection : SpringBaseUastLocalInspectio
                                 manager.createProblemDescriptor(
                                     sourcePsi,
                                     curTextRange,
-                                    SpringCoreBundle.message("esprito.spring.inspection.method.componentScan.notFound"),
+                                    SpringCoreBundle.message("explyt.spring.inspection.method.componentScan.notFound"),
                                     ProblemHighlightType.ERROR,
                                     true
                                 )

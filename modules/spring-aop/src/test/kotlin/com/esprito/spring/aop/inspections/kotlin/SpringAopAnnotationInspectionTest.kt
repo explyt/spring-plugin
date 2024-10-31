@@ -3,11 +3,11 @@ package com.esprito.spring.aop.inspections.kotlin
 import com.esprito.spring.aop.SpringAopClasses
 import com.esprito.spring.aop.inspections.SpringAopAnnotationInspection
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.test.EspritoInspectionKotlinTestCase
+import com.esprito.spring.test.ExplytInspectionKotlinTestCase
 import com.esprito.spring.test.TestLibrary
 import junit.framework.TestCase
 
-class SpringAopAnnotationInspectionTest : EspritoInspectionKotlinTestCase() {
+class SpringAopAnnotationInspectionTest : ExplytInspectionKotlinTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springContext_6_0_7, TestLibrary.aspectjWeaver_1_9_7, TestLibrary.springAop_6_0_7
     )

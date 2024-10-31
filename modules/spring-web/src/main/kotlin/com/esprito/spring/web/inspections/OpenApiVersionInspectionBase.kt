@@ -33,7 +33,7 @@ abstract class OpenApiVersionInspectionBase : SpringBaseLocalInspectionTool() {
         return arrayOf(
             manager.createProblemDescriptor(
                 element,
-                SpringWebBundle.message("esprito.spring.web.inspection.openapi.inspection.version", text),
+                SpringWebBundle.message("explyt.spring.web.inspection.openapi.inspection.version", text),
                 isOnTheFly,
                 emptyArray(),
                 ProblemHighlightType.WARNING,

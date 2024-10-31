@@ -3,11 +3,11 @@ package com.esprito.spring.core.inspections.java
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.SpringValueAnnotationInspection
 import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
-import com.esprito.spring.test.EspritoInspectionJavaTestCase
+import com.esprito.spring.test.ExplytInspectionJavaTestCase
 import com.esprito.spring.test.TestLibrary
 import junit.framework.TestCase
 
-class SpringValueAnnotationInspectionTest : EspritoInspectionJavaTestCase() {
+class SpringValueAnnotationInspectionTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     override fun setUp() {

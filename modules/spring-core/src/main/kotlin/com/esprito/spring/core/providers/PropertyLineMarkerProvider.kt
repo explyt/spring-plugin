@@ -55,9 +55,9 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val builder = NavigationGutterIconBuilder.create(SpringIcons.Hint)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { targets })
-            .setTooltipText(SpringCoreBundle.message("esprito.spring.gutter.tooltip.title.choose.metadata.usage"))
-            .setPopupTitle(SpringCoreBundle.message("esprito.spring.gutter.popup.title.choose.metadata.usage"))
-            .setEmptyPopupText(SpringCoreBundle.message("esprito.spring.gutter.notfound.title.choose.metadata.usage"))
+            .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.metadata.usage"))
+            .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.metadata.usage"))
+            .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.metadata.usage"))
 
         result += builder.createLineMarkerInfo(element)
     }

@@ -1,7 +1,7 @@
 package com.esprito.spring.core.reference.kotlin
 
 import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.test.EspritoKotlinLightTestCase
+import com.esprito.spring.test.ExplytKotlinLightTestCase
 import com.esprito.spring.test.TestLibrary
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.openapi.util.io.FileUtil
@@ -10,7 +10,7 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.search.searches.ReferencesSearch
 import java.io.File
 
-class FileReferenceContributorTest : EspritoKotlinLightTestCase() {
+class FileReferenceContributorTest : ExplytKotlinLightTestCase() {
     private val basicPrefix = setOf("file:", "classpath:", "classpath*:", "http:")
 
     override fun getTestDataPath(): String = super.getTestDataPath() + "reference/file"

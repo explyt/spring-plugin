@@ -114,7 +114,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             ) {
                 problems += manager.createProblemDescriptor(
                     psiKey,
-                    SpringCoreBundle.message("esprito.spring.inspection.properties.key.prohibited", fileProperty.key),
+                    SpringCoreBundle.message("explyt.spring.inspection.properties.key.prohibited", fileProperty.key),
                     isOnTheFly,
                     emptyArray(),
                     GENERIC_ERROR
@@ -139,7 +139,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 if (psiReferences.isEmpty()) {
                     problems += manager.createProblemDescriptor(
                         psiKey,
-                        SpringCoreBundle.message("esprito.spring.inspection.properties.key.unresolved", key),
+                        SpringCoreBundle.message("explyt.spring.inspection.properties.key.unresolved", key),
                         isOnTheFly,
                         emptyArray(),
                         ProblemHighlightType.WARNING
@@ -150,7 +150,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                     if (it.isMap()) {
                         problems += manager.createProblemDescriptor(
                             psiKey,
-                            SpringCoreBundle.message("esprito.spring.inspection.properties.key.map.not.found.key"),
+                            SpringCoreBundle.message("explyt.spring.inspection.properties.key.map.not.found.key"),
                             isOnTheFly,
                             emptyArray(),
                             ProblemHighlightType.ERROR
@@ -190,7 +190,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 else "reason unknown"
             problems += manager.createProblemDescriptor(
                 psiKey,
-                SpringCoreBundle.message("esprito.spring.inspection.properties.key.deprecated", reason),
+                SpringCoreBundle.message("explyt.spring.inspection.properties.key.deprecated", reason),
                 isOnTheFly,
                 arrayOf(ReplacementKeyQuickFix(replacement, psiElement)),
                 if (level == DeprecationInfoLevel.ERROR) GENERIC_ERROR else ProblemHighlightType.LIKE_DEPRECATED
@@ -252,7 +252,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 problems += manager.createProblemDescriptor(
                     psiValue,
                     SpringCoreBundle.message(
-                        "esprito.spring.inspection.properties.value.unresolved.static",
+                        "explyt.spring.inspection.properties.value.unresolved.static",
                         value,
                         hintValues
                     ),
@@ -298,7 +298,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                     psiValue,
                     range,
                     SpringCoreBundle.message(
-                        "esprito.spring.inspection.properties.value.unresolved",
+                        "explyt.spring.inspection.properties.value.unresolved",
                         "class",
                         shortName
                     ),
@@ -325,7 +325,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                     psiValue,
                     it.range,
                     SpringCoreBundle.message(
-                        "esprito.spring.inspection.properties.value.unresolved",
+                        "explyt.spring.inspection.properties.value.unresolved",
                         "class or package",
                         it.name
                     ),
@@ -374,7 +374,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                         problems += manager.createProblemDescriptor(
                             psiValue,
                             SpringCoreBundle.message(
-                                "esprito.spring.inspection.properties.value.unknown.encoding",
+                                "explyt.spring.inspection.properties.value.unknown.encoding",
                                 value
                             ),
                             isOnTheFly,
@@ -419,7 +419,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             if (!foundActiveBeans.any { it.name == property.value }) {
                 problems += manager.createProblemDescriptor(
                     psiValue,
-                    SpringCoreBundle.message("esprito.spring.inspection.properties.value.unresolved", "bean", value),
+                    SpringCoreBundle.message("explyt.spring.inspection.properties.value.unresolved", "bean", value),
                     isOnTheFly,
                     emptyArray(),
                     ProblemHighlightType.ERROR
@@ -449,9 +449,9 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                         psiValue,
                         SpringCoreBundle.message(
                             if (resultConvert) {
-                                "esprito.spring.inspection.properties.value.spring.convert"
+                                "explyt.spring.inspection.properties.value.spring.convert"
                             } else {
-                                "esprito.spring.inspection.properties.value.unknown.encoding"
+                                "explyt.spring.inspection.properties.value.unknown.encoding"
                             },
                             value,
                             propertyType
@@ -528,13 +528,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return when {
             configurationProperty.isList() ->
                 propertyType.substringAfter("<").substringBefore(">")
-
             configurationProperty.isMap() ->
                 propertyType.substringAfter(",").substringBefore(">")
-
             configurationProperty.isArray() ->
                 propertyType.substringBefore("[]")
-
             else -> propertyType.replace('$', '.')
         }
     }
@@ -608,7 +605,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 manager.createProblemDescriptor(
                     psiElement,
                     SpringCoreBundle.message(
-                        "esprito.spring.inspection.properties.value.unresolved.enum",
+                        "explyt.spring.inspection.properties.value.unresolved.enum",
                         value,
                         propertyType
                     ),

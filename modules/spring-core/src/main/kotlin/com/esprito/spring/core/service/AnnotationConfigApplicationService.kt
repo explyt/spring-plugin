@@ -2,7 +2,7 @@ package com.esprito.spring.core.service
 
 import com.esprito.base.LibraryClassCache
 import com.esprito.spring.core.SpringCoreClasses.ANNOTATION_CONFIG_CONTEXT
-import com.esprito.util.EspritoPsiUtil.resolvedPsiClass
+import com.esprito.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.registry.Registry

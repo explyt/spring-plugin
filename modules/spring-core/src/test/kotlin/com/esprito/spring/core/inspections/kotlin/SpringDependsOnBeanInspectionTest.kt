@@ -1,11 +1,11 @@
 package com.esprito.spring.core.inspections.kotlin
 
 import com.esprito.spring.core.inspections.SpringDependsOnBeanInspection
-import com.esprito.spring.test.EspritoInspectionKotlinTestCase
+import com.esprito.spring.test.ExplytInspectionKotlinTestCase
 import com.esprito.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
-class SpringDependsOnBeanInspectionTest : EspritoInspectionKotlinTestCase() {
+class SpringDependsOnBeanInspectionTest : ExplytInspectionKotlinTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 

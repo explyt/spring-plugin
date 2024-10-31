@@ -1,9 +1,9 @@
 package com.esprito.spring.core.properties.dataRetriever
 
-import com.esprito.util.EspritoPsiUtil.isNonAbstract
-import com.esprito.util.EspritoPsiUtil.isSetter
-import com.esprito.util.EspritoPsiUtil.returnPsiClass
-import com.esprito.util.EspritoPsiUtil.returnPsiType
+import com.esprito.util.ExplytPsiUtil.isNonAbstract
+import com.esprito.util.ExplytPsiUtil.isSetter
+import com.esprito.util.ExplytPsiUtil.returnPsiClass
+import com.esprito.util.ExplytPsiUtil.returnPsiType
 import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement

@@ -27,8 +27,6 @@ object ModuleUtil {
 
     fun getContentRootFile(psiElement: PsiElement): VirtualFile? {
         return psiElement.project.guessProjectDir()
-        // this work too
-        // return  PsiFileReferenceHelper.getInstance().findRoot(psiElement.project, psiElement.containingFile.virtualFile)
     }
 
     fun getOnlyLibrarySearchScope(module: Module): GlobalSearchScope {

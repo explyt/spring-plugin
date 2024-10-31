@@ -4,11 +4,11 @@ import com.esprito.inspection.SpringBaseUastLocalInspectionTool
 import com.esprito.spring.core.SpringCoreBundle
 import com.esprito.spring.core.SpringCoreClasses
 import com.esprito.spring.core.inspections.quickfix.AddAsMethodArgQuickFix
-import com.esprito.util.EspritoAnnotationUtil.getUMetaAnnotation
-import com.esprito.util.EspritoPsiUtil.findChildrenOfType
-import com.esprito.util.EspritoPsiUtil.getHighlightRange
-import com.esprito.util.EspritoPsiUtil.isMetaAnnotatedBy
-import com.esprito.util.EspritoPsiUtil.toSourcePsi
+import com.esprito.util.ExplytAnnotationUtil.getUMetaAnnotation
+import com.esprito.util.ExplytPsiUtil.findChildrenOfType
+import com.esprito.util.ExplytPsiUtil.getHighlightRange
+import com.esprito.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.esprito.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
@@ -44,7 +44,7 @@ class SpringConfigurationProxyMethodsInspection : SpringBaseUastLocalInspectionT
                     .mapNotNull {
                         createProblemDescriptor(
                             manager,
-                            SpringCoreBundle.message("esprito.spring.inspection.configuration.proxy.incorrect"),
+                            SpringCoreBundle.message("explyt.spring.inspection.configuration.proxy.incorrect"),
                             it,
                             isOnTheFly
                         )
@@ -56,7 +56,7 @@ class SpringConfigurationProxyMethodsInspection : SpringBaseUastLocalInspectionT
                     .mapNotNull {
                         createProblemDescriptor(
                             manager,
-                            SpringCoreBundle.message("esprito.spring.inspection.configuration.light-bean.incorrect"),
+                            SpringCoreBundle.message("explyt.spring.inspection.configuration.light-bean.incorrect"),
                             it,
                             isOnTheFly
                         )

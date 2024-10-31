@@ -2,7 +2,7 @@ package com.esprito.spring.web.references.contributors
 
 import com.esprito.spring.web.references.contributors.providers.OpenApiVersionCompletionProvider
 import com.esprito.spring.web.util.PlatformPatternUtils
-import com.esprito.util.EspritoKotlinUtil.mapToList
+import com.esprito.util.ExplytKotlinUtil.mapToList
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns.psiElement
