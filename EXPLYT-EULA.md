@@ -11,7 +11,7 @@ ADDITIONALY YOU AND DEVELOPER WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION L
 
 IN CASE YOU WANT TO USE PLUGIN SOURCE CODE YOU MUST ACCEPT THE EXPLYT SOURCE LICENSE WHICH IS AVAILIBLE HERE https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
 
-Notice: This EULA can be accepted by you in case if You just want to use Plugin without utilising its source code or contributing to Plugin development.   
+Notice: This EULA can be accepted by You in case if You just want to use Plugin without utilising its source code or contributing to Plugin development.   
 
 ## DEFINITIONS
 ### Developer
