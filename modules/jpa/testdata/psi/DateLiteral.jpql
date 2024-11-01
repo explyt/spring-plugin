@@ -1,0 +1,9 @@
+SELECT e FROM Entity e WHERE e.date = {d '2023-01-01'};
+SELECT e FROM Entity e WHERE e.time = {t '12:34:56'};
+SELECT e FROM Entity e WHERE e.timestamp = {ts '2023-01-01 12:34:56'};
+SELECT e FROM Entity e WHERE e.date = {d 'It''s a date'};
+SELECT e FROM Entity e WHERE e.time = {t 'It''s time'};
+SELECT e FROM Entity e WHERE e.timestamp = {ts 'It''s a timestamp'};
+SELECT e FROM Entity e WHERE e.date = {d '01$@-2023'};
+SELECT e FROM Entity e WHERE e.time = {t '12_34_56'};
+SELECT e FROM Entity e WHERE e.timestamp = {ts '2023-01-01 12$@:34_56'};

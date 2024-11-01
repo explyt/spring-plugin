@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>CacheOnInterface.kt</file>
+        <line>11</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method"
+                     FQNAME="com.SomeProperties SomeProperties(java.lang.String first, java.lang.String mustBeNullable)"/>
+        <problem_class id="SpringConfigurationPropertiesNullableParameters" severity="ERROR"
+                       attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Class constructor properties annotated with @ConfigurationProperties must be nullable</description>
+        <highlighted_element>var mustBeNullable: String</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>18</length>
+    </problem>
+
+</problems>

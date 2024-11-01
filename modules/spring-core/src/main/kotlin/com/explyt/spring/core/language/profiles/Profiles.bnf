@@ -1,0 +1,46 @@
+{
+    parserClass="com.explyt.spring.core.language.profiles.parser.ProfilesParser"
+
+    extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+    psiClassPrefix="Profiles"
+    psiImplClassSuffix="Impl"
+    psiPackage="com.explyt.spring.core.language.profiles.psi"
+    psiImplPackage="com.explyt.spring.core.language.profiles.psi.impl"
+
+    elementTypeHolderClass="com.explyt.spring.core.language.profiles.psi.ProfilesTypes"
+    elementTypeClass="com.explyt.spring.core.language.profiles.psi.ProfilesElementType"
+    tokenTypeClass="com.explyt.spring.core.language.profiles.psi.ProfilesTokenType"
+
+    psiImplUtilClass="com.explyt.spring.core.language.profiles.psi.impl.ProfilesPsiImplUtil"
+
+    tokens = [
+        WHITESPACE = 'regexp:\s'
+        NOT = '!'
+        AND = '&'
+        OR = '|'
+        LPAREN = '('
+        RPAREN = ')'
+
+        value = 'regexp:[\p{L}_0-9]+'
+    ]
+}
+
+file ::= profile_expr_ | nested_expr_
+
+private nested_expr_ ::= LPAREN profile_expr_ RPAREN
+private profile_expr_ ::= /*nested_expr_ |*/
+    and_expression
+    | or_expression
+    | not_expression
+    | profile
+
+and_expression ::= (profile|not_expression|nested_expr_) (AND (profile|not_expression|nested_expr_))+
+or_expression ::= (profile|not_expression|nested_expr_) (OR (profile|not_expression|nested_expr_))+
+not_expression ::= NOT (profile|nested_expr_)
+
+profile ::= value {
+    mixin="com.explyt.spring.core.language.profiles.psi.impl.ProfilesNamedElementImpl"
+    implements="com.explyt.spring.core.language.profiles.psi.ProfilesNamedElement"
+    methods=[getName setName getNameIdentifier]
+}

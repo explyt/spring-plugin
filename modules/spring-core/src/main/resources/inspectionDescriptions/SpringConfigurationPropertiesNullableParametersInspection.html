@@ -1,0 +1,21 @@
+<html lang="en">
+<head>
+    <title>ConfigurationProperties Nullable Parameters Inspection</title>
+</head>
+<body>
+
+<p>Reports when constructor parameters are not nullable</p>
+
+<p><b>Example:</b></p>
+Reports "Class constructor properties annotated with @ConfigurationProperties must be nullable"
+<pre><code lang="kotlin">
+@Component
+@ConfigurationProperties(prefix = "some.prefix")
+data class SomeProperties (
+        var first: String?,
+        var second: String //Class constructor properties annotated with @ConfigurationProperties must be nullable
+)
+</code></pre>
+
+</body>
+</html>

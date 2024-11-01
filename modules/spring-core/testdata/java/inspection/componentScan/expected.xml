@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>5</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan" />
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES" />
+        <description>Can't find package</description>
+        <highlighted_element>a</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>1</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>7</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.4</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>8</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>9</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.3</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>14</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>*.1.3.</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>16</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.??</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>17</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.a</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>20</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.?7</highlighted_element>
+        <language>JAVA</language>
+        <offset>43</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>22</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.6</highlighted_element>
+        <language>JAVA</language>
+        <offset>66</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>23</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>a</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>1</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>25</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.4</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>26</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>27</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.3</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>32</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>*.1.3.</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>34</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.??</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>35</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.a</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>38</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.?7</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>39</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.6</highlighted_element>
+        <language>JAVA</language>
+        <offset>39</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>40</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.6</highlighted_element>
+        <language>JAVA</language>
+        <offset>54</offset>
+        <length>7</length>
+    </problem>
+
+</problems>

@@ -1,0 +1,12 @@
+SELECT e FROM Entity e WHERE e.property LIKE 'test%';
+SELECT e FROM Entity e WHERE e.property LIKE 'test\%';
+SELECT e FROM Entity e WHERE LOWER(e.property) LIKE 'test%';
+SELECT e FROM Entity e WHERE e.property LIKE 'test%' AND e.otherProperty LIKE '%value%';
+SELECT e FROM Entity e WHERE e.property LIKE :pattern;
+SELECT e FROM Entity e WHERE e.property LIKE :pattern%;
+SELECT e FROM Entity e WHERE e.property LIKE %:pattern%;
+SELECT e FROM Entity e WHERE e.property LIKE %:pattern;
+SELECT e FROM Entity e WHERE e.property LIKE CONCAT(:pattern, '%');
+SELECT e FROM Entity e WHERE e.property LIKE 'test\%' ESCAPE '\';
+SELECT e FROM Entity e WHERE e.property LIKE '_est' ESCAPE '@';
+SELECT e FROM Entity e WHERE e.property LIKE 't%st\_%' ESCAPE '\';

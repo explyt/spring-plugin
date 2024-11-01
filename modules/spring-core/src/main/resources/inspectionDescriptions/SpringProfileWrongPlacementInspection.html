@@ -1,0 +1,34 @@
+<html>
+<head>
+    <title>Profile placement inspection</title>
+</head>
+<body>
+
+<p>Reports wrong placement for
+    <code lang="java">@Profile</code> annotation.</p>
+
+<p><b>Example:</b></p>
+"Profile should annotate bean/component" will be reported on '@Profile'
+annotation if class is not annotated with '@Component'
+<pre><code lang="java">
+  //@Component
+  @Profile("myProfile")
+  public class MyComponent {
+  }
+</code></pre>
+
+<p><b>Example:</b></p>
+"Profile should annotate bean/component" will be reported on '@Profile'
+annotation if method is not annotated with '@Bean'
+<pre><code lang="java">
+  @Configuration
+  public class MyConfiguration {
+    //@Bean
+    @Profile("myProfile")
+    SomeClass notABean() { ... }
+  }
+</code></pre>
+
+
+</body>
+</html>

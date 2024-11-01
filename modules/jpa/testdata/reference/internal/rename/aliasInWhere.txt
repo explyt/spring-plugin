@@ -1,0 +1,1 @@
+SELECT newName FROM FlightRegistration newName WHERE newName.scheduledFlight.id = :flightId AND newName.status = 'NEW'

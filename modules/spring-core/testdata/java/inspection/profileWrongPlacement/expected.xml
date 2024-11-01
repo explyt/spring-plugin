@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>ProfilePlacementConfiguration.java</file>
+        <line>29</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Profile should annotate bean/component</description>
+        <highlighted_element>@Profile</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>ProfilePlacementConfiguration.java</file>
+        <line>30</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String notABean()"/>
+        <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Profile should annotate bean/component</description>
+        <highlighted_element>@ProfileA</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>ProfilePlacementConfiguration.java</file>
+        <line>35</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Profile should annotate bean/component</description>
+        <highlighted_element>@Profile</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>ProfilePlacementConfiguration.java</file>
+        <line>36</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="class" FQNAME="com.NotAComponent"/>
+        <problem_class id="SpringProfileWrongPlacement" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Profile should annotate bean/component</description>
+        <highlighted_element>@ProfileA</highlighted_element>
+        <language>JAVA</language>
+        <offset>0</offset>
+        <length>9</length>
+    </problem>
+
+</problems>

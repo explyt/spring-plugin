@@ -1,0 +1,7 @@
+SELECT e FROM Entity e WHERE e.property BETWEEN :minValue AND :maxValue;
+SELECT e FROM Entity e WHERE e.dateProperty BETWEEN :startDate AND :endDate;
+SELECT e FROM Entity e WHERE e.dateProperty BETWEEN :startDate AND :endDate;
+SELECT e FROM Entity e WHERE e.property NOT BETWEEN :minValue AND :maxValue;
+SELECT e FROM Entity e WHERE e.property BETWEEN (SELECT minVal FROM OtherEntity) AND (SELECT maxVal FROM OtherEntity);
+SELECT e FROM Entity e WHERE e.property BETWEEN e.minValue AND e.maxValue;
+SELECT e FROM Entity e WHERE e.property NOT BETWEEN e.minValue AND e.maxValue;

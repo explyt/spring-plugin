@@ -1,0 +1,12 @@
+service:
+  organization:
+    api:
+      url: https://organization.com
+
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          productFeignClient:
+            url: https://order-service.com

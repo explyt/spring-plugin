@@ -1,0 +1,23 @@
+<html>
+<head>
+    <title>Bean Method Inspection</title></head>
+<body>
+<p>Reports 'Cannot find method' on <code lang="java">initMethod</code> and <code lang="java">destroyMethod</code> parameters
+    of the <code lang="java">@Bean</code> annotation.</p>
+
+<p><b>Example:</b></p>
+If BeanA class doesn't contain public 'unknownMethod' method, "Cannot find method" will be reported on 'unknownMethod'
+
+<pre><code lang="java">
+  public class BeanA {...}
+
+  @Configuration
+  public class BeanMethodConfiguration {
+     @Bean(initMethod="unknownMethod" )
+     public BeanA beanA() {...}
+  }
+</code></pre>
+
+</body>
+
+</html>

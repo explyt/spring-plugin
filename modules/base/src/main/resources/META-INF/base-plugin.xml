@@ -1,0 +1,14 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensionPoints>
+    </extensionPoints>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <errorHandler implementation="com.explyt.base.SentryErrorReporter"/>
+    </extensions>
+
+    <actions>
+    </actions>
+</idea-plugin>

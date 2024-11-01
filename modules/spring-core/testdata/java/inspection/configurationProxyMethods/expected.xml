@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<problems>
+
+    <problem>
+        <file>ProxyMethodsConfiguration.java</file>
+        <line>46</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.ProxyMethodsConfiguration com.ProxyBeanAA proxyBeanAAIncorrect()" />
+        <problem_class id="SpringConfigurationProxyMethods" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>@Bean method is called directly in a @Configuration where proxyBeanMethods has been disabled (set
+            to false)
+        </description>
+        <highlighted_element>proxyBeanA</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>10</length>
+    </problem>
+
+    <problem>
+        <file>ProxyMethodsConfiguration.java</file>
+        <line>64</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.ProxyMethodsComponent com.ProxyBeanAA proxyBeanAA()" />
+        <problem_class id="SpringConfigurationProxyMethods" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Method annotated with @Bean is invoked directly</description>
+        <highlighted_element>proxyBeanAFromComponent</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>23</length>
+    </problem>
+
+</problems>

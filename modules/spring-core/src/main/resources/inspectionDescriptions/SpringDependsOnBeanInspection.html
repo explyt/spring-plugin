@@ -1,0 +1,17 @@
+<html>
+<head>
+  <title>DependsOn Inspection</title></head>
+<body>
+<p>
+    The <b><code lang="java">@DependsOn</code></b> inspection identifies incorrect bean reference.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+  @Component
+  @DependsOn("beanNotFound")  // reports "Incorrect bean reference at @DependsOn"
+  class DependantComponent {
+  }
+</code></pre>
+</body>
+</html>

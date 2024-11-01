@@ -1,0 +1,22 @@
+<html>
+<head>
+    <title>AliasFor Annotation Inspection</title></head>
+<body>
+<p>Reports annotation class in <code lang="java">attribute</code> parameter not found in class meta-annotations
+    annotation.</p>
+
+<p><b>Example:</b></p>
+invalid (because BeanA is not meta-annotated by Component)
+
+<pre>
+    <code lang="java">
+        @Bean(destroyMethod = "bar")
+        @interface BeanA {
+            @AliasFor(annotation = Component.class, value = "value")
+            String[] name() default {};
+        }
+    </code>
+</pre>
+</body>
+
+</html>

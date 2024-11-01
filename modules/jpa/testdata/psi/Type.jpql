@@ -1,0 +1,3 @@
+SELECT e FROM Employee e WHERE TYPE(e) = Manager;
+SELECT e FROM Employee e WHERE TYPE(e) IN (Manager, SeniorManager);
+SELECT e FROM Employee e WHERE TYPE(e) IN (Manager, :type);

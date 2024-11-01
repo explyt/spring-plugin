@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>MethodAliasForConfiguration.kt</file>
+        <line>57</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] name()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>unknown</highlighted_element>
+        <language>kotlin</language>
+        <offset>19</offset>
+        <length>7</length>
+    </problem>
+
+
+    <problem>
+        <file>MethodAliasForConfiguration.kt</file>
+        <line>68</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] unknownConstForAncestor()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>NOT_EXISTING_METHOD</highlighted_element>
+        <language>kotlin</language>
+        <offset>20</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>MethodAliasForConfiguration.kt</file>
+        <line>72</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] unknownForAncestor()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>unknownForAncestor</highlighted_element>
+        <language>kotlin</language>
+        <offset>21</offset>
+        <length>18</length>
+    </problem>
+
+
+    <problem>
+        <file>MethodAliasForConfiguration.kt</file>
+        <line>76</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] notMetaAnnotated()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>value</highlighted_element>
+        <language>kotlin</language>
+        <offset>21</offset>
+        <length>5</length>
+    </problem>
+
+</problems>
