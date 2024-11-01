@@ -15,13 +15,8 @@ class FieldConfigurationPropertyDataRetriever private constructor(
 
 
     override fun getContainingClass(): PsiClass? {
-        val psiClass = uField.getContainingUClass() ?: return null
-
-        return if (!psiClass.isInterface && psiClass.isNonAbstract) {
-            psiClass
-        } else {
-            null
-        }
+        val uClass = uField.getContainingUClass() ?: return null
+        return if (!uClass.isInterface && uClass.isNonAbstract) uClass.javaPsi else null
     }
 
     override fun getMemberName(): String? {

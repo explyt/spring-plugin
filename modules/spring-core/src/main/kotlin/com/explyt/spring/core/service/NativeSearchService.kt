@@ -183,7 +183,6 @@ class NativeSearchService(private val project: Project) {
     private fun getBeans(beansData: Collection<SpringBeanData>, isProjectBean: Boolean): List<PsiBean> {
         return beansData.asSequence()
             .filter { it.projectBean == isProjectBean }
-            .filter { !it.rootBean }
             .mapNotNull { mapToPsiBean(it) }
             .toList()
     }
@@ -288,7 +287,7 @@ class NativeSearchService(private val project: Project) {
     private fun getSpringMethodBeansInner(): List<SpringBeanData> {
         return getActiveProjectsNode()
             .flatMap { it.findAll(SpringBeanData.KEY).map { beanData -> beanData.data } }
-            .filter { !it.rootBean && it.methodName != null }
+            .filter { it.methodName != null }
             .toList()
     }
 
