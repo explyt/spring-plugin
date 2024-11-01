@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+- Fixed: wrong bean method navigation
+- Fixed: Don't warn about kebab case for property values
+- Fixed: profile change (#6)
+
+### Other
+
+- Prepare code configurations for open source
+
+## [242.1.2334] - 2024-10-29
+
 ### Spring Web/MVC
 
 - Added ToolWindow with endpoints
