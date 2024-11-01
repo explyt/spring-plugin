@@ -312,10 +312,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         } else {
             componentBeanPsiMethods.filterByInheritedTypes(psiVariable.type, null).any()
         }
-        if (foundInheritedTypes) {
-            return true
-        }
-        return false
+        return foundInheritedTypes
     }
 
     private fun getBeanDeclarations(uVariable: UVariable, module: Module): Collection<PsiElement> {

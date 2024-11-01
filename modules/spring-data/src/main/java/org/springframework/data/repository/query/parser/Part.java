@@ -210,7 +210,7 @@ public class Part {
             return Collections.unmodifiableList(keywords);
         }
 
-        protected boolean supports(String property) {
+        private boolean supports(String property) {
 
             for (String keyword : keywords) {
                 if (property.endsWith(keyword)) {

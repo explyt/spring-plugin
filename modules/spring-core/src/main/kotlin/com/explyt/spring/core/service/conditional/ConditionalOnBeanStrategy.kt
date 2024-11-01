@@ -21,9 +21,7 @@ class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
         if (exclude) return true
 
         val excludeSingle = shouldExclude(annotationSingleHolder, dependant, foundBeans)
-        if (excludeSingle) return true
-
-        return false
+        return excludeSingle
     }
 
     private fun shouldExclude(

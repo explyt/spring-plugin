@@ -219,11 +219,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 } else {
                     componentBeanPsiMethods.filterByInheritedTypes(psiVariable.type, null).isNotEmpty()
                 }
-                if (foundInheritedTypes) {
-                    return true
-                }
-
-                return false
+                return foundInheritedTypes
             }
 
             if (uParent is UField) {

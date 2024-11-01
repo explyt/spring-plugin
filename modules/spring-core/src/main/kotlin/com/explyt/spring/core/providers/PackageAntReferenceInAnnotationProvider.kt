@@ -10,7 +10,7 @@ import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.sourceInjectionHost
 
-class PackageAntReferenceInAnnotationProvider() : UastInjectionHostReferenceProvider() {
+class PackageAntReferenceInAnnotationProvider : UastInjectionHostReferenceProvider() {
     override fun getReferencesForInjectionHost(
         uExpression: UExpression,
         host: PsiLanguageInjectionHost,

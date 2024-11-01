@@ -11,7 +11,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.refactoring.suggested.endOffset
+import com.intellij.psi.util.endOffset
 import org.jetbrains.uast.*
 
 class ProfileAnnotationHintsProvider : InlayHintsProvider {
