@@ -1,19 +1,36 @@
 /*
- * Copyright 2008-2023 the original author or authors.
+ * Original work: org.springframework.data.mapping.PropertyPath
+ * Available during publication at https://github.com/spring-projects/spring-data-commons/blob/3.0.x/src/main/java/org/springframework/data/mapping/PropertyPath.java
+ * Licensed under the Apache License, Version 2.0:
+ *     Copyright © 2018 John Doe
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Modifications:
+ *     Copyright © 2024 Explyt Ltd
+ *     Licensed under the Explyt Source License Version 1.0 (the "License");
+ *     You may not use this file except in compliance with the License.
+ *     You may obtain a copy of the Explyt Source License at https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md if it’s
+ *      somehow not in the folder with the file.
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ * Modifications Made:
+ *     **Modified:**
+ *         - Updated for local usages.
+ *         - Optimize for usage IDEA code model - com.intellij.psi.PsiClass instead java.lang.Class.
+ *     **Removed:**
+ *         - Removed unused code
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * See the Apache License, Version 2.0 for the specific language governing
+ * permissions and limitations under the original work's license.
+ *
+ * **NOTICE:**
+ *     This file has been modified by Explyt Ltd. The original version is available
+ *     under the Apache License 2.0. This entire file, including modifications to the
+ *     original work, is licensed under the Explyt Source License. To use this file,
+ *     you must agree to the terms of the Explyt Source License.
  */
-package org.springframework.data.repository.query.parser.domain;
+package org.springframework.data.mapping;
 
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.*;
@@ -21,10 +38,11 @@ import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PropertyUtilBase;
 import com.intellij.psi.util.PsiUtil;
 import com.intellij.util.containers.Stack;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,27 +64,20 @@ public class PropertyPath implements Iterable<PropertyPath> {
 
     private PropertyPath next;
 
-    /**
-     * Creates a leaf {@link PropertyPath} (no nested ones with the given name and owning type.
-     *
-     * @param name       must not be {@literal null} or empty.
-     * @param owningType must not be {@literal null}.
-     * @param base       the {@link PropertyPath} previously found.
-     */
-    PropertyPath(@NotNull String name, @Nullable PsiType owningType, @NotNull List<PropertyPath> base) {
+    PropertyPath(String name, PsiType owningType, List<PropertyPath> base) {
         String propertyName = name.matches(ALL_UPPERCASE) ? name : StringUtil.decapitalize(name);
-
         this.owningType = owningType;
-        this.isCollection = false; // todo: !!! propertyType.isCollectionLike();
-        this.type = getActualType(owningType, propertyName); // see TypeInformation<?> getActualType();
+        this.isCollection = false;
+
+        this.type = getActualType(owningType, propertyName);
         this.name = propertyName;
     }
 
-    @Nullable
-    private static PsiType getActualType(@Nullable PsiType psiType, String propertyName) {
+    private static PsiType getActualType(PsiType psiType, String propertyName) {
         if (psiType instanceof PsiClassType) {
             PsiClass psiClass = ((PsiClassType) psiType).resolve();
             if (psiClass == null) return null;
+
             if (InheritanceUtil.isInheritor(psiClass, CommonClassNames.JAVA_UTIL_COLLECTION)) {
                 final PsiType genericType = PsiUtil.substituteTypeParameter(psiType, CommonClassNames.JAVA_UTIL_COLLECTION, 0, true);
                 if (genericType != null) {
@@ -78,85 +89,30 @@ public class PropertyPath implements Iterable<PropertyPath> {
         return null;
     }
 
-    @Nullable
     public static PsiType getActualType(String propertyName, PsiClass psiClass) {
         PsiField field = PropertyUtilBase.findPropertyField(psiClass, propertyName, false);
         if (field != null) return field.getType();
+
         PsiMethod getter = PropertyUtilBase.findPropertyGetter(psiClass, propertyName, false, true);
         return getter != null ? PropertyUtilBase.getPropertyType(getter) : null;
     }
 
-    /**
-     * Returns the owning type of the {@link PropertyPath}.
-     *
-     * @return the owningType will never be {@literal null}.
-     */
-    @Nullable
-    public PsiType getOwningType() {
-        return owningType;
-    }
-
-    /**
-     * Returns the name of the {@link PropertyPath}.
-     *
-     * @return the name will never be {@literal null}.
-     */
     public String getSegment() {
         return name;
     }
 
-    /**
-     * Returns the leaf property of the {@link PropertyPath}.
-     *
-     * @return will never be {@literal null}.
-     */
-    public PropertyPath getLeafProperty() {
-
-        PropertyPath result = this;
-
-        while (result.hasNext()) {
-            result = result.next();
-        }
-
-        return result;
-    }
-
-    /**
-     * Returns the type of the property will return the plain resolved type for simple properties, the component type for
-     * any {@link Iterable} or the value type of a {@link Map} if the property is one.
-     *
-     * @return
-     */
-    @Nullable
     public PsiType getType() {
         return this.type;
     }
 
-    /**
-     * Returns the next nested {@link PropertyPath}.
-     *
-     * @return the next nested {@link PropertyPath} or {@literal null} if no nested {@link PropertyPath} available.
-     * @see #hasNext()
-     */
     public PropertyPath next() {
         return next;
     }
 
-    /**
-     * Returns whether there is a nested {@link PropertyPath}. If this returns {@literal true} you can expect
-     * {@link #next()} to return a non- {@literal null} value.
-     *
-     * @return
-     */
     public boolean hasNext() {
         return next != null;
     }
 
-    /**
-     * Returns the {@link PropertyPath} in dot notation.
-     *
-     * @return
-     */
     public String toDotPath() {
         if (hasNext()) {
             return getSegment() + "." + next().toDotPath();
@@ -164,11 +120,6 @@ public class PropertyPath implements Iterable<PropertyPath> {
         return getSegment();
     }
 
-    /**
-     * Returns whether the {@link PropertyPath} is actually a collection.
-     *
-     * @return
-     */
     public boolean isCollection() {
         return isCollection;
     }
@@ -197,10 +148,6 @@ public class PropertyPath implements Iterable<PropertyPath> {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Iterable#iterator()
-     */
     @Override
     public Iterator<PropertyPath> iterator() {
         return new Iterator<>() {
@@ -226,16 +173,7 @@ public class PropertyPath implements Iterable<PropertyPath> {
         };
     }
 
-    /**
-     * Extracts the {@link PropertyPath} chain from the given source {@link String} and {@link PsiType}.
-     *
-     * @param source must not be {@literal null}.
-     * @param type
-     * @return
-     */
-    public static PropertyPath from(@NotNull String source, @Nullable PsiType type) {
-
-        //Assert.hasText(source, "Source must not be null or empty!");
+    public static PropertyPath from(String source, PsiType type) {
         if (StringUtil.isEmptyOrSpaces(source)) return create("", type, new Stack<>());
 
         List<String> iteratorSource = new ArrayList<>();
@@ -262,13 +200,6 @@ public class PropertyPath implements Iterable<PropertyPath> {
         return result != null ? result : create("", type, new Stack<>());
     }
 
-    /**
-     * Creates a new {@link PropertyPath} as subordinary of the given {@link PropertyPath}.
-     *
-     * @param source
-     * @param base
-     * @return
-     */
     private static PropertyPath create(String source, Stack<PropertyPath> base) {
 
         PropertyPath previous = base.peek();
@@ -278,30 +209,10 @@ public class PropertyPath implements Iterable<PropertyPath> {
         return propertyPath;
     }
 
-    /**
-     * Factory method to create a new {@link PropertyPath} for the given {@link String} and owning type. It will inspect
-     * the given source for camel-case parts and traverse the {@link String} along its parts starting with the entire one
-     * and chewing off parts from the right side then. Whenever a valid property for the given class is found, the tail
-     * will be traversed for subordinary properties of the just found one and so on.
-     *
-     * @param source
-     * @param type
-     * @return
-     */
     private static PropertyPath create(String source, PsiType type, List<PropertyPath> base) {
         return create(source, type, "", base);
     }
 
-    /**
-     * Tries to look up a chain of {@link PropertyPath}s by trying the givne source first. If that fails it will split the
-     * source apart at camel case borders (starting from the right side) and try to look up a {@link PropertyPath} from
-     * the calculated head and recombined new tail and additional tail.
-     *
-     * @param source
-     * @param type
-     * @param addTail
-     * @return
-     */
     private static PropertyPath create(String source, PsiType type, String addTail, List<PropertyPath> base) {
         PropertyPath current = new PropertyPath(source, type, base);
         if (current.getType() == null) {
@@ -320,10 +231,7 @@ public class PropertyPath implements Iterable<PropertyPath> {
         return current;
     }
 
-    @Nullable
     private static PropertyPath getImplicitExpressionPropertyPath(String source, PsiType type, String addTail, List<PropertyPath> base) {
-        // findByAddressZipCode (property expression: address.zipCode).
-        // can be expressed explicitly: findByAddress_ZipCode (see: PropertyPath.from())
         Pattern pattern = Pattern.compile("\\p{Lu}+\\p{Ll}*$");
         Matcher matcher = pattern.matcher(source);
 
@@ -338,12 +246,9 @@ public class PropertyPath implements Iterable<PropertyPath> {
         return null;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
+
     @Override
     public String toString() {
-        return String.format("%s.%s", owningType.getCanonicalText(), toDotPath());
+        return owningType.getCanonicalText() + "." + toDotPath();
     }
 }

@@ -17,9 +17,9 @@ import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getParentOfType
+import org.springframework.data.mapping.PropertyPath
 import org.springframework.data.repository.query.parser.Part
 import org.springframework.data.repository.query.parser.PartTree
-import org.springframework.data.repository.query.parser.domain.PropertyPath
 
 
 class SpringDataMethodNameInspection : SpringDataBaseUastLocalInspectionTool() {
