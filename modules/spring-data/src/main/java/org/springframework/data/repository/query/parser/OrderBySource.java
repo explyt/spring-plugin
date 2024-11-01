@@ -1,32 +1,48 @@
 /*
+ * Copyright © 2024 Explyt Ltd
+ *
+ * All rights reserved.
+ *
+ * This code and software are the property of Explyt Ltd
+ * and are protected by copyright and other intellectual property laws.
+ *
  * Original work: org.springframework.data.repository.query.parser.OrderBySource
  * Available during publication at https://github.com/spring-projects/spring-data-commons/blob/3.0.x/src/main/java/org/springframework/data/repository/query/parser/OrderBySource.java
  * Licensed under the Apache License, Version 2.0:
- *     Copyright © 2018 John Doe
+ *     Copyright © 2013-2024 Oliver Gierke, Mark Paluch,
+ *     Christoph Strobl, Mariusz Mączkowski, and other contributors.
  *
- * Modifications:
- *     Copyright © 2024 Explyt Ltd
- *     Licensed under the Explyt Source License Version 1.0 (the "License");
- *     You may not use this file except in compliance with the License.
- *     You may obtain a copy of the Explyt Source License at https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md if it’s
- *      somehow not in the folder with the file.
+ * Modifications to the original work have been made by Explyt Ltd.
+ *
+ * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"),
+ * if you accept its terms and conditions.
+ *
+ * By installing, downloading, accessing, using, or distributing this code,
+ * you agree to the terms and conditions of the License.
+ * If you do not agree to such terms and conditions, you must cease using this code
+ * and immediately delete all copies of it.
+ *
+ * You may obtain a copy of the License at:
+ *
+ *     https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+ *
+ * Unauthorized use of this code constitutes a violation of intellectual property rights
+ * and may result in legal action.
  *
  * Modifications Made:
  *     **Modified:**
  *         - Updated for local usages.
- *         - Optimize for usage IDEA code model - com.intellij.psi.PsiClass instead java.lang.Class.
+ *         - Optimize for usage IDEA code model - com.intellij.psi.PsiClass instead of java.lang.Class.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the Apache License, Version 2.0 for the specific language governing
- * permissions and limitations under the original work's license.
+ * NOTICE:
+ *     This file includes code from an original work licensed under the Apache License 2.0.
+ *     The original license and copyright notices are retained.
+ *     This entire file, including modifications to the original work, is licensed under
+ *     the Explyt Source License. To use this file, you must agree to the terms of the
+ *     Explyt Source License.
  *
- * **NOTICE:**
- *     This file has been modified by Explyt Ltd. The original version is available
- *     under the Apache License 2.0. This entire file, including modifications to the
- *     original work, is licensed under the Explyt Source License. To use this file,
- *     you must agree to the terms of the Explyt Source License.
+ * See the Apache License, Version 2.0, for the specific language governing permissions
+ * and limitations under the original work's license.
  */
 package org.springframework.data.repository.query.parser;
 
