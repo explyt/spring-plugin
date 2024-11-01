@@ -2,7 +2,6 @@
 
     <vendor>explyt</vendor>
     <name>Spring Tool Tests</name>
-    <id>com.explyt.spring-web-test</id>
     <description>Overriding services and components for tests.</description>
 
     <xi:include href="spring-web-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
