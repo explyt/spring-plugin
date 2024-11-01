@@ -1,7 +1,7 @@
-package com.esprito.spring.core.reference.java
+package com.explyt.spring.core.reference.java
 
-import com.esprito.spring.test.ExplytJavaLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.psi.PsiPackage
 import junit.framework.TestCase

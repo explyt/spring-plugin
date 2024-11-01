@@ -1,8 +1,8 @@
-package com.esprito.spring.core.completion.properties.java
+package com.explyt.spring.core.completion.properties.java
 
-import com.esprito.spring.core.properties.providers.ConfigKeyPsiElement
-import com.esprito.spring.test.ExplytJavaLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.PsiMember
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 

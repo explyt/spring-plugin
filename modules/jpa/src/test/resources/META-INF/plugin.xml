@@ -1,7 +1,7 @@
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
-    <vendor>esprito</vendor>
+    <vendor>explyt</vendor>
     <name>jpa Tests</name>
-    <id>com.esprito.jpa-test</id>
+    <id>com.explyt.jpa-test</id>
     <description>Overriding services and components for tests.</description>
 
     <xi:include href="jpa-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>

@@ -1,11 +1,11 @@
-package com.esprito.spring.core.service.kotlin
+package com.explyt.spring.core.service.kotlin
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.runconfiguration.SpringBootConfigurationFactory
-import com.esprito.spring.core.service.AnnotationConfigApplicationService
-import com.esprito.spring.core.service.PackageScanService
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.runconfiguration.SpringBootConfigurationFactory
+import com.explyt.spring.core.service.AnnotationConfigApplicationService
+import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.execution.RunManager
 import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
@@ -23,12 +23,12 @@ class PackageScanServiceTest : ExplytKotlinLightTestCase() {
 
     override fun setUp() {
         super.setUp()
-        Registry.get("esprito.spring.root.runConfiguration").setValue(false)
+        Registry.get("explyt.spring.root.runConfiguration").setValue(false)
     }
 
     override fun tearDown() {
         super.tearDown()
-        Registry.get("esprito.spring.root.runConfiguration").resetToDefault()
+        Registry.get("explyt.spring.root.runConfiguration").resetToDefault()
     }
 
     fun testPackageScan() {
@@ -97,7 +97,7 @@ class PackageScanServiceTest : ExplytKotlinLightTestCase() {
     fun testRunConfigurationMainAppConfigConstructor() {
         myFixture.copyDirectoryToProject("service/packageScanRunConfigurationAppConfigConstructor", "")
 
-        Registry.get("esprito.spring.root.runConfiguration").setValue(true)
+        Registry.get("explyt.spring.root.runConfiguration").setValue(true)
         val runConfiguration = SpringBootConfigurationFactory.createTemplateConfiguration(project)
         runConfiguration.mainClassName = "com.app.MainClass"
 

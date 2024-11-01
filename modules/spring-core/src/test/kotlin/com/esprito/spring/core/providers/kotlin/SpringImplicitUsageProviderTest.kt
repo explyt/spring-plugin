@@ -1,7 +1,7 @@
-package com.esprito.spring.core.providers.kotlin
+package com.explyt.spring.core.providers.kotlin
 
-import com.esprito.spring.test.ExplytInspectionKotlinTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInspection.deadCode.UnusedDeclarationInspection
 import org.jetbrains.kotlin.test.TestMetadata
 

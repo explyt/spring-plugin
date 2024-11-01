@@ -12,7 +12,7 @@
     <category>JVM Frameworks</category>
     
 <description><![CDATA[
-<p><a href="https://explyt.com/plugin/">Explyt Spring plugin</a> (former Esprito Spring Tools) accelerates development of your Spring and Spring Boot applications by minimizing routine tasks, supporting Spring Boot profiles, configurations and properties, highlighting Spring Core Beans dependencies and usages. Moreover, it validates that Spring Beans injections are used correctly.</p>
+<p><a href="https://explyt.com/plugin/">Explyt Spring plugin</a> (former Explyt Spring Tools) accelerates development of your Spring and Spring Boot applications by minimizing routine tasks, supporting Spring Boot profiles, configurations and properties, highlighting Spring Core Beans dependencies and usages. Moreover, it validates that Spring Beans injections are used correctly.</p>
 <p>Explyt Spring plugin provides solid support for Spring Data, Spring Web, Spring Reactive Web, Spring AOP (in progress) including AspectJ, Spring Security, Spring Integration (partly).</p>
 <p>The plugin creates a developer-friendly environment for programmers working with IntelliJ IDEA Community Edition, Android Studio, Aqua, and helps you better understand the context of your Spring applications.</p>
 <p>It highlights the mistakes, misbehavior, and possible problems and typos in your code using more than 50 inspections.</p>

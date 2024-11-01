@@ -1,11 +1,11 @@
-package com.esprito.spring.core.providers.kotlin
+package com.explyt.spring.core.providers.kotlin
 
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.core.SpringProperties
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.util.SpringGutterTestUtil
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.SpringProperties
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
 
 

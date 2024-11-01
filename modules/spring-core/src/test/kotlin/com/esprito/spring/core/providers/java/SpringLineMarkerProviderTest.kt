@@ -1,7 +1,7 @@
-package com.esprito.spring.core.providers.java
+package com.explyt.spring.core.providers.java
 
-import com.esprito.spring.test.ExplytJavaLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
 import org.jetbrains.kotlin.test.TestMetadata
 

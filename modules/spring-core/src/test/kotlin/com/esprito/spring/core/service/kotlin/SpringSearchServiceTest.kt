@@ -1,9 +1,9 @@
-package com.esprito.spring.core.service.kotlin
+package com.explyt.spring.core.service.kotlin
 
-import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.core.service.SpringSearchServiceFacade
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.util.projectStructure.getModule
@@ -13,12 +13,12 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
 
     override fun setUp() {
         super.setUp()
-        Registry.get("esprito.spring.root.runConfiguration").setValue(false)
+        Registry.get("explyt.spring.root.runConfiguration").setValue(false)
     }
 
     override fun tearDown() {
         super.tearDown()
-        Registry.get("esprito.spring.root.runConfiguration").resetToDefault()
+        Registry.get("explyt.spring.root.runConfiguration").resetToDefault()
     }
 
     fun testImportComponent() {

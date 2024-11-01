@@ -1,7 +1,7 @@
-package com.esprito.spring.core.reference.kotlin
+package com.explyt.spring.core.reference.kotlin
 
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.psi.PsiPackage
 import junit.framework.TestCase

@@ -1,0 +1,62 @@
+package com.explyt.jpa.ql.usage
+
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
+
+abstract class JpaEntityUsageSearchTest : ExplytJavaLightTestCase() {
+    class Jakarta : JpaEntityUsageSearchTest() {
+        override val libraries = arrayOf(
+            TestLibrary.jakarta_persistence_3_1_0
+        )
+    }
+
+    class Javax : JpaEntityUsageSearchTest() {
+        override val libraries = arrayOf(
+            TestLibrary.javax_persistence_2_2
+        )
+    }
+
+    fun testFindUsageByImplicitName() {
+        myFixture.configureByText("query.jpql", "SELECT e FROM MyEnt<caret>ity e")
+        val targetElement = myFixture.elementAtCaret
+
+        myFixture.configureByText(
+            "MyEntity.java", """
+            import javax.persistence.*;
+            import jakarta.persistence.*;
+            
+            @Entity
+            public class MyE<caret>ntity {
+            }
+        """.trimIndent()
+        )
+
+        val usages = myFixture.findUsages(myFixture.elementAtCaret)
+
+        assertSize(1, usages)
+
+        assertEquals(targetElement, usages.first().reference?.element)
+    }
+
+    fun testFindUsageByExplicitName() {
+        myFixture.configureByText("query.jpql", "SELECT e FROM Name<caret>Override e")
+        val targetElement = myFixture.elementAtCaret
+
+        myFixture.configureByText(
+            "MyEntity.java", """
+            import javax.persistence.*;
+            import jakarta.persistence.*;
+            
+            @Entity(name = "NameOverride")
+            public class MyE<caret>ntity {
+            }
+        """.trimIndent()
+        )
+
+        val usages = myFixture.findUsages(myFixture.elementAtCaret)
+
+        assertSize(1, usages)
+
+        assertEquals(targetElement, usages.first().reference?.element)
+    }
+}

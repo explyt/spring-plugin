@@ -1,9 +1,9 @@
-package com.esprito.spring.core.inspections.kotlin
+package com.explyt.spring.core.inspections.kotlin
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.inspections.SpringScheduledInspection
-import com.esprito.spring.test.ExplytInspectionKotlinTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.inspections.SpringScheduledInspection
+import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.test.TestLibrary
 
 class SpringScheduledInspectionTest : ExplytInspectionKotlinTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)

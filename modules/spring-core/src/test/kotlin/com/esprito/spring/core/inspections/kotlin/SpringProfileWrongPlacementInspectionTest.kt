@@ -1,8 +1,8 @@
-package com.esprito.spring.core.inspections.kotlin
+package com.explyt.spring.core.inspections.kotlin
 
-import com.esprito.spring.core.inspections.SpringProfileWrongPlacementInspection
-import com.esprito.spring.test.ExplytInspectionKotlinTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.inspections.SpringProfileWrongPlacementInspection
+import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringProfileWrongPlacementInspectionTest : ExplytInspectionKotlinTestCase() {

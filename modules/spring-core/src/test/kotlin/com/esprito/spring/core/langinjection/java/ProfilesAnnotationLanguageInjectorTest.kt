@@ -1,7 +1,7 @@
-package com.esprito.spring.core.langinjection.java
+package com.explyt.spring.core.langinjection.java
 
-import com.esprito.spring.test.ExplytJavaLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 import org.jetbrains.kotlin.test.TestMetadata
 

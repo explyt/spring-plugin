@@ -1,11 +1,11 @@
-package com.esprito.spring.core.inspections.kotlin
+package com.explyt.spring.core.inspections.kotlin
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.inspections.SpringConditionalOnEmptyValueInspection
-import com.esprito.spring.core.providers.kotlin.ConfigurationPropertyLineMarkerProviderTest.Companion.APPLICATION_PROPERTIES_FILE_NAME
-import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.test.ExplytInspectionKotlinTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.inspections.SpringConditionalOnEmptyValueInspection
+import com.explyt.spring.core.providers.kotlin.ConfigurationPropertyLineMarkerProviderTest.Companion.APPLICATION_PROPERTIES_FILE_NAME
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.test.TestLibrary
 import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata

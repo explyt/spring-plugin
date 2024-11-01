@@ -1,7 +1,7 @@
-package com.esprito.spring.core.tracker.java
+package com.explyt.spring.core.tracker.java
 
-import com.esprito.spring.core.action.UastModelTrackerInvalidateAction
-import com.esprito.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.LightPlatformCodeInsightTestCase
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase

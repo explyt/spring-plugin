@@ -7,141 +7,142 @@
     <depends optional="true" config-file="spring-core-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
 
     <extensionPoints>
-        <extensionPoint qualifiedName="com.esprito.spring.core.configurationPropertiesLoader" dynamic="true"
-                        interface="com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader"
+        <extensionPoint qualifiedName="com.explyt.spring.core.configurationPropertiesLoader" dynamic="true"
+                        interface="com.explyt.spring.core.completion.properties.ConfigurationPropertiesLoader"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.configurationFactoriesNamesLoader" dynamic="true"
-                        interface="com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader"
+        <extensionPoint qualifiedName="com.explyt.spring.core.configurationFactoriesNamesLoader" dynamic="true"
+                        interface="com.explyt.spring.core.completion.properties.ConfigurationFactoriesNamesLoader"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.profileSearcher" dynamic="true"
-                        interface="com.esprito.spring.core.profile.ProfileSearcher"
+        <extensionPoint qualifiedName="com.explyt.spring.core.profileSearcher" dynamic="true"
+                        interface="com.explyt.spring.core.profile.ProfileSearcher"
                         area="IDEA_PROJECT"/>
 
-        <extensionPoint qualifiedName="com.esprito.spring.core.additionalBeansDiscoverer" dynamic="true"
-                        interface="com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer"
+        <extensionPoint qualifiedName="com.explyt.spring.core.additionalBeansDiscoverer" dynamic="true"
+                        interface="com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer"
                         area="IDEA_PROJECT"/>
     </extensionPoints>
 
-    <extensions defaultExtensionNs="com.esprito.spring.core">
+    <extensions defaultExtensionNs="com.explyt.spring.core">
         <configurationPropertiesLoader
-                implementation="com.esprito.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
+                implementation="com.explyt.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
         <configurationPropertiesLoader
-                implementation="com.esprito.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
+                implementation="com.explyt.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
         <configurationFactoriesNamesLoader
-                implementation="com.esprito.spring.core.completion.properties.AutoConfigurationImportsPropertiesLoader"/>
+                implementation="com.explyt.spring.core.completion.properties.AutoConfigurationImportsPropertiesLoader"/>
         <configurationFactoriesNamesLoader
-                implementation="com.esprito.spring.core.completion.properties.SpringFactoriesConfigurationPropertiesLoader"/>
+                implementation="com.explyt.spring.core.completion.properties.SpringFactoriesConfigurationPropertiesLoader"/>
 
-        <profileSearcher implementation="com.esprito.spring.core.profile.AnnotationProfileSearcher"/>
-        <profileSearcher implementation="com.esprito.spring.core.profile.AdditionalProfileSearcher"/>
-        <profileSearcher implementation="com.esprito.spring.core.profile.PropertyNameProfileSearcher"/>
-        <profileSearcher implementation="com.esprito.spring.core.profile.MavenProfileSearcher"/>
+        <profileSearcher implementation="com.explyt.spring.core.profile.AnnotationProfileSearcher"/>
+        <profileSearcher implementation="com.explyt.spring.core.profile.AdditionalProfileSearcher"/>
+        <profileSearcher implementation="com.explyt.spring.core.profile.PropertyNameProfileSearcher"/>
+        <profileSearcher implementation="com.explyt.spring.core.profile.MavenProfileSearcher"/>
 
         <additionalBeansDiscoverer
-                implementation="com.esprito.spring.core.service.beans.discoverer.SpringCoreAdditionalBeansDiscoverer"/>
+                implementation="com.explyt.spring.core.service.beans.discoverer.SpringCoreAdditionalBeansDiscoverer"/>
         <additionalBeansDiscoverer
-                implementation="com.esprito.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
+                implementation="com.explyt.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
         <!--Spring Boot External System-->
-        <externalSystemManager implementation="com.esprito.spring.core.externalsystem.SpringBootNativeManager"/>
+        <externalSystemManager implementation="com.explyt.spring.core.externalsystem.SpringBootNativeManager"/>
         <externalSystemUnlinkedProjectAware
-                implementation="com.esprito.spring.core.externalsystem.process.UnlinkedProjectAware"/>
+                implementation="com.explyt.spring.core.externalsystem.process.UnlinkedProjectAware"/>
         <toolWindow id="ExplytSpringBoot" anchor="right"
-                    icon="com/esprito/spring/core/icons/springToolWindow.svg"
-                    factoryClass="com.esprito.spring.core.externalsystem.view.SpringBootToolWindowFactory"/>
+                    icon="com/explyt/spring/core/icons/springToolWindow.svg"
+                    factoryClass="com.explyt.spring.core.externalsystem.view.SpringBootToolWindowFactory"/>
         <projectImportProvider
-                implementation="com.esprito.spring.core.externalsystem.process.SpringBootProjectImportProvider"/>
+                implementation="com.explyt.spring.core.externalsystem.process.SpringBootProjectImportProvider"/>
         <projectOpenProcessor
-                implementation="com.esprito.spring.core.externalsystem.process.SpringBootProjectOpenProcessor"/>
+                implementation="com.explyt.spring.core.externalsystem.process.SpringBootProjectOpenProcessor"/>
         <externalSystemViewContributor id="ExplytSpringBoot"
-                                       implementation="com.esprito.spring.core.externalsystem.view.SpringBootExternalSystemViewContributor"/>
+                                       implementation="com.explyt.spring.core.externalsystem.view.SpringBootExternalSystemViewContributor"/>
         <externalSystemDependencyAnalyzer
-                implementation="com.esprito.spring.core.externalsystem.analyzer.BeanAnalyzerExtension"/>
+                implementation="com.explyt.spring.core.externalsystem.analyzer.BeanAnalyzerExtension"/>
         <externalProjectDataService
-                implementation="com.esprito.spring.core.externalsystem.process.CacheTrackerDataService"/>
+                implementation="com.explyt.spring.core.externalsystem.process.CacheTrackerDataService"/>
         <!--Spring Boot External System-->
 
-        <notificationGroup id="com.esprito.spring.notification"
+        <notificationGroup id="com.explyt.spring.notification"
                            displayType="BALLOON"
                            bundle="messages.SpringCoreBundle"
                            key="explyt.spring.common.notifications"/>
 
         <completion.contributor language="any"
-                                id="com.esprito.spring.core.propertiesCompletionContributor"
-                                implementationClass="com.esprito.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
+                                id="com.explyt.spring.core.propertiesCompletionContributor"
+                                implementationClass="com.explyt.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
 
         <completion.contributor language="yaml"
-                                implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
+                                implementationClass="com.explyt.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
         <completion.contributor language="UAST"
                                 order="first"
-                                id="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"
-                                implementationClass="com.esprito.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"/>
+                                id="com.explyt.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"
+                                implementationClass="com.explyt.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"/>
 
         <completion.contributor language="UAST"
                                 order="first"
-                                id="com.esprito.spring.core.properties.contributors.ScheduledCronCompletionContributor"
-                                implementationClass="com.esprito.spring.core.properties.contributors.ScheduledCronCompletionContributor"/>
+                                id="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"
+                                implementationClass="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"/>
 
         <runDashboardCustomizer
-                implementation="com.esprito.spring.core.runconfiguration.ExplytSpringBootRunDashboardCustomizer"
+                implementation="com.explyt.spring.core.runconfiguration.ExplytSpringBootRunDashboardCustomizer"
                 order="before commonJavaCustomizer"/>
 
         <psi.referenceContributor language="Properties"
-                                  implementation="com.esprito.spring.core.properties.contributors.SpringConfigurationPropertiesReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.properties.contributors.SpringConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="Properties"
-                                  implementation="com.esprito.spring.core.autoconfigure.reference.AutoConfigureReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.autoconfigure.reference.AutoConfigureReferenceContributor"/>
         <psi.referenceContributor language="yaml"
-                                  implementation="com.esprito.spring.core.properties.contributors.SpringYamlConfigurationPropertiesReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.properties.contributors.SpringYamlConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.properties.contributors.UastConfigurationPropertyReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.properties.contributors.UastConfigurationPropertyReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.references.contributors.UastAliasMethodReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.references.contributors.UastAliasMethodReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.references.contributors.UastMethodReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.references.contributors.UastMethodReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.references.contributors.UastBeanReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.references.contributors.UastBeanReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.references.contributors.QualifierReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.references.contributors.QualifierReferenceContributor"/>
         <psi.referenceContributor language="JSON"
-                                  implementation="com.esprito.spring.core.properties.contributors.SpringMetadataReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.properties.contributors.SpringMetadataReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.references.contributors.SpringScopeReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.references.contributors.SpringScopeReferenceContributor"/>
 
         <lang.documentationProvider language="Properties"
                                     order="first"
-                                    implementationClass="com.esprito.spring.core.properties.providers.SpringPropertiesDocumentationProvider"/>
+                                    implementationClass="com.explyt.spring.core.properties.providers.SpringPropertiesDocumentationProvider"/>
         <lang.documentationProvider language="yaml"
                                     order="first"
-                                    implementationClass="com.esprito.spring.core.completion.yaml.SpringYamlDocumentationProvider"/>
+                                    implementationClass="com.explyt.spring.core.completion.yaml.SpringYamlDocumentationProvider"/>
 
-        <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringImplicitUsageProvider"/>
-        <implicitUsageProvider implementation="com.esprito.spring.core.providers.SpringAopImplicitUsageProvider"/>
-        <implicitUsageProvider implementation="com.esprito.spring.core.providers.TestContainerImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="com.explyt.spring.core.providers.SpringImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="com.explyt.spring.core.providers.SpringAopImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="com.explyt.spring.core.providers.TestContainerImplicitUsageProvider"/>
         <implicitUsageProvider
-                implementation="com.esprito.spring.core.providers.SpringConfigurationPropertyUsageProvider"/>
+                implementation="com.explyt.spring.core.providers.SpringConfigurationPropertyUsageProvider"/>
 
         <properties.implicitPropertyUsageProvider
-                implementation="com.esprito.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>
+                implementation="com.explyt.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>
         <properties.implicitPropertyUsageProvider
-                implementation="com.esprito.spring.core.autoconfigure.AutoConfigureImplicitPropertyUsageProvider"/>
+                implementation="com.explyt.spring.core.autoconfigure.AutoConfigureImplicitPropertyUsageProvider"/>
 
         <lang.foldingBuilder
             language="UAST"
-            implementationClass="com.esprito.spring.core.properties.ValueAnnotationFoldingBuilder"/>
+            implementationClass="com.explyt.spring.core.properties.ValueAnnotationFoldingBuilder"/>
 
         <lang.foldingBuilder
                 language="UAST"
-                implementationClass="com.esprito.spring.core.properties.GetPropertyMethodFoldingBuilder"/>
+                implementationClass="com.explyt.spring.core.properties.GetPropertyMethodFoldingBuilder"/>
 
         <languageInjectionContributor language="UAST"
-                                      implementationClass="com.esprito.spring.core.language.injection.ConfigurationPropertiesInjector"/>
+                                      implementationClass="com.explyt.spring.core.language.injection.ConfigurationPropertiesInjector"/>
 
-        <searchEverywhereContributor implementation="com.esprito.spring.core.search.BeanSearchEverywhereContributorFactory"/>
+        <searchEverywhereContributor
+                implementation="com.explyt.spring.core.search.BeanSearchEverywhereContributorFactory"/>
 
         <localInspection language="UAST"
                          shortName="SpringInjectionAutowiringInspection"
@@ -152,7 +153,7 @@
                          key="explyt.spring.inspection.bean.autowired"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringEventListenerInspection"
@@ -163,7 +164,7 @@
                          key="explyt.spring.inspection.method.eventListener"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringEventListenerInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringEventListenerInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringComponentScanInspection"
@@ -174,7 +175,7 @@
                          key="explyt.spring.inspection.method.componentScan"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringComponentScanInvalidPackageInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringComponentScanInvalidPackageInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringLookupBeanInspection"
@@ -185,7 +186,7 @@
                          key="explyt.spring.inspection.bean.lookup"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringLookupBeanInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringLookupBeanInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringDependsOnBeanInspection"
@@ -196,7 +197,7 @@
                          key="explyt.spring.inspection.bean.dependsOn"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringDependsOnBeanInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringDependsOnBeanInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringAliasBothInterchangeableSetInspection"
@@ -207,7 +208,7 @@
                          key="explyt.spring.inspection.alias.key"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringAliasBothInterchangeableSetInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringAliasBothInterchangeableSetInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringUnknownAliasMethodInspection"
@@ -218,7 +219,7 @@
                          key="explyt.spring.inspection.alias.attribute"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringUnknownAliasMethodInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringUnknownAliasMethodInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringAliasNotMetaAnnotatedInspection"
@@ -229,7 +230,7 @@
                          key="explyt.spring.inspection.alias.annotation"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringAliasNotMetaAnnotatedInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringAliasNotMetaAnnotatedInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringUnknownBeanMethodInspection"
@@ -240,7 +241,7 @@
                          key="explyt.spring.inspection.bean.method"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringUnknownBeanMethodInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringUnknownBeanMethodInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringConfigurationProxyMethodsInspection"
@@ -251,7 +252,7 @@
                          key="explyt.spring.inspection.configuration"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringConfigurationProxyMethodsInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationProxyMethodsInspection"/>
 
         <localInspection language="Properties"
                          shortName="SpringPropertiesInspection"
@@ -261,7 +262,7 @@
                          bundle="messages.SpringCoreBundle"
                          key="explyt.spring.inspection.properties.key"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringPropertiesInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringPropertiesInspection"/>
 
         <localInspection language="yaml"
                          shortName="SpringYamlInspection"
@@ -271,7 +272,7 @@
                          bundle="messages.SpringCoreBundle"
                          key="explyt.spring.inspection.yaml.key"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringYamlInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
 
         <localInspection language="Properties"
                          shortName="EnableAutoConfigureSpringFactoryInspection"
@@ -281,7 +282,7 @@
                          bundle="messages.SpringCoreBundle"
                          key="explyt.spring.inspection.autoconfigure"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.core.autoconfigure.inspection.EnableAutoConfigureSpringFactoryInspection"/>
+                         implementationClass="com.explyt.spring.core.autoconfigure.inspection.EnableAutoConfigureSpringFactoryInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringConditionalOnEmptyValueInspection"
@@ -292,7 +293,7 @@
                          key="explyt.spring.inspection.conditionalOnProperty.empty"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringConditionalOnEmptyValueInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringConditionalOnEmptyValueInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringConditionalOnWrongPlacementInspection"
@@ -303,7 +304,7 @@
                          key="explyt.spring.inspection.conditionalOn.wrongPlacement"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringConditionalOnWrongPlacementInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringConditionalOnWrongPlacementInspection"/>
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
@@ -313,7 +314,7 @@
                          key="explyt.spring.inspection.property.resource.ref"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.PsiFileReferenceInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.PsiFileReferenceInspection"/>
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
@@ -323,7 +324,7 @@
                          key="explyt.spring.inspection.method.same.class"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.CallBeanMethodFromSomeClassInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.CallBeanMethodFromSomeClassInspection"/>
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
@@ -333,7 +334,7 @@
                          key="explyt.spring.inspection.property.source.classpath"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringPropertySourceClasspathInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringPropertySourceClasspathInspection"/>
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
@@ -342,7 +343,7 @@
                          key="explyt.spring.inspection.property.source.file"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringPropertySourceFileInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringPropertySourceFileInspection"/>
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
@@ -352,7 +353,7 @@
                          key="explyt.spring.inspection.context.configuration.classpath"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringContextConfigurationClasspathInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringContextConfigurationClasspathInspection"/>
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
@@ -361,7 +362,7 @@
                          key="explyt.spring.inspection.context.configuration.file"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringContextConfigurationFileInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringContextConfigurationFileInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringProfileWrongPlacementInspection"
@@ -372,7 +373,7 @@
                          key="explyt.spring.inspection.profile.wrongPlacement"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringProfileWrongPlacementInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringProfileWrongPlacementInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringProfileAnnotationInspection"
@@ -383,7 +384,7 @@
                          key="explyt.spring.inspection.profile"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringProfileAnnotationInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringProfileAnnotationInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringMetaAnnotationWithoutRuntimeInspection"
@@ -394,7 +395,7 @@
                          key="explyt.spring.inspection.retention"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringMetaAnnotationWithoutRuntimeInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringMetaAnnotationWithoutRuntimeInspection"/>
 
         <localInspection language="JSON"
                          shortName="AdditionalConfigPropertyInspection"
@@ -404,7 +405,7 @@
                          bundle="messages.SpringCoreBundle"
                          key="explyt.spring.inspection.metadata.config.key"
                          enabledByDefault="true" level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringMetadataPropertyInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringMetadataPropertyInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringAsyncReturnTypeInspection"
@@ -415,7 +416,7 @@
                          key="explyt.spring.inspection.async"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringAsyncReturnTypeInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringAsyncReturnTypeInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringCacheableAnnotationInspection"
@@ -426,7 +427,7 @@
                          key="explyt.spring.inspection.cacheable"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringCacheableAnnotationInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringCacheableAnnotationInspection"/>
         <localInspection language="UAST"
                          shortName="SpringConfigurationPropertiesInspection"
                          groupBundle="messages.SpringCoreBundle"
@@ -436,7 +437,7 @@
                          key="explyt.spring.inspection.config.properties"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringConfigurationPropertiesInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesInspection"/>
         <localInspection language="UAST"
                          shortName="SpringKotlinObjectInspection"
                          groupBundle="messages.SpringCoreBundle"
@@ -446,7 +447,7 @@
                          key="explyt.spring.inspection.kotlin.object"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringKotlinObjectInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringKotlinObjectInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringCacheAnnotationsOnInterfaceInspection"
@@ -457,7 +458,7 @@
                          key="explyt.spring.inspection.cache.interface.class"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringCacheAnnotationsOnInterfaceInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringCacheAnnotationsOnInterfaceInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringConfigurationPropertiesNullableParametersInspection"
@@ -468,7 +469,7 @@
                          key="explyt.spring.inspection.kotlin.constructor.nullable"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.core.inspections.SpringConfigurationPropertiesNullableParametersInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesNullableParametersInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringValueAnnotationInspection"
@@ -479,7 +480,7 @@
                          key="explyt.spring.inspection.value"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringValueAnnotationInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringValueAnnotationInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringScheduledInspection"
@@ -490,7 +491,7 @@
                          key="explyt.spring.inspection.scheduled"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringScheduledInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringScheduledInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringKotlinInternalBeanInspection"
@@ -501,7 +502,7 @@
                          key="explyt.spring.inspection.kotlin.internal"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringEntityScanInspection"
@@ -512,119 +513,119 @@
                          key="explyt.spring.inspection.entity.scan"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.core.inspections.SpringEntityScanInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringEntityScanInspection"/>
 
         <postStartupActivity
-                implementation="com.esprito.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
+                implementation="com.explyt.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
 
         <configurationType
                 id="Spring Boot"
-                implementation="com.esprito.spring.core.runconfiguration.SpringBootConfigurationType"/>
+                implementation="com.explyt.spring.core.runconfiguration.SpringBootConfigurationType"/>
 
         <runConfigurationProducer
                 order="first"
-                implementation="com.esprito.spring.core.runconfiguration.SpringBootConfigurationProducer"/>
+                implementation="com.explyt.spring.core.runconfiguration.SpringBootConfigurationProducer"/>
 
-        <groupConfigurable id="com.esprito.spring.group"
+        <groupConfigurable id="com.explyt.spring.group"
                            parentId="tools"
                            displayNameKey="configurable.group.com.explyt.spring.group.settings.display.name"
                            descriptionKey="configurable.group.com.explyt.spring.group.settings.description"
                            bundle="messages.SpringCoreBundle"/>
 
-        <applicationConfigurable id="com.esprito.spring.runConfigurations"
+        <applicationConfigurable id="com.explyt.spring.runConfigurations"
                                  key="run.configuration.spring.boot.display.name"
-                                 groupId="com.esprito.spring.group"
+                                 groupId="com.explyt.spring.group"
                                  bundle="messages.SpringCoreBundle"
-                                 instance="com.esprito.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
+                                 instance="com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
                                  groupWeight="85"/>
 
         <psi.referenceContributor
-                implementation="com.esprito.spring.core.references.contributors.PackageAntReferenceInAnnotationContributor"
+                implementation="com.explyt.spring.core.references.contributors.PackageAntReferenceInAnnotationContributor"
                 language="UAST"/>
         <psi.referenceContributor
-                implementation="com.esprito.spring.core.references.contributors.FileReferenceContributor"
+                implementation="com.explyt.spring.core.references.contributors.FileReferenceContributor"
                 language="UAST"/>
 
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.esprito.spring.core.providers.SpringBeanLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.core.providers.SpringBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.esprito.spring.core.providers.EventListenerLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.core.providers.EventListenerLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.esprito.spring.core.providers.ConfigurationPropertyLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.core.providers.ConfigurationPropertyLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="Properties"
-                                        implementationClass="com.esprito.spring.core.providers.PropertyLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.core.providers.PropertyLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="yaml"
-                                        implementationClass="com.esprito.spring.core.providers.PropertyLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.core.providers.PropertyLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.esprito.spring.core.providers.GetBeanLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.core.providers.GetBeanLineMarkerProvider"/>
 
         <codeInsight.implicitSubclassProvider
-                implementation="com.esprito.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
+                implementation="com.explyt.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
         <fileType name="spring.factories"
                   fieldName="INSTANCE"
-                  implementationClass="com.esprito.spring.core.autoconfigure.language.FactoriesFileType"/>
+                  implementationClass="com.explyt.spring.core.autoconfigure.language.FactoriesFileType"/>
         <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports"
                   fieldName="INSTANCE"
-                  implementationClass="com.esprito.spring.core.autoconfigure.language.AutoConfigurationImportsFileType"/>
+                  implementationClass="com.explyt.spring.core.autoconfigure.language.AutoConfigurationImportsFileType"/>
 
         <fileType name="Profiles File"
-                  implementationClass="com.esprito.spring.core.language.profiles.ProfilesFileType"
+                  implementationClass="com.explyt.spring.core.language.profiles.ProfilesFileType"
                   fieldName="INSTANCE"
                   language="Profiles"/>
 
-        <fileTemplateGroup implementation="com.esprito.spring.core.properties.FilePropertyTemplateGroupFactory"/>
+        <fileTemplateGroup implementation="com.explyt.spring.core.properties.FilePropertyTemplateGroupFactory"/>
 
         <lang.parserDefinition
                 language="Profiles"
-                implementationClass="com.esprito.spring.core.language.profiles.ProfilesParserDefinition"/>
+                implementationClass="com.explyt.spring.core.language.profiles.ProfilesParserDefinition"/>
 
         <lang.syntaxHighlighterFactory
                 language="Profiles"
-                implementationClass="com.esprito.spring.core.language.profiles.ProfilesSyntaxHighlighterFactory"/>
+                implementationClass="com.explyt.spring.core.language.profiles.ProfilesSyntaxHighlighterFactory"/>
 
         <completion.contributor
                 language="Profiles"
-                implementationClass="com.esprito.spring.core.language.profiles.ProfilesCompletionContributor"/>
+                implementationClass="com.explyt.spring.core.language.profiles.ProfilesCompletionContributor"/>
 
         <psi.referenceContributor
                 language="yaml"
-                implementation="com.esprito.spring.core.language.profiles.YamlProfilesReferenceContributor"/>
+                implementation="com.explyt.spring.core.language.profiles.YamlProfilesReferenceContributor"/>
 
         <psi.referenceContributor
                 language="Properties"
-                implementation="com.esprito.spring.core.language.profiles.PropertiesProfilesReferenceContributor"/>
+                implementation="com.explyt.spring.core.language.profiles.PropertiesProfilesReferenceContributor"/>
 
         <psi.referenceContributor
                 language="XML"
-                implementation="com.esprito.spring.core.language.profiles.XmlProfilesReferenceContributor"/>
+                implementation="com.explyt.spring.core.language.profiles.XmlProfilesReferenceContributor"/>
 
         <psi.referenceContributor
-                implementation="com.esprito.spring.core.language.profiles.UastProfilesReferenceContributor"
+                implementation="com.explyt.spring.core.language.profiles.UastProfilesReferenceContributor"
                 language="UAST"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.core.references.contributors.DynamicPropertyRegistryReferenceContributor"/>
+                                  implementation="com.explyt.spring.core.references.contributors.DynamicPropertyRegistryReferenceContributor"/>
 
         <lang.braceMatcher
                 language="Profiles"
-                implementationClass="com.esprito.spring.core.language.profiles.psi.ProfilesBraceMatcher"/>
+                implementationClass="com.explyt.spring.core.language.profiles.psi.ProfilesBraceMatcher"/>
 
         <codeInsight.declarativeInlayProvider
                 bundle="messages.SpringCoreBundle"
                 group="ANNOTATIONS_GROUP"
-                implementationClass="com.esprito.spring.core.hint.ProfileAnnotationHintsProvider"
+                implementationClass="com.explyt.spring.core.hint.ProfileAnnotationHintsProvider"
                 isEnabledByDefault="true"
                 language="UAST"
                 nameKey="explyt.editor.hints.annotation_profile"
                 descriptionKey="explyt.editor.hints.annotation_profile"
-                providerId="esprito.profile_annotation"/>
+                providerId="explyt.profile_annotation"/>
 
-        <referencesSearch implementation="com.esprito.spring.core.search.PropertyStringUsagesSearcher"/>
+        <referencesSearch implementation="com.explyt.spring.core.search.PropertyStringUsagesSearcher"/>
 
         <lang.inspectionSuppressor language="Properties"
-                                   implementationClass="com.esprito.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
+                                   implementationClass="com.explyt.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
 
-        <registryKey key="esprito.spring.root.runConfiguration" defaultValue="false"
+        <registryKey key="explyt.spring.root.runConfiguration" defaultValue="false"
                      description="Use root class from run configuration for bean search"/>
         <registryKey key="explyt.spring.process.log.all" defaultValue="false"
                      description="Show all spring log in bean resolve process"/>
@@ -636,38 +637,38 @@
                      description="Whether IDEA should use 'in-process' mode for interaction with plugin api"/>
         <intentionAction>
             <language>yaml</language>
-            <className>com.esprito.spring.core.intentions.CreateYamlMetaDescriptionIntention</className>
+            <className>com.explyt.spring.core.intentions.CreateYamlMetaDescriptionIntention</className>
         </intentionAction>
         <intentionAction>
             <language>Properties</language>
-            <className>com.esprito.spring.core.intentions.CreatePropertiesMetaDescriptionIntention</className>
+            <className>com.explyt.spring.core.intentions.CreatePropertiesMetaDescriptionIntention</className>
         </intentionAction>
         <intentionAction>
             <language>UAST</language>
-            <className>com.esprito.spring.core.intentions.CreateConfigurationMetaDescriptionIntention</className>
+            <className>com.explyt.spring.core.intentions.CreateConfigurationMetaDescriptionIntention</className>
         </intentionAction>
 
-        <iconProvider implementation="com.esprito.spring.core.providers.SpringPropertyFileIconProvider"/>
+        <iconProvider implementation="com.explyt.spring.core.providers.SpringPropertyFileIconProvider"/>
     </extensions>
 
     <actions>
-        <action id="NavigateToSpringBean" class="com.esprito.spring.core.externalsystem.action.BeanNavigationAction"/>
+        <action id="NavigateToSpringBean" class="com.explyt.spring.core.externalsystem.action.BeanNavigationAction"/>
         <action id="Explyt.ExternalView.ProfileChanged"
-                class="com.esprito.spring.core.externalsystem.action.ChangeProfileStateAction"/>
+                class="com.explyt.spring.core.externalsystem.action.ChangeProfileStateAction"/>
         <action id="SpringBootExplyt.ExternalSystem.AttachProject"
-                class="com.esprito.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
+                class="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
         <action id="SpringBootExplyt.ExternalSystem.DetachAllProjects"
-                class="com.esprito.spring.core.externalsystem.action.DetachAllProjectsAction"/>
+                class="com.explyt.spring.core.externalsystem.action.DetachAllProjectsAction"/>
         <action id="SpringBootExplyt.ToolbarDependencyAnalyzer"
-                class="com.esprito.spring.core.externalsystem.analyzer.ToolbarDependencyAnalyzerAction"/>
+                class="com.explyt.spring.core.externalsystem.analyzer.ToolbarDependencyAnalyzerAction"/>
         <action id="SpringBootExplyt.DependencyAnalyzer.GoTo"
-                class="com.esprito.spring.core.externalsystem.analyzer.BeanGoToAction">
+                class="com.explyt.spring.core.externalsystem.analyzer.BeanGoToAction">
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyListGroup"/>
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyTreeGroup"/>
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.UsagesTreeGroup"/>
         </action>
         <!--<action id="SpringBootExplyt.ActiveExternalProjectAction"
-                class="com.esprito.spring.core.externalsystem.action.ActiveExternalProjectAction">
+                class="com.explyt.spring.core.externalsystem.action.ActiveExternalProjectAction">
             <add-to-group group-id="ExternalSystemView.BaseProjectMenu"/>
         </action>-->
         <group id="SpringBootExplyt.View.ActionsToolbar.CenterPanel">
@@ -683,35 +684,35 @@
                           relative-to-action="ExternalSystem.RefreshAllProjects"/>
         </group>
         <action id="SpringBootExplyt.ExternalSystem.Toolbar.AttachProject"
-                class="com.esprito.spring.core.externalsystem.action.AttachSpringBootToolbarProjectAction">
+                class="com.explyt.spring.core.externalsystem.action.AttachSpringBootToolbarProjectAction">
             <!--<add-to-group group-id="ToolbarRunGroup" anchor="after" relative-to-action="RunnerActions"/>-->
             <add-to-group group-id="ToolbarMakeGroup" anchor="before" relative-to-action="CompileDirty"/>
             <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="SearchEverywhere"/>
         </action>
 
         <action id="Explyt.UastModelTrackerInvalidateAction"
-                class="com.esprito.spring.core.action.UastModelTrackerInvalidateAction">
+                class="com.explyt.spring.core.action.UastModelTrackerInvalidateAction">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
         </action>
 
-        <action id="PostConstructGenerateAction" class="com.esprito.spring.core.action.PostConstructJavaGenerateAction">
+        <action id="PostConstructGenerateAction" class="com.explyt.spring.core.action.PostConstructJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
-        <action id="PreDestroyGenerateAction" class="com.esprito.spring.core.action.PreDestroyJavaGenerateAction">
+        <action id="PreDestroyGenerateAction" class="com.explyt.spring.core.action.PreDestroyJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
         <action id="PostConstructGenerateActionKotlin"
-                class="com.esprito.spring.core.action.PostConstructKotlinGenerateAction">
+                class="com.explyt.spring.core.action.PostConstructKotlinGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
         <action id="PreDestroyKotlinGenerateAction"
-                class="com.esprito.spring.core.action.PreDestroyKotlinGenerateAction">
+                class="com.explyt.spring.core.action.PreDestroyKotlinGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
     </actions>
 
     <projectListeners>
-        <listener class="com.esprito.spring.core.runconfiguration.ExplytRunManagerListener"
+        <listener class="com.explyt.spring.core.runconfiguration.ExplytRunManagerListener"
                   topic="com.intellij.execution.RunManagerListener"/>
     </projectListeners>
 

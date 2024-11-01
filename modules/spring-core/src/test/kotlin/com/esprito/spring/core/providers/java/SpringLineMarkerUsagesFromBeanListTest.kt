@@ -1,10 +1,10 @@
-package com.esprito.spring.core.providers.java
+package com.explyt.spring.core.providers.java
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.ExplytJavaLightTestCase
-import com.esprito.spring.test.TestLibrary
-import com.esprito.spring.test.util.SpringGutterTestUtil
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.SpringGutterTestUtil
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
 

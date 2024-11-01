@@ -1,8 +1,8 @@
-package com.esprito.spring.security.inspections.kotlin
+package com.explyt.spring.security.inspections.kotlin
 
-import com.esprito.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringSecurityAnnotationWithUserDetailsInspectionTest : ExplytInspectionJavaTestCase() {
