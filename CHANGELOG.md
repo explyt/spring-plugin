@@ -52,7 +52,8 @@
 - Fixed: AlreadyDisposedException
 - Added: Generator for @PostConstruct methods
 - Fixed: autowired fields in abstract class
-- Fixed: esprito.spring.root.runConfiguration  
+- Fixed: esprito.spring.root.runConfiguration
+- Fixed: Detect @Component bean for abstract class
 
 ### Spring AOP
 
