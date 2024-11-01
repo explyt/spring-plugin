@@ -1,26 +1,41 @@
 /*
- * Copyright 2008-2023 the original author or authors.
+ * Original work: org.springframework.data.repository.query.parser.OrderBySource
+ * Available during publication at https://github.com/spring-projects/spring-data-commons/blob/3.0.x/src/main/java/org/springframework/data/repository/query/parser/OrderBySource.java
+ * Licensed under the Apache License, Version 2.0:
+ *     Copyright © 2018 John Doe
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Modifications:
+ *     Copyright © 2024 Explyt Ltd
+ *     Licensed under the Explyt Source License Version 1.0 (the "License");
+ *     You may not use this file except in compliance with the License.
+ *     You may obtain a copy of the Explyt Source License at https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md if it’s
+ *      somehow not in the folder with the file.
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ * Modifications Made:
+ *     **Modified:**
+ *         - Updated for local usages.
+ *         - Optimize for usage IDEA code model - com.intellij.psi.PsiClass instead java.lang.Class.
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * See the Apache License, Version 2.0 for the specific language governing
+ * permissions and limitations under the original work's license.
+ *
+ * **NOTICE:**
+ *     This file has been modified by Explyt Ltd. The original version is available
+ *     under the Apache License 2.0. This entire file, including modifications to the
+ *     original work, is licensed under the Explyt Source License. To use this file,
+ *     you must agree to the terms of the Explyt Source License.
  */
-package org.springframework.data.repository.query.parser.domain;
+package org.springframework.data.repository.query.parser;
 
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiSubstitutor;
-import com.intellij.psi.PsiType;
-import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mapping.PropertyPath;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,14 +59,7 @@ public class OrderBySource {
     private final List<Sort.Order> orders;
     private final String mySource;
 
-    /**
-     * Creates a new {@link OrderBySource} for the given clause, checking the property referenced exists on the given
-     * type.
-     *
-     * @param clause      must not be {@literal null}.
-     * @param domainClass can be {@literal null}.
-     */
-    public OrderBySource(@NotNull String clause, @NotNull PsiClass domainClass, int offset) {
+    public OrderBySource(String clause, PsiClass domainClass, int offset) {
         mySource = clause;
 
         this.orders = new ArrayList<>();
@@ -66,8 +74,6 @@ public class OrderBySource {
                     String directionString = matcher.group(2);
 
                     if (DIRECTION_KEYWORDS.contains(propertyString) && directionString == null) {
-                        // No property, but only a direction keyword
-                        // spring data: throw new IllegalArgumentException(String.format(INVALID_ORDER_SYNTAX, part));
                         Sort.Direction direction = StringUtil.isNotEmpty(propertyString) ? Sort.Direction.fromString(propertyString) : null;
                         this.orders.add(createOrder("", direction, domainClass, part, offset + currentOffset));
                     } else {
@@ -80,40 +86,18 @@ public class OrderBySource {
         }
     }
 
-    /**
-     * Creates an {@link Sort.Order} instance from the given property source, direction and domain class. If the domain class
-     * is given, we will use it for nested property traversal checks.
-     *
-     * @param propertySource
-     * @param direction
-     * @param domainClass    can be {@literal null}.
-     * @param sortExpression
-     * @return
-     * @see PropertyPath#from(String, PsiType)
-     */
-    private static Sort.Order createOrder(String propertySource,
-                                          Sort.Direction direction,
-                                          @NotNull PsiClass domainClass,
-                                          String sortExpression,
-                                          int offset) {
+    private static Sort.Order createOrder(
+            String propertySource, Sort.Direction direction, PsiClass domainClass, String sortExpression, int offset
+    ) {
         PropertyPath propertyPath = PropertyPath.from(propertySource, JavaPsiFacade
                 .getElementFactory(domainClass.getProject()).createType(domainClass, PsiSubstitutor.EMPTY));
         return new Sort.Order(direction, propertyPath, propertySource, sortExpression, offset);
     }
 
-    /**
-     * Returns the clause as {@link Sort}.
-     *
-     * @return the {@link Sort} or null if no orders found.
-     */
     public Sort toSort() {
         return this.orders.isEmpty() ? null : new Sort(this.orders);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
     @Override
     public String toString() {
         return "ORDER_BY ('" + mySource + "')";
