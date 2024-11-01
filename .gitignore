@@ -21,3 +21,4 @@ modules/buildsystem/gradle/build
 out.map
 *.hprof
 .intellijPlatform
+*.DS_Store
