@@ -28,9 +28,7 @@ class BeansDependencyAnalyzerContributor(private val project: Project) : Depende
         val beansNode = ExternalSystemApiUtil.findAll(projectDataNode, SpringBeanData.KEY)
         val parentNode = DADependency(DAModule(externalProject.title), scope("singleton"), null, emptyList())
         val leafsDADependencies = mutableListOf<DADependency>()
-        beansNode.asSequence()
-            .filter { !it.data.rootBean }
-            .map { it.data }.forEach { fillDaDependencyMap(it, parentNode, leafsDADependencies) }
+        beansNode.asSequence().map { it.data }.forEach { fillDaDependencyMap(it, parentNode, leafsDADependencies) }
         return leafsDADependencies
     }
 
@@ -53,9 +51,11 @@ class BeansDependencyAnalyzerContributor(private val project: Project) : Depende
     }
 
     private fun toDaProject(projectData: ProjectData): DAProject? {
-        val virtualFile = LocalFileSystem.getInstance()
-            .findFileByPath(projectData.linkedExternalProjectPath) ?: return null
-        val module = ModuleUtilCore.findModuleForFile(virtualFile, project) ?: return null
+        val module = ApplicationManager.getApplication()
+            .runReadAction(Computable {
+                LocalFileSystem.getInstance().findFileByPath(projectData.linkedExternalProjectPath)
+                    ?.let { ModuleUtilCore.findModuleForFile(it, project) }
+            }) ?: return null
         return DAProject(module, projectData.externalName)
     }
 
@@ -94,10 +94,12 @@ class BeansDependencyAnalyzerContributor(private val project: Project) : Depende
     }
 
     private fun toDaArtifact(psiClass: PsiClass): DAArtifact? {
-        val name = psiClass.name ?: return null
-        val version = getVersion(psiClass) ?: return null
-        val groupId = psiClass.qualifiedName?.substringBeforeLast(".$name") ?: return null
-        return DAArtifact(groupId, name, version)
+        return ApplicationManager.getApplication().runReadAction(Computable {
+            val name = psiClass.name ?: return@Computable null
+            val version = getVersion(psiClass) ?: return@Computable null
+            val groupId = psiClass.qualifiedName?.substringBeforeLast(".$name") ?: return@Computable null
+            DAArtifact(groupId, name, version)
+        })
     }
 
     private fun getVersion(psiClass: PsiClass): String? {

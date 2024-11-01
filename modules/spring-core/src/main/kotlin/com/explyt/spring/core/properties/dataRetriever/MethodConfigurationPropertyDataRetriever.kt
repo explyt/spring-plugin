@@ -18,12 +18,7 @@ class MethodConfigurationPropertyDataRetriever private constructor(
 
     override fun getContainingClass(): PsiClass? {
         val psiClass = psiMethod.containingClass ?: return null
-
-        return if (!psiClass.isInterface && psiClass.isNonAbstract) {
-            psiClass
-        } else {
-            null
-        }
+        return if (!psiClass.isInterface && psiClass.isNonAbstract) psiClass else null
     }
 
     override fun getMemberName(): String? {
