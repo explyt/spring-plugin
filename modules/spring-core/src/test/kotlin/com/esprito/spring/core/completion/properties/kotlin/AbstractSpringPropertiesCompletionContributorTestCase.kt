@@ -1,6 +1,6 @@
-package com.esprito.spring.core.completion.properties.kotlin
+package com.explyt.spring.core.completion.properties.kotlin
 
-import com.esprito.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.intellij.codeInsight.completion.CompletionType
 import org.jetbrains.kotlin.test.TestMetadata
 

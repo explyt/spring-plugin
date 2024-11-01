@@ -10,10 +10,10 @@
                          key="explyt.spring.security.inspection.bean"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection"/>
+                         implementationClass="com.explyt.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection"/>
 
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.security.references.contributors.SpringSecurityContributor"/>
+                                  implementation="com.explyt.spring.security.references.contributors.SpringSecurityContributor"/>
 
     </extensions>
 

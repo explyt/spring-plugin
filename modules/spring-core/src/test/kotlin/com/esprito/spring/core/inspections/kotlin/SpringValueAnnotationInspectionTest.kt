@@ -1,10 +1,10 @@
-package com.esprito.spring.core.inspections.kotlin
+package com.explyt.spring.core.inspections.kotlin
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.inspections.SpringValueAnnotationInspection
-import com.esprito.spring.core.inspections.quickfix.ReplacementStringQuickFix
-import com.esprito.spring.test.ExplytInspectionKotlinTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.inspections.SpringValueAnnotationInspection
+import com.explyt.spring.core.inspections.quickfix.ReplacementStringQuickFix
+import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.test.TestLibrary
 import junit.framework.TestCase
 
 class SpringValueAnnotationInspectionTest : ExplytInspectionKotlinTestCase() {

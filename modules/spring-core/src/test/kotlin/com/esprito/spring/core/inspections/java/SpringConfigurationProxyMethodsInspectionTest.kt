@@ -1,7 +1,7 @@
-package com.esprito.spring.core.inspections.java
+package com.explyt.spring.core.inspections.java
 
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringConfigurationProxyMethodsInspectionTest : ExplytInspectionJavaTestCase() {
@@ -9,5 +9,6 @@ class SpringConfigurationProxyMethodsInspectionTest : ExplytInspectionJavaTestCa
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     @TestMetadata("configurationProxyMethods")
-    fun testConfigurationProxyMethods() = doTest(com.esprito.spring.core.inspections.SpringConfigurationProxyMethodsInspection())
+    fun testConfigurationProxyMethods() =
+        doTest(com.explyt.spring.core.inspections.SpringConfigurationProxyMethodsInspection())
 }

@@ -1,7 +1,7 @@
-package com.esprito.spring.security.references.kotlin
+package com.explyt.spring.security.references.kotlin
 
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiPolyVariantReference

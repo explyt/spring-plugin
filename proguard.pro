@@ -20,8 +20,8 @@
 -dontwarn kotlinx.**
 
 
--keep class com.esprito.jpa.ql.JpqlFileType$Companion { *; }
--keep class com.esprito.spring.core.language.profiles.ProfilesFileType$Companion { *; }
+-keep class com.explyt.jpa.ql.JpqlFileType$Companion { *; }
+-keep class com.explyt.spring.core.language.profiles.ProfilesFileType$Companion { *; }
 -keepclassmembers class * { public static ** INSTANCE; }
 
 # otherwise fileTemplates folders will be removed
@@ -39,27 +39,27 @@
 
 # Entry point to the app.
 # all classes we can obfuscate
--keep,allowobfuscation class com.esprito.** { *; }
+-keep,allowobfuscation class com.explyt.** { *; }
 
 # here is list of extensionPoint classes, which we have to keep
 # jpa
--keep class com.esprito.jpa.ql.reference.InputParameterReferenceResolver
+-keep class com.explyt.jpa.ql.reference.InputParameterReferenceResolver
 # spring-core
--keep class com.esprito.spring.core.completion.properties.ConfigurationPropertiesLoader
--keep class com.esprito.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
--keep class com.esprito.spring.core.profile.ProfileSearcher
--keep class com.esprito.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
+-keep class com.explyt.spring.core.completion.properties.ConfigurationPropertiesLoader
+-keep class com.explyt.spring.core.completion.properties.ConfigurationFactoriesNamesLoader
+-keep class com.explyt.spring.core.profile.ProfileSearcher
+-keep class com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 # spring-web
--keep class com.esprito.spring.web.loader.SpringWebEndpointsLoader
+-keep class com.explyt.spring.web.loader.SpringWebEndpointsLoader
 
 # here is list of class that persistence state to file (data mapping is broken)
--keep class com.esprito.spring.core.runconfiguration.SpringBootConfigurationOptions { *; }
--keep class com.esprito.spring.core.externalsystem.setting.** { *; }
--keep class com.esprito.spring.core.externalsystem.model.** { *; }
+-keep class com.explyt.spring.core.runconfiguration.SpringBootConfigurationOptions { *; }
+-keep class com.explyt.spring.core.externalsystem.setting.** { *; }
+-keep class com.explyt.spring.core.externalsystem.model.** { *; }
 
 # serialized from JSON:
--keep class com.esprito.spring.core.externalsystem.process.BeanInfo { *; }
--keep class com.esprito.spring.core.externalsystem.process.AspectInfo { *; }
+-keep class com.explyt.spring.core.externalsystem.process.BeanInfo { *; }
+-keep class com.explyt.spring.core.externalsystem.process.AspectInfo { *; }
 
 # plugin inspections will not work otherwise
 -keepclassmembers class ** extends com.intellij.codeInspection.LocalInspectionTool {

@@ -1,7 +1,7 @@
-package com.esprito.spring.core.inspections.java
+package com.explyt.spring.core.inspections.java
 
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringConditionalOnWrongPlacementInspectionTest : ExplytInspectionJavaTestCase() {
@@ -9,5 +9,6 @@ class SpringConditionalOnWrongPlacementInspectionTest : ExplytInspectionJavaTest
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     @TestMetadata("conditionalOnWrongPlacement")
-    fun testConditionalOnWrongPlacement() = doTest(com.esprito.spring.core.inspections.SpringConditionalOnWrongPlacementInspection())
+    fun testConditionalOnWrongPlacement() =
+        doTest(com.explyt.spring.core.inspections.SpringConditionalOnWrongPlacementInspection())
 }

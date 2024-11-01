@@ -1,8 +1,8 @@
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
 
-    <vendor>esprito</vendor>
+    <vendor>explyt</vendor>
     <name>Spring Tool Tests</name>
-    <id>com.esprito.spring-core-test</id>
+    <id>com.explyt.spring-core-test</id>
     <description>Overriding services and components for tests.</description>
 
     <xi:include href="spring-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>

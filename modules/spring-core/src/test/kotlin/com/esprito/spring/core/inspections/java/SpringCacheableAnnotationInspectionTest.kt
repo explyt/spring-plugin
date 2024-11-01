@@ -1,15 +1,15 @@
-package com.esprito.spring.core.inspections.java
+package com.explyt.spring.core.inspections.java
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 
 class SpringCacheableAnnotationInspectionTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     override fun setUp() {
         super.setUp()
-        myFixture.enableInspections(com.esprito.spring.core.inspections.SpringCacheableAnnotationInspection::class.java)
+        myFixture.enableInspections(com.explyt.spring.core.inspections.SpringCacheableAnnotationInspection::class.java)
         myFixture.addClass(
             """
             import org.springframework.cache.CacheManager;

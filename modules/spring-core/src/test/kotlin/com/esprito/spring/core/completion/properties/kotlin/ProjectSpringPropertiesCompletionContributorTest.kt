@@ -1,6 +1,6 @@
-package com.esprito.spring.core.completion.properties.kotlin
+package com.explyt.spring.core.completion.properties.kotlin
 
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.TestLibrary
 
 class ProjectSpringPropertiesCompletionContributorTest : AbstractSpringPropertiesCompletionContributorTestCase() {
 

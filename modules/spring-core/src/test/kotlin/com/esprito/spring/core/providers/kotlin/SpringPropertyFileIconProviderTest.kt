@@ -1,9 +1,9 @@
-package com.esprito.spring.core.providers.kotlin
+package com.explyt.spring.core.providers.kotlin
 
-import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.core.providers.SpringPropertyFileIconProvider
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.providers.SpringPropertyFileIconProvider
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.PsiFile
 import org.jetbrains.yaml.psi.YAMLFile
 

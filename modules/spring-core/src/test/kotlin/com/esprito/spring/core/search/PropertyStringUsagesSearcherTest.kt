@@ -1,4 +1,4 @@
-package com.esprito.spring.core.search
+package com.explyt.spring.core.search
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

@@ -1,10 +1,10 @@
-package com.esprito.spring.core.inspections.java
+package com.explyt.spring.core.inspections.java
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.providers.kotlin.ConfigurationPropertyLineMarkerProviderTest.Companion.APPLICATION_PROPERTIES_FILE_NAME
-import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.providers.kotlin.ConfigurationPropertyLineMarkerProviderTest.Companion.APPLICATION_PROPERTIES_FILE_NAME
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
@@ -15,7 +15,7 @@ class SpringConditionalOnEmptyValueInspectionTest : ExplytInspectionJavaTestCase
 
     @TestMetadata("conditionalOnPropertyValue")
     fun testConditionalOnPropertyValue() =
-        doTest(com.esprito.spring.core.inspections.SpringConditionalOnEmptyValueInspection())
+        doTest(com.explyt.spring.core.inspections.SpringConditionalOnEmptyValueInspection())
 
     fun testPropertyCondition() {
         myFixture.addFileToProject(APPLICATION_PROPERTIES_FILE_NAME, "test.prop=1")

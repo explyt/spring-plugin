@@ -1,6 +1,6 @@
-package com.esprito.spring.core.completion.properties.java
+package com.explyt.spring.core.completion.properties.java
 
-import com.esprito.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.intellij.codeInsight.completion.CompletionType
 import org.jetbrains.kotlin.test.TestMetadata
 

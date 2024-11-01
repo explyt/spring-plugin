@@ -1,6 +1,6 @@
-package com.esprito.spring.core.psi
+package com.explyt.spring.core.psi
 
-import com.esprito.spring.core.language.profiles.ProfilesParserDefinition
+import com.explyt.spring.core.language.profiles.ProfilesParserDefinition
 import com.intellij.testFramework.ParsingTestCase
 
 class ProfilesParsingTest : ParsingTestCase("psi", "profiles", ProfilesParserDefinition()) {

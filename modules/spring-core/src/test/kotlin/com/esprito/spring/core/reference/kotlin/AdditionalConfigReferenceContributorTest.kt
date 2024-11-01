@@ -1,8 +1,8 @@
-package com.esprito.spring.core.reference.kotlin
+package com.explyt.spring.core.reference.kotlin
 
-import com.esprito.spring.core.properties.providers.ConfigurationPropertyKeyReference
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReference
 import junit.framework.TestCase
 

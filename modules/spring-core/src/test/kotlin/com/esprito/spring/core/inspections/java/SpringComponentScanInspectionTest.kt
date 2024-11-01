@@ -1,7 +1,7 @@
-package com.esprito.spring.core.inspections.java
+package com.explyt.spring.core.inspections.java
 
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringComponentScanInspectionTest : ExplytInspectionJavaTestCase() {
@@ -9,5 +9,5 @@ class SpringComponentScanInspectionTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBootAutoConfigure_3_1_1)
 
     @TestMetadata("componentScan")
-    fun testComponentScan() = doTest(com.esprito.spring.core.inspections.SpringComponentScanInvalidPackageInspection())
+    fun testComponentScan() = doTest(com.explyt.spring.core.inspections.SpringComponentScanInvalidPackageInspection())
 }

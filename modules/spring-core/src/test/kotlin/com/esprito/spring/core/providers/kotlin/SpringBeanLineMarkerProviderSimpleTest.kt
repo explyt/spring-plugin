@@ -1,10 +1,10 @@
-package com.esprito.spring.core.providers.kotlin
+package com.explyt.spring.core.providers.kotlin
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.SpringIcons
-import com.esprito.spring.test.ExplytKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
-import com.esprito.spring.test.util.SpringGutterTestUtil
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "providers/linemarkers/beans"

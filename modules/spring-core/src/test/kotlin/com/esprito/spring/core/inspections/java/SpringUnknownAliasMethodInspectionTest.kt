@@ -1,7 +1,7 @@
-package com.esprito.spring.core.inspections.java
+package com.explyt.spring.core.inspections.java
 
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringUnknownAliasMethodInspectionTest : ExplytInspectionJavaTestCase() {
@@ -9,5 +9,5 @@ class SpringUnknownAliasMethodInspectionTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     @TestMetadata("methodsAliasFor")
-    fun testMethodsAliasFor() = doTest(com.esprito.spring.core.inspections.SpringUnknownAliasMethodInspection())
+    fun testMethodsAliasFor() = doTest(com.explyt.spring.core.inspections.SpringUnknownAliasMethodInspection())
 }

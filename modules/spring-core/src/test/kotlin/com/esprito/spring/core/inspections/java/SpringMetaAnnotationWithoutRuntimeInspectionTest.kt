@@ -1,7 +1,7 @@
-package com.esprito.spring.core.inspections.java
+package com.explyt.spring.core.inspections.java
 
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringMetaAnnotationWithoutRuntimeInspectionTest : ExplytInspectionJavaTestCase() {
@@ -9,5 +9,6 @@ class SpringMetaAnnotationWithoutRuntimeInspectionTest : ExplytInspectionJavaTes
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     @TestMetadata("retentionPolicy")
-    fun testRetentionPolicy() = doTest(com.esprito.spring.core.inspections.SpringMetaAnnotationWithoutRuntimeInspection())
+    fun testRetentionPolicy() =
+        doTest(com.explyt.spring.core.inspections.SpringMetaAnnotationWithoutRuntimeInspection())
 }

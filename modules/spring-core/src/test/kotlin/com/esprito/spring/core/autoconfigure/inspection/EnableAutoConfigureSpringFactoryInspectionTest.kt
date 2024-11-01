@@ -1,7 +1,7 @@
-package com.esprito.spring.core.autoconfigure.inspection
+package com.explyt.spring.core.autoconfigure.inspection
 
-import com.esprito.spring.test.ExplytInspectionJavaTestCase
-import com.esprito.spring.test.TestLibrary
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class EnableAutoConfigureSpringFactoryInspectionTest : ExplytInspectionJavaTestCase() {

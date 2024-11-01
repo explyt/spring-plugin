@@ -1,4 +1,4 @@
-import com.esprito.apispring.rest.UserHandler
+import com.explyt.apispring.rest.UserHandler
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Service
