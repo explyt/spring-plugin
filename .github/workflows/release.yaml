@@ -24,6 +24,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
       - run: ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
       - name: Sign Plugin
-        run: ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate
+        run: ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion
       - name: Run Plugin Verifier
         run: ./gradlew :spring-bootstrap:runPluginVerifier
