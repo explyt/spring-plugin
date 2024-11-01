@@ -1,0 +1,7 @@
+<component name="CopyrightManager">
+  <settings default="explyt">
+    <module2copyright>
+      <element module="all kt,java,kts files exclude generated" copyright="explyt" />
+    </module2copyright>
+  </settings>
+</component>
