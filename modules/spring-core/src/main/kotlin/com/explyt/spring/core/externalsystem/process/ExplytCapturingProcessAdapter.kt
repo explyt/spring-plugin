@@ -17,7 +17,7 @@ class ExplytCapturingProcessAdapter(
     private val latch = CountDownLatch(1)
     private var explytLog = false
     private val gson = Gson()
-    var classNotFoundError = false;
+    var classNotFoundError = false
 
     override fun processTerminated(event: ProcessEvent) {
         super.processTerminated(event)

@@ -31,7 +31,7 @@ fun Project.optProperty(prop: String): String? {
     if (this.hasProperty(prop)) {
         return this.property(prop) as String
     }
-    return null;
+    return null
 }
 
 if (!hasProperty("snapshotVersion")) {

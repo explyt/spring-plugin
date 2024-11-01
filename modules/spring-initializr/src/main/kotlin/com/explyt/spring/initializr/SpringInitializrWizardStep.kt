@@ -15,6 +15,7 @@ import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.fields.ExtendableTextField
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.util.ui.JBUI
@@ -44,7 +45,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
 
     init {
         contentToolWindow.preferredSize = Dimension(550, 720)
-        contentToolWindow.setBorder(JBUI.Borders.empty(20, 20, 20, 20))
+        contentToolWindow.setBorder(JBUI.Borders.empty(20))
         contentToolWindow.layout = BorderLayout(10, 10)
 
         val info = getArchiveInfo()
@@ -194,7 +195,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
                 if (dir.isDirectory) {
                     textFieldLocation.border = border
                 } else {
-                    textFieldLocation.border = LineBorder(Color.YELLOW, 1)
+                    textFieldLocation.border = LineBorder(JBColor.YELLOW, 1)
                 }
             }
         })

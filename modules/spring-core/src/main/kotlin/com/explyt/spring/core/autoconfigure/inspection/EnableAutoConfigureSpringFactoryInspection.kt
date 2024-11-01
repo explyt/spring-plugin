@@ -145,7 +145,7 @@ private class MovePropertyFix(private val movedValues: List<String>) : LocalQuic
     }
 }
 
-class RemovePropertyLocalFix() : LocalQuickFix {
+class RemovePropertyLocalFix : LocalQuickFix {
 
     override fun getFamilyName() = PropertiesBundle.message("remove.property.intention.text")
 

@@ -1,4 +1,4 @@
-package com.explyt.spring.core.inspections.quickfix;
+package com.explyt.spring.core.inspections.quickfix
 
 import com.explyt.spring.core.SpringCoreBundle
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement

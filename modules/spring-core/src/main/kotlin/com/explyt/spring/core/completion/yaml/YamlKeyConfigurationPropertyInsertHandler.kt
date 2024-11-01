@@ -12,8 +12,8 @@ import com.intellij.openapi.editor.EditorModificationUtilEx
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.endOffset
 import com.intellij.psi.util.parentOfType
-import com.intellij.refactoring.suggested.endOffset
 import org.apache.commons.lang3.StringUtils
 import org.jetbrains.yaml.YAMLElementGenerator
 import org.jetbrains.yaml.YAMLTokenTypes
