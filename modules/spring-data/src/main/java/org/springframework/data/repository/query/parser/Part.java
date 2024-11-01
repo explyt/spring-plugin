@@ -1,34 +1,18 @@
 /*
- * Original work: org.springframework.data.repository.query.parser.Part
- * Available during publication at https://github.com/spring-projects/spring-data-commons/blob/3.0.x/src/main/java/org/springframework/data/repository/query/parser/Part.java
- * Licensed under the Apache License, Version 2.0:
- *     Copyright © 2018 John Doe
+ * Copyright © 2024 Explyt Ltd
  *
- * Modifications:
- *     Copyright © 2024 Explyt Ltd
- *     Licensed under the Explyt Source License Version 1.0 (the "License");
- *     You may not use this file except in compliance with the License.
- *     You may obtain a copy of the Explyt Source License at https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md if it’s
- *      somehow not in the folder with the file.
+ * All rights reserved.
  *
- * Modifications Made:
- *     **Modified:**
- *         - Updated for local usages.
- *         - Optimize for usage IDEA code model - com.intellij.psi.PsiClass instead java.lang.Class.
- *      **Removed:**
- *         - Removed unused code
+ * This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the Apache License, Version 2.0 for the specific language governing
- * permissions and limitations under the original work's license.
+ * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
  *
- * **NOTICE:**
- *     This file has been modified by Explyt Ltd. The original version is available
- *     under the Apache License 2.0. This entire file, including modifications to the
- *     original work, is licensed under the Explyt Source License. To use this file,
- *     you must agree to the terms of the Explyt Source License.
+ * By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
+ * If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
+ *
+ * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+ *
+ * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 package org.springframework.data.repository.query.parser;
 
