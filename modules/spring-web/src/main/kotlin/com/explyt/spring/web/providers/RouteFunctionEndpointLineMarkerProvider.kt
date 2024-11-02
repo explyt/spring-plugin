@@ -32,6 +32,7 @@ import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMethod
@@ -58,13 +59,12 @@ open class RouteFunctionEndpointLineMarkerProvider : RelatedItemLineMarkerProvid
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
         result += NavigationGutterIconBuilder.create(SpringIcons.ReadAccess)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(//NotNullLazyValue.lazy {
+            .setTargets(NotNullLazyValue.lazy {
                 findOpenApiJsonEndpoints(path, listOf(methodNames), module) +
                         findOpenApiYamlEndpoints(path, listOf(methodNames), module) +
                         findMockMvcEndpointUsage(path, listOf(methodNames), module) +
                         findWebTestClientEndpointUsage(path, methodNames, module)
-            )
-            //})
+            })
             .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
             .setTooltipText(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.tooltip"))
             .setPopupTitle(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.popup"))
