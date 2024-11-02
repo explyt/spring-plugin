@@ -10,10 +10,20 @@
 - Fixed: wrong bean method navigation
 - Fixed: Don't warn about kebab case for property values
 - Fixed: profile change (#6)
+- Fixed: Bug: bean line marker native fix
 
 ### Other
 
 - Prepare code configurations for open source
+- Fixed: incorrect CachedValue use for ConfigurationPropertyDataRetriever
+
+### Spring Web/MVC
+
+- Fixed: gutter calculation for coRouter route
+
+### OpenAPI
+
+- Fixed: inspection for OpenAPI version 
 
 ## [242.1.2334] - 2024-10-29
 
