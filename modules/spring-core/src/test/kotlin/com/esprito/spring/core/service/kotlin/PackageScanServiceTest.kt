@@ -1,11 +1,28 @@
-package com.esprito.spring.core.service.kotlin
+/*
+ * Copyright © 2024 Explyt Ltd
+ *
+ * All rights reserved.
+ *
+ * This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
+ *
+ * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
+ *
+ * By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
+ * If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
+ *
+ * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+ *
+ * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
+ */
 
-import com.esprito.spring.core.SpringCoreClasses
-import com.esprito.spring.core.runconfiguration.SpringBootConfigurationFactory
-import com.esprito.spring.core.service.AnnotationConfigApplicationService
-import com.esprito.spring.core.service.PackageScanService
-import com.esprito.spring.test.EspritoKotlinLightTestCase
-import com.esprito.spring.test.TestLibrary
+package com.explyt.spring.core.service.kotlin
+
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.runconfiguration.SpringBootConfigurationFactory
+import com.explyt.spring.core.service.AnnotationConfigApplicationService
+import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.execution.RunManager
 import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
@@ -18,17 +35,17 @@ import com.intellij.psi.search.GlobalSearchScope
 import junit.framework.TestCase
 
 
-class PackageScanServiceTest : EspritoKotlinLightTestCase() {
+class PackageScanServiceTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     override fun setUp() {
         super.setUp()
-        Registry.get("esprito.spring.root.runConfiguration").setValue(false)
+        Registry.get("explyt.spring.root.runConfiguration").setValue(false)
     }
 
     override fun tearDown() {
         super.tearDown()
-        Registry.get("esprito.spring.root.runConfiguration").resetToDefault()
+        Registry.get("explyt.spring.root.runConfiguration").resetToDefault()
     }
 
     fun testPackageScan() {
@@ -97,7 +114,7 @@ class PackageScanServiceTest : EspritoKotlinLightTestCase() {
     fun testRunConfigurationMainAppConfigConstructor() {
         myFixture.copyDirectoryToProject("service/packageScanRunConfigurationAppConfigConstructor", "")
 
-        Registry.get("esprito.spring.root.runConfiguration").setValue(true)
+        Registry.get("explyt.spring.root.runConfiguration").setValue(true)
         val runConfiguration = SpringBootConfigurationFactory.createTemplateConfiguration(project)
         runConfiguration.mainClassName = "com.app.MainClass"
 

@@ -30,7 +30,7 @@ release:
     - if: $CI_COMMIT_BRANCH =~ /^release\/.*$/
   script:
     - ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
-    - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion -Pobfuscate | tee build.log
+    - ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion | tee build.log
 #    - ./gradlew --info :spring-bootstrap:verifyPlugin | tee build.log
   artifacts:
     when: always

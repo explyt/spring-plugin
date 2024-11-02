@@ -7,7 +7,6 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.guardsquare:proguard-gradle:7.5.0")
         classpath("org.slf4j:slf4j-api:2.0.7")
     }
 }

@@ -1,65 +1,65 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
-        <implicitUsageProvider implementation="com.esprito.spring.data.providers.SpringDataImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="com.explyt.spring.data.providers.SpringDataImplicitUsageProvider"/>
         <multiHostInjector
-                implementation="com.esprito.spring.data.langinjection.JpqlSpringDataQueryLanguageInjector"/>
+                implementation="com.explyt.spring.data.langinjection.JpqlSpringDataQueryLanguageInjector"/>
         <completion.contributor language="UAST"
-                                implementationClass="com.esprito.spring.data.completion.SpringDataBaseCompletionContributor"
+                                implementationClass="com.explyt.spring.data.completion.SpringDataBaseCompletionContributor"
                                 order="before javaMemberName"/>
 
         <localInspection language="UAST"
                          shortName="SpringDataMethodNameInspection"
                          groupBundle="messages.SpringDataBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.data.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
                          bundle="messages.SpringDataBundle"
-                         key="esprito.spring.data.inspection.method.name"
+                         key="explyt.spring.data.inspection.method.name"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.data.inspection.SpringDataMethodNameInspection"/>
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataMethodNameInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringDataReturnTypeInspection"
                          groupBundle="messages.SpringDataBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.data.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
                          bundle="messages.SpringDataBundle"
-                         key="esprito.spring.data.inspection.return.type"
+                         key="explyt.spring.data.inspection.return.type"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.data.inspection.SpringDataReturnTypeInspection"/>
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataReturnTypeInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringDataMethodParametersInspection"
                          groupBundle="messages.SpringDataBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.data.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
                          bundle="messages.SpringDataBundle"
-                         key="esprito.spring.data.inspection.method.parameters"
+                         key="explyt.spring.data.inspection.method.parameters"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.data.inspection.SpringDataMethodParametersInspection"/>
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataMethodParametersInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringDataEnableInspection"
                          groupBundle="messages.SpringDataBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.data.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
                          bundle="messages.SpringDataBundle"
-                         key="esprito.spring.data.inspection.enable"
+                         key="explyt.spring.data.inspection.enable"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.data.inspection.SpringDataEnableInspection"/>
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataEnableInspection"/>
     </extensions>
 
-    <extensions defaultExtensionNs="com.esprito">
+    <extensions defaultExtensionNs="com.explyt">
         <jpa.ql.reference.inputParameterReferenceResolver
-                implementation="com.esprito.spring.data.reference.RepositoryQueryInputParameterReferenceResolver"/>
+                implementation="com.explyt.spring.data.reference.RepositoryQueryInputParameterReferenceResolver"/>
     </extensions>
 
-    <extensions defaultExtensionNs="com.esprito.spring.core">
+    <extensions defaultExtensionNs="com.explyt.spring.core">
         <additionalBeansDiscoverer
-                implementation="com.esprito.spring.data.service.beans.discoverer.SpringDataAdditionalBeansDiscoverer"/>
+                implementation="com.explyt.spring.data.service.beans.discoverer.SpringDataAdditionalBeansDiscoverer"/>
     </extensions>
 
     <actions>

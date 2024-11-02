@@ -1,187 +1,187 @@
 <idea-plugin>
 
     <extensionPoints>
-        <extensionPoint qualifiedName="com.esprito.spring.web.springWebEndpointsLoader" dynamic="true"
-                        interface="com.esprito.spring.web.loader.SpringWebEndpointsLoader"
+        <extensionPoint qualifiedName="com.explyt.spring.web.springWebEndpointsLoader" dynamic="true"
+                        interface="com.explyt.spring.web.loader.SpringWebEndpointsLoader"
                         area="IDEA_PROJECT"/>
     </extensionPoints>
 
 
-    <extensions defaultExtensionNs="com.esprito.spring.web">
+    <extensions defaultExtensionNs="com.explyt.spring.web">
         <additionalBeansDiscoverer
-                implementation="com.esprito.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
+                implementation="com.explyt.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
 
         <springWebEndpointsLoader
-                implementation="com.esprito.spring.web.loader.SpringWebControllerLoader"/>
+                implementation="com.explyt.spring.web.loader.SpringWebControllerLoader"/>
         <springWebEndpointsLoader
-                implementation="com.esprito.spring.web.loader.SpringWebFluxEndpointsLoader"/>
+                implementation="com.explyt.spring.web.loader.SpringWebFluxEndpointsLoader"/>
         <springWebEndpointsLoader
-                implementation="com.esprito.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
+                implementation="com.explyt.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
         <springWebEndpointsLoader
-                implementation="com.esprito.spring.web.loader.SpringWebFeignClientLoader"/>
+                implementation="com.explyt.spring.web.loader.SpringWebFeignClientLoader"/>
 
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">
-        <ProviderFactory implementation="com.esprito.spring.web.providers.OpenApiJsonSchemaFileProviderFactory"/>
+        <ProviderFactory implementation="com.explyt.spring.web.providers.OpenApiJsonSchemaFileProviderFactory"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
 
-        <iconProvider implementation="com.esprito.spring.web.providers.OpenApiFileIconProvider"/>
+        <iconProvider implementation="com.explyt.spring.web.providers.OpenApiFileIconProvider"/>
 
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.web.references.contributors.UastRequestMappingReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.UastRequestMappingReferenceContributor"/>
 
-        <implicitUsageProvider implementation="com.esprito.spring.web.providers.SpringWebImplicitUsageProvider"/>
-
-        <completion.contributor language="UAST"
-                                order="first"
-                                implementationClass="com.esprito.spring.web.references.contributors.webClient.WebClientMethodCompletionContributor"/>
+        <implicitUsageProvider implementation="com.explyt.spring.web.providers.SpringWebImplicitUsageProvider"/>
 
         <completion.contributor language="UAST"
                                 order="first"
-                                implementationClass="com.esprito.spring.web.references.contributors.webClient.WebTestClientMethodCompletionContributor"/>
+                                implementationClass="com.explyt.spring.web.references.contributors.webClient.WebClientMethodCompletionContributor"/>
+
+        <completion.contributor language="UAST"
+                                order="first"
+                                implementationClass="com.explyt.spring.web.references.contributors.webClient.WebTestClientMethodCompletionContributor"/>
 
         <completion.contributor language="yaml"
                                 order="first"
-                                implementationClass="com.esprito.spring.web.references.contributors.OpenApiYamlRefCompletionContributor"/>
+                                implementationClass="com.explyt.spring.web.references.contributors.OpenApiYamlRefCompletionContributor"/>
 
         <completion.contributor language="JSON"
                                 order="first"
-                                implementationClass="com.esprito.spring.web.references.contributors.OpenApiJsonRefCompletionContributor"/>
+                                implementationClass="com.explyt.spring.web.references.contributors.OpenApiJsonRefCompletionContributor"/>
 
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.pathVariable"
+                         key="explyt.spring.web.inspection.pathVariable"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.web.inspections.SpringOmittedPathVariableParameterInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.SpringOmittedPathVariableParameterInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringInitBinderNonVoidInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.initBinder"
+                         key="explyt.spring.web.inspection.initBinder"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
 
         <localInspection language="UAST"
                          shortName="MockMvcTemplateParametersInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.mockMvc.parameters"
+                         key="explyt.spring.web.inspection.mockMvc.parameters"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.web.inspections.MockMvcTemplateParametersInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.MockMvcTemplateParametersInspection"/>
 
         <localInspection language="UAST"
                          shortName="WebClientTemplateParametersInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.webClient.parameters"
+                         key="explyt.spring.web.inspection.webClient.parameters"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.web.inspections.WebClientUriParametersInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.WebClientUriParametersInspection"/>
 
         <localInspection language="UAST"
                          shortName="RequestMappingDuplicateInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.requestMapping.duplicate"
+                         key="explyt.spring.web.inspection.requestMapping.duplicate"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.web.inspections.RequestMappingDuplicateInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.RequestMappingDuplicateInspection"/>
 
         <localInspection language="UAST"
                          shortName="JavaWebClientMethodWrongType"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.webClient.type"
+                         key="explyt.spring.web.inspection.webClient.type"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.esprito.spring.web.inspections.WebClientMethodWrongTypeInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.WebClientMethodWrongTypeInspection"/>
 
         <localInspection language="JSON"
                          shortName="OpenApiJsonSpecificationVersionInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.openapi.json.version"
+                         key="explyt.spring.web.inspection.openapi.json.version"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.web.inspections.OpenApiJsonSpecificationVersionInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.OpenApiJsonSpecificationVersionInspection"/>
 
         <localInspection language="yaml"
                          shortName="OpenApiYamlSpecificationVersionInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.openapi.yaml.version"
+                         key="explyt.spring.web.inspection.openapi.yaml.version"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.web.inspections.OpenApiYamlSpecificationVersionInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.OpenApiYamlSpecificationVersionInspection"/>
 
         <localInspection language="UAST"
                          shortName="OpenFeignInspection"
                          groupBundle="messages.SpringWebBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.web.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
                          bundle="messages.SpringWebBundle"
-                         key="esprito.spring.web.inspection.openfeign.client"
+                         key="explyt.spring.web.inspection.openfeign.client"
                          enabledByDefault="true" level="WARNING"
-                         implementationClass="com.esprito.spring.web.inspections.OpenFeignInspection"/>
+                         implementationClass="com.explyt.spring.web.inspections.OpenFeignInspection"/>
 
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.esprito.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.esprito.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
 
         <runLineMarkerContributor language="yaml"
-                                  implementationClass="com.esprito.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
+                                  implementationClass="com.explyt.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
         <runLineMarkerContributor language="JSON"
-                                  implementationClass="com.esprito.spring.web.providers.JsonRunEndpointLineMarkerProvider"/>
+                                  implementationClass="com.explyt.spring.web.providers.JsonRunEndpointLineMarkerProvider"/>
 
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.web.references.contributors.UastWebClientUrlReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.UastWebClientUrlReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.web.references.contributors.ControllerEndpointReturnReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.ControllerEndpointReturnReferenceContributor"/>
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.web.references.contributors.RedirectUrlReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.RedirectUrlReferenceContributor"/>
 
         <psi.referenceContributor language="yaml"
-                                  implementation="com.esprito.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor"/>
 
         <psi.referenceContributor language="JSON"
-                                  implementation="com.esprito.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor"/>
 
         <psi.referenceContributor language="yaml"
-                                  implementation="com.esprito.spring.web.references.contributors.OpenApiYamlInnerReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.OpenApiYamlInnerReferenceContributor"/>
 
         <psi.referenceContributor language="JSON"
-                                  implementation="com.esprito.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
+                                  implementation="com.explyt.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
 
-        <fileEditorProvider implementation="com.esprito.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
+        <fileEditorProvider implementation="com.explyt.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
 
-        <httpRequestHandler implementation="com.esprito.spring.web.editor.openapi.OpenApiRequestHandler"/>
-        <httpRequestHandler implementation="com.esprito.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>
+        <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiRequestHandler"/>
+        <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>
 
         <registryKey
                 defaultValue="500000"
@@ -194,13 +194,13 @@
 
         <toolWindow id="Explyt Endpoints"
                     anchor="right"
-                    icon="/com/esprito/spring/web/icons/endpointsSidebar.svg"
-                    factoryClass="com.esprito.spring.web.EndpointsToolWindowFactory"/>
+                    icon="/com/explyt/spring/web/icons/endpointsSidebar.svg"
+                    factoryClass="com.explyt.spring.web.EndpointsToolWindowFactory"/>
 
     </extensions>
 
     <projectListeners>
-        <listener class="com.esprito.spring.web.listeners.EspritoWebProjectListener"
+        <listener class="com.explyt.spring.web.listeners.ExplytWebProjectListener"
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </projectListeners>
 

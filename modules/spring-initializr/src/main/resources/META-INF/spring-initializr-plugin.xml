@@ -1,12 +1,12 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
 
-        <moduleType id="ESPRITO_SPRING_INITIALIZR"
-                    implementationClass="com.esprito.spring.initializr.EspritoSpringInitializrModuleType"/>
+        <moduleType id="EXPLYT_SPRING_INITIALIZR"
+                    implementationClass="com.explyt.spring.initializr.ExplytSpringInitializrModuleType"/>
 
         <notificationGroup
-                id="espritoSpringInitializrNotificationGroup"
-                toolWindowId="Spring Explyt Initializr"
+                id="explytSpringInitializrNotificationGroup"
+                toolWindowId="Explyt Spring Initializr"
                 displayType="BALLOON"/>
     </extensions>
 

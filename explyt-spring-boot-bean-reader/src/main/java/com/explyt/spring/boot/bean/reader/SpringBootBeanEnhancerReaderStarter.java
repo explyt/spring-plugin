@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
 
 public class SpringBootBeanEnhancerReaderStarter {
 
-    private static final String SPRING_EXPLYT_ERROR_MESSAGE = "I am Spring Explyt";
+    private static final String SPRING_EXPLYT_ERROR_MESSAGE = "I am Explyt Spring";
 
     public static void main(String[] args) {
         Class<?> applicationClass = getApplicationClass();

@@ -1,25 +1,57 @@
 /*
- * Copyright 2008-2023 the original author or authors.
+ * Copyright © 2024 Explyt Ltd
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * All rights reserved.
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ * This code and software are the property of Explyt Ltd
+ * and are protected by copyright and other intellectual property laws.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Original work: org.springframework.data.repository.query.parser.Part
+ * Available during publication at https://github.com/spring-projects/spring-data-commons/blob/3.0.x/src/main/java/org/springframework/data/repository/query/parser/Part.java
+ * Licensed under the Apache License, Version 2.0:
+ *     Copyright © 2008-2024 Oliver Gierke, Martin Baumgartner,
+ *     Jens Schauder, Thomas Darimont, Michael Cramer, and other contributors.
+ *
+ * Modifications to the original work have been made by Explyt Ltd.
+ *
+ * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"),
+ * if you accept its terms and conditions.
+ *
+ * By installing, downloading, accessing, using, or distributing this code,
+ * you agree to the terms and conditions of the License.
+ * If you do not agree to such terms and conditions, you must cease using this code
+ * and immediately delete all copies of it.
+ *
+ * You may obtain a copy of the License at:
+ *
+ *     https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+ *
+ * Unauthorized use of this code constitutes a violation of intellectual property rights
+ * and may result in legal action.
+ *
+ * Modifications Made:
+ *     **Modified:**
+ *         - Updated for local usages.
+ *         - Optimize for usage IDEA code model - com.intellij.psi.PsiClass instead of java.lang.Class.
+ *     **Removed:**
+ *         - Removed unused code.
+ *
+ * NOTICE:
+ *     This file includes code from an original work licensed under the Apache License 2.0.
+ *     The original license and copyright notices are retained.
+ *     This entire file, including modifications to the original work, is licensed under
+ *     the Explyt Source License. To use this file, you must agree to the terms of the
+ *     Explyt Source License.
+ *
+ * See the Apache License, Version 2.0, for the specific language governing permissions
+ * and limitations under the original work's license.
  */
 package org.springframework.data.repository.query.parser;
 
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiSubstitutor;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.data.repository.query.parser.domain.PropertyPath;
+import org.springframework.data.mapping.PropertyPath;
 
 import java.beans.Introspector;
 import java.util.*;
@@ -33,6 +65,7 @@ import java.util.regex.Pattern;
  *
  * @author Oliver Gierke
  * @author Martin Baumgartner
+ * @author Jens Schauder
  */
 public class Part {
 
@@ -46,18 +79,7 @@ public class Part {
     private final int offset;
 
 
-    /**
-     * Creates a new {@link Part} from the given method name part, the {@link Class} the part originates from and the
-     * start parameter index.
-     *
-     * @param source           must not be {@literal null}.
-     * @param clazz            must not be {@literal null}.
-     * @param alwaysIgnoreCase
-     */
-    public Part(String source,
-                PsiClass clazz,
-                boolean alwaysIgnoreCase,
-                int offset) {
+    public Part(String source, PsiClass clazz, boolean alwaysIgnoreCase, int offset) {
         mySource = source;
         this.offset = offset;
         String partToUse = detectAndSetIgnoreCase(source);
@@ -77,8 +99,7 @@ public class Part {
         return offset + mySource.length();
     }
 
-    @NotNull
-    private String detectAndSetIgnoreCase(@NotNull String part) {
+    private String detectAndSetIgnoreCase(String part) {
         Matcher matcher = IGNORE_CASE.matcher(part);
         String result = part;
 
@@ -90,46 +111,18 @@ public class Part {
         return result;
     }
 
-    public boolean getParameterRequired() {
-        return getNumberOfArguments() > 0;
-    }
-
-    /**
-     * Returns how many method parameters are bound by this part.
-     *
-     * @return
-     */
     public int getNumberOfArguments() {
         return type.getNumberOfArguments();
     }
 
-    /**
-     * @return the propertyPath
-     */
     public PropertyPath getProperty() {
         return propertyPath;
     }
 
-    /**
-     * @return the type
-     */
     public Type getType() {
         return type;
     }
 
-    /**
-     * Returns whether the {@link PropertyPath} referenced should be matched ignoring case.
-     *
-     * @return
-     */
-    public IgnoreCaseType shouldIgnoreCase() {
-        return ignoreCase;
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals(Object obj) {
         if (obj == this) {
@@ -144,10 +137,6 @@ public class Part {
         return this.propertyPath.equals(that.propertyPath) && this.type.equals(that.type);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#hashCode()
-     */
     @Override
     public int hashCode() {
         int result = 37;
@@ -156,10 +145,6 @@ public class Part {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
     @Override
     public String toString() {
         return "PART ('" + mySource + "'," + type.name() + ")";
@@ -199,8 +184,6 @@ public class Part {
         NEGATING_SIMPLE_PROPERTY("IsNot", "Not"),
         SIMPLE_PROPERTY("Is", "Equals");
 
-        // Need to list them again explicitly as the order is important
-        // (esp. for IS_NULL, IS_NOT_NULL)
         private static final List<Type> ALL = Arrays.asList(IS_NOT_NULL, IS_NULL, BETWEEN, LESS_THAN, LESS_THAN_EQUAL,
                 GREATER_THAN, GREATER_THAN_EQUAL, BEFORE, AFTER, NOT_LIKE, LIKE, STARTING_WITH, ENDING_WITH, IS_NOT_EMPTY,
                 IS_EMPTY, NOT_CONTAINING, CONTAINING, NOT_IN, IN, NEAR, WITHIN, REGEX, EXISTS, TRUE, FALSE,
@@ -219,31 +202,16 @@ public class Part {
         private final List<String> keywords;
         private final int numberOfArguments;
 
-        /**
-         * Creates a new using the given keyword, number of arguments to be bound and operator. Keyword and
-         * operator can be {@literal null}.
-         *
-         * @param numberOfArguments
-         * @param keywords
-         */
-        private Type(int numberOfArguments, String... keywords) {
+        Type(int numberOfArguments, String... keywords) {
 
             this.numberOfArguments = numberOfArguments;
             this.keywords = Arrays.asList(keywords);
         }
 
-        private Type(String... keywords) {
+        Type(String... keywords) {
             this(1, keywords);
         }
 
-        /**
-         * Returns the {@link Type} of the {@link Part} for the given raw propertyPath. This will try to detect e.g.
-         * keywords contained in the raw propertyPath that trigger special query creation. Returns {@link #SIMPLE_PROPERTY}
-         * by default.
-         *
-         * @param rawProperty
-         * @return
-         */
         public static Type fromProperty(String rawProperty) {
             for (Type type : ALL) {
                 if (type.supports(rawProperty)) {
@@ -254,23 +222,11 @@ public class Part {
             return SIMPLE_PROPERTY;
         }
 
-        /**
-         * Returns all keywords supported by the current {@link Type}.
-         *
-         * @return
-         */
         public Collection<String> getKeywords() {
             return Collections.unmodifiableList(keywords);
         }
 
-        /**
-         * Returns whether the the type supports the given raw property. Default implementation checks whether the property
-         * ends with the registered keyword. Does not support the keyword if the property is a valid field as is.
-         *
-         * @param property
-         * @return
-         */
-        protected boolean supports(String property) {
+        private boolean supports(String property) {
 
             for (String keyword : keywords) {
                 if (property.endsWith(keyword)) {
@@ -281,22 +237,10 @@ public class Part {
             return false;
         }
 
-        /**
-         * Returns the number of arguments the propertyPath binds. By default this exactly one argument.
-         *
-         * @return
-         */
         public int getNumberOfArguments() {
             return numberOfArguments;
         }
 
-        /**
-         * Callback method to extract the actual propertyPath to be bound from the given part. Strips the keyword from the
-         * part's end if available.
-         *
-         * @param part
-         * @return
-         */
         public String extractProperty(String part) {
 
             String candidate = Introspector.decapitalize(part);
@@ -316,25 +260,7 @@ public class Part {
         }
     }
 
-    /**
-     * The various types of ignore case that are supported.
-     *
-     * @author Phillip Webb
-     */
     public enum IgnoreCaseType {
-        /**
-         * Should not ignore the sentence case.
-         */
-        NEVER,
-
-        /**
-         * Should ignore the sentence case, throwing an exception if this is not possible.
-         */
-        ALWAYS,
-
-        /**
-         * Should ignore the sentence case when possible to do so, silently ignoring the option when not possible.
-         */
-        WHEN_POSSIBLE
+        NEVER, ALWAYS, WHEN_POSSIBLE
     }
 }

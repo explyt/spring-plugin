@@ -1,27 +1,56 @@
 /*
- * Copyright 2008-2023 the original author or authors.
+ * Copyright © 2024 Explyt Ltd
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * All rights reserved.
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ * This code and software are the property of Explyt Ltd
+ * and are protected by copyright and other intellectual property laws.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Original work: org.springframework.data.repository.query.parser.PartTree
+ * Available during publication at https://github.com/spring-projects/spring-data-commons/blob/3.0.x/src/main/java/org/springframework/data/repository/query/parser/PartTree.java
+ * Licensed under the Apache License, Version 2.0:
+ *     Copyright © 2008-2024 Oliver Gierke, Jens Schauder,
+ *     Christoph Strobl, Thomas Darimont, and other contributors.
+ *
+ * Modifications to the original work have been made by Explyt Ltd.
+ *
+ * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"),
+ * if you accept its terms and conditions.
+ *
+ * By installing, downloading, accessing, using, or distributing this code,
+ * you agree to the terms and conditions of the License.
+ * If you do not agree to such terms and conditions, you must cease using this code
+ * and immediately delete all copies of it.
+ *
+ * You may obtain a copy of the License at:
+ *
+ *     https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+ *
+ * Unauthorized use of this code constitutes a violation of intellectual property rights
+ * and may result in legal action.
+ *
+ * Modifications Made:
+ *     **Modified:**
+ *         - Optimize for usage IDEA code model - com.intellij.psi.PsiClass instead of java.lang.Class.
+ *     **Removed:**
+ *         - Removed unused code.
+ *
+ * NOTICE:
+ *     This file includes code from an original work licensed under the Apache License 2.0.
+ *     The original license and copyright notices are retained.
+ *     This entire file, including modifications to the original work, is licensed under
+ *     the Explyt Source License. To use this file, you must agree to the terms of the
+ *     Explyt Source License.
+ *
+ * See the Apache License, Version 2.0, for the specific language governing permissions
+ * and limitations under the original work's license.
  */
 package org.springframework.data.repository.query.parser;
 
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiClass;
 import com.intellij.util.ArrayUtilRt;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.springframework.data.repository.query.parser.domain.OrderBySource;
-import org.springframework.data.repository.query.parser.domain.Sort;
+import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -44,16 +73,6 @@ public class PartTree implements Iterable<PartTree.OrPart> {
     public static final String OR_OPERATOR = "Or";
     public static final String AND_OPERATOR = "And";
 
-    /*
-     * We look for a pattern of: keyword followed by
-     *
-     *  an upper-case letter that has a lower-case variant \p{Lu}
-     * OR
-     *  any other letter NOT in the BASIC_LATIN Uni-code Block \\P{InBASIC_LATIN} (like Chinese, Korean, Japanese, etc.).
-     *
-     * @see <a href="https://www.regular-expressions.info/unicode.html">https://www.regular-expressions.info/unicode.html</a>
-     * @see <a href="https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html#ubc">Pattern</a>
-     */
     private static final String KEYWORD_TEMPLATE = "(%s)(?=(\\p{Lu}|\\P{InBASIC_LATIN}))";
     public static final String QUERY_PATTERN = "find|read|get|query|search|stream";
     public static final String COUNT_PATTERN = "count";
@@ -62,25 +81,11 @@ public class PartTree implements Iterable<PartTree.OrPart> {
     private static final Pattern PREFIX_TEMPLATE = Pattern.compile( //
             "^(" + QUERY_PATTERN + "|" + COUNT_PATTERN + "|" + EXISTS_PATTERN + "|" + DELETE_PATTERN + ")((\\p{Lu}.*?))??By");
 
-    /**
-     * The subject, for example "findDistinctUserByNameOrderByAge" would have the subject "DistinctUser".
-     */
     private final Subject subject;
-
-    /**
-     * The subject, for example "findDistinctUserByNameOrderByAge" would have the predicate "NameOrderByAge".
-     */
     private final Predicate predicate;
     private final String mySource;
 
-    /**
-     * Creates a new {@link PartTree} by parsing the given {@link String}.
-     *
-     * @param source      the {@link String} to parse
-     * @param domainClass the domain class to check individual parts against to ensure they refer to a property of the
-     *                    class
-     */
-    public PartTree(@NotNull String source, @NotNull PsiClass domainClass) {
+    public PartTree(String source, PsiClass domainClass) {
         mySource = source;
 
         Matcher matcher = PREFIX_TEMPLATE.matcher(source);
@@ -98,88 +103,21 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         return mySource;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Iterable#iterator()
-     */
     @Override
     public Iterator<OrPart> iterator() {
         return predicate.iterator();
     }
 
-    /**
-     * Returns the {@link Sort} specification parsed from the source or <tt>null</tt>.
-     *
-     * @return the sort
-     */
     public Sort getSort() {
 
         OrderBySource orderBySource = getOrderBySource();
         return orderBySource == null ? null : orderBySource.toSort();
     }
 
-    @Nullable
     public OrderBySource getOrderBySource() {
         return predicate.getOrderBySource();
     }
 
-    /**
-     * Returns whether we indicate distinct lookup of entities.
-     *
-     * @return {@literal true} if distinct
-     */
-    public boolean isDistinct() {
-        return subject.isDistinct();
-    }
-
-    /**
-     * Returns whether a count projection shall be applied.
-     *
-     * @return
-     */
-    public Boolean isCountProjection() {
-        return subject.isCountProjection();
-    }
-
-    public Boolean isExistsProjection() {
-        return subject.isExistsProjection();
-    }
-
-    /**
-     * return true if the created {@link PartTree} is meant to be used for delete operation.
-     *
-     * @return
-     * @since 1.8
-     */
-    public Boolean isDelete() {
-        return subject.isDelete();
-    }
-
-    /**
-     * Return {@literal true} if the create {@link PartTree} is meant to be used for a query with limited maximal results.
-     *
-     * @return
-     * @since 1.9
-     */
-    public boolean isLimiting() {
-        return getMaxResults() != null;
-    }
-
-    /**
-     * Return the number of maximal results to return or {@literal null} if not restricted.
-     *
-     * @return
-     * @since 1.9
-     */
-    public Integer getMaxResults() {
-        return subject.getMaxResults();
-    }
-
-    /**
-     * Returns an {@link Iterable} of all parts contained in the {@link PartTree}.
-     *
-     * @return the iterable {@link Part}s
-     */
     public List<Part> getParts() {
 
         List<Part> result = new ArrayList<>();
@@ -191,12 +129,6 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         return result;
     }
 
-    /**
-     * Returns all {@link Part}s of the {@link PartTree} of the given {@link Type}.
-     *
-     * @param type
-     * @return
-     */
     public Iterable<Part> getParts(Part.Type type) {
         List<Part> result = new ArrayList<>();
 
@@ -216,14 +148,6 @@ public class PartTree implements Iterable<PartTree.OrPart> {
                 orderBySource == null ? "" : " " + orderBySource);
     }
 
-    /**
-     * Splits the given text at the given keywords. Expects camel-case style to only match concrete keywords and not
-     * derivatives of it.
-     *
-     * @param text    the text to split
-     * @param keyword the keyword to split around
-     * @return an array of split items
-     */
     private String[] split(String text, String keyword) {
         if (text.equals(keyword)) return new String[]{"", ""};
         String format = String.format(KEYWORD_TEMPLATE, keyword);
@@ -239,23 +163,12 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         return pattern.split(text);
     }
 
-    /**
-     * A part of the parsed source that results from splitting up the resource around {@literal Or} keywords. Consists of
-     * {@link Part}s that have to be concatenated by {@literal And}.
-     */
     public class OrPart implements Iterable<Part> {
 
         private final List<Part> children = new ArrayList<>();
         private final String mySource;
 
-        /**
-         * Creates a new {@link OrPart}.
-         *
-         * @param source           the source to split up into {@literal And} parts in turn.
-         * @param domainClass      the domain class to check the resulting {@link Part}s against.
-         * @param alwaysIgnoreCase if always ignoring case
-         */
-        OrPart(@NotNull String source, PsiClass domainClass, boolean alwaysIgnoreCase, int offset) {
+        OrPart(String source, PsiClass domainClass, boolean alwaysIgnoreCase, int offset) {
             mySource = source;
             String[] split = split(source, AND_OPERATOR);
             int currentOffset = 0;
@@ -277,15 +190,6 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         }
     }
 
-    /**
-     * Represents the subject part of the query. E.g. {@code findDistinctUserByNameOrderByAge} would have the subject
-     * {@code DistinctUser}.
-     *
-     * @author Phil Webb
-     * @author Oliver Gierke
-     * @author Christoph Strobl
-     * @author Thomas Darimont
-     */
     public class Subject {
 
         private static final String DISTINCT = "Distinct";
@@ -297,47 +201,17 @@ public class PartTree implements Iterable<PartTree.OrPart> {
                 .compile("^(" + QUERY_PATTERN + ")(" + DISTINCT + ")?" + LIMITING_QUERY_PATTERN + "(\\p{Lu}.*?)??By");
 
         private final String myExpression;
-        private final boolean distinct;
         private final boolean exists;
         private final boolean count;
         private final boolean delete;
-        private final Integer maxResults;
 
         public Subject(String subject) {
             this.myExpression = subject;
-            this.distinct = subject == null ? false : subject.contains(DISTINCT);
             this.count = matches(subject, COUNT_BY_TEMPLATE);
             this.delete = matches(subject, DELETE_BY_TEMPLATE);
             this.exists = matches(subject, EXISTS_BY_TEMPLATE);
-            this.maxResults = returnMaxResultsIfFirstKSubjectOrNull(subject);
         }
 
-        /**
-         * @param subject
-         * @return
-         * @since 1.9
-         */
-        private Integer returnMaxResultsIfFirstKSubjectOrNull(String subject) {
-
-            if (subject == null) {
-                return null;
-            }
-
-            Matcher grp = LIMITED_QUERY_TEMPLATE.matcher(subject);
-
-            if (!grp.find()) {
-                return null;
-            }
-
-            return StringUtil.isNotEmpty(grp.group(4)) ? Integer.parseInt(grp.group(4)) : 1;
-        }
-
-        /**
-         * Returns {@literal true} if {@link Subject} matches {@link #DELETE_BY_TEMPLATE}.
-         *
-         * @return
-         * @since 1.8
-         */
         public Boolean isDelete() {
             return delete;
         }
@@ -348,14 +222,6 @@ public class PartTree implements Iterable<PartTree.OrPart> {
 
         public boolean isExistsProjection() {
             return exists;
-        }
-
-        public boolean isDistinct() {
-            return distinct;
-        }
-
-        public Integer getMaxResults() {
-            return maxResults;
         }
 
         private boolean matches(String subject, Pattern pattern) {
@@ -372,12 +238,6 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         }
     }
 
-    /**
-     * Represents the predicate part of the query.
-     *
-     * @author Oliver Gierke
-     * @author Phil Webb
-     */
     private class Predicate {
 
         private final Pattern ALL_IGNORE_CASE = Pattern.compile("AllIgnor(ing|e)Case");
@@ -388,7 +248,7 @@ public class PartTree implements Iterable<PartTree.OrPart> {
         private final int offset;
         private boolean alwaysIgnoreCase;
 
-        Predicate(@NotNull String predicate, @NotNull PsiClass domainClass, int offset) {
+        Predicate(String predicate, PsiClass domainClass, int offset) {
             this.offset = offset;
             String sourceString = detectAndSetAllIgnoreCase(predicate);
             String[] parts = split(sourceString, ORDER_BY);
@@ -411,7 +271,7 @@ public class PartTree implements Iterable<PartTree.OrPart> {
             return predicate;
         }
 
-        private void buildTree(@NotNull String source, @NotNull PsiClass domainClass) {
+        private void buildTree(String source, PsiClass domainClass) {
             String[] split = split(source, OR_OPERATOR);
             int currentOffset = 0;
             for (String part : split) {

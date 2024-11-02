@@ -4,16 +4,16 @@
         <localInspection language="UAST"
                          shortName="SpringSecurityAnnotationWithUserDetailsInspection"
                          groupBundle="messages.SpringSecurityBundle"
-                         groupPath="Spring Explyt"
-                         groupKey="esprito.spring.security.notifications"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.security.notifications"
                          bundle="messages.SpringSecurityBundle"
-                         key="esprito.spring.security.inspection.bean"
+                         key="explyt.spring.security.inspection.bean"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.esprito.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection"/>
+                         implementationClass="com.explyt.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection"/>
 
         <psi.referenceContributor language="UAST"
-                                  implementation="com.esprito.spring.security.references.contributors.SpringSecurityContributor"/>
+                                  implementation="com.explyt.spring.security.references.contributors.SpringSecurityContributor"/>
 
     </extensions>
 

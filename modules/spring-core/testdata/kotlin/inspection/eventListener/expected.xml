@@ -8,7 +8,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test1()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must be public</description>
+        <description>@EventListener annotation requires the method to be public</description>
         <highlighted_element>@EventListener</highlighted_element>
         <language>kotlin</language>
         <offset>1</offset>
@@ -22,7 +22,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test2()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must be public</description>
+        <description>@EventListener annotation requires the method to be public</description>
         <highlighted_element>@EventListener</highlighted_element>
         <language>kotlin</language>
         <offset>1</offset>
@@ -36,7 +36,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test4(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must have maximum 1 parameter</description>
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
         <highlighted_element>@EventListener</highlighted_element>
         <language>kotlin</language>
         <offset>1</offset>
@@ -50,7 +50,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test5(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must be public</description>
+        <description>@EventListener annotation requires the method to be public</description>
         <highlighted_element>@EventListener</highlighted_element>
         <language>kotlin</language>
         <offset>1</offset>
@@ -64,7 +64,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test5(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must have maximum 1 parameter</description>
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
         <highlighted_element>@EventListener</highlighted_element>
         <language>kotlin</language>
         <offset>1</offset>
@@ -78,7 +78,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test1()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must be public</description>
+        <description>@EventListener annotation requires the method to be public</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
         <language>kotlin</language>
         <offset>4</offset>
@@ -92,7 +92,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test2()" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must be public</description>
+        <description>@EventListener annotation requires the method to be public</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
         <language>kotlin</language>
         <offset>4</offset>
@@ -106,7 +106,7 @@
         <package>com.event.listener</package>
         <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test4(String param1, String param2)" />
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must have maximum 1 parameter</description>
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
         <language>kotlin</language>
         <offset>4</offset>
@@ -121,7 +121,7 @@
         <entry_point TYPE="method"
                      FQNAME="com.event.listener.TestEventListenerWithRecursive void test5(java.lang.String param1, java.lang.String param2)"/>
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must be public</description>
+        <description>@EventListener annotation requires the method to be public</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
         <language>kotlin</language>
         <offset>4</offset>
@@ -136,7 +136,7 @@
         <entry_point TYPE="method"
                      FQNAME="com.event.listener.TestEventListenerWithRecursive void test5(java.lang.String param1, java.lang.String param2)"/>
         <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
-        <description>Method annotated with @EventListener must have maximum 1 parameter</description>
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
         <highlighted_element>@CustomEventListener</highlighted_element>
         <language>kotlin</language>
         <offset>4</offset>

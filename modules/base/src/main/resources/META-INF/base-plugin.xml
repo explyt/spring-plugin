@@ -6,7 +6,7 @@
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
-        <errorHandler implementation="com.esprito.base.SentryErrorReporter"/>
+        <errorHandler implementation="com.explyt.base.SentryErrorReporter"/>
     </extensions>
 
     <actions>

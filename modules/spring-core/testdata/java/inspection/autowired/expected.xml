@@ -8,7 +8,7 @@
         <package>component_scan.constructor</package>
         <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.BarBean bean)" />
         <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
-        <description>Only one constructor can have @Autowired annotation</description>
+        <description>@Autowired annotation can be applied to only one constructor</description>
         <highlighted_element>MyComponent</highlighted_element>
         <language>JAVA</language>
         <offset>11</offset>
@@ -50,7 +50,7 @@
         <package>component_scan.constructor</package>
         <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent()" />
         <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
-        <description>Only one constructor can have @Autowired annotation</description>
+        <description>@Autowired annotation can be applied to only one constructor</description>
         <highlighted_element>MyComponent</highlighted_element>
         <language>JAVA</language>
         <offset>11</offset>
@@ -64,7 +64,7 @@
         <package>component_scan.constructor</package>
         <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.FooBean foobean, component_scan.constructor.BarBean bean)" />
         <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
-        <description>Only one constructor can have @Autowired annotation</description>
+        <description>@Autowired annotation can be applied to only one constructor</description>
         <highlighted_element>MyComponent</highlighted_element>
         <language>JAVA</language>
         <offset>11</offset>
@@ -92,7 +92,7 @@
         <package>component_scan.constructor</package>
         <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.FooBean foobean, component_scan.constructor.BarBean bean, String str)" />
         <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
-        <description>Only one constructor can have @Autowired annotation</description>
+        <description>@Autowired annotation can be applied to only one constructor</description>
         <highlighted_element>MyComponent</highlighted_element>
         <language>JAVA</language>
         <offset>11</offset>

@@ -1,24 +1,41 @@
-package com.esprito.spring.core.service.java
+/*
+ * Copyright © 2024 Explyt Ltd
+ *
+ * All rights reserved.
+ *
+ * This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
+ *
+ * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
+ *
+ * By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
+ * If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
+ *
+ * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+ *
+ * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
+ */
 
-import com.esprito.spring.core.service.SpringSearchService
-import com.esprito.spring.core.service.SpringSearchServiceFacade
-import com.esprito.spring.test.EspritoJavaLightTestCase
-import com.esprito.spring.test.TestLibrary
+package com.explyt.spring.core.service.java
+
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 
-class SpringSearchServiceTest : EspritoJavaLightTestCase() {
+class SpringSearchServiceTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     override fun setUp() {
         super.setUp()
-        Registry.get("esprito.spring.root.runConfiguration").setValue(false)
+        Registry.get("explyt.spring.root.runConfiguration").setValue(false)
     }
 
     override fun tearDown() {
         super.tearDown()
-        Registry.get("esprito.spring.root.runConfiguration").resetToDefault()
+        Registry.get("explyt.spring.root.runConfiguration").resetToDefault()
     }
 
     fun testImportComponent() {
