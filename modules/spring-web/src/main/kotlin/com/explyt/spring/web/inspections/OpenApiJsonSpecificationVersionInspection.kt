@@ -24,6 +24,7 @@ import com.intellij.json.JsonFileType
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
 import com.intellij.json.psi.JsonValue
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiFile
 
 class OpenApiJsonSpecificationVersionInspection : OpenApiVersionInspectionBase() {
@@ -34,7 +35,7 @@ class OpenApiJsonSpecificationVersionInspection : OpenApiVersionInspectionBase()
 
         val openApiVersion = findOpenApiVersion(topLevelValue) ?: return ProblemDescriptor.EMPTY_ARRAY
         val text = openApiVersion.text?.trim('"') ?: return ProblemDescriptor.EMPTY_ARRAY
-        if (text != "3.0.0" && text != "3.1.0") {
+        if (StringUtil.compareVersionNumbers(text, "3.0.0") < 0) {
             return problemDescriptors(manager, openApiVersion, text, isOnTheFly)
         }
 

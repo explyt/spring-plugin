@@ -20,6 +20,7 @@ package com.explyt.spring.web.inspections
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiFile
 import org.jetbrains.yaml.YAMLFileType
 import org.jetbrains.yaml.psi.YAMLFile
@@ -37,7 +38,8 @@ class OpenApiYamlSpecificationVersionInspection : OpenApiVersionInspectionBase()
             val versionKey = topLevelValue.keyValues.find { it.keyText == SpringWebUtil.OPEN_API }
                 ?: return ProblemDescriptor.EMPTY_ARRAY
             val versionKeyValue = versionKey.value ?: return ProblemDescriptor.EMPTY_ARRAY
-            if (versionKeyValue.text != "3.0.0" && versionKeyValue.text != "3.1.0") {
+            val text = versionKeyValue.text?.trim('"') ?: return ProblemDescriptor.EMPTY_ARRAY
+            if (StringUtil.compareVersionNumbers(text, "3.0.0") < 0) {
                 return problemDescriptors(manager, versionKeyValue, versionKeyValue.text, isOnTheFly)
             }
         }
