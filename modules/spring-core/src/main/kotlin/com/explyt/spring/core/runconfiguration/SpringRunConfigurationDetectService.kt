@@ -171,6 +171,7 @@ class SpringRunConfigurationDetectService(
             PropertiesComponent.getInstance().setValue("framework.suggestion.dismissed.spring.boot", true)
             PropertiesComponent.getInstance().setValue("promo.framework.suggestion.dismissed.spring.boot", true)
             PropertiesComponent.getInstance().setValue("swagger.suggestion.dismissed", true)
+            PropertiesComponent.getInstance().setValue("ide.try.ultimate.disabled", true)
 
             val runConfigurationsSettingsState = SpringToolRunConfigurationsSettingsState.getInstance()
 
