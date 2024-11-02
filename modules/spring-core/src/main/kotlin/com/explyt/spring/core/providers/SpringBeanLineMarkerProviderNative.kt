@@ -57,16 +57,15 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        val uElement = element.toUElement() ?: return
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
+        val uElement = getUParentForIdentifier(element) ?: return
+
         if (uElement is UClass) {
-            val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
             if (!SpringCoreUtil.isSpringBeanCandidateClass(uElement.javaPsi)) return
-            val allBeanClasses = NativeSearchService.getInstance(element.project).getAllBeanClasses(module)
-            val inContextBean = SpringSearchUtils.getBeanClass(uElement) in allBeanClasses
+            val inContextBean = isContextBean(module, uElement)
             val componentCandidate = isComponentCandidate(uElement.javaPsi)
             if (componentCandidate && !inContextBean) {
                 addComponentCandidateBean(uElement, module, result)
-                processFields(uElement, module, result)
             } else {
                 if (isMethodBean(uElement, inContextBean, componentCandidate)) {
                     addMethodBeanDeclaration(uElement, module, result)
@@ -74,7 +73,6 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 if (inContextBean) {
                     addContextBean(uElement, module, result)
                     processMethods(uElement, module, result)
-                    processFields(uElement, module, result)
                 }
             }
             if (isAutoConfigurationClass(uElement, module)) {
@@ -85,27 +83,41 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                     .setPopupTitle(SpringCoreBundle.message("explyt.spring.factories.gutter.popup.title"))
                 result.add(builder.createLineMarkerInfo(element))
             }
+        } else if (uElement is UField && checkClassOnBeanCandidate(module, uElement.getContainingUClass())) {
+            processField(uElement, module, result)
+        } else if (uElement is UMethod && checkClassOnBeanCandidate(module, uElement.getContainingUClass())) {
+            processMethod(uElement, module, result)
         }
     }
 
-    private fun processFields(
-        uClass: UClass,
+    private fun isContextBean(module: Module, uElement: UElement): Boolean {
+        val allBeanClasses = NativeSearchService.getInstance(module.project).getAllBeanClasses(module)
+        return SpringSearchUtils.getBeanClass(uElement) in allBeanClasses
+    }
+
+    private fun checkClassOnBeanCandidate(module: Module, uClass: UClass?): Boolean {
+        val javaPsiClass = uClass?.javaPsi ?: return false
+        val isClassIsComponentConstructed = SpringCoreUtil.isSpringBeanCandidateClass(javaPsiClass)
+                && isComponentCandidate(javaPsiClass)
+        return isClassIsComponentConstructed || isContextBean(module, uClass)
+    }
+
+    private fun processField(
+        uField: UField,
         module: Module,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        for (uField in uClass.fields) {
-            val psiField = uField.javaPsi as? PsiField ?: continue
-            if (!isAutowiredFieldExpression(psiField) && !isLombokAnnotatedClassFieldExpression(psiField)) continue
-            if (checkParam(psiField, module)) {
-                val sourcePsi = uField.uastAnchor?.sourcePsi ?: continue
-                val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
-                    .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                    .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, module) })
-                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
-                result.add(builder.createLineMarkerInfo(sourcePsi))
-            }
+        val psiField = uField.javaPsi as? PsiField ?: return
+        if (!isAutowiredFieldExpression(psiField) && !isLombokAnnotatedClassFieldExpression(psiField)) return
+        if (checkParam(psiField, module)) {
+            val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, module) })
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
+            result.add(builder.createLineMarkerInfo(sourcePsi))
         }
     }
 
@@ -115,24 +127,32 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         for (method in uElement.methods) {
-            val psiElement = method.uastAnchor?.sourcePsi ?: continue
-            if (method.isConstructor || isAutowiredMethodExpression(method.javaPsi)) {
-                checkMethodParameters(method, module, result)
-                continue
-            }
+            processMethod(method, module, result)
+        }
+    }
 
-            if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) continue
-            if (isMethodBean(module, method)) {
-                val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
-                    .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                    .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(null, method, module) })
-                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
-                    .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
-                result.add(builder.createLineMarkerInfo(psiElement))
-                checkMethodParameters(method, module, result)
-            }
+    private fun processMethod(
+        method: UMethod,
+        module: Module,
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
+    ) {
+        val psiElement = method.uastAnchor?.sourcePsi ?: return
+        if (method.isConstructor || isAutowiredMethodExpression(method.javaPsi)) {
+            checkMethodParameters(method, module, result)
+            return
+        }
+
+        if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return
+        if (isMethodBean(module, method)) {
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(null, method, module) })
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
+                .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
+            result.add(builder.createLineMarkerInfo(psiElement))
+            checkMethodParameters(method, module, result)
         }
     }
 
