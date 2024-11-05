@@ -1,6 +1,6 @@
 # What is Explyt Spring Plugin?
 
-The [Spring Explyt Plugin](https://explyt.com/spring) enhances your IntelliJ IDEA Community experience, making Spring development in Java and Kotlin more productive and enjoyable. This plugin is designed to accelerate Spring and Spring Boot development by providing advanced tools for navigation, code generation, and configuration.
+The [Explyt Spring Plugin](https://explyt.com/spring) enhances your IntelliJ IDEA Community experience, making Spring development in Java and Kotlin more productive and enjoyable. This plugin is designed to accelerate Spring and Spring Boot development by providing advanced tools for navigation, code generation, and configuration.
 
 ![Screen](https://github.com/explyt/spring-plugin/blob/main/images/screen1.jpg)
 
