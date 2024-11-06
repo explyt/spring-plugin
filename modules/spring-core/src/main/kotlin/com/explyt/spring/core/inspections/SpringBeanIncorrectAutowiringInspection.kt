@@ -113,6 +113,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         val uniqueConstructors = aClass.constructors.distinctBy { it.text }
 
         if (uniqueConstructors.size > 1) {
+            if (isConfigPropertyWithEmptyConstructor(aClass, uniqueConstructors)) return problems
+
             val autowiredConstructors = uniqueConstructors
                 .filter { it.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED) || it.isMetaAnnotatedBy(JavaEeClasses.INJECT.allFqns) }
 
@@ -143,6 +145,11 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             }
         }
         return problems
+    }
+
+    private fun isConfigPropertyWithEmptyConstructor(aClass: PsiClass, uniqueConstructors: List<PsiMethod>): Boolean {
+        return aClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)
+                && uniqueConstructors.any { it.parameterList.isEmpty }
     }
 
     private fun PsiType.isMultipleBean(module: Module): Boolean {

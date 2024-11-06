@@ -11,6 +11,8 @@
 - Fixed: Don't warn about kebab case for property values
 - Fixed: profile change (#6)
 - Fixed: Bug: bean line marker native fix
+- Fixed: Inspection SpringBeanIncorrectAutowiringInspection false positive ConfigurationProperties
+- Fixed: Property navigation from application.properties from tests
 
 ### Other
 
