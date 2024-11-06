@@ -22,8 +22,10 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.SpringSearchService
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.psi.*
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+
 
 object ProjectConfigurationPropertiesUtil {
 
@@ -33,11 +35,22 @@ object ProjectConfigurationPropertiesUtil {
             .findClass(SpringCoreClasses.CONFIGURATION_PROPERTIES, librariesSearchScope)
             ?: return emptyList()
 
-        return AnnotatedElementsSearch.searchElements(
+        val resultElements = AnnotatedElementsSearch.searchElements(
             configurationPropertiesClass,
-            module.moduleWithDependenciesScope,
+            module.moduleScope,
             PsiClass::class.java, PsiMethod::class.java
-        )
+        ).toMutableSet()
+
+        val moduleRootManager = ModuleRootManager.getInstance(module)
+        for (dependentModule in moduleRootManager.dependencies) {
+            resultElements += AnnotatedElementsSearch.searchElements(
+                configurationPropertiesClass,
+                dependentModule.moduleScope,
+                PsiClass::class.java, PsiMethod::class.java
+            )
+        }
+
+        return resultElements
     }
 
     fun extractConfigurationPropertyPrefix(module: Module, annotatedElement: PsiModifierListOwner): String? {
