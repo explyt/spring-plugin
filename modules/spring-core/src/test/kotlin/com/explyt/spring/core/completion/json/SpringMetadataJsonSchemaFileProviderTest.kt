@@ -15,9 +15,9 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.esprito.spring.core.completion.json
+package com.explyt.spring.core.completion.json
 
-import com.esprito.spring.core.completion.ExplytCompletionJavaLightTestCase
+import com.explyt.spring.core.completion.ExplytCompletionJavaLightTestCase
 
 class SpringMetadataJsonSchemaFileProviderTest : ExplytCompletionJavaLightTestCase() {
 
