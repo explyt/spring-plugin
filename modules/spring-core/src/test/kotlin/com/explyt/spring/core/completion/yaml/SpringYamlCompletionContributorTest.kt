@@ -17,7 +17,7 @@
 
 package com.explyt.spring.core.completion.yaml
 
-import com.esprito.spring.core.completion.ExplytCompletionJavaLightTestCase
+import com.explyt.spring.core.completion.ExplytCompletionJavaLightTestCase
 
 
 class SpringYamlCompletionContributorTest : ExplytCompletionJavaLightTestCase() {

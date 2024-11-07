@@ -40,7 +40,7 @@ class SpringLineMarkerProviderTest : ExplytKotlinLightTestCase() {
 
         myFixture.doHighlighting()
 
-        val lineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project);
+        val lineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project)
 
         assertEquals(3, lineMarkers.size)
 
