@@ -21,6 +21,7 @@ import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
+import com.explyt.spring.core.completion.properties.ConfigurationProperty
 import com.explyt.spring.core.completion.properties.PropertyHint
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.properties.ValueHint
@@ -343,6 +344,20 @@ object PropertyUtil {
         return from.splitToSequence('.')
             .map { NameCaseUtils.toKebabCase(it) }
             .joinToString(".")
+    }
+
+    fun isKebabCaseInMapKey(key: String, properties: List<ConfigurationProperty>): Boolean {
+        val parts = key.split(".")
+
+        val keyVariant = buildString {
+            for (part in parts) {
+                if (part.any { it.isUpperCase() }) break
+                if (isNotEmpty()) append(".")
+                append(part)
+            }
+        }
+        val property = properties.firstOrNull { isSameProperty(it.name, keyVariant) } ?: return false
+        return property.isMap()
     }
 
     private fun findMember(
