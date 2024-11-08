@@ -7,6 +7,7 @@
 
 ### Spring Core/Boot
 
+- Fixed: inserting one parameter instead of several
 - Added schema to additional configuration metadata
 - Fixed: wrong bean method navigation
 - Fixed: Don't warn about kebab case for property values
