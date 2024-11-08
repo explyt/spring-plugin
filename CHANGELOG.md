@@ -17,6 +17,7 @@
 - Fixed: Bug: bean line marker native fix
 - Fixed: Inspection SpringBeanIncorrectAutowiringInspection false positive ConfigurationProperties
 - Fixed: Property navigation from application.properties from tests
+- Fixed: module AlreadyDisposedExceptional
 
 ### Other
 
