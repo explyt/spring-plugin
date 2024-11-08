@@ -35,7 +35,6 @@ import com.explyt.spring.core.inspections.utils.ResourceFileInspectionUtil
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.util.PropertyUtil
-import com.explyt.spring.core.util.PropertyUtil.isNotKebabCase
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
 import com.explyt.spring.core.util.PropertyUtil.propertyKeyPsiElement
 import com.explyt.spring.core.util.PropertyUtil.propertyValue
@@ -139,7 +138,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             }
 
             val key = fileProperty.key
-            if (isNotKebabCase(key)) {
+            if (PropertyUtil.isNotKebabCase(key) && !PropertyUtil.isKebabCaseInMapKey(key, properties)) {
                 problems += keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key)
             }
 

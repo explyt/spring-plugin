@@ -17,7 +17,6 @@
 
 package com.explyt.base
 
-import com.explyt.module.ExternalSystemModule
 import com.explyt.util.CacheKeyStore
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.openapi.application.runReadAction
@@ -39,16 +38,13 @@ object LibraryClassCache {
         project: Project,
         fqn: String
     ): PsiClass? = runReadAction {
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
-
         CachedValuesManager.getManager(project)
             .getCachedValue(
                 project,
                 keys.getValue(fqn),
                 {
-                    val result = javaPsiFacade.findClass(
-                        fqn,
-                        LibraryScopeCache.getInstance(project).librariesOnlyScope
+                    val result = JavaPsiFacade.getInstance(project).findClass(
+                        fqn, LibraryScopeCache.getInstance(project).librariesOnlyScope
                     )
 
                     CachedValueProvider.Result.create(
@@ -64,35 +60,7 @@ object LibraryClassCache {
             )
     }
 
-    fun searchForLibraryClass(
-        module: Module,
-        fqn: String
-    ): PsiClass? = runReadAction {
-        val project = module.project
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
-
-        CachedValuesManager.getManager(project)
-            .getCachedValue(
-                project,
-                keys.getValue(fqn + " in module " + module.name),
-                {
-                    val result = javaPsiFacade.findClass(
-                        fqn,
-                        ExternalSystemModule.of(module).librariesSearchScope
-                    )
-
-                    CachedValueProvider.Result.create(
-                        result,
-
-                        @Suppress("UnstableApiUsage")
-                        JavaLibraryModificationTracker.getInstance(project),
-
-                        CacheKeyStore.cacheReset
-                    )
-                },
-                false
-            )
-    }
+    fun searchForLibraryClass(module: Module, fqn: String) = searchForLibraryClass(module.project, fqn)
 
     fun searchForLibraryClasses(
         module: Module,

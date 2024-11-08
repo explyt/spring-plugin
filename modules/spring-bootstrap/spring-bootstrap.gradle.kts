@@ -168,7 +168,7 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         version.set(springBootstrapModule.version as String)
-        description.set(rootProject.file("README.md").readText()
+        description.set(rootProject.file("PLUGIN-DESCRIPTION.md").readText()
             .let { org.jetbrains.changelog.markdownToHTML(it) })
         changeNotes.set(provider {
             changelog.renderItem(
@@ -210,7 +210,7 @@ changelog {
     path.set(rootProject.file("CHANGELOG.md").canonicalPath)
     header.set(provider { "[${version.get()}] - ${date()}" })
     introduction.set(
-        rootProject.file("README.md").readText()
+        rootProject.file("PLUGIN-DESCRIPTION.md").readText()
     )
     itemPrefix.set("-")
     keepUnreleasedSection.set(true)

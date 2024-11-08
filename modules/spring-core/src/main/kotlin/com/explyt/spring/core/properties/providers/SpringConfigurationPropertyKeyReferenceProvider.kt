@@ -23,10 +23,7 @@ import com.explyt.spring.core.SpringProperties.HINTS
 import com.explyt.spring.core.SpringProperties.NAME
 import com.explyt.spring.core.SpringProperties.POSTFIX_KEYS
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
-import com.explyt.spring.core.completion.properties.ConfigurationProperty
-import com.explyt.spring.core.completion.properties.PropertyHint
-import com.explyt.spring.core.completion.properties.PropertyRenderer
-import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
 import com.explyt.spring.core.properties.references.MetaConfigKeyReference
 import com.explyt.spring.core.util.PropertyUtil
@@ -148,15 +145,22 @@ class ConfigurationPropertyKeyReference(
 
     private fun resultConfigKeyPsiElement(project: Project, module: Module): Array<ResolveResult> {
         val foundProperty = configurationProperty(project, module) ?: return emptyArray()
-        val sourceType = foundProperty.sourceType ?: return emptyArray()
-        val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project)
-        val uElement = sourceMember.toUElement() ?: return emptyArray()
-        if (sourceMember != null
-            && (uElement is UClass || uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())
-        ) {
-            return PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
+
+        val sourceType = when (foundProperty.propertyType) {
+            PropertyType.MAP ->
+                foundProperty.type?.substringAfter(",")?.substringBefore(">") ?: return emptyArray()
+
+            else -> foundProperty.sourceType ?: return emptyArray()
         }
-        return emptyArray()
+
+        val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project) ?: return emptyArray()
+        val uElement = sourceMember.toUElement() ?: return emptyArray()
+
+        return if ((uElement is UClass || uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())) {
+            PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
+        } else {
+            emptyArray()
+        }
     }
 
     private fun configurationProperty(

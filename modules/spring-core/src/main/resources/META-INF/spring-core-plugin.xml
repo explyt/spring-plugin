@@ -651,6 +651,10 @@
         <iconProvider implementation="com.explyt.spring.core.providers.SpringPropertyFileIconProvider"/>
     </extensions>
 
+    <extensions defaultExtensionNs="JavaScript.JsonSchema">
+        <ProviderFactory implementation="com.explyt.spring.core.providers.SpringMetadataJsonSchemaFileProviderFactory"/>
+    </extensions>
+
     <actions>
         <action id="NavigateToSpringBean" class="com.explyt.spring.core.externalsystem.action.BeanNavigationAction"/>
         <action id="Explyt.ExternalView.ProfileChanged"

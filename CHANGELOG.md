@@ -7,10 +7,17 @@
 
 ### Spring Core/Boot
 
+- Fixed: inspection kebab-case in properties for Map
+- Fixed: navigate in properties for Map
+- Fixed: inserting one parameter instead of several
+- Added schema to additional configuration metadata
 - Fixed: wrong bean method navigation
 - Fixed: Don't warn about kebab case for property values
 - Fixed: profile change (#6)
 - Fixed: Bug: bean line marker native fix
+- Fixed: Inspection SpringBeanIncorrectAutowiringInspection false positive ConfigurationProperties
+- Fixed: Property navigation from application.properties from tests
+- Fixed: module AlreadyDisposedExceptional
 
 ### Other
 

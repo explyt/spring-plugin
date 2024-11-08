@@ -76,22 +76,20 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                 .filter { it.name !in parameterKeys }
 
             for (property in reducedProperties) {
-                if (!isYaml
-                    ||
-                    (property.name.startsWith(currentKey.prefix)
-                            || (currentKey.prefix.isEmpty() && currentKey.startKey.isEmpty()))
-                ) {
-                    result
-                        .withPrefixMatcher(currentKey.startKey)
-                        .addElement(
-                            LookupElementBuilder.create(property, property.name)
-                                .withRenderer(PropertyRenderer())
-                                .withInsertHandler { insertionContext, _ ->
-                                    if (isYaml) {
-                                        handleInsertInYaml(currentKey, property, insertionContext)
-                                    }
-                                }
-                        )
+                val shouldIncludeProperty = !isYaml ||
+                        property.name.startsWith(currentKey.prefix) ||
+                        (currentKey.prefix.isEmpty() && currentKey.startKey.isEmpty())
+
+                if (shouldIncludeProperty) {
+                    val lookupElement = LookupElementBuilder.create(property, property.name)
+                        .withRenderer(PropertyRenderer())
+                        .withInsertHandler { insertionContext, _ ->
+                            if (isYaml) {
+                                handleInsertInYaml(currentKey, property, insertionContext)
+                            }
+                        }
+
+                    result.withPrefixMatcher(currentKey.startKey).addElement(lookupElement)
                 }
             }
         }
@@ -103,7 +101,10 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
         ) {
             val insertName =
                 if (currentKey.prefix.isEmpty())
-                    property.name else property.name.substringAfter("${currentKey.prefix}.")
+                    property.name
+                else if (property.name.startsWith("${currentKey.prefix}.")) {
+                    property.name.substringAfter("${currentKey.prefix}.")
+                } else ""
             handleInsert(insertionContext, insertName)
         }
 
@@ -145,7 +146,8 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             val key = parameters.position.text.substring(0, cursor - keyStart)
 
             val keyResult = YAMLUtil.getConfigFullName(yamlKey)
-            val prefix = keyResult.substringBefore(".$key")
+            val prefix = if (key.isEmpty()) keyResult.substringBefore(".${CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED}")
+            else keyResult.substringBefore(".$key")
             val fullKey = keyResult
                 .replace(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED, "").replace(" ", "")
             return CurrentKey(prefix, key, fullKey)
