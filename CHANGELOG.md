@@ -7,6 +7,8 @@
 
 ### Spring Core/Boot
 
+- Fixed: inspection kebab-case in properties for Map
+- Fixed: navigate in properties for Map
 - Fixed: inserting one parameter instead of several
 - Added schema to additional configuration metadata
 - Fixed: wrong bean method navigation
