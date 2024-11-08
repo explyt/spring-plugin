@@ -119,7 +119,12 @@ public class BeanPrinter {
 
     private static String getFactoryBeanObjectType(BeanDefinition definition) {
         Object factoryBeanObjectType = definition.getAttribute("factoryBeanObjectType");
-        return factoryBeanObjectType instanceof String ? (String) factoryBeanObjectType : null;
+        if (factoryBeanObjectType instanceof String) {
+            return (String) factoryBeanObjectType;
+        } else if (factoryBeanObjectType instanceof Class) {
+            return ((Class<?>) factoryBeanObjectType).getName();
+        }
+        return null;
     }
 
     static class BeanInfo {
