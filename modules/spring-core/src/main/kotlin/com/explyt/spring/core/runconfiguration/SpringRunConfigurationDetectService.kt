@@ -20,7 +20,6 @@ package com.explyt.spring.core.runconfiguration
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringRunConfigurationBundle
 import com.explyt.spring.core.notifications.SpringToolNotificationGroup
-import com.explyt.spring.core.runconfiguration.lifecycle.SpringBootLifecycleManager
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
@@ -167,7 +166,6 @@ class SpringRunConfigurationDetectService(
 
     class StartupActivity : ProjectActivity {
         override suspend fun execute(project: Project) {
-            SpringBootLifecycleManager.getInstance(project)
             PropertiesComponent.getInstance().setValue("framework.suggestion.dismissed.spring.boot", true)
             PropertiesComponent.getInstance().setValue("promo.framework.suggestion.dismissed.spring.boot", true)
             PropertiesComponent.getInstance().setValue("swagger.suggestion.dismissed", true)
