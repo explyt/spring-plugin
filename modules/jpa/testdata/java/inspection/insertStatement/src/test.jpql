@@ -1,0 +1,20 @@
+INSERT INTO Employee (id, name, name, salary, id)
+VALUES (1, 'John Doe','John Doe', 50000),
+       (1, 'John Doe','John Doe', 50000, 50000, 50000);
+
+INSERT INTO Employee (id, name, salary)
+SELECT e.id, e.name FROM Employee e;
+
+INSERT INTO Employee (id, name)
+SELECT e.id, e.name, e.salary FROM Employee e;
+
+INSERT INTO Employee (id, name, salary, birthday, inVacation)
+VALUES (TRUE, 5, {ts '2023-01-01 12:34:56'}, '2023-01-01', 'TRUE'),
+       ('John Doe', 2 ,'John Doe', {ts '2023-01-01 12:34:56'}, TRUE),
+       (1, 'John Doe', 200, {ts '2023-01-01 12:34:56'}, FALSE);
+
+INSERT INTO Employee (id, name, salary, birthday, inVacation)
+SELECT e.id, e.name, e.salary, e.birthday, e.inVacation FROM Employee e;
+
+INSERT INTO Employee (id, name, salary, birthday, inVacation)
+SELECT e.name, e.id, e.name, e.inVacation, e.birthday FROM Employee e;

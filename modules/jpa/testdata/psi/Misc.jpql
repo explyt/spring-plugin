@@ -1,0 +1,15 @@
+SELECT e FROM Employee e WHERE e.salary > SOME (SELECT e2.salary FROM Employee e2 WHERE e2.department = :department);
+SELECT e FROM Employee e WHERE e.salary > ANY (SELECT e2.salary FROM Employee e2 WHERE e2.department = :department);
+SELECT e FROM Employee e WHERE e.salary > ALL (SELECT e2.salary FROM Employee e2 WHERE e2.department = :department);
+SELECT e.name, COALESCE(e.salary, 0) FROM Employee e;
+SELECT e.name, NULLIF(e.salary, 0) FROM Employee e;
+SELECT e FROM Employee e WHERE :department MEMBER OF e.departments;
+SELECT e FROM Employee e WHERE :department MEMBER e.departments;
+SELECT e FROM Employee e WHERE :department NOT MEMBER e.departments;
+SELECT e FROM Employee e WHERE :department NOT MEMBER OF e.departments;
+SELECT DISTINCT e FROM Department d, IN (d.employees) e;
+SELECT e FROM Employee e WHERE EXISTS (SELECT d FROM Department d WHERE d.manager = e);
+SELECT d FROM Department d WHERE d.employees IS EMPTY;
+SELECT d FROM Department d WHERE d.employees IS NOT EMPTY;
+SELECT OBJECT(d) FROM Department d;
+SELECT d FROM Department d WHERE -d > -1;

@@ -1,0 +1,43 @@
+<html>
+<body>
+<p>Reports incorrect
+    <a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/scheduling/annotation/Scheduled.html">@Scheduled</a>
+    expressions:</p>
+
+<ul>
+    <li>Spring Scheduled must not be empty</li>
+    <li>Scheduled contain correct schedule interval</li>
+</ul>
+
+<p><b>Examples:</b></p>
+<pre><code lang="java">
+  // correctly configured
+  @Scheduled(cron="* * * * * *")
+  public void scheduledMethod() {...}
+
+  //correctly configured
+  @Scheduled(fixedRate=100)
+  public void scheduledMethod() {...}
+
+  //correctly configured
+  @Scheduled(fixedDelayString="${property.value}")
+  public void scheduledMethod() {...}
+
+  //correctly configured
+  @Scheduled(fixedDelayString="PT02S")
+  public void scheduledMethod() {...}
+
+  //incorrectly configured: empty
+  @Scheduled()
+  public void scheduledMethod() {...}
+
+  //incorrectly configured: invalid cron
+  @Scheduled(cron="* *")
+  public void scheduledMethod() {...}
+
+  //incorrectly configured: invalid string
+  @Scheduled(fixedDelayString="1abc")
+  public void scheduledMethod() {...}
+</code></pre>
+</body>
+</html>

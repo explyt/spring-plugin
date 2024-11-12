@@ -1,0 +1,44 @@
+<!-- HTML for static distribution bundle build -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swagger UI</title>
+    <link rel="icon" type="image/png" href="{RESOURCE_URL}=favicon-32x32.png" sizes="32x32"/>
+    <link rel="icon" type="image/png" href="{RESOURCE_URL}=favicon-16x16.png" sizes="16x16"/>
+    <link rel="stylesheet" type="text/css" href="{RESOURCE_URL}=swagger-ui.css"/>
+    <link rel="stylesheet" type="text/css" href="{RESOURCE_URL}={THEME_FOLDER}/theme.css"/>
+    <link rel="stylesheet" type="text/css" href="{RESOURCE_URL}=hide-file-name.css"/>
+    <link rel="stylesheet" type="text/css" href="{RESOURCE_URL}=index.css"/>
+
+</head>
+
+<body>
+
+<div id="swagger-ui"></div>
+
+<script src="{RESOURCE_URL}=swagger-ui-bundle.js"></script>
+<script src="{RESOURCE_URL}=swagger-ui-standalone-preset.js"></script>
+<script>
+    window.onload = function() {
+      // Build a system
+      const ui = SwaggerUIBundle({
+        url: "{RESOURCE_URL}=specification_file",
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout"
+      })
+
+      window.ui = ui
+    }
+</script>
+</body>
+
+</html>

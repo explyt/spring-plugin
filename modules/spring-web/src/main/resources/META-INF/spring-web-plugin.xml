@@ -1,0 +1,207 @@
+<idea-plugin>
+
+    <extensionPoints>
+        <extensionPoint qualifiedName="com.explyt.spring.web.springWebEndpointsLoader" dynamic="true"
+                        interface="com.explyt.spring.web.loader.SpringWebEndpointsLoader"
+                        area="IDEA_PROJECT"/>
+    </extensionPoints>
+
+
+    <extensions defaultExtensionNs="com.explyt.spring.web">
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
+
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringWebControllerLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringWebFluxEndpointsLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringWebFeignClientLoader"/>
+
+    </extensions>
+
+    <extensions defaultExtensionNs="JavaScript.JsonSchema">
+        <ProviderFactory implementation="com.explyt.spring.web.providers.OpenApiJsonSchemaFileProviderFactory"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <iconProvider implementation="com.explyt.spring.web.providers.OpenApiFileIconProvider"/>
+
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.web.references.contributors.UastRequestMappingReferenceContributor"/>
+
+        <implicitUsageProvider implementation="com.explyt.spring.web.providers.SpringWebImplicitUsageProvider"/>
+
+        <completion.contributor language="UAST"
+                                order="first"
+                                implementationClass="com.explyt.spring.web.references.contributors.webClient.WebClientMethodCompletionContributor"/>
+
+        <completion.contributor language="UAST"
+                                order="first"
+                                implementationClass="com.explyt.spring.web.references.contributors.webClient.WebTestClientMethodCompletionContributor"/>
+
+        <completion.contributor language="yaml"
+                                order="first"
+                                implementationClass="com.explyt.spring.web.references.contributors.OpenApiYamlRefCompletionContributor"/>
+
+        <completion.contributor language="JSON"
+                                order="first"
+                                implementationClass="com.explyt.spring.web.references.contributors.OpenApiJsonRefCompletionContributor"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringOmittedPathVariableParameterInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.pathVariable"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.web.inspections.SpringOmittedPathVariableParameterInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringInitBinderNonVoidInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.initBinder"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.SpringInitBinderNonVoidInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="MockMvcTemplateParametersInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.mockMvc.parameters"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.MockMvcTemplateParametersInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="WebClientTemplateParametersInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.webClient.parameters"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.WebClientUriParametersInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="RequestMappingDuplicateInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.requestMapping.duplicate"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.RequestMappingDuplicateInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="JavaWebClientMethodWrongType"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.webClient.type"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.web.inspections.WebClientMethodWrongTypeInspection"/>
+
+        <localInspection language="JSON"
+                         shortName="OpenApiJsonSpecificationVersionInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.openapi.json.version"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.web.inspections.OpenApiJsonSpecificationVersionInspection"/>
+
+        <localInspection language="yaml"
+                         shortName="OpenApiYamlSpecificationVersionInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.openapi.yaml.version"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.web.inspections.OpenApiYamlSpecificationVersionInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="OpenFeignInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.openfeign.client"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.web.inspections.OpenFeignInspection"/>
+
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
+
+        <runLineMarkerContributor language="yaml"
+                                  implementationClass="com.explyt.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
+        <runLineMarkerContributor language="JSON"
+                                  implementationClass="com.explyt.spring.web.providers.JsonRunEndpointLineMarkerProvider"/>
+
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.web.references.contributors.UastWebClientUrlReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.web.references.contributors.ControllerEndpointReturnReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.web.references.contributors.RedirectUrlReferenceContributor"/>
+
+        <psi.referenceContributor language="yaml"
+                                  implementation="com.explyt.spring.web.references.contributors.SpringOpenApiYamlUrlEndpointReferenceContributor"/>
+
+        <psi.referenceContributor language="JSON"
+                                  implementation="com.explyt.spring.web.references.contributors.SpringOpenApiJsonUrlEndpointReferenceContributor"/>
+
+        <psi.referenceContributor language="yaml"
+                                  implementation="com.explyt.spring.web.references.contributors.OpenApiYamlInnerReferenceContributor"/>
+
+        <psi.referenceContributor language="JSON"
+                                  implementation="com.explyt.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
+
+        <fileEditorProvider implementation="com.explyt.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
+
+        <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiRequestHandler"/>
+        <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>
+
+        <registryKey
+                defaultValue="500000"
+                description="Timeout (ms) for proxied request"
+                key="openapi.ui.proxy.timeout"/>
+        <registryKey
+                defaultValue="true"
+                description="Enable internal proxy for requests run from OpenAPI UI editor"
+                key="openapi.ui.proxy.enable"/>
+
+        <toolWindow id="Explyt Endpoints"
+                    anchor="right"
+                    icon="/com/explyt/spring/web/icons/endpointsSidebar.svg"
+                    factoryClass="com.explyt.spring.web.EndpointsToolWindowFactory"/>
+
+    </extensions>
+
+    <projectListeners>
+        <listener class="com.explyt.spring.web.listeners.ExplytWebProjectListener"
+                  topic="com.intellij.openapi.project.ProjectManagerListener"/>
+    </projectListeners>
+
+</idea-plugin>

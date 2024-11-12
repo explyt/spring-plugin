@@ -1,0 +1,20 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensionPoints>
+    </extensionPoints>
+
+    <extensions defaultExtensionNs="com.intellij">
+    </extensions>
+
+    <extensions defaultExtensionNs="org.jetbrains.plugins.gradle">
+        <executionEnvironmentProvider
+                implementation="com.explyt.spring.gradle.runconfiguration.SpringBootGradleExecutionEnvironmentProvider"
+                order="first"/>
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>

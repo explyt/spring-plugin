@@ -1,0 +1,8 @@
+SELECT e.property, CASE WHEN e.value = :condition THEN 'Result 1' ELSE 'Result 2' END FROM Entity e;
+SELECT e.property, CASE WHEN e.value = :condition1 THEN 'Result 1' WHEN e.value = :condition2 THEN 'Result 2' ELSE 'Result 3' END FROM Entity e;
+SELECT e.property, CASE WHEN e.value > 0 THEN e.value * 2 ELSE e.value * (-1) END FROM Entity e;
+SELECT e.property, CASE WHEN COUNT(e) > 10 THEN 'Large' ELSE 'Small' END FROM Entity e GROUP BY e.property;
+SELECT e.property, CASE WHEN e.value IS NULL THEN 'Unknown' ELSE CONCAT('Value: ', e.value) END FROM Entity e;
+SELECT e.property, (CASE WHEN (SELECT COUNT(o) FROM OtherEntity o WHERE o.entityId = e.id) > 0 THEN 'Exists' ELSE 'Not Exists' END) FROM Entity e;
+SELECT e.property, CASE WHEN e.value IS NULL THEN 'Null Value' ELSE 'Not Null Value' END FROM Entity e;
+SELECT e.property, CASE WHEN e.value = :condition THEN 'Result 1' ELSE 'Result 2' END FROM Entity e ORDER BY CASE WHEN e.value = :condition THEN 'Result 1' ELSE 'Result 2' END;

@@ -1,0 +1,12 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Just test",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/product/{product-id}": {
+      "get": {}
+    }
+  }
+}

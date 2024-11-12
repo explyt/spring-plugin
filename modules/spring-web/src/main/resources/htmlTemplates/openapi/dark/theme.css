@@ -1,0 +1,124 @@
+body {
+  background: #2B2D30 !important;
+  color: #DFE1E5;
+}
+
+blockquote, code, pre, textarea, input[type=text],
+.swagger-ui input[type=email], .swagger-ui input[type=file], .swagger-ui input[type=password], .swagger-ui input[type=search], .swagger-ui input[type=text], .swagger-ui textarea, .swagger-ui select[multiple] {
+  outline-color: #61affe;
+  background-color: #2b2f31;
+  color: white;
+}
+
+pre.example, pre.microlight {
+  background-color: #2b2f31 !important;
+}
+
+pre.version {
+  background: transparent;
+}
+
+.swagger-ui input[type=email].invalid, .swagger-ui input[type=file].invalid, .swagger-ui input[type=password].invalid, .swagger-ui input[type=search].invalid, .swagger-ui input[type=text].invalid, .swagger-ui textarea.invalid {
+  color: #000000;
+}
+
+.swagger-ui input[disabled], .swagger-ui select[disabled], .swagger-ui textarea[disabled] {
+  background-color: #bbbbbb;
+}
+
+.swagger-ui .scheme-container,
+.swagger-ui .opblock .opblock-section-header {
+  background: #3c3f41;
+}
+
+.swagger-ui,
+.swagger-ui .opblock-tag,
+.swagger-ui .opblock-tag small,
+.swagger-ui .parameter__type,
+.swagger-ui .opblock .opblock-section-header > label,
+.swagger-ui .opblock .opblock-section-header h4,
+.swagger-ui .opblock .opblock-summary-operation-id, .swagger-ui .opblock .opblock-summary-path, .swagger-ui .opblock .opblock-summary-path__deprecated,
+.swagger-ui .opblock .opblock-summary-description,
+.swagger-ui .tab li,
+.swagger-ui .opblock-description-wrapper, .swagger-ui .opblock-external-docs-wrapper, .swagger-ui .opblock-title_normal,
+.swagger-ui .opblock-description-wrapper h4, .swagger-ui .opblock-external-docs-wrapper h4, .swagger-ui .opblock-title_normal h4,
+.swagger-ui .opblock-description-wrapper p, .swagger-ui .opblock-external-docs-wrapper p, .swagger-ui .opblock-title_normal p,
+.swagger-ui .responses-inner h4, .swagger-ui .responses-inner h5,
+.swagger-ui .response-col_status,
+.swagger-ui .response-col_links,
+.swagger-ui .scheme-container .schemes > label,
+.swagger-ui .loading-container .loading:after,
+.swagger-ui section h3,
+.swagger-ui .btn,
+.swagger-ui select,
+.swagger-ui label,
+.swagger-ui textarea,
+.swagger-ui .checkbox p,
+.swagger-ui .dialog-ux .modal-ux-content p,
+.swagger-ui .dialog-ux .modal-ux-content h4,
+.swagger-ui .dialog-ux .modal-ux-header h3,
+.swagger-ui .model,
+.swagger-ui .servers > label,
+.swagger-ui table.headers td,
+.swagger-ui table thead tr td, .swagger-ui table thead tr th,
+.swagger-ui .parameter__name,
+.swagger-ui .info li, .swagger-ui .info p, .swagger-ui .info table,
+.swagger-ui .info h1, .swagger-ui .info h2, .swagger-ui .info h3, .swagger-ui .info h4, .swagger-ui .info h5,
+.swagger-ui .info .base-url,
+.swagger-ui .info .title,
+.swagger-ui .scopes h2,
+.swagger-ui .errors-wrapper .errors h4,
+.swagger-ui .errors-wrapper hgroup h4 {
+  color: #DFE1E5;
+}
+
+.swagger-ui select {
+  outline-color: #61affe;
+  box-shadow: 0 1px 2px 0 #3c3f41;
+  background: #2b2f31 url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill="gray" d="M13.418 7.859a.695.695 0 01.978 0 .68.68 0 010 .969l-3.908 3.83a.697.697 0 01-.979 0l-3.908-3.83a.68.68 0 010-.969.695.695 0 01.978 0L10 11l3.418-3.141z"/></svg>') right 10px center no-repeat;;
+}
+
+.swagger-ui .dialog-ux .modal-ux {
+  background: #3c3f41;
+}
+
+.models > h4 > svg,
+button.expand-operation > svg,
+button.authorization__btn > svg {
+  fill: #d4dee7;
+}
+
+.swagger-ui section.models,
+.swagger-ui section.models.is-open h4 {
+  border-color: #aaaaaa;
+}
+
+.swagger-ui .model-title,
+.swagger-ui section.models h4 {
+  color: #DFE1E5
+}
+
+.swagger-ui .markdown code,
+.swagger-ui .renderedMarkdown code,
+.swagger-ui .prop-type {
+  color: #49a4fb;
+}
+
+.swagger-ui .model-toggle:after {
+  background: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path fill="gray" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>') 50% no-repeat !important;
+}
+
+.swagger-ui .json-schema-2020-12-expand-deep-button,
+.swagger-ui .json-schema-2020-12-accordion {
+  background: inherit;
+  border: none;
+}
+
+.swagger-ui .json-schema-2020-12__title,
+.swagger-ui .json-schema-2020-12-property .json-schema-2020-12__title {
+  color: #DFE1E5;
+}
+
+.swagger-ui .json-schema-2020-12__attribute--primary {
+  color: #bbbbff;
+}

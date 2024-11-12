@@ -1,0 +1,1 @@
+SELECT NEW com.<caret>example.EmployeeDTO(e.name, e.salary) FROM Employee e;

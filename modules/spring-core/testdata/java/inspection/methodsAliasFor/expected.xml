@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>MethodAliasForConfiguration.java</file>
+        <line>53</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] name()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>&quot;unknown&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>14</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>MethodAliasForConfiguration.java</file>
+        <line>62</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] unknownConstForAncestor()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>NOT_EXISTING_METHOD</highlighted_element>
+        <language>JAVA</language>
+        <offset>61</offset>
+        <length>19</length>
+    </problem>
+
+    <problem>
+        <file>MethodAliasForConfiguration.java</file>
+        <line>65</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] unknownForAncestor()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>&quot;unknownForAncestor&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>61</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>MethodAliasForConfiguration.java</file>
+        <line>68</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] notMetaAnnotated()" />
+        <problem_class id="SpringUnknownAliasMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find attribute</description>
+        <highlighted_element>&quot;value&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>58</offset>
+        <length>7</length>
+    </problem>
+
+</problems>

@@ -1,0 +1,30 @@
+<html>
+<body>
+<p>Reports incorrect
+    <a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/annotation/Profile.html">@Profile</a>
+    expressions:</p>
+
+<ul>
+    <li>Spring profiles must not be empty</li>
+    <li>'&' and '|' operators must not be mixed without parentheses in Spring profile expressions</li>
+</ul>
+
+<p><b>Examples:</b></p>
+<pre><code lang="java">
+  //correctly configured
+  @Component
+  @Profile("profile1 & profile2")
+  public class SpringBean {...}
+
+  //warning: "Must not be empty"
+  @Component
+  @Profile("")
+  public class SpringBean {...}
+
+  //warning: mixed operators without parentheses
+  @Component
+  @Profile("profile1 & profile2 | profile3")
+  public class SpringBean {...}
+</code></pre>
+</body>
+</html>

@@ -1,0 +1,8 @@
+SELECT e FROM Entity1 e JOIN e.entity2 entity2;
+SELECT e FROM Entity1 e LEFT JOIN e.entity2 entity2;
+SELECT e FROM Entity1 e JOIN FETCH e.entity2 entity2;
+SELECT e FROM Entity1 e JOIN e.entity2 entity2 ON entity2.property = :value;
+SELECT e FROM Entity1 e JOIN e.entity2 entity2 WHERE entity2.property = :value;
+SELECT e FROM Entity1 e JOIN e.entity2 entity2 JOIN entity2.entity3 entity3;
+SELECT e, COUNT(entity2) FROM Entity1 e JOIN e.entity2 entity2 GROUP BY e;
+SELECT e FROM Entity1 e JOIN e.entity2 entity2 WHERE entity2.id IN (SELECT id FROM OtherEntity WHERE property = :value);

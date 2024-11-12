@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>TestEventListener.kt</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test1()" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to be public</description>
+        <highlighted_element>@EventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>1</offset>
+        <length>14</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListener.kt</file>
+        <line>16</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test2()" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to be public</description>
+        <highlighted_element>@EventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>1</offset>
+        <length>14</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListener.kt</file>
+        <line>24</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test4(String param1, String param2)" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
+        <highlighted_element>@EventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>1</offset>
+        <length>14</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListener.kt</file>
+        <line>28</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test5(String param1, String param2)" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to be public</description>
+        <highlighted_element>@EventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>1</offset>
+        <length>14</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListener.kt</file>
+        <line>28</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListener void test5(String param1, String param2)" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
+        <highlighted_element>@EventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>1</offset>
+        <length>14</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListenerWithRecursive.kt</file>
+        <line>15</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test1()" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to be public</description>
+        <highlighted_element>@CustomEventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListenerWithRecursive.kt</file>
+        <line>19</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test2()" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to be public</description>
+        <highlighted_element>@CustomEventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListenerWithRecursive.kt</file>
+        <line>27</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method" FQNAME="com.event.listener.TestEventListenerWithRecursive void test4(String param1, String param2)" />
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
+        <highlighted_element>@CustomEventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListenerWithRecursive.kt</file>
+        <line>31</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method"
+                     FQNAME="com.event.listener.TestEventListenerWithRecursive void test5(java.lang.String param1, java.lang.String param2)"/>
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to be public</description>
+        <highlighted_element>@CustomEventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestEventListenerWithRecursive.kt</file>
+        <line>31</line>
+        <module>light_idea_test_case</module>
+        <package>com.event.listener</package>
+        <entry_point TYPE="method"
+                     FQNAME="com.event.listener.TestEventListenerWithRecursive void test5(java.lang.String param1, java.lang.String param2)"/>
+        <problem_class id="SpringEventListener" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>@EventListener annotation requires the method to have a maximum of one parameter</description>
+        <highlighted_element>@CustomEventListener</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>20</length>
+    </problem>
+
+</problems>

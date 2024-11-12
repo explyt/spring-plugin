@@ -1,0 +1,70 @@
+<html>
+<head>
+    <title>Resource inspection</title>
+</head>
+<body>
+<p>
+    Reports in configuration files:
+    <li>unresolved configuration values</li>
+    <li>deprecated configuration key</li>
+    <li>prohibited configuration key</li>
+    <li>invalid values</li>
+    <li>placeholders not in snake-case</li>
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="properties">
+my.main.foo-source-data=sourceFooProperties   # Cannot resolve bean 'sourceFooProperties'
+</code></pre>
+
+<p><b>Example:</b></p>
+<pre><code lang="properties">
+my.main.event-listener=org.springframework.boot.config.DelegatingApplicationListener
+                                              # Cannot resolve class or package 'config'
+                                              # Cannot resolve class 'DelegatingApplicationListener'
+</code></pre>
+
+<p><b>Example:</b></p>
+<pre><code lang="properties">
+server.tomcat.accesslog.locale=enUS           # Unknown encoding: 'enUS'
+</code></pre>
+
+<p>Deprecated configuration key.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="properties">
+my.main.foo.max-connections=7                 # Deprecated: This method is no longer acceptable, use 'my.server.max.connections'
+</code></pre>
+<p>You can apply the 'Use replacement key' quick-fix, if has a replacement key.</p>
+
+
+<p><b>Example:</b></p>
+<pre><code lang="properties">
+my.main.name=delete                           # Invalid value 'delete', must be one of [none, validate, update, create, create-drop]
+</code></pre>
+
+<p><b>Example:</b> (file: application-dev.properties)</p>
+<pre><code lang="properties">
+# Property 'spring.profiles.include' cannot be set in profile specific configuration
+spring.profiles.include=foo
+
+# Property 'spring.profiles.active' cannot be set in profile specific configuration
+spring.profiles.active=bar
+
+# Property 'spring.profiles.default' cannot be set in profile specific configuration
+spring.profiles.default=baz
+</code></pre>
+
+
+<p>
+    You should always refer to property names in the placeholder using their canonical form (kebab-case using only
+    lowercase letters). This will allow Spring Boot to use the same logic as it does when relaxed binding
+    @ConfigurationProperties.
+    For example, ${demo.item-price} will pick up demo.item-price and demo.itemPrice forms from the
+    application.properties file, as well as DEMO_ITEMPRICE from the system environment. If you used ${demo.itemPrice}
+    instead, demo.item-price and DEMO_ITEMPRICE would not be considered.
+</p>
+<p><b>Example:</b></p>
+<pre><code lang="properties">
+my.main.name=${not.in.A_kebab_case}                           # Should be kebab-case
+</code></pre>

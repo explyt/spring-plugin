@@ -1,0 +1,16 @@
+<html>
+<head>
+    <title>@ContextConfiguration inspection for classpath</title>
+</head>
+<body>
+<p>
+    Unresolved directories or files in @ContextConfiguration annotations.
+</p>
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@Configuration
+@ContextConfiguration(locations = "classpath:foo.xml") // "Cannot resolve file foo.xml"
+public class FooConfiguration {}
+</code></pre>
+</body>
+</html>

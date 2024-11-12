@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>UserDetails.kt</file>
+        <line>21</line>
+        <module>light_idea_test_case</module>
+        <package>src</package>
+        <entry_point TYPE="method" FQNAME="src.UserDetails void getMessageAdmin()"/>
+        <problem_class id="SpringSecurityAnnotationWithUserDetails" severity="WARNING"
+                       attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Cannot resolve bean 'admin1'</description>
+        <highlighted_element>&quot;admin1&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>76</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>UserDetails.kt</file>
+        <line>25</line>
+        <module>light_idea_test_case</module>
+        <package>src</package>
+        <entry_point TYPE="method" FQNAME="src.UserDetails void getBadUser()"/>
+        <problem_class id="SpringSecurityAnnotationWithUserDetails" severity="WARNING"
+                       attribute_key="WARNING_ATTRIBUTES"/>
+        <description>Bean must be of 'org.springframework.security.core.userdetails.UserDetailsService' type
+        </description>
+        <highlighted_element>&quot;badUser&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>76</offset>
+        <length>9</length>
+    </problem>
+
+</problems>
