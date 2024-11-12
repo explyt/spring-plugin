@@ -72,7 +72,6 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 }
                 if (inContextBean) {
                     addContextBean(uElement, module, result)
-                    processMethods(uElement, module, result)
                 }
             }
             if (isAutoConfigurationClass(uElement, module)) {
