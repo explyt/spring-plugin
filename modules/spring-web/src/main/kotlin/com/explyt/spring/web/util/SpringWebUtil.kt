@@ -187,7 +187,7 @@ object SpringWebUtil {
 
         result = result.replace(MultipleSlashes, "/")
 
-        if (result.endsWith("/")) {
+        if (result.endsWith("/") && result.length > 1) {
             result = result.substring(0, result.length - 1)
         }
         return result.split('?').first()
