@@ -19,33 +19,33 @@
                 name="JPA QL"
                 implementationClass="com.explyt.jpa.ql.JpqlFileType"
                 fieldName="INSTANCE"
-                language="JPQL"
+                language="JPQL-EXPLYT"
                 extensions="jpql"/>
 
         <lang.parserDefinition
-                language="JPQL"
+                language="JPQL-EXPLYT"
                 implementationClass="com.explyt.jpa.ql.psi.JpqlParserDefinition"/>
 
         <lang.syntaxHighlighterFactory
-                language="JPQL"
+                language="JPQL-EXPLYT"
                 implementationClass="com.explyt.jpa.ql.highlight.JpqlSyntaxHighlighterFactory"/>
 
         <completion.contributor
-                language="JPQL"
+                language="JPQL-EXPLYT"
                 implementationClass="com.explyt.jpa.ql.completion.JpqlCompletionContributor"/>
 
         <lang.braceMatcher
-                language="JPQL"
+                language="JPQL-EXPLYT"
                 implementationClass="com.explyt.jpa.ql.psi.JpqlBraceMatcher"/>
 
-        <localInspection language="JPQL"
+        <localInspection language="JPQL-EXPLYT"
                          shortName="JpqlInsertStatementInspection"
                          groupBundle="messages.JpaBundle" groupKey="explyt.jpa.inspection.group"
                          bundle="messages.JpaBundle" key="explyt.jpa.inspection.insert.statement"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.jpa.ql.inspection.JpqlInsertStatementInspection"/>
 
-        <localInspection language="JPQL"
+        <localInspection language="JPQL-EXPLYT"
                          shortName="JpqlFullyQualifiedConstructorInspection"
                          groupBundle="messages.JpaBundle" groupKey="explyt.jpa.inspection.group"
                          bundle="messages.JpaBundle" key="explyt.jpa.inspection.constructor.expression"

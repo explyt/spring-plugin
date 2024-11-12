@@ -27,6 +27,7 @@ object JpaClasses {
 
     val entityManager by "persistence.EntityManager"
     val namedQuery by "persistence.NamedQuery"
+    val namedNativeQuery by "persistence.NamedNativeQuery"
 
     private operator fun String.getValue(jpaClasses: JpaClasses, property: KProperty<*>): MultiVendorClass {
         return MultiVendorClass(this)
