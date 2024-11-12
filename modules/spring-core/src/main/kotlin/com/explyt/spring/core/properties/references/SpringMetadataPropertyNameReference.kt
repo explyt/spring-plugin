@@ -24,6 +24,9 @@ import com.explyt.spring.core.SpringProperties.CHAR_QUOTES
 import com.explyt.spring.core.SpringProperties.CHAR_START_BRACKET
 import com.explyt.spring.core.SpringProperties.CHAR_START_SQUARE_BRACKET
 import com.explyt.spring.core.SpringProperties.NAME
+import com.explyt.spring.core.properties.contributors.ContextCategory
+import com.explyt.spring.core.properties.contributors.ItemVariant
+import com.explyt.spring.core.properties.contributors.TypeVariant
 import com.explyt.spring.core.properties.providers.SpringMetadataValueProvider
 import com.explyt.spring.core.properties.references.SpringMetadataPropertyNameReference.Companion.propertyNameTail
 import com.intellij.codeInsight.TailType
@@ -36,7 +39,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.util.Function
 import java.util.*
 
 class SpringMetadataPropertyNameReference(element: PsiElement) : PsiReferenceBase<PsiElement>(element) {
@@ -48,61 +50,61 @@ class SpringMetadataPropertyNameReference(element: PsiElement) : PsiReferenceBas
         private val arrayTail = ArrayTailType()
         private val objectTail = ObjectTailType()
 
-        private val variantToLookupElementMapper: Function<Variant, LookupElement> =
-            Function<Variant, LookupElement> { variant: Variant ->
-                val builder: LookupElementBuilder =
-                    LookupElementBuilder.create(variant.nameVariant)
-                val tailType = when (variant.variantType) {
-                    VariantType.STRING_LITERAL -> literalTail
-                    VariantType.ARRAY -> arrayTail
-                    VariantType.OBJECT -> objectTail
-                    VariantType.DEFAULT -> propertyNameTail
-                }
-                TailTypeDecorator.withTail(builder, tailType)
-            }
+        private fun getTailTypeForVariant(variantType: TypeVariant) = when (variantType) {
+            TypeVariant.TEXT -> literalTail
+            TypeVariant.ARRAY -> arrayTail
+            TypeVariant.OBJECT -> objectTail
+            TypeVariant.DEFAULT -> propertyNameTail
+        }
 
+        private val variantToLookupElementMapper: (ItemVariant) -> LookupElement = { variant ->
+            val builder = LookupElementBuilder.create(variant.item)
+            TailTypeDecorator.withTail(builder, getTailTypeForVariant(variant.variantType))
+        }
     }
 
-    private val myGroupContext: GroupContext? = null
+    private val localContextCategory: ContextCategory? = null
 
     override fun resolve(): PsiElement {
         return element
     }
 
+    private val categoryVariantsMap = mapOf(
+        ContextCategory.ROOT to arrayOf(ItemVariant.GROUPS, ItemVariant.PROPERTIES, ItemVariant.HINTS),
+        ContextCategory.GROUPS to arrayOf(
+            ItemVariant.TYPE,
+            ItemVariant.SOURCE_TYPE,
+            ItemVariant.NAME,
+            ItemVariant.DESCRIPTION,
+            ItemVariant.SOURCE_METHOD
+        ),
+        ContextCategory.PROPERTIES to arrayOf(
+            ItemVariant.TYPE,
+            ItemVariant.SOURCE_TYPE,
+            ItemVariant.NAME,
+            ItemVariant.DESCRIPTION,
+            ItemVariant.DEFAULT_VALUE,
+            ItemVariant.DEPRECATION
+        ),
+        ContextCategory.DEPRECATION to arrayOf(ItemVariant.REASON, ItemVariant.LEVEL, ItemVariant.REPLACEMENT),
+        ContextCategory.HINTS to arrayOf(ItemVariant.NAME, ItemVariant.VALUES, ItemVariant.PROVIDERS),
+        ContextCategory.HINTS_VALUES to arrayOf(ItemVariant.VALUE, ItemVariant.DESCRIPTION),
+        ContextCategory.HINTS_PROVIDERS to arrayOf(ItemVariant.NAME, ItemVariant.PARAMETERS)
+    )
+
     override fun getVariants(): Array<LookupElement> {
-        return when (myGroupContext) {
-            GroupContext.TOP_LEVEL -> createVariants(Variant.GROUPS, Variant.PROPERTIES, Variant.HINTS)
-            GroupContext.GROUPS -> createVariants(
-                Variant.TYPE,
-                Variant.SOURCE_TYPE,
-                Variant.NAME,
-                Variant.DESCRIPTION,
-                Variant.SOURCE_METHOD
-            )
-
-            GroupContext.PROPERTIES -> createVariants(
-                Variant.TYPE,
-                Variant.SOURCE_TYPE,
-                Variant.NAME,
-                Variant.DESCRIPTION,
-                Variant.DEFAULT_VALUE,
-                Variant.DEPRECATION
-            )
-
-            GroupContext.DEPRECATION -> createVariants(Variant.REASON, Variant.LEVEL, Variant.REPLACEMENT)
-            GroupContext.HINTS -> createVariants(Variant.NAME, Variant.VALUES, Variant.PROVIDERS)
-            GroupContext.HINTS_VALUES -> createVariants(Variant.VALUE, Variant.DESCRIPTION)
-            GroupContext.HINTS_PROVIDERS -> createVariants(Variant.NAME, Variant.PARAMETERS)
-            GroupContext.HINTS_PARAMETERS -> getParameterVariants()
-            else -> emptyArray()
-        }
+        return categoryVariantsMap[localContextCategory]?.let { createVariants(*it) }
+            ?: when (localContextCategory) {
+                ContextCategory.HINTS_PARAMETERS -> getParameterVariants()
+                else -> emptyArray()
+            }
     }
 
     private fun getParameterVariants(): Array<LookupElement> {
         val valueProvider = findValueProvider() ?: return emptyArray()
-        val myVariantsFromParameters = EnumSet.noneOf(Variant::class.java)
+        val myVariantsFromParameters = EnumSet.noneOf(ItemVariant::class.java)
         for (parameter in valueProvider.parameters) {
-            val variant = Variant.findByName(parameter.name)
+            val variant = ItemVariant.findByName(parameter.name)
             if (variant != null) {
                 myVariantsFromParameters.add(variant)
             }
@@ -111,15 +113,15 @@ class SpringMetadataPropertyNameReference(element: PsiElement) : PsiReferenceBas
         return createVariants(myVariantsFromParameters)
     }
 
-    private fun createVariants(vararg variants: Variant): Array<LookupElement> {
+    private fun createVariants(vararg variants: ItemVariant): Array<LookupElement> {
         return createVariants(variants.toSet())
     }
 
-    private fun createVariants(variants: Set<Variant>): Array<LookupElement> {
+    private fun createVariants(variants: Set<ItemVariant>): Array<LookupElement> {
         val jsonObject = PsiTreeUtil.getParentOfType(element, JsonObject::class.java) ?: return emptyArray()
         val existingProperties = jsonObject.propertyList.mapTo(HashSet()) { it.name }
-        val filteredVariants = variants.filter { it.nameVariant !in existingProperties }
-        return filteredVariants.map { variantToLookupElementMapper.apply(it) }.toTypedArray()
+        val filteredVariants = variants.filter { it.item !in existingProperties }
+        return filteredVariants.map { variantToLookupElementMapper(it) }.toTypedArray()
     }
 
     private fun findValueProvider(): SpringMetadataValueProvider? {
@@ -130,71 +132,6 @@ class SpringMetadataPropertyNameReference(element: PsiElement) : PsiReferenceBas
         return nameLiteral.references
             .filterIsInstance<SpringMetadataValueProviderReference>()
             .firstOrNull()?.getValueProvider()
-    }
-
-    enum class GroupContext(private val propertyName: String) {
-        TOP_LEVEL("topLevel"),
-        HINTS("hints"),
-        HINTS_VALUES("values"),
-        HINTS_PROVIDERS("providers"),
-        HINTS_PARAMETERS("parameters"),
-        GROUPS("groups"),
-        PROPERTIES("properties"),
-        DEPRECATION("deprecation");
-
-        companion object {
-            fun forProperty(propertyName: String): GroupContext? {
-                for (groupContext in entries.toTypedArray()) {
-                    if (groupContext.propertyName == propertyName) {
-                        return groupContext
-                    }
-                }
-                return null
-            }
-        }
-    }
-
-    private enum class Variant(val nameVariant: String, val variantType: VariantType) {
-        GROUPS("groups", VariantType.ARRAY),
-        PROPERTIES("properties", VariantType.ARRAY),
-        HINTS("hints", VariantType.ARRAY),
-        NAME("name", VariantType.STRING_LITERAL),
-        TYPE("type", VariantType.STRING_LITERAL),
-        SOURCE_TYPE("sourceType", VariantType.STRING_LITERAL),
-        SOURCE_METHOD("sourceMethod", VariantType.STRING_LITERAL),
-        DESCRIPTION("description", VariantType.STRING_LITERAL),
-        DEFAULT_VALUE("defaultValue", VariantType.DEFAULT),
-        DEPRECATED("deprecated", VariantType.DEFAULT),
-        DEPRECATION("deprecation", VariantType.OBJECT),
-        REASON("reason", VariantType.STRING_LITERAL),
-        REPLACEMENT("replacement", VariantType.STRING_LITERAL),
-        LEVEL("level", VariantType.STRING_LITERAL),
-        VALUES("values", VariantType.ARRAY),
-        PROVIDERS("providers", VariantType.ARRAY),
-        VALUE("value", VariantType.DEFAULT),
-        PARAMETERS("parameters", VariantType.OBJECT),
-        TARGET("target", VariantType.STRING_LITERAL),
-        CONCRETE("concrete", VariantType.DEFAULT),
-        GROUP("group", VariantType.DEFAULT);
-
-
-        companion object {
-            fun findByName(name: String): Variant? {
-                for (variant in entries) {
-                    if (variant.nameVariant == name) {
-                        return variant
-                    }
-                }
-                return null
-            }
-        }
-    }
-
-    private enum class VariantType {
-        DEFAULT,
-        STRING_LITERAL,
-        ARRAY,
-        OBJECT
     }
 
 }
