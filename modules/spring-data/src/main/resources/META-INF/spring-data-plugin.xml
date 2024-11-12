@@ -3,6 +3,10 @@
         <implicitUsageProvider implementation="com.explyt.spring.data.providers.SpringDataImplicitUsageProvider"/>
         <multiHostInjector
                 implementation="com.explyt.spring.data.langinjection.JpqlSpringDataQueryLanguageInjector"/>
+        <multiHostInjector
+                implementation="com.explyt.spring.data.langinjection.SqlNativeSpringQueryLanguageInjector"/>
+        <multiHostInjector
+                implementation="com.explyt.spring.data.langinjection.JpqNamedNativeQueryLanguageInjector"/>
         <completion.contributor language="UAST"
                                 implementationClass="com.explyt.spring.data.completion.SpringDataBaseCompletionContributor"
                                 order="before javaMemberName"/>

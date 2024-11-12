@@ -30,6 +30,7 @@ object SpringDataClasses {
     const val REPOSITORY_CRUD = "org.springframework.data.repository.CrudRepository"
     const val REPOSITORY_JPA = "org.springframework.data.jpa.repository.JpaRepository"
     const val ENABLE_JPA_REPOSITORY = "org.springframework.data.jpa.repository.config.EnableJpaRepositories"
+    const val JDBC_TEMPLATE = "org.springframework.jdbc.core.JdbcTemplate"
 
     const val DOMAIN_PACKAGE_PREFIX = "org.springframework.data.domain."
 }

@@ -18,13 +18,13 @@
 package com.explyt.spring.data.langinjection.kotlin
 
 import com.explyt.jpa.ql.JpqlLanguage
-import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 
 @TestDataPath(JpqlSpringDataQueryLanguageInjectorTest.TEST_DATA_PATH)
-class JpqlSpringDataQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
+class JpqlSpringDataQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
     override fun getTestDataPath(): String = TEST_DATA_PATH
 
     override val libraries: Array<TestLibrary> = arrayOf(

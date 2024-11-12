@@ -18,6 +18,7 @@
 package com.explyt.jpa.langinjection
 
 import com.explyt.jpa.ql.JpqlLanguage
+import com.intellij.lang.Language
 import com.intellij.lang.injection.MultiHostInjector
 import com.intellij.lang.injection.MultiHostRegistrar
 import com.intellij.psi.PsiElement
@@ -26,7 +27,7 @@ import org.jetbrains.uast.*
 import org.jetbrains.uast.expressions.UInjectionHost
 import org.jetbrains.uast.expressions.UStringConcatenationsFacade
 
-abstract class JpqlInjectorBase : MultiHostInjector {
+abstract class JpqlInjectorBase() : MultiHostInjector {
     protected abstract fun isValidPlace(uElement: UElement): Boolean
 
     override fun getLanguagesToInject(registrar: MultiHostRegistrar, context: PsiElement) {
@@ -34,6 +35,7 @@ abstract class JpqlInjectorBase : MultiHostInjector {
             UInjectionHost::class.java,
             UPolyadicExpression::class.java
         ) ?: return
+        val language = getSqlLanguage(uElement.sourcePsi) ?: return
 
         if (!isValidPlace(uElement))
             return
@@ -46,7 +48,7 @@ abstract class JpqlInjectorBase : MultiHostInjector {
         val concatenationsFacade =
             UStringConcatenationsFacade.createFromUExpression(uElement, flattenExpression) ?: return
 
-        registrar.startInjecting(JpqlLanguage.INSTANCE)
+        registrar.startInjecting(language)
 
         concatenationsFacade.psiLanguageInjectionHosts
             .forEach { host ->
@@ -67,4 +69,6 @@ abstract class JpqlInjectorBase : MultiHostInjector {
             UPolyadicExpression::class.java
         ).toList()
     }
+
+    open fun getSqlLanguage(sourcePsi: PsiElement?): Language? = JpqlLanguage.INSTANCE
 }
