@@ -87,10 +87,6 @@
                                 id="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"
                                 implementationClass="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"/>
 
-        <runDashboardCustomizer
-                implementation="com.explyt.spring.core.runconfiguration.ExplytSpringBootRunDashboardCustomizer"
-                order="before commonJavaCustomizer"/>
-
         <psi.referenceContributor language="Properties"
                                   implementation="com.explyt.spring.core.properties.contributors.SpringConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="Properties"
