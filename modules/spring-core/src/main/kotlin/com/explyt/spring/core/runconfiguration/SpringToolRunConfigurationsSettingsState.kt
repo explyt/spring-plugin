@@ -37,6 +37,9 @@ class SpringToolRunConfigurationsSettingsState :
     @get:Property(surroundWithTag = true)
     var isBeanFilterEnabled by property(true)
 
+    @get:Property(surroundWithTag = true)
+    var sqlLanguageId by string("")
+
     override fun getState(): SpringToolRunConfigurationsSettingsState = this
 
     override fun loadState(state: SpringToolRunConfigurationsSettingsState) {

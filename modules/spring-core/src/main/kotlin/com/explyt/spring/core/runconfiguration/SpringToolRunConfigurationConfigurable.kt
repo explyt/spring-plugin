@@ -17,17 +17,16 @@
 
 package com.explyt.spring.core.runconfiguration
 
-import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.SearchableConfigurable
-import com.intellij.util.ui.components.BorderLayoutPanel
-import java.awt.Dimension
-import javax.swing.AbstractButton
-import javax.swing.JCheckBox
+import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindSelected
+import com.intellij.ui.dsl.builder.bindText
+import com.intellij.ui.dsl.builder.panel
 import javax.swing.JComponent
-import javax.swing.JPanel
 
 
 class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
@@ -35,32 +34,65 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
 
     private val propertyGraph = PropertyGraph()
 
-    private val isAutoDetection = propertyGraph.lazyProperty { settingsState.isAutoDetectConfigurations }
-    private val isBeanFilterEnabled = propertyGraph.lazyProperty { settingsState.isBeanFilterEnabled }
+    private val isAutoDetection = propertyGraph.property(false)
+    private val isBeanFilterEnabled = propertyGraph.property(false)
+    private val sqlLanguageIdBind = propertyGraph.property("")
 
     override fun getId(): String = ID
 
     override fun createComponent(): JComponent {
-        return createMainPanel()
+        return panel {
+            group {
+                row {
+                    checkBox(message("explyt.spring.settings.config.auto.detect.label"))
+                        .align(AlignX.FILL)
+                        .bindSelected(isAutoDetection)
+                        .resizableColumn()
+                }
+
+                row {
+                    checkBox(message("explyt.spring.settings.enableBeanFiltering.label"))
+                        .align(AlignX.FILL)
+                        .bindSelected(isBeanFilterEnabled)
+                        .applyToComponent {
+                            toolTipText = message("explyt.spring.settings.enableBeanFiltering.tooltip")
+                        }
+                        .resizableColumn()
+                }
+
+                row(message("explyt.spring.settings.sql.language.id.label")) {
+                    textField()
+                        .align(AlignX.FILL)
+                        .applyToComponent {
+                            toolTipText = message("explyt.spring.settings.sql.language.id.tooltip")
+                            emptyText.text = "SQL Language ID"
+                        }
+                        .bindText(sqlLanguageIdBind)
+                        .resizableColumn()
+                }
+            }
+        }
+    }
+
+    override fun reset() {
+        isAutoDetection.set(settingsState.isAutoDetectConfigurations)
+        isBeanFilterEnabled.set(settingsState.isBeanFilterEnabled)
+        sqlLanguageIdBind.set(settingsState.sqlLanguageId ?: "")
     }
 
     override fun isModified(): Boolean {
-        val changeDetection = isAutoDetection.get() != settingsState.isAutoDetectConfigurations
-                || isBeanFilterEnabled.get() != settingsState.isBeanFilterEnabled
-
-        return changeDetection
+        if (settingsState.isAutoDetectConfigurations != isAutoDetection.get()) return true
+        if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) return true
+        if (settingsState.sqlLanguageId != sqlLanguageIdBind.get()) return true
+        return false
     }
 
     override fun apply() {
         settingsState.isAutoDetectConfigurations = isAutoDetection.get()
+        settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
+        settingsState.sqlLanguageId = sqlLanguageIdBind.get()
 
-        if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) {
-            settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
-
-            ProjectUtil.getActiveProject()?.let { project ->
-                UastModelTrackerInvalidateAction.invalidate(project)
-            }
-        }
+        ProjectUtil.getActiveProject()?.let { project -> UastModelTrackerInvalidateAction.invalidate(project) }
     }
 
     override fun getDisplayName(): String = "Run Configurations"
@@ -68,43 +100,4 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     companion object {
         const val ID = "com.explyt.spring.runConfigurations"
     }
-
-    private fun createMainPanel(): JPanel {
-        val mainPanel = BorderLayoutPanel(10, 10)
-        mainPanel.preferredSize = Dimension(550, 400)
-
-        mainPanel.addToTop(configTop())
-        mainPanel.addToBottom(configBottom())
-
-        return mainPanel
-    }
-
-    private fun configTop(): BorderLayoutPanel {
-        val topPanel = BorderLayoutPanel(10, 10)
-
-        val cbAutoDetection = JCheckBox("SpringBoot configurations auto-detection")
-        cbAutoDetection.isSelected = isAutoDetection.get()
-        cbAutoDetection.addItemListener {
-            isAutoDetection.set((it.source as AbstractButton).isSelected)
-        }
-        topPanel.addToCenter(cbAutoDetection)
-
-        val cbEnableBeanFiltering =
-            JCheckBox(SpringCoreBundle.message("explyt.spring.settings.enableBeanFiltering.label"))
-        cbEnableBeanFiltering.toolTipText =
-            SpringCoreBundle.message("explyt.spring.settings.enableBeanFiltering.tooltip")
-        cbEnableBeanFiltering.isSelected = isBeanFilterEnabled.get()
-        cbEnableBeanFiltering.addItemListener {
-            isBeanFilterEnabled.set((it.source as AbstractButton).isSelected)
-        }
-        topPanel.addToBottom(cbEnableBeanFiltering)
-
-        return topPanel
-    }
-
-    private fun configBottom(): BorderLayoutPanel {
-        val bottomPanel = BorderLayoutPanel(0, 300)
-        return bottomPanel
-    }
-
 }
