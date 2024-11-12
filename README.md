@@ -42,9 +42,7 @@ To use the Explyt Spring Plugin in IntelliJ IDEA Ultimate, you must disable the 
 
 ## Get Started
 
-👉 [![Download from JetBrains Marketplace](https://img.shields.io/badge/Download_from-JetBrains_Marketplace-brightgreen?style=for-the-badge)](https://plugins.jetbrains.com/plugin/23273-spring-explyt)
-
-For manual installation options, refer to our [Installation Guide](https://github.com/explyt/spring-plugin/wiki/Installation-Guide).
+[Installation Guide](https://github.com/explyt/spring-plugin/wiki/Installation-Guide).
 
 ## Contribute to Explyt Spring Plugin
 
