@@ -26,6 +26,7 @@
 
 ### Spring Web/MVC
 
+- Fixed: in Explyt Endpoints not show empty list
 - Fixed: gutter calculation for coRouter route
 
 ### OpenAPI

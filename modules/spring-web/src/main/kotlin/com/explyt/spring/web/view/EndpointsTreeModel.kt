@@ -120,7 +120,10 @@ class EndpointsTreeModel(private val project: Project) : TreeTableModel, Endpoin
         when (event.type) {
             EventType.INIT -> callNonblocking(event.disposable, true) { initModel() }
             EventType.UPDATE_DATA -> callNonblocking(event.disposable, true) { updateData() }
-            EventType.UPDATE_FILTERS -> callNonblocking(event.disposable, false) { updateFilters() }
+            EventType.UPDATE_FILTERS -> callNonblocking(
+                event.disposable,
+                !rootNode.children().hasMoreElements()
+            ) { updateFilters() }
         }
     }
 
@@ -184,6 +187,7 @@ class EndpointsTreeModel(private val project: Project) : TreeTableModel, Endpoin
 
         for (branchType in branchTypes) {
             if (!endpointTypesFilter.contains(branchType)) continue
+            if (branchEndpoints[branchType]?.isEmpty() == true) continue
             val branchNode = branchNodes[branchType] ?: continue
             rootNode.add(branchNode)
         }
