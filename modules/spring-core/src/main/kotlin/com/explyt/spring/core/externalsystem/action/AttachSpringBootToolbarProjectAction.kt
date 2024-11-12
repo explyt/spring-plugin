@@ -44,6 +44,7 @@ class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
     }
 
     override fun actionPerformed(e: AnActionEvent) {
-        AttachSpringBootProjectAction().actionPerformed(e)
+        val project = e.project ?: return
+        AttachSpringBootProjectAction.attachProject(project)
     }
 }
