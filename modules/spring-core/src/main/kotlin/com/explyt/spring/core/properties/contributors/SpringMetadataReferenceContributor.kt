@@ -25,7 +25,6 @@ import com.explyt.spring.core.SpringProperties.SOURCE_TYPE
 import com.explyt.spring.core.SpringProperties.TARGET
 import com.explyt.spring.core.SpringProperties.TYPE
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
-import com.explyt.spring.core.properties.references.SpringMetadataPropertyNameReference
 import com.explyt.spring.core.properties.references.SpringMetadataValueProviderReference
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.json.psi.*
@@ -72,7 +71,7 @@ class SpringMetadataReferenceContributor : PsiReferenceContributor() {
                     PlatformPatterns.psiElement(JsonProperty::class.java)
                         .with(targetProperty)
                 ))
-                .withSuperParent(3, groupContextWithObject),
+                .withSuperParent(3, contextCategoryWithObject),
             javaClassReferenceProvider
         )
 
@@ -85,7 +84,7 @@ class SpringMetadataReferenceContributor : PsiReferenceContributor() {
                     PlatformPatterns.psiElement(JsonProperty::class.java)
                         .with(propertyName)
                 ))
-                .withSuperParent(4, groupContextWithArray))
+                .withSuperParent(4, contextCategoryWithArray))
                 .with(hintsGroup),
             getHintNameReferenceProvider()
         )
@@ -99,7 +98,7 @@ class SpringMetadataReferenceContributor : PsiReferenceContributor() {
                     PlatformPatterns.psiElement(JsonProperty::class.java)
                         .with(propertyName)
                 ))
-                .withSuperParent(4, groupContextWithArray))
+                .withSuperParent(4, contextCategoryWithArray))
                 .with(hintsProvidersGroup),
             getHintProvidersReferenceProvider()
         )
@@ -154,37 +153,37 @@ class SpringMetadataReferenceContributor : PsiReferenceContributor() {
             }
         }
 
-    private val groupContextKey: Key<SpringMetadataPropertyNameReference.GroupContext> = Key.create(GROUP_CONTEXT)
+    private val contextCategoryKey: Key<ContextCategory> = Key.create(CONTEXT_CATEGORY)
 
-    private val groupContext = object : PatternCondition<JsonProperty>(GROUP_CONTEXT) {
+    private val contextCategory = object : PatternCondition<JsonProperty>(CONTEXT_CATEGORY) {
         override fun accepts(jsonProperty: JsonProperty, context: ProcessingContext): Boolean {
             val propertyName = jsonProperty.name
-            val groupContext = SpringMetadataPropertyNameReference.GroupContext.forProperty(propertyName)
+            val contextCategory = ContextCategory.forProperty(propertyName)
                 ?: return false
-            context.put(groupContextKey, groupContext)
+            context.put(contextCategoryKey, contextCategory)
             return true
         }
     }
 
-    private val groupContextWithObject =
+    private val contextCategoryWithArray =
         (PlatformPatterns.psiElement(JsonProperty::class.java)
-            .with(groupContext))
-            .with(object : PatternCondition<JsonProperty>(JSON_OBJECT_VALUE) {
-                override fun accepts(jsonProperty: JsonProperty, context: ProcessingContext) =
-                    jsonProperty.value is JsonObject
-            })
-
-    private val groupContextWithArray =
-        (PlatformPatterns.psiElement(JsonProperty::class.java)
-            .with(groupContext))
-            .with(object : PatternCondition<JsonProperty>(JSON_ARRAY_VALUE) {
+            .with(contextCategory))
+            .with(object : PatternCondition<JsonProperty>(JSON_ARRAY) {
                 override fun accepts(jsonProperty: JsonProperty, context: ProcessingContext) =
                     jsonProperty.value is JsonArray
             })
 
+    private val contextCategoryWithObject =
+        (PlatformPatterns.psiElement(JsonProperty::class.java)
+            .with(contextCategory))
+            .with(object : PatternCondition<JsonProperty>(JSON_OBJECT) {
+                override fun accepts(jsonProperty: JsonProperty, context: ProcessingContext) =
+                    jsonProperty.value is JsonObject
+            })
+
     private val additionalConfigMetadata =
         PlatformPatterns.psiFile(JsonFile::class.java)
-            .with(object : PatternCondition<JsonFile>(IS_ADDITIONAL_JSON) {
+            .with(object : PatternCondition<JsonFile>(IS_ADDITIONAL_CONFIG) {
                 override fun accepts(jsonFile: JsonFile, context: ProcessingContext) =
                     SpringCoreUtil.isAdditionalConfigFile(jsonFile)
             })
@@ -215,20 +214,20 @@ class SpringMetadataReferenceContributor : PsiReferenceContributor() {
 
     private val hintsGroup = object : PatternCondition<JsonStringLiteral>(HINTS_GROUP) {
         override fun accepts(literal: JsonStringLiteral, context: ProcessingContext) =
-            context.get(groupContextKey).equals(SpringMetadataPropertyNameReference.GroupContext.HINTS)
+            context[contextCategoryKey] == ContextCategory.HINTS
     }
 
     private val hintsProvidersGroup = object : PatternCondition<JsonStringLiteral>(HINTS_PROVIDERS_GROUP) {
         override fun accepts(literal: JsonStringLiteral, context: ProcessingContext) =
-            context.get(groupContextKey).equals(SpringMetadataPropertyNameReference.GroupContext.HINTS_PROVIDERS)
+            context[contextCategoryKey] == ContextCategory.HINTS_PROVIDERS
     }
 
     companion object {
         const val HINT = "Hint"
 
-        const val GROUP_CONTEXT = "groupContext"
-        const val JSON_OBJECT_VALUE = "jsonObjectValue"
-        const val JSON_ARRAY_VALUE = "jsonArrayValue"
+        const val CONTEXT_CATEGORY = "contextCategory"
+        const val JSON_OBJECT = "jsonObject"
+        const val JSON_ARRAY = "jsonArray"
 
         const val NAME_PROPERTY = "nameProperty"
         const val CLASS_PROPERTY_NAMES = "classPropertyNames"
@@ -236,8 +235,8 @@ class SpringMetadataReferenceContributor : PsiReferenceContributor() {
         const val HINTS_GROUP = "hintsGroup"
         const val HINTS_PROVIDERS_GROUP = "hintsProvidersGroup"
 
-        const val IS_ADDITIONAL_JSON = "isAdditionalJson"
-        const val IS_PROPERTY_VALUE = "inPropertyValue"
+        const val IS_ADDITIONAL_CONFIG = "isAdditionalConfig"
+        const val IS_PROPERTY_VALUE = "isPropertyValue"
     }
 
 }
