@@ -103,8 +103,6 @@
                                   implementation="com.explyt.spring.core.references.contributors.UastBeanReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.core.references.contributors.QualifierReferenceContributor"/>
-        <psi.referenceContributor language="JSON"
-                                  implementation="com.explyt.spring.core.properties.contributors.SpringMetadataReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.core.references.contributors.SpringScopeReferenceContributor"/>
 

@@ -71,7 +71,7 @@ class OpenApiRequestHandler : HttpRequestHandler() {
         if (resource == "specification_file")
             return OpenApiUtils.getFile(key)
 
-        val pluginId = PluginId.findId("com.esprito.spring") ?: return null
+        val pluginId = PluginId.findId("com.explyt.spring") ?: return null
         val mainTemplatePath = "htmlTemplates/openapi/$resource"
         val mainTemplateUrl = PluginManagerCore.getPlugin(pluginId)
             ?.pluginClassLoader

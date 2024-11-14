@@ -1,6 +1,6 @@
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 
-rootProject.name = "esprito-studio"
+rootProject.name = "explyt-spring"
 
 pluginManagement {
     val kotlinVersion: String by settings

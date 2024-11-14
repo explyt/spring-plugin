@@ -150,6 +150,10 @@ object ExplytPsiUtil {
         return this.supers.asSequence().flatMap { it.allSupers() }.toMutableSet()
     }
 
+    fun PsiElement.toSmartPointer(): SmartPsiElementPointer<PsiElement> {
+        return SmartPointerManager.getInstance(project).createSmartPsiElementPointer(this, this.containingFile)
+    }
+
     fun PsiElement.getHighlightRange(): TextRange = textRangeInParent.shiftLeft(textRangeInParent.startOffset)
 
     inline fun <reified T : PsiElement> PsiElement.findChildrenOfType(): List<T> {

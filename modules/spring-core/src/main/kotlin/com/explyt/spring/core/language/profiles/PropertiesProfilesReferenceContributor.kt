@@ -53,9 +53,7 @@ class SpringPropertiesProfilesReferenceProvider : PsiReferenceProvider() {
         while (matcher.find()) {
             val text = matcher.group()
             result.add(
-                SpringProfilePsiReference(
-                    propertyValue, text, false, TextRange.allOf(text).shiftRight(matcher.start())
-                )
+                ProfilePsiReference(propertyValue, text, TextRange.allOf(text).shiftRight(matcher.start()))
             )
         }
 

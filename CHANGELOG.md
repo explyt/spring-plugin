@@ -26,6 +26,7 @@
 
 ### Spring Web/MVC
 
+- Show/hide the Explyt Endpoints if the project has/does a web dependencies
 - Fixed: in Explyt Endpoints show in path one slash (not empty path)
 - Fixed: in Explyt Endpoints not show empty list
 - Fixed: gutter calculation for coRouter route
