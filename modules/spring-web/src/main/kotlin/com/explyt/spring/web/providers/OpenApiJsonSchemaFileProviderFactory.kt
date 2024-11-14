@@ -27,16 +27,16 @@ class OpenApiJsonSchemaFileProviderFactory : JsonSchemaProviderFactory {
     override fun getProviders(project: Project): MutableList<JsonSchemaFileProvider> {
         return mutableListOf(
             SpecificationJsonSchemaFileProvider(
-                OpenApiSpecificationType.OpenApi30.INSTANCE,
-                SpringWebBundle.message("explyt.openapi.3.0.schema.remote.url"),
+                project,
+                OpenApiSpecificationType.OpenApiV30.INSTANCE,
                 SpringWebBundle.message("explyt.openapi.3.0.schema.name"),
-                project
+                SpringWebBundle.message("explyt.openapi.3.0.schema.remote.url")
             ),
             SpecificationJsonSchemaFileProvider(
-                OpenApiSpecificationType.OpenApi31.INSTANCE,
-                SpringWebBundle.message("explyt.openapi.3.1.schema.remote.url"),
+                project,
+                OpenApiSpecificationType.OpenApiV31.INSTANCE,
                 SpringWebBundle.message("explyt.openapi.3.1.schema.name"),
-                project
+                SpringWebBundle.message("explyt.openapi.3.1.schema.remote.url")
             ),
         )
     }

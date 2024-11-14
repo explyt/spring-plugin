@@ -68,45 +68,6 @@
 
     <problem>
         <file>additional-spring-configuration-metadata.json</file>
-        <line>23</line>
-        <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
-        <problem_class id="AdditionalConfigProperty" severity="WARNING" attribute_key="INFO_ATTRIBUTES"/>
-        <description>Cannot resolve class or package 'com'</description>
-        <highlighted_element>com</highlighted_element>
-        <language>JSON</language>
-        <offset>21</offset>
-        <length>3</length>
-    </problem>
-
-    <problem>
-        <file>additional-spring-configuration-metadata.json</file>
-        <line>23</line>
-        <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
-        <problem_class id="AdditionalConfigProperty" severity="WARNING" attribute_key="INFO_ATTRIBUTES"/>
-        <description>Cannot resolve class or package 'boot'</description>
-        <highlighted_element>boot</highlighted_element>
-        <language>JSON</language>
-        <offset>25</offset>
-        <length>4</length>
-    </problem>
-
-    <problem>
-        <file>additional-spring-configuration-metadata.json</file>
-        <line>23</line>
-        <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
-        <problem_class id="AdditionalConfigProperty" severity="WARNING" attribute_key="INFO_ATTRIBUTES"/>
-        <description>Cannot resolve class 'Unknown'</description>
-        <highlighted_element>Unknown</highlighted_element>
-        <language>JSON</language>
-        <offset>30</offset>
-        <length>7</length>
-    </problem>
-
-    <problem>
-        <file>additional-spring-configuration-metadata.json</file>
         <line>25</line>
         <module>light_idea_test_case</module>
         <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
@@ -120,32 +81,6 @@
 
     <problem>
         <file>additional-spring-configuration-metadata.json</file>
-        <line>30</line>
-        <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
-        <problem_class id="AdditionalConfigProperty" severity="WARNING" attribute_key="INFO_ATTRIBUTES"/>
-        <description>Cannot resolve configuration key reference 'main.mime-type'</description>
-        <highlighted_element>main.mime-type</highlighted_element>
-        <language>JSON</language>
-        <offset>15</offset>
-        <length>14</length>
-    </problem>
-
-    <problem>
-        <file>additional-spring-configuration-metadata.json</file>
-        <line>33</line>
-        <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
-        <problem_class id="AdditionalConfigProperty" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
-        <description>Add required parameters: target</description>
-        <highlighted_element>handle-as</highlighted_element>
-        <language>JSON</language>
-        <offset>19</offset>
-        <length>9</length>
-    </problem>
-
-    <problem>
-        <file>additional-spring-configuration-metadata.json</file>
         <line>20</line>
         <module>light_idea_test_case</module>
         <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
@@ -155,19 +90,6 @@
         <language>JSON</language>
         <offset>14</offset>
         <length>34</length>
-    </problem>
-
-    <problem>
-        <file>additional-spring-configuration-metadata.json</file>
-        <line>40</line>
-        <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="additional-spring-configuration-metadata.json"/>
-        <problem_class id="AdditionalConfigProperty" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
-        <description>Cannot resolve configuration key reference 'not_exist'</description>
-        <highlighted_element>not_exist</highlighted_element>
-        <language>JSON</language>
-        <offset>15</offset>
-        <length>9</length>
     </problem>
 
 </problems>

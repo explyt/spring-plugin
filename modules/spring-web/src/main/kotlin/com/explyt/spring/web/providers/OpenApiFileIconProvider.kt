@@ -18,7 +18,7 @@
 package com.explyt.spring.web.providers
 
 import com.explyt.spring.web.SpringWebIcons
-import com.explyt.spring.web.model.OpenApiSpecificationDetection
+import com.explyt.spring.web.model.OpenApiSpecificationFinder
 import com.explyt.spring.web.model.OpenApiSpecificationType
 import com.intellij.ide.IconProvider
 import com.intellij.psi.PsiElement
@@ -30,10 +30,10 @@ class OpenApiFileIconProvider : IconProvider() {
         if (element !is PsiFile) return null
 
         val virtualFile = element.virtualFile ?: return null
-        val specificationType = OpenApiSpecificationDetection.detectSpecificationType(virtualFile, element)
+        val specificationType = OpenApiSpecificationFinder.identifySpecificationType(virtualFile, element)
         val extension = virtualFile.extension ?: return null
 
-        return if (specificationType is OpenApiSpecificationType.NONE) null
+        return if (specificationType is OpenApiSpecificationType.OpenApiUndefined) null
         else getIconForExtension(extension)
     }
 
