@@ -197,6 +197,9 @@
                     icon="/com/explyt/spring/web/icons/endpointsSidebar.svg"
                     factoryClass="com.explyt.spring.web.EndpointsToolWindowFactory"/>
 
+        <postStartupActivity
+                implementation="com.explyt.spring.web.service.ToolWindowService$StartupActivity"/>
+
     </extensions>
 
     <projectListeners>
