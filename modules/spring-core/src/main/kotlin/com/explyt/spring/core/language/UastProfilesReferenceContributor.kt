@@ -34,8 +34,7 @@ class UastProfilesReferenceContributor : PsiReferenceContributor() {
     }
 }
 
-private class ProfileUastReferenceProvider :
-    UastInjectionHostReferenceProvider() {
+private class ProfileUastReferenceProvider : UastInjectionHostReferenceProvider() {
     override fun getReferencesForInjectionHost(
         uExpression: UExpression,
         host: PsiLanguageInjectionHost,
@@ -43,12 +42,12 @@ private class ProfileUastReferenceProvider :
     ): Array<PsiReference> {
         val text = ElementManipulators.getValueText(host)
         val psiElement = uExpression.sourcePsi ?: return PsiReference.EMPTY_ARRAY
-        val profileRanges = ProfilesUtil.getProfileRanges(text)
+        val profileRanges = ProfilesUtil.parseProfiles(text)
 
         val referenceOffset: Int = ElementManipulators.getOffsetInElement(psiElement)
         return profileRanges.map {
             val profileName = it.substring(text)
-            SpringProfilePsiReference(psiElement, profileName, true, it.shiftRight(referenceOffset))
+            ProfilePsiReference(psiElement, profileName, it.shiftRight(referenceOffset))
         }.toTypedArray()
     }
 }

@@ -21,13 +21,12 @@ import java.util.regex.Pattern
 object ProfilesUtil {
 
     @JvmStatic
-    fun findTargetProfiles(project: Project, key: String): List<SpringProfileTarget> {
-        return findTargetProfiles(project)
-            .filter { profile -> profile.name == key }
+    fun findProfiles(project: Project, key: String): List<ProfileDefinitionElement> {
+        return findProfiles(project).filter { profile -> profile.name == key }
     }
 
     @JvmStatic
-    fun findTargetProfiles(project: Project): List<SpringProfileTarget> {
+    fun findProfiles(project: Project): List<ProfileDefinitionElement> {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
                 doFindTargetProfiles(project),
@@ -36,31 +35,27 @@ object ProfilesUtil {
         }
     }
 
-    private fun doFindTargetProfiles(project: Project): List<SpringProfileTarget> {
+    private fun doFindTargetProfiles(project: Project): List<ProfileDefinitionElement> {
         val profileClass = LibraryClassCache
             .searchForLibraryClass(project, SpringCoreClasses.PROFILE) ?: return listOf()
         val query = AnnotatedElementsSearch.searchPsiMembers(profileClass, ProjectScope.getProjectScope(project))
 
-        val profiles = mutableListOf<SpringProfileTarget>()
-
         val annotatedMembers = query.findAll().toList()
-        val psiAnnotations = annotatedMembers
+        return annotatedMembers.asSequence()
             .flatMap { MetaAnnotationUtil.findMetaAnnotations(it, setOf(SpringCoreClasses.PROFILE)).toList() }
+            .sortedBy { it.containingFile.name }
+            .mapNotNull { it.toUElementOfType<UAnnotation>() }
+            .flatMap { uAnnotation ->
+                val attributeValueExpression = uAnnotation.findAttributeValue("value")
+                val sourcePsi = attributeValueExpression?.sourcePsi ?: return@flatMap emptyList()
 
-        for (psiAnnotation in psiAnnotations) {
-            val uAnnotation = psiAnnotation.toUElementOfType<UAnnotation>() ?: continue
-
-            val attributeValueExpression = uAnnotation.findAttributeValue("value")
-            val sourcePsi = attributeValueExpression?.sourcePsi ?: continue
-            val text = ElementManipulators.getValueText(sourcePsi)
-            val profileRanges = getProfileRanges(text)
-            profiles += profileRanges.map { SpringProfileTarget(sourcePsi, it.substring(text), it.startOffset) }
-        }
-
-        return profiles
+                val text = ElementManipulators.getValueText(sourcePsi)
+                val profileRanges = parseProfiles(text)
+                profileRanges.map { ProfileDefinitionElement(sourcePsi, it.substring(text), it.startOffset) }
+            }.toList()
     }
 
-    fun getProfileRanges(value: String): List<TextRange> {
+    fun parseProfiles(value: String): List<TextRange> {
         if (StringUtil.isEmptyOrSpaces(value)) return emptyList()
         val ranges: MutableList<TextRange> = ArrayList(1)
         object : DelimitedListProcessor(PROFILE_DELIMITERS) {
@@ -78,6 +73,6 @@ object ProfilesUtil {
     }
 
     private const val PROFILE_REGEX = "[\\p{L}_0-9]+"
-    private const val PROFILE_DELIMITERS = "()&|!"
+    private const val PROFILE_DELIMITERS = "&|!()"
     val profilePattern: Pattern = Pattern.compile(PROFILE_REGEX)
 }

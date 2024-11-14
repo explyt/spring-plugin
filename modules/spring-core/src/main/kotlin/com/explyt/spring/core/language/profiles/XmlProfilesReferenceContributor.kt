@@ -49,12 +49,12 @@ class SpringXmlProfilesReferenceProvider : PsiReferenceProvider() {
             while (matcher.find()) {
                 val text = matcher.group()
                 val range = TextRange.allOf(text).shiftRight(matcher.start()).shiftRight(xmlTag.name.length + 2)
-                result.add(SpringProfilePsiReference(xmlTag, text, false, range))
+                result.add(ProfilePsiReference(xmlTag, text, range))
             }
         } else if (isFromMavenPlugin(xmlTag)) {
             result.add(
-                SpringProfilePsiReference(
-                    xmlTag, xmlValueText, false, TextRange.allOf(xmlValueText).shiftRight(xmlTag.name.length + 2)
+                ProfilePsiReference(
+                    xmlTag, xmlValueText, TextRange.allOf(xmlValueText).shiftRight(xmlTag.name.length + 2)
                 )
             )
         }

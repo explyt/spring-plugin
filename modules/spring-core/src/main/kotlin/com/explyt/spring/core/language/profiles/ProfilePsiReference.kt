@@ -18,46 +18,31 @@
 package com.explyt.spring.core.language.profiles
 
 
-import com.intellij.codeInsight.lookup.LookupElement
+import com.explyt.util.ExplytKotlinUtil.mapToArray
 import com.intellij.codeInsight.lookup.LookupElementBuilder
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.pom.references.PomService
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase
 
-open class SpringProfilePsiReference(
+open class ProfilePsiReference(
     private val element: PsiElement,
     private val profileName: String,
-    private val definition: Boolean,
     range: TextRange,
 ) : PsiReferenceBase<PsiElement>(element, range) {
 
     override fun resolve(): PsiElement? {
         if (StringUtil.isEmptyOrSpaces(profileName)) return myElement
-        val target: SpringProfileTarget? =
-            if (definition) {
-                SpringProfileTarget(getElement(), profileName, getRangeInElement().startOffset)
-            } else {
-                ProfilesUtil.findTargetProfiles(element.project, profileName).firstOrNull()
-            }
-        return if (target == null) null else PomService.convertToPsi(getElement().project, target)
+        return ProfilesUtil.findProfiles(element.project, profileName).firstOrNull()
+            ?.let { PomService.convertToPsi(getElement().project, it) }
     }
 
-    override fun isSoft(): Boolean {
-        return true
-    }
+    override fun isSoft() = true
 
     override fun getVariants(): Array<Any> {
-        val project: Project = myElement.project
-        val profiles: List<SpringProfileTarget> = ProfilesUtil.findTargetProfiles(project)
-        val variants: MutableList<LookupElement> = ArrayList()
-        for (profile in profiles) {
-            if (profile.name.isNotBlank()) {
-                variants.add(LookupElementBuilder.create(profile.name))
-            }
-        }
-        return variants.toTypedArray()
+        return ProfilesUtil.findProfiles(element.project).asSequence()
+            .filter { it.name.isNotBlank() }
+            .mapToArray { LookupElementBuilder.create(it.name) }
     }
 }

@@ -49,7 +49,7 @@ class SpringDataMethodParametersInspection : SpringDataBaseUastLocalInspectionTo
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
         val uClass = method.getParentOfType<UClass>() ?: return emptyArray()
-        val typeParams = SpringDataRepositoryUtil.substituteRepositoryTypes(uClass.javaPsi) ?: return emptyArray()
+        val typeParams = SpringDataRepositoryUtil.getGenericTypes(uClass.javaPsi) ?: return emptyArray()
         if (AnnotationUtil.isAnnotated(method.javaPsi, SpringDataClasses.QUERY, AnnotationUtil.CHECK_HIERARCHY)) {
             return emptyArray()
         }

@@ -17,28 +17,19 @@
 
 package com.explyt.spring.core.language.profiles
 
+import com.explyt.util.ExplytPsiUtil.toSmartPointer
 import com.intellij.ide.presentation.Presentation
 import com.intellij.ide.util.PsiNavigationSupport
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.PomRenameableTarget
 import com.intellij.psi.PsiElement
-import com.intellij.psi.SmartPointerManager
-import com.intellij.psi.SmartPsiElementPointer
-import java.util.*
 
 
 @Presentation(typeName = "Spring Profile")
-class SpringProfileTarget(element: PsiElement, private var name: String, private val nameOffset: Int) :
+class ProfileDefinitionElement(element: PsiElement, private var name: String, private val nameOffset: Int) :
     PomRenameableTarget<Any> {
-    private val elementPointer: SmartPsiElementPointer<PsiElement>
+    private val smartPointer = element.toSmartPointer()
 
-    init {
-        val containingFile = element.containingFile
-        val project = containingFile?.project ?: element.project
-        elementPointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(element, containingFile)
-    }
-
-    override fun isValid() = elementPointer.element != null
+    override fun isValid() = smartPointer.element != null
 
     override fun getName() = name
 
@@ -50,15 +41,14 @@ class SpringProfileTarget(element: PsiElement, private var name: String, private
     }
 
     override fun navigate(requestFocus: Boolean) {
-        val elementRange = elementPointer.range ?: return
+        val elementRange = smartPointer.range ?: return
         var offset: Int = elementRange.startOffset
+        val project = smartPointer.project
         if (nameOffset < elementRange.endOffset - offset) {
             offset += nameOffset
         }
-        val virtualFile: VirtualFile? = elementPointer.virtualFile
-        if (virtualFile != null && virtualFile.isValid) {
-            PsiNavigationSupport.getInstance().createNavigatable(elementPointer.project, virtualFile, offset)
-                .navigate(requestFocus)
+        smartPointer.virtualFile?.takeIf { it.isValid }?.also {
+            PsiNavigationSupport.getInstance().createNavigatable(project, it, offset).navigate(requestFocus)
         }
     }
 
@@ -66,16 +56,18 @@ class SpringProfileTarget(element: PsiElement, private var name: String, private
 
     override fun canNavigateToSource(): Boolean {
         if (nameOffset < 0) return false
-        val element: PsiElement? = elementPointer.element
+        val element: PsiElement? = smartPointer.element
         return element != null && PsiNavigationSupport.getInstance().canNavigate(element)
     }
 
-    override fun hashCode() = name.hashCode()
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other == null || javaClass != other.javaClass) return false
-        val target = other as SpringProfileTarget
-        return Objects.equals(name, target.name)
+        if (javaClass != other?.javaClass) return false
+
+        other as ProfileDefinitionElement
+
+        return name == other.name
     }
+
+    override fun hashCode() = name.hashCode()
 }

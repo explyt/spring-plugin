@@ -105,7 +105,7 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
 
     private fun getRepositoryTypes(parameters: CompletionParameters): RepositoryTypes? {
         val aClass: UClass = parameters.position.findContaining(UClass::class.java) ?: return null
-        return SpringDataRepositoryUtil.substituteRepositoryTypes(aClass.javaPsi)
+        return SpringDataRepositoryUtil.getGenericTypes(aClass.javaPsi)
     }
 
     private fun getCurrentPositionContext(parameters: CompletionParameters): PositionContext? {
