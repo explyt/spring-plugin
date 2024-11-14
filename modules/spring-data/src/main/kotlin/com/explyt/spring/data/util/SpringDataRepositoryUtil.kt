@@ -22,24 +22,20 @@ import com.explyt.spring.core.util.PsiAnnotationUtils
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.spring.data.SpringDataClasses
 import com.explyt.spring.data.SpringDataClasses.SPRING_RESOURCE
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiUtil
 
 object SpringDataRepositoryUtil {
 
-    fun substituteRepositoryTypes(repositoryClass: PsiClass): RepositoryTypes? {
-        if (AnnotationUtil.isAnnotated(
-                repositoryClass, SpringDataClasses.REPOSITORY_ANNOTATION,
-                AnnotationUtil.CHECK_HIERARCHY
-            )
-        ) {
-            return substituteForRepositoryDefinition(repositoryClass)
+    fun getGenericTypes(repositoryClass: PsiClass): RepositoryTypes? {
+        if (repositoryClass.isMetaAnnotatedBy(SpringDataClasses.REPOSITORY_ANNOTATION)) {
+            return getGenericTypesForRepositoryDefinition(repositoryClass)
         }
-        val psiClassType = JavaPsiFacade.getInstance(repositoryClass.project)
-            .elementFactory.createType(repositoryClass)
+
+        val psiClassType = JavaPsiFacade.getInstance(repositoryClass.project).elementFactory.createType(repositoryClass)
 
         val psiType = PsiUtil.substituteTypeParameter(psiClassType, SPRING_RESOURCE, 0, false) ?: return null
         val idPsiType = PsiUtil.substituteTypeParameter(psiClassType, SPRING_RESOURCE, 1, false) ?: return null
@@ -78,7 +74,7 @@ object SpringDataRepositoryUtil {
             ?.isAssignableFrom(PsiTypes.booleanType()) == true
     }
 
-    private fun substituteForRepositoryDefinition(repositoryClass: PsiClass): RepositoryTypes? {
+    private fun getGenericTypesForRepositoryDefinition(repositoryClass: PsiClass): RepositoryTypes? {
         val module = ModuleUtilCore.findModuleForPsiElement(repositoryClass) ?: return null
         val metaAnnotationsHolder = MetaAnnotationsHolder.of(module, SpringDataClasses.REPOSITORY_ANNOTATION)
         val annotation = repositoryClass.annotations.find { metaAnnotationsHolder.contains(it) } ?: return null
