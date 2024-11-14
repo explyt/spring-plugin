@@ -18,7 +18,7 @@
 package com.explyt.spring.web.references.contributors.providers
 
 import com.explyt.spring.web.SpringWebBundle
-import com.explyt.spring.web.util.OpenApiFileHelper
+import com.explyt.spring.web.util.OpenApiFileUtil
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
@@ -45,7 +45,7 @@ class OpenApiVersionCompletionProvider : CompletionProvider<CompletionParameters
         val psiFile = parameters.originalFile
         val virtualFile = psiFile.virtualFile ?: return
 
-        if (!OpenApiFileHelper.INSTANCE.isSuitableFile(virtualFile, psiFile)) return
+        if (!OpenApiFileUtil.INSTANCE.isOpenApiFile(virtualFile, psiFile)) return
 
         if (psiFile.fileType is JsonFileType) {
             jsonAddCompletions(parameters.position, result)

@@ -18,68 +18,59 @@
 package com.explyt.spring.web.model
 
 import com.explyt.spring.web.SpringWebBundle
-import com.explyt.spring.web.util.OpenApiFileHelper
+import com.explyt.spring.web.util.OpenApiFileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 
-open class OpenApiSpecificationType(val presentableName: String) {
+open class OpenApiSpecificationType(val name: String) {
 
-    open class OpenAPI3Components(presentableName: String) :
-        OpenApiSpecificationType(presentableName)
+    open class OpenAPI3Components(viewName: String) : OpenApiSpecificationType(viewName)
 
-    open class OpenAPI30Components :
-        OpenAPI3Components(SpringWebBundle.message("explyt.openapi.3.0.schema.name")) {
+    open class OpenApiV30 : OpenAPI3Components(SpringWebBundle.message("explyt.openapi.3.0.schema.name")) {
         override fun toString(): String {
             return SpringWebBundle.message("explyt.openapi.3.0.schema.type")
         }
+
+        companion object {
+            val INSTANCE = OpenApiV30()
+        }
     }
 
-    open class OpenAPI31Components :
-        OpenAPI3Components(SpringWebBundle.message("explyt.openapi.3.1.schema.name")) {
+    open class OpenApiV31 : OpenAPI3Components(SpringWebBundle.message("explyt.openapi.3.1.schema.name")) {
         override fun toString(): String {
             return SpringWebBundle.message("explyt.openapi.3.1.schema.type")
         }
-    }
 
-    object OpenApi30 : OpenAPI30Components() {
-        val INSTANCE: OpenApi30 = OpenApi30
-    }
-
-    object OpenApi31 : OpenAPI31Components() {
-        val INSTANCE: OpenApi31 = OpenApi31
-    }
-
-    interface SpecificationExtension {
-        val partSchemaId: String
-    }
-
-    data class OpenAPI30SpecificationExtension(override val partSchemaId: String) : OpenAPI30Components(),
-        SpecificationExtension
-
-    data class Openapi31SpecificationExtension(override val partSchemaId: String) : OpenAPI30Components(),
-        SpecificationExtension
-
-
-    open class NONE(private val stringValue: String) :
-        OpenApiSpecificationType(SpringWebBundle.message("explyt.openapi.unknown.specification")) {
-
-        override fun toString(): String {
-            return this.stringValue
+        companion object {
+            val INSTANCE = OpenApiV31()
         }
     }
 
-    object UNKNOWN : NONE("unknown") {
-        val INSTANCE: UNKNOWN = UNKNOWN
+    interface SpecificationExtension {
+        val schemaExt: String
+    }
+
+    data class OpenAPI30SpecificationExtension(override val schemaExt: String) : OpenApiV30(),
+        SpecificationExtension
+
+    data class Openapi31SpecificationExtension(override val schemaExt: String) : OpenApiV31(),
+        SpecificationExtension
+
+    object OpenApiUndefined :
+        OpenApiSpecificationType(SpringWebBundle.message("explyt.openapi.specification.undefined")) {
+        override fun toString(): String {
+            return "undefined"
+        }
     }
 }
 
-object OpenApiSpecificationDetection {
-    fun detectPrimarySpecificationType(virtualFile: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
-        return OpenApiFileHelper.INSTANCE.getOrComputePrimarySpecificationType(psiFile.project, psiFile, virtualFile)
+object OpenApiSpecificationFinder {
+    fun findSpecificationType(file: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
+        return OpenApiFileUtil.INSTANCE.findSpecificationType(psiFile.project, psiFile, file)
     }
 
-    fun detectSpecificationType(virtualFile: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
-        return OpenApiFileHelper.INSTANCE.getOrComputeSpecificationType(virtualFile, psiFile)
+    fun identifySpecificationType(file: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
+        return OpenApiFileUtil.INSTANCE.findSpecificationTypeMore(file, psiFile)
     }
 
 }

@@ -19,7 +19,7 @@ package com.explyt.spring.web.inspections
 
 import com.explyt.inspection.SpringBaseLocalInspectionTool
 import com.explyt.spring.web.SpringWebBundle
-import com.explyt.spring.web.util.OpenApiFileHelper
+import com.explyt.spring.web.util.OpenApiFileUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -36,7 +36,7 @@ abstract class OpenApiVersionInspectionBase : SpringBaseLocalInspectionTool() {
         isOnTheFly: Boolean,
     ): Array<ProblemDescriptor> {
         val virtualFile = file.virtualFile ?: return ProblemDescriptor.EMPTY_ARRAY
-        if (!OpenApiFileHelper.INSTANCE.isSuitableFile(virtualFile, file)) return ProblemDescriptor.EMPTY_ARRAY
+        if (!OpenApiFileUtil.INSTANCE.isOpenApiFile(virtualFile, file)) return ProblemDescriptor.EMPTY_ARRAY
 
         return getProblems(file, manager, isOnTheFly)
     }
