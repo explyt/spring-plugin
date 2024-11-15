@@ -19,7 +19,6 @@ plugins {
     java
     id("org.jetbrains.intellij.platform.module")
     kotlin("jvm")
-    id("io.sentry.jvm.gradle") version("4.10.0")
 }
 
 val intellijPlugins = listOf(
