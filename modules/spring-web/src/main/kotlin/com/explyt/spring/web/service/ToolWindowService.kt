@@ -18,11 +18,15 @@
 package com.explyt.spring.web.service
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.web.util.SpringWebUtil
+import com.intellij.collaboration.ui.toolwindow.dontHideOnEmptyContent
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbService
@@ -31,6 +35,8 @@ import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.Callable
 
 @Service(Service.Level.PROJECT)
 class ToolWindowService(private val project: Project) {
@@ -46,11 +52,13 @@ class ToolWindowService(private val project: Project) {
     }
 
     fun changeToolWindow(toolWindowId: String) {
-        DumbService.getInstance(project).runWhenSmart {
-            val shouldShowToolWindow = SpringWebUtil.isSpringWebProject(project)
-            updateToolWindowVisibility(toolWindowId, shouldShowToolWindow)
-            handleToolWindowNotification(toolWindowId, shouldShowToolWindow)
-        }
+        ReadAction.nonBlocking(Callable { SpringWebUtil.isSpringWebProject(project) })
+            .inSmartMode(project)
+            .finishOnUiThread(ModalityState.nonModal()) { isVisible ->
+                updateToolWindowVisibility(toolWindowId, isVisible)
+                handleToolWindowNotification(toolWindowId, isVisible)
+            }
+            .submit(AppExecutorUtil.getAppScheduledExecutorService())
     }
 
     private fun updateToolWindowVisibility(toolWindowId: String, isVisible: Boolean) {
