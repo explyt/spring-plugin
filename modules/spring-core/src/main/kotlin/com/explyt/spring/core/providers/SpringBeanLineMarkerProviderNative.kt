@@ -49,6 +49,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.*
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.*
 
 class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
@@ -72,6 +73,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 }
                 if (inContextBean) {
                     addContextBean(uElement, module, result)
+                    processConstructorMethods(uElement, module, result)
                 }
             }
             if (isAutoConfigurationClass(uElement, module)) {
@@ -120,13 +122,16 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         }
     }
 
-    private fun processMethods(
+    private fun processConstructorMethods(
         uElement: UClass,
         module: Module,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        if (uElement.javaPsi.language != KotlinLanguage.INSTANCE) return
         for (method in uElement.methods) {
-            processMethod(method, module, result)
+            if (method.isConstructor) {
+                processMethod(method, module, result)
+            }
         }
     }
 
@@ -141,8 +146,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             return
         }
 
-        if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return
-        if (isMethodBean(module, method)) {
+        if (method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN) && isMethodBean(module, method)) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(null, method, module) })
