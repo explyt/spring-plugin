@@ -1,0 +1,59 @@
+name: "Compatibility"
+description: "Explyt Spring plugin compatibility issues"
+title: "[COMPATIBILITY]"
+labels: ["compatibility"]
+assignees: []
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: "Describe the compatibility issue you are experiencing"
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: "Provide steps on how to reproduce the issue"
+      placeholder: "1. "
+    validations:
+      required: false
+
+  - type: input
+    id: intellij_idea_version
+    attributes:
+      label: IntelliJ IDEA Version
+      description: "Type IntelliJ IDEA  version here"
+      placeholder: "example: 2024.2.1"
+    validations:
+      required: false
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version
+      description: "Type plugin version here"
+      placeholder: "example: 2024.233.1861"
+    validations:
+      required: false
+
+  - type: input
+    id: operation_system
+    attributes:
+      label: Operating System
+      description: "Type Operating System here"
+      placeholder: "example: macOS 12.3, Windows 10"
+    validations:
+      required: false
+
+  - type: input
+    id: dependencies
+    attributes:
+      label: Other Dependencies
+      description: "Type other Dependencies (if applicable)"
+      placeholder: "example: JDK, plugins ..."
+    validations:
+      required: false
