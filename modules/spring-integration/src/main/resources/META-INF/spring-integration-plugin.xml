@@ -1,0 +1,15 @@
+<idea-plugin>
+
+    <extensions defaultExtensionNs="com.explyt.spring.core">
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.integration.service.beans.discoverer.SpringIntegrationAdditionalBeansDiscoverer"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>

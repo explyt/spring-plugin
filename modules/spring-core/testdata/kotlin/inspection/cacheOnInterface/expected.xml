@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>CacheOnInterface.kt</file>
+        <line>7</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="file" FQNAME="CacheOnInterface.kt"/>
+        <problem_class id="SpringCacheAnnotationsOnInterface" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>@Cache annotations shouldn't annotate interfaces</description>
+        <highlighted_element>CacheOnInterface</highlighted_element>
+        <language>JAVA</language>
+        <offset>10</offset>
+        <length>16</length>
+    </problem>
+
+
+    <problem>
+        <file>CacheOnInterface.kt</file>
+        <line>9</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="file" FQNAME="CacheOnInterface.kt"/>
+        <problem_class id="SpringCacheAnnotationsOnInterface" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
+        <description>@Cache annotations should annotate concrete methods</description>
+        <highlighted_element>someMethod</highlighted_element>
+        <language>JAVA</language>
+        <offset>8</offset>
+        <length>10</length>
+    </problem>
+
+
+</problems>

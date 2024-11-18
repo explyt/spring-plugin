@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>InterchangeableAliasForConfiguration.java</file>
+        <line>15</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InterchangeableAliasForConfiguration com.InterchangeableAliasClass someMethod()" />
+        <problem_class id="SpringAliasBothInterchangeableSet" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Several @AliasFor mirror values for annotation [org.springframework.context.annotation.Bean].
+Attribute 'value' and its alias '[name]' are declared simultaneously</description>
+        <highlighted_element>&quot;iafc&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>16</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>InterchangeableAliasForConfiguration.java</file>
+        <line>21</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InterchangeableAliasForConfiguration InterchangeableAliasClas3s someMetho3d()" />
+        <problem_class id="SpringAliasBothInterchangeableSet" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Several @AliasFor mirror values for annotation [org.springframework.context.annotation.Bean].
+Attribute 'renamedValue' and its alias '[name]' are declared simultaneously</description>
+        <highlighted_element>&quot;iafc3&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>24</offset>
+        <length>7</length>
+    </problem>
+
+</problems>

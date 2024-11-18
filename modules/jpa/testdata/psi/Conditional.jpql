@@ -1,0 +1,4 @@
+SELECT e FROM Employee e WHERE e.department = :department AND e.salary > :salary;
+SELECT e FROM Employee e WHERE e.department = :department OR e.salary > :salary;
+SELECT e FROM Employee e WHERE (e.department = :department1 OR e.department = :department2) AND e.salary > :salary;
+SELECT e FROM Employee e WHERE e.department = :department1 OR e.department = :department2 AND e.salary > :salary;

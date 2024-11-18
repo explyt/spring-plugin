@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<problems>
+    <problem>
+        <file>LookupConfiguration.kt</file>
+        <line>19</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.LookupConfiguration com.LookBeanB lookBeanB()" />
+        <problem_class id="SpringLookupBean" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>Expected bean of 'com.LookBeanB' type but found 'com.LookBeanA'</description>
+        <highlighted_element>lookBeanA</highlighted_element>
+        <language>kotlin</language>
+        <offset>13</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>LookupConfiguration.kt</file>
+        <line>24</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.LookupConfiguration com.LookBeanB unknown()" />
+        <problem_class id="SpringLookupBean" severity="WARNING" attribute_key="WARNING_ATTRIBUTES" />
+        <description>Can not resolve bean 'unknown'</description>
+        <highlighted_element>unknown</highlighted_element>
+        <language>kotlin</language>
+        <offset>13</offset>
+        <length>7</length>
+    </problem>
+</problems>

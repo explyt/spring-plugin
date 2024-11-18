@@ -1,0 +1,7 @@
+INSERT INTO Employee (id, name, salary) VALUES (1, 'John Doe', 50000);
+INSERT INTO Employee (id, name, salary)
+VALUES (2, 'Jane Smith', 60000),
+       (3, 'Michael Johnson', 70000),
+       (4, 'Emily Davis', 55000);
+INSERT INTO Employee (id, name, salary)
+       SELECT id, name, salary FROM TempEmployee;

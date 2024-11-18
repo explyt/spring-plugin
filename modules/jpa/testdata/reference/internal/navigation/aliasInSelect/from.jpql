@@ -1,0 +1,1 @@
+SELECT f<caret> FROM FlightRegistration f WHERE f.scheduledFlight.id = :flightId AND f.status = 'NEW'

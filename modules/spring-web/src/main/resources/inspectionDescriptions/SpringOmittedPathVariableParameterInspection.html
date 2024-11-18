@@ -1,0 +1,39 @@
+<html>
+<head>
+    <title>Omitted Path Variable Parameter Inspection</title>
+</head>
+<body>
+
+<p>Reports "@PathVariable parameters and the URL path are not fit each other" when path parameters are declared in
+    a URL path of <code lang="java">@RequestMapping</code> annotation but omitted in
+    <code lang="java">@PathVariable</code> parameters and vise versa.
+</p>
+
+<p><b>Example:</b></p>
+"@PathVariable parameters and the URL path are not fit each other" will be reported on 'id' parameter if there is no
+@PathVariable argument with the same name
+Quick Fix adds omitted argument
+<pre><code lang="java">
+@GetMapping("/api/employees/{id}")
+@ResponseBody
+public String getEmployeesById(/*@PathVariable String id*/) {
+	return "ID: " + id;
+}
+</code></pre>
+
+<p><b>Example:</b></p>
+"@PathVariable parameters and the URL path are not fit each other" will be reported on 'renamedId' parameter if there is
+no
+URL path argument with the same name
+
+<pre><code lang="java">
+//@GetMapping("/api/employees/{renamedId}")
+@ResponseBody
+public String getEmployeesById(@PathVariable("renamedId") String id) {
+	return "ID: " + id;
+}
+
+</code></pre>
+
+</body>
+</html>

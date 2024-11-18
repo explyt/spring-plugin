@@ -1,0 +1,20 @@
+<html>
+<head>
+    <title>InitBinder Return Type Inspection</title></head>
+<body>
+<p>Reports wrong return type for InitBinder method.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@RestController
+public class SomeController {
+	@InitBinder("some")
+	public String initSomeBinder(WebDataBinder dataBinder) { // reports "@InitBinder method must be declared as void"
+		dataBinder.setDisallowedFields("field");
+        return "";
+	}
+}
+</code></pre>
+
+</body>
+</html>

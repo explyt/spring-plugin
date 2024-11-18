@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>InitBinderController.java</file>
+        <line>13</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method"
+                     FQNAME="com.example.springcoredemo.web.InitBinderController java.lang.String invalidBinderMethod(org.springframework.web.bind.WebDataBinder dataBinder)"/>
+        <problem_class id="SpringInitBinderNonVoid" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>@InitBinder method must be declared as void</description>
+        <highlighted_element>invalidBinderMethod</highlighted_element>
+        <language>JAVA</language>
+        <offset>18</offset>
+        <length>19</length>
+    </problem>
+
+</problems>

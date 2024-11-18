@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>AliasAnnotationConfiguration.kt</file>
+        <line>51</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.InheritorAnnotation String[] notMetaAnnotated()" />
+        <problem_class id="SpringAliasNotMetaAnnotated" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>This annotation not in current meta-annotations</description>
+        <highlighted_element>OtherAnnotation.class</highlighted_element>
+        <language>kotlin</language>
+        <offset>27</offset>
+        <length>22</length>
+    </problem>
+
+</problems>

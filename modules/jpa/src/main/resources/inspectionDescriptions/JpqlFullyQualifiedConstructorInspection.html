@@ -1,0 +1,22 @@
+<html>
+<head>
+    <title>Jpql inspection</title>
+</head>
+<body>
+<p>Reports warning on constructor reference</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="sql">
+<strong>--Constructor name must be fully qualified</strong>
+SELECT new Owner(e.firstName) FROM Owner e
+</code></pre>
+
+<p><b>Example:</b></p>
+<pre><code lang="sql">
+<strong>--Can not find class unknown.class.Owner</strong>
+SELECT new unknown.class.Owner(e.firstName) FROM Owner e
+</code></pre>
+
+
+</body>
+</html>

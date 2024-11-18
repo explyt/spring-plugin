@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>2</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'not_false' to boolean</description>
+        <highlighted_element>not_false</highlighted_element>
+        <language>yaml</language>
+        <offset>11</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>3</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'not_false' to boolean</description>
+        <highlighted_element>not_false</highlighted_element>
+        <language>yaml</language>
+        <offset>21</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>4</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert '5.6' to java.lang.Integer</description>
+        <highlighted_element>5.6</highlighted_element>
+        <language>yaml</language>
+        <offset>21</offset>
+        <length>3</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>5</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'false' to java.lang.Double</description>
+        <highlighted_element>false</highlighted_element>
+        <language>yaml</language>
+        <offset>20</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>6</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'test' to java.lang.Number</description>
+        <highlighted_element>test</highlighted_element>
+        <language>yaml</language>
+        <offset>20</offset>
+        <length>4</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>7</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="WARNING" attribute_key="DEPRECATED_ATTRIBUTES"/>
+        <description>Deprecated: Deprecated because that's all.</description>
+        <highlighted_element>max-connections</highlighted_element>
+        <language>yaml</language>
+        <offset>2</offset>
+        <length>15</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>8</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'e3' to java.lang.Integer</description>
+        <highlighted_element>1, e3</highlighted_element>
+        <language>yaml</language>
+        <offset>17</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>10</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'wrong' to java.lang.Integer</description>
+        <highlighted_element>wrong</highlighted_element>
+        <language>yaml</language>
+        <offset>13</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>application.yaml</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <entry_point TYPE="file" FQNAME="application.yaml"/>
+        <problem_class id="SpringYaml" severity="ERROR" attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Cannot convert 'error' to java.lang.Integer</description>
+        <highlighted_element>error</highlighted_element>
+        <language>yaml</language>
+        <offset>23</offset>
+        <length>5</length>
+    </problem>
+
+</problems>
