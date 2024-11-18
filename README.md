@@ -2,9 +2,9 @@
 
 The [Explyt Spring Plugin](https://explyt.com/spring) enhances your IntelliJ IDEA Community experience, making Spring development in Java and Kotlin more productive and enjoyable. This plugin is designed to accelerate Spring and Spring Boot development by providing advanced tools for navigation, code generation, and configuration.
 
-![Screen](https://github.com/explyt/spring-plugin/blob/main/images/screen1.jpg)
+![Screen](https://raw.githubusercontent.com/explyt/spring-plugin/refs/heads/main/images/screen1.jpg)
 
-👉 Visit the [official Explyt website](https://www.explyt.com/).
+👉 Visit the [official Explyt website](https://explyt.com/).
 
 ## Key Features of Explyt Spring Plugin
 
@@ -42,9 +42,7 @@ To use the Explyt Spring Plugin in IntelliJ IDEA Ultimate, you must disable the 
 
 ## Get Started
 
-👉 [![Download from JetBrains Marketplace](https://img.shields.io/badge/Download_from-JetBrains_Marketplace-brightgreen?style=for-the-badge)](https://plugins.jetbrains.com/plugin/23273-spring-explyt)
-
-For manual installation options, refer to our [Installation Guide](https://github.com/explyt/spring-plugin/wiki/Installation-Guide).
+[Installation Guide](https://github.com/explyt/spring-plugin/wiki/Installation-Guide).
 
 ## Contribute to Explyt Spring Plugin
 
@@ -56,8 +54,8 @@ Thank you for helping us make Explyt Spring Plugin better! ⭐
 
 ## License
 
-The Plugin is completely FREE for both non-commercial and commercial use. 
+The Plugin is completely FREE for both non-commercial and commercial use.
 
-Before any use of the Plugin You must read and accept our [End User License Agreement (EULA)](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md). 
+Before any use of the Plugin You must read and accept our [End User License Agreement (EULA)](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
 
 And if You want to utilise the source code of the Plugin, you must read and accept our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
