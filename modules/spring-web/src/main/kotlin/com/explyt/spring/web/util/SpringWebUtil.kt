@@ -21,6 +21,7 @@ import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.references.contributors.webClient.EndpointResult
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -28,12 +29,12 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOptional
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.json.psi.JsonProperty
+import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
-import com.intellij.psi.CommonClassNames
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethod
+import com.intellij.psi.*
+import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.util.parentsOfType
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
@@ -66,7 +67,68 @@ object SpringWebUtil {
         ) != null
     }
 
-    fun collectPathVariables(psiMethod: PsiMethod): Collection<PathVariableInfo> {
+    fun getTypeFqn(returnType: PsiType?, language: Language): String {
+        return if (returnType is PsiPrimitiveType) {
+            returnType.boxedTypeName
+        } else {
+            EndpointResult.of(returnType as? PsiClassReferenceType, language, false)
+                ?.typeReferenceCanonical
+        } ?: "java.lang.String"
+    }
+
+    fun collectRequestParameters(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
+
+        val annotatedParams = psiMethod.parameterList.parameters
+            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) }
+        val mahRequestParam = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringWebClasses.REQUEST_PARAM)
+
+        val requestParamInfos = mutableListOf<PathArgumentInfo>()
+        for (param in annotatedParams) {
+            val annotation = param.annotations.firstOrNull {
+                mahRequestParam.contains(it)
+            } ?: continue
+
+            val paramType = param.type
+            val isMap = paramType.isMapWithStringKey()
+            val isOptional = !isMap && paramType.isOptional
+            val typeFqn = getTypeFqn(paramType, psiMethod.language)
+
+            val isRequired = mahRequestParam.getAnnotationMemberValues(annotation, setOf("required"))
+                .map { it.getBooleanValue() }
+                .firstOrNull() ?: true
+
+            val memberValues = mahRequestParam.getAnnotationMemberValues(annotation, setOf("value", "name"))
+            if (memberValues.isEmpty()) {
+                requestParamInfos.add(
+                    PathArgumentInfo(
+                        param.name,
+                        param,
+                        isRequired && !isOptional,
+                        isMap,
+                        typeFqn
+                    )
+                )
+            } else {
+                memberValues.forEach {
+                    val name = it.getStringValue() ?: return@forEach
+                    requestParamInfos.add(
+                        PathArgumentInfo(
+                            name,
+                            it,
+                            isRequired && !isOptional,
+                            isMap,
+                            typeFqn
+                        )
+                    )
+                }
+            }
+        }
+        return requestParamInfos
+    }
+
+    fun collectPathVariables(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
         val annotatedParams = psiMethod.parameterList.parameters
@@ -74,7 +136,7 @@ object SpringWebUtil {
         val mahPathVariable = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.PATH_VARIABLE)
 
-        val pathVariableInfos = mutableListOf<PathVariableInfo>()
+        val pathVariableInfos = mutableListOf<PathArgumentInfo>()
         for (param in annotatedParams) {
             val annotation = param.annotations.firstOrNull {
                 mahPathVariable.contains(it)
@@ -83,6 +145,7 @@ object SpringWebUtil {
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
             val isOptional = !isMap && paramType.isOptional
+            val typeFqn = getTypeFqn(paramType, psiMethod.language)
 
             val isRequired = mahPathVariable.getAnnotationMemberValues(annotation, setOf("required"))
                 .map { it.getBooleanValue() }
@@ -91,29 +154,63 @@ object SpringWebUtil {
             val memberValues = mahPathVariable.getAnnotationMemberValues(annotation, setOf("value", "name"))
             if (memberValues.isEmpty()) {
                 pathVariableInfos.add(
-                    PathVariableInfo(
+                    PathArgumentInfo(
                         param.name,
                         param,
                         isRequired && !isOptional,
-                        isMap
+                        isMap,
+                        typeFqn
                     )
                 )
             } else {
                 memberValues.forEach {
                     val name = it.getStringValue() ?: return@forEach
                     pathVariableInfos.add(
-                        PathVariableInfo(
+                        PathArgumentInfo(
                             name,
                             it,
                             isRequired && !isOptional,
-                            isMap
+                            isMap,
+                            typeFqn
                         )
                     )
                 }
             }
         }
         return pathVariableInfos
+    }
 
+    fun getRequestBodyInfo(psiMethod: PsiMethod): PathArgumentInfo? {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
+
+        val annotatedParams = psiMethod.parameterList.parameters
+            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_BODY) }
+        val mahRequestBody = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringWebClasses.REQUEST_BODY)
+
+        for (param in annotatedParams) {
+            val annotation = param.annotations.firstOrNull {
+                mahRequestBody.contains(it)
+            } ?: continue
+
+            val paramType = param.type
+            val isMap = paramType.isMapWithStringKey()
+            val isOptional = !isMap && paramType.isOptional
+            val typeFqn = getTypeFqn(paramType, psiMethod.language)
+
+            val isRequired = mahRequestBody.getAnnotationMemberValues(annotation, setOf("required"))
+                .map { it.getBooleanValue() }
+                .firstOrNull() ?: true
+
+            return PathArgumentInfo(
+                param.name,
+                param,
+                isRequired && !isOptional,
+                isMap,
+                typeFqn
+            )
+        }
+        return null
     }
 
     fun getTargetRenderer(): PsiTargetPresentationRenderer<PsiElement> {
@@ -224,11 +321,12 @@ object SpringWebUtil {
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
 
-    data class PathVariableInfo(
+    data class PathArgumentInfo(
         val name: String,
         val psiElement: PsiElement,
         val isRequired: Boolean,
-        val isMap: Boolean
+        val isMap: Boolean,
+        val typeFqn: String
     )
 
     val REQUEST_METHODS =
@@ -243,4 +341,63 @@ object SpringWebUtil {
     private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()
     private val TEMPLATE_PARAM_REGEX = Regex("\\{[^}]+}")
     private val MULTIPLE_ASTERISKS = Regex("\\*{2,}")
+
+    const val OPENAPI_BOOLEAN = "type: boolean"
+    const val OPENAPI_STRING = "type: string"
+    const val OPENAPI_INT = "type: integer"
+
+    const val OPENAPI_INT32 = """
+              type: integer
+              format: int32"""
+    const val OPENAPI_INT64 = """
+              type: integer
+              format: int64"""
+    const val OPENAPI_FLOAT = """
+              type: number
+              format: float"""
+    const val OPENAPI_DOUBLE = """
+              type: number
+              format: double"""
+
+    const val OPENAPI_UUID = """
+              type: string
+              format: uuid"""
+
+    val simpleTypesMap = mapOf(
+        "java.lang.String" to OPENAPI_STRING,
+        "java.lang.Character" to OPENAPI_STRING,
+        "kotlin.Char" to OPENAPI_STRING,
+
+        "java.lang.Byte" to OPENAPI_INT,
+        "kotlin.Byte" to OPENAPI_INT,
+        "java.lang.Short" to OPENAPI_INT,
+        "kotlin.Short" to OPENAPI_INT,
+
+        "java.lang.Integer" to OPENAPI_INT32,
+        "kotlin.Int" to OPENAPI_INT32,
+
+        "java.lang.Long" to OPENAPI_INT64,
+        "kotlin.Long" to OPENAPI_INT64,
+
+        "java.lang.Float" to OPENAPI_FLOAT,
+        "kotlin.Float" to OPENAPI_FLOAT,
+
+        "java.lang.Double" to OPENAPI_DOUBLE,
+        "kotlin.Double" to OPENAPI_DOUBLE,
+
+        "java.lang.Boolean" to OPENAPI_BOOLEAN,
+        "kotlin.Boolean" to OPENAPI_BOOLEAN,
+
+        "java.util.UUID" to OPENAPI_UUID
+    )
+
+    val arrayTypes = listOf(
+        "java.util.List",
+        "kotlin.collections.List",
+        "java.util.Collection",
+        "kotlin.collections.Collection",
+        "java.util.Set",
+        "kotlin.collections.Set",
+    )
+
 }

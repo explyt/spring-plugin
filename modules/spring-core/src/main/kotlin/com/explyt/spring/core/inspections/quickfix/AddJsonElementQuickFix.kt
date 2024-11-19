@@ -18,6 +18,7 @@
 package com.explyt.spring.core.inspections.quickfix
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.inspections.utils.ExplytJsonUtil
 import com.intellij.codeInspection.LocalQuickFixOnPsiElement
 import com.intellij.json.psi.JsonElementGenerator
 import com.intellij.json.psi.JsonFile
@@ -50,18 +51,16 @@ class AddJsonElementQuickFix(element: PsiElement, val parameters: List<String>) 
 
         WriteCommandAction.runWriteCommandAction(project, "", null, {
             val generator = JsonElementGenerator(project)
-            parameters.forEach {
-                val hasProperty = jsonObject.propertyList.isNotEmpty()
-                if (hasProperty) {
-                    jsonObject.addBefore(generator.createComma(), jsonObject.lastChild)
-                }
-                val property = generator.createProperty(it, "\"\"")
-                val added = jsonObject.addBefore(property, jsonObject.lastChild) as JsonProperty
+            var toNavigate: JsonProperty? = null
 
-                CodeStyleManager.getInstance(project)
-                    .reformatText(additionalJson, 0, additionalJson.textLength)
-                added.navigate(true)
+            parameters.forEach { name ->
+                val property = generator.createProperty(name, "\"\"")
+
+                toNavigate = ExplytJsonUtil.addPropertyToObject(property, jsonObject, generator)
             }
+            CodeStyleManager.getInstance(project)
+                .reformatText(additionalJson, 0, additionalJson.textLength)
+            toNavigate?.navigate(true)
         }, containingFile)
     }
 

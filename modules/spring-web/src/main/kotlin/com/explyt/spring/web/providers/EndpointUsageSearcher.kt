@@ -33,18 +33,18 @@ import com.explyt.spring.web.util.SpringWebUtil.PATHS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
 import com.explyt.spring.web.util.SpringWebUtil.getUrlTemplateIndex
+import com.explyt.util.CacheUtils.getCachedValue
 import com.explyt.util.ExplytKotlinUtil.filterToSet
 import com.explyt.util.ExplytKotlinUtil.mapToList
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.psi.*
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopesCore
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
@@ -66,22 +66,24 @@ object EndpointUsageSearcher {
     }
 
     fun getOpenApiJsonEndpoints(module: Module): List<EndpointData> {
+        return findOpenApiJsonFiles(module)
+            .flatMap { collectOpenApiJsonEndpoints(it) }
+    }
+
+    fun findOpenApiJsonFiles(module: Module): List<JsonFile> {
         val project = module.project
         val psiManager = PsiManager.getInstance(project)
 
-        return CachedValuesManager.getManager(project)
-            .getCachedValue(module) {
-                val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
-                    ?: ModificationTracker.NEVER_CHANGED
-                CachedValueProvider.Result(
-                    FilenameIndex.getAllFilesByExt(module.project, "json", GlobalSearchScope.moduleScope(module))
-                        .mapNotNull { psiManager.findFile(it) }
-                        .filterIsInstance<JsonFile>()
-                        .flatMap { collectOpenApiJsonEndpoints(it) },
-                    modificationTracker
-                )
-            }
+        return getCachedValue(module, modificationTracker(project)) {
+            FilenameIndex.getAllFilesByExt(module.project, "json", GlobalSearchScope.moduleScope(module))
+                .asSequence()
+                .mapNotNull { psiManager.findFile(it) }
+                .filterIsInstance<JsonFile>()
+                .filter { OpenApiUtils.isOpenApi(it) }
+                .toList()
+        }
     }
+
 
     private fun collectOpenApiJsonEndpoints(file: JsonFile): List<EndpointData> {
         if (!OpenApiUtils.isOpenApi(file)) return emptyList()
@@ -133,26 +135,36 @@ object EndpointUsageSearcher {
 
     fun getOpenApiYamlEndpoints(module: Module): List<EndpointData> {
         val project = module.project
+
+        return getCachedValue(module, modificationTracker(project)) {
+            findOpenApiYamlFiles(module)
+                .flatMap { collectOpenApiYamlEndpoints(it) }
+        }
+    }
+
+    fun findOpenApiYamlFiles(module: Module): List<YAMLFile> {
+        val project = module.project
         val psiManager = PsiManager.getInstance(project)
 
-        return CachedValuesManager.getManager(project)
-            .getCachedValue(module) {
-                val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
-                    ?: ModificationTracker.NEVER_CHANGED
-                CachedValueProvider.Result(
-                    (FilenameIndex.getAllFilesByExt(
-                        module.project, "yaml",
-                        GlobalSearchScope.moduleScope(module)
-                    ) + FilenameIndex.getAllFilesByExt(
-                        module.project, "yml",
-                        GlobalSearchScope.moduleScope(module)
-                    ))
-                        .mapNotNull { psiManager.findFile(it) }
-                        .filterIsInstance<YAMLFile>()
-                        .flatMap { collectOpenApiYamlEndpoints(it) },
-                    modificationTracker
-                )
-            }
+        return getCachedValue(module, modificationTracker(project)) {
+            (FilenameIndex.getAllFilesByExt(
+                module.project, "yaml",
+                GlobalSearchScope.moduleScope(module)
+            ) + FilenameIndex.getAllFilesByExt(
+                module.project, "yml",
+                GlobalSearchScope.moduleScope(module)
+            )).asSequence()
+                .mapNotNull { psiManager.findFile(it) }
+                .filterIsInstance<YAMLFile>()
+                .filter { OpenApiUtils.isOpenApi(it) }
+                .toList()
+        }
+    }
+
+    private fun modificationTracker(project: Project): ModificationTracker? {
+        val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
+            ?: ModificationTracker.NEVER_CHANGED
+        return modificationTracker
     }
 
     private fun collectOpenApiYamlEndpoints(file: YAMLFile): List<EndpointData> {
@@ -249,13 +261,11 @@ object EndpointUsageSearcher {
     }
 
     private fun getMockMvcMethods(module: Module): Array<PsiMethod> {
-        return CachedValuesManager.getManager(module.project)
-            .getCachedValue(module) {
-                CachedValueProvider.Result(
-                    doGetMockMvcMethods(module),
-                    ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
-                )
-            }
+        val libraryModificationTracker = ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
+
+        return getCachedValue(module, libraryModificationTracker) {
+            doGetMockMvcMethods(module)
+        }
     }
 
     private fun doGetMockMvcMethods(module: Module): Array<PsiMethod> {
@@ -269,10 +279,10 @@ object EndpointUsageSearcher {
             .filter { it.name.uppercase() == methodName || it.name == "method" }
             .flatMap {
                 SpringSearchUtils.searchReferenceByMethod(
-                        module,
-                        it.javaPsi,
-                        GlobalSearchScopesCore.projectTestScope(module.project)
-                    )
+                    module,
+                    it.javaPsi,
+                    GlobalSearchScopesCore.projectTestScope(module.project)
+                )
             }
             .mapNotNull { it.element.parent?.toUElementOfType<UCallExpression>() }
             .filter {
@@ -295,13 +305,12 @@ object EndpointUsageSearcher {
     }
 
     private fun getGetWebTestMethods(module: Module): Collection<UMethod> {
-        return CachedValuesManager.getManager(module.project)
-            .getCachedValue(module) {
-                CachedValueProvider.Result(
-                    doGetWebTestMethods(module),
-                    ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
-                )
-            }
+        val uastModelAndLibraryTracker =
+            ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+
+        return getCachedValue(module, uastModelAndLibraryTracker) {
+            doGetWebTestMethods(module)
+        }
     }
 
     private fun doGetWebTestMethods(module: Module): Collection<UMethod> {
