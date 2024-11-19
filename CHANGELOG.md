@@ -35,6 +35,7 @@
 
 ### OpenAPI
 
+- Added intention to generate description from controller endpoint
 - Fixed: inspection for OpenAPI version 
 
 ## [242.1.2334] - 2024-10-29
