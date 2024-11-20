@@ -42,14 +42,6 @@ public class JpqlParserUtil extends GeneratedParserUtilBase {
         return true;
     }
 
-    private static Language getLanguage(PsiBuilder builder) {
-        PsiFile file = builder.getUserData(FileContextUtil.CONTAINING_FILE_KEY);
-
-        assert file != null;
-
-        return file.getLanguage();
-    }
-
     public static boolean facedToken(PsiBuilder builder, int level, IElementType tokenType) {
         tokenKeys.get(tokenType).set(builder, true);
         return true;
