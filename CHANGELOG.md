@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### OpenAPI
+
+- Added intention to generate description from controller endpoint
+
+## [243.1.2662] - 2024-11-15
+
 ### Spring Core/Boot
 - Added: native SQL support integration with Database Navigator
 - Added: schema to additional configuration metadata
@@ -35,10 +41,9 @@
 
 ### OpenAPI
 
-- Added intention to generate description from controller endpoint
 - Fixed: inspection for OpenAPI version 
 
-## [242.1.2334] - 2024-10-29
+## 242.1.2334 - 2024-10-29
 
 ### Spring Web/MVC
 
