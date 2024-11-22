@@ -3,8 +3,10 @@ package com.explyt.spring.core.providers
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.util.SpringCoreUtil.isAdditionalConfigFile
 import com.intellij.json.JsonLanguage
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
@@ -30,8 +32,10 @@ class SpringMetadataJsonSchemaFileProvider(
 ) : JsonSchemaFileProvider {
     override fun isAvailable(file: VirtualFile): Boolean {
         if (!file.isValid) return false
-        val psiFile = PsiManager.getInstance(project).findFile(file) ?: return false
-        return isAdditionalConfigFile(psiFile)
+        return ApplicationManager.getApplication().runReadAction(Computable {
+            val psiFile = PsiManager.getInstance(project).findFile(file) ?: return@Computable false
+            isAdditionalConfigFile(psiFile)
+        })
     }
 
     override fun getName(): String {
