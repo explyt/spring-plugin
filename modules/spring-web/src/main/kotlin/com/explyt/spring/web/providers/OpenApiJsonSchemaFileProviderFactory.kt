@@ -26,13 +26,13 @@ import com.jetbrains.jsonSchema.extension.JsonSchemaProviderFactory
 class OpenApiJsonSchemaFileProviderFactory : JsonSchemaProviderFactory {
     override fun getProviders(project: Project): MutableList<JsonSchemaFileProvider> {
         return mutableListOf(
-            SpecificationJsonSchemaFileProvider(
+            OpenApiJsonSchemaProvider(
                 project,
                 OpenApiSpecificationType.OpenApiV30.INSTANCE,
                 SpringWebBundle.message("explyt.openapi.3.0.schema.name"),
                 SpringWebBundle.message("explyt.openapi.3.0.schema.remote.url")
             ),
-            SpecificationJsonSchemaFileProvider(
+            OpenApiJsonSchemaProvider(
                 project,
                 OpenApiSpecificationType.OpenApiV31.INSTANCE,
                 SpringWebBundle.message("explyt.openapi.3.1.schema.name"),

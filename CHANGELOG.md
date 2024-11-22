@@ -12,6 +12,8 @@
 ## [243.1.2662] - 2024-11-15
 
 ### Spring Core/Boot
+
+- Added: completion and inspection in `additional-metadata.json`
 - Added: native SQL support integration with Database Navigator
 - Added: schema to additional configuration metadata
 - Fixed: inspection kebab-case in properties for Map

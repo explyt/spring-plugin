@@ -173,7 +173,7 @@ class SpringMetadataPropertyInspection : SpringBaseLocalInspectionTool() {
             else if (reference !is JavaClassReference) {
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING
             } else if (propertyName == TARGET) {
-                ProblemHighlightType.WEAK_WARNING
+                ProblemHighlightType.ERROR
             } else {
                 ProblemHighlightType.LIKE_UNKNOWN_SYMBOL
             }
@@ -311,14 +311,14 @@ class SpringMetadataPropertyInspection : SpringBaseLocalInspectionTool() {
                 }
             }
 
-            if (valueProvider != null && valueProvider.isRequiredParameters()) {
+            if (valueProvider != null && valueProvider.required.isNotEmpty()) {
                 val parameters = provider.findProperty(PARAMETERS) ?: return
                 val parametersValue = parameters.value as? JsonObject ?: return
 
                 val missingParameters = mutableListOf<String>()
-                valueProvider.parameters.asSequence()
-                    .filter { it.required && (parametersValue.findProperty(it.name) == null) }
-                    .mapTo(missingParameters) { it.name }
+                valueProvider.required.asSequence()
+                    .filter { parametersValue.findProperty(it) == null }
+                    .mapTo(missingParameters) { it }
 
                 if (missingParameters.isNotEmpty()) {
                     problems.registerProblem(

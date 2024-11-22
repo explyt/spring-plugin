@@ -27,39 +27,37 @@ import com.intellij.psi.PsiManager
 import com.jetbrains.jsonSchema.extension.JsonSchemaFileProvider
 import com.jetbrains.jsonSchema.extension.SchemaType
 
-class SpecificationJsonSchemaFileProvider(
+class OpenApiJsonSchemaProvider(
     private val project: Project,
     private val specificationType: OpenApiSpecificationType,
     private val name: String,
     private val remoteSource: String
 ) : JsonSchemaFileProvider {
 
+    override fun getSchemaType(): SchemaType = SchemaType.embeddedSchema
+    override fun getRemoteSource(): String = remoteSource
+
     override fun isAvailable(file: VirtualFile): Boolean {
-        val specificationTypeFound = runReadAction {
-            if (!file.isValid) return@runReadAction OpenApiSpecificationType.OpenApiUndefined
-
-            val psiFile = PsiManager.getInstance(project).findFile(file)
-                ?: return@runReadAction OpenApiSpecificationType.OpenApiUndefined
-            return@runReadAction OpenApiSpecificationFinder.findSpecificationType(file, psiFile)
-        }
-
+        if (!file.isValid) return false
+        val specificationTypeFound = findSpecificationTypeSafely(file)
         return specificationTypeFound == specificationType
     }
 
-    override fun getSchemaFile(): VirtualFile? {
-        return project.getService(OpenApiSpecificationManager::class.java)?.getSchemaByFile(specificationType)?.file
+    private fun findSpecificationTypeSafely(file: VirtualFile): OpenApiSpecificationType {
+        return runReadAction {
+            val psiFile = PsiManager.getInstance(project).findFile(file)
+                ?: return@runReadAction OpenApiSpecificationType.OpenApiUndefined
+            OpenApiSpecificationFinder.findSpecificationType(file, psiFile)
+        }
     }
 
     override fun getName(): String {
         return name
     }
 
-    override fun getRemoteSource(): String {
-        return remoteSource
-    }
-
-    override fun getSchemaType(): SchemaType {
-        return SchemaType.embeddedSchema
-    }
+    override fun getSchemaFile(): VirtualFile? =
+        project.getService(OpenApiSpecificationManager::class.java)
+            ?.getSchemaByFile(specificationType)
+            ?.file
 
 }

@@ -28,7 +28,9 @@ object SourcesUtils {
     }
 
     fun getResourceRoots(module: Module, isTests: Boolean = false): List<VirtualFile> {
-        return collectRootsByTypeSuffix(module, "ResourceRootType", isTests)
+        return if (module.name == "light_idea_test_case")
+            collectRootsByTypeSuffix(module, "SourceRootType", false)
+        else collectRootsByTypeSuffix(module, "ResourceRootType", isTests)
     }
 
     private fun collectRootsByTypeSuffix(module: Module, suffix: String, isTests: Boolean): List<VirtualFile> {

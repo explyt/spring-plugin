@@ -25,7 +25,7 @@ import com.explyt.spring.core.SpringProperties.POSTFIX_KEYS
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
-import com.explyt.spring.core.properties.references.MetaConfigKeyReference
+import com.explyt.spring.core.properties.references.MetaConfigurationKeyReference
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.DOT
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
@@ -68,7 +68,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
             propertyKey.startsWith(hintName.substring(0, keysIdx))
         } ?: return arrayOf(
             ConfigurationPropertyKeyReference(element, module, propertyKey),
-            MetaConfigKeyReference(element, module, propertyKey)
+            MetaConfigurationKeyReference(element, module, propertyKey)
         )
 
         val referencesByPrefixKey = getPsiReferencesByPrefixKeys(propertyKey, module, keyHint, element)
@@ -132,7 +132,7 @@ class ConfigurationPropertyKeyReference(
     private val propertyKey: String,
     textRange: TextRange? = null,
     private val mode: String? = null,
-) : MetaConfigKeyReference(element, module, propertyKey, textRange), EmptyResolveMessageProvider {
+) : MetaConfigurationKeyReference(element, module, propertyKey, textRange), EmptyResolveMessageProvider {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val project = element.project
@@ -180,7 +180,7 @@ class ConfigurationPropertyKeyReference(
         if (mode == null) {
             return emptyArray()
         }
-        val existingKeys = if (mode == "Hint") loadExistingNameKeys() else emptySet()
+        val existingKeys = if (mode == HINTS) loadExistingNameKeys() else emptySet()
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getAllProperties(module)
 

@@ -207,4 +207,5 @@
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </projectListeners>
 
+    <depends>com.intellij.modules.json</depends>
 </idea-plugin>

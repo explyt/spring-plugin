@@ -151,7 +151,84 @@
                 },
                 "parameters": {
                   "type": "object",
-                  "description": "Any additional parameter that the provider supports."
+                  "description": "Any additional parameter that the provider supports.",
+                  "anyOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "class-reference"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "target": {
+                            "type": "string"
+                          },
+                          "concrete": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "handle-as"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "target": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "target"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "logger-name"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "group": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "spring-bean-reference"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "target": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [

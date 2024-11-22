@@ -15,16 +15,29 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.inspections.java
+package com.explyt.spring.core.completion.properties.kotlin
 
-import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
-import org.jetbrains.kotlin.test.TestMetadata
 
-class AdditionalConfigPropertyInspectionTest : ExplytInspectionJavaTestCase() {
+class SpringConfigurationMetadataReferenceContributorTest : AbstractSpringPropertiesCompletionContributorTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBoot_3_1_1)
+    override val libraries: Array<TestLibrary> =
+        arrayOf(TestLibrary.springBoot_3_1_1, TestLibrary.springContext_6_0_7)
 
-    @TestMetadata("json")
-    fun testJson() = doTest(com.explyt.spring.core.inspections.SpringMetadataPropertyInspection())
+    fun testHintsNameFromClass() {
+        myFixture.copyFileToProject("MainFooProperties.kt")
+        myFixture.configureByText(
+            "additional-spring-configuration-metadata.json",
+            """
+{
+  "hints": [
+    {
+      "name": "main.local.<caret>"
+    }
+}
+""".trimIndent()
+        )
+        doTest("main.local.event-listener", "main.local.max-sessions-per-connection")
+    }
+
 }

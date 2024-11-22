@@ -24,9 +24,8 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase
 
-class SpringMetadataValueProviderReference(
-    element: PsiElement
-) : PsiReferenceBase<PsiElement>(element, true), EmptyResolveMessageProvider {
+class SpringMetadataValueProviderReference(element: PsiElement) : PsiReferenceBase<PsiElement>(element, true),
+    EmptyResolveMessageProvider {
     override fun getUnresolvedMessagePattern(): String {
         return SpringCoreBundle.message("explyt.spring.inspection.metadata.config.unresolved.provider", this.value)
     }
@@ -38,13 +37,13 @@ class SpringMetadataValueProviderReference(
 
     override fun getVariants(): Array<LookupElementBuilder> {
         return SpringMetadataValueProvider.entries.map {
-            LookupElementBuilder.create(it.id)
+            LookupElementBuilder.create(it.value)
                 .appendTailText(" (${it.description})", true)
         }.toTypedArray()
     }
 
     fun getValueProvider(): SpringMetadataValueProvider? {
-        return SpringMetadataValueProvider.findById(value)
+        return SpringMetadataValueProvider.findByName(value)
     }
 
 }

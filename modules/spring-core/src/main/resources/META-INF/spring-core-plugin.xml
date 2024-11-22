@@ -105,6 +105,8 @@
                                   implementation="com.explyt.spring.core.references.contributors.QualifierReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.core.references.contributors.SpringScopeReferenceContributor"/>
+        <psi.referenceContributor language="JSON"
+                                  implementation="com.explyt.spring.core.properties.contributors.SpringConfigurationMetadataReferenceContributor"/>
 
         <lang.documentationProvider language="Properties"
                                     order="first"
@@ -392,7 +394,7 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringMetaAnnotationWithoutRuntimeInspection"/>
 
         <localInspection language="JSON"
-                         shortName="AdditionalConfigPropertyInspection"
+                         shortName="SpringMetadataPropertyInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.boot"

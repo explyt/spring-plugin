@@ -26,7 +26,7 @@ import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
 
-open class MetaConfigKeyReference(
+open class MetaConfigurationKeyReference(
     element: PsiElement,
     protected val module: Module,
     private val propertyKey: String,
