@@ -68,13 +68,16 @@ class SpringYamlCompletionContributor : CompletionContributor() {
 
             val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllPropertiesWithSubKeys(module)
-            properties.filter {
+            val matchingProperties = properties.filter {
                 it.name !in existProperties && (configFullName.isEmpty() || it.name.startsWith("$configFullName."))
-            }.forEach {
+            }
+            if (matchingProperties.isNotEmpty()) {
+                result.stopHere()
+            }
+            matchingProperties.forEach {
                 val property = it.copy(inLineYaml = positionText.contains("."))
                 result.withPrefixMatcher(positionText).addElement(createLookupElement(property, configFullName))
             }
-            result.stopHere()
         }
 
         private fun createLookupElement(
