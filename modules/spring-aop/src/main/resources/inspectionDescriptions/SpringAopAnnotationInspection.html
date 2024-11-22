@@ -7,16 +7,14 @@
 <p><b>Example:</b></p>
 Class with pointcut expression must be marked as @Aspect and @Component
 
-<pre>
-    <code lang="java">
-            @Component
-            @Aspect
-            public class SpringBean {
-                @Pointcut("@annotation(javax.annotation.PostConstruct)")
-                public void annotated() {}
-            }
-    </code>
-</pre>
+<pre><code lang="java">
+@Component
+@Aspect
+public class SpringBean {
+    @Pointcut("@annotation(javax.annotation.PostConstruct)")
+    public void annotated() {}
+}
+</code></pre>
 </body>
 
 </html>
