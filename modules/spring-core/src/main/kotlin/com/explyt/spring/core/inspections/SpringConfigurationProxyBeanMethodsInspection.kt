@@ -36,7 +36,7 @@ import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.*
 
-class SpringConfigurationProxyMethodsInspection : SpringBaseUastLocalInspectionTool() {
+class SpringConfigurationProxyBeanMethodsInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,

@@ -21,11 +21,11 @@ import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
-class SpringConfigurationProxyMethodsInspectionTest : ExplytInspectionJavaTestCase() {
+class SpringConfigurationProxyBeanMethodsInspectionTest : ExplytInspectionJavaTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     @TestMetadata("configurationProxyMethods")
     fun testConfigurationProxyMethods() =
-        doTest(com.explyt.spring.core.inspections.SpringConfigurationProxyMethodsInspection())
+        doTest(com.explyt.spring.core.inspections.SpringConfigurationProxyBeanMethodsInspection())
 }

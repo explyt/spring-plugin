@@ -34,7 +34,7 @@ import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass
 
-class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectionTool() {
+class SpringInterfaceCacheAnnotationsInspection : SpringBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         uMethod: UMethod,

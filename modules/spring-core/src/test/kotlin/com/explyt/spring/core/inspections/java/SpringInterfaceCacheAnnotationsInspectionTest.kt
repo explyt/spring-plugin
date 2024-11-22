@@ -15,17 +15,18 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.inspections.kotlin
+package com.explyt.spring.core.inspections.java
 
-import com.explyt.spring.core.inspections.SpringConfigurationProxyMethodsInspection
-import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.core.inspections.SpringInterfaceCacheAnnotationsInspection
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
-class SpringConfigurationProxyMethodsInspectionTest : ExplytInspectionKotlinTestCase() {
+class SpringInterfaceCacheAnnotationsInspectionTest : ExplytInspectionJavaTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
-    @TestMetadata("configurationProxyMethods")
-    fun testConfigurationProxyMethods() = doTest(SpringConfigurationProxyMethodsInspection())
+    @TestMetadata("cacheOnInterface")
+    fun testCacheOnInterface() =
+        doTest(SpringInterfaceCacheAnnotationsInspection())
 }

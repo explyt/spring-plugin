@@ -240,7 +240,7 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringUnknownBeanMethodInspection"/>
 
         <localInspection language="UAST"
-                         shortName="SpringConfigurationProxyMethodsInspection"
+                         shortName="SpringConfigurationProxyBeanMethodsInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.core"
@@ -248,7 +248,7 @@
                          key="explyt.spring.inspection.configuration"
                          enabledByDefault="true"
                          level="ERROR"
-                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationProxyMethodsInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationProxyBeanMethodsInspection"/>
 
         <localInspection language="Properties"
                          shortName="SpringPropertiesInspection"
@@ -456,7 +456,7 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinObjectInspection"/>
 
         <localInspection language="UAST"
-                         shortName="SpringCacheAnnotationsOnInterfaceInspection"
+                         shortName="SpringInterfaceCacheAnnotationsInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.core"
@@ -464,7 +464,7 @@
                          key="explyt.spring.inspection.cache.interface.class"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.explyt.spring.core.inspections.SpringCacheAnnotationsOnInterfaceInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.SpringInterfaceCacheAnnotationsInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringConfigurationPropertiesNullableParametersInspection"
