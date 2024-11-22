@@ -1,52 +1,48 @@
-/*
- * Copyright © 2024 Explyt Ltd
- *
- * All rights reserved.
- *
- * This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
- *
- * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
- *
- * By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
- * If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
- *
- * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
- *
- * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
- */
+package com.explyt.spring.web.providers
 
-package com.explyt.spring.web.inspections
-
+import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.service.MetaAnnotationsHolder
+import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
-import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
-import com.intellij.lang.annotation.AnnotationHolder
-import com.intellij.lang.annotation.Annotator
-import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.codeInsight.daemon.LineMarkerInfo
+import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
+import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.uast.UComment
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUParentForIdentifier
 
+class EndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
 
-class EndpointOpenApiAnnotator : Annotator {
+    override fun getName(): String? = null
+    override fun getLineMarkerInfo(element: PsiElement) = null
 
-    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
-        val uMethod = getUParentForIdentifier(element) as? UMethod ?: return
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        result += elements.mapNotNull { getLineMarkerFor(it) }
+    }
+
+    private fun getLineMarkerFor(psiElement: PsiElement): LineMarkerInfo<PsiElement>? {
+        ProgressManager.checkCanceled()
+
+        val uMethod = getUParentForIdentifier(psiElement) as? UMethod ?: return null
         val psiMethod = uMethod.javaPsi
 
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
+        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return
-        val psiClass = psiMethod.containingClass ?: return
-        if (!psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)) return
-        val controllerName = psiClass.name ?: return
+        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
+        val psiClass = psiMethod.containingClass ?: return null
+        if (!psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)) return null
+        val controllerName = psiClass.name ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
         val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
@@ -74,7 +70,7 @@ class EndpointOpenApiAnnotator : Annotator {
         val endpointElement = EndpointInfo(
             fullPath,
             requestMethods,
-            element,
+            psiElement,
             uMethod.name,
             controllerName.replace("controller", "", true)
                 .decapitalize(),
@@ -85,10 +81,15 @@ class EndpointOpenApiAnnotator : Annotator {
             SpringWebUtil.getRequestBodyInfo(psiMethod)
         )
 
-        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
-            .range(element.textRange)
-            .withFix(AddEndpointToOpenApiIntention(endpointElement))
-            .create()
+        return LineMarkerInfo(
+            psiElement,
+            psiElement.textRange,
+            SpringIcons.ReadAccess,
+            { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.tooltip") },
+            EndpointIconGutterHandler(endpointElement),
+            GutterIconRenderer.Alignment.RIGHT,
+            { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.icon.accessible") }
+        )
     }
 
     private fun UComment.getCommentText(): String {
@@ -102,5 +103,6 @@ class EndpointOpenApiAnnotator : Annotator {
 
         return commentText
     }
+
 
 }

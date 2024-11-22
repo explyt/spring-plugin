@@ -147,11 +147,8 @@
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.web.inspections.OpenFeignInspection"/>
 
-        <annotator language="UAST"
-                   implementationClass="com.explyt.spring.web.inspections.EndpointOpenApiAnnotator"/>
-
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.spring.web.providers.ControllerEndpointLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.web.providers.EndpointActionsLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
 

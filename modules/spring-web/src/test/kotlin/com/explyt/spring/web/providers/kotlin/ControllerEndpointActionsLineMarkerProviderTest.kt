@@ -17,15 +17,17 @@
 
 package com.explyt.spring.web.providers.kotlin
 
+import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
-import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
+import com.intellij.codeInsight.daemon.LineMarkerInfo.LineMarkerGutterIconRenderer
+import junit.framework.TestCase
 import org.jetbrains.kotlin.test.TestMetadata
 
 private const val TEST_DATA_PATH = "providers/linemarkers"
 
 @TestMetadata(TEST_DATA_PATH)
-class ControllerEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
+class ControllerEndpointActionsLineMarkerProviderTest : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
 
@@ -39,48 +41,60 @@ class ControllerEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         myFixture.configureByFiles("ProductController.kt", "open-api.yaml")
         myFixture.doHighlighting()
 
-        val lineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project)
-            .filter { it.lineMarkerTooltip == "Navigate to endpoint usage" }
+        val lineMarkers = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.ReadAccess }
+            .filter { it.tooltipText == "Endpoint Actions" }
 
         assertEquals(1, lineMarkers.size)
 
-        assertEquals(
+        TestCase.assertEquals(
             "getProduct",
-            lineMarkers.map { it.element?.text }
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
                 .firstOrNull()
         )
+
     }
 
     fun testJson() {
         myFixture.configureByFiles("ProductController.kt", "open-api.json")
         myFixture.doHighlighting()
 
-        val lineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project)
-            .filter { it.lineMarkerTooltip == "Navigate to endpoint usage" }
+        val lineMarkers = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.ReadAccess }
+            .filter { it.tooltipText == "Endpoint Actions" }
 
         assertEquals(1, lineMarkers.size)
 
-        assertEquals(
+        TestCase.assertEquals(
             "getProduct",
-            lineMarkers.map { it.element?.text }
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
                 .firstOrNull()
         )
+
     }
 
     fun testMockMvc() {
         myFixture.configureByFiles("ProductController.kt", "ProductControllerTest.kt")
         myFixture.doHighlighting()
 
-        val lineMarkers = DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, project)
-            .filter { it.lineMarkerTooltip == "Navigate to endpoint usage" }
+        val lineMarkers = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.ReadAccess }
+            .filter { it.tooltipText == "Endpoint Actions" }
 
         assertEquals(1, lineMarkers.size)
 
-        assertEquals(
+        TestCase.assertEquals(
             "getProduct",
-            lineMarkers.map { it.element?.text }
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
                 .firstOrNull()
         )
+
     }
 
 }

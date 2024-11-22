@@ -7,7 +7,7 @@
 
 ### OpenAPI
 
-- Added intention to generate description from controller endpoint
+- Added: endpoint linemarker suggests openapi generation when there is no place to navigate to
 
 ## [243.1.2662] - 2024-11-15
 
