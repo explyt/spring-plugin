@@ -1,0 +1,23 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+
+        <localInspection language="UAST"
+                         shortName="SpringSecurityAnnotationWithUserDetailsInspection"
+                         groupBundle="messages.SpringSecurityBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.security.notifications"
+                         bundle="messages.SpringSecurityBundle"
+                         key="explyt.spring.security.inspection.bean"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.security.inspections.SpringSecurityAnnotationWithUserDetailsInspection"/>
+
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.security.references.contributors.SpringSecurityContributor"/>
+
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>

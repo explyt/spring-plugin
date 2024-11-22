@@ -1,0 +1,22 @@
+<html>
+<body>
+<p>Unresolved Spring beans referenced in Spring Security annotations.</p>
+
+<p><b>Examples:</b></p>
+<ul>
+    <li>
+    <pre><code lang="java">
+        @WithUserDetails(value = "user@example.com", userDetailsServiceBeanName = "wrongService")
+        // "Cannot resolve bean 'wrongService'" - 'wrongService' is not defined in the Spring model
+    </code></pre>
+    </li>
+
+    <li>
+    <pre><code lang="java">
+        @WithUserDetails(value = "admin", userDetailsServiceBeanName = "notDetailsService")
+        // "Bean must be of 'org.springframework.security.core.userdetails.UserDetailsService' type" - "notDetailsService" bean is not of 'UserDetailsService' type
+    </code></pre>
+    </li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,8 @@
+@ConfigurationProperties(prefix = "some")
+public class SomeProperties {
+    private String key;
+
+    public void <spot>setKey</spot>(String key) {
+        this.key = key;
+    }
+}

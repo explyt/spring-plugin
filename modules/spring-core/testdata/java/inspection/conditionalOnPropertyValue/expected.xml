@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+
+    <problem>
+        <file>ConditionalOnPropertyConfiguration.java</file>
+        <line>38</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String valueIsNotSet1()"/>
+        <problem_class id="SpringConditionalOnEmptyValue" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>The name or value attribute of @ConditionalOnProperty must be specified</description>
+        <highlighted_element>@ConditionalOnProperty</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>22</length>
+    </problem>
+
+
+    <problem>
+        <file>ConditionalOnPropertyConfiguration.java</file>
+        <line>42</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.DependsOnPropertyConfiguration String valueIsNotSet2()"/>
+        <problem_class id="SpringConditionalOnEmptyValue" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>The name or value attribute of @ConditionalOnProperty must be specified</description>
+        <highlighted_element>@ConditionalOnPropertyA(prefixEx = &quot;&quot;)</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>38</length>
+    </problem>
+
+</problems>

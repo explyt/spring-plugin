@@ -1,0 +1,54 @@
+<!--
+  ~ Copyright © 2024 Explyt Ltd
+  ~
+  ~ All rights reserved.
+  ~
+  ~ This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
+  ~
+  ~ You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
+  ~
+  ~ By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
+  ~ If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
+  ~
+  ~ You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+  ~
+  ~ Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
+  -->
+
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude" require-restart="false">
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>com.explyt.spring</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+    <name>Explyt Spring</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="info@explyt.com" url="https://explyt.com/spring/">Explyt</vendor>
+    <category>JVM Frameworks</category>
+
+    <incompatible-with>com.intellij.spring</incompatible-with>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+
+    </extensions>
+
+    <xi:include href="base-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-data-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-security-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-web-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-cloud-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-initializr-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-integration-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-messaging-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-aop-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="jpa-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="spring-gradle-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+</idea-plugin>

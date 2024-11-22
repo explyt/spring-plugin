@@ -1,0 +1,20 @@
+name: "Ask a Question"
+description: "Ask any question about using the Explyt Spring plugin"
+title: "[QUESTION] "
+labels: ["question"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Question**  
+        _Write your question below. Make sure to include as much detail as possible so we can help you effectively._
+
+  - type: textarea
+    id: question
+    attributes:
+      label: "Your Question"
+      description: "Please describe your question in detail"
+      placeholder: "Enter your question here"
+      render: text

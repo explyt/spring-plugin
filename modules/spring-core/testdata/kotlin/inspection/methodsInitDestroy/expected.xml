@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>MethodsInitDestroyConfiguration.kt</file>
+        <line>50</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.MethodsInitDestroyConfiguration com.I i6()" />
+        <problem_class id="SpringUnknownBeanMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find method</description>
+        <highlighted_element>NOT_EXISTING_METHOD</highlighted_element>
+        <language>kotlin</language>
+        <offset>26</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>MethodsInitDestroyConfiguration.kt</file>
+        <line>70</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.MethodsInitDestroyConfiguration com.B b2()" />
+        <problem_class id="SpringUnknownBeanMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find method</description>
+        <highlighted_element>NOT_EXISTING_METHOD</highlighted_element>
+        <language>kotlin</language>
+        <offset>23</offset>
+        <length>19</length>
+    </problem>
+
+    <problem>
+        <file>MethodsInitDestroyConfiguration.kt</file>
+        <line>75</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method" FQNAME="com.MethodsInitDestroyConfiguration com.B b3()" />
+        <problem_class id="SpringUnknownBeanMethod" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Cannot find method</description>
+        <highlighted_element>foo</highlighted_element>
+        <language>kotlin</language>
+        <offset>27</offset>
+        <length>3</length>
+    </problem>
+
+</problems>

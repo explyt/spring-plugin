@@ -1,0 +1,27 @@
+<html>
+<head>
+    <title>AliasFor Mirror Values</title></head>
+<body>
+<p>Reports interchangeable attributes used simultaneously.</p>
+
+<p><b>Example:</b></p>
+When interchangeable attributes are defined in annotation like this:
+<pre><code lang="java">
+public @interface EventListener {
+	@AliasFor("classes")
+	Class<?>[] value() default {};
+
+	@AliasFor("value")
+	Class<?>[] classes() default {};
+}
+</code></pre>
+
+Simultaneously usage of these attributes will cause error:
+<pre><code lang="java">
+@EventListener(classes = {Foo.class}, value = {Bar.class})
+public void foo() {}
+</code></pre>
+
+</body>
+
+</html>

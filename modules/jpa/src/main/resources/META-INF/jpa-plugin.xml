@@ -1,0 +1,66 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <depends optional="true" config-file="jpa-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
+
+
+
+    <extensionPoints>
+        <extensionPoint dynamic="true"
+                        qualifiedName="com.explyt.jpa.ql.reference.inputParameterReferenceResolver"
+                        interface="com.explyt.jpa.ql.reference.InputParameterReferenceResolver"
+                area="IDEA_PROJECT"/>
+    </extensionPoints>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType
+                name="JPA QL"
+                implementationClass="com.explyt.jpa.ql.JpqlFileType"
+                fieldName="INSTANCE"
+                language="JPQL-EXPLYT"
+                extensions="jpql"/>
+
+        <lang.parserDefinition
+                language="JPQL-EXPLYT"
+                implementationClass="com.explyt.jpa.ql.psi.JpqlParserDefinition"/>
+
+        <lang.syntaxHighlighterFactory
+                language="JPQL-EXPLYT"
+                implementationClass="com.explyt.jpa.ql.highlight.JpqlSyntaxHighlighterFactory"/>
+
+        <completion.contributor
+                language="JPQL-EXPLYT"
+                implementationClass="com.explyt.jpa.ql.completion.JpqlCompletionContributor"/>
+
+        <lang.braceMatcher
+                language="JPQL-EXPLYT"
+                implementationClass="com.explyt.jpa.ql.psi.JpqlBraceMatcher"/>
+
+        <localInspection language="JPQL-EXPLYT"
+                         shortName="JpqlInsertStatementInspection"
+                         groupBundle="messages.JpaBundle" groupKey="explyt.jpa.inspection.group"
+                         bundle="messages.JpaBundle" key="explyt.jpa.inspection.insert.statement"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.jpa.ql.inspection.JpqlInsertStatementInspection"/>
+
+        <localInspection language="JPQL-EXPLYT"
+                         shortName="JpqlFullyQualifiedConstructorInspection"
+                         groupBundle="messages.JpaBundle" groupKey="explyt.jpa.inspection.group"
+                         bundle="messages.JpaBundle" key="explyt.jpa.inspection.constructor.expression"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.jpa.ql.inspection.JpqlFullyQualifiedConstructorInspection"/>
+
+        <multiHostInjector implementation="com.explyt.jpa.langinjection.JpqlEntityManagerLanguageInjector"/>
+        <multiHostInjector implementation="com.explyt.jpa.langinjection.JpqNamedQueryLanguageInjector"/>
+
+        <referencesSearch implementation="com.explyt.jpa.ql.reference.search.EntityAttributeSearcher"/>
+        <referencesSearch implementation="com.explyt.jpa.ql.reference.search.EntitySearcher"/>
+        <usageTypeProvider implementation="com.explyt.jpa.ql.reference.search.JpqlUsageTypeProvider"/>
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>

@@ -1,0 +1,446 @@
+{
+  parserClass="com.explyt.jpa.ql.parser.JpqlParser"
+  parserUtilClass="com.explyt.jpa.ql.parser.JpqlParserUtil"
+
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Jpql"
+  psiImplClassSuffix="Impl"
+  psiPackage="com.explyt.jpa.ql.psi"
+  psiImplPackage="com.explyt.jpa.ql.psi.impl"
+  psiImplUtilClass="com.explyt.jpa.ql.psi.impl.JpqlPsiImplUtil"
+
+  elementTypeHolderClass="com.explyt.jpa.ql.psi.JpqlTypes"
+  elementTypeClass="com.explyt.jpa.ql.psi.JpqlElementType"
+  tokenTypeClass="com.explyt.jpa.ql.psi.JpqlTokenType"
+
+  extends(".*expression")=expression
+//  consumeTokenMethod(".*_expression|expression")="consumeTokenFast"
+
+  tokens = [
+    WHITESPACE='regexp:[ \n\r\t\f]'
+
+    COMMA = ','
+    DOT = '.'
+    LPAREN = '('
+    RPAREN = ')'
+    COLON = ':'
+    PLUS = '+'
+    MINUS = '-'
+    MUL = '*'
+    DIV = '/'
+    EQ = '='
+    NEQ = '<>'
+    GTE = '>='
+    GT = '>'
+    LTE = '<='
+    LT = '<'
+    SEMICOLON = ';'
+    RBRACE = '}'
+
+
+    boolean = 'regexp:(TRUE|FALSE)'
+    id = 'regexp:[a-zA-Z_][a-zA-Z0-9_]*'
+    numeric = 'regexp:[0-9]+(\.[0-9]+)*'
+    string = "regexp:'([^']|'')*'"
+    datetime = "regexp:\{\s*[dt]s?\s+'([^']|'')*'\s*\}"
+
+    named_input_parameter = 'regexp::[a-zA-Z_][a-zA-Z0-9_]*'
+    numeric_input_parameter = 'regexp:\?[0-9]+'
+  ]
+}
+
+file ::= semicolon_delimited_statements | statement
+
+private semicolon_delimited_statements ::= <<isUnitTestMode>> statement { [';'] statement }* [';']
+
+private statement_recover ::= !{';' | 'SELECT' | 'UPDATE' | 'DELETE' }
+
+statement ::= select_statement | update_statement | delete_statement | insert_statement {
+    recoverWhile = "statement_recover"
+}
+
+select_statement ::=
+    {<<isHql>> [select_clause] | select_clause}
+    from_clause
+    [where_clause]
+    [groupby_clause]
+    [having_clause]
+    [orderby_clause]
+    [limit_clause]
+    [offset_clause]
+    [fetch_clause]
+
+update_statement ::= update_clause [where_clause] {
+    pin = 'UPDATE'
+}
+
+delete_statement ::= delete_clause [where_clause] {
+    pin = 'DELETE'
+}
+
+insert_statement ::= INSERT [INTO] entity_access insert_fields (select_statement | values_list)
+
+insert_fields ::= '(' identifier {',' identifier}* ')'
+
+private values_list ::= VALUES insert_tuple {',' insert_tuple }*
+insert_tuple ::= '(' insert_value { ',' insert_value }* ')'
+
+insert_value ::= new_value
+
+from_clause ::= FROM identification_variable_declaration {',' {identification_variable_declaration | collection_member_declaration}}* {
+    extends = alias_host
+    pin = FROM
+}
+
+fake alias_host ::=
+
+entity_access ::= identifier [alias_declaration]
+
+identification_variable_declaration ::= entity_access { join_expression }*
+
+alias_declaration ::= [AS] identifier {
+    mixin = "com.explyt.jpa.ql.psi.impl.JpqlNameIdentifierOwnerImpl"
+    implements = "com.explyt.jpa.ql.psi.JpqlNameIdentifierOwner"
+    methods = [setName getName getReferencedElement getNameIdentifier]
+}
+
+join_expression ::= join_spec [FETCH <<facedToken 'FETCH'>>] reference_expression [alias_declaration] [ {<<notFaced 'FETCH'>> | <<isHql>>} join_condition] <<resetToken 'FETCH'>> {
+    pin = join_spec
+    recoverWhile = join_expression_recovery
+}
+
+private join_expression_recovery ::= ! {LEFT | OUTER | INNER | JOIN | WHERE | GROUP | HAVING | <<isUnitTestMode>> ';'}
+
+join_condition ::= { <<isHql>> WITH | ON} conditional_group
+
+join_spec::= [ LEFT [OUTER] | INNER ] JOIN
+
+expression ::= conditional_group
+    | comparison_group
+    | arithmetic_expression
+    | all_or_any_expression
+    | literal_group
+    | input_parameter_expression
+    | subquery_expression
+    | string_function_expression
+    | aggregate_expression
+    | case_expression
+    | datetime_function_expression
+    | function_invocation_expression
+    | type_expression
+    | reference_expression
+    | paren_expression {
+    methods = [getType]
+}
+
+subquery_expression ::= '(' subquery ')'
+
+private literal_group ::= string_literal
+    | boolean_literal
+    | datetime_literal
+    | numeric_literal
+
+// todo reference_expression only collection
+collection_member_declaration ::= IN '(' reference_expression ')' alias_declaration
+
+update_clause ::= UPDATE entity_access SET update_item {',' update_item}*
+update_item ::= reference_expression '=' new_value
+private new_value ::= scalar_expression | null_expression
+
+null_expression ::= NULL
+
+delete_clause ::= DELETE FROM entity_access
+
+select_clause ::= SELECT [DISTINCT] select_item {',' select_item}* {
+    pin = SELECT
+}
+select_item ::= select_expression [alias_declaration]
+
+private select_expression ::=
+    reference_expression |
+    scalar_expression |
+    arithmetic_expression |
+    aggregate_expression |
+    object_expression |
+    constructor_expression |
+    case_expression
+
+object_expression ::= OBJECT'('identifier')'
+
+constructor_expression ::= NEW fully_qualified_constructor '(' constructor_arguments_list ')'
+constructor_arguments_list ::= expression {',' expression}*
+
+aggregate_expression ::= { AVG'(' | MAX'(' | MIN'(' | SUM'(' | COUNT'(' } [DISTINCT] reference_expression')' | function_invocation_expression
+
+function_invocation_expression ::= FUNCTION '(' string_literal {',' function_arg}* ')'
+function_arg ::= literal_group
+    | scalar_expression
+
+where_clause ::= WHERE { conditional_group | comparison_group }
+
+groupby_clause ::= GROUP BY groupby_item {',' groupby_item}*
+groupby_item ::= reference_expression | identifier
+
+having_clause ::= HAVING expression
+
+orderby_clause ::= ORDER BY orderby_item {',' orderby_item}*
+orderby_item ::= { reference_expression | general_case_expression | simple_case_expression } [ ASC | DESC ]
+
+limit_clause ::= <<isHql>> LIMIT numeric_or_input_parameter
+offset_clause ::= <<isHql>> OFFSET numeric_or_input_parameter
+fetch_clause ::= <<isHql>> FETCH (FIRST | NEXT) fetchCountOrPercent (ROW | ROWS) (ONLY | WITH TIES)
+fetchCountOrPercent ::= numeric_or_input_parameter [PERCENT]
+
+private numeric_or_input_parameter ::= numeric_literal | input_parameter_expression
+
+subquery ::= simple_select_clause subquery_from_clause [where_clause] [groupby_clause] [having_clause]
+subquery_from_clause ::=
+    FROM subselect_identification_variable_declaration
+    {',' subselect_identification_variable_declaration |
+     collection_member_declaration}* {
+    extends = alias_host
+}
+
+private subselect_identification_variable_declaration ::=
+    identification_variable_declaration |
+    reference_expression alias_declaration {join_expression}*|
+    derived_collection_member_declaration
+
+derived_collection_member_declaration ::=
+    IN reference_expression
+
+simple_select_clause ::= SELECT [DISTINCT] simple_select_expression
+private simple_select_expression::=
+   reference_expression |
+   scalar_expression |
+   aggregate_expression
+
+private scalar_expression ::= simple_arithmetic_expression
+    | string_expression
+    | input_parameter_expression
+    | case_expression
+    | datetime_expression
+    | literal_group
+    | boolean_expression
+    | type_expression
+    | reference_expression
+
+fake binary_expression ::= expression + {
+  methods = [
+    leftOperand="/expression[0]"
+    rightOperand="/expression[1]"
+  ]
+}
+
+private conditional_group ::= conditional_or_expression
+    | conditional_and_expression
+    | conditional_not_expression
+
+conditional_or_expression ::= expression OR expression {
+    rightAssociative = true
+    extends=binary_expression
+}
+conditional_and_expression ::= expression AND expression {
+    extends=binary_expression
+}
+conditional_not_expression ::= NOT expression
+
+paren_expression ::= '(' expression ')'
+
+private comparison_group ::= comparison_expression
+    | between_expression
+    | in_expression
+    | like_expression
+    | null_comparison_expression
+    | empty_collection_comparison_expression
+    | collection_member_expression
+    | exists_expression
+
+in_expression ::=
+    { type_expression | reference_expression } [NOT] IN
+    {in_collection | '('subquery')' | input_parameter_expression}
+
+private in_collection ::= '(' in_item {',' in_item}* ')'
+
+in_item ::= literal | input_parameter_expression
+
+like_expression ::= expression [NOT] LIKE
+    {['%']reference_or_parameter['%'] | string_literal | string_function_expression }
+    [ESCAPE {string_literal | string_function_expression | input_parameter_expression}]
+
+null_comparison_expression ::= reference_or_parameter IS [NOT] NULL
+
+empty_collection_comparison_expression ::=
+    {reference_expression} IS [NOT] EMPTY
+
+collection_member_expression ::= entity_or_value_expression
+    [NOT] MEMBER [OF] reference_expression
+
+private entity_or_value_expression ::= reference_expression
+    | identifier
+    | input_parameter_expression
+    | literal
+
+exists_expression::= [NOT] EXISTS '('subquery')'
+all_or_any_expression ::= { ALL'(' | ANY'(' | SOME'('} subquery')'
+
+comparison_expression ::= expression comparison_operator expression {
+    methods=[getOperator]
+}
+
+between_expression ::= expression [NOT] BETWEEN expression AND expression
+
+private comparison_operator ::= '=' | '>' | '>=' | '<' | '<=' | '<>'
+
+private arithmetic_expression ::= additive_expression
+    | multiplicative_expression
+    | unary_arithmetic_expression
+    | functions_returning_numerics_expression
+    | function_invocation_expression
+
+additive_expression ::= expression { '+' | '-' } expression {
+    rightAssociative=true
+    extends=binary_expression
+}
+multiplicative_expression ::= expression { '*' | '/' } expression {
+    extends = binary_expression
+}
+unary_arithmetic_expression ::= { '+' | '-' } expression
+
+private string_expression ::=  string_literal
+    | input_parameter_expression
+    | string_function_expression
+    | aggregate_expression
+    | case_expression
+    | function_invocation_expression
+    | reference_expression
+
+private datetime_expression ::= input_parameter_expression
+    | datetime_function_expression
+    | aggregate_expression
+    | case_expression
+    | datetime_literal
+    | function_invocation_expression
+    | reference_expression
+
+private boolean_expression ::= input_parameter_expression
+    | case_expression
+    | boolean_literal
+    | function_invocation_expression
+    | reference_expression
+
+type_literal ::= INTEGER | STRING | DATE | TIME | TIMESTAMP | BOOLEAN
+
+type_expression ::= TYPE'('{ reference_expression | input_parameter_expression }')' | type_literal
+
+functions_returning_numerics_expression ::= LENGTH'('string_expression')'
+    | LOCATE'('string_expression',' string_expression[',' simple_arithmetic_expression]')'
+    | ABS'('simple_arithmetic_expression')'
+    | SQRT'('simple_arithmetic_expression')'
+    | MOD'('simple_arithmetic_expression',' simple_arithmetic_expression')'
+    | SIZE'('reference_expression')'
+    | INDEX'('identifier')'
+
+private simple_arithmetic_expression ::= expression
+
+datetime_function_expression ::= datetime_function
+
+private datetime_function ::= CURRENT_DATE
+    | CURRENT_TIME
+    | CURRENT_TIMESTAMP
+
+string_function_expression ::= CONCAT'('string_expression',' string_expression {',' string_expression}*')'
+    | SUBSTRING'('string_expression',' arithmetic_expression [',' arithmetic_expression]')'
+    | TRIM'('[[trim_specification] [string_literal] FROM] string_expression')'
+    | LOWER'('string_expression')'
+    | UPPER'('string_expression')'
+
+trim_specification ::= LEADING | TRAILING | BOTH
+
+private case_expression ::= general_case_expression
+    | simple_case_expression
+    | coalesce_expression
+    | nullif_expression
+
+general_case_expression::=
+    CASE when_clause {when_clause}* ELSE scalar_expression END
+
+when_clause::= WHEN expression THEN scalar_expression
+
+simple_case_expression::=
+    CASE case_operand simple_when_clause {simple_when_clause}*
+    ELSE scalar_expression
+    END
+
+case_operand::= reference_expression | type_expression
+
+simple_when_clause::= WHEN expression THEN expression
+
+coalesce_expression::= COALESCE'('scalar_expression {',' scalar_expression}+')'
+
+nullif_expression::= NULLIF'('scalar_expression',' scalar_expression')'
+
+private reference_or_parameter ::= reference_expression | input_parameter_expression
+
+
+reference_expression ::= path_reference_expression | map_based_reference_expression | fully_qualified_constructor
+path_reference_expression ::= identifier {'.' identifier}* {
+    extends = reference_expression
+}
+fully_qualified_constructor ::= {identifier '.'}* identifier {
+    extends = reference_expression
+}
+map_based_reference_expression ::= KEY'('reference_expression')'
+    | VALUE'('reference_expression')'
+    | ENTRY'('reference_expression')' {
+    extends=reference_expression
+    methods = [getMapOperationType]
+}
+
+input_parameter_expression ::= named_input_parameter | numeric_input_parameter {
+    methods=[getReference]
+}
+
+// todo support keywords as a parameter or an identifier
+private identifier_like_keyword ::= VALUE
+    | KEY
+    | TYPE
+    | ENTRY
+    | DATE
+    | CURRENT_DATE
+    | CURRENT_TIME
+    | CURRENT_TIMESTAMP
+    | TIME
+    | TIMESTAMP
+    | ORDER
+    | OF
+
+identifier ::= id | identifier_like_keyword {
+    mixin = "com.explyt.jpa.ql.psi.impl.JpqlNamedElementImpl"
+    implements = "com.explyt.jpa.ql.psi.JpqlNamedElement"
+    methods = [setName getName getReference]
+}
+
+boolean_literal ::= boolean {
+    extends = expression
+    methods=[getValue]
+}
+
+numeric_literal ::= numeric {
+    extends = expression
+}
+
+datetime_literal ::= datetime {
+    extends = expression
+}
+
+string_literal ::= string {
+    extends = expression
+}
+
+private literal ::= string_literal
+    | numeric_literal
+    | boolean_literal
+    | identifier
+    | datetime_literal

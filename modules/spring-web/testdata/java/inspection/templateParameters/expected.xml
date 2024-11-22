@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>TemplateParametersTest.java</file>
+        <line>8</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.TemplateParametersTest void tooFew()"/>
+        <problem_class id="MockMvcTemplateParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>&quot;/product/{tooFew}&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>35</offset>
+        <length>19</length>
+    </problem>
+
+
+    <problem>
+        <file>TemplateParametersTest.java</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.TemplateParametersTest void tooMany()"/>
+        <problem_class id="MockMvcTemplateParameters" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES"/>
+        <description>Too many URI parameters</description>
+        <highlighted_element>&quot;/product/{tooMany}&quot;</highlighted_element>
+        <language>JAVA</language>
+        <offset>35</offset>
+        <length>20</length>
+    </problem>
+
+
+    <problem>
+        <file>TemplateParametersTest.java</file>
+        <line>21</line>
+        <module>light_idea_test_case</module>
+        <package>com.example.springcoredemo.web</package>
+        <entry_point TYPE="method" FQNAME="com.example.springcoredemo.web.TemplateParametersTest void tooFewConst()"/>
+        <problem_class id="MockMvcTemplateParameters" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Too few URI parameters</description>
+        <highlighted_element>tooFewConst</highlighted_element>
+        <language>JAVA</language>
+        <offset>35</offset>
+        <length>6</length>
+    </problem>
+
+</problems>

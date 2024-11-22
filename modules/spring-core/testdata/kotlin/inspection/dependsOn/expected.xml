@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>DependsOnConfiguration.kt</file>
+        <line>25</line>
+        <module>light_idea_test_case</module>
+        <package>com2</package>
+        <entry_point TYPE="method" FQNAME="com2.DependsOnConfiguration com2.I bDependentOnWrong()" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>wrongBeanNameAtMethod</highlighted_element>
+        <language>kotlin</language>
+        <offset>16</offset>
+        <length>21</length>
+    </problem>
+
+    <problem>
+        <file>DependsOnConfiguration.kt</file>
+        <line>44</line>
+        <module>light_idea_test_case</module>
+        <package>com2</package>
+        <entry_point TYPE="class" FQNAME="com2.DependentOnABeanErr" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>wrongBeanNameAtClass</highlighted_element>
+        <language>kotlin</language>
+        <offset>12</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>DependsOnConfiguration.kt</file>
+        <line>48</line>
+        <module>light_idea_test_case</module>
+        <package>com2</package>
+        <entry_point TYPE="class" FQNAME="com2.DependentOnMultipleBeansErr" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>wrongBeanNameListedAtClass</highlighted_element>
+        <language>kotlin</language>
+        <offset>12</offset>
+        <length>26</length>
+    </problem>
+
+    <problem>
+        <file>DependsOnConfiguration.kt</file>
+        <line>48</line>
+        <module>light_idea_test_case</module>
+        <package>com2</package>
+        <entry_point TYPE="class" FQNAME="com2.DependentOnMultipleBeansErr" />
+        <problem_class id="SpringDependsOnBean" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Incorrect bean reference at @DependsOn</description>
+        <highlighted_element>E.CONST_TO_NON_EXISTING_BEAN</highlighted_element>
+        <language>kotlin</language>
+        <offset>46</offset>
+        <length>28</length>
+    </problem>
+
+</problems>

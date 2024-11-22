@@ -1,0 +1,2 @@
+INSERT INTO Employee (id<caret>, name, salary)
+       SELECT id, name, salary FROM Employee;

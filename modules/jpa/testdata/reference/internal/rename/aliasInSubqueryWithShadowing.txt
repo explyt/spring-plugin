@@ -1,0 +1,13 @@
+SELECT
+    e
+FROM
+    Employee e
+WHERE
+    e.department IN (
+        SELECT d FROM Department d WHERE d.name = :departmentName
+    ) AND
+    e.salary > (
+        SELECT AVG(newName.salary) FROM Employee newName WHERE newName.department IN (
+            SELECT d FROM Department d WHERE d.name = :departmentName
+        )
+    )

@@ -1,0 +1,2 @@
+SELECT FUNCTION('CONCAT', e.firstName, ' ', e.lastName) FROM Employee e;
+SELECT FUNCTION('LENGTH', e.name) FROM Employee e;

@@ -1,0 +1,43 @@
+{
+  "properties": [
+    {
+      "name": "main.name",
+      "type": "java.lang.String"
+    },
+    {
+      "name": "main.name",
+      "type": "java.lang.String"
+    },
+    {
+      "type": "java.lang.String"
+    },
+    {
+      "name": "main.foo.foo2.max",
+      "type": "java.lang.Double",
+      "description": "Max in double"
+    },
+    {
+      "name": "main.max-sessions-per-connection",
+      "type": "java.lang.Integer",
+      "description": "Maximum number connections ",
+      "sourceType": "com.boot.Unknown",
+      "defaultValue": 1,
+      "deprecated": true
+    }
+  ],
+  "hints": [
+    {
+      "name": "main.mime-type",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+          }
+        }
+      ]
+    },
+    {
+      "name": "not_exist"
+    }
+  ]
+}

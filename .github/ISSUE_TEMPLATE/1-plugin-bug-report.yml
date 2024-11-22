@@ -1,0 +1,88 @@
+name: "Plugin bug"
+description: "Any problem in Explyt Spring plugin"
+title: "[BUG] "
+labels: ["plugin-bug"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting spring-plugin bug!"
+
+  - type: dropdown
+    id: type-problem
+    attributes:
+      label: Component
+      description: "Select the problem component you faced"
+      options:
+        - Inspection
+        - Navigation gutter
+        - References
+        - Autocompletion
+        - Usages
+        - Properties
+        - OpenAPI
+        - Slow operation on EDT
+        - Other
+      default: 0
+    validations:
+      required: false
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Problem details
+      description: "Describe the problem you faced"
+
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: "Please provide us as more details on how to reproduce this issue, as you can"
+      placeholder: |
+        If your project is open-sourced, show the name of your target (class, method, test class), please, and a link on GitHub.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Additional information"
+      description: "Any additional information that can help us to investigate the reported problem"
+      placeholder: "Logs, screenshots, etc."
+    validations:
+      required: false
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version
+      description: "Type plugin version here"
+      placeholder: "Example: 2024.233.1861"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: build_system
+    attributes:
+      label: Build system
+      description: "Build system where project was built"
+      options:
+        - Gradle
+        - Maven
+        - IntelliJ
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: 'Example: context size, source language, etc.'
+      placeholder: "Any other information that can help us"
+    validations:
+      required: false

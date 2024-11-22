@@ -1,0 +1,50 @@
+name: "Feature request"
+description: "Suggest an idea for the Explyt Spring plugin"
+title: "[FEATURE]"
+labels: ["feature-request"]
+assignees: []
+
+body:
+
+  - type: dropdown
+    id: type-problem
+    attributes:
+      label: Component
+      description: "Select the problem component you faced"
+      options:
+        - Inspection
+        - Navigation gutter
+        - References
+        - Autocompletion
+        - Usages
+        - Properties
+        - OpenAPI
+        - Slow operation on EDT
+        - Other
+      default: 0
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Describe the problem
+      description: "A clear and concise description of what the problem is"
+    validations:
+      required: false
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution
+      description: "A clear and concise description of what you want to happen"
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: "Add any relevant screenshots, sketches, or links to explain the request further. This could include similar features in other plugins or IDEs, performance implications, etc."
+    validations:
+      required: false

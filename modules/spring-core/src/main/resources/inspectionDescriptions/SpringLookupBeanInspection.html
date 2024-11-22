@@ -1,0 +1,33 @@
+<html>
+<head>
+    <title>Lookup Inspection</title></head>
+<body>
+<p>Reports referenced bean is incorrect in the <code lang="java">value</code> parameter of the
+    <code lang="java">@Lookup</code>annotation.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+  package com;
+
+  @Configuration
+  LookupConfiguration {
+    @Bean
+    public BeanA beanA {...}
+    @Bean
+    public BeanB beanB {...}
+  }
+
+  @Component
+  class MyComponent {
+    @Lookup("beanA")
+    public BeanA myBeanA() {...}
+
+    @Lookup("beanA") // reports "Expected bean of 'com.BeanB' type but found 'com.BeanA'"
+    public BeanB myBeanB() {...}
+
+    @Lookup("beanNotFound") // reports "Can not resolve bean 'beanNotFound'"
+    public OtherBean otherBean() {...}
+  }
+</code></pre>
+</body>
+</html>

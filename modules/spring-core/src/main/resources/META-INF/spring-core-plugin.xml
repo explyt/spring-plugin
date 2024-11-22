@@ -1,0 +1,729 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.properties</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
+    <depends optional="true" config-file="spring-core-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
+
+    <extensionPoints>
+        <extensionPoint qualifiedName="com.explyt.spring.core.configurationPropertiesLoader" dynamic="true"
+                        interface="com.explyt.spring.core.completion.properties.ConfigurationPropertiesLoader"
+                        area="IDEA_PROJECT"/>
+
+        <extensionPoint qualifiedName="com.explyt.spring.core.configurationFactoriesNamesLoader" dynamic="true"
+                        interface="com.explyt.spring.core.completion.properties.ConfigurationFactoriesNamesLoader"
+                        area="IDEA_PROJECT"/>
+
+        <extensionPoint qualifiedName="com.explyt.spring.core.profileSearcher" dynamic="true"
+                        interface="com.explyt.spring.core.profile.ProfileSearcher"
+                        area="IDEA_PROJECT"/>
+
+        <extensionPoint qualifiedName="com.explyt.spring.core.additionalBeansDiscoverer" dynamic="true"
+                        interface="com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer"
+                        area="IDEA_PROJECT"/>
+    </extensionPoints>
+
+    <extensions defaultExtensionNs="com.explyt.spring.core">
+        <configurationPropertiesLoader
+                implementation="com.explyt.spring.core.completion.properties.SpringMetadataLibraryConfigurationPropertiesLoader"/>
+        <configurationPropertiesLoader
+                implementation="com.explyt.spring.core.completion.properties.ProjectConfigurationPropertiesLoader"/>
+        <configurationFactoriesNamesLoader
+                implementation="com.explyt.spring.core.completion.properties.AutoConfigurationImportsPropertiesLoader"/>
+        <configurationFactoriesNamesLoader
+                implementation="com.explyt.spring.core.completion.properties.SpringFactoriesConfigurationPropertiesLoader"/>
+
+        <profileSearcher implementation="com.explyt.spring.core.profile.AnnotationProfileSearcher"/>
+        <profileSearcher implementation="com.explyt.spring.core.profile.AdditionalProfileSearcher"/>
+        <profileSearcher implementation="com.explyt.spring.core.profile.PropertyNameProfileSearcher"/>
+        <profileSearcher implementation="com.explyt.spring.core.profile.MavenProfileSearcher"/>
+
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.core.service.beans.discoverer.SpringCoreAdditionalBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!--Spring Boot External System-->
+        <externalSystemManager implementation="com.explyt.spring.core.externalsystem.SpringBootNativeManager"/>
+        <externalSystemUnlinkedProjectAware
+                implementation="com.explyt.spring.core.externalsystem.process.UnlinkedProjectAware"/>
+        <toolWindow id="ExplytSpringBoot" anchor="right"
+                    icon="com/explyt/spring/core/icons/springToolWindow.svg"
+                    factoryClass="com.explyt.spring.core.externalsystem.view.SpringBootToolWindowFactory"/>
+        <projectImportProvider
+                implementation="com.explyt.spring.core.externalsystem.process.SpringBootProjectImportProvider"/>
+        <projectOpenProcessor
+                implementation="com.explyt.spring.core.externalsystem.process.SpringBootProjectOpenProcessor"/>
+        <externalSystemViewContributor id="ExplytSpringBoot"
+                                       implementation="com.explyt.spring.core.externalsystem.view.SpringBootExternalSystemViewContributor"/>
+        <externalSystemDependencyAnalyzer
+                implementation="com.explyt.spring.core.externalsystem.analyzer.BeanAnalyzerExtension"/>
+        <externalProjectDataService
+                implementation="com.explyt.spring.core.externalsystem.process.CacheTrackerDataService"/>
+        <!--Spring Boot External System-->
+
+        <notificationGroup id="com.explyt.spring.notification"
+                           displayType="BALLOON"
+                           bundle="messages.SpringCoreBundle"
+                           key="explyt.spring.common.notifications"/>
+
+        <completion.contributor language="any"
+                                id="com.explyt.spring.core.propertiesCompletionContributor"
+                                implementationClass="com.explyt.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
+
+        <completion.contributor language="yaml"
+                                implementationClass="com.explyt.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
+
+        <completion.contributor language="UAST"
+                                order="first"
+                                id="com.explyt.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"
+                                implementationClass="com.explyt.spring.core.properties.contributors.ConditionalOnConfigurationPrefixCompletionContributor"/>
+
+        <completion.contributor language="UAST"
+                                order="first"
+                                id="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"
+                                implementationClass="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"/>
+
+        <psi.referenceContributor language="Properties"
+                                  implementation="com.explyt.spring.core.properties.contributors.SpringConfigurationPropertiesReferenceContributor"/>
+        <psi.referenceContributor language="Properties"
+                                  implementation="com.explyt.spring.core.autoconfigure.reference.AutoConfigureReferenceContributor"/>
+        <psi.referenceContributor language="yaml"
+                                  implementation="com.explyt.spring.core.properties.contributors.SpringYamlConfigurationPropertiesReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.core.properties.contributors.UastConfigurationPropertyReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.core.references.contributors.UastAliasMethodReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.core.references.contributors.UastMethodReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.core.references.contributors.UastBeanReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.core.references.contributors.QualifierReferenceContributor"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.core.references.contributors.SpringScopeReferenceContributor"/>
+        <psi.referenceContributor language="JSON"
+                                  implementation="com.explyt.spring.core.properties.contributors.SpringConfigurationMetadataReferenceContributor"/>
+
+        <lang.documentationProvider language="Properties"
+                                    order="first"
+                                    implementationClass="com.explyt.spring.core.properties.providers.SpringPropertiesDocumentationProvider"/>
+        <lang.documentationProvider language="yaml"
+                                    order="first"
+                                    implementationClass="com.explyt.spring.core.completion.yaml.SpringYamlDocumentationProvider"/>
+
+        <implicitUsageProvider implementation="com.explyt.spring.core.providers.SpringImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="com.explyt.spring.core.providers.SpringAopImplicitUsageProvider"/>
+        <implicitUsageProvider implementation="com.explyt.spring.core.providers.TestContainerImplicitUsageProvider"/>
+        <implicitUsageProvider
+                implementation="com.explyt.spring.core.providers.SpringConfigurationPropertyUsageProvider"/>
+
+        <properties.implicitPropertyUsageProvider
+                implementation="com.explyt.spring.core.providers.ConfigurationPropertyImplicitUsageProvider"/>
+        <properties.implicitPropertyUsageProvider
+                implementation="com.explyt.spring.core.autoconfigure.AutoConfigureImplicitPropertyUsageProvider"/>
+
+        <lang.foldingBuilder
+            language="UAST"
+            implementationClass="com.explyt.spring.core.properties.ValueAnnotationFoldingBuilder"/>
+
+        <lang.foldingBuilder
+                language="UAST"
+                implementationClass="com.explyt.spring.core.properties.GetPropertyMethodFoldingBuilder"/>
+
+        <languageInjectionContributor language="UAST"
+                                      implementationClass="com.explyt.spring.core.language.injection.ConfigurationPropertiesInjector"/>
+
+        <searchEverywhereContributor
+                implementation="com.explyt.spring.core.search.BeanSearchEverywhereContributorFactory"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringInjectionAutowiringInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.autowired"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringEventListenerInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.method.eventListener"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringEventListenerInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringComponentScanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.method.componentScan"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringComponentScanInvalidPackageInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringLookupBeanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.lookup"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringLookupBeanInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDependsOnBeanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.dependsOn"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringDependsOnBeanInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringAliasBothInterchangeableSetInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.alias.key"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringAliasBothInterchangeableSetInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringUnknownAliasMethodInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.alias.attribute"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringUnknownAliasMethodInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringAliasNotMetaAnnotatedInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.alias.annotation"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringAliasNotMetaAnnotatedInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringUnknownBeanMethodInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.bean.method"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringUnknownBeanMethodInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringConfigurationProxyBeanMethodsInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.configuration"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationProxyBeanMethodsInspection"/>
+
+        <localInspection language="Properties"
+                         shortName="SpringPropertiesInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.properties.key"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringPropertiesInspection"/>
+
+        <localInspection language="yaml"
+                         shortName="SpringYamlInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.yaml.key"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
+
+        <localInspection language="Properties"
+                         shortName="EnableAutoConfigureSpringFactoryInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.autoconfigure"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.core.autoconfigure.inspection.EnableAutoConfigureSpringFactoryInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringConditionalOnEmptyValueInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.conditionalOnProperty.empty"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConditionalOnEmptyValueInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringConditionalOnWrongPlacementInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.conditionalOn.wrongPlacement"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConditionalOnWrongPlacementInspection"/>
+
+        <localInspection language="UAST"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.property.resource.ref"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.PsiFileReferenceInspection"/>
+
+        <localInspection language="UAST"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.method.same.class"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.CallBeanMethodFromSomeClassInspection"/>
+
+        <localInspection language="UAST"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.property.source.classpath"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringPropertySourceClasspathInspection"/>
+        <localInspection language="UAST"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.property.source.file"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringPropertySourceFileInspection"/>
+
+        <localInspection language="UAST"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.context.configuration.classpath"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringContextConfigurationClasspathInspection"/>
+        <localInspection language="UAST"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.context.configuration.file"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringContextConfigurationFileInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringProfileWrongPlacementInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.profile.wrongPlacement"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringProfileWrongPlacementInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringProfileAnnotationInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.profile"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringProfileAnnotationInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringMetaAnnotationWithoutRuntimeInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.retention"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringMetaAnnotationWithoutRuntimeInspection"/>
+
+        <localInspection language="JSON"
+                         shortName="SpringMetadataPropertyInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.metadata.config.key"
+                         enabledByDefault="true" level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringMetadataPropertyInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringAsyncReturnTypeInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.async"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringAsyncReturnTypeInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringCacheableAnnotationInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.cacheable"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringCacheableAnnotationInspection"/>
+        <localInspection language="UAST"
+                         shortName="SpringConfigurationPropertiesInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.config.properties"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesInspection"/>
+        <localInspection language="UAST"
+                         shortName="SpringConfigurationPropertiesContextInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.config.properties.context"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesContextInspection"/>
+        <localInspection language="UAST"
+                         shortName="SpringKotlinObjectInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.kotlin.object"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringKotlinObjectInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringInterfaceCacheAnnotationsInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.cache.interface.class"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringInterfaceCacheAnnotationsInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringConfigurationPropertiesNullableParametersInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.kotlin.constructor.nullable"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesNullableParametersInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringValueAnnotationInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.value"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringValueAnnotationInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringScheduledInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.scheduled"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringScheduledInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringKotlinInternalBeanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.kotlin.internal"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringEntityScanInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.entity.scan"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringEntityScanInspection"/>
+
+        <postStartupActivity
+                implementation="com.explyt.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
+
+        <configurationType
+                id="Spring Boot"
+                implementation="com.explyt.spring.core.runconfiguration.SpringBootConfigurationType"/>
+
+        <runConfigurationProducer
+                order="first"
+                implementation="com.explyt.spring.core.runconfiguration.SpringBootConfigurationProducer"/>
+
+        <groupConfigurable id="com.explyt.spring.group"
+                           parentId="tools"
+                           displayNameKey="configurable.group.com.explyt.spring.group.settings.display.name"
+                           descriptionKey="configurable.group.com.explyt.spring.group.settings.description"
+                           bundle="messages.SpringCoreBundle"/>
+
+        <applicationConfigurable id="com.explyt.spring.runConfigurations"
+                                 key="run.configuration.spring.boot.display.name"
+                                 groupId="com.explyt.spring.group"
+                                 bundle="messages.SpringCoreBundle"
+                                 instance="com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable"
+                                 groupWeight="85"/>
+
+        <psi.referenceContributor
+                implementation="com.explyt.spring.core.references.contributors.PackageAntReferenceInAnnotationContributor"
+                language="UAST"/>
+        <psi.referenceContributor
+                implementation="com.explyt.spring.core.references.contributors.FileReferenceContributor"
+                language="UAST"/>
+
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.core.providers.SpringBeanLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.core.providers.EventListenerLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.core.providers.ConfigurationPropertyLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="Properties"
+                                        implementationClass="com.explyt.spring.core.providers.PropertyLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="yaml"
+                                        implementationClass="com.explyt.spring.core.providers.PropertyLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.core.providers.GetBeanLineMarkerProvider"/>
+
+        <codeInsight.implicitSubclassProvider
+                implementation="com.explyt.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
+
+        <fileType name="spring.factories"
+                  fieldName="INSTANCE"
+                  implementationClass="com.explyt.spring.core.autoconfigure.language.FactoriesFileType"/>
+        <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports"
+                  fieldName="INSTANCE"
+                  implementationClass="com.explyt.spring.core.autoconfigure.language.AutoConfigurationImportsFileType"/>
+
+        <fileType name="Profiles File"
+                  implementationClass="com.explyt.spring.core.language.profiles.ProfilesFileType"
+                  fieldName="INSTANCE"
+                  language="Profiles"/>
+
+        <fileTemplateGroup implementation="com.explyt.spring.core.properties.FilePropertyTemplateGroupFactory"/>
+
+        <lang.parserDefinition
+                language="Profiles"
+                implementationClass="com.explyt.spring.core.language.profiles.ProfilesParserDefinition"/>
+
+        <lang.syntaxHighlighterFactory
+                language="Profiles"
+                implementationClass="com.explyt.spring.core.language.profiles.ProfilesSyntaxHighlighterFactory"/>
+
+        <completion.contributor
+                language="Profiles"
+                implementationClass="com.explyt.spring.core.language.profiles.ProfilesCompletionContributor"/>
+
+        <psi.referenceContributor
+                language="yaml"
+                implementation="com.explyt.spring.core.language.profiles.YamlProfilesReferenceContributor"/>
+
+        <psi.referenceContributor
+                language="Properties"
+                implementation="com.explyt.spring.core.language.profiles.PropertiesProfilesReferenceContributor"/>
+
+        <psi.referenceContributor
+                language="XML"
+                implementation="com.explyt.spring.core.language.profiles.XmlProfilesReferenceContributor"/>
+
+        <psi.referenceContributor
+                implementation="com.explyt.spring.core.language.profiles.UastProfilesReferenceContributor"
+                language="UAST"/>
+        <psi.referenceContributor language="UAST"
+                                  implementation="com.explyt.spring.core.references.contributors.DynamicPropertyRegistryReferenceContributor"/>
+
+        <lang.braceMatcher
+                language="Profiles"
+                implementationClass="com.explyt.spring.core.language.profiles.psi.ProfilesBraceMatcher"/>
+
+        <codeInsight.declarativeInlayProvider
+                bundle="messages.SpringCoreBundle"
+                group="ANNOTATIONS_GROUP"
+                implementationClass="com.explyt.spring.core.hint.ProfileAnnotationHintsProvider"
+                isEnabledByDefault="true"
+                language="UAST"
+                nameKey="explyt.editor.hints.annotation_profile"
+                descriptionKey="explyt.editor.hints.annotation_profile"
+                providerId="explyt.profile_annotation"/>
+
+        <referencesSearch implementation="com.explyt.spring.core.search.PropertyStringUsagesSearcher"/>
+
+        <lang.inspectionSuppressor language="Properties"
+                                   implementationClass="com.explyt.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
+
+        <registryKey key="explyt.spring.root.runConfiguration" defaultValue="false"
+                     description="Use root class from run configuration for bean search"/>
+        <registryKey key="explyt.spring.process.log.all" defaultValue="false"
+                     description="Show all spring log in bean resolve process"/>
+        <registryKey key="explyt.spring.native" defaultValue="true"
+                     description="Enable Spring explyt native bean retriever"/>
+        <registryKey key="explyt.spring.native.old" defaultValue="false"
+                     description="Support Spring Boot old versions before 2.4"/>
+        <registryKey key="EXPLYTSPRINGBOOT.system.in.process" defaultValue="true"
+                     description="Whether IDEA should use 'in-process' mode for interaction with plugin api"/>
+        <intentionAction>
+            <language>yaml</language>
+            <className>com.explyt.spring.core.intentions.CreateYamlMetaDescriptionIntention</className>
+        </intentionAction>
+        <intentionAction>
+            <language>Properties</language>
+            <className>com.explyt.spring.core.intentions.CreatePropertiesMetaDescriptionIntention</className>
+        </intentionAction>
+        <intentionAction>
+            <language>UAST</language>
+            <className>com.explyt.spring.core.intentions.CreateConfigurationMetaDescriptionIntention</className>
+        </intentionAction>
+
+        <iconProvider implementation="com.explyt.spring.core.providers.SpringPropertyFileIconProvider"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="JavaScript.JsonSchema">
+        <ProviderFactory implementation="com.explyt.spring.core.providers.SpringMetadataJsonSchemaFileProviderFactory"/>
+    </extensions>
+
+    <actions>
+        <action id="NavigateToSpringBean" class="com.explyt.spring.core.externalsystem.action.BeanNavigationAction"/>
+        <action id="Explyt.ExternalView.ProfileChanged"
+                class="com.explyt.spring.core.externalsystem.action.ChangeProfileStateAction"/>
+        <action id="SpringBootExplyt.ExternalSystem.AttachProject"
+                class="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
+        <action id="SpringBootExplyt.ExternalSystem.DetachAllProjects"
+                class="com.explyt.spring.core.externalsystem.action.DetachAllProjectsAction"/>
+        <action id="SpringBootExplyt.ToolbarDependencyAnalyzer"
+                class="com.explyt.spring.core.externalsystem.analyzer.ToolbarDependencyAnalyzerAction"/>
+        <action id="SpringBootExplyt.DependencyAnalyzer.GoTo"
+                class="com.explyt.spring.core.externalsystem.analyzer.BeanGoToAction">
+            <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyListGroup"/>
+            <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyTreeGroup"/>
+            <add-to-group group-id="ExternalSystem.DependencyAnalyzer.UsagesTreeGroup"/>
+        </action>
+        <!--<action id="SpringBootExplyt.ActiveExternalProjectAction"
+                class="com.explyt.spring.core.externalsystem.action.ActiveExternalProjectAction">
+            <add-to-group group-id="ExternalSystemView.BaseProjectMenu"/>
+        </action>-->
+        <group id="SpringBootExplyt.View.ActionsToolbar.CenterPanel">
+            <separator/>
+            <reference id="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
+            <separator/>
+            <add-to-group group-id="ExternalSystemView.ActionsToolbar.CenterPanel" anchor="last"/>
+        </group>
+        <group id="SpringBootExplyt.View.ActionsToolbar.LeftPanel">
+            <reference id="SpringBootExplyt.ExternalSystem.AttachProject"/>
+            <reference id="SpringBootExplyt.ExternalSystem.DetachAllProjects"/>
+            <add-to-group group-id="ExternalSystemView.ActionsToolbar.LeftPanel" anchor="after"
+                          relative-to-action="ExternalSystem.RefreshAllProjects"/>
+        </group>
+        <action id="SpringBootExplyt.ExternalSystem.Toolbar.AttachProject"
+                class="com.explyt.spring.core.externalsystem.action.AttachSpringBootToolbarProjectAction">
+            <!--<add-to-group group-id="ToolbarRunGroup" anchor="after" relative-to-action="RunnerActions"/>-->
+            <add-to-group group-id="ToolbarMakeGroup" anchor="before" relative-to-action="CompileDirty"/>
+            <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="SearchEverywhere"/>
+        </action>
+
+        <action id="Explyt.UastModelTrackerInvalidateAction"
+                class="com.explyt.spring.core.action.UastModelTrackerInvalidateAction">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
+        </action>
+
+        <action id="PostConstructGenerateAction" class="com.explyt.spring.core.action.PostConstructJavaGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PreDestroyGenerateAction" class="com.explyt.spring.core.action.PreDestroyJavaGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PostConstructGenerateActionKotlin"
+                class="com.explyt.spring.core.action.PostConstructKotlinGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="PreDestroyKotlinGenerateAction"
+                class="com.explyt.spring.core.action.PreDestroyKotlinGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+    </actions>
+
+    <projectListeners>
+        <listener class="com.explyt.spring.core.runconfiguration.ExplytRunManagerListener"
+                  topic="com.intellij.execution.RunManagerListener"/>
+    </projectListeners>
+
+</idea-plugin>

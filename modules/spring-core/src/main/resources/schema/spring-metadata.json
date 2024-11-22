@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Spring Boot Configuration Metadata",
+  "type": "object",
+  "properties": {
+    "groups": {
+      "type": "array",
+      "description": "The JSON object contained in the groups array can contain the attributes.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The full name of the group."
+          },
+          "type": {
+            "type": "string",
+            "description": "The class name of the data type of the group."
+          },
+          "description": {
+            "type": "string",
+            "description": "A short description of the group that can be displayed to users."
+          },
+          "sourceType": {
+            "type": "string",
+            "description": "The class name of the source that contributed this group."
+          },
+          "sourceMethod": {
+            "type": "string",
+            "description": "The full name of the method (include parenthesis and argument types) that contributed this group."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "properties": {
+      "type": "array",
+      "description": "The JSON object contained in the properties array can contain the attributes .",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The full name of the property."
+          },
+          "type": {
+            "type": "string",
+            "description": "The full signature of the data type of the property but also a full generic type."
+          },
+          "description": {
+            "type": "string",
+            "description": "A short description of the property that can be displayed to users."
+          },
+          "sourceType": {
+            "type": "string",
+            "description": "The class name of the source that contributed this property."
+          },
+          "defaultValue": {
+            "type": [
+              "string",
+              "number",
+              "integer",
+              "boolean",
+              "object",
+              "array",
+              "null"
+            ],
+            "description": "TThe default value, which is used if the property is not specified."
+          },
+          "deprecation": {
+            "type": "object",
+            "description": "Specify whether the property is deprecated.",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "warning",
+                  "error"
+                ],
+                "description": "The level of deprecation."
+              },
+              "reason": {
+                "type": "string",
+                "description": "A short description of the reason why the property was deprecated."
+              },
+              "replacement": {
+                "type": "string",
+                "description": "The full name of the property that replaces this deprecated property."
+              },
+              "since": {
+                "type": "string",
+                "description": "The version in which the property became deprecated."
+              }
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "hints": {
+      "type": "array",
+      "description": "The JSON object contained in the hints array can contain the attributes.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The full name of the property to which this hint refers"
+          },
+          "values": {
+            "type": "array",
+            "description": "A list of valid values as defined by the ValueHint object.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "number",
+                    "integer",
+                    "boolean",
+                    "object",
+                    "array",
+                    "null"
+                  ],
+                  "description": "A valid value for the element to which the hint refers."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "A short description of the value that can be displayed to users."
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "providers": {
+            "type": "array",
+            "description": "A list of value providers for dynamic hints.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The name of the provider to use to offer additional content assistance for the element to which the hint refers."
+                },
+                "parameters": {
+                  "type": "object",
+                  "description": "Any additional parameter that the provider supports.",
+                  "anyOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "class-reference"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "target": {
+                            "type": "string"
+                          },
+                          "concrete": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "handle-as"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "target": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "target"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "logger-name"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "group": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "name": {
+                            "const": "spring-bean-reference"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "target": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  },
+  "required": [
+    "properties"
+  ]
+}

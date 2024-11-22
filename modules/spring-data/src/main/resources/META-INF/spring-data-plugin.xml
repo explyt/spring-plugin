@@ -1,0 +1,72 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <implicitUsageProvider implementation="com.explyt.spring.data.providers.SpringDataImplicitUsageProvider"/>
+        <multiHostInjector
+                implementation="com.explyt.spring.data.langinjection.JpqlSpringDataQueryLanguageInjector"/>
+        <multiHostInjector
+                implementation="com.explyt.spring.data.langinjection.SqlNativeSpringQueryLanguageInjector"/>
+        <multiHostInjector
+                implementation="com.explyt.spring.data.langinjection.JpqNamedNativeQueryLanguageInjector"/>
+        <completion.contributor language="UAST"
+                                implementationClass="com.explyt.spring.data.completion.SpringDataBaseCompletionContributor"
+                                order="before javaMemberName"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDataMethodNameInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="explyt.spring.data.inspection.method.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataMethodNameInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDataReturnTypeInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="explyt.spring.data.inspection.return.type"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataReturnTypeInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDataMethodParametersInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="explyt.spring.data.inspection.method.parameters"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataMethodParametersInspection"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringDataEnableInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="explyt.spring.data.inspection.enable"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.data.inspection.SpringDataEnableInspection"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.explyt">
+        <jpa.ql.reference.inputParameterReferenceResolver
+                implementation="com.explyt.spring.data.reference.RepositoryQueryInputParameterReferenceResolver"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.explyt.spring.core">
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.data.service.beans.discoverer.SpringDataAdditionalBeansDiscoverer"/>
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>
