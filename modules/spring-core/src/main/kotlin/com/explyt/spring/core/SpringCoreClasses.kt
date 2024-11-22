@@ -38,6 +38,8 @@ object SpringCoreClasses {
     const val IMPORT = "org.springframework.context.annotation.Import"
     const val BEAN_FACTORY = "org.springframework.beans.factory.BeanFactory"
     const val CONFIGURATION_PROPERTIES_SCAN = "org.springframework.boot.context.properties.ConfigurationPropertiesScan"
+    const val ENABLE_CONFIGURATION_PROPERTIES =
+        "org.springframework.boot.context.properties.EnableConfigurationProperties"
 
     const val VALUE = "org.springframework.beans.factory.annotation.Value"
     const val AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired"

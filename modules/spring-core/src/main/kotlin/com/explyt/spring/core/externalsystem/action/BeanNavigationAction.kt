@@ -20,7 +20,6 @@ package com.explyt.spring.core.externalsystem.action
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.externalsystem.view.nodes.SpringBeanViewNode
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.externalSystem.action.ExternalSystemAction
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
 
@@ -36,6 +35,6 @@ class BeanNavigationAction : ExternalSystemAction() {
 
         val psiElement = beanData.methodName
             ?.let { psiClass.findMethodsByName(beanData.methodName, false).firstOrNull() } ?: psiClass
-        ApplicationManager.getApplication().invokeLater { psiElement.navigate(true) }
+        psiElement.navigate(true)
     }
 }

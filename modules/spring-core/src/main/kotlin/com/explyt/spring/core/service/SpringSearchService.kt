@@ -39,6 +39,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.util.CacheKeyStore
 import com.explyt.util.ExplytAnnotationUtil.getLongValue
+import com.explyt.util.ExplytKotlinUtil.mapToSet
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isGeneric
@@ -272,9 +273,10 @@ class SpringSearchService(private val project: Project) {
                     val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
                     val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
                     val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
+                    val configurationProperties = searchConfigurationPropertiesBean(module, scope)
 
                     CachedValueProvider.Result(
-                        moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans,
+                        moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans + configurationProperties,
                         ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                     )
                 }
@@ -429,6 +431,14 @@ class SpringSearchService(private val project: Project) {
             .filter { isActive(it) }
             .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
             .toSet()
+    }
+
+    private fun searchConfigurationPropertiesBean(module: Module, scope: SearchScope): Set<PsiBean> {
+        val configurationPropertiesClass = LibraryClassCache
+            .searchForLibraryClass(module, SpringCoreClasses.CONFIGURATION_PROPERTIES) ?: return emptySet()
+        return AnnotatedElementsSearch.searchPsiClasses(configurationPropertiesClass, scope).asSequence()
+            .filter { isActive(it) }
+            .mapToSet { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
     }
 
     private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): Set<PsiBean> {
@@ -721,6 +731,7 @@ class SpringSearchService(private val project: Project) {
             MutexType.SEARCH -> mutexSearchBeans.getOrCreate("search:" + module.name) { "search:" + module.name }
             MutexType.SEARCH_FOR_NATIVE -> mutexSearchBeans
                 .getOrCreate("searchNative:" + module.name) { "searchNative:" + module.name }
+
             MutexType.CONDITIONAL_ON -> mutexConditionalOn
                 .getOrCreate("conditionalOn:" + module.name) { "conditionalOn:" + module.name }
         }

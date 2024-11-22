@@ -192,33 +192,6 @@ class PackageScanService(private val project: Project) {
             .flatMapTo(mutableSetOf()) { getPackages(it, metaAnnotationsHolder) }
     }
 
-    private fun getPackages(uAnnotation: UAnnotation, metaAnnotationsHolder: MetaAnnotationsHolder): Set<String> {
-        val qualifiedName = uAnnotation.qualifiedName ?: return emptySet()
-        val basePackages = uAnnotation.attributeValues.asSequence()
-            .filter {
-                metaAnnotationsHolder.isAttributeRelatedWith(
-                    qualifiedName, it.name ?: SpringProperties.VALUE, COMPONENT_SCAN, setOf(SpringProperties.VALUE)
-                )
-            }
-            .flatMap { getBasePackages(it.expression) }
-            .toSet()
-        val basePackageClasses = uAnnotation.attributeValues.asSequence()
-            .filter {
-                metaAnnotationsHolder.isAttributeRelatedWith(
-                    qualifiedName, it.name ?: SpringProperties.VALUE, COMPONENT_SCAN, setOf("basePackageClasses")
-                )
-            }
-            .flatMap { getClassPackages(it.expression) }
-            .toSet()
-        val packages = basePackages + basePackageClasses
-        //case with empty params. example: @ComponentScan
-        if (packages.isEmpty()) {
-            val packageName = uAnnotation.getContainingUFile()?.packageName ?: return emptySet()
-            return setOf(packageName)
-        }
-        return packages
-    }
-
     private fun getImportClasses(
         uAnnotation: UAnnotation,
         metaAnnotationsHolder: MetaAnnotationsHolder
@@ -277,6 +250,33 @@ class PackageScanService(private val project: Project) {
             return "$packageName."
         }
 
+        fun getPackages(uAnnotation: UAnnotation, metaAnnotationsHolder: MetaAnnotationsHolder): Set<String> {
+            val qualifiedName = uAnnotation.qualifiedName ?: return emptySet()
+            val rootMetaClass = metaAnnotationsHolder.getRootClassQualified()
+            val basePackages = uAnnotation.attributeValues.asSequence()
+                .filter {
+                    metaAnnotationsHolder.isAttributeRelatedWith(
+                        qualifiedName, it.name ?: SpringProperties.VALUE, rootMetaClass, setOf(SpringProperties.VALUE)
+                    )
+                }
+                .flatMap { getBasePackages(it.expression) }
+                .toSet()
+            val basePackageClasses = uAnnotation.attributeValues.asSequence()
+                .filter {
+                    metaAnnotationsHolder.isAttributeRelatedWith(
+                        qualifiedName, it.name ?: SpringProperties.VALUE, rootMetaClass, setOf("basePackageClasses")
+                    )
+                }
+                .flatMap { getClassPackages(it.expression) }
+                .toSet()
+            val packages = basePackages + basePackageClasses
+            //case with empty params. example: @ComponentScan
+            if (packages.isEmpty()) {
+                val packageName = uAnnotation.getContainingUFile()?.packageName ?: return emptySet()
+                return setOf(packageName)
+            }
+            return packages
+        }
 
         fun getBasePackages(uExpression: UExpression): List<String> {
             return if (uExpression is UCallExpression) {
@@ -290,7 +290,7 @@ class PackageScanService(private val project: Project) {
             return getPsiClasses(uExpression).mapNotNull { (it.containingFile as? PsiJavaFile)?.packageName }
         }
 
-        private fun getPsiClasses(uExpression: UExpression): List<PsiClass> {
+        fun getPsiClasses(uExpression: UExpression): List<PsiClass> {
             return if (uExpression is UCallExpression) {
                 uExpression.valueArguments.mapNotNull { getPsiClass(it) }
             } else {

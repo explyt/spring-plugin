@@ -21,6 +21,7 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.SpringGutterTestUtil
+import com.explyt.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
 import com.intellij.codeInsight.daemon.GutterMark
 import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
@@ -382,6 +383,22 @@ class ConfigurationPropertyLineMarkerProviderTest : ExplytJavaLightTestCase() {
             setOf("configuration.value1[0]", "configuration.value1[1]", "configuration.value2"),
             gutterTargetsStrings.toSet()
         )
+    }
+
+    fun testConfigurationPropertiesBean() {
+        myFixture.configureByText(
+            "ConfigurationPropertiesBean.java",
+            """
+                @org.springframework.boot.context.properties.ConfigurationProperties
+                public class ConfigurationPropertiesBean {                    
+                }
+            """.trimIndent()
+        )
+        myFixture.doHighlighting()
+
+        val icons = setOf(SpringIcons.SpringBean)
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
+        TestCase.assertTrue(allBeanGutters.isNotEmpty())
     }
 
     companion object {

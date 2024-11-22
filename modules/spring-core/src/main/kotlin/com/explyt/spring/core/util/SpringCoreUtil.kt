@@ -176,6 +176,7 @@ object SpringCoreUtil {
         psiClass ?: return false
 
         if (psiClass.hasComponentAnnotation()) return true
+        if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return true
         if (!psiClass.isAbstract) return false
         if (psiClass.isInterface) return false
 

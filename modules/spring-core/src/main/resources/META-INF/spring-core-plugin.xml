@@ -435,6 +435,16 @@
                          level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesInspection"/>
         <localInspection language="UAST"
+                         shortName="SpringConfigurationPropertiesContextInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.config.properties.context"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesContextInspection"/>
+        <localInspection language="UAST"
                          shortName="SpringKotlinObjectInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"

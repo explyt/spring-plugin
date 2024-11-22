@@ -108,6 +108,8 @@ class MetaAnnotationsHolder private constructor(
         return annotationMemberValues.toSet()
     }
 
+    fun getRootClassQualified() = rootFqn
+
     companion object {
         fun of(module: Module, parentFqn: String): MetaAnnotationsHolder {
             val annotationsToProceed = mutableListOf(parentFqn)
