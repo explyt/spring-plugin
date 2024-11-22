@@ -5,9 +5,21 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+- Added: @EnableConfigurationProperties annotation marks @ConfigurationProperties as beans
+- Added: Inspection and QuickFix checks if @ConfigurationProperties class is correctly configured
+- Fixed: Yaml property value completion doesn't work (#9)
+
 ### OpenAPI
 
-- Added: endpoint linemarker suggests openapi generation when there is no place to navigate to
+- Fixed: backward navigation to `$ref` usage
+- Added: endpoint linemarker suggests openapi generation when there is no place to navigate to (#12)
+- Added: intention to generate description from controller endpoint
+
+### Other
+
+- Fixed: fix EDT while editing json schema files
 
 ## [243.1.2662] - 2024-11-15
 
@@ -41,7 +53,6 @@
 
 ### OpenAPI
 
-- Fixed: backward navigation to `$ref` usage
 - Fixed: inspection for OpenAPI version 
 
 ## 242.1.2334 - 2024-10-29
