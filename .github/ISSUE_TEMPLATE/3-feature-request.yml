@@ -9,8 +9,8 @@ body:
   - type: dropdown
     id: type-problem
     attributes:
-      label: Problem details
-      description: "Select the problem you faced"
+      label: Component
+      description: "Select the problem component you faced"
       options:
         - Inspection
         - Navigation gutter
