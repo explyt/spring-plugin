@@ -336,6 +336,10 @@ object SpringWebUtil {
 
     const val OPEN_API = "openapi"
     const val PATHS = "paths"
+    const val OPENAPI_COMPONENTS = "components"
+    const val OPENAPI_RESPONSES = "responses"
+    const val OPENAPI_SCHEMAS = "schemas"
+    const val OPENAPI_PARAMETERS = "parameters"
     private const val URL_TEMPLATE = "urlTemplate"
 
     private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()

@@ -177,6 +177,9 @@
 
         <psi.referenceContributor language="JSON"
                                   implementation="com.explyt.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
+        
+        <json.jsonSchemaGotoDeclarationSuppressor implementation="com.explyt.spring.web.jsonSchema.OpenApiYamlGotoDeclarationSuppressor"/>
+        <json.jsonSchemaGotoDeclarationSuppressor implementation="com.explyt.spring.web.jsonSchema.OpenApiJsonGotoDeclarationSuppressor"/>
 
         <fileEditorProvider implementation="com.explyt.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
 

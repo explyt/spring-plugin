@@ -41,6 +41,7 @@
 
 ### OpenAPI
 
+- Fixed: backward navigation to `$ref` usage
 - Fixed: inspection for OpenAPI version 
 
 ## 242.1.2334 - 2024-10-29
