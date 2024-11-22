@@ -27,8 +27,10 @@ import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiJvmModifiersOwner
 import com.intellij.psi.PsiNameIdentifierOwner
 import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass
 
@@ -42,20 +44,13 @@ class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectio
         val uClass = uMethod.getContainingUClass() ?: return null
         if (!uClass.isInterface) return null
         val psiClass = uClass.javaPsi
-        if (isImplicitlySubclassed(psiClass)) return null
-        val psiMethod = uMethod.javaPsi
+        if (isSubclassedBuSpring(psiClass)) return null
 
-        if (!psiMethod.isMetaAnnotatedBy(ANNOTATIONS_CACHE)) return null
-        val identifyingElement = (uMethod.sourcePsi as? PsiNameIdentifierOwner)?.identifyingElement ?: return null
-
-        return arrayOf(
-            manager.createProblemDescriptor(
-                identifyingElement,
-                SpringCoreBundle.message("explyt.spring.inspection.cache.interface.method"),
-                isOnTheFly,
-                emptyArray(),
-                ProblemHighlightType.GENERIC_ERROR_OR_WARNING
-            )
+        return check(
+            uMethod,
+            manager,
+            isOnTheFly,
+            SpringCoreBundle.message("explyt.spring.inspection.cache.interface.method")
         )
     }
 
@@ -66,15 +61,31 @@ class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectio
     ): Array<ProblemDescriptor>? {
         if (uClass.isAnnotationType || !uClass.isInterface) return null
         val psiClass = uClass.javaPsi
-        if (isImplicitlySubclassed(psiClass)) return null
+        if (isSubclassedBuSpring(psiClass)) return null
 
-        if (!psiClass.isMetaAnnotatedBy(ANNOTATIONS_CACHE)) return null
-        val identifyingElement = (uClass.sourcePsi as? PsiNameIdentifierOwner)?.identifyingElement ?: return null
+        return check(
+            uClass,
+            manager,
+            isOnTheFly,
+            SpringCoreBundle.message("explyt.spring.inspection.cache.interface.class")
+        )
+    }
+
+    private fun check(
+        uElement: UDeclaration,
+        manager: InspectionManager,
+        isOnTheFly: Boolean,
+        errorMessage: String
+    ): Array<ProblemDescriptor>? {
+        val psiElement = uElement.javaPsi as? PsiJvmModifiersOwner ?: return null
+
+        if (!psiElement.isMetaAnnotatedBy(ANNOTATIONS_CACHE)) return null
+        val identifyingElement = (uElement.sourcePsi as? PsiNameIdentifierOwner)?.identifyingElement ?: return null
 
         return arrayOf(
             manager.createProblemDescriptor(
                 identifyingElement,
-                SpringCoreBundle.message("explyt.spring.inspection.cache.interface.class"),
+                errorMessage,
                 isOnTheFly,
                 emptyArray(),
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING
@@ -82,7 +93,7 @@ class SpringCacheAnnotationsOnInterfaceInspection : SpringBaseUastLocalInspectio
         )
     }
 
-    private fun isImplicitlySubclassed(psiClass: PsiClass): Boolean {
+    private fun isSubclassedBuSpring(psiClass: PsiClass): Boolean {
 
         return psiClass.isEqualOrInheritor("org.springframework.data.repository.Repository")
                 || psiClass.isMetaAnnotatedBy(
