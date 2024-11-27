@@ -28,6 +28,8 @@ import kotlin.time.Duration.Companion.seconds
 class StatisticStartupActivity : ProjectActivity {
 
     override suspend fun execute(project: Project) {
+        if (StatisticService.getInstance().skipForUnitTestAndHeadlessMode()) return
+
         val initDelaySec = ThreadLocalRandom.current().nextLong(60) // initial delay from 0 to 60 seconds
         val intervalSec = Registry.intValue("explyt.statistic.interval", 3600)
 

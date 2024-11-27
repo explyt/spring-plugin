@@ -50,6 +50,7 @@ class StatisticService {
 
     fun addActionUsage(actionId: StatisticActionId) {
         if (!SpringToolRunConfigurationsSettingsState.getInstance().isCollectStatistic) return
+        if (skipForUnitTestAndHeadlessMode()) return
 
         try {
             synchronized(StatisticService::class.java) {
@@ -169,14 +170,15 @@ class StatisticService {
 
 
     private fun skipForNonProductionMode(pluginDescriptor: PluginDescriptor): Boolean {
-        if (ApplicationManager.getApplication().isUnitTestMode
-            || ApplicationManager.getApplication().isHeadlessEnvironment
-        ) return true
+        if (skipForUnitTestAndHeadlessMode()) return true
 
         if (Registry.`is`("explyt.statistic.debug")) return false
 
         return pluginDescriptor.version.contains("snapshot", true)
     }
+
+    fun skipForUnitTestAndHeadlessMode() = (ApplicationManager.getApplication().isUnitTestMode
+            || ApplicationManager.getApplication().isHeadlessEnvironment)
 
     //check last update date to prevent frequent file updates
     private fun checkLastUpdateDate(resultDailyPath: Path): Boolean {
