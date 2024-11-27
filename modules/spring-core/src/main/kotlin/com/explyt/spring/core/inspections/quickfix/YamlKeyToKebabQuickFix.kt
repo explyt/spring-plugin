@@ -18,6 +18,9 @@
 package com.explyt.spring.core.inspections.quickfix
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.statistic.StatisticActionId.PREVIEW_YAML_SWITCH_KEY_TO_KEBAB_CASE
+import com.explyt.spring.core.statistic.StatisticActionId.QUICK_FIX_YAML_SWITCH_KEY_TO_KEBAB_CASE
+import com.explyt.spring.core.statistic.StatisticUtil.registerActionUsage
 import com.explyt.spring.core.util.PropertyUtil.toKebabCase
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.openapi.application.ApplicationManager
@@ -46,6 +49,11 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
 
         if (startElement !is YAMLKeyValueImpl) return
         val containingFile = startElement.context?.containingFile
+
+        editor.registerActionUsage(
+            QUICK_FIX_YAML_SWITCH_KEY_TO_KEBAB_CASE,
+            PREVIEW_YAML_SWITCH_KEY_TO_KEBAB_CASE
+        )
 
         WriteCommandAction.runWriteCommandAction(project, "Replace key", null, {
             if (editor != null) {

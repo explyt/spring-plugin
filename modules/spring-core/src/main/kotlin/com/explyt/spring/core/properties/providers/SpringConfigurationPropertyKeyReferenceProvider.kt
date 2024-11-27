@@ -26,6 +26,8 @@ import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
 import com.explyt.spring.core.properties.references.MetaConfigurationKeyReference
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.DOT
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
@@ -208,6 +210,7 @@ class ConfigurationPropertyKeyReference(
         results.add(
             LookupElementBuilder.create(property, keysName)
                 .withRenderer(PropertyRenderer())
+                .withInsertHandler(StatisticInsertHandler(StatisticActionId.COMPLETION_PROPERTY_KEY_CONFIGURATION))
         )
     }
 

@@ -19,6 +19,8 @@ package com.explyt.spring.core.properties.references
 
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.properties.providers.SpringMetadataValueProvider
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.psi.PsiElement
@@ -39,6 +41,7 @@ class SpringMetadataValueProviderReference(element: PsiElement) : PsiReferenceBa
         return SpringMetadataValueProvider.entries.map {
             LookupElementBuilder.create(it.value)
                 .appendTailText(" (${it.description})", true)
+                .withInsertHandler(StatisticInsertHandler(StatisticActionId.COMPLETION_SPRING_ADDITIONAL_METADATA))
         }.toTypedArray()
     }
 

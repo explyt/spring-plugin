@@ -18,6 +18,8 @@
 package com.explyt.spring.data.completion
 
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.data.util.RepositoryTypes
 import com.explyt.spring.data.util.SpringDataRepositoryUtil
 import com.explyt.spring.data.util.SpringDataUtil
@@ -62,6 +64,7 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
         val repositoryTypes = getRepositoryTypes(parameters) ?: return
         val positionContext = getCurrentPositionContext(parameters) ?: return
         result.addAllElements(getCompletionVariants(repositoryTypes, positionContext, result.prefixMatcher))
+        StatisticService.getInstance().addActionUsage(StatisticActionId.COMPLETION_SPRING_DATA_METHOD)
         result.stopHere()
     }
 

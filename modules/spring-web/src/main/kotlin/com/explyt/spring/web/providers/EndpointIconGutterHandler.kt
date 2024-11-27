@@ -1,6 +1,8 @@
 package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
@@ -30,6 +32,7 @@ class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : Gutter
 
     override fun navigate(e: MouseEvent, psiElement: PsiElement) {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_CONTROLLER_ENDPOINT_USAGE)
 
         val path = endpointInfo.path
         val requestMethods = endpointInfo.requestMethods

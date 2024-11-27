@@ -20,6 +20,8 @@ package com.explyt.spring.core.externalsystem.action
 import com.explyt.spring.core.externalsystem.model.SpringProfileData
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.execution.RunManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
@@ -36,6 +38,7 @@ class ChangeProfileStateAction : ExternalSystemNodeAction<SpringProfileData>(Spr
         profileData: SpringProfileData,
         e: AnActionEvent
     ) {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_CHANGE_PROFILE)
         ApplicationManager.getApplication().runWriteAction {
             val configurationName = profileData.configurationName
             val springRunConfiguration = RunManager.getInstance(project).allConfigurationsList

@@ -17,6 +17,8 @@
 
 package com.explyt.spring.web.editor.openapi
 
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
@@ -31,6 +33,8 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
     }
 
     fun showPreviewFor(tag: String, operationId: String) {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_OPENAPI_ENDPOINT_OPEN_IN_SWAGGER)
+
         if (getLayout() == Layout.SHOW_EDITOR) {
             setLayout(layout = DEFAULT_LAYOUT)
         }

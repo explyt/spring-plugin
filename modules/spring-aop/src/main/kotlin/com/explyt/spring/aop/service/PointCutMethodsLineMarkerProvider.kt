@@ -21,6 +21,8 @@ import com.explyt.spring.aop.SpringAopBundle
 import com.explyt.spring.aop.SpringAopIcons
 import com.explyt.spring.core.externalsystem.model.SpringAspectData
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isPrivate
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -69,6 +71,7 @@ class PointCutMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun findMethods(aspects: List<SpringAspectData>, project: Project): Collection<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_ASPECTJ_DECLARATION)
         return aspects.mapNotNull { toPsiMethod(it, project) }
     }
 

@@ -19,6 +19,8 @@ package com.explyt.spring.core.externalsystem.action
 
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -55,6 +57,7 @@ class DetachAllProjectsAction : DumbAwareAction() {
     }
 
     override fun actionPerformed(e: AnActionEvent) {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REMOVE)
         val project = e.project ?: return
         val projectsNode = ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
             .mapNotNull { it.externalProjectStructure }

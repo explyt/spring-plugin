@@ -17,6 +17,8 @@
 
 package com.explyt.spring.web.references.contributors.webClient
 
+import com.explyt.spring.core.statistic.StatisticActionId.COMPLETION_WEB_CLIENT_METHOD_CALL_WITH_TYPE
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.codeInsight.actions.OptimizeImportsProcessor
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.InsertionContext
@@ -32,6 +34,8 @@ class WebClientMethodInsertHandler(private val type: String, private val toImpor
     InsertHandler<LookupElement> {
 
     override fun handleInsert(context: InsertionContext, item: LookupElement) {
+        StatisticService.getInstance().addActionUsage(COMPLETION_WEB_CLIENT_METHOD_CALL_WITH_TYPE)
+
         EditorModificationUtilEx.insertStringAtCaret(context.editor, type)
         PsiDocumentManager.getInstance(context.project).commitDocument(context.document)
 

@@ -27,6 +27,8 @@ import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.i
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isLombokAnnotatedClassFieldExpression
 import com.explyt.spring.core.service.NativeSearchService
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
 import com.explyt.spring.core.util.SpringCoreUtil.canResolveBeanClass
@@ -245,6 +247,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     }
 
     private fun findFactoriesMetadataFiles(uElement: UClass, module: Module): Collection<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_FACTORIES_METADATA_FIND)
         val qualifiedName = uElement.qualifiedName ?: return emptyList()
         return getAutoconfigureIPropertiesByStringKey(module).asSequence()
             .filter { it.first.contains(qualifiedName) }
@@ -262,6 +265,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     private fun findFieldsAndMethodsWithAutowired(
         uClass: UClass?, uMethod: UMethod?, module: Module
     ): Collection<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
         val isArrayType = uMethod?.returnType is PsiArrayType
         val uElement = getUElement(uClass, uMethod)
         val project = module.project
@@ -356,6 +360,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     }
 
     private fun getBeanDeclarations(uVariable: UVariable, module: Module): Collection<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_DECLARATION)
         val sourcePsi = uVariable.sourcePsi ?: return emptyList()
         val language = sourcePsi.language
         val beanPsiType = uVariable.type

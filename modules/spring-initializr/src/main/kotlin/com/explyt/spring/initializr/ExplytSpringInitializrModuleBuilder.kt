@@ -17,6 +17,8 @@
 
 package com.explyt.spring.initializr
 
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.ide.projectWizard.ProjectSettingsStep
 import com.intellij.ide.util.projectWizard.ModuleBuilder
@@ -56,6 +58,7 @@ class ExplytSpringInitializrModuleBuilder : ModuleBuilder() {
         ApplicationManager.getApplication().invokeLaterOnWriteThread {
             zipFile.delete()
             ProjectManagerEx.getInstanceEx().loadAndOpenProject(extractProject)
+            StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_INITIALIZR_OPEN_PROJECT)
         }
         return null
     }
@@ -65,12 +68,14 @@ class ExplytSpringInitializrModuleBuilder : ModuleBuilder() {
         if (!name.isNullOrBlank() && settingsStep is ProjectSettingsStep) {
             settingsStep.setNameValue(name)
             settingsStep.setModuleName(name)
+            StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_INITIALIZR_MODIFY_SETTING)
         }
         return super.modifySettingsStep(settingsStep)
     }
 
     override fun getCustomOptionsStep(context: WizardContext, parentDisposable: Disposable): ModuleWizardStep {
         wizardStep = SpringInitializrWizardStep(context)
+        StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_INITIALIZR_WIZARD)
         return wizardStep as SpringInitializrWizardStep
     }
 

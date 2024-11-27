@@ -22,6 +22,8 @@ import com.explyt.spring.aop.SpringAopClasses
 import com.explyt.spring.aop.SpringAopIcons
 import com.explyt.spring.core.externalsystem.model.SpringAspectData
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isPrivate
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -69,6 +71,7 @@ class AspectMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun findMethods(aspects: List<SpringAspectData>, uMethod: UMethod): Collection<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_ASPECTJ_USAGE)
         val psiMethod = uMethod.javaPsi
         return aspects.asSequence()
             .filter { it.aspectMethodName == psiMethod.name }

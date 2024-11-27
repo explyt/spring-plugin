@@ -17,6 +17,8 @@
 
 package com.explyt.spring.web.view
 
+import com.explyt.spring.core.statistic.StatisticActionId.*
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.URI_TYPE
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
@@ -97,6 +99,8 @@ class EndpointsToolWindow(private val project: Project) :
 
         return ActionButton(object : AnAction() {
             override fun actionPerformed(event: AnActionEvent) {
+                StatisticService.getInstance().addActionUsage(ENDPOINTS_TOOLWINDOW_REFRESH)
+
                 project.messageBus.syncPublisher(EndpointToolModelEventListener.TOPIC)
                     .handle(ModelEvent(EventType.UPDATE_DATA, disposable))
             }
@@ -136,6 +140,9 @@ class EndpointsToolWindow(private val project: Project) :
 
                             override fun setSelected(event: AnActionEvent, state: Boolean) {
                                 val project = event.project ?: return
+                                StatisticService.getInstance().addActionUsage(
+                                    ENDPOINTS_TOOLWINDOW_HTTP_TYPE_FILTER
+                                )
 
                                 endpointsModel.setHttpTypeFilterActive(httpType, state)
 
@@ -184,6 +191,9 @@ class EndpointsToolWindow(private val project: Project) :
 
                             override fun setSelected(event: AnActionEvent, state: Boolean) {
                                 val project = event.project ?: return
+                                StatisticService.getInstance().addActionUsage(
+                                    ENDPOINTS_TOOLWINDOW_ENDPOINT_TYPE_FILTER
+                                )
 
                                 endpointsModel.setEndpointTypeFilterActive(endpointType, state)
 
@@ -212,6 +222,9 @@ class EndpointsToolWindow(private val project: Project) :
     }
 
     private fun onDocumentChange() {
+        StatisticService.getInstance().addActionUsage(
+            ENDPOINTS_TOOLWINDOW_SEARCH_TEXT
+        )
         endpointsModel.setTextFilterValue(searchTextField.text)
 
         project.messageBus.syncPublisher(EndpointToolModelEventListener.TOPIC)

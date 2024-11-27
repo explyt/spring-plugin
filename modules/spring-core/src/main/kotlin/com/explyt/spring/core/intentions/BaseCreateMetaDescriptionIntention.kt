@@ -21,6 +21,9 @@ import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.explyt.spring.core.SpringProperties.META_INF
+import com.explyt.spring.core.statistic.StatisticActionId.PREVIEW_CREATE_META_INFO_DESCRIPTION
+import com.explyt.spring.core.statistic.StatisticActionId.QUICK_FIX_CREATE_META_INFO_DESCRIPTION
+import com.explyt.spring.core.statistic.StatisticUtil.registerActionUsage
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.util.SourcesUtils
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
@@ -116,6 +119,11 @@ abstract class BaseCreateMetaDescriptionIntention : IntentionAction, HighPriorit
     ) {
         val module = ModuleUtilCore.findModuleForPsiElement(propertyInfo.psiElement) ?: return
         val moduleName = module.name
+
+        editor.registerActionUsage(
+            QUICK_FIX_CREATE_META_INFO_DESCRIPTION,
+            PREVIEW_CREATE_META_INFO_DESCRIPTION
+        )
 
         val resourceRoots = SourcesUtils.getResourceRoots(module).ifEmpty {
             project.invokeLater {

@@ -22,6 +22,8 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvider
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.execution.RunManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -60,6 +62,7 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
 
     companion object {
         fun attachProject(project: Project) {
+            StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_ADD)
             val springRunConfiguration = ApplicationManager.getApplication().runReadAction(
                 Computable { RunManager.getInstance(project).selectedConfiguration?.configuration }
             ) as? SpringBootRunConfiguration

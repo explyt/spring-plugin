@@ -17,6 +17,8 @@
 
 package com.explyt.spring.web.references.contributors
 
+import com.explyt.spring.core.statistic.StatisticActionId.COMPLETION_OPENAPI_YAML_ENDPOINT
+import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.explyt.spring.web.references.contributors.providers.OpenApiVersionCompletionProvider
 import com.explyt.spring.web.util.PlatformPatternUtils
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -68,7 +70,9 @@ class OpenApiYamlRefCompletionContributor : CompletionContributor() {
                     componentKeyValue.childrenOfType<YAMLMapping>().asSequence()
                         .flatMap { it.keyValues }
                         .mapToList {
-                            LookupElementBuilder.create("$prefix${it.keyText}")
+                            LookupElementBuilder
+                                .create("$prefix${it.keyText}")
+                                .withInsertHandler(StatisticInsertHandler(COMPLETION_OPENAPI_YAML_ENDPOINT))
                         }
                 )
             }

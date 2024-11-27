@@ -22,6 +22,8 @@ import com.explyt.spring.core.completion.properties.SpringConfigurationPropertie
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
 import com.explyt.spring.core.util.SpringCoreUtil.canResolveBeanClass
@@ -273,6 +275,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         fun getBeanDeclarations(): Collection<PsiElement> {
+            StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_DECLARATION)
             val uField = element.toUElement()?.getParentOfType(UVariable::class.java) ?: return emptyList()
             val beanPsiType = uField.type
             val beanName = uField.name ?: return emptyList()
@@ -321,6 +324,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         fun findFactoriesMetadataFiles(): Collection<PsiElement> {
+            StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_FACTORIES_METADATA_FIND)
             if (uParent !is UClass) return emptyList()
             val qualifiedName = uParent.qualifiedName ?: return emptyList()
             return autoConfigureProperties.value.asSequence()
@@ -330,6 +334,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
+            StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
             val isArrayType = uParent is UMethod && uParent.returnType is PsiArrayType
             val targetClass = SpringSearchUtils.getBeanClass(uParent, isArrayType) ?: return emptyList()
             val targetClasses = targetClass.allSupers()

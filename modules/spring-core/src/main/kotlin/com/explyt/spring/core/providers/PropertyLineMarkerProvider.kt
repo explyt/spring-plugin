@@ -20,6 +20,8 @@ package com.explyt.spring.core.providers
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -71,7 +73,10 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         val builder = NavigationGutterIconBuilder.create(SpringIcons.Hint)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(NotNullLazyValue.lazy { targets })
+            .setTargets(NotNullLazyValue.lazy {
+                StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_TARGET_ADDITIONAL_METADATA)
+                targets
+            })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.metadata.usage"))
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.metadata.usage"))
             .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.metadata.usage"))

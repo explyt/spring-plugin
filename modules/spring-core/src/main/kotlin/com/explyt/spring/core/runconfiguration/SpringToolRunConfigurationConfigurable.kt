@@ -19,6 +19,8 @@ package com.explyt.spring.core.runconfiguration
 
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.SearchableConfigurable
@@ -36,11 +38,13 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
 
     private val isAutoDetection = propertyGraph.property(false)
     private val isBeanFilterEnabled = propertyGraph.property(false)
+    private val isCollectStatisticBind = propertyGraph.property(false)
     private val sqlLanguageIdBind = propertyGraph.property("")
 
     override fun getId(): String = ID
 
     override fun createComponent(): JComponent {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.SETTINGS_OPEN)
         return panel {
             group {
                 row {
@@ -57,6 +61,13 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .applyToComponent {
                             toolTipText = message("explyt.spring.settings.enableBeanFiltering.tooltip")
                         }
+                        .resizableColumn()
+                }
+
+                row {
+                    checkBox(message("explyt.spring.settings.collect.statistic.label"))
+                        .align(AlignX.FILL)
+                        .bindSelected(isCollectStatisticBind)
                         .resizableColumn()
                 }
 
@@ -77,19 +88,23 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     override fun reset() {
         isAutoDetection.set(settingsState.isAutoDetectConfigurations)
         isBeanFilterEnabled.set(settingsState.isBeanFilterEnabled)
+        isCollectStatisticBind.set(settingsState.isCollectStatistic)
         sqlLanguageIdBind.set(settingsState.sqlLanguageId ?: "")
     }
 
     override fun isModified(): Boolean {
         if (settingsState.isAutoDetectConfigurations != isAutoDetection.get()) return true
         if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) return true
+        if (settingsState.isCollectStatistic != isCollectStatisticBind.get()) return true
         if (settingsState.sqlLanguageId != sqlLanguageIdBind.get()) return true
         return false
     }
 
     override fun apply() {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.SETTINGS_CHANGED)
         settingsState.isAutoDetectConfigurations = isAutoDetection.get()
         settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
+        settingsState.isCollectStatistic = isCollectStatisticBind.get()
         settingsState.sqlLanguageId = sqlLanguageIdBind.get()
 
         ProjectUtil.getActiveProject()?.let { project -> UastModelTrackerInvalidateAction.invalidate(project) }

@@ -19,6 +19,8 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findMockMvcEndpointUsage
@@ -60,6 +62,7 @@ open class RouteFunctionEndpointLineMarkerProvider : RelatedItemLineMarkerProvid
         result += NavigationGutterIconBuilder.create(SpringIcons.ReadAccess)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy {
+                StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_TARGET_ENDPOINTS_ROUTER_FUNCTION)
                 findOpenApiJsonEndpoints(path, listOf(methodNames), module) +
                         findOpenApiYamlEndpoints(path, listOf(methodNames), module) +
                         findMockMvcEndpointUsage(path, listOf(methodNames), module) +

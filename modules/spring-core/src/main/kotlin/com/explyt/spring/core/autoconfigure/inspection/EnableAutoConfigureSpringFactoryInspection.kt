@@ -25,6 +25,8 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.FACTORIES_ENABLE_AUTO_CONFIGURATION
 import com.explyt.spring.core.autoconfigure.language.FactoriesFileType
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.codeInsight.daemon.quickFix.CreateFilePathFix
 import com.intellij.codeInsight.daemon.quickFix.NewFileLocation
 import com.intellij.codeInsight.daemon.quickFix.TargetDirectory
@@ -145,6 +147,7 @@ private class MovePropertyFix(private val movedValues: List<String>) : LocalQuic
     }
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.QUICK_FIX_FACTORIES_MOVE_TO_IMPORT)
         val autoConfigurationImportsFile = descriptor.psiElement.containingFile.virtualFile.parent
             .findDirectory(SpringProperties.SPRING)
             ?.findChild(SpringProperties.AUTOCONFIGURATION_IMPORTS) ?: return
@@ -167,6 +170,7 @@ class RemovePropertyLocalFix : LocalQuickFix {
     override fun getFamilyName() = PropertiesBundle.message("remove.property.intention.text")
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.QUICK_FIX_FACTORIES_REMOVE_PROPERTY)
         val element = descriptor.psiElement
         val property = PsiTreeUtil.getParentOfType(element, Property::class.java, false) ?: return
         try {

@@ -18,6 +18,8 @@
 package com.explyt.spring.core.inspections.quickfix
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.openapi.application.ApplicationManager
@@ -49,6 +51,7 @@ class AddQualifierQuickFix(val annotation: String, element: PsiElement) : LocalQ
             if (editor != null) {
                 psiAnnotation?.textRange?.endOffset?.minus(2)?.let { editor.caretModel.moveToOffset(it) }
                 AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+                StatisticService.getInstance().addActionUsage(StatisticActionId.QUICK_FIX_ADD_QUALIFIER)
             }
         }, containingFile)
     }

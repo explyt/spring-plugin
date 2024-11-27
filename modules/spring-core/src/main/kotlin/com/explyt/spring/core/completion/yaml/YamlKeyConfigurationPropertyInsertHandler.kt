@@ -19,6 +19,8 @@ package com.explyt.spring.core.completion.yaml
 
 import com.explyt.spring.core.SpringProperties.COLON
 import com.explyt.spring.core.completion.properties.ConfigurationProperty
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.application.options.CodeStyle
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.InsertHandler
@@ -73,9 +75,11 @@ class YamlKeyConfigurationPropertyInsertHandler : InsertHandler<LookupElement> {
             if (parentMapping != null) {
                 val newName = configurationProperty.name.substringAfter("$parentConfigFullName.")
                 buildAndInsertKeyValue(context, foundParentKey, newName, configurationProperty.isMap())
+                StatisticService.getInstance().addActionUsage(StatisticActionId.COMPLETION_YAML_KEY_CONFIGURATION)
             }
         } else {
             insertNewKeyValue(lookupElement, context, configurationProperty, currentElement)
+            StatisticService.getInstance().addActionUsage(StatisticActionId.COMPLETION_YAML_KEY_CONFIGURATION)
         }
     }
 

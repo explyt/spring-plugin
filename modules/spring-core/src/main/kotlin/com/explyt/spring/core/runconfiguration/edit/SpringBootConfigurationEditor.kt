@@ -19,6 +19,8 @@ package com.explyt.spring.core.runconfiguration.edit
 
 import com.explyt.spring.core.SpringRunConfigurationBundle
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.execution.ExecutionBundle
 import com.intellij.execution.JavaExecutionUtil
 import com.intellij.execution.application.ClassEditorField
@@ -43,16 +45,14 @@ import java.awt.event.ItemEvent
 
 class SpringBootConfigurationEditor(
     configuration: SpringBootRunConfiguration
-) :
-    JavaSettingsEditorBase<SpringBootRunConfiguration>(
-        configuration
-    ) {
+) : JavaSettingsEditorBase<SpringBootRunConfiguration>(configuration) {
 
     override fun customizeFragments(
         fragments: MutableList<SettingsEditorFragment<SpringBootRunConfiguration, *>>,
         moduleClasspath: SettingsEditorFragment<SpringBootRunConfiguration, ModuleClasspathCombo>,
         commonParameterFragments: CommonParameterFragments<SpringBootRunConfiguration>
     ) {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.RUN_CONFIGURATION_OPEN)
         fragments.add(commonParameterFragments.programArguments())
         fragments.add(TargetPathFragment())
         fragments.add(commonParameterFragments.createRedirectFragment())

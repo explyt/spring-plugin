@@ -20,6 +20,8 @@ package com.explyt.spring.core.runconfiguration
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.service.ProfilesService
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.RunnerAndConfigurationSettings
@@ -36,13 +38,15 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
 
     override fun runConfigurationChanged(settings: RunnerAndConfigurationSettings) {
         super.runConfigurationChanged(settings)
+        if (settings.configuration is SpringBootRunConfiguration) {
+            StatisticService.getInstance().addActionUsage(StatisticActionId.RUN_CONFIGURATION_CHANGED)
+        }
         updateProfilesFromConfiguration(settings)
     }
 
     override fun stateLoaded(runManager: RunManager, isFirstLoadState: Boolean) {
         super.stateLoaded(runManager, isFirstLoadState)
-        ProfilesService.getInstance(project)
-            .updateFromConfiguration(runManager.selectedConfiguration)
+        ProfilesService.getInstance(project).updateFromConfiguration(runManager.selectedConfiguration)
     }
 
     private fun updateProfilesFromConfiguration(

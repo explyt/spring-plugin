@@ -17,6 +17,8 @@
 
 package com.explyt.spring.web.references.contributors
 
+import com.explyt.spring.core.statistic.StatisticActionId.COMPLETION_OPENAPI_JSON_ENDPOINT
+import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.explyt.spring.web.references.OpenApiJsonInnerReference.Companion.getProperty
 import com.explyt.spring.web.references.contributors.providers.OpenApiVersionCompletionProvider
 import com.explyt.spring.web.util.PlatformPatternUtils
@@ -66,7 +68,9 @@ class OpenApiJsonRefCompletionContributor : CompletionContributor() {
                 result.addAllElements(
                     jsonPropertyValue.childrenOfType<JsonProperty>()
                         .map {
-                            LookupElementBuilder.create("$prefix${it.name}")
+                            LookupElementBuilder
+                                .create("$prefix${it.name}")
+                                .withInsertHandler(StatisticInsertHandler(COMPLETION_OPENAPI_JSON_ENDPOINT))
                         }
                 )
             }

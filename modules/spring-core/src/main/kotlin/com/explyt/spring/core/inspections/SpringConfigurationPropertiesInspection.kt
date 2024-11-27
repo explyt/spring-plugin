@@ -23,6 +23,8 @@ import com.explyt.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES
 import com.explyt.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil.extractConfigurationPropertyPrefix
 import com.explyt.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil.getAnnotatedElements
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.codeInsight.navigation.getPsiElementPopup
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
@@ -109,7 +111,11 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
                     val result = findDuplicate(module, valueText).toTypedArray()
                     DataManager.getInstance().dataContextFromFocusAsync.onSuccess { context ->
                         when {
-                            result.size > 1 -> getPsiElementPopup(result, null)
+                            result.size > 1 -> {
+                                StatisticService.getInstance()
+                                    .addActionUsage(StatisticActionId.QUICK_FIX_DUPLICATE_PREFIX)
+                                getPsiElementPopup(result, null)
+                            }
                             else -> JBPopupFactory.getInstance()
                                 .createMessage(message("explyt.spring.inspection.config.prefix.duplicate.no"))
                         }.showInBestPositionFor(context)

@@ -18,6 +18,9 @@
 package com.explyt.spring.core.inspections.quickfix
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.statistic.StatisticActionId.PREVIEW_PROXY_BEAN_METHODS
+import com.explyt.spring.core.statistic.StatisticActionId.QUICK_FIX_PROXY_BEAN_METHODS
+import com.explyt.spring.core.statistic.StatisticUtil.registerActionUsage
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -46,6 +49,11 @@ class AddAsMethodArgQuickFix(identifier: PsiIdentifier) :
         val methodCall = startElement.parentOfType<PsiMethodCallExpression>() ?: return
         val type = methodCall.resolveMethod()?.returnType ?: return
         val surroundingMethod = startElement.parentOfType<PsiMethod>() ?: return
+
+        editor.registerActionUsage(
+            QUICK_FIX_PROXY_BEAN_METHODS,
+            PREVIEW_PROXY_BEAN_METHODS
+        )
 
         val elementFactory = JavaPsiFacade.getInstance(project).elementFactory
         val parameter = elementFactory.createParameter(methodName, type)

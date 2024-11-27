@@ -17,6 +17,9 @@
 
 package com.explyt.spring.core.completion.properties
 
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticInsertHandler
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
@@ -86,6 +89,8 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                         .withInsertHandler { insertionContext, _ ->
                             if (isYaml) {
                                 handleInsertInYaml(currentKey, property, insertionContext)
+                            } else {
+                                StatisticInsertHandler(StatisticActionId.COMPLETION_PROPERTY_KEY_CONFIGURATION)
                             }
                         }
 
@@ -106,6 +111,7 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                     property.name.substringAfter("${currentKey.prefix}.")
                 } else ""
             handleInsert(insertionContext, insertName)
+            StatisticService.getInstance().addActionUsage(StatisticActionId.COMPLETION_YAML_KEY_CONFIGURATION)
         }
 
         private fun handleInsert(context: InsertionContext, text: String) {

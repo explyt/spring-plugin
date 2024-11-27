@@ -17,6 +17,8 @@
 
 package com.explyt.spring.initializr
 
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.icons.AllIcons
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.ide.util.PropertiesComponent
@@ -42,7 +44,10 @@ import org.cef.callback.CefBeforeDownloadCallback
 import org.cef.callback.CefDownloadItem
 import org.cef.callback.CefDownloadItemCallback
 import org.cef.handler.CefDownloadHandler
-import java.awt.*
+import java.awt.BorderLayout
+import java.awt.Cursor
+import java.awt.Dimension
+import java.awt.FlowLayout
 import java.io.File
 import java.nio.file.Paths
 import javax.swing.*
@@ -184,6 +189,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
                     projectsDirectory = File(chosenFile.path)
                     PropertiesComponent.getInstance()
                         .setValue("explyt.spring.initializr.property.location", chosenFile.path)
+                    StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_INITIALIZR_FILE_CHOSEN)
                 }
             }
         })
@@ -214,6 +220,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
                 } else {
                     textFieldLocation.border = LineBorder(JBColor.YELLOW, 1)
                 }
+                StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_INITIALIZR_TEXT_LOCATION_CHANGE)
             }
         })
     }

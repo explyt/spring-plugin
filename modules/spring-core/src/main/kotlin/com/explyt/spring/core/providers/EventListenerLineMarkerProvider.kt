@@ -27,6 +27,8 @@ import com.explyt.spring.core.SpringProperties.ON_APPLICATION_EVENT
 import com.explyt.spring.core.SpringProperties.PUBLISH_EVENT_METHOD
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
@@ -115,7 +117,8 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun isApplicationEventMethod(psiMethod: PsiMethod): Boolean {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
-        val applicationListenerClass = LibraryClassCache.searchForLibraryClass(module, APPLICATION_LISTENER) ?: return false
+        val applicationListenerClass =
+            LibraryClassCache.searchForLibraryClass(module, APPLICATION_LISTENER) ?: return false
         val supers = psiMethod.parentOfType<PsiClass>()?.supers ?: return false
         val byApplicationEvent = supers.asSequence()
             .map { psiClass -> psiClass.isEqualOrInheritor(applicationListenerClass) }
@@ -125,6 +128,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun findPublishEvents(psiMethod: PsiMethod): List<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_TARGET_PUBLISH_EVENT)
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
         var eventPsiType: PsiType? = null
@@ -204,6 +208,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun findEventListeners(psiElement: PsiElement): Collection<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_TARGET_EVENT_LISTENER)
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return Collections.emptyList()
         val uCallExpression = psiElement.toUElementOfType<UCallExpression>() ?: return Collections.emptyList()
         if (uCallExpression.valueArgumentCount != 1) return Collections.emptyList()

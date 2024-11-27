@@ -19,6 +19,8 @@ package com.explyt.spring.web.inspections.quickfix
 
 import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.addPropertyToObject
 import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.iterateWithComma
+import com.explyt.spring.core.statistic.StatisticActionId.GUTTER_OPENAPI_GENERATE_ENDPOINT
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
 import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathBuilder
 import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathHttpTypeBuilder
@@ -93,6 +95,8 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     }
 
     private fun proceedFiles(openApiFiles: List<PsiFile>, module: Module) {
+        StatisticService.getInstance().addActionUsage(GUTTER_OPENAPI_GENERATE_ENDPOINT)
+
         val project = module.project
 
         ApplicationManager.getApplication().invokeLater {

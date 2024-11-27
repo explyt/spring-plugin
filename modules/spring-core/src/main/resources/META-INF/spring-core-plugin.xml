@@ -523,6 +523,7 @@
 
         <postStartupActivity
                 implementation="com.explyt.spring.core.runconfiguration.SpringRunConfigurationDetectService$StartupActivity"/>
+        <postStartupActivity implementation="com.explyt.spring.core.statistic.StatisticStartupActivity"/>
 
         <configurationType
                 id="Spring Boot"
@@ -639,6 +640,10 @@
                      description="Enable Spring explyt native bean retriever"/>
         <registryKey key="explyt.spring.native.old" defaultValue="false"
                      description="Support Spring Boot old versions before 2.4"/>
+        <registryKey key="explyt.statistic.debug" defaultValue="false"
+                     description="Enable statistic in debug mode"/>
+        <registryKey key="explyt.statistic.interval" defaultValue="3600"
+                     description="Update statistic interval seconds"/>
         <registryKey key="EXPLYTSPRINGBOOT.system.in.process" defaultValue="true"
                      description="Whether IDEA should use 'in-process' mode for interaction with plugin api"/>
         <intentionAction>

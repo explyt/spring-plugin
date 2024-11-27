@@ -20,6 +20,8 @@ package com.explyt.spring.core.properties.contributors
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.statistic.StatisticActionId.COMPLETION_CONDITIONAL_ON_CONFIGURATION_PREFIX
+import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
@@ -76,6 +78,7 @@ class ConditionalOnConfigurationPrefixCompletionContributor : CompletionContribu
                     .sorted()
                     .map {
                         LookupElementBuilder.create(it)
+                            .withInsertHandler(StatisticInsertHandler(COMPLETION_CONDITIONAL_ON_CONFIGURATION_PREFIX))
                             .withIcon(AllIcons.Nodes.Property)
                             .withTypeText(getTypeText(property.sourceType))
                     }

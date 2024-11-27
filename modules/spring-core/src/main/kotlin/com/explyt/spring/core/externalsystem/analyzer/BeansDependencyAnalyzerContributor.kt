@@ -20,6 +20,8 @@ package com.explyt.spring.core.externalsystem.analyzer
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.onlyAllSupers
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.Disposable
@@ -39,6 +41,8 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 class BeansDependencyAnalyzerContributor(private val project: Project) : DependencyAnalyzerContributor {
 
     override fun getDependencies(externalProject: DependencyAnalyzerProject): List<DependencyAnalyzerDependency> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_BEAN_ANALYZER)
+
         val projectDataNode = ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
             .mapNotNull { it.externalProjectStructure }
             .find { it.data.externalName == externalProject.title } ?: return emptyList()
@@ -93,15 +97,17 @@ class BeansDependencyAnalyzerContributor(private val project: Project) : Depende
         parentNode: DADependency,
         leafsDADependencies: MutableList<DADependency>
     ) {
-        val daArtifact = toDaArtifact(psiClass) ?: return
-        val currentDA = DADependency(daArtifact, scope, parentNode, emptyList())
-        leafsDADependencies.add(currentDA)
-        val supers = ApplicationManager.getApplication().runReadAction(Computable { psiClass.onlyAllSupers() })
-        for (psiSuperClass in supers) {
-            if (psiSuperClass.qualifiedName == Object::class.java.name) continue
-            val superArtifact = getSuperArtifact(psiSuperClass) ?: continue
-            val daDependency = DADependency(superArtifact, scope, currentDA, emptyList())
-            leafsDADependencies.add(daDependency)
+        ApplicationManager.getApplication().runReadAction {
+            val daArtifact = toDaArtifact(psiClass) ?: return@runReadAction
+            val currentDA = DADependency(daArtifact, scope, parentNode, emptyList())
+            leafsDADependencies.add(currentDA)
+            val supers = psiClass.onlyAllSupers()
+            for (psiSuperClass in supers) {
+                if (psiSuperClass.qualifiedName == Object::class.java.name) continue
+                val superArtifact = getSuperArtifact(psiSuperClass) ?: continue
+                val daDependency = DADependency(superArtifact, scope, currentDA, emptyList())
+                leafsDADependencies.add(daDependency)
+            }
         }
     }
 
@@ -111,12 +117,10 @@ class BeansDependencyAnalyzerContributor(private val project: Project) : Depende
     }
 
     private fun toDaArtifact(psiClass: PsiClass): DAArtifact? {
-        return ApplicationManager.getApplication().runReadAction(Computable {
-            val name = psiClass.name ?: return@Computable null
-            val version = getVersion(psiClass) ?: return@Computable null
-            val groupId = psiClass.qualifiedName?.substringBeforeLast(".$name") ?: return@Computable null
-            DAArtifact(groupId, name, version)
-        })
+        val name = psiClass.name ?: return null
+        val version = getVersion(psiClass) ?: return null
+        val groupId = psiClass.qualifiedName?.substringBeforeLast(".$name") ?: return null
+        return DAArtifact(groupId, name, version)
     }
 
     private fun getVersion(psiClass: PsiClass): String? {

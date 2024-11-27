@@ -18,6 +18,8 @@
 package com.explyt.spring.core.language.profiles
 
 import com.explyt.spring.core.profile.SpringProfilesService
+import com.explyt.spring.core.statistic.StatisticActionId.COMPLETION_PROFILES
+import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
@@ -37,7 +39,11 @@ class ProfilesCompletionContributor : CompletionContributor() {
             .filter { it.isNotBlank() }
             .distinct()
             .sorted()
-            .map { LookupElementBuilder.create(it) }
+            .map {
+                LookupElementBuilder
+                    .create(it)
+                    .withInsertHandler(StatisticInsertHandler(COMPLETION_PROFILES))
+            }
             .forEach { result.addElement(it) }
     }
 

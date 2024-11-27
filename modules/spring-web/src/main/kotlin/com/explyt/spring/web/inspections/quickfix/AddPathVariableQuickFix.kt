@@ -17,6 +17,9 @@
 
 package com.explyt.spring.web.inspections.quickfix
 
+import com.explyt.spring.core.statistic.StatisticActionId.PREVIEW_REQUEST_MAPPING_ADD_PATH_VARIABLE
+import com.explyt.spring.core.statistic.StatisticActionId.QUICK_FIX_REQUEST_MAPPING_ADD_PATH_VARIABLE
+import com.explyt.spring.core.statistic.StatisticUtil.registerActionUsage
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.intellij.codeInsight.intention.AddAnnotationFix
@@ -46,6 +49,12 @@ class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: Stri
         endElement: PsiElement
     ) {
         val psiMethod = startElement as? PsiMethod ?: return
+
+        editor.registerActionUsage(
+            QUICK_FIX_REQUEST_MAPPING_ADD_PATH_VARIABLE,
+            PREVIEW_REQUEST_MAPPING_ADD_PATH_VARIABLE
+        )
+
         val psiManager = PsiManager.getInstance(project)
         val elementFactory = JavaPsiFacade.getInstance(project).elementFactory
 

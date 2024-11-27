@@ -19,6 +19,8 @@ package com.explyt.spring.core.externalsystem
 
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.spring.boot.bean.reader.SpringBootBeanEnhancerReaderStarter
+import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringCoreClasses.REST_CONTROLLER
@@ -35,8 +37,8 @@ import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
-import com.explyt.spring.boot.bean.reader.SpringBootBeanEnhancerReaderStarter
-import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManager
@@ -92,6 +94,8 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         settings: NativeExecutionSettings?,
         listener: ExternalSystemTaskNotificationListener
     ): DataNode<ProjectData> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REFRESH)
+
         val runConfiguration = findRunConfigurationReadAction(projectPath, settings)
         if (isPreviewMode) {
             return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfiguration), null)

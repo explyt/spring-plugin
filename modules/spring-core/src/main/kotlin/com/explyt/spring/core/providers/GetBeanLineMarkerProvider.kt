@@ -21,6 +21,8 @@ import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.statistic.StatisticActionId.GUTTER_BEAN_FACTORY_GET_BEAN
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -71,6 +73,8 @@ class GetBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun getBeans(psiElement: PsiElement, name: String, requiredType: PsiType?): Collection<PsiElement> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return emptyList()
+        StatisticService.getInstance().addActionUsage(GUTTER_BEAN_FACTORY_GET_BEAN)
+
         return SpringSearchServiceFacade.getInstance(psiElement.project)
             .findActiveBeanDeclarations(module, name, psiElement.language, requiredType)
     }
