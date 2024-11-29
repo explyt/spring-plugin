@@ -76,7 +76,12 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
         if (isExternalProjectExist(elements)) {
-            SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
+            val module = getModule(elements)
+            if (module != null) {
+                SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
+            } else {
+                SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
+            }
         } else {
             super.collectSlowLineMarkers(elements, result)
         }
@@ -85,6 +90,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun isExternalProjectExist(elements: MutableList<out PsiElement>): Boolean {
         return elements.firstOrNull()
             ?.let { SpringSearchServiceFacade.isExternalProjectExist(it.project) } ?: false
+    }
+
+    private fun getModule(elements: MutableList<out PsiElement>): Module? {
+        return elements.firstOrNull()
+            ?.let { ModuleUtilCore.findModuleForPsiElement(it) }
     }
 
     override fun collectNavigationMarkers(
@@ -367,7 +377,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                                 && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
-                    .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses, it.language) }
+                    .filter { it.isCandidate(targetType, targetClass, targetClasses) }
                     .map { it.navigationElement.toUElement() as? UVariable }
                     .filterNotNull().toSet())
             }

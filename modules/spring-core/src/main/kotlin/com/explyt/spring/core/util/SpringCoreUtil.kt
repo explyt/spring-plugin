@@ -24,6 +24,7 @@ import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.explyt.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.explyt.spring.core.properties.SpringPropertySourceSearch
+import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.util.ExplytAnnotationUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
@@ -41,6 +42,7 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.explyt.util.ExplytPsiUtil.isNonPrivate
 import com.explyt.util.ExplytPsiUtil.isObject
+import com.explyt.util.ExplytPsiUtil.isObjectProvider
 import com.explyt.util.ExplytPsiUtil.isOptional
 import com.explyt.util.ExplytPsiUtil.isString
 import com.explyt.util.ExplytPsiUtil.psiClassType
@@ -181,9 +183,7 @@ object SpringCoreUtil {
         if (psiClass.isInterface) return false
 
         val moduleScope = ModuleUtilCore.findModuleForPsiElement(psiClass)?.moduleWithDependenciesScope ?: return false
-        return ClassInheritorsSearch.search(psiClass, moduleScope, true)
-            .filterNotNull()
-            .any { it.hasComponentAnnotation() }
+        return ClassInheritorsSearch.search(psiClass, moduleScope, true).any { it?.hasComponentAnnotation() == true }
     }
 
     private fun PsiClass.hasComponentAnnotation(): Boolean {
@@ -253,6 +253,10 @@ object SpringCoreUtil {
                     return firstParam
                 }
                 return firstParam.beanPsiType
+            }
+            if (isObjectProvider) {
+                // ObjectProvider<Bean>
+                return parameters.firstOrNull()?.beanPsiType ?: return this
             }
             if (isMapWithStringKey()) {
                 // Map<String, Bean>
@@ -552,12 +556,24 @@ object SpringCoreUtil {
             ?.methods
     }
 
+
+    fun PsiParameter.isCandidate(
+        targetType: PsiType?,
+        targetClass: PsiClass,
+        targetClasses: Set<PsiClass>
+    ): Boolean {
+        return targetType == this.type
+                || (targetType == null && targetClass.qualifiedName == this.type.resolvedPsiClass?.qualifiedName)
+                || this.type.canResolveBeanClass(targetClasses, this.language)
+    }
+
     fun PsiField.isCandidate(
         targetType: PsiType?,
         targetClasses: Set<PsiClass>,
         targetClass: PsiClass
     ): Boolean {
         if (targetType == this.type) return true
+        if (targetType == null && targetClass.qualifiedName == this.type.resolvedPsiClass?.qualifiedName) return true
         if (targetType != null && targetType.isEqualOrInheritorBeanType(this.type)) return true
         if (targetType != null && this.type.isAssignableFrom(targetType)) return true
 
@@ -625,6 +641,12 @@ object SpringCoreUtil {
         return qualifier == null
                 || beanNameFromQualifier != null && beanNameFromQualifier in this.resolveBeanName(module)
                 || ExplytAnnotationUtil.equal(qualifier, this.getAnnotation(qualifier.qualifiedName!!))
+    }
+
+    fun PsiBean.filterByQualifier(qualifier: PsiAnnotation?, beanNameFromQualifier: String?): Boolean {
+        return qualifier == null
+                || beanNameFromQualifier != null && beanNameFromQualifier == this.name
+                || ExplytAnnotationUtil.equal(qualifier, this.psiMember.getAnnotation(qualifier.qualifiedName!!))
     }
 
     fun PsiClass.isMimeTypeClass(): Boolean {

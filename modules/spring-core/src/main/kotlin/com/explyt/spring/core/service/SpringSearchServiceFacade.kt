@@ -81,7 +81,7 @@ class SpringSearchServiceFacade(private val project: Project) {
 
     fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.getComponentBeanPsiMethods(module)
+            nativeSearchService.getBeanPsiMethods(module)
         } else {
             springSearchService.getComponentBeanPsiMethods(module)
         }
@@ -89,7 +89,7 @@ class SpringSearchServiceFacade(private val project: Project) {
 
     fun searchArrayComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.searchArrayComponentPsiClassesByBeanMethods(module)
+            nativeSearchService.searchArrayPsiClassesByBeanMethods(module)
         } else {
             springSearchService.searchArrayComponentPsiClassesByBeanMethods(module)
         }
@@ -119,7 +119,8 @@ class SpringSearchServiceFacade(private val project: Project) {
         qualifier: PsiAnnotation? = null
     ): List<PsiMember> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.findActiveBeanDeclarations(module, byBeanName, language, byBeanPsiType, qualifier)
+            val beans = nativeSearchService.getAllActiveBeans(module)
+            nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             springSearchService.findActiveBeanDeclarations(module, byBeanName, language, byBeanPsiType, qualifier)
         }

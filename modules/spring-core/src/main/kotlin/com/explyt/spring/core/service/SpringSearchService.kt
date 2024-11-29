@@ -822,7 +822,7 @@ object SpringSearchUtils {
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
                     return@run annotations
                 }.toSet(),
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
             )
         }
     }

@@ -268,11 +268,11 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
         val isArrayType = uMethod?.returnType is PsiArrayType
         val uElement = getUElement(uClass, uMethod)
+        val targetType = if (uElement is UMethod) uElement.returnType else null
         val project = module.project
 
         val targetClass = SpringSearchUtils.getBeanClass(uElement, isArrayType) ?: return emptyList()
         val targetClasses = targetClass.allSupers()
-        val targetType = null
 
         val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
         val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
@@ -293,25 +293,27 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val allParametersWithAutowired = mutableSetOf<UVariable>()
         allBeans.forEach { bean ->
             val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
-            allParametersWithAutowired.addAll(methods.asSequence()
-                .filter {
-                    it.isAnnotatedBy(allAutowiredAnnotationsNames)
-                            || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                            || it.isConstructor
-                            && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent(module)
-                }
-                .flatMap { it.parameterList.parameters.asSequence() }
-                .filter { targetType == it.type || it.type.canResolveBeanClass(targetClasses, it.language) }
-                .map { it.navigationElement.toUElement() as? UVariable }
-                .filterNotNull().toSet())
+            allParametersWithAutowired.addAll(
+                methods.asSequence()
+                    .filter {
+                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                                || it.isAnnotatedBy(SpringCoreClasses.BEAN)
+                                || it.isConstructor
+                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                    }
+                    .flatMap { it.parameterList.parameters.asSequence() }
+                    .filter { it.isCandidate(targetType, targetClass, targetClasses) }
+                    .map { it.navigationElement.toUElement() as? UVariable }
+                    .filterNotNull().toSet())
         }
 
         val allByType = allFieldsWithAutowired + allParametersWithAutowired
         val filteredByName = allByType.filter {
             val beanName = it.name ?: return@filter true
             val beanPsiType = it.type
+            val allActiveBeans = nativeSearchService.getAllActiveBeans(module)
             val resolvedBeanTargets = nativeSearchService.findActiveBeanDeclarations(
-                module, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
+                allActiveBeans, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
             )
             return@filter uElement.javaPsi in resolvedBeanTargets
         }
@@ -339,14 +341,14 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors, psiVariable.language)) {
             return true
         }
-        val componentBeanPsiMethods = nativeSearchService.getComponentBeanPsiMethods(module)
+        val componentBeanPsiMethods = nativeSearchService.getBeanPsiMethods(module)
         val hasExactType = componentBeanPsiMethods.filterByExactMatch(psiVariable.type).any()
         if (hasExactType) {
             return true
         }
         val arrayPsiType = psiVariable.type.getArrayType()
         if (arrayPsiType != null) {
-            return nativeSearchService.searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
+            return nativeSearchService.searchArrayPsiClassesByBeanMethods(module).asSequence()
                 .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
                 .any { arrayPsiType.isAssignableFrom(it) }
         }
@@ -366,8 +368,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val beanPsiType = uVariable.type
         val beanName = uVariable.name ?: return emptyList()
         val qualifierAnnotation = (sourcePsi as? PsiModifierListOwner)?.getQualifierAnnotation()
+        val allActiveBeans = NativeSearchService.getInstance(module.project).getAllActiveBeans(module)
         val activeBean = NativeSearchService.getInstance(module.project).findActiveBeanDeclarations(
-            module, beanName, language, beanPsiType, qualifierAnnotation
+            allActiveBeans, beanName, language, beanPsiType, qualifierAnnotation
         )
         if (activeBean.isNotEmpty()) {
             return activeBean
@@ -381,7 +384,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     }
 
     private fun getArrayBeans(arrayPsiType: PsiArrayType, module: Module): List<PsiMember> {
-        return NativeSearchService.getInstance(module.project).searchArrayComponentPsiClassesByBeanMethods(module)
+        return NativeSearchService.getInstance(module.project).searchArrayPsiClassesByBeanMethods(module)
             .asSequence()
             .filter {
                 it.psiMember is PsiMethod && it.psiMember.returnType != null

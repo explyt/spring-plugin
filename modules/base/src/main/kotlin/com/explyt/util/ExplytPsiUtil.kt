@@ -190,6 +190,9 @@ object ExplytPsiUtil {
     val PsiType.isString: Boolean
         get() = this.isInheritorOf(java.lang.String::class.java.canonicalName)
 
+    val PsiType.isObjectProvider: Boolean
+        get() = this.isInheritorOf("org.springframework.beans.factory.ObjectProvider")
+
     val PsiType.isObject: Boolean
         get() {
             when (this) {
