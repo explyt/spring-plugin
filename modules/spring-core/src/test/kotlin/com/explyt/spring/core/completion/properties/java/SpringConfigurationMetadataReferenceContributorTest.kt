@@ -127,7 +127,13 @@ class SpringConfigurationMetadataReferenceContributorTest : AbstractSpringProper
 }
 """.trimIndent()
         )
-        doTest("main.local.event-listener", "main.local.max-sessions-per-connection")
+        doTest(
+            "main.local.event-listener",
+            "main.local.code-mime-type",
+            "main.local.code-mime-type.parameters.keys",
+            "main.local.code-mime-type.parameters.values",
+            "main.local.max-sessions-per-connection"
+        )
     }
 
     fun testHintsNameFromMetadata() {

@@ -45,6 +45,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
@@ -148,14 +149,53 @@ class ConfigurationPropertyKeyReference(
     private fun resultConfigKeyPsiElement(project: Project, module: Module): Array<ResolveResult> {
         val foundProperty = configurationProperty(project, module) ?: return emptyArray()
 
-        val sourceType = when (foundProperty.propertyType) {
-            PropertyType.MAP ->
-                foundProperty.type?.substringAfter(",")?.substringBefore(">") ?: return emptyArray()
+        val sourceType = when {
+            foundProperty.propertyType == PropertyType.MAP -> {
+                return handleMapProperty(project, foundProperty)
+            }
 
-            else -> foundProperty.sourceType ?: return emptyArray()
+            foundProperty.name == propertyKey -> {
+                foundProperty.sourceType ?: return emptyArray()
+            }
+
+            else -> return emptyArray()
         }
 
         val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project) ?: return emptyArray()
+        return resolveResults(sourceMember)
+    }
+
+    private fun handleMapProperty(project: Project, foundProperty: ConfigurationProperty): Array<ResolveResult> {
+        if (foundProperty.name == propertyKey) {
+            return resolveResultsByProperty(foundProperty, project)
+        }
+
+        val valueType = PropertyUtil.getValueClassNameInMap(foundProperty.type) ?: return emptyArray()
+        val propertyMapKey = propertyKey.substringAfter("${foundProperty.name}.").substringBefore(".")
+        var propertyMapValue = propertyKey.substringAfter("$propertyMapKey.")
+        if (propertyMapValue == propertyKey) propertyMapValue = ""
+
+        return if (propertyMapKey.isNotEmpty() && propertyMapValue.isEmpty()) {
+            val source = PropertyUtil.findSourceMember("", valueType, project) ?: return emptyArray()
+            resolveResults(source)
+        } else {
+            val methods = getMethodsTypeByMap(project, valueType).filter {
+                it.name.lowercase() == "set${propertyMapValue.replace("-", "")}"
+            }.ifEmpty { return emptyArray() }
+            resolveResults(methods.first())
+        }
+    }
+
+    private fun resolveResultsByProperty(
+        foundProperty: ConfigurationProperty,
+        project: Project
+    ): Array<ResolveResult> {
+        val type = foundProperty.sourceType ?: return emptyArray()
+        val source = PropertyUtil.findSourceMember(propertyKey, type, project) ?: return emptyArray()
+        return resolveResults(source)
+    }
+
+    private fun resolveResults(sourceMember: PsiMember): Array<ResolveResult> {
         val uElement = sourceMember.toUElement() ?: return emptyArray()
 
         return if ((uElement is UClass || uElement is UMethod || uElement is UField || !mode.isNullOrEmpty())) {
@@ -239,6 +279,13 @@ class ConfigurationPropertyKeyReference(
         )
     }
 
+    private fun getMethodsTypeByMap(project: Project, valueType: String): List<PsiMethod> {
+        val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
+        val foundClass =
+            JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
+                ?: return emptyList()
+        return PropertyUtil.getSetterMethods(foundClass, emptyList())
+    }
 }
 
 class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
@@ -266,4 +313,17 @@ class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
     override fun getPresentableText(): String? {
         return member.presentation?.presentableText
     }
+
+    override fun toString(): String {
+        return member.name ?: "Unnamed"
+    }
+
+    override fun getText(): String? {
+        return member.text
+    }
+
+    override fun getName(): String? {
+        return member.name
+    }
+
 }

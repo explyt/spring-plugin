@@ -72,9 +72,11 @@
 
         <completion.contributor language="any"
                                 id="com.explyt.spring.core.propertiesCompletionContributor"
+                                order="after yamlContributor"
                                 implementationClass="com.explyt.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
 
-        <completion.contributor language="yaml"
+        <completion.contributor id="yamlContributor"
+                                language="yaml"
                                 implementationClass="com.explyt.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
         <completion.contributor language="UAST"
@@ -92,6 +94,7 @@
         <psi.referenceContributor language="Properties"
                                   implementation="com.explyt.spring.core.autoconfigure.reference.AutoConfigureReferenceContributor"/>
         <psi.referenceContributor language="yaml"
+                                  order="after yamlProfile"
                                   implementation="com.explyt.spring.core.properties.contributors.SpringYamlConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.core.properties.contributors.UastConfigurationPropertyReferenceContributor"/>
@@ -596,7 +599,9 @@
                 implementationClass="com.explyt.spring.core.language.profiles.ProfilesCompletionContributor"/>
 
         <psi.referenceContributor
+                id="yamlProfile"
                 language="yaml"
+                order="first"
                 implementation="com.explyt.spring.core.language.profiles.YamlProfilesReferenceContributor"/>
 
         <psi.referenceContributor

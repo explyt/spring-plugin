@@ -2,6 +2,7 @@ package src;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.MimeType;
 
 @ConfigurationProperties(prefix = "main.local")
 @Configuration
@@ -15,6 +16,11 @@ public class MainFooProperties {
      * Event listener
      */
     private String eventListener;
+
+    /**
+     * A mime type
+     */
+    private MimeType codeMimeType;
 
     public Integer getMaxSessionsPerConnection() {
         return maxSessionsPerConnection;
@@ -30,6 +36,14 @@ public class MainFooProperties {
 
     public void setEventListener(String eventListener) {
         this.eventListener = eventListener;
+    }
+
+    public MimeType getCodeMimeType() {
+        return codeMimeType;
+    }
+
+    public void setCodeMimeType(MimeType codeMimeType) {
+        this.codeMimeType = codeMimeType;
     }
 
 }

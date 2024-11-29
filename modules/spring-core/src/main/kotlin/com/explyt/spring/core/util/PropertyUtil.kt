@@ -17,16 +17,16 @@
 
 package com.explyt.spring.core.util
 
+import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
-import com.explyt.spring.core.completion.properties.ConfigurationProperty
-import com.explyt.spring.core.completion.properties.PropertyHint
-import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.explyt.spring.core.completion.properties.ValueHint
+import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.explyt.spring.core.references.ReferenceType
+import com.explyt.util.ExplytPsiUtil.isNonPrivate
+import com.explyt.util.ExplytPsiUtil.isNonStatic
 import com.explyt.util.ModuleUtil
 import com.intellij.lang.properties.IProperty
 import com.intellij.lang.properties.psi.impl.PropertyImpl
@@ -152,7 +152,6 @@ object PropertyUtil {
         possibleFileTypes: Array<FileType>,
         provider: PsiReferenceProvider?
     ): Array<FileReference> {
-//        var range = ElementManipulators.getValueTextRange(element)
         val textWithoutClassPathPrefix = text.substring(prefix.length)
 
         // classpath: can start with "./"  or "/" or ""
@@ -358,6 +357,52 @@ object PropertyUtil {
         }
         val property = properties.firstOrNull { isSameProperty(it.name, keyVariant) } ?: return false
         return property.isMap()
+    }
+
+    fun getValueClassNameInMap(propertyType: String?): String? {
+        if (propertyType == null) return null
+        if (propertyType.substringBefore("<") == JavaCoreClasses.MAP) {
+            return getClassNameFromInnerTypeInMap(propertyType)
+        }
+        return null
+    }
+
+    private fun getClassNameFromInnerTypeInMap(propertyType: String): String? {
+        val keyType = propertyType.substringAfter(",").substringBeforeLast(">")
+        if (keyType != propertyType) {
+            return keyType
+        }
+        return null
+    }
+
+    fun getSetterMethods(
+        targetClass: PsiClass,
+        nestedFields: List<FieldPropertyWrapper>
+    ): List<PsiMethod> {
+        return targetClass.allMethods.filter {
+            it.isNonStatic
+                    && it.isNonPrivate
+                    && it.parameterList.parametersCount == 1
+                    && isPrefixedJavaIdentifier(it.name, "set")
+                    && it.parameterList.parameters[0].type !in nestedFields.map { field -> field.psiType }
+        }.filterNotNull()
+    }
+
+    fun getGetterMethods(
+        targetClass: PsiClass,
+        nestedFields: List<FieldPropertyWrapper>
+    ): List<PsiMethod> {
+        return targetClass.allMethods.filter {
+            it.isNonStatic
+                    && it.isNonPrivate
+                    && it.parameterList.parametersCount == 0
+                    && (isPrefixedJavaIdentifier(it.name, "get") || isPrefixedJavaIdentifier(it.name, "is"))
+                    && it.returnType !in nestedFields.map { field -> field.psiType }
+        }.filterNotNull()
+    }
+
+    private fun isPrefixedJavaIdentifier(name: String, prefix: String): Boolean {
+        return name.startsWith(prefix) && name.length > prefix.length
     }
 
     private fun findMember(

@@ -71,7 +71,7 @@ class SpringYamlCompletionContributor : CompletionContributor() {
             val matchingProperties = properties.filter {
                 it.name !in existProperties && (configFullName.isEmpty() || it.name.startsWith("$configFullName."))
             }
-            if (matchingProperties.isNotEmpty()) {
+            if (matchingProperties.any { !it.isMap() }) {
                 result.stopHere()
             }
             matchingProperties.forEach {

@@ -30,6 +30,8 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
 import com.explyt.spring.core.util.PropertyUtil.propertyValue
+import com.explyt.util.ExplytKotlinUtil.mapToList
+import com.explyt.util.ExplytPsiUtil.isPrivate
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.Module
@@ -160,9 +162,9 @@ class ValueHintReference(
                 val propertyTypeClass = JavaPsiFacade.getInstance(project)
                     .findClass(propertyType, GlobalSearchScope.allScope(project))
                 if (propertyTypeClass?.isEnum == true) {
-                    return propertyTypeClass.fields.map {
-                        LookupElementBuilder.create(it)
-                    }
+                    return propertyTypeClass.fields.asSequence()
+                        .filter { !it.isPrivate }
+                        .mapToList { LookupElementBuilder.create(it) }
                 }
                 emptyList()
             }

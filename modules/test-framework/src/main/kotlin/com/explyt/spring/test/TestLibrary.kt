@@ -52,6 +52,10 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
 
         val springAop_6_0_7 = TestLibrary("org.springframework:spring-aop:6.0.7", true)
         val aspectjWeaver_1_9_7 = TestLibrary("org.aspectj:aspectjweaver:1.9.7", true)
+
+        val slf4j_2_0_7 = TestLibrary("org.slf4j:slf4j-api:2.0.7", true)
+
+        val resilience4j_2_2_0 = TestLibrary("io.github.resilience4j:resilience4j-spring-boot3:2.2.0", true)
     }
 }
 

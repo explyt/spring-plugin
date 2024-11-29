@@ -25,12 +25,15 @@ import com.explyt.spring.core.SpringProperties.HINTS
 import com.explyt.spring.core.SpringProperties.PROPERTIES
 import com.explyt.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.util.PropertyUtil
+import com.explyt.spring.core.util.SpringCoreUtil.isMimeTypeClass
 import com.explyt.util.ExplytPsiUtil.isFinal
+import com.explyt.util.ExplytPsiUtil.isMap
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.explyt.util.ExplytPsiUtil.isNonPrivate
 import com.explyt.util.ExplytPsiUtil.isNonStatic
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
+import com.explyt.util.ExplytPsiUtil.returnPsiType
 import com.explyt.util.runReadNonBlocking
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.json.psi.JsonFile
@@ -38,7 +41,6 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocToken
-import com.intellij.psi.util.PropertyUtil
 import com.intellij.psi.util.childrenOfType
 import java.util.*
 
@@ -174,8 +176,8 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         nestedFields: List<FieldPropertyWrapper>
     ): List<MethodPropertyWrapper> {
         val result = mutableListOf<MethodPropertyWrapper>()
-        val setterMethods = getSetterMethods(targetClass, nestedFields)
-        val getterMethods = getGetterMethods(targetClass, nestedFields)
+        val setterMethods = PropertyUtil.getSetterMethods(targetClass, nestedFields)
+        val getterMethods = PropertyUtil.getGetterMethods(targetClass, nestedFields)
         for (method in setterMethods) {
             val setterIdentifier = getIdentifierFromSetterMethod(method) ?: continue
             var methodPropertyWrapper: MethodPropertyWrapper? = null
@@ -194,33 +196,6 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         return result
     }
 
-    private fun getGetterMethods(
-        targetClass: PsiClass,
-        nestedFields: List<FieldPropertyWrapper>
-    ) : List<PsiMethod> {
-        return targetClass.allMethods.filter {
-            it.isNonStatic
-                    && it.isNonPrivate
-                    && it.parameterList.parametersCount == 0
-                    && (isPrefixedJavaIdentifier(it.name, "get") || isPrefixedJavaIdentifier(it.name, "is"))
-                    && it.returnType !in nestedFields.map { field -> field.psiType }
-        }.filterNotNull()
-    }
-
-    private fun getSetterMethods(
-        targetClass: PsiClass,
-        nestedFields: List<FieldPropertyWrapper>
-    ) : List<PsiMethod> {
-        return targetClass.allMethods.filter {
-            it.isNonStatic
-                    && it.isNonPrivate
-                    && it.parameterList.parametersCount == 1
-                    && isPrefixedJavaIdentifier(it.name, "set")
-                    && it.parameterList.parameters[0].type !in nestedFields.map { field -> field.psiType }
-                    && it.returnPsiClass == null
-        }.filterNotNull()
-    }
-
     private fun getNestedPropertyWrappers(targetClass: PsiClass): List<FieldPropertyWrapper> {
         return targetClass.allFields
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.NESTED_CONFIGURATION_PROPERTIES) }
@@ -228,15 +203,18 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     }
 
     private fun getFieldPropertyWrappers(targetClass: PsiClass): List<FieldPropertyWrapper> {
-        return targetClass.allFields.filter {
-            it.isNonStatic
-                    && it.isFinal
-                    && !it.isMetaAnnotatedBy(SpringCoreClasses.NESTED_CONFIGURATION_PROPERTIES)
-        }.map { FieldPropertyWrapper(it) }
-    }
-
-    private fun isPrefixedJavaIdentifier(name: String, prefix: String): Boolean {
-        return name.startsWith(prefix) && name.length > prefix.length
+        val fields = if (targetClass.isEnum) {
+            emptyList()
+        } else if (targetClass.isMimeTypeClass()) {
+            targetClass.allFields.filter { it.returnPsiType?.isMap == true }
+        } else {
+            targetClass.allFields.filter {
+                it.isNonStatic
+                        && it.isFinal
+                        && !it.isMetaAnnotatedBy(SpringCoreClasses.NESTED_CONFIGURATION_PROPERTIES)
+            }
+        }
+        return fields.map { FieldPropertyWrapper(it) }
     }
 
     private fun findMetadataFiles(module: Module): List<PsiFile> {
@@ -297,10 +275,10 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     }
 }
 
-private abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
+abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
     open val name: String?
         get() {
-            val propertyName = PropertyUtil.getPropertyName(psiMember) ?: return null
+            val propertyName = com.intellij.psi.util.PropertyUtil.getPropertyName(psiMember) ?: return null
             val builder = StringBuilder(propertyName)
 
             var i = 1
@@ -348,7 +326,8 @@ private abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
     }
 }
 
-private class FieldPropertyWrapper(psiField: PsiField, deprecationInfo: DeprecationInfo? = null) : PropertyWrapper<PsiField>(psiField) {
+class FieldPropertyWrapper(psiField: PsiField, deprecationInfo: DeprecationInfo? = null) :
+    PropertyWrapper<PsiField>(psiField) {
 
     override val psiType: PsiType = psiMember.type
 
