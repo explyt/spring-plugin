@@ -1,0 +1,39 @@
+<html>
+<head>
+    <title>Configuration Proxy Methods Inspection</title></head>
+<body>
+<div>
+  Reports errors when used proxy methods are used incorrectly.
+</div>
+<hr>
+<strong>Configuration example:</strong><br>
+<pre><code lang="java">
+@Configuration(proxyBeanMethods = false)
+class ProxyMethodsConfiguration {
+  @Bean
+  BeanA beanA() {...}
+
+  @Bean
+  public BeanB beanB() {
+    return new BeanB(beanA()); // @Bean method is called directly in a @Configuration where proxyBeanMethods has been disabled (set to false)
+  }
+}</code>
+</pre>
+<hr>
+
+<strong>Bean light-mode example:</strong><br>
+<pre><code lang="java">
+@Component
+class BeanLightComponent {
+  @Bean
+  public BeanA beanA() {...}
+
+  @Bean
+  public BeanB beanB() {
+    return new BeanB(beanA()); // Method annotated with @Bean is invoked directly
+  }
+}</code>
+</pre>
+
+</body>
+</html>

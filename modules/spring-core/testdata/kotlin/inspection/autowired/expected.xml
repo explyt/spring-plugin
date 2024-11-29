@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>10</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.BarBean bean)" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>@Autowired annotation can be applied to only one constructor</description>
+        <highlighted_element>constructor</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>11</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>10</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.BarBean bean)" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. No beans of 'BarBean' found</description>
+        <highlighted_element>bean</highlighted_element>
+        <language>kotlin</language>
+        <offset>16</offset>
+        <length>4</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>13</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent()" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. Method without parameters</description>
+        <highlighted_element>constructor</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>11</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>13</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent()" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>@Autowired annotation can be applied to only one constructor</description>
+        <highlighted_element>constructor</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>11</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>16</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.FooBean foobean, component_scan.constructor.BarBean bean)" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>@Autowired annotation can be applied to only one constructor</description>
+        <highlighted_element>constructor</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>11</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>16</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.FooBean foobean, component_scan.constructor.BarBean bean)" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. No beans of 'BarBean' found</description>
+        <highlighted_element>bean</highlighted_element>
+        <language>kotlin</language>
+        <offset>35</offset>
+        <length>4</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>19</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="method" FQNAME="component_scan.constructor.MyComponent MyComponent(component_scan.constructor.FooBean foobean, component_scan.constructor.BarBean bean, java.lang.String str)" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>@Autowired annotation can be applied to only one constructor</description>
+        <highlighted_element>constructor</highlighted_element>
+        <language>kotlin</language>
+        <offset>4</offset>
+        <length>11</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>26</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.constructor</package>
+        <entry_point TYPE="class" FQNAME="component_scan.constructor.MyFactory" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>The class does not contain autowiring constructor</description>
+        <highlighted_element>MyFactory</highlighted_element>
+        <language>kotlin</language>
+        <offset>11</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>16</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.MyComponent notList" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. No beans of 'List' or 'List&lt;? extends NotImplInterface&gt;' found</description>
+        <highlighted_element>notList</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>19</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.MyComponent notCollection" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. No beans of 'Collection' or 'Collection&lt;? extends NotImplInterface&gt;' found</description>
+        <highlighted_element>notCollection</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>13</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>22</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.MyComponent notSet" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. No beans of 'Set' or 'Set&lt;? extends NotImplInterface&gt;' found</description>
+        <highlighted_element>notSet</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>29</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="method" FQNAME="component_scan.no_bean.MyComponent void setOther(component_scan.no_bean.OtherBean value)" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. No beans of 'OtherBean' found</description>
+        <highlighted_element>value</highlighted_element>
+        <language>kotlin</language>
+        <offset>17</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>34</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.MyComponent beanA" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Autowire failed. No beans of 'MyBean' found</description>
+        <highlighted_element>beanA</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>5</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>51</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.FooBeanClass bean" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Must be defined in valid Spring bean (@Component|@Service|...)</description>
+        <highlighted_element>bean</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>4</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>64</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.ClassNotBeanExist injectBean" />
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES" />
+        <description>Must be defined in valid Spring bean (@Component|@Service|...)</description>
+        <highlighted_element>injectBean</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>10</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>12</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.many_beans</package>
+        <entry_point TYPE="field" FQNAME="component_scan.many_beans.MyComponent one"/>
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>&lt;html&gt;&lt;table&gt;&lt;tr&gt;&lt;td&gt;Autowire failed. There is more than one bean of
+            'FooInterface'&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;table&gt;&lt;tr&gt;&lt;td valign='top'&gt;
+            Beans: &lt;/td&gt;&lt;td&gt;[fooBean] {@link FooBean} &lt;br&gt;[nameComponent] {@link ThreeBean} &lt;br&gt;[otherBean]
+            {@link OtherBean}&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/html&gt;
+        </description>
+        <highlighted_element>one</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>3</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>16</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.qualifier</package>
+        <entry_point TYPE="field" FQNAME="component_scan.qualifier.MyComponent testQualifier2"/>
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Autowire failed. No beans of 'FooInterface' found</description>
+        <highlighted_element>testQualifier2</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>14</length>
+    </problem>
+
+    <problem>
+        <file>TestAutowired.kt</file>
+        <line>25</line>
+        <module>light_idea_test_case</module>
+        <package>component_scan.no_bean</package>
+        <entry_point TYPE="field" FQNAME="component_scan.no_bean.MyComponent noArray"/>
+        <problem_class id="SpringBeanIncorrectAutowiring" severity="ERROR" attribute_key="ERRORS_ATTRIBUTES"/>
+        <description>Autowire failed. No beans of 'BarBean' or 'BarBean[]' found</description>
+        <highlighted_element>noArray</highlighted_element>
+        <language>kotlin</language>
+        <offset>8</offset>
+        <length>7</length>
+    </problem>
+
+</problems>

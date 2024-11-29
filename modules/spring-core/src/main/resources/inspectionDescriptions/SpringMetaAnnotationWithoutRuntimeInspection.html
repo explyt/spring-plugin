@@ -1,0 +1,30 @@
+<html>
+<head>
+    <title>Meta-Annotation Without Runtime Inspection</title></head>
+<body>
+<p>Reports wrong retention policy for Spring meta-annotation.</p>
+
+<p><b>Example: (omitted @Retention)</b></p>
+<pre><code lang="java">
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Profile("test")
+@interface MyProfile { // reports "Spring meta-annotation should have RUNTIME RetentionPolicy"
+    @AliasFor(annotation = Profile.class, value = "value")
+    String[] profile();
+}
+</code></pre>
+
+<p><b>Example: (wrong retention policy)</b></p>
+<pre><code lang="java">
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.SOURCE)
+@Profile("test")
+@interface MyProfile { // reports "Spring meta-annotation should have RUNTIME RetentionPolicy"
+    @AliasFor(annotation = Profile.class, value = "value")
+    String[] profile();
+}
+</code></pre>
+
+</body>
+</html>
+

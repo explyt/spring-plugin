@@ -1,0 +1,23 @@
+<html>
+<head>
+    <title>AliasFor Method Inspection</title></head>
+<body>
+<p>Reports unresolved method references on <code lang="java">value</code> and <code lang="java">attribute</code> parameters
+    of the <code lang="java">@AliasFor</code> annotation.</p>
+
+<p><b>Example:</b></p>
+"Cannot resolve attribute" will be reported on 'wrong' expression if SomeAnnotation doesn't contain 'wrong' attribute
+<pre><code lang="java">
+  public @interface SomeAnnotation {...}
+
+  @Component
+  @SomeAnnotation
+  public @interface Another {
+     @AliasFor(annotation = SomeAnnotation.class, attribute = "wrong")
+     String attributeName() default "";
+  }
+</code></pre>
+
+</body>
+
+</html>

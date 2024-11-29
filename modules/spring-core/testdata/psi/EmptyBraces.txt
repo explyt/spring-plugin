@@ -1,0 +1,4 @@
+Profiles File(0,2)
+  PsiElement(ProfilesTokenType.()('(')(0,1)
+  PsiErrorElement:<and expression>, <or expression>, ProfilesTokenType.! or ProfilesTokenType.value expected, got ')'(1,2)
+    PsiElement(ProfilesTokenType.))(')')(1,2)

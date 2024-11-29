@@ -1,0 +1,13 @@
+SELECT e FROM Entity e;
+SELECT e FROM Entity e WHERE e.property = :value;
+SELECT e FROM Entity e ORDER BY e.property ASC;
+SELECT e FROM Entity e WHERE e.property = :value LIMIT 10;
+SELECT e.property, COUNT(e) FROM Entity e GROUP BY e.property;
+SELECT e FROM Entity e WHERE e.property = :value AND e.property2 = :value2;
+SELECT MAX(e.property) FROM Entity e;
+SELECT e FROM Entity e WHERE e.property BETWEEN :minValue AND :maxValue;
+SELECT e FROM Entity e WHERE e.property IS NULL;
+SELECT e FROM Entity e WHERE NOT e.property = :value;
+SELECT CONCAT(e.firstName, ' ', e.lastName) FROM Entity e;
+SELECT DISTINCT e.property FROM Entity e;
+SELECT e FROM Entity e WHERE e.property IN (:value1, :value2, :value3);

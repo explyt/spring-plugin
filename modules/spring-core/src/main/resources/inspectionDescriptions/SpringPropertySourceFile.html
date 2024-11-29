@@ -1,0 +1,16 @@
+<html>
+<head>
+    <title>@PropertySource inspection for file</title>
+</head>
+<body>
+<p>
+    Unresolved directories or files in @PropertySource and @TestPropertySource annotations.
+</p>
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@Configuration
+@PropertySource("file:foo.properties") // "Cannot resolve file foo.properties"
+public class FooPropertySource {}
+</code></pre>
+</body>
+</html>

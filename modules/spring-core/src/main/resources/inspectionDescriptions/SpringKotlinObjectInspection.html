@@ -1,0 +1,16 @@
+<html>
+<head>
+    <title>Inspection for Kotlin object components</title>
+</head>
+<body>
+<p>
+    It is not recommended to use a Kotlin object as a Spring Component.
+    Spring create redundant instance for Kotlin object component and DI not worked.
+</p>
+<p><b>Example:</b></p>
+<pre><code lang="kotlin">
+@Component // "Warning"
+object SpringComponent {}
+</code></pre>
+</body>
+</html>

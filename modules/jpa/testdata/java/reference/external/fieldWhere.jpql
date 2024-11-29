@@ -1,0 +1,1 @@
+SELECT e FROM Employee e WHERE e.position<caret> = :position

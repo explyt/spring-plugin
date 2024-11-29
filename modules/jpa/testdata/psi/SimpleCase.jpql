@@ -1,0 +1,5 @@
+SELECT CASE e.name WHEN 'John' THEN 'Result 1' ELSE 'Result 2' END FROM Entity e;
+SELECT CASE e.name WHEN 'John' THEN 'Result 1' WHEN 'Jane' THEN 'Result 2' ELSE 'Result 3' END FROM Entity e;
+SELECT CASE e.name WHEN 'John' THEN e.value * 2 ELSE e.value * (-1) END FROM Entity e;
+SELECT CASE e.name WHEN 'John' THEN COUNT(e) ELSE SUM(e.value) END FROM Entity e;
+SELECT CASE e.name WHEN 'John' THEN 'Result 1' ELSE 'Result 2' END FROM Entity e ORDER BY CASE e.name WHEN 'John' THEN 'Result 1' ELSE 'Result 2' END;

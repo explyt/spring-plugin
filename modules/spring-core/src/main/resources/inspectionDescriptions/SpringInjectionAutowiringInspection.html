@@ -1,0 +1,65 @@
+<html>
+<head>
+    <title>Autowired inspection</title>
+</head>
+<body>
+<p>Problems in injection points of Spring beans.</p>
+
+<ul>
+    <li>No beans found</li>
+    <li>More than one bean</li>
+    <li>Cannot find bean with @Qualifier</li>
+    <li>@Autowired annotation can be applied to only one constructor</li>
+    <li>The class does not contain autowiring constructor</li>
+    <li>Method without parameters</li>
+    <li>Must be defined in valid Spring bean (@Component|@Service|...)</li>
+</ul>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+public interface I {}
+
+@Component
+public class A implements I {}
+
+@Component
+public class B implements I {}
+
+@Component
+public class GeneratorComponent {
+
+    @Autowired
+    I i;    // Autowire failed. There is more than one bean of 'I'
+            // Beans: [a] {@link A}
+            //        [b] {@link B}
+}
+</code></pre>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@Service
+public class PathService {
+
+    @Autowired
+    public PathService(FileBean file) { // Autowire failed. No beans of 'BarBean' found
+    }                                   // @Autowired annotation can be applied to only one constructor
+
+    @Autowired
+    public PathService() {              // @Autowired annotation can be applied to only one constructor
+    }
+}
+
+public class FileBean {
+}
+</code></pre>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+public class ClassNotBeanExist {
+    @Autowired
+    InjectBean injectBean;  // Must be defined in valid Spring bean (@Component|@Service|...)
+}
+</code></pre>
+
+</body>
+</html>

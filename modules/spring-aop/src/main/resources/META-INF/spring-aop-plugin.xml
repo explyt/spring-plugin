@@ -1,0 +1,23 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.aop.service.AspectMethodsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.aop.service.PointCutMethodsLineMarkerProvider"/>
+
+        <localInspection language="UAST"
+                         shortName="SpringAopAnnotationInspection"
+                         groupBundle="messages.SpringAopBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.aop.notifications"
+                         bundle="messages.SpringAopBundle"
+                         key="explyt.spring.inspection.aop"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.aop.inspections.SpringAopAnnotationInspection"/>
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>

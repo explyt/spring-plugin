@@ -1,0 +1,20 @@
+<html>
+<head>
+    <title>ConditionalOnProperty value inspection</title>
+</head>
+<body>
+
+<p>Reports omitted attributes for <code lang="java">@ConditionalOnProperty</code> annotation.</p>
+
+<p><b>Example:</b></p>
+"The name or value attribute of @ConditionalOnProperty must be specified" will be reported on '@ConditionalOnProperty'
+annotation if none of mandatory attributes is specified
+<pre><code lang="java">
+  @Component
+  @ConditionalOnProperty
+  public class MyComponent {
+  }
+</code></pre>
+
+</body>
+</html>

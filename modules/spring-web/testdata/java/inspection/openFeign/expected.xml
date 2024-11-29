@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>DisClient.java</file>
+        <line>11</line>
+        <module>light_idea_test_case</module>
+        <package>com</package>
+        <entry_point TYPE="method"
+                     FQNAME="com.DisClient java.util.Objects runPlanCalculationAsync(java.util.Objects planTask)"/>
+        <problem_class id="OpenFeignInspection" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">@LoadBalanced
+            annotation does not need to be used in the FeignClient interface
+        </problem_class>
+        <description>@LoadBalanced annotation does not need to be used in the FeignClient interface</description>
+        <highlighted_element>@LoadBalanced</highlighted_element>
+        <language>JAVA</language>
+        <offset>4</offset>
+        <length>13</length>
+    </problem>
+</problems>

@@ -1,0 +1,79 @@
+{
+  "properties": [
+    {
+      "name": "main.code-mime-type-additional",
+      "type": "java.lang.String"
+    }
+  ],
+  "hints": [
+    {
+      "name": "main.name",
+      "values": [
+        {
+          "value": "none",
+          "description": "Disable DDL handling."
+        },
+        {
+          "value": "validate",
+          "description": "Validate the schema, make no changes to the database."
+        },
+        {
+          "value": "update",
+          "description": "Update the schema if necessary."
+        },
+        {
+          "value": "create",
+          "description": "Create the schema and destroy previous data."
+        },
+        {
+          "value": "create-drop",
+          "description": "Create and then destroy the schema at the end of the session."
+        }
+      ]
+    },
+    {
+      "name": "main.event-listener",
+      "providers": [
+        {
+          "name": "class-reference",
+          "parameters": {
+            "target": "org.springframework.context.ApplicationListener"
+          }
+        }
+      ]
+    },
+    {
+      "name": "main.code-log-level",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "org.springframework.boot.logging.LogLevel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "main.code-mime-type-additional",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "org.springframework.util.MimeType"
+          }
+        }
+      ]
+    },
+    {
+      "name": "main.foo-bean-component",
+      "providers": [
+        {
+          "name": "spring-bean-reference",
+          "parameters": {
+            "target": "src.FooBeanComponent"
+          }
+        }
+      ]
+    }
+  ]
+}

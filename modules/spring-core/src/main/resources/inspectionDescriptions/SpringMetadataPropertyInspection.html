@@ -1,0 +1,69 @@
+<html>
+<body>
+<div>
+    Reports in the <code>META-INFO/additional-spring-configuration-metadata.json</code> configuration file:
+    <ul>
+      <li>duplicate value</li>
+      <li>unresolved references</li>
+      <li>missing and deprecated properties</li>
+      <li>invalid values</li>
+    </ul>
+</div>
+
+<div><b>Example:</b></div>
+<pre><code lang="json">
+  {
+    "properties": [
+      {
+        "name": "main.name", // 'Duplicate for 'main.name''
+        "type": "java.lang.String"
+      },
+      {
+        "name": "main.name", // 'Duplicate for 'main.name''
+        "type": "java.lang.String"
+      },
+      {
+        // 'Add required 'name''
+        "type": "java.lang.String"
+      },
+      {
+        "name": "main.foo.foo2.max",
+        "type": "java.lang.Double",
+        "description": "Max in double" // 'Text should end with '.''
+      },
+      {
+        "name": "main.max-sessions-per-connection",
+        "type": "java.lang.Integer",
+        "description": "Maximum number connections ",
+        "sourceType": "com.boot.Unknown", // 'Cannot resolve class 'Unknown''
+        "defaultValue": 1,
+        "deprecated": true // 'The property 'deprecated''
+      },
+    ],
+    "hints": [
+      {
+        "name": "main.contexts1.keys", // 'Cannot resolve configuration key reference 'main.contexts1''
+        "values": [
+          {
+            "value": "sample1"
+          },
+          {
+            "value": "sample2"
+          }
+        ]
+      },
+      {
+        "name": "main.mime-type",
+        "providers": [
+          {
+            "name": "handle-as", // 'Add required parameters: target'
+            "parameters": {
+            }
+          }
+        ]
+      }
+    ]
+  }
+</code></pre>
+</body>
+</html>

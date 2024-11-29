@@ -1,0 +1,19 @@
+<html>
+<body>
+<p>
+    Reports Spring Data JPA query methods parameters count and type check
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+interface JpaEntityRepository extends Repository&lt;JpaEntity, Long&gt; {
+  List&lt;JpaEntity&gt; findByNameAndId(String name, Long id);
+  List&lt;JpaEntity&gt; countByName(int name); // Wrong parameter type. Should be String
+  void existsByName(); // Wrong. Should be one String parameter
+}
+</code></pre>
+</body>
+</html>
+
+</body>
+</html>

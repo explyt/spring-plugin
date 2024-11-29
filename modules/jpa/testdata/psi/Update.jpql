@@ -1,0 +1,8 @@
+UPDATE Entity e SET e.property = :newValue WHERE e.id = :id;
+UPDATE Entity e SET e.property1 = :newValue1, e.property2 = :newValue2 WHERE e.id = :id;
+UPDATE Entity e SET e.property = e.property + :incrementValue WHERE e.id = :id;
+UPDATE Entity e SET e.property = :newValue WHERE e.property = :oldValue;
+UPDATE Entity e SET e.property = :newValue WHERE e.id IN (:id1, :id2, :id3);
+UPDATE Entity e SET e.property = 'new_value' WHERE e.id IN (SELECT o.entityId FROM OtherEntity o WHERE o.property = :value);
+UPDATE Entity e SET e.property = :newValue WHERE e.id = (SELECT o.entityId FROM OtherEntity o WHERE o.property = :value);
+UPDATE Entity e SET e.property = (SELECT value FROM OtherEntity o WHERE o.id = :otherId) WHERE e.id = :id;

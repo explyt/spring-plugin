@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problems>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>6</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>a</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>1</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>8</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.4</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>9</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>10</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.3</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>15</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>*.1.3.</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>17</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.??</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>18</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.a</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>21</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.?7</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>24</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>a</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>1</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>26</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.4</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>27</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>28</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.1.3.3</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>9</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>33</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>*.1.3.</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>6</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>35</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.??</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>8</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>36</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.2.a</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>7</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>39</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.TestComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>com.?7</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>6</length>
+    </problem>
+
+</problems>
