@@ -2,8 +2,18 @@
 
 # Explyt Spring Changelog
 
-
 ## [Unreleased]
+
+### Spring Core/Boot
+
+- Added: Line Markers in library files
+- Fixed: Improve Yaml/properties completion
+
+### Other
+
+- Added: User usage statistics gathering
+
+## [243.1.2727] - 2024-11-23
 
 ### Spring Core/Boot
 
@@ -21,7 +31,7 @@
 
 - Fixed: fix EDT while editing json schema files
 
-## [243.1.2662] - 2024-11-15
+## 243.1.2662 - 2024-11-15
 
 ### Spring Core/Boot
 
