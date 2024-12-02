@@ -20,7 +20,7 @@ package com.explyt.spring.web.providers.java
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
-import com.explyt.spring.test.util.SpringGutterTestUtil
+import com.intellij.codeInsight.daemon.LineMarkerInfo.LineMarkerGutterIconRenderer
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "providers/linemarkers"
@@ -60,7 +60,7 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
                         @Bean
                         public RouterFunction<ServerResponse> differentFunction() {
                             return route()
-                                    .GET("/users/{userId}", ACCEPT_JSON, userHandler::getUserCustomers)
+                                    .GET("/users/{userId}", ACCEPT_JSON, userHandler::getUserCustomers) //some
                                     .build();
                         }
                     }
@@ -68,15 +68,19 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
         myFixture.doHighlighting()
 
-        val allEndpointUsageGutters = myFixture.findAllGutters()
+        val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.ReadAccess }
-        TestCase.assertTrue(allEndpointUsageGutters.isNotEmpty())
+            .filter { it.tooltipText == "Endpoint Actions" }
 
-        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allEndpointUsageGutters)
+        assertEquals(1, lineMarkers.size)
 
-        assertEquals(gutterTargetString.flatMap { gutter ->
-            gutter.filter { it == "get(\"/users/{userId}\", 1)" }
-        }.size, 1)
+        TestCase.assertEquals(
+            "GET",
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
+                .firstOrNull()
+        )
     }
 
     fun testLineMarkerMvc_Post() {
@@ -111,13 +115,19 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
         myFixture.doHighlighting()
 
-        val allEndpointUsageGutters = myFixture.findAllGutters()
+        val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.ReadAccess }
-        TestCase.assertTrue(allEndpointUsageGutters.isNotEmpty())
+            .filter { it.tooltipText == "Endpoint Actions" }
 
-        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allEndpointUsageGutters)
+        assertEquals(1, lineMarkers.size)
 
-        assertEquals(gutterTargetString.size, 0)
+        TestCase.assertEquals(
+            "POST",
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
+                .firstOrNull()
+        )
     }
 
     fun testLineMarkerMvc_Delete() {
@@ -152,15 +162,19 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
         myFixture.doHighlighting()
 
-        val allEndpointUsageGutters = myFixture.findAllGutters()
+        val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.ReadAccess }
-        TestCase.assertTrue(allEndpointUsageGutters.isNotEmpty())
+            .filter { it.tooltipText == "Endpoint Actions" }
 
-        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allEndpointUsageGutters)
+        assertEquals(1, lineMarkers.size)
 
-        assertEquals(gutterTargetString.flatMap { gutter ->
-            gutter.filter { it == "delete(\"/users/{userId}\", 1)" }
-        }.size, 1)
+        TestCase.assertEquals(
+            "DELETE",
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
+                .firstOrNull()
+        )
     }
 
     fun testLineMarkerWebTestClient_Get() {
@@ -195,15 +209,19 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
         myFixture.doHighlighting()
 
-        val allEndpointUsageGutters = myFixture.findAllGutters()
+        val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.ReadAccess }
-        TestCase.assertTrue(allEndpointUsageGutters.isNotEmpty())
+            .filter { it.tooltipText == "Endpoint Actions" }
 
-        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allEndpointUsageGutters)
+        assertEquals(1, lineMarkers.size)
 
-        assertEquals(gutterTargetString.flatMap { gutter ->
-            gutter.filter { it.contains("get()") && it.contains("/users/{userId}") }
-        }.size, 1)
+        TestCase.assertEquals(
+            "GET",
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
+                .firstOrNull()
+        )
     }
 
     fun testLineMarkerWebTestClient_Post() {
@@ -238,13 +256,19 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
         myFixture.doHighlighting()
 
-        val allEndpointUsageGutters = myFixture.findAllGutters()
+        val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.ReadAccess }
-        TestCase.assertTrue(allEndpointUsageGutters.isNotEmpty())
+            .filter { it.tooltipText == "Endpoint Actions" }
 
-        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allEndpointUsageGutters)
+        assertEquals(1, lineMarkers.size)
 
-        assertEquals(gutterTargetString.size, 0)
+        TestCase.assertEquals(
+            "POST",
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
+                .firstOrNull()
+        )
     }
 
     fun testLineMarkerWebTestClient_Delete() {
@@ -279,15 +303,18 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
         myFixture.doHighlighting()
 
-        val allEndpointUsageGutters = myFixture.findAllGutters()
+        val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.ReadAccess }
-        TestCase.assertTrue(allEndpointUsageGutters.isNotEmpty())
+            .filter { it.tooltipText == "Endpoint Actions" }
 
-        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allEndpointUsageGutters)
+        assertEquals(1, lineMarkers.size)
 
-        assertEquals(gutterTargetString.flatMap { gutter ->
-            gutter.filter { it.contains("delete()") && it.contains("/users/{userId}") }
-        }.size, 1)
+        TestCase.assertEquals(
+            "DELETE",
+            lineMarkers
+                .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+                .map { it.lineMarkerInfo.element?.text }
+                .firstOrNull()
+        )
     }
-
 }

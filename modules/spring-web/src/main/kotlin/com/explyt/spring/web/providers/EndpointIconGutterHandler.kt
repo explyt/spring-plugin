@@ -9,12 +9,15 @@ import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findMockMvcEndpointUsage
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findWebTestClientEndpointUsage
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
+import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.ide.actions.ApplyIntentionAction
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.ex.util.EditorUtil
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -37,11 +40,20 @@ class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : Gutter
         val path = endpointInfo.path
         val requestMethods = endpointInfo.requestMethods
 
-        val navigationTargets = findOpenApiJsonEndpoints(path, requestMethods, module) +
-                findOpenApiYamlEndpoints(path, requestMethods, module) +
-                findMockMvcEndpointUsage(path, requestMethods, module)
+        val openapiEndpoints = findOpenApiJsonEndpoints(path, requestMethods, module) +
+                findOpenApiYamlEndpoints(path, requestMethods, module)
 
-        if (navigationTargets.isEmpty()) {
+        val testEndpointUsages =
+            findMockMvcEndpointUsage(path, requestMethods, module) +
+                    findWebTestClientEndpointUsage(path, requestMethods, module)
+
+        val navigatableLineMarker = createNavigatableLinemarker(openapiEndpoints + testEndpointUsages, psiElement)
+
+        if (openapiEndpoints.isNotEmpty()) {
+            navigatableLineMarker
+                ?.navigationHandler
+                ?.navigate(e, psiElement)
+        } else {
             val containingFile = psiElement.containingFile ?: return
             val virtualFile = PsiUtilCore.getVirtualFile(psiElement) ?: return
             val project = psiElement.project
@@ -51,31 +63,47 @@ class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : Gutter
 
             if (psiFile.virtualFile != virtualFile) return
 
-            val popup = createEndpointActionsGroupPopup(containingFile, endpointInfo, editor) ?: return
+            val popup =
+                createEndpointActionsGroupPopup(containingFile, endpointInfo, editor, navigatableLineMarker, e)
             popup.show(RelativePoint(e))
-        } else {
-            // Have tried to use corresponding navigationHandler, didn't work
-            NavigationGutterIconBuilder
-                .create(SpringIcons.ReadAccess)
-                .setTargets(navigationTargets)
-                .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
-                .setPopupTitle(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.popup"))
-                .createLineMarkerInfo(psiElement)
-                .navigationHandler
-                .navigate(e, psiElement)
         }
     }
 
+    private fun createNavigatableLinemarker(
+        endpointUsages: List<PsiElement>,
+        psiElement: PsiElement
+    ): RelatedItemLineMarkerInfo<PsiElement>? {
+        if (endpointUsages.isEmpty()) return null
+
+        return NavigationGutterIconBuilder
+            .create(SpringIcons.ReadAccess)
+            .setTargets(endpointUsages)
+            .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
+            .setPopupTitle(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.popup"))
+            .createLineMarkerInfo(psiElement)
+    }
+
     private fun createEndpointActionsGroupPopup(
-        file: PsiFile, endpointInfo: EndpointInfo, editor: Editor
-    ): JBPopup? {
+        file: PsiFile,
+        endpointInfo: EndpointInfo,
+        editor: Editor,
+        navigatableLineMarker: RelatedItemLineMarkerInfo<PsiElement>?,
+        mouseEvent: MouseEvent
+    ): JBPopup {
         val intention = AddEndpointToOpenApiIntention(endpointInfo)
-        val actions = listOf<AnAction>(
+        val actions = mutableListOf<AnAction>(
             ApplyIntentionAction(
                 intention, intention.text, editor, file
             )
         )
-        if (actions.isEmpty()) return null
+        if (navigatableLineMarker != null) {
+            actions.addAll(
+                listOf(
+                    Separator.create(),
+                    NavigateAction("Navigate To Endpoint Usage", navigatableLineMarker, mouseEvent)
+                )
+            )
+        }
 
         return JBPopupFactory.getInstance().createActionGroupPopup(
             SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.title"),

@@ -226,9 +226,9 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
         val tag: String,
         val description: String,
         val returnTypeFqn: String,
-        val pathVariables: Collection<SpringWebUtil.PathArgumentInfo>,
-        val requestParameters: Collection<SpringWebUtil.PathArgumentInfo>,
-        val requestBodyInfo: SpringWebUtil.PathArgumentInfo?,
+        val pathVariables: Collection<SpringWebUtil.PathArgumentInfo> = emptyList(),
+        val requestParameters: Collection<SpringWebUtil.PathArgumentInfo> = emptyList(),
+        val requestBodyInfo: SpringWebUtil.PathArgumentInfo? = null,
     )
 
 }

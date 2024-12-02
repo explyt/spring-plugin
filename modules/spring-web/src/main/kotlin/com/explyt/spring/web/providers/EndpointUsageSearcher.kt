@@ -273,6 +273,11 @@ object EndpointUsageSearcher {
             ?: emptyArray()
     }
 
+    fun findWebTestClientEndpointUsage(path: String, requestedMethods: List<String>, module: Module): List<PsiElement> {
+        return requestedMethods
+            .flatMap { findWebTestClientEndpointUsage(path, it, module) }
+    }
+
     fun findWebTestClientEndpointUsage(path: String, methodName: String, module: Module): List<PsiElement> {
         val endpoint = SpringWebUtil.simplifyUrl(path)
         return getGetWebTestMethods(module).asSequence()

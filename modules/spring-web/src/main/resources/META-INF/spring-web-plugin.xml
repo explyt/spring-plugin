@@ -148,9 +148,11 @@
                          implementationClass="com.explyt.spring.web.inspections.OpenFeignInspection"/>
 
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.spring.web.providers.EndpointActionsLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.web.providers.ControllerEndpointActionsLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.spring.web.providers.RouteFunctionEndpointLineMarkerProvider"/>
+                                        implementationClass="com.explyt.spring.web.providers.RouterEndpointActionsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.web.providers.CoRouterEndpointActionsLineMarkerProvider"/>
 
         <runLineMarkerContributor language="yaml"
                                   implementationClass="com.explyt.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
