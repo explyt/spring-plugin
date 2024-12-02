@@ -7,6 +7,7 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.ExplytUastUtil.getCommentText
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
@@ -15,11 +16,10 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.lombok.utils.decapitalize
-import org.jetbrains.uast.UComment
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUParentForIdentifier
 
-class EndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
+class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
 
     override fun getName(): String? = null
     override fun getLineMarkerInfo(element: PsiElement) = null
@@ -91,18 +91,5 @@ class EndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
             { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.icon.accessible") }
         )
     }
-
-    private fun UComment.getCommentText(): String {
-        val commentText = text.trim()
-
-        if (commentText.startsWith("//")) {
-            return commentText.substring(2).trim()
-        } else if (commentText.startsWith("/*") && commentText.endsWith("*/")) {
-            return commentText.substring(2, commentText.length - 2).trimIndent()
-        }
-
-        return commentText
-    }
-
 
 }
