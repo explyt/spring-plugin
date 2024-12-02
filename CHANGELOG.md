@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### OpenAPI
+
+- Added: Generate OpenAPI from coRouter function
+
+## [243.1.2801] - 2024-12-01
+
 ### Spring Core/Boot
 
 - Added: Line Markers in library files
@@ -13,7 +19,7 @@
 
 - Added: User usage statistics gathering
 
-## [243.1.2727] - 2024-11-23
+## 243.1.2727 - 2024-11-23
 
 ### Spring Core/Boot
 
