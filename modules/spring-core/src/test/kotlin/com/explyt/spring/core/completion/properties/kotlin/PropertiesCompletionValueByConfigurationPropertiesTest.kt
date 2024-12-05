@@ -15,25 +15,47 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.completion.properties.java
+package com.explyt.spring.core.completion.properties.kotlin
 
 import com.explyt.spring.test.TestLibrary
 
-class YamlCompletionValueByConfigurationPropertiesTest : AbstractSpringPropertiesCompletionContributorTestCase() {
+class PropertiesCompletionValueByConfigurationPropertiesTest : AbstractSpringPropertiesCompletionContributorTestCase() {
 
     override val libraries: Array<TestLibrary> =
-        arrayOf(TestLibrary.springBoot_3_1_1, TestLibrary.springContext_6_0_7)
+        arrayOf(
+            TestLibrary.springBoot_3_1_1,
+            TestLibrary.springContext_6_0_7,
+            TestLibrary.slf4j_2_0_7
+        )
+
+    fun testCompleteByHintsProvidersClassReference() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText("application.properties", "main.event-listener=log<caret>")
+        doTest("org.springframework.boot.context.logging.LoggingApplicationListener")
+    }
+
+    fun testCompleteByHintsProvidersHandleAs() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText("application.properties", "main.code-log-level=<caret>")
+        doTest(
+            "DEBUG",
+            "ERROR",
+            "INFO",
+            "TRACE",
+            "WARN"
+        )
+    }
+
+    fun testCompleteByHintsProvidersSpringBeanReference() {
+        myFixture.copyFileToProject("FooBeanComponent.kt")
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText("application.properties", "main.foo-bean-component=<caret>")
+        doTest("fooBeanComponent")
+    }
 
     fun testCompleteByMimeType() {
-        myFixture.copyFileToProject("MainFooProperties.java")
-        myFixture.configureByText(
-            "application.yaml",
-            """
-main:
-  local:
-    code-mime-type: html<caret>                
-            """.trimIndent()
-        )
+        myFixture.copyFileToProject("MainFooProperties.kt")
+        myFixture.configureByText("application.properties", "main.local.code-mime-type=html<caret>")
         doTest(
             "application/vnd.dtg.local.html",
             "application/vnd.sealedmedia.softseal.html",
@@ -46,15 +68,11 @@ main:
     }
 
     fun testCompleteByEnum() {
-        myFixture.copyFileToProject("MainFooProperties.java")
-        myFixture.copyFileToProject("WeekEnum.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
+        myFixture.copyFileToProject("WeekEnum.kt")
         myFixture.configureByText(
-            "application.yaml",
-            """
-main:
-  local:
-    enum-value: SD<caret>
-            """.trimIndent()
+            "application.properties",
+            "main.local.enum-value=SD<caret>"
         )
         doTest(
             "TUESDAY",
@@ -64,14 +82,10 @@ main:
     }
 
     fun testCompleteByCharset() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.configureByText(
-            "application.yaml",
-            """
-main:
-  local:
-    code-charset: UTF<caret>                
-            """.trimIndent()
+            "application.properties",
+            "main.local.code-charset=UTF<caret>"
         )
         doTest(
             "UTF-8",
@@ -87,14 +101,10 @@ main:
     }
 
     fun testCompleteByLocale() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.configureByText(
-            "application.yaml",
-            """
-main:
-  local:
-    code-locale: ru<caret>                
-            """.trimIndent()
+            "application.properties",
+            "main.local.code-locale=ru<caret>"
         )
         doTest(
             "ru",
@@ -114,52 +124,37 @@ main:
     }
 
     fun testCompleteByResource() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.configureByText(
-            "application.yaml",
-            """
-main:
-  local:
-    code-resource: <caret>                
-            """.trimIndent()
+            "application.properties",
+            "main.local.code-resource=<caret>"
         )
         doTest(
-            "classpath*:", "classpath:", "file:", "http:", "application.yaml", "MainFooProperties.java"
+            "classpath*:", "classpath:", "file:", "http:", "application.properties", "MainFooProperties.kt"
         )
     }
 
     fun testCompleteByHintsProvidersValuesForMapKeys() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText(
-            "application.yaml",
-            """
-main:
-  local:
-    contexts:
-      <caret>                
-            """.trimIndent()
+            "application.properties",
+            "main.local.contexts.<caret>"
         )
         doTest(
-            "context1", "context2"
+            "main.local.contexts.context1", "main.local.contexts.context2"
         )
     }
 
     fun testCompleteByHintsProvidersValuesForMapValues() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText(
-            "application.yaml",
-            """
-main:
-  local:
-    contexts:
-      context1: <caret>                
-            """.trimIndent()
+            "application.properties",
+            "main.local.contexts.context1=<caret>"
         )
         doTest(
             "11", "22"
         )
     }
-
 }

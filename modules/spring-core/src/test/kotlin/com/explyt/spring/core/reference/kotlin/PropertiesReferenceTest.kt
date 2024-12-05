@@ -22,8 +22,10 @@ import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyRefer
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.lang.properties.psi.impl.PropertiesFileImpl
 import com.intellij.psi.PsiClass
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 
 class PropertiesReferenceTest : ExplytKotlinLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + "reference/properties"
@@ -72,4 +74,27 @@ class PropertiesReferenceTest : ExplytKotlinLightTestCase() {
         assertEquals(nameClass, "setLssPlanConfiguration")
     }
 
+    fun testRefValueResource() {
+        myFixture.copyFileToProject("MainFooProperties.kt")
+        myFixture.configureByText(
+            "application-default.properties",
+            "main.foo-bean-component=fooBeanComponent"
+        )
+        myFixture.configureByText(
+            "application.properties",
+            "main.local.code-resource=classpath:application-de<caret>fault.properties"
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? FileReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? PropertiesFileImpl)?.name
+        assertEquals(name, "application-default.properties")
+    }
 }

@@ -1,4 +1,10 @@
 {
+  "properties": [
+    {
+      "name": "main.enum-value-additional",
+      "type": "java.lang.String"
+    }
+  ],
   "hints": [
     {
       "name": "main.name",
@@ -55,6 +61,39 @@
           "parameters": {
             "target": "src.FooBeanComponent"
           }
+        }
+      ]
+    },
+    {
+      "name": "main.enum-value-additional",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "src.WeekEnum"
+          }
+        }
+      ]
+    },
+    {
+      "name": "main.local.contexts.keys",
+      "values": [
+        {
+          "value": "context1"
+        },
+        {
+          "value": "context2"
+        }
+      ]
+    },
+    {
+      "name": "main.local.contexts.values",
+      "values": [
+        {
+          "value": "11"
+        },
+        {
+          "value": "22"
         }
       ]
     }

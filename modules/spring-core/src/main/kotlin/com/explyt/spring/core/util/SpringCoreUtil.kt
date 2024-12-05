@@ -18,6 +18,7 @@
 package com.explyt.spring.core.util
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
@@ -653,6 +654,12 @@ object SpringCoreUtil {
         return ((this.qualifiedName == SpringCoreClasses.MIME_TYPE)
                 || (this.superClass?.qualifiedName == SpringCoreClasses.MIME_TYPE)
                 || (this.interfaces.any { it.qualifiedName == SpringCoreClasses.MIME_TYPE }))
+    }
+
+    fun PsiClass.isCharsetTypeClass(): Boolean {
+        return ((this.qualifiedName == JavaCoreClasses.CHARSET)
+                || (this.superClass?.qualifiedName == JavaCoreClasses.CHARSET)
+                || (this.interfaces.any { it.qualifiedName == JavaCoreClasses.CHARSET }))
     }
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"

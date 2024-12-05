@@ -20,11 +20,8 @@ package com.explyt.spring.core.inspections
 import ai.grazie.nlp.utils.dropLastWhitespaces
 import ai.grazie.nlp.utils.dropWhitespaces
 import com.explyt.inspection.SpringBaseLocalInspectionTool
-import com.explyt.spring.core.JavaCoreClasses
-import com.explyt.spring.core.SpringCoreBundle
-import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.*
 import com.explyt.spring.core.SpringCoreClasses.IO_RESOURCE
-import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.explyt.spring.core.SpringProperties.POSTFIX_KEYS
@@ -142,7 +139,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 problems += keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key)
             }
 
-            val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key) }
+            val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key, it.type) }
             val placeholders = DefinedConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllPlaceholders(module)
 
@@ -515,16 +512,16 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
 
     private fun tryConvert(propertyType: String, value: String): Boolean {
         return when (propertyType) {
-            JavaCoreClasses.BOOLEAN, "boolean" -> value.toBooleanStrictOrNull() == null
-            JavaCoreClasses.BYTE, "byte" -> value.toByteOrNull() == null
-            JavaCoreClasses.INTEGER, "int" -> value.toIntOrNull() == null
-            JavaCoreClasses.LONG, "long" -> value.toLongOrNull() == null
-            JavaCoreClasses.SHORT, "short" -> value.toShortOrNull() == null
-            JavaCoreClasses.DOUBLE, "double",
+            JavaCoreClasses.BOOLEAN, PrimitiveTypes.BOOLEAN -> value.toBooleanStrictOrNull() == null
+            JavaCoreClasses.BYTE, PrimitiveTypes.BYTE -> value.toByteOrNull() == null
+            JavaCoreClasses.INTEGER, PrimitiveTypes.INT -> value.toIntOrNull() == null
+            JavaCoreClasses.LONG, PrimitiveTypes.LONG -> value.toLongOrNull() == null
+            JavaCoreClasses.SHORT, PrimitiveTypes.SHORT -> value.toShortOrNull() == null
+            JavaCoreClasses.DOUBLE, PrimitiveTypes.DOUBLE,
             JavaCoreClasses.NUMBER,
             -> value.toDoubleOrNull() == null
 
-            JavaCoreClasses.FLOAT, "float" -> value.toFloatOrNull() == null
+            JavaCoreClasses.FLOAT, PrimitiveTypes.FLOAT -> value.toFloatOrNull() == null
             else -> false
         }
     }
@@ -557,7 +554,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             JavaCoreClasses.LOCALE -> !getLocales().any { it == value }
             JavaCoreClasses.CHARSET -> !Charset.availableCharsets().any { it.key == value }
             SpringCoreClasses.MIME_TYPE -> !MimeTypeDictionary.HTML_CONTENT_TYPES.any { it == value }
-            JavaCoreClasses.BOOLEAN, "boolean" -> value.toBooleanStrictOrNull() == null
+            JavaCoreClasses.BOOLEAN, PrimitiveTypes.BOOLEAN -> value.toBooleanStrictOrNull() == null
             else -> false
         }
     }

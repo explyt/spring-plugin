@@ -19,9 +19,13 @@ package com.explyt.spring.core.reference.java
 
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
+import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.lang.properties.psi.impl.PropertiesFileImpl
+import com.intellij.psi.PsiClass
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 
 class YamlReferenceTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + "reference/properties"
@@ -30,10 +34,50 @@ class YamlReferenceTest : ExplytJavaLightTestCase() {
         arrayOf(
             TestLibrary.springBoot_3_1_1,
             TestLibrary.springContext_6_0_7,
+            TestLibrary.springCloud_4_1_3,
             TestLibrary.resilience4j_2_2_0,
         )
 
-    fun testRefInnerClass() {
+    fun testRefValueByHintsProvidersClassReference() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  event-listener: org.springframework.boot.context.logging.Log<caret>gingApplicationListener                
+            """.trimIndent()
+        )
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ValueHintReference
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val nameClass = (resolveResult.element as? PsiClass)?.name
+        assertEquals(nameClass, "LoggingApplicationListener")
+    }
+
+    fun testRefValueSpringBeanReference() {
+        myFixture.copyFileToProject("FooBeanComponent.java")
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  foo-bean-component: fooBean<caret>Component                
+            """.trimIndent()
+        )
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? ValueHintReference
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val nameClass = (resolveResult.element as? PsiClass)?.name
+        assertEquals(nameClass, "FooBeanComponent")
+    }
+
+    fun testRefKeyInnerClass() {
         myFixture.copyFileToProject("LssConfigurationProperties.java")
         myFixture.configureByText(
             "application.yaml",
@@ -56,7 +100,7 @@ lss:
         assertEquals(nameClass, "setLssPlanConfiguration")
     }
 
-    fun testRefInnerClassField() {
+    fun testRefKeyInnerClassField() {
         myFixture.copyFileToProject("LssConfigurationProperties.java")
         myFixture.configureByText(
             "application.yaml",
@@ -80,8 +124,7 @@ lss:
         assertEquals(name, "setExact")
     }
 
-    // in the next commit
-    fun _testRefInnerClassFieldBoolean() {
+    fun testRefKeyInnerClassFieldBoolean() {
         myFixture.copyFileToProject("LssConfigurationProperties.java")
         myFixture.configureByText(
             "application.yaml",
@@ -105,7 +148,7 @@ lss:
         assertEquals(name, "setExact")
     }
 
-    fun testRefMap() {
+    fun testRefKeyMap() {
         myFixture.configureByText(
             "application.yaml",
             """
@@ -130,7 +173,7 @@ resilience4j:
         assertEquals(name, "instances")
     }
 
-    fun testRefMapKey() {
+    fun testRefKeyMapKey() {
         myFixture.configureByText(
             "application.yaml",
             """
@@ -155,7 +198,7 @@ resilience4j:
         assertEquals(name, "InstanceProperties")
     }
 
-    fun testRefMapValue() {
+    fun testRefKeyMapValue() {
         myFixture.configureByText(
             "application.yaml",
             """
@@ -178,5 +221,266 @@ resilience4j:
         assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setLimitForPeriod")
+    }
+
+    fun testRefKeyMapValueInnerClass() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          test:
+            micrometer:
+              ena<caret>bled: true
+        """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setEnabled")
+
+    }
+
+    fun testRefValueResource() {
+        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.configureByText(
+            "application-default.properties",
+            "main.foo-bean-component=fooBeanComponent"
+        )
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  local:
+    code-resource: classpath:application-de<caret>fault.properties                
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? FileReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? PropertiesFileImpl)?.name
+        assertEquals(name, "application-default.properties")
+    }
+
+    fun testRefKeyRelaxedBindingKebabCase() {
+        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  local:
+    event-<caret>listener:                
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setEventListener")
+    }
+
+    fun testRefKeyRelaxedBindingUnderscore() {
+        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  local:
+    event_<caret>listener:                
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setEventListener")
+    }
+
+    fun testRefKeyRelaxedBindingCamelCase() {
+        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  local:
+    event<caret>Listener:                
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setEventListener")
+    }
+
+    fun testRefKeyRelaxedBindingUpperCase() {
+        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  local:
+    EVENT_<caret>LISTENER:                
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setEventListener")
+    }
+
+    fun testRefKeyMapValueRelaxedBindingKebabCase() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          test:
+            connect-<caret>timeout:
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setConnectTimeout")
+    }
+
+    fun testRefKeyMapValueRelaxedBindingUnderscore() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          test:
+            connect_<caret>timeout:            
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setConnectTimeout")
+    }
+
+    fun testRefKeyMapValueRelaxedBindingCamelCase() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          test:
+            connect<caret>Timeout:           
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setConnectTimeout")
+    }
+
+    fun testRefKeyMapValueRelaxedBindingUpperCase() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          test:
+            CONNECT_<caret>TIMEOUT:            
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? ConfigurationPropertyKeyReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setConnectTimeout")
     }
 }
