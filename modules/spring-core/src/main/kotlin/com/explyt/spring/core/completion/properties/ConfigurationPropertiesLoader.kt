@@ -17,6 +17,8 @@
 
 package com.explyt.spring.core.completion.properties
 
+import com.explyt.spring.core.JavaCoreClasses
+import com.explyt.spring.core.PrimitiveTypes
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.extensions.ProjectExtensionPointName
@@ -75,6 +77,8 @@ data class ConfigurationProperty(
     fun isList() = propertyType == PropertyType.LIST
 
     fun isArray() = propertyType == PropertyType.ARRAY
+
+    fun isBooleanType() = type == JavaCoreClasses.BOOLEAN || type == PrimitiveTypes.BOOLEAN
 }
 
 data class PropertyHint(

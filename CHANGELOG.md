@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+
+- Added: completion in property for field with type Resource the class with @ConfigurationProperties
+- Fixed: support in property for boolean starting with "is"
+- Fixed: reference in property Relaxed Binding
+- Fixed: reference in property for Map values
+
 ### OpenAPI
 
 - Added: Generate OpenAPI from coRouter function

@@ -46,7 +46,7 @@ import java.text.DateFormat
 
 class ValueHintReference(
     element: PsiElement,
-    textRange: TextRange
+    textRange: TextRange,
 ) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
@@ -131,12 +131,16 @@ class ValueHintReference(
     private fun getVariantsByPropertyType(propertyType: String): List<Any> {
         return when (propertyType) {
             JavaCoreClasses.LOCALE -> {
-                DateFormat.getAvailableLocales().map {
-                    val country = it.country
-                    it.language + if (country.isNullOrBlank()) "" else "_$country"
-                }.distinct().map {
-                    LookupElementBuilder.create(it)
-                }
+                DateFormat.getAvailableLocales()
+                    .mapNotNull {
+                        val country = it.country
+                        it.language + if (country.isNullOrBlank()) "" else "_$country"
+                    }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .map {
+                        LookupElementBuilder.create(it)
+                    }
             }
 
             JavaCoreClasses.CHARSET -> {

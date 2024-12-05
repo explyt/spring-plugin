@@ -20,6 +20,7 @@ package com.explyt.spring.core.properties.providers
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.completion.properties.ProviderHint
+import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.references.PrefixReference
 import com.explyt.spring.core.references.PrefixReferenceType
 import com.explyt.spring.core.util.PropertyUtil
@@ -46,11 +47,22 @@ class SpringConfigurationPropertiesValueResourceReferenceProvider : PsiReference
 
     private fun getResourceReferences(element: PsiElement, propertyKey: String): Array<PsiReference> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
-        val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey) ?: return emptyArray()
+        val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey)
 
-        return propertyHint.providers.asSequence()
-            .flatMap { processProviderHints(element, it).asSequence() }
-            .toList().toTypedArray()
+        if (propertyHint != null) {
+            return propertyHint.providers
+                .flatMap { processProviderHints(element, it).asSequence() }
+                .toTypedArray()
+        }
+
+        val propertyFind = SpringConfigurationPropertiesSearch.getInstance(module.project)
+            .findProperty(module, propertyKey) ?: return emptyArray()
+
+        if (propertyFind.type == SpringCoreClasses.IO_RESOURCE) {
+            return getResourceVariants(element)
+        }
+
+        return emptyArray()
     }
 
     private fun processProviderHints(element: PsiElement, provider: ProviderHint): Array<PsiReference> {

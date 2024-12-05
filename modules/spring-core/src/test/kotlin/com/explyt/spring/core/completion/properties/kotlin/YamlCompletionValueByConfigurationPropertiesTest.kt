@@ -15,17 +15,36 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.completion.properties.java
+package com.explyt.spring.core.completion.properties.kotlin
 
 import com.explyt.spring.test.TestLibrary
 
 class YamlCompletionValueByConfigurationPropertiesTest : AbstractSpringPropertiesCompletionContributorTestCase() {
 
     override val libraries: Array<TestLibrary> =
-        arrayOf(TestLibrary.springBoot_3_1_1, TestLibrary.springContext_6_0_7)
+        arrayOf(
+            TestLibrary.springBoot_3_1_1,
+            TestLibrary.springContext_6_0_7,
+            TestLibrary.slf4j_2_0_7
+        )
+
+    fun testCompleteByHintsProvidersSpringBeanReference() {
+        myFixture.copyFileToProject("FooBeanComponent.kt")
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+{                
+  main:
+    foo-bean-component: <caret>
+}
+            """.trimIndent()
+        )
+        doTest("fooBeanComponent")
+    }
 
     fun testCompleteByMimeType() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.configureByText(
             "application.yaml",
             """
@@ -46,8 +65,8 @@ main:
     }
 
     fun testCompleteByEnum() {
-        myFixture.copyFileToProject("MainFooProperties.java")
-        myFixture.copyFileToProject("WeekEnum.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
+        myFixture.copyFileToProject("WeekEnum.kt")
         myFixture.configureByText(
             "application.yaml",
             """
@@ -64,7 +83,7 @@ main:
     }
 
     fun testCompleteByCharset() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.configureByText(
             "application.yaml",
             """
@@ -87,7 +106,7 @@ main:
     }
 
     fun testCompleteByLocale() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.configureByText(
             "application.yaml",
             """
@@ -114,7 +133,7 @@ main:
     }
 
     fun testCompleteByResource() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.configureByText(
             "application.yaml",
             """
@@ -124,12 +143,12 @@ main:
             """.trimIndent()
         )
         doTest(
-            "classpath*:", "classpath:", "file:", "http:", "application.yaml", "MainFooProperties.java"
+            "classpath*:", "classpath:", "file:", "http:", "application.yaml", "MainFooProperties.kt"
         )
     }
 
     fun testCompleteByHintsProvidersValuesForMapKeys() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText(
             "application.yaml",
@@ -146,7 +165,7 @@ main:
     }
 
     fun testCompleteByHintsProvidersValuesForMapValues() {
-        myFixture.copyFileToProject("MainFooProperties.java")
+        myFixture.copyFileToProject("MainFooProperties.kt")
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText(
             "application.yaml",

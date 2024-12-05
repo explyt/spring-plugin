@@ -18,10 +18,16 @@
 package com.explyt.spring.core.completion.properties.java
 
 import com.explyt.spring.test.TestLibrary
+import com.intellij.codeInsight.completion.CompletionType
+import junit.framework.TestCase
 
 class YamlCompletionValueByMetadataTest : AbstractSpringPropertiesCompletionContributorTestCase() {
     override val libraries: Array<TestLibrary> =
-        arrayOf(TestLibrary.springBoot_3_1_1, TestLibrary.springContext_6_0_7)
+        arrayOf(
+            TestLibrary.springBoot_3_1_1,
+            TestLibrary.springContext_6_0_7,
+            TestLibrary.resilience4j_2_2_0
+        )
 
     fun testCompleteByHintsValues() {
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
@@ -107,6 +113,166 @@ main:
             "application/vnd.oipf.dae.xhtml+xml",
             "application/vnd.pwg-xhtml-print+xml",
             "application/xhtml+xml"
+        )
+    }
+
+    fun testCompleteByEnum() {
+        myFixture.copyFileToProject("WeekEnum.java")
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  enum-value-additional: SD<caret>
+            """.trimIndent()
+        )
+        doTest(
+            "TUESDAY",
+            "WEDNESDAY",
+            "THURSDAY",
+        )
+    }
+
+    fun testCompleteByCharset() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  charset-additional: UTF<caret>                
+            """.trimIndent()
+        )
+        doTest(
+            "UTF-8",
+            "UTF-16",
+            "UTF-16BE",
+            "UTF-16LE",
+            "UTF-32",
+            "UTF-32BE",
+            "UTF-32LE",
+            "X-UTF-32BE-BOM",
+            "X-UTF-32LE-BOM"
+        )
+    }
+
+    fun testCompleteByLocale() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  locale-additional: ru<caret>                
+            """.trimIndent()
+        )
+        doTest(
+            "ru",
+            "ru_BY",
+            "ru_KG",
+            "ru_KZ",
+            "ru_MD",
+            "ru_RU",
+            "ru_UA",
+            "ce_RU",
+            "cv_RU",
+            "mdf_RU",
+            "os_RU",
+            "sah_RU",
+            "tt_RU"
+        )
+    }
+
+    fun testCompleteByResource() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  code-resource-additional: <caret>                
+            """.trimIndent()
+        )
+        doTest(
+            "classpath*:", "classpath:", "file:", "http:", "application.yaml", "META-INF"
+        )
+    }
+
+    fun testCompleteByHintsProvidersValuesForMapKeys() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  context-additional:
+    <caret>                
+            """.trimIndent()
+        )
+        doTest(
+            "sample1", "sample2"
+        )
+    }
+
+    fun testCompleteByHintsProvidersValuesForMapValues() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  context-additional:
+    sample1: <caret>                
+            """.trimIndent()
+        )
+        doTest(
+            "1", "2"
+        )
+    }
+
+    fun testCompleteKeyMap() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+resilience4j:
+  ratelimiter:
+    <caret>                
+            """.trimIndent()
+        )
+        doTest(
+            "configs",
+            "instances",
+            "limiters",
+            "metrics.enabled",
+            "metrics.legacy.enabled",
+            "rate-limiter-aspect-order",
+            "tags"
+        )
+    }
+
+    fun testCompleteKeyMapKey() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+resilience4j:
+  ratelimiter:
+    instances:
+      <caret>                
+            """.trimIndent()
+        )
+        myFixture.complete(CompletionType.BASIC)
+        val lookupElementStrings = myFixture.lookupElementStrings
+        TestCase.assertEquals(lookupElementStrings?.size, 0)
+    }
+
+    fun _testCompleteKeyMapValue() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+resilience4j:
+  ratelimiter:
+    instances
+      test:
+        <caret>                
+            """.trimIndent()
+        )
+        doTest(
+            "limit-for-period" // и еще
         )
     }
 

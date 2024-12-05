@@ -31,6 +31,7 @@ import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.DOT
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
+import com.explyt.spring.core.util.PropertyUtil.toBooleanAlias
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider
@@ -153,9 +154,12 @@ class ConfigurationPropertyKeyReference(
             foundProperty.propertyType == PropertyType.MAP -> {
                 return handleMapProperty(project, foundProperty)
             }
-
-            foundProperty.name == propertyKey -> {
+            PropertyUtil.isSameProperty(foundProperty.name, propertyKey) -> {
                 foundProperty.sourceType ?: return emptyArray()
+            }
+
+            foundProperty.isBooleanType() -> {
+                resolveBooleanSourceType(foundProperty) ?: return emptyArray()
             }
 
             else -> return emptyArray()
@@ -163,6 +167,15 @@ class ConfigurationPropertyKeyReference(
 
         val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project) ?: return emptyArray()
         return resolveResults(sourceMember)
+    }
+
+    private fun resolveBooleanSourceType(foundProperty: ConfigurationProperty): String? {
+        if (toBooleanAlias(foundProperty.name, foundProperty.type)
+            == toBooleanAlias(propertyKey, foundProperty.type)
+        ) {
+            return foundProperty.sourceType
+        }
+        return null
     }
 
     private fun handleMapProperty(project: Project, foundProperty: ConfigurationProperty): Array<ResolveResult> {
@@ -179,8 +192,15 @@ class ConfigurationPropertyKeyReference(
             val source = PropertyUtil.findSourceMember("", valueType, project) ?: return emptyArray()
             resolveResults(source)
         } else {
-            val methods = getMethodsTypeByMap(project, valueType).filter {
-                it.name.lowercase() == "set${propertyMapValue.replace("-", "")}"
+            val methods = getMethodsTypeByMap(project, valueType, propertyMapValue).filter {
+                it.name?.lowercase() ==
+                        "set${
+                            propertyMapValue
+                                .substringAfterLast(".")
+                                .replace("-", "")
+                                .replace("_", "")
+                                .lowercase()
+                        }"
             }.ifEmpty { return emptyArray() }
             resolveResults(methods.first())
         }
@@ -279,12 +299,24 @@ class ConfigurationPropertyKeyReference(
         )
     }
 
-    private fun getMethodsTypeByMap(project: Project, valueType: String): List<PsiMethod> {
+    private fun getMethodsTypeByMap(project: Project, valueType: String, prefix: String): List<PsiMember> {
+        val result = hashMapOf<String, ConfigurationProperty>()
         val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
         val foundClass =
             JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
                 ?: return emptyList()
-        return PropertyUtil.getSetterMethods(foundClass, emptyList())
+
+        PropertyUtil.collectConfigurationProperty(
+            module,
+            foundClass,
+            foundClass,
+            "",
+            result
+        )
+
+        return result.filter { PropertyUtil.isSameProperty(it.key.substringAfter("."), prefix) }
+            .map { value -> value.value.sourceType?.let { PropertyUtil.findSourceMember(prefix, it, project) } }
+            .filterNotNull()
     }
 }
 

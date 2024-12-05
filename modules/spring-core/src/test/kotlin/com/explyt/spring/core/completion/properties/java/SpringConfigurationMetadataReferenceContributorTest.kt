@@ -130,9 +130,12 @@ class SpringConfigurationMetadataReferenceContributorTest : AbstractSpringProper
         doTest(
             "main.local.event-listener",
             "main.local.code-mime-type",
-            "main.local.code-mime-type.parameters.keys",
-            "main.local.code-mime-type.parameters.values",
-            "main.local.max-sessions-per-connection"
+            "main.local.code-charset",
+            "main.local.code-locale",
+            "main.local.max-sessions-per-connection",
+            "main.local.code-resource",
+            "main.local.contexts.keys",
+            "main.local.contexts.values"
         )
     }
 

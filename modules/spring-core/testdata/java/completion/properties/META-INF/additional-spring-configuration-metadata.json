@@ -3,6 +3,22 @@
     {
       "name": "main.code-mime-type-additional",
       "type": "java.lang.String"
+    },
+    {
+      "name": "main.enum-value-additional",
+      "type": "java.lang.String"
+    },
+    {
+      "name": "main.charset-additional",
+      "type": "java.lang.String"
+    },
+    {
+      "name": "main.locale-additional",
+      "type": "java.lang.String"
+    },
+    {
+      "name": "main.context-additional",
+      "type": "java.util.Map<java.lang.String,java.lang.Integer>"
     }
   ],
   "hints": [
@@ -65,6 +81,50 @@
       ]
     },
     {
+      "name": "main.enum-value-additional",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "src.WeekEnum"
+          }
+        }
+      ]
+    },
+    {
+      "name": "main.charset-additional",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "java.nio.charset.Charset"
+          }
+        }
+      ]
+    },
+    {
+      "name": "main.locale-additional",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "java.util.Locale"
+          }
+        }
+      ]
+    },
+    {
+      "name": "main.code-resource-additional",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "org.springframework.core.io.Resource"
+          }
+        }
+      ]
+    },
+    {
       "name": "main.foo-bean-component",
       "providers": [
         {
@@ -72,6 +132,50 @@
           "parameters": {
             "target": "src.FooBeanComponent"
           }
+        }
+      ]
+    },
+    {
+      "name": "main.context-additional.keys",
+      "values": [
+        {
+          "value": "sample1"
+        },
+        {
+          "value": "sample2"
+        }
+      ]
+    },
+    {
+      "name": "main.context-additional.values",
+      "values": [
+        {
+          "value": "1"
+        },
+        {
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "name": "main.local.contexts.keys",
+      "values": [
+        {
+          "value": "context1"
+        },
+        {
+          "value": "context2"
+        }
+      ]
+    },
+    {
+      "name": "main.local.contexts.values",
+      "values": [
+        {
+          "value": "11"
+        },
+        {
+          "value": "22"
         }
       ]
     }

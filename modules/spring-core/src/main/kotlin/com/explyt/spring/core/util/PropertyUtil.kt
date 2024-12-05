@@ -18,6 +18,8 @@
 package com.explyt.spring.core.util
 
 import com.explyt.spring.core.JavaCoreClasses
+import com.explyt.spring.core.PrimitiveTypes
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
@@ -25,9 +27,16 @@ import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.explyt.spring.core.references.ReferenceType
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.util.SpringCoreUtil.isCharsetTypeClass
+import com.explyt.spring.core.util.SpringCoreUtil.isMimeTypeClass
+import com.explyt.util.ExplytPsiUtil.isFinal
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isNonPrivate
 import com.explyt.util.ExplytPsiUtil.isNonStatic
+import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ModuleUtil
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.lang.properties.IProperty
 import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
@@ -282,21 +291,10 @@ object PropertyUtil {
         return null
     }
 
-    fun PsiElement.textRangePropertyKeyMap(prefixLength: Int, valueHint: ValueHint): TextRange? {
-        if (valueHint.value == null) {
-            return null
-        }
-        if (this is PropertyKeyImpl) {
-            return TextRange.from(0, prefixLength + 1 + valueHint.value.length)
-        }
-        if (this is YAMLKeyValue) {
-            return TextRange.from(prefixLength, valueHint.value.length)
-        }
-        return null
-    }
-
-    fun isSameProperty(propertyName1: String, propertyName2: String): Boolean {
-        return toCommonPropertyForm(propertyName1) == toCommonPropertyForm(propertyName2)
+    fun isSameProperty(propertyName1: String, propertyName2: String, type: String? = null): Boolean {
+        val property1 = toBooleanAlias(propertyName1, type)
+        val property2 = toBooleanAlias(propertyName2, type)
+        return toCommonPropertyForm(property1) == toCommonPropertyForm(property2)
     }
 
     fun guessTypeFromValue(value: String?): String {
@@ -333,6 +331,19 @@ object PropertyUtil {
         return propertyName.lowercase()
             .replace("-", "")
             .replace("_", "")
+    }
+
+    fun toBooleanAlias(property: String, type: String?): String {
+        return if (type == JavaCoreClasses.BOOLEAN || type == PrimitiveTypes.BOOLEAN) {
+            val result = property.substringBeforeLast(".")
+            var name = property.substringAfterLast(".", "")
+            if (name.isNotBlank() && !name.startsWith("is-")) {
+                name = "is-$name"
+            }
+            "$result.$name"
+        } else {
+            property
+        }
     }
 
     fun isNotKebabCase(placeholder: String): Boolean {
@@ -375,7 +386,111 @@ object PropertyUtil {
         return null
     }
 
-    fun getSetterMethods(
+    fun collectConfigurationProperty(
+        module: Module,
+        ownerConfigurationClass: PsiClass,
+        targetClass: PsiClass,
+        prefix: String,
+        result: MutableMap<String, ConfigurationProperty>
+    ) {
+        val nestedFields = getNestedPropertyWrappers(targetClass)
+        val finalFields = getFieldPropertyWrappers(targetClass)
+        val setterMethods = getMethodPropertyWrappers(module, targetClass, nestedFields)
+
+        for (it in nestedFields) {
+            val propertyTypeClass = it.psiType.resolvedPsiClass
+            if (propertyTypeClass != null) {
+                collectConfigurationProperty(
+                    module,
+                    ownerConfigurationClass,
+                    propertyTypeClass,
+                    "$prefix.${it.name}",
+                    result
+                )
+            }
+        }
+
+        val propertyWrappers = finalFields + setterMethods
+        for (propertyWrapper in propertyWrappers) {
+            val propertyName = propertyWrapper.name
+            val psiType = propertyWrapper.psiType
+
+            if (psiType is PsiClassType) {
+                val propertyTypeClass = psiType.resolve()
+                val javaFile = propertyTypeClass?.containingFile as? PsiJavaFile ?: continue
+
+                if (javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_LANG &&
+                    javaFile.packageName != JavaCoreClasses.PACKAGE_KOTLIN
+                ) {
+                    collectConfigurationProperty(
+                        module,
+                        ownerConfigurationClass,
+                        propertyTypeClass,
+                        "$prefix.$propertyName",
+                        result
+                    )
+                }
+            }
+
+            val name = "$prefix.$propertyName"
+            result[name] = ConfigurationProperty(
+                name,
+                ConfigurationPropertiesLoader.getPropertyType(propertyWrapper.psiType),
+                propertyWrapper.type,
+                propertyWrapper.sourceType,
+                propertyWrapper.description,
+                propertyWrapper.default,
+                propertyWrapper.deprecation
+            )
+        }
+    }
+
+    private fun getMethodPropertyWrappers(
+        module: Module,
+        targetClass: PsiClass,
+        nestedFields: List<FieldPropertyWrapper>
+    ): List<MethodPropertyWrapper> {
+        val result = mutableListOf<MethodPropertyWrapper>()
+        val setterMethods = getSetterMethods(targetClass, nestedFields)
+        val getterMethods = getGetterMethods(targetClass, nestedFields)
+        for (method in setterMethods) {
+            val setterIdentifier = getIdentifierFromSetterMethod(method) ?: continue
+            var methodPropertyWrapper: MethodPropertyWrapper? = null
+            for (it in getterMethods) {
+                val getterIdentifier = getIdentifierFromGetterMethod(it)
+                if (getterIdentifier != null && getterIdentifier.text == setterIdentifier.text) {
+                    val deprecation = getDeprecationInfo(module, it)
+                    methodPropertyWrapper = MethodPropertyWrapper(method, deprecation)
+                }
+            }
+            if (methodPropertyWrapper == null) {
+                methodPropertyWrapper = MethodPropertyWrapper(method, null)
+            }
+            result += methodPropertyWrapper
+        }
+        return result
+    }
+
+    private fun getNestedPropertyWrappers(targetClass: PsiClass): List<FieldPropertyWrapper> {
+        return targetClass.allFields
+            .filter { it.isMetaAnnotatedBy(SpringCoreClasses.NESTED_CONFIGURATION_PROPERTIES) }
+            .map { FieldPropertyWrapper(it) }
+    }
+
+    private fun getFieldPropertyWrappers(targetClass: PsiClass): List<FieldPropertyWrapper> {
+        val fields = if (targetClass.isEnum || targetClass.isCharsetTypeClass() || targetClass.isMimeTypeClass()) {
+            emptyList()
+        } else {
+            targetClass.allFields.filter {
+                it.isNonStatic
+                        && it.isFinal
+                        && !it.isMetaAnnotatedBy(SpringCoreClasses.NESTED_CONFIGURATION_PROPERTIES)
+            }
+        }
+        return fields.map { FieldPropertyWrapper(it) }
+    }
+
+    private fun getSetterMethods(
         targetClass: PsiClass,
         nestedFields: List<FieldPropertyWrapper>
     ): List<PsiMethod> {
@@ -388,7 +503,7 @@ object PropertyUtil {
         }.filterNotNull()
     }
 
-    fun getGetterMethods(
+    private fun getGetterMethods(
         targetClass: PsiClass,
         nestedFields: List<FieldPropertyWrapper>
     ): List<PsiMethod> {
@@ -403,6 +518,56 @@ object PropertyUtil {
 
     private fun isPrefixedJavaIdentifier(name: String, prefix: String): Boolean {
         return name.startsWith(prefix) && name.length > prefix.length
+    }
+
+    private fun getIdentifierFromSetterMethod(psiMethod: PsiMethod): PsiIdentifier? {
+        val codeBlock = psiMethod.childrenOfType<PsiCodeBlock>()
+        if (codeBlock.isEmpty()) {
+            return psiMethod.identifyingElement as? PsiIdentifier
+        }
+        val expressions = codeBlock[0].childrenOfType<PsiExpressionStatement>()
+        val assignmentExpressions = expressions.asSequence()
+            .map { it.childrenOfType<PsiAssignmentExpression>() }
+            .filter { it.isNotEmpty() }
+            .toList()
+        return assignmentExpressions
+            .asSequence()
+            .flatMap { it.asSequence() }
+            .filter { it.lastChild != null }
+            .filter {
+                it.lastChild.text == psiMethod.parameterList.parameters[0].lastChild?.text
+                        || it.lastChild.text == psiMethod.parameterList.parameters[0].name
+            }
+            .map { it.firstChild }
+            .filterIsInstance<PsiReferenceExpression>()
+            .map { it.childrenOfType<PsiIdentifier>().firstOrNull() }
+            .firstOrNull { it != null }
+    }
+
+    private fun getIdentifierFromGetterMethod(psiMethod: PsiMethod): PsiIdentifier? {
+        val codeBlock = psiMethod.childrenOfType<PsiCodeBlock>()
+        if (codeBlock.isEmpty()) {
+            return psiMethod.identifyingElement as? PsiIdentifier
+        }
+        val expressions = codeBlock.flatMap { it.childrenOfType<PsiReturnStatement>() }
+
+        return expressions.lastOrNull()
+            ?.childrenOfType<PsiReferenceExpression>()?.lastOrNull()
+            ?.childrenOfType<PsiIdentifier>()?.lastOrNull()
+    }
+
+    private fun getDeprecationInfo(module: Module, method: PsiMethod?): DeprecationInfo? {
+        if (method == null || !method.isDeprecated) {
+            return null
+        }
+        val metaHolder = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringCoreClasses.DEPRECATED_CONFIGURATION_PROPERTIES)
+        val reasonAnnotation = metaHolder.getAnnotationMemberValues(method, setOf("reason")).firstOrNull()
+        val replacementAnnotation = metaHolder.getAnnotationMemberValues(method, setOf("replacement")).firstOrNull()
+        val reason = if (reasonAnnotation != null) AnnotationUtil.getStringAttributeValue(reasonAnnotation) else null
+        val replacement =
+            if (replacementAnnotation != null) AnnotationUtil.getStringAttributeValue(replacementAnnotation) else null
+        return DeprecationInfo(DeprecationInfoLevel.WARNING, replacement, reason)
     }
 
     private fun findMember(

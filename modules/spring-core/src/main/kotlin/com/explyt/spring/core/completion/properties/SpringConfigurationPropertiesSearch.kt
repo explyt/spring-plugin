@@ -48,7 +48,7 @@ class SpringConfigurationPropertiesSearch {
     }
 
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {
-        return getAllProperties(module).find { isSameProperty(it.name, propertyName) }
+        return getAllProperties(module).find { isSameProperty(it.name, propertyName, it.type) }
     }
 
     fun findHint(module: Module, propertyName: String): PropertyHint? {
