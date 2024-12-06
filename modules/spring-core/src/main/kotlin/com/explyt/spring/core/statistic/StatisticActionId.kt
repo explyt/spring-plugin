@@ -29,6 +29,8 @@ enum class StatisticActionId(description: String) {
     SPRING_BOOT_PANEL_BEAN_NAVIGATION("Explyt Spring Boot panel - navigate to Spring Bean"),
     SPRING_BOOT_PANEL_BEAN_ANALYZER("Explyt Spring Boot panel - open dependency analyzer"),
     SPRING_BOOT_PANEL_BEAN_ANALYZER_GO_TO("Explyt Spring Boot dependency analyzer - go to class"),
+    SPRING_BOOT_PANEL_FLOATING_BUTTON_REFRESH("Explyt Spring Boot panel - floating button refresh"),
+    SPRING_BOOT_PANEL_FLOATING_BUTTON_HIDE("Explyt Spring Boot panel - floating button hide"),
 
     ENDPOINTS_TOOLWINDOW_REFRESH("Endpoints toolwindow - pressed refresh button"),
     ENDPOINTS_TOOLWINDOW_HTTP_TYPE_FILTER("Endpoints toolwindow - changed HttpType filter"),

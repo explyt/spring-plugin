@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.externalsystem.analyzer
 
+import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.externalSystem.dependency.analyzer.AbstractDependencyAnalyzerAction
@@ -34,6 +35,11 @@ class ToolbarDependencyAnalyzerAction : DependencyAnalyzerAction() {
     private val viewAction = ViewDependencyAnalyzerAction()
 
     override fun getSystemId(e: AnActionEvent) = e.getData(ExternalSystemDataKeys.EXTERNAL_SYSTEM_ID)
+
+    override fun update(e: AnActionEvent) {
+        super.update(e)
+        templatePresentation.text = SpringCoreBundle.message("explyt.external.bean.analyzer")
+    }
 
     override fun isEnabledAndVisible(e: AnActionEvent): Boolean {
         return getSystemId(e) == SYSTEM_ID

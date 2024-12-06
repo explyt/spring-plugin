@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.tracker
 
+import com.explyt.spring.core.externalsystem.action.AnnotationTrackerHolderService
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
@@ -62,6 +63,8 @@ class ModificationTrackerManager(val project: Project) : Disposable {
         uastModelTracker.incModificationCount()
         uastAnnotationTracker.incModificationCount()
         externalSystemTracker.incModificationCount()
+
+        AnnotationTrackerHolderService.getInstance(project).updateAnnotationTrackerHolder()
     }
 
     fun getLibraryTracker(): ModificationTracker = JavaLibraryModificationTracker.getInstance(project)

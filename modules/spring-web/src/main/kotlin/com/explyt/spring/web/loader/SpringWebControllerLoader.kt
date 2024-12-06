@@ -50,10 +50,14 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
         val controllerAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
             module, SpringWebClasses.CONTROLLER, false
+        ).takeIf { it.isNotEmpty() } ?: return emptyList()
+
+        val allAnnotations = controllerAnnotations + MetaAnnotationUtil.getAnnotationTypesWithChildren(
+            module, SpringWebClasses.SWAGGER_API, false
         )
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
-        return controllerAnnotations.asSequence().flatMap { searchAnnotatedClasses(it, module) }
+        return allAnnotations.asSequence().flatMap { searchAnnotatedClasses(it, module) }
             .flatMap { getEndpoints(it, requestMappingMah) }
             .toList()
     }

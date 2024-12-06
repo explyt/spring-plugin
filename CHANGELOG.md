@@ -14,6 +14,7 @@
 ### OpenAPI
 
 - Added: Generate OpenAPI from coRouter function
+- Added: Floating button for refresh ExplytSpringBoot panel
 
 ## [243.1.2801] - 2024-12-01
 

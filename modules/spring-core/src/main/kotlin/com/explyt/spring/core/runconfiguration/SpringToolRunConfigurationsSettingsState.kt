@@ -41,6 +41,9 @@ class SpringToolRunConfigurationsSettingsState :
     var isCollectStatistic by property(true)
 
     @get:Property(surroundWithTag = true)
+    var isShowFloatingRefreshAction by property(true)
+
+    @get:Property(surroundWithTag = true)
     var sqlLanguageId by string("")
 
     override fun getState(): SpringToolRunConfigurationsSettingsState = this

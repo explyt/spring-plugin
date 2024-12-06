@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.*
 import org.jetbrains.uast.util.ClassSet
 import org.jetbrains.uast.util.isInstanceOf
+import org.jetbrains.yaml.psi.YAMLFile
 
 
 @Suppress("UnstableApiUsage")
@@ -53,6 +54,10 @@ class ExplytModelModificationTracker(project: Project) : SimpleModificationTrack
 @Suppress("UnstableApiUsage")
 class ExplytAnnotationModificationTracker(project: Project) : SimpleModificationTracker() {
     private val javaLibraryTracker: ModificationTracker = JavaLibraryModificationTracker.getInstance(project)
+
+    fun getOnlyAnnotationModificationCount(): Long {
+        return super.getModificationCount()
+    }
 
     override fun getModificationCount(): Long {
         return super.getModificationCount() + javaLibraryTracker.modificationCount
@@ -118,8 +123,7 @@ internal class MyUastPsiTreeChangeAdapter(
             propertyTracker.incModificationCount()
             return
         }
-        val languageId = psiFile?.language?.id ?: return
-        if ("yaml" == languageId) {
+        if (psiFile is YAMLFile) {
             modelTracker.incModificationCount()
             propertyTracker.incModificationCount()
             return
@@ -127,6 +131,7 @@ internal class MyUastPsiTreeChangeAdapter(
         if (psiFile !is PsiClassOwner) {
             return
         }
+        val languageId = psiFile.language.id
 
         // do not load file content on file creation (`VirtualFileListener` will signal itself)
         if (parent is PsiFile && child == null) {
