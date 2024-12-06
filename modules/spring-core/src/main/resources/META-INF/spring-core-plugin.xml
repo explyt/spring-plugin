@@ -665,6 +665,12 @@
         </intentionAction>
 
         <iconProvider implementation="com.explyt.spring.core.providers.SpringPropertyFileIconProvider"/>
+
+        <editorFloatingToolbarProvider
+                id="Explyt.SpringBootProjectRefreshFloatingProvider"
+                order="after DefaultFloatingToolbarProvider"
+                implementation="com.explyt.spring.core.externalsystem.action.SpringBootNativeRefreshFloatingProvider"
+        />
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">
@@ -729,6 +735,22 @@
                 class="com.explyt.spring.core.action.PreDestroyKotlinGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
+
+        <group id="Explyt.SpringBootProjectRefreshActionGroup">
+            <action id="Explyt.SpringBootProjectRefreshAction"
+                    class="com.explyt.spring.core.externalsystem.action.SpringBootFloatingProjectRefreshAction">
+                <keyboard-shortcut first-keystroke="control shift O" keymap="$default"/>
+                <keyboard-shortcut first-keystroke="control shift O" keymap="Eclipse" remove="true"/>
+                <keyboard-shortcut first-keystroke="control shift O" keymap="NetBeans 6.5" remove="true"/>
+                <keyboard-shortcut first-keystroke="control shift O" keymap="Visual Studio" remove="true"/>
+                <keyboard-shortcut first-keystroke="meta shift O" keymap="Mac OS X" replace-all="true"/>
+                <keyboard-shortcut first-keystroke="meta shift O" keymap="Eclipse (Mac OS X)" replace-all="true"
+                                   remove="true"/>
+                <keyboard-shortcut first-keystroke="meta shift I" keymap="Mac OS X 10.5+" replace-all="true"/>
+            </action>
+            <action id="Explyt.SpringBootHideProjectRefreshAction"
+                    class="com.explyt.spring.core.externalsystem.action.SpringBootFloatingHideProjectRefreshAction"/>
+        </group>
     </actions>
 
     <projectListeners>

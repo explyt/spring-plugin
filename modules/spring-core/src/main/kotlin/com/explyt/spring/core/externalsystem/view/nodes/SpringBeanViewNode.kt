@@ -32,6 +32,12 @@ class SpringBeanViewNode(externalProjectsView: ExternalProjectsView, val dataNod
     override fun update(presentation: PresentationData) {
         super.update(presentation)
         presentation.setIcon(SpringIcons.SpringBean)
+        val data = dataNode.data
+        presentation.tooltip = """
+                name: ${data.beanName}<br>
+                scope: ${data.scope}<br>
+                class: ${data.className}            
+        """.trimIndent()
     }
 
     override fun getName() = getBeanViewName()

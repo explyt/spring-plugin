@@ -45,6 +45,8 @@ object SpringWebClasses {
     const val FLUX = "reactor.core.publisher.Flux"
     const val FLOW = "kotlinx.coroutines.flow.Flow"
 
+    const val SWAGGER_API = "io.swagger.annotations.Api"
+
     const val URL_BASED_VIEW_RESOLVER = "org.springframework.web.servlet.view.UrlBasedViewResolver"
     const val ABSTRACT_CONFIGURABLE_TEMPLATE_RESOLVER =
         "org.thymeleaf.templateresolver.AbstractConfigurableTemplateResolver"

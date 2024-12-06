@@ -24,11 +24,16 @@ import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.SearchableConfigurable
+import com.intellij.psi.injection.Injectable
+import com.intellij.ui.CollectionComboBoxModel
+import com.intellij.ui.ColoredListCellRenderer
+import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindSelected
-import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import org.intellij.plugins.intelliLang.inject.InjectedLanguage
 import javax.swing.JComponent
+import javax.swing.JList
 
 
 class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
@@ -39,7 +44,8 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     private val isAutoDetection = propertyGraph.property(false)
     private val isBeanFilterEnabled = propertyGraph.property(false)
     private val isCollectStatisticBind = propertyGraph.property(false)
-    private val sqlLanguageIdBind = propertyGraph.property("")
+    private val isShowFloatingRefreshActionBind = propertyGraph.property(false)
+    private val sqlLanguageIdModel = CollectionComboBoxModel(getAvailableLanguages())
 
     override fun getId(): String = ID
 
@@ -71,15 +77,18 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .resizableColumn()
                 }
 
-                row(message("explyt.spring.settings.sql.language.id.label")) {
-                    textField()
+                row {
+                    checkBox(message("explyt.spring.settings.floating.action.show.label"))
                         .align(AlignX.FILL)
-                        .applyToComponent {
-                            toolTipText = message("explyt.spring.settings.sql.language.id.tooltip")
-                            emptyText.text = "SQL Language ID"
-                        }
-                        .bindText(sqlLanguageIdBind)
+                        .bindSelected(isShowFloatingRefreshActionBind)
                         .resizableColumn()
+                }
+
+                row(message("explyt.spring.settings.sql.language.id.label")) {
+                    comboBox(sqlLanguageIdModel, getLanguageCellRenderer())
+                        .align(AlignX.FILL)
+                        .resizableColumn()
+                        .comment(message("explyt.spring.settings.sql.language.id.tooltip"))
                 }
             }
         }
@@ -89,14 +98,16 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         isAutoDetection.set(settingsState.isAutoDetectConfigurations)
         isBeanFilterEnabled.set(settingsState.isBeanFilterEnabled)
         isCollectStatisticBind.set(settingsState.isCollectStatistic)
-        sqlLanguageIdBind.set(settingsState.sqlLanguageId ?: "")
+        isShowFloatingRefreshActionBind.set(settingsState.isShowFloatingRefreshAction)
+        sqlLanguageIdModel.selectedItem = getCurrentLanguageId()
     }
 
     override fun isModified(): Boolean {
         if (settingsState.isAutoDetectConfigurations != isAutoDetection.get()) return true
         if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) return true
         if (settingsState.isCollectStatistic != isCollectStatisticBind.get()) return true
-        if (settingsState.sqlLanguageId != sqlLanguageIdBind.get()) return true
+        if (settingsState.isShowFloatingRefreshAction != isShowFloatingRefreshActionBind.get()) return true
+        if ((settingsState.sqlLanguageId ?: "") != (sqlLanguageIdModel.selected?.id ?: "")) return true
         return false
     }
 
@@ -105,12 +116,47 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         settingsState.isAutoDetectConfigurations = isAutoDetection.get()
         settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
         settingsState.isCollectStatistic = isCollectStatisticBind.get()
-        settingsState.sqlLanguageId = sqlLanguageIdBind.get()
+        settingsState.isShowFloatingRefreshAction = isShowFloatingRefreshActionBind.get()
+        settingsState.sqlLanguageId = sqlLanguageIdModel.selected?.id
 
         ProjectUtil.getActiveProject()?.let { project -> UastModelTrackerInvalidateAction.invalidate(project) }
     }
 
     override fun getDisplayName(): String = "Run Configurations"
+
+    private fun getCurrentLanguageId(): Injectable? {
+        if (settingsState.sqlLanguageId.isNullOrEmpty()) return null
+        return sqlLanguageIdModel.items.find { it?.id == settingsState.sqlLanguageId }
+    }
+
+    private fun getAvailableLanguages(): List<Injectable?> {
+        val languages = InjectedLanguage.getAvailableLanguages()
+        val list: MutableList<Injectable> = ArrayList()
+        for (language in languages) {
+            list.add(Injectable.fromLanguage(language))
+        }
+        list.sort()
+        return listOf<Injectable?>(null) + list
+    }
+
+    private fun getLanguageCellRenderer(): ColoredListCellRenderer<Injectable> {
+        return object : ColoredListCellRenderer<Injectable>() {
+            override fun customizeCellRenderer(
+                list: JList<out Injectable>, language: Injectable?, index: Int, selected: Boolean, hasFocus: Boolean
+            ) {
+                if (language == null) {
+                    append("Choose Custom SQL Language ID", SimpleTextAttributes.GRAYED_ATTRIBUTES)
+                    return
+                }
+                icon = language.icon
+                append(language.displayName)
+                val description = language.additionalDescription
+                if (description != null) {
+                    append(description, SimpleTextAttributes.GRAYED_ATTRIBUTES)
+                }
+            }
+        }
+    }
 
     companion object {
         const val ID = "com.explyt.spring.runConfigurations"

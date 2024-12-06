@@ -37,6 +37,8 @@ object SpringIcons {
     val ReadAccess = load("com/explyt/spring/core/icons/readAccess.svg")
     val SpringFactories = LayeredIcon.layeredIcon(arrayOf(Spring, AllIcons.Actions.New))
     val SpringExplorer = load("com/explyt/spring/core/icons/springBootExplorer.svg")
+    val RefreshChanges = load("com/explyt/spring/core/icons/RefreshChanges.svg")
     val SpringBoot = load("com/explyt/spring/core/icons/spring-promo.svg")
+    val SpringUpdate = LayeredIcon.layeredIcon(arrayOf(SpringBoot, RefreshChanges))
     val SpringBootToolWindow = load("com/explyt/spring/core/icons/springToolWindow.svg")
 }
