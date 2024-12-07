@@ -63,7 +63,11 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
         uElement: UExpression, module: Module, descriptors: MutableList<FoldingDescriptor>
     ) {
         if (uElement is UPolyadicExpression || uElement is ULiteralExpression) {
-            val value = uElement.evaluate() as? String ?: return
+            val value = try {
+                uElement.evaluate() as? String
+            } catch (e: Exception) {
+                null
+            } ?: return
             val element = uElement.sourcePsi ?: return
             val matchResult = PropertyUtil.VALUE_REGEX.matchEntire(value)
             if (matchResult == null) {
