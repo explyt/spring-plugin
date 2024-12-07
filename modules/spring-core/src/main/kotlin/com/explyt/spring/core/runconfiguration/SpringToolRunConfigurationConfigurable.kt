@@ -19,6 +19,7 @@ package com.explyt.spring.core.runconfiguration
 
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
+import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.ide.impl.ProjectUtil
@@ -122,7 +123,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         ProjectUtil.getActiveProject()?.let { project -> UastModelTrackerInvalidateAction.invalidate(project) }
     }
 
-    override fun getDisplayName(): String = "Run Configurations"
+    override fun getDisplayName(): String = Constants.SYSTEM_ID.readableName
 
     private fun getCurrentLanguageId(): Injectable? {
         if (settingsState.sqlLanguageId.isNullOrEmpty()) return null

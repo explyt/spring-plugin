@@ -50,14 +50,16 @@
         <externalSystemManager implementation="com.explyt.spring.core.externalsystem.SpringBootNativeManager"/>
         <externalSystemUnlinkedProjectAware
                 implementation="com.explyt.spring.core.externalsystem.process.UnlinkedProjectAware"/>
-        <toolWindow id="ExplytSpringBoot" anchor="right"
+        <!--WARNING id should be equals Constants.SYSTEM_ID.readableName -->
+        <toolWindow id="Explyt Spring" anchor="right"
                     icon="com/explyt/spring/core/icons/springToolWindow.svg"
                     factoryClass="com.explyt.spring.core.externalsystem.view.SpringBootToolWindowFactory"/>
         <projectImportProvider
                 implementation="com.explyt.spring.core.externalsystem.process.SpringBootProjectImportProvider"/>
         <projectOpenProcessor
                 implementation="com.explyt.spring.core.externalsystem.process.SpringBootProjectOpenProcessor"/>
-        <externalSystemViewContributor id="ExplytSpringBoot"
+        <!--WARNING id should be equals Constants.SYSTEM_ID.readableName -->
+        <externalSystemViewContributor id="Explyt Spring"
                                        implementation="com.explyt.spring.core.externalsystem.view.SpringBootExternalSystemViewContributor"/>
         <externalSystemDependencyAnalyzer
                 implementation="com.explyt.spring.core.externalsystem.analyzer.BeanAnalyzerExtension"/>
@@ -542,6 +544,7 @@
                            descriptionKey="configurable.group.com.explyt.spring.group.settings.description"
                            bundle="messages.SpringCoreBundle"/>
 
+        <!--WARNING key should be equals Constants.SYSTEM_ID.readableName -->
         <applicationConfigurable id="com.explyt.spring.runConfigurations"
                                  key="run.configuration.spring.boot.display.name"
                                  groupId="com.explyt.spring.group"
