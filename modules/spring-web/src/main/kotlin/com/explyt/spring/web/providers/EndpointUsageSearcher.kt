@@ -95,7 +95,6 @@ object EndpointUsageSearcher {
 
         for (pathElement in paths.propertyList) {
             val path = SpringWebUtil.simplifyUrl(pathElement.name)
-            endpoints.add(EndpointData.ReferrerData(Referrer(path, null, pathElement)))
 
             val pathElementValue = pathElement.value as? JsonObject ?: continue
 
@@ -184,7 +183,6 @@ object EndpointUsageSearcher {
         for (pathElement in paths.keyValues) {
             val urlPath = pathElement.name ?: continue
             val path = SpringWebUtil.simplifyUrl(urlPath)
-            endpoints.add(EndpointData.ReferrerData(Referrer(path, null, pathElement)))
 
             val pathElementValue = pathElement.value as? YAMLMapping ?: continue
 

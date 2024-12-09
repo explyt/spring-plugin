@@ -19,20 +19,23 @@ package com.explyt.spring.web.editor.openapi
 
 import com.explyt.spring.web.util.SpringWebUtil.OPEN_API
 import com.intellij.icons.AllIcons
-import com.intellij.json.psi.JsonFile
-import com.intellij.json.psi.JsonProperty
+import com.intellij.json.psi.*
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.childrenOfType
 import com.jetbrains.rd.util.concurrentMapOf
 import org.jetbrains.ide.BuiltInServerManager
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
+import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLMapping
+import org.jetbrains.yaml.psi.YAMLSequence
 import java.nio.file.Path
 import java.util.*
 
@@ -94,6 +97,60 @@ object OpenApiUtils {
 
         }
     }
+
+    fun getTagAndOperationIdFor(psiElement: PsiElement): TagAndOperationId? {
+        return when (psiElement) {
+            is JsonProperty -> getTagAndOperationIdFor(psiElement)
+            is YAMLKeyValue -> getTagAndOperationIdFor(psiElement)
+            else -> null
+        }
+
+    }
+
+    private fun getTagAndOperationIdFor(jsonProperty: JsonProperty): TagAndOperationId? {
+        val properties = (jsonProperty.value as? JsonObject)?.propertyList ?: return null
+
+        val tag = properties.asSequence()
+            .filter { it.name == "tags" }
+            .mapNotNull { it.value as? JsonArray }
+            .mapNotNull { it.valueList.firstOrNull() }
+            .mapNotNull { it as? JsonStringLiteral }
+            .map { it.unquotedValue() }
+            .firstOrNull() ?: return null
+
+        val operationId = properties.asSequence()
+            .filter { it.name == "operationId" }
+            .mapNotNull { it.value as? JsonStringLiteral }
+            .map { it.unquotedValue() }
+            .firstOrNull() ?: return null
+
+        return TagAndOperationId(tag, operationId)
+    }
+
+    private fun JsonStringLiteral.unquotedValue(): String {
+        return if (isQuotedString) JsonPsiUtil.stripQuotes(value) else value
+    }
+
+    private fun getTagAndOperationIdFor(yamlKeyValue: YAMLKeyValue): TagAndOperationId? {
+        val yamlMapping = yamlKeyValue.value as? YAMLMapping ?: return null
+
+        val tag = (yamlMapping.getKeyValueByKey("tags")?.value as? YAMLSequence)
+            ?.items
+            ?.firstOrNull()
+            ?.value
+            ?.text ?: return null
+
+        val operationId = (yamlMapping.getKeyValueByKey("operationId"))
+            ?.value
+            ?.text ?: return null
+
+        return TagAndOperationId(tag, operationId)
+    }
+
+    data class TagAndOperationId(
+        val tag: String,
+        val operationId: String
+    )
 
     const val OPENAPI_INTERNAL_CORS = "/__explyt-openapi_internal-cors"
     const val OPENAPI_ORIGINAL_URL = "__explyt-openapi_original-url"
