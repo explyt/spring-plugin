@@ -212,5 +212,16 @@
                   topic="com.intellij.openapi.project.ProjectManagerListener"/>
     </projectListeners>
 
+    <actions>
+        <action id="SpringWebJavaMethodGenerateAction"
+                class="com.explyt.spring.web.action.SpringWebJavaMethodGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="SpringWebKotlinMethodGenerateAction"
+                class="com.explyt.spring.web.action.SpringWebKotlinMethodGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+    </actions>
+
     <depends>com.intellij.modules.json</depends>
 </idea-plugin>

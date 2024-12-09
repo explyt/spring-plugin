@@ -132,8 +132,8 @@
                 implementation="com.explyt.spring.core.autoconfigure.AutoConfigureImplicitPropertyUsageProvider"/>
 
         <lang.foldingBuilder
-            language="UAST"
-            implementationClass="com.explyt.spring.core.properties.ValueAnnotationFoldingBuilder"/>
+                language="UAST"
+                implementationClass="com.explyt.spring.core.properties.ValueAnnotationFoldingBuilder"/>
 
         <lang.foldingBuilder
                 language="UAST"
