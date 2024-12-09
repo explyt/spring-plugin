@@ -41,6 +41,15 @@ class OpenApiCefRequestHandlerAdapter : CefRequestHandlerAdapter() {
             override fun onBeforeResourceLoad(browser: CefBrowser?, frame: CefFrame?, request: CefRequest?): Boolean {
                 if (request == null) return false
 
+                var currentUrl = request.url
+
+                currentUrl = currentUrl.substringBefore("?anchor=").let { baseUrl ->
+                    val anchor = currentUrl.substringAfter("?anchor=", "")
+                    baseUrl + if (anchor.isNotEmpty()) "#$anchor" else ""
+                }
+
+                request.url = currentUrl
+
                 if (requestHandler.isApplicable(request)) {
                     requestHandler.mutateRequest(request)
                 }

@@ -19,10 +19,13 @@ package com.explyt.spring.web.editor.openapi
 
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.vfs.findDocument
 
 class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
     TextEditorWithPreview(textEditor, preview, "OpenAPI Preview Editor", DEFAULT_LAYOUT) {
@@ -32,17 +35,23 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
         preview.putUserData(PARENT_EDITOR_KEY, this)
     }
 
-    fun showPreviewFor(tag: String, operationId: String) {
+    fun showPreviewFor(tag: String, operationId: String, layout: Layout = DEFAULT_LAYOUT) {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_OPENAPI_ENDPOINT_OPEN_IN_SWAGGER)
 
-        if (getLayout() == Layout.SHOW_EDITOR) {
-            setLayout(layout = DEFAULT_LAYOUT)
+        if (isModified) {
+            runWriteAction {
+                file?.findDocument()?.let {
+                    FileDocumentManager.getInstance().saveDocument(it)
+                }
+            }
+        }
+
+        if (getLayout() != layout) {
+            setLayout(layout = layout)
         }
 
         val browser = previewEditor as? OpenApiCefBrowser ?: return
-        browser.loadHtml("#/$tag/$operationId")
-        Thread.sleep(50) //FIXME: why doesn't work for the first time?
-        browser.loadHtml("#/$tag/$operationId")
+        browser.loadHtml("?anchor=/$tag/$operationId")
     }
 
     companion object {

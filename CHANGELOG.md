@@ -13,6 +13,8 @@
 
 ### OpenAPI
 
+- Removed navigation from endpoint to openapi path
+- Added: Run in Swagger endpoint action
 - Added: Generate OpenAPI from coRouter function
 - Added: Floating button for refresh ExplytSpringBoot panel
 
