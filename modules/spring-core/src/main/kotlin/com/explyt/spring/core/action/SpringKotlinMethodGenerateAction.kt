@@ -20,6 +20,9 @@ package com.explyt.spring.core.action
 import com.explyt.base.LibraryClassCache.searchForLibraryClass
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.statistic.StatisticActionId.GENERATE_POST_CONSTRUCT
+import com.explyt.spring.core.statistic.StatisticActionId.GENERATE_PRE_DESTROY
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.generation.actions.BaseGenerateAction
@@ -54,7 +57,7 @@ class PostConstructKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandl
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
-        return KotlinGenerateBaseFunction.isValidForFile(project, editor, file)
+        return KotlinMethodGenerateUtils.isValidForFile(project, editor, file)
     }
 }
 
@@ -64,33 +67,16 @@ class PreDestroyKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandler(
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
-        return KotlinGenerateBaseFunction.isValidForFile(project, editor, file)
+        return KotlinMethodGenerateUtils.isValidForFile(project, editor, file)
     }
 }
-
-private class KotlinGenerateBaseFunction {
-    companion object {
-        fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
-            if (!file.isWritable || file !is KtFile || file.isCompiled) return false
-
-            val targetClass = getTargetClass(editor, file) ?: return false
-            if (!targetClass.isValid) return false
-            val filter = RootKindFilter.projectSources.copy(includeScriptsOutsideSourceRoots = true)
-            return RootKindMatcher.matches(targetClass, filter) && SpringCoreUtil.isSpringProject(project)
-        }
-
-        fun getTargetClass(editor: Editor, file: PsiFile): KtClassOrObject? {
-            val elementAtCaret = file.findElementAt(editor.caretModel.offset) ?: return null
-            return elementAtCaret.parentsWithSelf.filterIsInstance<KtClassOrObject>().firstOrNull { !it.isLocal }
-        }
-    }
-}
-
 
 private class GenerateMethodHandler(val postConstruct: Boolean = true) : CodeInsightActionHandler {
     override fun invoke(project: Project, editor: Editor, file: PsiFile) {
+        val actionId = if (postConstruct) GENERATE_POST_CONSTRUCT else GENERATE_PRE_DESTROY
+        StatisticService.getInstance().addActionUsage(actionId)
         val module = ModuleUtil.findModuleForPsiElement(file) ?: return
-        val targetClass = KotlinGenerateBaseFunction.getTargetClass(editor, file) ?: return
+        val targetClass = KotlinMethodGenerateUtils.getTargetClass(editor, file) ?: return
 
         runWriteAction {
             val documentManager = PsiDocumentManager.getInstance(project)
@@ -98,37 +84,13 @@ private class GenerateMethodHandler(val postConstruct: Boolean = true) : CodeIns
             PsiDocumentManager.getInstance(file.project).commitDocument(document)
 
 
-            val offsetToInsert = findOffsetToInsertMethodTo(editor, file, targetClass)
+            val offsetToInsert = KotlinMethodGenerateUtils.findOffsetToInsertMethod(editor, file, targetClass)
             val template = getTemplate(module) ?: return@runWriteAction
 
             editor.caretModel.moveToOffset(offsetToInsert)
 
-            startTemplate(project, editor, template)
+            KotlinMethodGenerateUtils.startTemplate(project, editor, template)
         }
-    }
-
-    private fun startTemplate(project: Project, editor: Editor, template: Template) {
-        val adapter = object : TemplateEditingAdapter() {
-            override fun templateFinished(template: Template, brokenOff: Boolean) {
-                ApplicationManager.getApplication().runWriteAction {
-                    PsiDocumentManager.getInstance(project).commitDocument(editor.document)
-                    PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
-                        ?.let { findPsiMethod(it, editor) }
-                        ?.let { setupEditorSelection(editor, it) }
-                }
-            }
-        }
-        TemplateManager.getInstance(project).startTemplate(editor, template, adapter)
-    }
-
-    private fun findPsiMethod(it: PsiFile, editor: Editor): KtFunction? {
-        for (i in 2..20) {
-            val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(
-                it, editor.caretModel.offset - i, KtFunction::class.java, false
-            )
-            if (psiMethod != null) return psiMethod
-        }
-        return null
     }
 
     private fun getTemplate(module: Module): Template? {
@@ -146,7 +108,33 @@ private class GenerateMethodHandler(val postConstruct: Boolean = true) : CodeIns
         return template
     }
 
-    private fun findOffsetToInsertMethodTo(editor: Editor, file: PsiFile, targetClass: KtClassOrObject): Int {
+    private fun getAnnotationFqn(module: Module): String {
+        return if (postConstruct) {
+            if (searchForLibraryClass(module, SpringCoreClasses.POST_CONSTRUCT_J) != null)
+                SpringCoreClasses.POST_CONSTRUCT_J else SpringCoreClasses.POST_CONSTRUCT_X
+        } else {
+            if (searchForLibraryClass(module, SpringCoreClasses.PRE_DESTROY_J) != null)
+                SpringCoreClasses.PRE_DESTROY_J else SpringCoreClasses.PRE_DESTROY_X
+        }
+    }
+}
+
+object KotlinMethodGenerateUtils {
+    fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
+        if (!file.isWritable || file !is KtFile || file.isCompiled) return false
+
+        val targetClass = getTargetClass(editor, file) ?: return false
+        if (!targetClass.isValid) return false
+        val filter = RootKindFilter.projectSources.copy(includeScriptsOutsideSourceRoots = true)
+        return RootKindMatcher.matches(targetClass, filter) && SpringCoreUtil.isSpringProject(project)
+    }
+
+    fun getTargetClass(editor: Editor, file: PsiFile): KtClassOrObject? {
+        val elementAtCaret = file.findElementAt(editor.caretModel.offset) ?: return null
+        return elementAtCaret.parentsWithSelf.filterIsInstance<KtClassOrObject>().firstOrNull { !it.isLocal }
+    }
+
+    fun findOffsetToInsertMethod(editor: Editor, file: PsiFile, targetClass: KtClassOrObject): Int {
         var result = editor.caretModel.offset
         val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(file, result - 1, KtFunction::class.java, false)
         if (psiMethod != null) {
@@ -171,13 +159,27 @@ private class GenerateMethodHandler(val postConstruct: Boolean = true) : CodeIns
         return result
     }
 
-    private fun getAnnotationFqn(module: Module): String {
-        return if (postConstruct) {
-            if (searchForLibraryClass(module, SpringCoreClasses.POST_CONSTRUCT_J) != null)
-                SpringCoreClasses.POST_CONSTRUCT_J else SpringCoreClasses.POST_CONSTRUCT_X
-        } else {
-            if (searchForLibraryClass(module, SpringCoreClasses.PRE_DESTROY_J) != null)
-                SpringCoreClasses.PRE_DESTROY_J else SpringCoreClasses.PRE_DESTROY_X
+    fun startTemplate(project: Project, editor: Editor, template: Template) {
+        val adapter = object : TemplateEditingAdapter() {
+            override fun templateFinished(template: Template, brokenOff: Boolean) {
+                ApplicationManager.getApplication().runWriteAction {
+                    PsiDocumentManager.getInstance(project).commitDocument(editor.document)
+                    PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
+                        ?.let { findPsiMethod(it, editor) }
+                        ?.let { setupEditorSelection(editor, it) }
+                }
+            }
         }
+        TemplateManager.getInstance(project).startTemplate(editor, template, adapter)
+    }
+
+    private fun findPsiMethod(it: PsiFile, editor: Editor): KtFunction? {
+        for (i in 2..20) {
+            val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(
+                it, editor.caretModel.offset - i, KtFunction::class.java, false
+            )
+            if (psiMethod != null) return psiMethod
+        }
+        return null
     }
 }

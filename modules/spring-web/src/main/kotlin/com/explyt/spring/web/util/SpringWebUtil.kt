@@ -21,6 +21,7 @@ import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.SpringWebClasses.WEB_INITIALIZER
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
@@ -51,6 +52,14 @@ object SpringWebUtil {
             project,
             SpringWebClasses.WEB_INITIALIZER
         ) != null
+    }
+
+    fun isSpringWebModule(psiElement: PsiElement): Boolean {
+        return ModuleUtilCore.findModuleForPsiElement(psiElement)
+            ?.let {
+                JavaPsiFacade.getInstance(psiElement.project)
+                    .findClass(WEB_INITIALIZER, it.moduleWithLibrariesScope) != null
+            } == true
     }
 
     fun isSpringWebModule(module: Module): Boolean {

@@ -20,6 +20,9 @@ package com.explyt.spring.core.action
 import com.explyt.base.LibraryClassCache.searchForLibraryClass
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.statistic.StatisticActionId.GENERATE_POST_CONSTRUCT
+import com.explyt.spring.core.statistic.StatisticActionId.GENERATE_PRE_DESTROY
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.daemon.impl.quickfix.CreateFromUsageUtils
@@ -67,8 +70,10 @@ class PreDestroyJavaGenerateAction : BaseGenerateAction(PostConstructMethodHandl
 
 private class PostConstructMethodHandler(val postConstruct: Boolean = true) : CodeInsightActionHandler {
     override fun invoke(project: Project, editor: Editor, file: PsiFile) {
+        val actionId = if (postConstruct) GENERATE_POST_CONSTRUCT else GENERATE_PRE_DESTROY
+        StatisticService.getInstance().addActionUsage(actionId)
         val module = ModuleUtil.findModuleForPsiElement(file) ?: return
-        val targetClass = PostConstructJavaGenerateAction().getNearTargetClass(editor, file) ?: return
+        val targetClass = JavaMethodGenerateUtils.getNearTargetClass(editor, file) ?: return
 
         runWriteAction {
             val documentManager = PsiDocumentManager.getInstance(project)
@@ -76,38 +81,13 @@ private class PostConstructMethodHandler(val postConstruct: Boolean = true) : Co
             PsiDocumentManager.getInstance(file.project).commitDocument(document)
 
 
-            val offsetToInsert = findOffsetToInsertMethodTo(editor, file, targetClass)
+            val offsetToInsert = JavaMethodGenerateUtils.findOffsetToInsertMethod(editor, file, targetClass)
             val template = getTemplate(module) ?: return@runWriteAction
 
             editor.caretModel.moveToOffset(offsetToInsert)
 
-            startTemplate(project, editor, template)
+            JavaMethodGenerateUtils.startTemplate(project, editor, template)
         }
-    }
-
-    private fun startTemplate(project: Project, editor: Editor, template: Template) {
-        val adapter = object : TemplateEditingAdapter() {
-            override fun templateFinished(template: Template, brokenOff: Boolean) {
-                ApplicationManager.getApplication().runWriteAction {
-                    PsiDocumentManager.getInstance(project).commitDocument(editor.document)
-                    PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
-                        ?.let { findPsiMethod(it, editor) }
-                        ?.let { PsiTreeUtil.getParentOfType(it, PsiMethod::class.java, false) }
-                        ?.let { CreateFromUsageUtils.setupEditor(it, editor) }
-                }
-            }
-        }
-        TemplateManager.getInstance(project).startTemplate(editor, template, adapter)
-    }
-
-    private fun findPsiMethod(it: PsiFile, editor: Editor): PsiMethod? {
-        for (i in 2..20) {
-            val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(
-                it, editor.caretModel.offset - i, PsiMethod::class.java, false
-            )
-            if (psiMethod != null) return psiMethod
-        }
-        return null
     }
 
     private fun getTemplate(module: Module): Template? {
@@ -125,7 +105,25 @@ private class PostConstructMethodHandler(val postConstruct: Boolean = true) : Co
         return template
     }
 
-    private fun findOffsetToInsertMethodTo(editor: Editor, file: PsiFile, targetClass: PsiClass): Int {
+
+    private fun getAnnotationFqn(module: Module): String {
+        return if (postConstruct) {
+            if (searchForLibraryClass(module, SpringCoreClasses.POST_CONSTRUCT_X) != null)
+                SpringCoreClasses.POST_CONSTRUCT_X else SpringCoreClasses.POST_CONSTRUCT_J
+        } else {
+            if (searchForLibraryClass(module, SpringCoreClasses.PRE_DESTROY_X) != null)
+                SpringCoreClasses.PRE_DESTROY_X else SpringCoreClasses.PRE_DESTROY_J
+        }
+    }
+}
+
+object JavaMethodGenerateUtils {
+
+    fun getNearTargetClass(editor: Editor?, file: PsiFile?): PsiClass? {
+        return PostConstructJavaGenerateAction().getNearTargetClass(editor, file)
+    }
+
+    fun findOffsetToInsertMethod(editor: Editor, file: PsiFile, targetClass: PsiClass): Int {
         var result = editor.caretModel.offset
         val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(file, result - 1, PsiMethod::class.java, false)
         if (psiMethod != null) {
@@ -149,13 +147,28 @@ private class PostConstructMethodHandler(val postConstruct: Boolean = true) : Co
         return result
     }
 
-    private fun getAnnotationFqn(module: Module): String {
-        return if (postConstruct) {
-            if (searchForLibraryClass(module, SpringCoreClasses.POST_CONSTRUCT_X) != null)
-                SpringCoreClasses.POST_CONSTRUCT_X else SpringCoreClasses.POST_CONSTRUCT_J
-        } else {
-            if (searchForLibraryClass(module, SpringCoreClasses.PRE_DESTROY_X) != null)
-                SpringCoreClasses.PRE_DESTROY_X else SpringCoreClasses.PRE_DESTROY_J
+    fun startTemplate(project: Project, editor: Editor, template: Template) {
+        val adapter = object : TemplateEditingAdapter() {
+            override fun templateFinished(template: Template, brokenOff: Boolean) {
+                ApplicationManager.getApplication().runWriteAction {
+                    PsiDocumentManager.getInstance(project).commitDocument(editor.document)
+                    PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
+                        ?.let { findPsiMethod(it, editor) }
+                        ?.let { PsiTreeUtil.getParentOfType(it, PsiMethod::class.java, false) }
+                        ?.let { CreateFromUsageUtils.setupEditor(it, editor) }
+                }
+            }
         }
+        TemplateManager.getInstance(project).startTemplate(editor, template, adapter)
+    }
+
+    private fun findPsiMethod(it: PsiFile, editor: Editor): PsiMethod? {
+        for (i in 2..20) {
+            val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(
+                it, editor.caretModel.offset - i, PsiMethod::class.java, false
+            )
+            if (psiMethod != null) return psiMethod
+        }
+        return null
     }
 }

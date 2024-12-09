@@ -97,4 +97,8 @@ enum class StatisticActionId(description: String) {
 
     RUN_CONFIGURATION_OPEN("Explyt Run Configuration - open"),
     RUN_CONFIGURATION_CHANGED("Explyt Run Configuration - changed"),
+
+    GENERATE_POST_CONSTRUCT("Method generate - @PostConstruct"),
+    GENERATE_PRE_DESTROY("Method generate - @PreDestroy"),
+    GENERATE_WEB_METHOD("Method generate - Spring Web Method from generate menu"),
 }
