@@ -401,8 +401,137 @@ class ConfigurationPropertyLineMarkerProviderTest : ExplytJavaLightTestCase() {
         TestCase.assertTrue(allBeanGutters.isNotEmpty())
     }
 
+    fun testMapInConfigurationProperties() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME,
+            "main.contexts.sample1=1"
+        )
+
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.java",
+            """
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+            import org.springframework.context.annotation.Configuration;
+            import java.util.Map;
+
+            @ConfigurationProperties(prefix="main")
+            @Configuration
+            public class MainPropertiesConfiguration {
+                private Map<String, Integer> contexts;
+                
+                public Map<String, Integer> getContexts() {
+                    return contexts;
+                }
+
+                public void setContexts(Map<String, Integer> contexts) {
+                    this.contexts = contexts;
+                }
+            }
+            """.trimIndent()
+        )
+
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.filter { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = gutterMark.flatMap { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+        TestCase.assertEquals(gutterTargetsStrings.filter { it == "main.contexts.sample1" }.size, 2)
+    }
+
+    fun testMapInConfigurationProperties_yaml() {
+        myFixture.addFileToProject(
+            APPLICATION_YAML_FILE_NAME,
+            """
+main:
+  contexts:
+    sample1: 11                
+            """.trimIndent()
+        )
+
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.java",
+            """
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+            import org.springframework.context.annotation.Configuration;
+            import java.util.Map;
+
+            @ConfigurationProperties(prefix="main")
+            @Configuration
+            public class MainPropertiesConfiguration {
+                private Map<String, Integer> contexts;
+                
+                public Map<String, Integer> getContexts() {
+                    return contexts;
+                }
+
+                public void setContexts(Map<String, Integer> contexts) {
+                    this.contexts = contexts;
+                }
+            }
+            """.trimIndent()
+        )
+
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.filter { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = gutterMark.flatMap { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+        TestCase.assertEquals(gutterTargetsStrings.filter { it == "11" }.size, 2)
+    }
+
+    fun testHintInConfigurationProperties() {
+        myFixture.addFileToProject(
+            ADDITIONAL_METADATA_FILE_NAME,
+            """
+{
+  "hints": [
+    {
+      "name": "main.mime-type",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "org.springframework.util.MimeType"
+          }
+        }
+      ]
+    }
+  ]
+}
+            """.trimIndent()
+        )
+
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.java",
+            """
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+            import org.springframework.context.annotation.Configuration;
+
+            @ConfigurationProperties(prefix="main")
+            @Configuration
+            public class MainPropertiesConfiguration {
+                private String mimeType;
+                
+                public String getMimeType() {
+                    return mimeType;
+                }
+
+                 public void setMimeType(String mimeType) {
+                    this.mimeType = mimeType;
+                }
+            }
+            """.trimIndent()
+        )
+
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.filter { it.icon == SpringIcons.SpringSetting }
+        TestCase.assertNotNull(gutterMark)
+        val gutterTargetsStrings = gutterMark.flatMap { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+        TestCase.assertEquals(gutterTargetsStrings.filter { it == "\"main.mime-type\"" }.size, 2)
+    }
+
     companion object {
         const val APPLICATION_PROPERTIES_FILE_NAME = "application.properties"
+        const val APPLICATION_YAML_FILE_NAME = "application.yaml"
+        const val ADDITIONAL_METADATA_FILE_NAME = "META-INF/additional-spring-configuration-metadata.json"
     }
 
 }
