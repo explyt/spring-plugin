@@ -23,9 +23,10 @@ import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.registry.Registry
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -130,13 +131,19 @@ class SpringSearchServiceFacade(private val project: Project) {
         fun getInstance(project: Project): SpringSearchServiceFacade = project.service()
 
         fun isExternalProjectExist(project: Project): Boolean {
-            if (!Registry.`is`("explyt.spring.native")) return false
+            if (isUnitTest(project)) return false
             return CachedValuesManager.getManager(project).getCachedValue(project) {
                 CachedValueProvider.Result(
                     isExternalProjectExistInternal(project),
                     ModificationTrackerManager.getInstance(project).getExternalSystemTracker()
                 )
             }
+        }
+
+        private fun isUnitTest(project: Project): Boolean {
+            val file = FileEditorManager.getInstance(project).selectedEditor?.file ?: return false
+            val fileIndex = ProjectRootManager.getInstance(project).fileIndex
+            return fileIndex.isInTestSourceContent(file)
         }
 
         private fun isExternalProjectExistInternal(project: Project): Boolean {

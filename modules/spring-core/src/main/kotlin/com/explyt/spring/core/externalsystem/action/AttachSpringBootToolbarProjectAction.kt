@@ -24,7 +24,6 @@ import com.intellij.execution.RunManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
-import com.intellij.openapi.util.registry.Registry
 
 class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
     init {
@@ -40,7 +39,7 @@ class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
         val presentation = e.presentation
         val project = e.project ?: return
         presentation.isEnabledAndVisible = RunManager.getInstance(project).selectedConfiguration
-            ?.configuration is SpringBootRunConfiguration && Registry.`is`("explyt.spring.native")
+            ?.configuration is SpringBootRunConfiguration
     }
 
     override fun actionPerformed(e: AnActionEvent) {

@@ -644,8 +644,6 @@
                      description="Use root class from run configuration for bean search"/>
         <registryKey key="explyt.spring.process.log.all" defaultValue="false"
                      description="Show all spring log in bean resolve process"/>
-        <registryKey key="explyt.spring.native" defaultValue="true"
-                     description="Enable Spring explyt native bean retriever"/>
         <registryKey key="explyt.spring.native.old" defaultValue="false"
                      description="Support Spring Boot old versions before 2.4"/>
         <registryKey key="explyt.statistic.debug" defaultValue="false"
