@@ -224,7 +224,7 @@ class SpringSearchService(private val project: Project) {
         synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 CachedValueProvider.Result(
-                    getActiveBeansClasses(module).mapTo(mutableSetOf()) { it.psiClass },
+                    SpringSearchUtils.getPsiClasses(getActiveBeansClasses(module)),
                     ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )
             }
@@ -868,5 +868,16 @@ object SpringSearchUtils {
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }, false)
+    }
+
+    fun getPsiClasses(psiBeans: Collection<PsiBean>): MutableSet<PsiClass> {
+        val result = HashSet<PsiClass>(psiBeans.size)
+        for (bean in psiBeans) {
+            result.add(bean.psiClass)
+            if (bean.psiMember !is PsiClass) {
+                bean.psiMember.containingClass?.let { result.add(it) }
+            }
+        }
+        return result
     }
 }

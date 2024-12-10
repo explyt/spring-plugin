@@ -86,7 +86,7 @@ class NativeSearchService(private val project: Project) {
         synchronized(this) {
             return CachedValuesManager.getManager(project).getCachedValue(module) {
                 CachedValueProvider.Result(
-                    getAllActiveBeans(module).mapTo(mutableSetOf()) { it.psiClass },
+                    SpringSearchUtils.getPsiClasses(getAllActiveBeans(module)),
                     ModificationTrackerManager.getInstance(project).getExternalSystemTracker(),
                     ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )

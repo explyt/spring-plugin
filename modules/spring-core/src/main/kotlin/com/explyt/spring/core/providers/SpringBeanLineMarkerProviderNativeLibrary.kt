@@ -21,7 +21,6 @@ import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringIcons
-import com.explyt.spring.core.SpringProperties.BASE_SPRING_PACKAGE
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isAutowiredFieldExpression
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isAutowiredMethodExpression
 import com.explyt.spring.core.service.NativeSearchService
@@ -61,9 +60,9 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         val psiClass = uClass.javaPsi
         if (!isSpringBeanCandidateClass(psiClass)) return
         val libraryBeans = NativeSearchService.getInstance(element.project).getLibraryBeans()
-        val contextBean = libraryBeans.find { it.psiClass.qualifiedName == psiClass.qualifiedName }
+        val targetQualifiedName = psiClass.qualifiedName
+        val contextBean = libraryBeans.find { isContextClass(it, targetQualifiedName) }
         val isComponentCandidate = isComponentCandidate(psiClass)
-                || psiClass.qualifiedName?.startsWith(BASE_SPRING_PACKAGE) == true
 
         if (contextBean?.psiMember is PsiMethod) {
             addMethodBeanDeclaration(uClass, contextBean, result)
@@ -74,6 +73,14 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         addContextBean(uClass, libraryBeans, result)
         processMethods(uClass, libraryBeans, result)
         processFields(uClass, libraryBeans, result)
+    }
+
+    private fun isContextClass(it: PsiBean, targetQualifiedName: String?): Boolean {
+        return if (it.psiMember is PsiClass) {
+            it.psiMember.qualifiedName == targetQualifiedName
+        } else {
+            it.psiMember.containingClass?.qualifiedName == targetQualifiedName
+        }
     }
 
     private fun processFields(
