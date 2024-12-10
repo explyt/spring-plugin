@@ -36,6 +36,8 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
 
         val springBoot_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.1.1")
         val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
+        val springBootTestAutoConfigure_3_1_1: TestLibrary =
+            TestLibrary("org.springframework.boot:spring-boot-test-autoconfigure:3.1.1")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
         val springGraphQl_1_0_4 = TestLibrary("org.springframework.graphql:spring-graphql:1.0.4", true)
         val jakarta_annotation_2_1_1 = TestLibrary("jakarta.annotation:jakarta.annotation-api:2.1.1", true)

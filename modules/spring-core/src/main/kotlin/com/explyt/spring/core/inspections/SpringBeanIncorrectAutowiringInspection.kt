@@ -303,10 +303,10 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
     ): Array<ProblemDescriptor> {
         var problems = emptyArray<ProblemDescriptor>()
 
-        val fields = aClass.allFields
+        val fields = aClass.fields
             .filter { it.isInjectOrAutowiredByRequiredTrue() }
             .map { it as PsiNameIdentifierOwner }.toSet()
-        val methods = aClass.allMethods
+        val methods = aClass.methods
             .filter { it.isInjectOrAutowiredByRequiredTrue() }
             .map { it as PsiNameIdentifierOwner }.toSet()
         val elements = fields + methods

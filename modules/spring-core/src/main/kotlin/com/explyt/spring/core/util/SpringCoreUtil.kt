@@ -62,6 +62,7 @@ import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.impl.LibraryScopeCache
 import com.intellij.openapi.util.io.FileUtilRt
 import com.intellij.openapi.vfs.VfsUtil
@@ -179,6 +180,7 @@ object SpringCoreUtil {
         psiClass ?: return false
 
         if (psiClass.hasComponentAnnotation()) return true
+        if (psiClass.hasTestComponentAnnotation()) return true
         if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return true
         if (!psiClass.isAbstract) return false
         if (psiClass.isInterface) return false
@@ -191,6 +193,11 @@ object SpringCoreUtil {
         return isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) || isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH)
     }
 
+    private fun PsiClass.hasTestComponentAnnotation(): Boolean {
+        val virtualFile = this.containingFile?.virtualFile ?: return false
+        val isInTestSources = ProjectRootManager.getInstance(this.project).fileIndex.isInTestSourceContent(virtualFile)
+        return isInTestSources && this.superClass?.hasComponentAnnotation() == true
+    }
 
     fun PsiClass.getBeanName(): String? =
         name?.replaceFirstChar { it.lowercase(Locale.getDefault()) }

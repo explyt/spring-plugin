@@ -23,7 +23,11 @@ import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringBeanIncorrectAutowiringInspectionTest : ExplytInspectionJavaTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springContext_6_0_7,
+        TestLibrary.springTest_6_0_7,
+        TestLibrary.springBootTestAutoConfigure_3_1_1
+    )
 
     @TestMetadata("autowired")
     fun testAutowired() = doTest(com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection())
