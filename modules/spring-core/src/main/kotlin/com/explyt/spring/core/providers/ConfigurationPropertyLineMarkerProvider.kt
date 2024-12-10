@@ -22,6 +22,7 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties.COLON
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
 import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -66,8 +67,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringSetting)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy {
-                StatisticActionId.GUTTER_TARGET_PROPERTY
-                targets
+                getTarget(targets)
             })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.property.usage"))
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.property.usage"))
@@ -75,6 +75,13 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
             .setTargetRenderer { getTargetRender() }
 
         result += builder.createLineMarkerInfo(nameElement)
+    }
+
+    private fun getTarget(
+        targets: List<PsiElement>
+    ): List<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_TARGET_PROPERTY)
+        return targets
     }
 
     private fun getTargetRender(): PsiTargetPresentationRenderer<PsiElement> {
