@@ -21,6 +21,7 @@ import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.ModificationTracker.NEVER_CHANGED
 import com.intellij.openapi.util.SimpleModificationTracker
@@ -177,7 +178,9 @@ internal class MyUastPsiTreeChangeAdapter(
         ) {
             //tracker for root package search
             modelTracker.incModificationCount()
-            annotationTracker.incModificationCount()
+            if (isNotTest(psiFile)) {
+                annotationTracker.incModificationCount()
+            }
             return
         }
         if (((grandParent.isInstanceOf(possiblePsiTypes.forClasses) // modifier changed (static, public)
@@ -193,6 +196,10 @@ internal class MyUastPsiTreeChangeAdapter(
         ) {
             modelTracker.incModificationCount()
         }
+    }
+
+    private fun isNotTest(psiFile: PsiClassOwner): Boolean {
+        return !ProjectRootManager.getInstance(this.project).fileIndex.isInTestSourceContent(psiFile.virtualFile)
     }
 
     private fun changedReturnStatement(

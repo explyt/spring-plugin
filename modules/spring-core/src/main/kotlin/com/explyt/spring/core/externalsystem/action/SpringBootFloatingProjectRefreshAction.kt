@@ -36,6 +36,7 @@ class SpringBootFloatingProjectRefreshAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_FLOATING_BUTTON_REFRESH)
+        AnnotationTrackerHolderService.getInstance(project).updateAnnotationTrackerHolder()
         ExternalSystemUtil.refreshProjects(ImportSpecBuilder(project, SYSTEM_ID))
     }
 
