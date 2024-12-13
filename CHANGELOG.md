@@ -10,13 +10,17 @@
 - Fixed: support in property for boolean starting with "is"
 - Fixed: reference in property Relaxed Binding
 - Fixed: reference in property for Map values
+- Fixed: include in search for class-reference not only compile dependencies, but runtime as well 
+- Fixed: The ExplytSpringBoot settings lead to the incorrect direction (#13)
+- Fixed: inspection for fields and methods super classes (#14)
 
-### OpenAPI
+### Spring Web / OpenAPI
 
-- Removed navigation from endpoint to openapi path
+- Fixed: Removed navigation from endpoint to openapi path
 - Added: Run in Swagger endpoint action
-- Added: Generate OpenAPI from coRouter function
+- Added: Generate OpenAPI from coRouter function (#10)
 - Added: Floating button for refresh ExplytSpringBoot panel
+- Added: Generate Spring MVC controller method by url in Generate intention
 
 ## [243.1.2801] - 2024-12-01
 
