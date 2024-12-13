@@ -195,10 +195,10 @@ class ValueHintReference(
     }
 
     private fun getClassReferences(targetClassFqn: String): List<Any> {
-        val resolveScope = element.resolveScope
+        val scope = GlobalSearchScope.allScope(element.project)
         val targetPsiClass =
-            JavaPsiFacade.getInstance(element.project).findClass(targetClassFqn, resolveScope) ?: return emptyList()
-        return ClassInheritorsSearch.search(targetPsiClass, resolveScope, true).asSequence()
+            JavaPsiFacade.getInstance(element.project).findClass(targetClassFqn, scope) ?: return emptyList()
+        return ClassInheritorsSearch.search(targetPsiClass, scope, true).asSequence()
             .plus(targetPsiClass)
             .map { psiClass ->
                 psiClass?.qualifiedName?.let {
