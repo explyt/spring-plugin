@@ -23,6 +23,8 @@ import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.ide.impl.ProjectUtil
+import com.intellij.lang.Language
+import com.intellij.lang.LanguageUtil
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.psi.injection.Injectable
@@ -32,7 +34,6 @@ import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
-import org.intellij.plugins.intelliLang.inject.InjectedLanguage
 import javax.swing.JComponent
 import javax.swing.JList
 
@@ -131,10 +132,12 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     }
 
     private fun getAvailableLanguages(): List<Injectable?> {
-        val languages = InjectedLanguage.getAvailableLanguages()
+        val languages = Language.getRegisteredLanguages()
         val list: MutableList<Injectable> = ArrayList()
         for (language in languages) {
-            list.add(Injectable.fromLanguage(language))
+            if (LanguageUtil.isInjectableLanguage(language)) {
+                list.add(Injectable.fromLanguage(language))
+            }
         }
         list.sort()
         return listOf<Injectable?>(null) + list
