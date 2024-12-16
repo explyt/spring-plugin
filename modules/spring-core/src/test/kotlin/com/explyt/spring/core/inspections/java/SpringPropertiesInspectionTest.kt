@@ -23,7 +23,11 @@ import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringPropertiesInspectionTest : ExplytInspectionJavaTestCase() {
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBoot_3_1_1)
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springContext_6_0_7,
+        TestLibrary.springBoot_3_1_1,
+        TestLibrary.springBootAutoConfigure_3_1_1
+    )
 
     override fun setUp() {
         super.setUp()
@@ -54,4 +58,16 @@ class SpringPropertiesInspectionTest : ExplytInspectionJavaTestCase() {
         )
         myFixture.testHighlighting("application.properties")
     }
+
+    fun testCamelCaseProperties() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+            logging.level.org.hibernate.type.descriptor.sql.BasicBinder=debug
+            <warning descr="Should be kebab-case">spring.jpa.databasePlatform</warning>=org.hibernate.dialect.PostgreSQLDialect
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.properties")
+    }
+
 }

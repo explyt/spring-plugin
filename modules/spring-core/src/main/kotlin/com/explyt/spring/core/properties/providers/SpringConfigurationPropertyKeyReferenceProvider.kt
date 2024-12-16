@@ -52,6 +52,7 @@ import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
+import org.jetbrains.yaml.YAMLLanguage
 
 class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 
@@ -89,6 +90,8 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         keyHint: PropertyHint,
         element: PsiElement
     ): Array<PsiReference> {
+        if (element.language == YAMLLanguage.INSTANCE) return emptyArray()
+
         val prefix = keyHint.name.substringBefore(POSTFIX_KEYS)
         val suffixKey = prefix.substringAfterLast(DOT)
         val suffixElement = element.text.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)

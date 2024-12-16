@@ -47,7 +47,8 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
         var elementText = element.text
 
-        if (element is LeafPsiElement && element.language == YAMLLanguage.INSTANCE) {
+        val isYaml = element.language == YAMLLanguage.INSTANCE
+        if (element is LeafPsiElement && isYaml) {
             val yamlKeyValue = element.parent as? YAMLKeyValue ?: return
             if (yamlKeyValue.key != element) return
             elementText = YAMLUtil.getConfigFullName(yamlKeyValue)
@@ -57,7 +58,7 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .getElementNameHints(module)
 
         val targets = hints.asSequence()
-            .filter { it.name == elementText }
+            .filter { it.name == elementText || isMapKey(elementText, it.name, isYaml) }
             .map { it.jsonProperty }
             .groupingBy { it.containingFile.virtualFile.path.replace(SOURCES_SUFFIX, "") }
             .aggregate { _, acc: JsonProperty?, elem: JsonProperty, _ ->
@@ -84,6 +85,10 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result += builder.createLineMarkerInfo(element)
     }
 
+    private fun isMapKey(elementText: String, propertyName: String, isYaml: Boolean): Boolean {
+        val name = propertyName.substringBefore(".keys")
+        return elementText.startsWith(name) && if (isYaml) name == elementText else !elementText.contains("=")
+    }
     companion object {
         const val SOURCES_SUFFIX = "-sources"
     }

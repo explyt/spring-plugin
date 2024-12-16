@@ -31,9 +31,10 @@ class PropertyLineMarkerProviderTest : ExplytBaseLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springContext_6_0_7,
+        TestLibrary.springBootAutoConfigure_3_1_1
     )
 
-    fun testPropertiesLineMarkerToAdditionalMetadataHints() {
+    fun testPropertiesToMetadataHintsName() {
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText(
             "application.properties",
@@ -50,7 +51,7 @@ class PropertyLineMarkerProviderTest : ExplytBaseLightTestCase() {
         }.size, 1)
     }
 
-    fun testYamlLineMarkerToAdditionalMetadataHints() {
+    fun testYamlToMetadataHintsName() {
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText(
             "application.yaml",
@@ -70,4 +71,41 @@ main:
         }.size, 1)
     }
 
+    fun testPropertiesToMetadataHintsMapKeysName() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.properties",
+            "logging.level.org.hibernate.SQL=debug"
+        )
+        myFixture.doHighlighting()
+
+        val icons = setOf(SpringIcons.Hint)
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        assertEquals(gutterTargetString.flatMap { gutter ->
+            gutter.filter { it == "name" }
+        }.size, 2)
+    }
+
+    fun testYamlToMetadataHintsMapKeysName() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level: 
+    org.hibernate.SQL: trace
+            """.trimIndent()
+        )
+        myFixture.doHighlighting()
+
+        val icons = setOf(SpringIcons.Hint)
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, icons)
+        val gutterTargetString = getGutterTargetString(allBeanGutters)
+
+        assertEquals(gutterTargetString.flatMap { gutter ->
+            gutter.filter { it == "name" }
+        }.size, 2)
+    }
 }

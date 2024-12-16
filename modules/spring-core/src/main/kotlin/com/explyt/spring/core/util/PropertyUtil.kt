@@ -357,17 +357,7 @@ object PropertyUtil {
     }
 
     fun isKebabCaseInMapKey(key: String, properties: List<ConfigurationProperty>): Boolean {
-        val parts = key.split(".")
-
-        val keyVariant = buildString {
-            for (part in parts) {
-                if (part.any { it.isUpperCase() }) break
-                if (isNotEmpty()) append(".")
-                append(part)
-            }
-        }
-        val property = properties.firstOrNull { isSameProperty(it.name, keyVariant) } ?: return false
-        return property.isMap()
+        return properties.any { it.isMap() && key.startsWith(it.name) && key != it.name }
     }
 
     fun getValueClassNameInMap(propertyType: String?): String? {
