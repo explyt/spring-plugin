@@ -55,8 +55,11 @@
         <multiHostInjector implementation="com.explyt.jpa.langinjection.JpqlEntityManagerLanguageInjector"/>
         <multiHostInjector implementation="com.explyt.jpa.langinjection.JpqNamedQueryLanguageInjector"/>
 
-        <referencesSearch implementation="com.explyt.jpa.ql.reference.search.EntityAttributeSearcher"/>
+
         <referencesSearch implementation="com.explyt.jpa.ql.reference.search.EntitySearcher"/>
+        <!-- prevent stack overflow. not usage.
+        <referencesSearch implementation="com.explyt.jpa.ql.reference.search.EntityAttributeSearcher"/>
+        -->
         <usageTypeProvider implementation="com.explyt.jpa.ql.reference.search.JpqlUsageTypeProvider"/>
     </extensions>
 
