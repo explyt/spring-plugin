@@ -70,6 +70,8 @@ private fun splitBeansByType(beanNodes: List<DataNode<SpringBeanData>>, view: Ex
     val others = mutableListOf<DataNode<SpringBeanData>>()
     val configs = mutableListOf<DataNode<SpringBeanData>>()
     val configProperties = mutableListOf<DataNode<SpringBeanData>>()
+    val autoConfigs = mutableListOf<DataNode<SpringBeanData>>()
+    val messagesBroker = mutableListOf<DataNode<SpringBeanData>>()
     for (beanNode in beanNodes) {
         val beanData = beanNode.data
         val beanType = beanData.type
@@ -82,6 +84,8 @@ private fun splitBeansByType(beanNodes: List<DataNode<SpringBeanData>>, view: Ex
             SpringBeanType.METHOD -> methods.add(beanNode)
             SpringBeanType.CONFIGURATION -> configs.add(beanNode)
             SpringBeanType.CONFIGURATION_PROPERTIES -> configProperties.add(beanNode)
+            SpringBeanType.AUTO_CONFIGURATION -> autoConfigs.add(beanNode)
+            SpringBeanType.MESSAGE_MAPPING -> messagesBroker.add(beanNode)
             SpringBeanType.OTHER -> others.add(beanNode)
         }
     }
@@ -95,6 +99,8 @@ private fun splitBeansByType(beanNodes: List<DataNode<SpringBeanData>>, view: Ex
         configs = toSpringBeanViewNodes(configs, view),
         configProperties = toSpringBeanViewNodes(configProperties, view),
         others = toSpringBeanViewNodes(others, view),
+        autoConfigs = toSpringBeanViewNodes(autoConfigs, view),
+        messagesBroker = toSpringBeanViewNodes(messagesBroker, view),
     )
 }
 
@@ -120,6 +126,12 @@ private fun toChildNodes(
     if (splitBeanHolder.configs.isNotEmpty()) {
         result.add(ConfigBeanNodes(view, splitBeanHolder.configs))
     }
+    if (splitBeanHolder.autoConfigs.isNotEmpty()) {
+        result.add(AutoConfigBeanNodes(view, splitBeanHolder.autoConfigs))
+    }
+    if (splitBeanHolder.messagesBroker.isNotEmpty()) {
+        result.add(MessageBrokerBeanNodes(view, splitBeanHolder.messagesBroker))
+    }
     if (splitBeanHolder.others.isNotEmpty()) {
         result.add(OtherBeanNodes(view, splitBeanHolder.others))
     }
@@ -144,4 +156,6 @@ private data class SplitBeanHolder(
     val configs: List<SpringBeanViewNode>,
     val others: List<SpringBeanViewNode>,
     val configProperties: List<SpringBeanViewNode>,
+    val autoConfigs: List<SpringBeanViewNode>,
+    val messagesBroker: List<SpringBeanViewNode>,
 )

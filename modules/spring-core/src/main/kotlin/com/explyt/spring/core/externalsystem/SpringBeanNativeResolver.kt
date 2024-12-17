@@ -23,7 +23,6 @@ import com.explyt.spring.boot.bean.reader.SpringBootBeanEnhancerReaderStarter
 import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.SpringCoreClasses.REST_CONTROLLER
 import com.explyt.spring.core.externalsystem.model.SpringAspectData
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.externalsystem.model.SpringBeanType
@@ -39,7 +38,10 @@ import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PR
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.ExplytPsiUtil.isPublic
 import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.ModuleBasedConfigurationOptions
@@ -60,6 +62,7 @@ import com.intellij.openapi.externalSystem.service.project.ExternalSystemProject
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
@@ -154,12 +157,22 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
         val projectData = projectData(projectPath, runConfiguration)
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
+
+        detectMessageMapping(settings)
         beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
             .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
         fillProfiles(projectDataNode, projectPath, settings.project, runConfiguration)
         return projectDataNode
+    }
+
+    private fun detectMessageMapping(settings: NativeExecutionSettings) {
+        val messageMappingExist = ApplicationManager.getApplication()
+            .runReadAction(Computable {
+                LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.MESSAGE_MAPPING) != null
+            })
+        settings.messageMappingExist = messageMappingExist
     }
 
     private fun buildProject(
@@ -283,18 +296,36 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             return null
         }
 
-        return SpringBeanData(
-            beanName = bean.beanName,
-            className = bean.className,
-            scope = bean.scope,
-            methodName = bean.methodName,
-            methodType = bean.methodType,
-            primary = bean.primary,
-            rootBean = bean.rootBean,
-            type = getBeanType(psiClassLocation, bean),
-            projectBean = psiClassLocation.containingFile?.virtualFile?.let { fileIndex.isInSource(it) } == true
-        )
+        val springBeanData = springBeanData(bean, psiClassLocation, fileIndex, getBeanType(psiClassLocation, bean))
+        if (settings.messageMappingExist && springBeanData.projectBean
+            && (springBeanData.type == SpringBeanType.SERVICE || springBeanData.type == SpringBeanType.COMPONENT)
+        ) {
+            val isMessageMapping = psiClassLocation.methods.asSequence()
+                .filter { it.isPublic }
+                .any { it.isMetaAnnotatedBy(SpringCoreClasses.MESSAGE_MAPPING) }
+            if (isMessageMapping) {
+                return springBeanData(bean, psiClassLocation, fileIndex, SpringBeanType.MESSAGE_MAPPING)
+            }
+        }
+        return springBeanData
     }
+
+    private fun springBeanData(
+        bean: BeanInfo,
+        psiClassLocation: PsiClass,
+        fileIndex: ProjectFileIndex,
+        beanType: SpringBeanType,
+    ) = SpringBeanData(
+        beanName = bean.beanName,
+        className = bean.className,
+        scope = bean.scope,
+        methodName = bean.methodName,
+        methodType = bean.methodType,
+        primary = bean.primary,
+        rootBean = bean.rootBean,
+        type = beanType,
+        projectBean = psiClassLocation.containingFile?.virtualFile?.let { fileIndex.isInSource(it) } == true
+    )
 
     private fun projectData(projectPath: String, configuration: RunConfiguration?): ProjectData {
         val directoryPath = LocalFileSystem.getInstance().findFileByPath(projectPath)
@@ -366,12 +397,14 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             SpringBeanType.METHOD
         } else if (isAnnotated(psiClass, SpringCoreClasses.SPRING_BOOT_APPLICATION)) {
             SpringBeanType.APPLICATION
-        } else if (isAnnotated(psiClass, SpringCoreClasses.CONTROLLER) || isAnnotated(psiClass, REST_CONTROLLER)) {
+        } else if (isMetaAnnotated(psiClass, SpringCoreClasses.CONTROLLER)) {
             SpringBeanType.CONTROLLER
         } else if (isAnnotated(psiClass, SpringCoreClasses.SERVICE)) {
             SpringBeanType.SERVICE
         } else if (isAnnotated(psiClass, SpringCoreClasses.COMPONENT)) {
             SpringBeanType.COMPONENT
+        } else if (isAnnotated(psiClass, SpringCoreClasses.BOOT_AUTO_CONFIGURATION)) {
+            SpringBeanType.AUTO_CONFIGURATION
         } else if (isAnnotated(psiClass, SpringCoreClasses.CONFIGURATION_PROPERTIES)) {
             SpringBeanType.CONFIGURATION_PROPERTIES
         } else if (isAnnotated(psiClass, SpringCoreClasses.CONFIGURATION)) {
@@ -388,5 +421,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
     private fun isAnnotated(psiClass: PsiClass, annotationQualifiedName: String): Boolean {
         return AnnotationUtil.isAnnotated(psiClass, annotationQualifiedName, 0)
+    }
+
+    private fun isMetaAnnotated(psiClass: PsiClass, annotationQualifiedName: String): Boolean {
+        return MetaAnnotationUtil.isMetaAnnotated(psiClass, listOf(annotationQualifiedName))
     }
 }

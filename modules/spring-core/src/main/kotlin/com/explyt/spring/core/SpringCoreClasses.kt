@@ -138,6 +138,8 @@ object SpringCoreClasses {
     const val OPEN_FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
     const val LOAD_BALANCED = "org.springframework.cloud.client.loadbalancer.LoadBalanced"
 
+    const val MESSAGE_MAPPING = "org.springframework.messaging.handler.annotation.MessageMapping"
+
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_SQL = setOf(CONTEXT_SQL)
