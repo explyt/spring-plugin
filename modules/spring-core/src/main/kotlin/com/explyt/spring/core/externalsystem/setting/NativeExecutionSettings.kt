@@ -23,4 +23,5 @@ import com.intellij.openapi.project.Project
 class NativeExecutionSettings(val project: Project) : ExternalSystemExecutionSettings() {
     var externalProjectMainFilePath: String? = null
     var runConfigurationName: String? = null
+    var messageMappingExist: Boolean = false
 }
