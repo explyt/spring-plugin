@@ -34,7 +34,7 @@ object SpringIcons {
     val EventListener = load("com/explyt/spring/core/icons/listener.svg")
     val EventPublisher = load("com/explyt/spring/core/icons/publisher.svg")
     val Hint = load("com/explyt/spring/core/icons/hint.svg")
-    val ReadAccess = load("com/explyt/spring/core/icons/readAccess.svg")
+    val ReadAccess = load("com/explyt/spring/core/icons/requestMapping.svg")
     val SpringFactories = LayeredIcon.layeredIcon(arrayOf(Spring, AllIcons.Actions.New))
     val SpringExplorer = load("com/explyt/spring/core/icons/springBootExplorer.svg")
     val RefreshChanges = load("com/explyt/spring/core/icons/RefreshChanges.svg")

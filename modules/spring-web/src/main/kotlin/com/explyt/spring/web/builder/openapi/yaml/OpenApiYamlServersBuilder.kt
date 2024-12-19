@@ -15,17 +15,27 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.web.builder.openapi
+package com.explyt.spring.web.builder.openapi.yaml
 
-import com.explyt.spring.web.builder.AbstractBuilder
+import com.explyt.spring.web.builder.openapi.OpenApiServersBuilder
 
-abstract class OpenApiPathHttpTypeBuilder(indent: String, builder: StringBuilder) : AbstractBuilder(indent, builder) {
+class OpenApiYamlServersBuilder(indent: String = "", builder: StringBuilder) : OpenApiServersBuilder(indent, builder),
+    YamlKeyValueGenerator {
 
-    protected fun contentTypes(types: Collection<String>): List<String> {
-        return if (types.isEmpty()) {
-            listOf("application/json")
-        } else {
-            types.toList()
+    override fun addServerUrl(url: String): OpenApiServersBuilder {
+        serverBuilders.add(
+            OpenApiYamlServerBuilder(url, "$indent  ", builder)
+        )
+        return this
+    }
+
+    override fun build() {
+        if (serverBuilders.isEmpty()) return
+
+        builder.appendLine()
+        builder.append("${indent}servers:")
+        for (serverBuilder in serverBuilders) {
+            serverBuilder.build()
         }
     }
 

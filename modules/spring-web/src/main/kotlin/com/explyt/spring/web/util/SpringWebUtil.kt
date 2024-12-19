@@ -50,7 +50,7 @@ object SpringWebUtil {
     fun isSpringWebProject(project: Project): Boolean {
         return LibraryClassCache.searchForLibraryClass(
             project,
-            SpringWebClasses.WEB_INITIALIZER
+            WEB_INITIALIZER
         ) != null
     }
 
@@ -65,7 +65,7 @@ object SpringWebUtil {
     fun isSpringWebModule(module: Module): Boolean {
         return LibraryClassCache.searchForLibraryClass(
             module,
-            SpringWebClasses.WEB_INITIALIZER
+            WEB_INITIALIZER
         ) != null
     }
 
@@ -107,6 +107,9 @@ object SpringWebUtil {
             val isRequired = mahRequestParam.getAnnotationMemberValues(annotation, setOf("required"))
                 .map { it.getBooleanValue() }
                 .firstOrNull() ?: true
+            val defaultValue = mahRequestParam.getAnnotationMemberValues(annotation, setOf("defaultValue"))
+                .map { it.getStringValue() }
+                .firstOrNull()
 
             val memberValues = mahRequestParam.getAnnotationMemberValues(annotation, setOf("value", "name"))
             if (memberValues.isEmpty()) {
@@ -116,7 +119,8 @@ object SpringWebUtil {
                         param,
                         isRequired && !isOptional,
                         isMap,
-                        typeFqn
+                        typeFqn,
+                        defaultValue
                     )
                 )
             } else {
@@ -128,7 +132,65 @@ object SpringWebUtil {
                             it,
                             isRequired && !isOptional,
                             isMap,
-                            typeFqn
+                            typeFqn,
+                            defaultValue
+                        )
+                    )
+                }
+            }
+        }
+        return requestParamInfos
+    }
+
+    fun collectRequestHeaders(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
+
+        val annotatedParams = psiMethod.parameterList.parameters
+            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_HEADER) }
+        val mahRequestHeader = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringWebClasses.REQUEST_HEADER)
+
+        val requestParamInfos = mutableListOf<PathArgumentInfo>()
+        for (param in annotatedParams) {
+            val annotation = param.annotations.firstOrNull {
+                mahRequestHeader.contains(it)
+            } ?: continue
+
+            val paramType = param.type
+            val isMap = paramType.isMapWithStringKey()
+            val isOptional = !isMap && paramType.isOptional
+            val typeFqn = getTypeFqn(paramType, psiMethod.language)
+
+            val isRequired = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("required"))
+                .map { it.getBooleanValue() }
+                .firstOrNull() ?: true
+            val defaultValue = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("defaultValue"))
+                .map { it.getStringValue() }
+                .firstOrNull()
+
+            val memberValues = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("value", "name"))
+            if (memberValues.isEmpty()) {
+                requestParamInfos.add(
+                    PathArgumentInfo(
+                        param.name,
+                        param,
+                        isRequired && !isOptional,
+                        isMap,
+                        typeFqn,
+                        defaultValue
+                    )
+                )
+            } else {
+                memberValues.forEach {
+                    val name = it.getStringValue() ?: return@forEach
+                    requestParamInfos.add(
+                        PathArgumentInfo(
+                            name,
+                            it,
+                            isRequired && !isOptional,
+                            isMap,
+                            typeFqn,
+                            defaultValue
                         )
                     )
                 }
@@ -335,7 +397,8 @@ object SpringWebUtil {
         val psiElement: PsiElement,
         val isRequired: Boolean,
         val isMap: Boolean,
-        val typeFqn: String
+        val typeFqn: String,
+        val defaultValue: String? = null
     )
 
     val REQUEST_METHODS =

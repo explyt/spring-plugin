@@ -21,6 +21,7 @@ import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.addPropertyToObje
 import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.iterateWithComma
 import com.explyt.spring.core.statistic.StatisticActionId.GUTTER_OPENAPI_GENERATE_ENDPOINT
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
 import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathBuilder
 import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathHttpTypeBuilder
@@ -64,9 +65,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
         return "Create endpoint description"
     }
 
-    override fun getText(): String {
-        return "Create ${endpoint.path} description"
-    }
+    override fun getText() = SpringWebBundle.message("explyt.openapi.gutter.method")
 
     override fun isAvailable(project: Project, editor: Editor?, file: PsiFile?): Boolean {
         val psiElement = endpoint.psiElement
@@ -229,6 +228,9 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
         val pathVariables: Collection<SpringWebUtil.PathArgumentInfo> = emptyList(),
         val requestParameters: Collection<SpringWebUtil.PathArgumentInfo> = emptyList(),
         val requestBodyInfo: SpringWebUtil.PathArgumentInfo? = null,
+        val requestHeaders: Collection<SpringWebUtil.PathArgumentInfo> = emptyList(),
+        val produces: Collection<String> = emptyList(),
+        val consumes: Collection<String> = emptyList(),
     )
 
 }

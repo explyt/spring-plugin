@@ -23,6 +23,7 @@ import com.explyt.spring.web.util.SpringWebUtil.simpleTypesMap
 
 class OpenApiYamlTypeBuilder(
     private val typeCanonical: String,
+    private val contentType: String,
     indent: String = "",
     builder: StringBuilder = StringBuilder()
 ) : OpenApiTypeBuilder(indent, builder), YamlKeyValueGenerator {
@@ -48,7 +49,7 @@ class OpenApiYamlTypeBuilder(
             } else {
                 addLinesWithIndent(
                     """
-                    application/json:
+                    $contentType:
                       schema:
                         type: array
                         items:
@@ -62,8 +63,9 @@ class OpenApiYamlTypeBuilder(
 
         if (simpleTypesMap.containsKey(typeCanonical)) {
             builder.appendLine()
-            builder.append("${indent}schema:")
-            buildSimpleType(typeCanonical, "$indent  ")
+            builder.appendLine("${indent}$contentType:")
+            builder.append("$indent  schema:")
+            buildSimpleType(typeCanonical, "$indent    ")
             return
         }
 
@@ -72,7 +74,7 @@ class OpenApiYamlTypeBuilder(
         //schema is on user now (but is planning)
         addLinesWithIndent(
             """
-            application/json:
+            $contentType:
               schema:
                 $REF_KEY: '#/components/schemas/$userType'    
             """,

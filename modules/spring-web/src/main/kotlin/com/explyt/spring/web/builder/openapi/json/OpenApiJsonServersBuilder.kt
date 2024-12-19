@@ -15,18 +15,32 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.web.builder.openapi
+package com.explyt.spring.web.builder.openapi.json
 
-import com.explyt.spring.web.builder.AbstractBuilder
+import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.iterateWithComma
+import com.explyt.spring.web.builder.openapi.OpenApiServersBuilder
 
-abstract class OpenApiPathHttpTypeBuilder(indent: String, builder: StringBuilder) : AbstractBuilder(indent, builder) {
+class OpenApiJsonServersBuilder(indent: String = "", builder: StringBuilder) : OpenApiServersBuilder(indent, builder),
+    JsonValueGenerator {
 
-    protected fun contentTypes(types: Collection<String>): List<String> {
-        return if (types.isEmpty()) {
-            listOf("application/json")
-        } else {
-            types.toList()
+    override fun addServerUrl(url: String): OpenApiServersBuilder {
+        serverBuilders.add(
+            OpenApiJsonServerBuilder(url, "$indent  ", builder)
+        )
+        return this
+    }
+
+    override fun build() {
+        if (serverBuilders.isEmpty()) return
+
+        builder.appendLine(",")
+        builder.append("""$indent"servers": [""")
+
+        builder.iterateWithComma(serverBuilders) { serverBuilder ->
+            serverBuilder.build()
         }
+
+        builder.append("\n$indent]")
     }
 
 }

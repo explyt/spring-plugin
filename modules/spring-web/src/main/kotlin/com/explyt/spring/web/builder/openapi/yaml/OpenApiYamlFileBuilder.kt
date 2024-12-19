@@ -26,6 +26,7 @@ import org.jetbrains.yaml.psi.YAMLFile
 class OpenApiYamlFileBuilder(builder: StringBuilder = StringBuilder()) : OpenApiFileBuilder(
     OpenApiYamlPathsBuilder("", builder),
     OpenApiYamlComponentsBuilder("", builder),
+    OpenApiYamlServersBuilder("", builder),
     builder
 ) {
     override fun toFile(filename: String, project: Project): YAMLFile {
@@ -46,6 +47,7 @@ class OpenApiYamlFileBuilder(builder: StringBuilder = StringBuilder()) : OpenApi
         """.trimIndent()
         )
 
+        serversBuilder.build()
         pathsBuilder.build()
         componentsBuilder.build()
     }

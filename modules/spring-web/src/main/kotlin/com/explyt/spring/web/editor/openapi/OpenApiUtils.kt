@@ -107,6 +107,8 @@ object OpenApiUtils {
 
     }
 
+    fun isAbsolutePath(path: String) = ABSOLUTE_PATH_REGEX.matches(path)
+
     private fun getTagAndOperationIdFor(jsonProperty: JsonProperty): TagAndOperationId? {
         val properties = (jsonProperty.value as? JsonObject)?.propertyList ?: return null
 
@@ -155,4 +157,6 @@ object OpenApiUtils {
     const val OPENAPI_INTERNAL_CORS = "/__explyt-openapi_internal-cors"
     const val OPENAPI_ORIGINAL_URL = "__explyt-openapi_original-url"
     const val OPENAPI_EDITOR_TYPE_ID = "explyt.web.openapi.ui.editor"
+
+    private val ABSOLUTE_PATH_REGEX = Regex("^/?https?:.*")
 }

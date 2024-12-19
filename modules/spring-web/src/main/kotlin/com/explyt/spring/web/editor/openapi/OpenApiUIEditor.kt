@@ -35,7 +35,7 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
         preview.putUserData(PARENT_EDITOR_KEY, this)
     }
 
-    fun showPreviewFor(tag: String, operationId: String, layout: Layout = DEFAULT_LAYOUT) {
+    fun showPreview(anchor: String = "", layout: Layout = DEFAULT_LAYOUT) {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_OPENAPI_ENDPOINT_OPEN_IN_SWAGGER)
 
         if (isModified) {
@@ -51,7 +51,11 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
         }
 
         val browser = previewEditor as? OpenApiCefBrowser ?: return
-        browser.loadHtml("?anchor=/$tag/$operationId")
+        browser.loadHtml(anchor)
+    }
+
+    fun showPreviewFor(tag: String, operationId: String, layout: Layout = DEFAULT_LAYOUT) {
+        showPreview("?anchor=/$tag/$operationId", layout)
     }
 
     companion object {

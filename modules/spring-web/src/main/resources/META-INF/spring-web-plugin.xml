@@ -158,6 +158,10 @@
                                   implementationClass="com.explyt.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
         <runLineMarkerContributor language="JSON"
                                   implementationClass="com.explyt.spring.web.providers.JsonRunEndpointLineMarkerProvider"/>
+        <runLineMarkerContributor language="UAST"
+                                  implementationClass="com.explyt.spring.web.providers.ControllerRunLineMarkerProvider"/>
+        <runLineMarkerContributor language="UAST"
+                                  implementationClass="com.explyt.spring.web.providers.EndpointRunLineMarkerProvider"/>
 
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
