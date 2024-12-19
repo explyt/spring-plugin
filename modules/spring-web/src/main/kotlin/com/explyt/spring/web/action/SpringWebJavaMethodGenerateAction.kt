@@ -65,7 +65,7 @@ class SpringWebJavaMethodGenerateAction : BaseGenerateAction(WebMethodHandler())
 
         fun parseUrl(urlString: String): HttMethod {
             val url = Url(urlString)
-            val methodName = url.pathSegments.last().replace("{", "").replace("}", "")
+            val methodName = url.pathSegments.last().replace("{", "").replace("}", "").replace("-", "").replace("_", "")
             val value = getMappingHttpValue(urlString)
             return HttMethod(methodName, value, getHttpParams(url))
         }

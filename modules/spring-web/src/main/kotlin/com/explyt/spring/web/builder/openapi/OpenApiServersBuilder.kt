@@ -19,14 +19,8 @@ package com.explyt.spring.web.builder.openapi
 
 import com.explyt.spring.web.builder.AbstractBuilder
 
-abstract class OpenApiPathHttpTypeBuilder(indent: String, builder: StringBuilder) : AbstractBuilder(indent, builder) {
+abstract class OpenApiServersBuilder(indent: String, builder: StringBuilder) : AbstractBuilder(indent, builder) {
+    protected val serverBuilders = mutableListOf<OpenApiServerBuilder>()
 
-    protected fun contentTypes(types: Collection<String>): List<String> {
-        return if (types.isEmpty()) {
-            listOf("application/json")
-        } else {
-            types.toList()
-        }
-    }
-
+    abstract fun addServerUrl(url: String): OpenApiServersBuilder
 }

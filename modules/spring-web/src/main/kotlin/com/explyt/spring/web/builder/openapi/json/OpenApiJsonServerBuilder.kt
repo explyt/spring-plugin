@@ -15,18 +15,22 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.web.builder.openapi
+package com.explyt.spring.web.builder.openapi.json
 
-import com.explyt.spring.web.builder.AbstractBuilder
+import com.explyt.spring.web.builder.openapi.OpenApiServerBuilder
 
-abstract class OpenApiPathHttpTypeBuilder(indent: String, builder: StringBuilder) : AbstractBuilder(indent, builder) {
+class OpenApiJsonServerBuilder(private val url: String, indent: String, builder: StringBuilder) :
+    OpenApiServerBuilder(indent, builder) {
 
-    protected fun contentTypes(types: Collection<String>): List<String> {
-        return if (types.isEmpty()) {
-            listOf("application/json")
-        } else {
-            types.toList()
-        }
+    override fun build() {
+        addLinesWithIndent(
+            """
+                 {
+                   "url": "$url"
+                 }
+                 """,
+            indent
+        )
     }
 
 }

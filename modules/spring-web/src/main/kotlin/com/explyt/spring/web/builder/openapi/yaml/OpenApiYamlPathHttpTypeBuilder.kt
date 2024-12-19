@@ -40,6 +40,7 @@ class OpenApiYamlPathHttpTypeBuilder(
             """,
             indent
         )
+
         if (endpoint.description.isBlank()) {
             builder.appendLine()
             builder.append("$indent  description: ${endpoint.methodName}")
@@ -62,8 +63,11 @@ class OpenApiYamlPathHttpTypeBuilder(
         for (pathVariable in endpoint.pathVariables) {
             buildParameter("path", pathVariable)
         }
-        for (pathVariable in endpoint.requestParameters) {
-            buildParameter("query", pathVariable)
+        for (requestParameter in endpoint.requestParameters) {
+            buildParameter("query", requestParameter)
+        }
+        for (requestHeader in endpoint.requestHeaders) {
+            buildParameter("header", requestHeader)
         }
     }
 
@@ -79,8 +83,10 @@ class OpenApiYamlPathHttpTypeBuilder(
             """,
             "$indent  "
         )
-        OpenApiYamlTypeBuilder(endpoint.returnTypeFqn, "$indent      ", builder)
-            .build()
+        for (contentType in consumes()) {
+            OpenApiYamlTypeBuilder(endpoint.returnTypeFqn, contentType, "$indent      ", builder)
+                .build()
+        }
     }
 
     private fun buildParameter(position: String, pathVariable: SpringWebUtil.PathArgumentInfo) {
@@ -90,10 +96,17 @@ class OpenApiYamlPathHttpTypeBuilder(
                   in: $position
                   description: ${pathVariable.name}
                   required: ${pathVariable.isRequired}
-                  schema:
                 """,
             "$indent    "
         )
+
+        if (!pathVariable.defaultValue.isNullOrBlank()) {
+            builder.appendLine()
+            builder.append("$indent      default: ${pathVariable.defaultValue}")
+        }
+
+        builder.appendLine()
+        builder.append("$indent      schema:")
 
         val typeFqn = pathVariable.typeFqn
         val type = if (simpleTypesMap.containsKey(typeFqn)) {
@@ -115,8 +128,18 @@ class OpenApiYamlPathHttpTypeBuilder(
             """,
             "$indent  "
         )
-        OpenApiYamlTypeBuilder(endpoint.returnTypeFqn, "$indent        ", builder)
-            .build()
+        for (contentType in produces()) {
+            OpenApiYamlTypeBuilder(endpoint.returnTypeFqn, contentType, "$indent        ", builder)
+                .build()
+        }
+    }
+
+    private fun produces(): List<String> {
+        return contentTypes(endpoint.produces)
+    }
+
+    private fun consumes(): List<String> {
+        return contentTypes(endpoint.consumes)
     }
 
 }

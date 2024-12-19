@@ -67,7 +67,8 @@ class OpenApiJsonPathHttpTypeBuilder(
 
         val parameters =
             endpoint.pathVariables.map { "path" to it } +
-                    endpoint.requestParameters.map { "query" to it }
+                    endpoint.requestParameters.map { "query" to it } +
+                    endpoint.requestHeaders.map { "header" to it }
 
         builder.iterateWithComma(parameters) { (position, parameter) ->
             buildParameter(position, parameter)
@@ -89,8 +90,10 @@ class OpenApiJsonPathHttpTypeBuilder(
             """,
             "$indent  "
         )
-        OpenApiJsonTypeBuilder(endpoint.returnTypeFqn, "$indent      ", builder)
-            .build()
+        builder.iterateWithComma(consumes()) { contentType ->
+            OpenApiJsonTypeBuilder(endpoint.returnTypeFqn, contentType, "$indent      ", builder)
+                .build()
+        }
 
         addLinesWithIndent(
             """
@@ -109,10 +112,17 @@ class OpenApiJsonPathHttpTypeBuilder(
                   "in": "$position",
                   "description": "${pathVariable.name}",
                   "required": ${pathVariable.isRequired},
-                  "schema": {
                 """,
             "$indent    "
         )
+
+        if (!pathVariable.defaultValue.isNullOrBlank()) {
+            builder.appendLine()
+            builder.append("""$indent      "default": "${pathVariable.defaultValue}",""")
+        }
+
+        builder.appendLine()
+        builder.append("""$indent      "schema": {""")
 
         val typeFqn = pathVariable.typeFqn
         val type = if (simpleTypesMap.containsKey(typeFqn)) {
@@ -147,8 +157,10 @@ class OpenApiJsonPathHttpTypeBuilder(
             """,
             "$indent  "
         )
-        OpenApiJsonTypeBuilder(endpoint.returnTypeFqn, "$indent        ", builder)
-            .build()
+        builder.iterateWithComma(produces()) { contentType ->
+            OpenApiJsonTypeBuilder(endpoint.returnTypeFqn, contentType, "$indent        ", builder)
+                .build()
+        }
 
         addLinesWithIndent(
             """
@@ -158,6 +170,14 @@ class OpenApiJsonPathHttpTypeBuilder(
             """,
             "$indent  "
         )
+    }
+
+    private fun produces(): List<String> {
+        return contentTypes(endpoint.produces)
+    }
+
+    private fun consumes(): List<String> {
+        return contentTypes(endpoint.consumes)
     }
 
 }

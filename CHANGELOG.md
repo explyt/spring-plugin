@@ -16,6 +16,7 @@
 
 ### Spring Web / OpenAPI
 
+- Added: Run in Swagger action for Controller/FeignClient
 - Fixed: Removed navigation from endpoint to openapi path
 - Added: Run in Swagger endpoint action
 - Added: Generate OpenAPI from coRouter function (#10)

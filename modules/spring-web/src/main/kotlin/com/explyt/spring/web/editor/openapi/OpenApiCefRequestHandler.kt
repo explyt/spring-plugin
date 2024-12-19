@@ -27,8 +27,12 @@ class OpenApiCefRequestHandler {
         request.url = OpenApiUtils.proxyUrl()
     }
 
-    fun isApplicable(request: CefRequest): Boolean =
-        Registry.`is`("openapi.ui.proxy.enable")
-                && !request.url.contains("__explyt-openapi")
+    fun isApplicable(request: CefRequest): Boolean {
+        val url = request.url
+
+        return Registry.`is`("openapi.ui.proxy.enable")
+                && url.contains("localhost")
+                && !url.contains("__explyt-openapi")
+    }
 
 }

@@ -24,6 +24,7 @@ import com.explyt.spring.web.util.SpringWebUtil.simpleTypesMap
 
 class OpenApiJsonTypeBuilder(
     private val typeCanonical: String,
+    private val contentType: String,
     indent: String = "",
     builder: StringBuilder = StringBuilder()
 ) : OpenApiTypeBuilder(indent, builder), JsonValueGenerator {
@@ -57,7 +58,7 @@ class OpenApiJsonTypeBuilder(
             } else {
                 addLinesWithIndent(
                     """
-                    "application/json": {
+                    "$contentType": {
                       "schema": {
                         "type": "array",
                         "items": {
@@ -75,9 +76,11 @@ class OpenApiJsonTypeBuilder(
 
         if (simpleTypesMap.containsKey(typeCanonical)) {
             builder.appendLine()
-            builder.append("""$indent"schema": {""")
+            builder.appendLine("""$indent"$contentType": {""")
+            builder.append("""$indent  "schema": {""")
             buildSimpleType(typeCanonical, "$indent  ")
-            builder.append("\n$indent}")
+            builder.appendLine("\n$indent  }")
+            builder.append("$indent}")
             return
         }
 
@@ -86,7 +89,7 @@ class OpenApiJsonTypeBuilder(
         //schema is on user now (but is planning)
         addLinesWithIndent(
             """
-            "application/json": {
+            "$contentType": {
               "schema": {
                 "$REF_KEY": "#/components/schemas/$userType"
               }

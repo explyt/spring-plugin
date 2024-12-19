@@ -25,6 +25,7 @@ import com.intellij.psi.PsiFile
 abstract class OpenApiFileBuilder(
     protected val pathsBuilder: OpenApiPathsBuilder,
     protected val componentsBuilder: OpenApiComponentsBuilder,
+    protected val serversBuilder: OpenApiServersBuilder,
     builder: StringBuilder
 ) : AbstractBuilder(builder = builder) {
 
@@ -36,6 +37,10 @@ abstract class OpenApiFileBuilder(
     fun addEndpoint(endpoint: AddEndpointToOpenApiIntention.EndpointInfo): OpenApiFileBuilder {
         pathsBuilder.addEndpoint(endpoint)
         return this
+    }
+
+    fun addServer(serverUrl: String) {
+        serversBuilder.addServerUrl(serverUrl)
     }
 
 }

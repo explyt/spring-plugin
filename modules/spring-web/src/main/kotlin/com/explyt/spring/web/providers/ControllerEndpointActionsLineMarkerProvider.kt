@@ -4,6 +4,7 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -48,6 +49,7 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
         val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .firstOrNull() ?: ""
+        if (OpenApiUtils.isAbsolutePath(path)) return null
 
         val prefix = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
             requestMappingMah.getAnnotationMemberValues(psiClass, setOf("path", "value")).asSequence()
@@ -56,6 +58,7 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
         } else {
             ""
         }
+        if (OpenApiUtils.isAbsolutePath(prefix)) return null
 
         val fullPath = SpringWebUtil.simplifyUrl("$prefix/$path")
 

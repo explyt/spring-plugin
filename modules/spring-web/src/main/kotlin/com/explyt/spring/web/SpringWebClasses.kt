@@ -29,6 +29,7 @@ object SpringWebClasses {
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
     const val REQUEST_PARAM = "org.springframework.web.bind.annotation.RequestParam"
+    const val REQUEST_HEADER = "org.springframework.web.bind.annotation.RequestHeader"
     const val REQUEST_BODY = "org.springframework.web.bind.annotation.RequestBody"
     const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
     const val FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"

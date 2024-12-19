@@ -26,6 +26,7 @@ import com.intellij.psi.PsiFileFactory
 class OpenApiJsonFileBuilder(builder: StringBuilder = StringBuilder()) : OpenApiFileBuilder(
     OpenApiJsonPathsBuilder("  ", builder),
     OpenApiJsonComponentsBuilder("  ", builder),
+    OpenApiJsonServersBuilder("  ", builder),
     builder
 ) {
     override fun toFile(filename: String, project: Project): JsonFile {
@@ -48,6 +49,7 @@ class OpenApiJsonFileBuilder(builder: StringBuilder = StringBuilder()) : OpenApi
             """.trimIndent()
         )
 
+        serversBuilder.build()
         pathsBuilder.build()
         componentsBuilder.build()
 
