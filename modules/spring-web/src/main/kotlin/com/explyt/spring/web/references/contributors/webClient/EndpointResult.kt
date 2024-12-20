@@ -25,7 +25,6 @@ import com.intellij.psi.CommonClassNames
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiWildcardType
 import com.intellij.psi.impl.source.PsiClassReferenceType
-import org.jetbrains.kotlin.idea.KotlinLanguage
 
 data class EndpointResult(
     val wrapperName: String?,
@@ -39,7 +38,6 @@ data class EndpointResult(
             if (returnType == null) return null
 
             val wrapperName = getWrapperName(returnType)
-            if (wrapperName == null && language != KotlinLanguage.INSTANCE) return null
 
             val genericParameter = if (wrapperName == null) {
                 returnType

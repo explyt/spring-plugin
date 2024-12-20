@@ -19,13 +19,13 @@ package com.explyt.spring.web.builder.openapi.json
 
 import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.iterateWithComma
 import com.explyt.spring.web.builder.openapi.OpenApiPathHttpTypeBuilder
-import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
+import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.OPENAPI_STRING
 import com.explyt.spring.web.util.SpringWebUtil.simpleTypesMap
 
 class OpenApiJsonPathHttpTypeBuilder(
-    private val endpoint: AddEndpointToOpenApiIntention.EndpointInfo,
+    private val endpoint: EndpointInfo,
     private val httpType: String,
     indent: String = "",
     builder: StringBuilder = StringBuilder()
@@ -91,7 +91,7 @@ class OpenApiJsonPathHttpTypeBuilder(
             "$indent  "
         )
         builder.iterateWithComma(consumes()) { contentType ->
-            OpenApiJsonTypeBuilder(endpoint.returnTypeFqn, contentType, "$indent      ", builder)
+            OpenApiJsonTypeBuilder(requestBodyInfo.typeFqn, contentType, "$indent      ", builder)
                 .build()
         }
 

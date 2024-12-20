@@ -84,7 +84,7 @@ class OpenApiYamlPathHttpTypeBuilder(
             "$indent  "
         )
         for (contentType in consumes()) {
-            OpenApiYamlTypeBuilder(endpoint.returnTypeFqn, contentType, "$indent      ", builder)
+            OpenApiYamlTypeBuilder(requestBodyInfo.typeFqn, contentType, "$indent      ", builder)
                 .build()
         }
     }

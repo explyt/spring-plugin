@@ -17,22 +17,25 @@
 
 package com.explyt.spring.web.builder.openapi.yaml
 
-import com.explyt.spring.web.builder.openapi.OpenApiComponentsBuilder
+import com.explyt.spring.web.builder.openapi.OpenApiComponentsSchemaBuilder
+import com.explyt.spring.web.editor.openapi.OpenApiUtils.ComponentSchemaInfo
 
-class OpenApiYamlComponentsBuilder(indent: String = "", builder: StringBuilder = StringBuilder()) :
-    OpenApiComponentsBuilder(indent, builder), YamlKeyValueGenerator {
+class OpenApiYamlComponentsSchemaBuilder(
+    private val typeInfo: ComponentSchemaInfo,
+    indent: String,
+    builder: StringBuilder
+) : OpenApiComponentsSchemaBuilder(indent, builder), YamlKeyValueGenerator {
 
     override fun build() {
-        if (types.isEmpty()) return
+        val typeName = typeInfo.typeQN.split('.').last()
 
-        val schemasBuilder = OpenApiYamlComponentsSchemasBuilder("$indent  ", builder)
-        for (type in types) {
-            schemasBuilder.addType(type)
-        }
-
-        builder.appendLine()
-        builder.append("${indent}components:")
-        schemasBuilder.build()
+        addLinesWithIndent(
+            """
+            $typeName:
+              type: object
+            """,
+            indent
+        )
     }
 
 }
