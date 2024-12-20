@@ -18,6 +18,7 @@
 package com.explyt.spring.web.editor.openapi
 
 import com.explyt.spring.web.util.SpringWebUtil.OPEN_API
+import com.explyt.spring.web.util.SpringWebUtil.arrayTypes
 import com.intellij.icons.AllIcons
 import com.intellij.json.psi.*
 import com.intellij.openapi.actionSystem.AnAction
@@ -109,6 +110,19 @@ object OpenApiUtils {
 
     fun isAbsolutePath(path: String) = ABSOLUTE_PATH_REGEX.matches(path)
 
+    fun unwrapType(typeCanonical: String): ComponentSchemaInfo {
+        val typeSplit = typeCanonical.split("<", ">")
+        if (typeSplit.size == 3 && typeSplit.last()
+                .isBlank()
+        ) {
+            val itemTypeCanonical = typeSplit[1]
+
+            return ComponentSchemaInfo(itemTypeCanonical, typeSplit.first() in arrayTypes)
+        }
+
+        return ComponentSchemaInfo(typeCanonical, false)
+    }
+
     private fun getTagAndOperationIdFor(jsonProperty: JsonProperty): TagAndOperationId? {
         val properties = (jsonProperty.value as? JsonObject)?.propertyList ?: return null
 
@@ -153,6 +167,14 @@ object OpenApiUtils {
         val tag: String,
         val operationId: String
     )
+
+    data class ComponentSchemaInfo(val typeQN: String, val isCollection: Boolean) {
+
+        companion object {
+            fun of(typeCanonical: String) = unwrapType(typeCanonical)
+        }
+
+    }
 
     const val OPENAPI_INTERNAL_CORS = "/__explyt-openapi_internal-cors"
     const val OPENAPI_ORIGINAL_URL = "__explyt-openapi_original-url"

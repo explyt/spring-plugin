@@ -29,7 +29,6 @@ import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUParentForIdentifier
 
@@ -38,15 +37,11 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
     override fun getInfo(psiElement: PsiElement): Info? {
         val uMethod = getUParentForIdentifier(psiElement) as? UMethod ?: return null
         val psiMethod = uMethod.javaPsi
-        val psiClass = psiMethod.containingClass ?: return null
 
         if (!SpringWebUtil.isSpringWebProject(psiElement.project)) return null
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
         if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
-        val isController = psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)
-        val isFeignClient = psiClass.isMetaAnnotatedBy(SpringWebClasses.FEIGN_CLIENT)
-        if (!isController && !isFeignClient) return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
         val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
@@ -84,8 +79,6 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
         if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
-        val psiClass = psiMethod.containingClass ?: return null
-        val controllerName = psiClass.name ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
         val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
@@ -108,8 +101,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             requestMethods,
             psiMethod,
             uMethod.name,
-            controllerName.replace("controller", "", true)
-                .decapitalize(),
+            "default",
             description,
             returnTypeFqn,
             SpringWebUtil.collectPathVariables(psiMethod),

@@ -17,23 +17,28 @@
 
 package com.explyt.spring.web.builder.openapi.json
 
-import com.explyt.spring.web.builder.openapi.OpenApiComponentsBuilder
+import com.explyt.spring.core.inspections.utils.ExplytJsonUtil.iterateWithComma
+import com.explyt.spring.web.builder.openapi.OpenApiComponentsSchemaBuilder
+import com.explyt.spring.web.builder.openapi.OpenApiComponentsSchemasBuilder
+import com.explyt.spring.web.editor.openapi.OpenApiUtils.ComponentSchemaInfo
 
-class OpenApiJsonComponentsBuilder(indent: String = "", builder: StringBuilder = StringBuilder()) :
-    OpenApiComponentsBuilder(indent, builder), JsonValueGenerator {
+class OpenApiJsonComponentsSchemasBuilder(indent: String, builder: StringBuilder) :
+    OpenApiComponentsSchemasBuilder(indent, builder), JsonValueGenerator {
+    private val schemaBuilders = mutableListOf<OpenApiComponentsSchemaBuilder>()
+
+    override fun addType(typeInfo: ComponentSchemaInfo): OpenApiJsonComponentsSchemasBuilder {
+        schemaBuilders += OpenApiJsonComponentsSchemaBuilder(typeInfo, "$indent  ", builder)
+
+        return this
+    }
 
     override fun build() {
-        if (types.isEmpty()) return
-
-        val schemasBuilder = OpenApiJsonComponentsSchemasBuilder("$indent  ", builder)
-        for (type in types) {
-            schemasBuilder.addType(type)
-        }
-
         builder.appendLine()
-        builder.append("""$indent"components": {""")
+        builder.append("""$indent"schemas": {""")
 
-        schemasBuilder.build()
+        builder.iterateWithComma(schemaBuilders) { schemaBuilder ->
+            schemaBuilder.build()
+        }
 
         builder.append("\n$indent}")
     }

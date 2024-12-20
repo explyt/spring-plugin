@@ -15,24 +15,15 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.web.builder.openapi.yaml
+package com.explyt.spring.web.builder.openapi
 
-import com.explyt.spring.web.builder.openapi.OpenApiComponentsBuilder
+import com.explyt.spring.web.builder.AbstractBuilder
 
-class OpenApiYamlComponentsBuilder(indent: String = "", builder: StringBuilder = StringBuilder()) :
-    OpenApiComponentsBuilder(indent, builder), YamlKeyValueGenerator {
-
-    override fun build() {
-        if (types.isEmpty()) return
-
-        val schemasBuilder = OpenApiYamlComponentsSchemasBuilder("$indent  ", builder)
-        for (type in types) {
-            schemasBuilder.addType(type)
-        }
-
-        builder.appendLine()
-        builder.append("${indent}components:")
-        schemasBuilder.build()
-    }
+abstract class OpenApiComponentsSchemaBuilder(
+    indent: String,
+    builder: StringBuilder
+) :
+    AbstractBuilder(indent, builder) {
+    protected val types = mutableSetOf<String>()
 
 }

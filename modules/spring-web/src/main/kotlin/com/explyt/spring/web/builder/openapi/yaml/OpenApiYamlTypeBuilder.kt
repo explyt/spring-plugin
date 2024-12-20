@@ -18,7 +18,7 @@
 package com.explyt.spring.web.builder.openapi.yaml
 
 import com.explyt.spring.web.builder.openapi.OpenApiTypeBuilder
-import com.explyt.spring.web.util.SpringWebUtil.arrayTypes
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.util.SpringWebUtil.simpleTypesMap
 
 class OpenApiYamlTypeBuilder(
@@ -29,13 +29,10 @@ class OpenApiYamlTypeBuilder(
 ) : OpenApiTypeBuilder(indent, builder), YamlKeyValueGenerator {
 
     override fun build() {
-        val typeSplit = typeCanonical.split("<", ">")
-        if (typeSplit.size == 3 && typeSplit.last()
-                .isBlank() && typeSplit.first() in arrayTypes
-        ) {
-            val itemTypeCanonical = typeSplit[1]
+        val (typeQN, isCollection) = OpenApiUtils.unwrapType(typeCanonical)
 
-            if (simpleTypesMap.containsKey(itemTypeCanonical)) {
+        if (isCollection) {
+            if (simpleTypesMap.containsKey(typeQN)) {
                 addLinesWithIndent(
                     """
                     schema:
@@ -44,7 +41,7 @@ class OpenApiYamlTypeBuilder(
                     """,
                     indent
                 )
-                buildSimpleType(itemTypeCanonical, "$indent    ")
+                buildSimpleType(typeQN, "$indent    ")
                 return
             } else {
                 addLinesWithIndent(
@@ -53,7 +50,7 @@ class OpenApiYamlTypeBuilder(
                       schema:
                         type: array
                         items:
-                          $REF_KEY: '#/components/schemas/${itemTypeCanonical.split('.').last()}'    
+                          $REF_KEY: '#/components/schemas/${typeQN.split('.').last()}'    
                     """,
                     indent
                 )
@@ -61,15 +58,15 @@ class OpenApiYamlTypeBuilder(
             }
         }
 
-        if (simpleTypesMap.containsKey(typeCanonical)) {
+        if (simpleTypesMap.containsKey(typeQN)) {
             builder.appendLine()
             builder.appendLine("${indent}$contentType:")
             builder.append("$indent  schema:")
-            buildSimpleType(typeCanonical, "$indent    ")
+            buildSimpleType(typeQN, "$indent    ")
             return
         }
 
-        val userType = typeCanonical.split(".").last()
+        val userType = typeQN.split(".").last()
 
         //schema is on user now (but is planning)
         addLinesWithIndent(

@@ -31,6 +31,7 @@ import com.intellij.psi.PsiClassObjectAccessExpression
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import com.intellij.uast.UastVisitorAdapter
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
@@ -73,6 +74,7 @@ class WebClientBodyTypeVisitor(private val holder: ProblemsHolder) :
                         psiTypeExpression.language == JavaLanguage.INSTANCE
                     )
                 }
+                .filter { it.wrapperName != null || psiTypeExpression.language == KotlinLanguage.INSTANCE }
                 .mapTo(mutableSetOf()) { it.typeReferencePresentable }
 
             if (endpointResults.isEmpty()) return true
@@ -117,6 +119,7 @@ class WebClientBodyTypeVisitor(private val holder: ProblemsHolder) :
                         psiNode.language == JavaLanguage.INSTANCE
                     )
                 }
+                .filter { it.wrapperName != null || psiNode.language == KotlinLanguage.INSTANCE }
                 .mapTo(mutableSetOf()) { it.typeReferencePresentable }
 
             if (endpointResults.isEmpty()) return true
