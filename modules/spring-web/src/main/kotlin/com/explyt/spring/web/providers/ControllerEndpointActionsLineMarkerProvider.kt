@@ -81,7 +81,8 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
             returnTypeFqn,
             SpringWebUtil.collectPathVariables(psiMethod),
             SpringWebUtil.collectRequestParameters(psiMethod),
-            SpringWebUtil.getRequestBodyInfo(psiMethod)
+            SpringWebUtil.getRequestBodyInfo(psiMethod),
+            SpringWebUtil.collectRequestHeaders(psiMethod)
         )
 
         return LineMarkerInfo(
