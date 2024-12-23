@@ -56,7 +56,7 @@ class OpenApiYamlPathHttpTypeBuilder(
     }
 
     private fun buildParameters() {
-        if (endpoint.pathVariables.isEmpty() && endpoint.requestParameters.isEmpty()) return
+        if (endpoint.pathVariables.isEmpty() && endpoint.requestParameters.isEmpty() && endpoint.requestHeaders.isEmpty()) return
 
         builder.appendLine()
         builder.append("$indent  parameters:")
