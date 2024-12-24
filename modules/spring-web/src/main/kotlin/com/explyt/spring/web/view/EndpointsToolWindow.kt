@@ -21,91 +21,175 @@ import com.explyt.spring.core.statistic.StatisticActionId.*
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.URI_TYPE
+import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
-import com.explyt.spring.web.view.EndpointToolModelEventListener.EventType
-import com.explyt.spring.web.view.EndpointToolModelEventListener.ModelEvent
+import com.explyt.spring.web.view.nodes.HttpMethodNode
+import com.explyt.spring.web.view.nodes.RootEndpointNode
 import com.intellij.icons.AllIcons
+import com.intellij.ide.util.treeView.AbstractTreeStructure
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
+import com.intellij.pom.Navigatable
+import com.intellij.psi.PsiElement
+import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.JBColor
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.filterField.FilterField
 import com.intellij.ui.filterField.FilterFieldAction
-import com.intellij.ui.treeStructure.treetable.TreeTable
+import com.intellij.ui.tree.AsyncTreeModel
+import com.intellij.ui.tree.StructureTreeModel
+import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
+import com.intellij.util.ui.tree.TreeUtil
+import java.awt.BorderLayout
 import java.awt.Dimension
-import javax.swing.BoxLayout
-import javax.swing.JComponent
-import javax.swing.JPanel
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
+import java.awt.event.MouseEvent
+import java.lang.ref.SoftReference
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.swing.*
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
-import javax.swing.tree.TreeSelectionModel
+import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.DefaultTreeModel
+import javax.swing.tree.TreePath
 
 
 class EndpointsToolWindow(private val project: Project) :
     SimpleToolWindowPanel(true),
     Disposable, DocumentListener {
 
-    private var endpointsView: TreeTable
-    private val endpointsModel: EndpointsTreeModel
+    private val progressBar = JProgressBar()
     private val searchTextField: SearchTextField
+    private val refreshButtonPresentation = Presentation()
+
+    //private val treeModel: StructureTreeModel<AbstractTreeStructure>
+    private val endpointTree: Tree
+
+    @Volatile
+    private var endpoints: SoftReference<List<EndpointElementViewData>>? = null
+
+    private val httpTypeState = HashSet<String>()
+    private val endpointTypeState = HashSet<EndpointType>()
+    private val urlChanged = AtomicBoolean(false)
 
     init {
         this.preferredSize = Dimension(1080, 880)
 
         val borderPanel = BorderLayoutPanel()
-        borderPanel.border =
-            JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0)
+        borderPanel.border = JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0)
 
-        endpointsModel = EndpointsTreeModel(project)
-        project.messageBus
-            .connect(this)
-            .subscribe(EndpointToolModelEventListener.TOPIC, endpointsModel)
+        endpointTree = Tree(DefaultTreeModel(DefaultMutableTreeNode()))
+        val endpointTreeStructure = EndpointTreeStructure(RootEndpointNode(emptyList()))
+        val treeModel = StructureTreeModel<AbstractTreeStructure>(endpointTreeStructure, this)
+        endpointTree.setModel(AsyncTreeModel(treeModel, this))
+        endpointTree.setRootVisible(false)
+        treeModel.invalidateAsync()
 
-        endpointsView = EndpointsTree(project, endpointsModel)
-        endpointsView.setRootVisible(false)
-        endpointsView.setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION)
-        endpointsView.setTreeCellRenderer(EndpointCellRenderer())
-
-        val scrollPane = JBScrollPane(endpointsView)
+        val scrollPane = JBScrollPane(endpointTree)
         borderPanel.add(scrollPane)
 
         setContent(borderPanel)
-        val toolBar = JPanel()
-        toolBar.layout = BoxLayout(toolBar, BoxLayout.X_AXIS)
-        toolBar.add(createRefreshButton())
-        val textFilter = endpointsModel.getTextFilterValue()
+        val toolBarPanel = JPanel(BorderLayout())
+        val filterPanel = JPanel()
+        filterPanel.layout = BoxLayout(filterPanel, BoxLayout.X_AXIS)
+        filterPanel.add(createRefreshButton())
+        filterPanel.add(createExpandsAll())
+        filterPanel.add(createCollapseAll())
         searchTextField = SearchTextField()
-        searchTextField.text = textFilter
-        toolBar.add(searchTextField)
-        toolBar.add(createHttpTypeFilterActions())
-        toolBar.add(createEndpointTypeFilterActions())
+        searchTextField.text = ""
+        searchTextField.textEditor.emptyText.text = "Search by url"
+        filterPanel.add(searchTextField)
+        filterPanel.add(createHttpTypeFilterActions())
+        filterPanel.add(createEndpointTypeFilterActions())
 
-        toolbar = toolBar
+        progressBar.isVisible = false
+        toolBarPanel.add(filterPanel, BorderLayout.NORTH)
+        toolBarPanel.add(progressBar, BorderLayout.SOUTH)
+
+        toolbar = toolBarPanel
         searchTextField.addDocumentListener(this)
+
+        addClickListeners()
+
+        SwingUtilities.invokeLater { refreshData() }
+    }
+
+    private fun addClickListeners() {
+        addKeyListener(object : KeyAdapter() {
+            override fun keyPressed(e: KeyEvent) {
+                if (e.keyCode != KeyEvent.VK_ENTER) return
+                if (endpointTree.selectionCount == 0) return
+                endpointTree.selectionPath?.let { navigation(it) }
+            }
+        })
+        object : DoubleClickListener() {
+            override fun onDoubleClick(event: MouseEvent): Boolean {
+                val closestPathForLocation = endpointTree.getClosestPathForLocation(event.x, event.y)
+                navigation(closestPathForLocation)
+                return false
+            }
+        }.installOn(endpointTree)
+    }
+
+    private fun navigation(closestPathForLocation: TreePath?) {
+        val lastUserObject = TreeUtil.getLastUserObject(closestPathForLocation)
+        if (lastUserObject is HttpMethodNode) {
+            (lastUserObject.httpElement.psiElement.navigationElement as? Navigatable)?.navigate(true)
+        }
     }
 
     private fun createRefreshButton(): JComponent {
-        val buttonPresentation = Presentation()
-        buttonPresentation.text = "Refresh"
-        buttonPresentation.icon = AllIcons.Actions.Refresh
-
-        val disposable = this
+        refreshButtonPresentation.text = "Refresh"
+        refreshButtonPresentation.icon = AllIcons.Actions.Refresh
 
         return ActionButton(object : AnAction() {
             override fun actionPerformed(event: AnActionEvent) {
                 StatisticService.getInstance().addActionUsage(ENDPOINTS_TOOLWINDOW_REFRESH)
-
-                project.messageBus.syncPublisher(EndpointToolModelEventListener.TOPIC)
-                    .handle(ModelEvent(EventType.UPDATE_DATA, disposable))
+                endpoints = null
+                refreshData()
             }
 
-        }, buttonPresentation, "unknown", ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE)
+        }, refreshButtonPresentation, "unknown", ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE)
+    }
+
+    private fun createExpandsAll(): JComponent {
+        val presentation = Presentation()
+        presentation.text = "Expand All"
+        presentation.icon = AllIcons.Actions.Expandall
+
+        return ActionButton(object : AnAction() {
+            override fun actionPerformed(event: AnActionEvent) {
+                TreeUtil.expandAll(endpointTree)
+            }
+
+        }, presentation, "unknown", ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE)
+    }
+
+    private fun createCollapseAll(): JComponent {
+        val presentation = Presentation()
+        presentation.text = "Collapse All"
+        presentation.icon = AllIcons.Actions.Collapseall
+
+        return ActionButton(object : AnAction() {
+            override fun actionPerformed(event: AnActionEvent) {
+                TreeUtil.collapseAll(endpointTree, 2)
+            }
+
+        }, presentation, "unknown", ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE)
     }
 
     private fun createHttpTypeFilterActions(): JComponent {
@@ -122,7 +206,6 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun createHttpTypeFilter(): FilterField {
         val title: String = SpringWebBundle.message("explyt.web.endpoints.tool.filter.http.type")
-        val disposable = this
 
         return (object : FilterField(title) {
             override fun buildActions(): Collection<AnAction> {
@@ -135,19 +218,13 @@ class EndpointsToolWindow(private val project: Project) :
                             }
 
                             override fun isSelected(event: AnActionEvent): Boolean {
-                                return endpointsModel.isHttpTypeFilterActive(httpType)
+                                return httpTypeState.contains(httpType)
                             }
 
                             override fun setSelected(event: AnActionEvent, state: Boolean) {
-                                val project = event.project ?: return
-                                StatisticService.getInstance().addActionUsage(
-                                    ENDPOINTS_TOOLWINDOW_HTTP_TYPE_FILTER
-                                )
-
-                                endpointsModel.setHttpTypeFilterActive(httpType, state)
-
-                                project.messageBus.syncPublisher(EndpointToolModelEventListener.TOPIC)
-                                    .handle(ModelEvent(EventType.UPDATE_FILTERS, disposable))
+                                StatisticService.getInstance().addActionUsage(ENDPOINTS_TOOLWINDOW_HTTP_TYPE_FILTER)
+                                if (state) httpTypeState.add(httpType) else httpTypeState.remove(httpType)
+                                refreshData()
                             }
 
                         }
@@ -186,19 +263,16 @@ class EndpointsToolWindow(private val project: Project) :
                             }
 
                             override fun isSelected(event: AnActionEvent): Boolean {
-                                return endpointsModel.isEndpointTypeFilterActive(endpointType)
+                                return endpointTypeState.contains(endpointType)
                             }
 
                             override fun setSelected(event: AnActionEvent, state: Boolean) {
-                                val project = event.project ?: return
-                                StatisticService.getInstance().addActionUsage(
-                                    ENDPOINTS_TOOLWINDOW_ENDPOINT_TYPE_FILTER
-                                )
+                                StatisticService.getInstance()
+                                    .addActionUsage(ENDPOINTS_TOOLWINDOW_ENDPOINT_TYPE_FILTER)
+                                if (state) endpointTypeState.add(endpointType) else
+                                    endpointTypeState.remove(endpointType)
 
-                                endpointsModel.setEndpointTypeFilterActive(endpointType, state)
-
-                                project.messageBus.syncPublisher(EndpointToolModelEventListener.TOPIC)
-                                    .handle(ModelEvent(EventType.UPDATE_FILTERS, disposable))
+                                refreshData()
                             }
 
                         }
@@ -210,25 +284,21 @@ class EndpointsToolWindow(private val project: Project) :
 
     }
 
-    fun setup() {
-    }
-
-    fun start() {
-        project.messageBus.syncPublisher(EndpointToolModelEventListener.TOPIC)
-            .handle(ModelEvent(EventType.INIT, this))
-    }
-
     override fun dispose() {
     }
 
     private fun onDocumentChange() {
-        StatisticService.getInstance().addActionUsage(
-            ENDPOINTS_TOOLWINDOW_SEARCH_TEXT
+        StatisticService.getInstance().addActionUsage(ENDPOINTS_TOOLWINDOW_SEARCH_TEXT)
+        urlChanged.set(true)
+        AppExecutorUtil.getAppScheduledExecutorService().schedule(
+            {
+                val isChanged = urlChanged.get()
+                if (isChanged) {
+                    ApplicationManager.getApplication().invokeLater { refreshData() }
+                    urlChanged.set(false)
+                }
+            }, 1, TimeUnit.SECONDS
         )
-        endpointsModel.setTextFilterValue(searchTextField.text)
-
-        project.messageBus.syncPublisher(EndpointToolModelEventListener.TOPIC)
-            .handle(ModelEvent(EventType.UPDATE_FILTERS, this))
     }
 
     override fun insertUpdate(e: DocumentEvent?) {
@@ -243,4 +313,100 @@ class EndpointsToolWindow(private val project: Project) :
         onDocumentChange()
     }
 
+    private fun refreshData() {
+        refreshButtonPresentation.isEnabled = false
+
+        progressBar.setIndeterminate(true)
+        progressBar.isVisible = true
+
+        ReadAction.nonBlocking(Callable { getViewData() })
+            .inSmartMode(project)
+            .finishOnUiThread(ModalityState.current()) {
+                val endpointTreeStructure = EndpointTreeStructure(RootEndpointNode(it))
+                val treeModel = StructureTreeModel<AbstractTreeStructure>(endpointTreeStructure, this)
+                endpointTree.setModel(AsyncTreeModel(treeModel, this))
+                endpointTree.setRootVisible(false)
+                treeModel.invalidateAsync()
+
+                progressBar.setIndeterminate(false)
+                progressBar.isVisible = false
+
+                refreshButtonPresentation.isEnabled = true
+
+                TreeUtil.expandAll(endpointTree)
+            }
+            .expireWith(this)
+            .submit(AppExecutorUtil.getAppExecutorService())
+    }
+
+    private fun getViewData(): List<EndpointViewByType> {
+        var endpointsLocal = endpoints?.get()
+        if (endpointsLocal == null) {
+            endpointsLocal = getAllEndpoints()
+            endpoints = SoftReference(endpointsLocal)
+        }
+        val urlFilter = searchTextField.text ?: ""
+        val filteredEndpointsMap = applyFilters(endpointsLocal, urlFilter, httpTypeState, endpointTypeState)
+            .groupBy { it.type }
+        val typeNodes = mutableListOf<EndpointViewByType>()
+        for (type in EndpointType.entries) {
+            val elements = filteredEndpointsMap[type] ?: continue
+            val elementsByClass = groupElementsByClass(elements)
+            typeNodes.add(EndpointViewByType(type, elementsByClass))
+        }
+        return typeNodes
+    }
+
+    private fun applyFilters(
+        endpoints: List<EndpointElementViewData>,
+        urlFilter: String,
+        httpTypeState: Set<String>,
+        endpointTypeState: HashSet<EndpointType>
+    ): List<EndpointElementViewData> {
+        if (urlFilter.length < 2 && httpTypeState.isEmpty() && endpointTypeState.isEmpty()) return endpoints
+        return endpoints.asSequence()
+            .filter { urlFilter.length < 2 || it.path.contains(urlFilter, true) }
+            .filter { endpointTypeState.isEmpty() || it.type in endpointTypeState }
+            .filter { httpTypeState.isEmpty() || it.method in httpTypeState }
+            .toList()
+    }
+
+    private fun getAllEndpoints(): List<EndpointElementViewData> {
+        return SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
+            .flatMap { mapToEndpointElementViewData(it) }
+    }
+
+    private fun mapToEndpointElementViewData(element: EndpointElement): List<EndpointElementViewData> {
+        val classOrFileName = element.containingClass?.name
+            ?: element.containingFile?.name ?: return emptyList()
+        return element.requestMethods.asSequence()
+            .map { EndpointElementViewData(element.type, element.psiElement, classOrFileName, it, element.path) }
+            .sortedBy { it.classOrFileName + it.method }
+            .toList()
+    }
+
+    private fun groupElementsByClass(list: List<EndpointElementViewData>): List<EndpointViewWithContainerName> {
+        return list.groupBy { it.classOrFileName }.asSequence()
+            .map { toEndpointViewByClass(it) }
+            .sortedBy { it.classOrFileName }
+            .toList()
+    }
+
+    private fun toEndpointViewByClass(
+        entry: Map.Entry<String, List<EndpointElementViewData>>
+    ): EndpointViewWithContainerName {
+        return EndpointViewWithContainerName(entry.key, entry.value.sortedBy { it.method })
+    }
 }
+
+data class EndpointElementViewData(
+    val type: EndpointType,
+    val psiElement: PsiElement,
+    val classOrFileName: String,
+    val method: String,
+    val path: String
+)
+
+data class EndpointViewWithContainerName(val classOrFileName: String, val list: List<EndpointElementViewData>)
+
+data class EndpointViewByType(val type: EndpointType, val list: List<EndpointViewWithContainerName>)

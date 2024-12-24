@@ -15,30 +15,27 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.web.view
+package com.explyt.spring.web.view.nodes
 
-import com.intellij.openapi.Disposable
-import com.intellij.util.messages.Topic
+import com.explyt.spring.web.loader.EndpointType
+import com.explyt.spring.web.view.EndpointViewWithContainerName
+import com.intellij.icons.AllIcons
+import com.intellij.ui.treeStructure.CachingSimpleNode
+import com.intellij.ui.treeStructure.SimpleNode
 
-interface EndpointToolModelEventListener {
+class WebTypeNode(
+    private val type: EndpointType,
+    private val elements: List<EndpointViewWithContainerName>,
+    rootNode: RootEndpointNode
+) : CachingSimpleNode(rootNode) {
 
-    fun handle(event: ModelEvent)
-
-    data class ModelEvent(
-        val type: EventType,
-        val disposable: Disposable
-    )
-
-    enum class EventType {
-        INIT, UPDATE_DATA, UPDATE_FILTERS
+    init {
+        presentation.setIcon(AllIcons.Nodes.ConfigFolder)
     }
 
-    companion object {
-        val TOPIC = Topic.create(
-            "endpoint tool model topic",
-            EndpointToolModelEventListener::class.java,
-            Topic.BroadcastDirection.NONE
-        )
-    }
+    override fun getName() = type.readable
 
+    override fun buildChildren(): Array<SimpleNode> {
+        return elements.map { WebFileNode(type, it.classOrFileName, it.list, this) }.toTypedArray()
+    }
 }
