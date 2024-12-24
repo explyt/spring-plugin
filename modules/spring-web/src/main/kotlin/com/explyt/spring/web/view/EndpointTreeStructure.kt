@@ -17,10 +17,9 @@
 
 package com.explyt.spring.web.view
 
-import com.intellij.openapi.Disposable
-import com.intellij.openapi.project.Project
+import com.explyt.spring.web.view.nodes.RootEndpointNode
+import com.intellij.ui.treeStructure.SimpleTreeStructure
 
-class EndpointsDocumentationDetailPanel(project: Project) : Disposable {
-    override fun dispose() {
-    }
+class EndpointTreeStructure(private val rootEndpointNode: RootEndpointNode) : SimpleTreeStructure() {
+    override fun getRootElement() = rootEndpointNode
 }
