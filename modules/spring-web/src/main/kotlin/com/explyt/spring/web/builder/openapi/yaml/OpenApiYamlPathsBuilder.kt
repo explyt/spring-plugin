@@ -24,16 +24,18 @@ class OpenApiYamlPathsBuilder(indent: String, builder: StringBuilder) :
     OpenApiPathsBuilder(indent, builder), YamlKeyValueGenerator {
 
     override fun addEndpoint(endpoint: AddEndpointToOpenApiIntention.EndpointInfo): OpenApiYamlPathsBuilder {
-        pathBuilders.add(
-            OpenApiYamlPathBuilder(endpoint, "$indent  ", builder)
-        )
+        val pathBuilder = pathBuilderByPath.computeIfAbsent(endpoint.path) {
+            OpenApiYamlPathBuilder(endpoint.path, "$indent  ", builder)
+        }
+
+        pathBuilder.addEndpoint(endpoint)
         return this
     }
 
     override fun build() {
         builder.appendLine()
         builder.append("${indent}paths:")
-        for (pathBuilder in pathBuilders) {
+        for (pathBuilder in pathBuilderByPath.values) {
             pathBuilder.build()
         }
     }

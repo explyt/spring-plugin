@@ -161,7 +161,8 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
             val generator = JsonElementGenerator(project)
 
             val propertyElement = if (parentObject == topLevelValue) {
-                val pathsElement = OpenApiJsonPathBuilder(endpoint)
+                val pathsElement = OpenApiJsonPathBuilder(endpoint.path)
+                    .addEndpoint(endpoint)
                     .toJsonValue("paths", project)
                 addPropertyToObject(pathsElement, parentObject, generator)
             } else { //parentObject = "paths"
@@ -188,7 +189,8 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
 
         WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
             if (parentKeyValue == topLevelValue) {
-                val pathsElement = OpenApiYamlPathBuilder(endpoint)
+                val pathsElement = OpenApiYamlPathBuilder(endpoint.path)
+                    .addEndpoint(endpoint)
                     .toYamlKeyValue("paths", project)
                 parentMapping.putKeyValue(pathsElement)
             } else { //parentKeyValue = "paths"

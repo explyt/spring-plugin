@@ -70,7 +70,6 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         return if (splitPoint == -1) path else path.substring(0, splitPoint)
     }
 
-    //TODO: extract common method to Utils
     private fun getEndpointInfo(uMethod: UMethod, apiPath: String): EndpointInfo? {
         ProgressManager.checkCanceled()
 

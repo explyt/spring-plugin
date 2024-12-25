@@ -59,6 +59,8 @@ enum class StatisticActionId(description: String) {
     GUTTER_OPENAPI_CONTROLLER_OPEN_IN_SWAGGER("Gutter line marker for controller/feignClient generating openapi preview"),
     GUTTER_CONTROLLER_ENDPOINT_USAGE("Gutter line marker for Controllers - navigation to endpoint usage"),
 
+    ACTION_OPENAPI_PROJECT_GENERATE_SPEC("An action that generates OpenApi Specification for whole project"),
+
     COMPLETION_SPRING_DATA_METHOD("Completion Spring Data - method name"),
     COMPLETION_PROPERTY_KEY_CONFIGURATION("Completion for application properties for key"),
     COMPLETION_YAML_KEY_CONFIGURATION("Completion for application yaml for key"),

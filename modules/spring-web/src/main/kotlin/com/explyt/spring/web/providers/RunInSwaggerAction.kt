@@ -17,55 +17,31 @@
 
 package com.explyt.spring.web.providers
 
-import ai.grazie.utils.mpp.UUID
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
-import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
-import com.explyt.spring.web.editor.openapi.OpenApiUIEditor
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
+import com.explyt.spring.web.util.OpenApiFileUtil
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.runWriteAction
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VfsUtil
-import org.jetbrains.yaml.YAMLFileType
-import java.io.File
 
-class RunInSwaggerAction(private val endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>, private val servers: List<String>) :
+class RunInSwaggerAction(
+    private val endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
+    private val servers: List<String>
+) :
     AnAction({ "Open in Swagger UI" }, AllIcons.RunConfigurations.TestState.Run) {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_OPENAPI_CONTROLLER_OPEN_IN_SWAGGER)
 
-        val fileType = YAMLFileType.YML
-
-        val file = File.createTempFile(UUID.random().text, ".${fileType.defaultExtension}")
-        file.deleteOnExit()
-        val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
-
-        val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(fileType)
-        for (server in servers) {
-            openapiBuilder.addServer(server)
-
-        }
-        for (info in endpointInfos) {
-            openapiBuilder.addEndpoint(info)
-        }
-
-        runWriteAction {
-            VfsUtil.saveText(virtualFile, openapiBuilder.toString())
-            val openFileDescriptor = OpenFileDescriptor(project, virtualFile)
-            val openapiEditor = FileEditorManager.getInstance(project)
-                .openEditor(openFileDescriptor, true)
-                .firstNotNullOfOrNull { it as? OpenApiUIEditor }
-                ?: return@runWriteAction
-            openapiEditor.showPreview("", TextEditorWithPreview.Layout.SHOW_PREVIEW)
-        }
+        OpenApiFileUtil.INSTANCE.createAndShow(
+            project,
+            endpointInfos,
+            servers,
+            TextEditorWithPreview.Layout.SHOW_PREVIEW
+        )
     }
 
 }

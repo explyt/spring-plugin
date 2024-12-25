@@ -225,6 +225,9 @@
                 class="com.explyt.spring.web.action.SpringWebKotlinMethodGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
+        <action id="SpringWebProjectOpenApiGenerateAction"
+                class="com.explyt.spring.web.action.SpringWebProjectOpenApiGenerateAction">
+        </action>
     </actions>
 
     <depends>com.intellij.modules.json</depends>
