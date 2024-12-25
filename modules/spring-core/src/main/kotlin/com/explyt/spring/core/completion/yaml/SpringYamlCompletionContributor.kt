@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.completion.yaml
 
+import com.explyt.spring.core.SpringProperties.LOGGING_LEVEL
 import com.explyt.spring.core.completion.properties.ConfigurationProperty
 import com.explyt.spring.core.completion.properties.PropertyRenderer
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
@@ -33,6 +34,7 @@ import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLDocument
 import org.jetbrains.yaml.psi.YAMLPsiElement
 import org.jetbrains.yaml.psi.YAMLSequence
+
 
 class SpringYamlCompletionContributor : CompletionContributor() {
 
@@ -71,12 +73,12 @@ class SpringYamlCompletionContributor : CompletionContributor() {
             val matchingProperties = properties.filter {
                 it.name !in existProperties && (configFullName.isEmpty() || it.name.startsWith("$configFullName."))
             }
-            if (matchingProperties.any { !it.isMap() }) {
-                result.stopHere()
-            }
             matchingProperties.forEach {
                 val property = it.copy(inLineYaml = positionText.contains("."))
                 result.withPrefixMatcher(positionText).addElement(createLookupElement(property, configFullName))
+            }
+            if (matchingProperties.any { !it.isMap() && !it.name.startsWith("$LOGGING_LEVEL.") }) {
+                result.stopHere()
             }
         }
 

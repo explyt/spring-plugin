@@ -6,6 +6,7 @@
 
 ### Spring Core/Boot
 
+- Added: completion/reference in property starting with logging.level
 - Added: completion in property for field with type Resource the class with @ConfigurationProperties
 - Fixed: support in property for boolean starting with "is"
 - Fixed: reference in property Relaxed Binding

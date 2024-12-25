@@ -68,16 +68,10 @@ object SpringProperties {
 
     const val POSTFIX_KEYS = ".keys"
     const val POSTFIX_VALUES = ".values"
+    const val LOGGING_LEVEL = "logging.level"
 
     const val COLON = ":"
     const val PLACEHOLDER_PREFIX = "\${"
     const val PLACEHOLDER_SUFFIX = "}"
-
-    const val CHAR_COLON = ':'
-    const val CHAR_QUOTES = '"'
-    const val CHAR_START_SQUARE_BRACKET = '['
-    const val CHAR_END_SQUARE_BRACKET = '['
-    const val CHAR_START_BRACKET = '{'
-    const val CHAR_END_BRACKET = '}'
 
 }
