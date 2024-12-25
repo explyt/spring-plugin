@@ -21,7 +21,7 @@ import com.explyt.spring.web.builder.AbstractBuilder
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 
 abstract class OpenApiPathsBuilder(indent: String, builder: StringBuilder) : AbstractBuilder(indent, builder) {
-    protected val pathBuilders = mutableListOf<OpenApiPathBuilder>()
+    protected val pathBuilderByPath = mutableMapOf<String, OpenApiPathBuilder>()
 
     abstract fun addEndpoint(endpoint: AddEndpointToOpenApiIntention.EndpointInfo): OpenApiPathsBuilder
 }

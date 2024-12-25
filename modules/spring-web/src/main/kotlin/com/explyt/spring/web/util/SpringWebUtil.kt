@@ -18,25 +18,31 @@
 package com.explyt.spring.web.util
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.SpringWebClasses.WEB_INITIALIZER
+import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOptional
+import com.explyt.util.ExplytUastUtil.getCommentText
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.json.psi.JsonProperty
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.util.parentsOfType
+import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.*
@@ -282,6 +288,60 @@ object SpringWebUtil {
             )
         }
         return null
+    }
+
+    fun getEndpointInfo(uMethod: UMethod, prefix: String = ""): EndpointInfo? {
+        ProgressManager.checkCanceled()
+
+        val psiMethod = uMethod.javaPsi
+
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
+
+        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
+        val psiClass = psiMethod.containingClass ?: return null
+        val controllerName = psiClass.name ?: return null
+
+        val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+            .firstOrNull() ?: ""
+        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+
+        val fullPath = simplifyUrl("$prefix/${removeParams(path)}")
+
+        val requestMethods =
+            requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
+                .map { it.text.split('.').last() }
+
+        val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
+        val returnType = uMethod.returnType
+        val returnTypeFqn = getTypeFqn(returnType, psiMethod.language)
+
+        return EndpointInfo(
+            fullPath,
+            requestMethods,
+            psiMethod,
+            uMethod.name,
+            controllerName.replace("controller", "", true)
+                .decapitalize(),
+            description,
+            returnTypeFqn,
+            collectPathVariables(psiMethod),
+            collectRequestParameters(psiMethod),
+            getRequestBodyInfo(psiMethod),
+            collectRequestHeaders(psiMethod),
+            produces,
+            consumes
+        )
+    }
+
+    private fun removeParams(url: String): String {
+        val pos = url.indexOfFirst { it == '?' }
+        val withoutParams = if (pos == -1) url else url.substring(0, pos + 1)
+        return withoutParams.ifBlank { "/" }
     }
 
     fun getTargetRenderer(): PsiTargetPresentationRenderer<PsiElement> {

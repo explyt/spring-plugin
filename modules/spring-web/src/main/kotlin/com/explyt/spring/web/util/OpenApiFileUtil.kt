@@ -17,16 +17,26 @@
 
 package com.explyt.spring.web.util
 
+import ai.grazie.utils.mpp.UUID
+import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
+import com.explyt.spring.web.editor.openapi.OpenApiUIEditor
+import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.model.OpenApiSpecificationType
 import com.explyt.spring.web.service.OpenApiLocalSpecifications
 import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
 import com.explyt.util.CacheKeyStore
 import com.intellij.ide.scratch.RootType
 import com.intellij.json.JsonFileType
+import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.ModificationTracker
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SingleRootFileViewProvider
@@ -34,6 +44,7 @@ import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.yaml.YAMLFileType
+import java.io.File
 
 class OpenApiFileUtil {
 
@@ -102,6 +113,37 @@ class OpenApiFileUtil {
                 && isValidFileType(file)
                 && (psiFile == null || isOpenApiSpecificationFile(psiFile, file))
                 && !SingleRootFileViewProvider.isTooLargeForIntelligence(file)
+    }
+
+    fun createAndShow(
+        project: Project,
+        endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
+        servers: List<String>,
+        layout: TextEditorWithPreview.Layout
+    ) {
+        val fileType = YAMLFileType.YML
+
+        val file = File.createTempFile(UUID.random().text, ".${fileType.defaultExtension}")
+        file.deleteOnExit()
+        val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
+
+        val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(fileType)
+        for (server in servers) {
+            openapiBuilder.addServer(server)
+        }
+        for (info in endpointInfos) {
+            openapiBuilder.addEndpoint(info)
+        }
+
+        runWriteAction {
+            VfsUtil.saveText(virtualFile, openapiBuilder.toString())
+            val openFileDescriptor = OpenFileDescriptor(project, virtualFile)
+            val openapiEditor = FileEditorManager.getInstance(project)
+                .openEditor(openFileDescriptor, true)
+                .firstNotNullOfOrNull { it as? OpenApiUIEditor }
+                ?: return@runWriteAction
+            openapiEditor.showPreview("", layout)
+        }
     }
 
     private fun getSpecificationType(file: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {

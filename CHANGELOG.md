@@ -17,6 +17,7 @@
 
 ### Spring Web / OpenAPI
 
+- Added: Action `Generate OpenApi Specification` for project
 - Added: Run in Swagger action for Controller/FeignClient
 - Fixed: Removed navigation from endpoint to openapi path
 - Added: Run in Swagger endpoint action

@@ -25,9 +25,11 @@ class OpenApiJsonPathsBuilder(indent: String = "", builder: StringBuilder = Stri
     OpenApiPathsBuilder(indent, builder), JsonValueGenerator {
 
     override fun addEndpoint(endpoint: AddEndpointToOpenApiIntention.EndpointInfo): OpenApiJsonPathsBuilder {
-        pathBuilders.add(
-            OpenApiJsonPathBuilder(endpoint, "$indent  ", builder)
-        )
+        val pathBuilder = pathBuilderByPath.computeIfAbsent(endpoint.path) {
+            OpenApiJsonPathBuilder(endpoint.path, "$indent  ", builder)
+        }
+
+        pathBuilder.addEndpoint(endpoint)
         return this
     }
 
@@ -35,7 +37,7 @@ class OpenApiJsonPathsBuilder(indent: String = "", builder: StringBuilder = Stri
         builder.appendLine(",")
         builder.append("""$indent"paths": {""")
 
-        builder.iterateWithComma(pathBuilders) { pathBuilder ->
+        builder.iterateWithComma(pathBuilderByPath.values.toList()) { pathBuilder ->
             pathBuilder.build()
         }
 
