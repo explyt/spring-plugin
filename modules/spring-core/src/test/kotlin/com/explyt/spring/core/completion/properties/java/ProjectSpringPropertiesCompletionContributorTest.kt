@@ -95,4 +95,28 @@ class ProjectSpringPropertiesCompletionContributorTest : AbstractSpringPropertie
             "mail.port"
         )
     }
+
+    fun testLoggingLevelOne() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+logging.level.<caret>
+            """.trimMargin()
+        )
+        doTest(
+            "java", "org", "web", "sql", "root"
+        )
+    }
+
+    fun testLoggingLevelSecond() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+logging.level.org.<caret>
+            """.trimMargin()
+        )
+        doTest(
+            "aopalliance", "apache", "intellij", "jetbrains", "springframework"
+        )
+    }
 }

@@ -20,6 +20,7 @@ package com.explyt.spring.core.properties.providers
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringProperties.COLON
 import com.explyt.spring.core.SpringProperties.HINTS
+import com.explyt.spring.core.SpringProperties.LOGGING_LEVEL
 import com.explyt.spring.core.SpringProperties.NAME
 import com.explyt.spring.core.SpringProperties.POSTFIX_KEYS
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
@@ -46,6 +47,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceProvider
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceSet
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.UClass
@@ -55,6 +58,9 @@ import org.jetbrains.uast.toUElement
 import org.jetbrains.yaml.YAMLLanguage
 
 class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
+
+    private val referenceProvider = JavaClassReferenceProvider()
+        .apply { isSoft = true }
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
@@ -79,6 +85,10 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         val referencesByPrefixKey = getPsiReferencesByPrefixKeys(propertyKey, module, keyHint, element)
         if (referencesByPrefixKey.isNotEmpty()) {
             return referencesByPrefixKey
+        }
+        val referencesByLoggingLevel = getPsiReferencesByMapKeyLoggingLevel(propertyKey, element)
+        if (referencesByLoggingLevel.isNotEmpty()) {
+            return referencesByLoggingLevel
         }
 
         return arrayOf(ConfigurationPropertyKeyReference(element, module, propertyKey))
@@ -131,6 +141,20 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 
         return arrayOf(ConfigurationPropertyKeyReference(element, module, propertyKey))
     }
+
+    private fun getPsiReferencesByMapKeyLoggingLevel(
+        propertyKey: String,
+        element: PsiElement
+    ): Array<PsiReference> {
+        if (!propertyKey.startsWith("$LOGGING_LEVEL.")) return emptyArray()
+
+        val valueText = ElementManipulators.getValueText(element)
+        val offset = ElementManipulators.getOffsetInElement(element)
+
+        return JavaClassReferenceSet(valueText, element, offset, false, referenceProvider)
+            .references
+    }
+
 }
 
 class ConfigurationPropertyKeyReference(

@@ -26,6 +26,7 @@ import com.intellij.lang.properties.psi.impl.PropertiesFileImpl
 import com.intellij.psi.PsiClass
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReference
 
 class YamlReferenceTest : ExplytJavaLightTestCase() {
     override fun getTestDataPath(): String = super.getTestDataPath() + "reference/properties"
@@ -482,5 +483,32 @@ spring:
         val resolveResult = multiResolve[0]
         val name = (resolveResult.element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setConnectTimeout")
+    }
+
+    fun testLoggingLevel() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  le<caret>vel:
+    org.hibernate.SQL: debug          
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? ConfigurationPropertyKeyReference)
+        assertNotNull(ref)
+
+    }
+
+    fun testLoggingLevelJavaClass() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level:
+    org.hiber<caret>nate.SQL: debug          
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? JavaClassReference)
+        assertNotNull(ref)
     }
 }

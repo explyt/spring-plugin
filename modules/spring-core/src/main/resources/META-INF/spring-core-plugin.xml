@@ -79,6 +79,7 @@
 
         <completion.contributor id="yamlContributor"
                                 language="yaml"
+                                order="first"
                                 implementationClass="com.explyt.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
 
         <completion.contributor language="UAST"
@@ -672,6 +673,12 @@
                 order="after DefaultFloatingToolbarProvider"
                 implementation="com.explyt.spring.core.externalsystem.action.SpringBootNativeRefreshFloatingProvider"
         />
+
+        <annotator language="yaml"
+                   implementationClass="com.explyt.spring.core.annotator.SpringConfigurationYamlAnnotator"/>
+        <annotator language="Properties"
+                   implementationClass="com.explyt.spring.core.annotator.SpringConfigurationPropertiesAnnotator"/>
+
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">

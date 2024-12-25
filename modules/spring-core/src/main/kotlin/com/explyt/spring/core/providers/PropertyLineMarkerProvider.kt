@@ -82,7 +82,10 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.metadata.usage"))
             .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.metadata.usage"))
 
-        result += builder.createLineMarkerInfo(element)
+        val lineMarkerInfo = builder.createLineMarkerInfo(element)
+        if (!result.contains(lineMarkerInfo)) {
+            result += lineMarkerInfo
+        }
     }
 
     private fun isMapKey(elementText: String, propertyName: String, isYaml: Boolean): Boolean {

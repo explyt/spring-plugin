@@ -276,4 +276,49 @@ resilience4j:
         )
     }
 
+
+    fun _testLoggingLevelAll() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level:
+    <caret>
+            """.trimMargin()
+        )
+        doTest(
+            "java", "org", "io", "web", "sql", "root"
+        )
+    }
+
+    fun testLoggingLevelJavaClassOnePackage() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level:
+    sql: info
+    <caret>
+            """.trimMargin()
+        )
+        doTest(
+            "java", "org", "io", "web", "root"
+        )
+    }
+
+    fun testLoggingLevelJavaClassSecondPackage() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level:
+    sql: info
+    org.a<caret>
+            """.trimMargin()
+        )
+        doTest(
+            "aopalliance", "apache", "jetbrains", "springframework"
+        )
+    }
+
 }
