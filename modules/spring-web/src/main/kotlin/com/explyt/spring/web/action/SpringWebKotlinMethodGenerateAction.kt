@@ -22,8 +22,14 @@ import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.PATH_VARIABLE
+import com.explyt.spring.web.SpringWebClasses.REQUEST_BODY
+import com.explyt.spring.web.SpringWebClasses.REQUEST_HEADER
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.SpringWebClasses.REQUEST_PARAM
+import com.explyt.spring.web.parser.CurlParser
+import com.explyt.spring.web.parser.HttpMethod
+import com.explyt.spring.web.parser.HttpParamType
+import com.explyt.spring.web.parser.UrlParser
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.generation.actions.BaseGenerateAction
@@ -38,6 +44,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.idea.refactoring.isInterfaceClass
+import org.jetbrains.kotlin.psi.KtFile
 
 class SpringWebKotlinMethodGenerateAction : BaseGenerateAction(KotlinWebMethodHandler()) {
     init {
@@ -45,8 +52,8 @@ class SpringWebKotlinMethodGenerateAction : BaseGenerateAction(KotlinWebMethodHa
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
-        return KotlinMethodGenerateUtils.isValidForFile(project, editor, file)
-                && SpringWebUtil.isSpringWebProject(project)
+        if (!file.isWritable || file !is KtFile || file.isCompiled) return false
+        return SpringWebUtil.isSpringWebRequestModule(file)
     }
 }
 
@@ -55,13 +62,14 @@ private class KotlinWebMethodHandler : CodeInsightActionHandler {
     override fun invoke(project: Project, editor: Editor, file: PsiFile) {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GENERATE_WEB_METHOD)
         ApplicationManager.getApplication().invokeLater {
-            val targetClass = KotlinMethodGenerateUtils.getTargetClass(editor, file) ?: return@invokeLater
+            val targetClass = KotlinMethodGenerateUtils.getTargetClass(editor, file)
             val tittle = SpringWebBundle.message("explyt.spring.action.web.method.generate.dialog.tittle")
             val urlMessage = SpringWebBundle.message("explyt.spring.action.web.method.generate.dialog.url")
             val urlValidator = SpringWebJavaMethodGenerateAction.urlValidator
-            val urlString = Messages.showInputDialog(urlMessage, tittle, null, null, urlValidator)
+            val urlString = Messages.showMultilineInputDialog(project, urlMessage, tittle, null, null, urlValidator)
                 ?.takeIf { it.isNotEmpty() } ?: return@invokeLater
-            val httMethod = SpringWebJavaMethodGenerateAction.parseUrl(urlString)
+            val httpMethod = if (urlString.startsWith("curl"))
+                CurlParser.parse(urlString) else UrlParser.parse(urlString)
 
             runWriteAction {
                 val documentManager = PsiDocumentManager.getInstance(project)
@@ -69,8 +77,8 @@ private class KotlinWebMethodHandler : CodeInsightActionHandler {
                 PsiDocumentManager.getInstance(file.project).commitDocument(document)
 
                 val offsetToInsert = KotlinMethodGenerateUtils.findOffsetToInsertMethod(editor, file, targetClass)
-                val template =
-                    getTemplate(file.project, httMethod, targetClass.isInterfaceClass()) ?: return@runWriteAction
+                val isInterface = targetClass?.isInterfaceClass() == true
+                val template = getTemplate(file.project, httpMethod, isInterface) ?: return@runWriteAction
 
                 editor.caretModel.moveToOffset(offsetToInsert)
 
@@ -79,29 +87,45 @@ private class KotlinWebMethodHandler : CodeInsightActionHandler {
         }
     }
 
-    private fun getTemplate(project: Project, httMethod: HttMethod, isInterface: Boolean): Template? {
+    private fun getTemplate(project: Project, httpMethod: HttpMethod, isInterface: Boolean): Template? {
         val template = TemplateManager.getInstance(project).createTemplate("", "")
-
         template.addTextSegment("@$REQUEST_MAPPING(\n")
-        template.addTextSegment("value = [\"${httMethod.mappingValue}\"],\n")
-        template.addTextSegment("method = [org.springframework.web.bind.annotation.RequestMethod.GET]\n")
+        template.addTextSegment("value = [\"${httpMethod.getMappingHttpValue()}\"],\n")
+        template.addTextSegment("method = [org.springframework.web.bind.annotation.RequestMethod.${httpMethod.type}]\n")
         template.addTextSegment(")\n")
         template.addTextSegment("fun ")
-        val nameExpr = ConstantNode(httMethod.name)
+        val nameExpr = ConstantNode(httpMethod.name)
         template.addVariable("name", nameExpr, nameExpr, true)
         template.addTextSegment("(")
-        if (httMethod.params.isNotEmpty()) {
+        if (httpMethod.params.isNotEmpty()) {
             template.addTextSegment("\n")
-            for ((index, param) in httMethod.params.withIndex()) {
-                if (param.query) {
-                    template.addTextSegment("@$REQUEST_PARAM(name = \"${param.name}\", defaultValue = \"${param.value ?: ""}\") ${param.name}: String")
-                } else {
-                    template.addTextSegment("@$PATH_VARIABLE(\"${param.name}\") ${param.name}: String")
+            for ((index, param) in httpMethod.params.withIndex()) {
+                when (param.type) {
+                    HttpParamType.QUERY -> {
+                        template.addTextSegment(
+                            "@$REQUEST_PARAM(name = \"${param.name}\", required = false," +
+                                    "defaultValue = \"${param.value ?: ""}\") ${param.toJavaIdentifier()}: String"
+                        )
+                    }
+
+                    HttpParamType.PATH -> {
+                        template.addTextSegment("@$PATH_VARIABLE(\"${param.name}\") ${param.toJavaIdentifier()}: String")
+                    }
+
+                    HttpParamType.HEADER -> {
+                        template.addTextSegment(
+                            "@$REQUEST_HEADER(name = \"${param.name}\", required = false," +
+                                    "defaultValue = \"${param.value ?: ""}\") ${param.toJavaIdentifier()}: String"
+                        )
+                    }
+
+                    HttpParamType.DATA -> template.addTextSegment("@$REQUEST_BODY(required = false) requestBody: String")
                 }
-                if (index != httMethod.params.size - 1) {
+                if (index != httpMethod.params.size - 1) {
                     template.addTextSegment(",\n")
                 }
             }
+
             template.addTextSegment("\n")
         }
         template.addTextSegment(")")

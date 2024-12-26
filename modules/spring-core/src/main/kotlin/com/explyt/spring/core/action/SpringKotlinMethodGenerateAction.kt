@@ -134,7 +134,7 @@ object KotlinMethodGenerateUtils {
         return elementAtCaret.parentsWithSelf.filterIsInstance<KtClassOrObject>().firstOrNull { !it.isLocal }
     }
 
-    fun findOffsetToInsertMethod(editor: Editor, file: PsiFile, targetClass: KtClassOrObject): Int {
+    fun findOffsetToInsertMethod(editor: Editor, file: PsiFile, targetClass: KtClassOrObject?): Int {
         var result = editor.caretModel.offset
         val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(file, result - 1, KtFunction::class.java, false)
         if (psiMethod != null) {
