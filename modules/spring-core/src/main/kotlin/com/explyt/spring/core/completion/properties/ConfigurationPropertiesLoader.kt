@@ -38,6 +38,8 @@ interface ConfigurationPropertiesLoader {
 
     fun loadMetadataElements(module: Module): List<ElementHint>
 
+    fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint?
+
     companion object {
         val EP_NAME = ProjectExtensionPointName<ConfigurationPropertiesLoader>(
             "com.explyt.spring.core.configurationPropertiesLoader"
@@ -49,14 +51,11 @@ interface ConfigurationPropertiesLoader {
         }
 
         fun getPropertyType(psiClass: PsiClass?): PropertyType? {
-            return if (InheritanceUtil.isInheritor(psiClass, Map::class.java.name)) {
-                PropertyType.MAP
-            } else if (InheritanceUtil.isInheritor(psiClass, Iterable::class.java.name)) {
-                PropertyType.LIST
-            } else if (psiClass is PsiArrayType) {
-                PropertyType.ARRAY
-            } else {
-                null
+            return when {
+                InheritanceUtil.isInheritor(psiClass, Map::class.java.name) -> PropertyType.MAP
+                InheritanceUtil.isInheritor(psiClass, Iterable::class.java.name) -> PropertyType.LIST
+                psiClass is PsiArrayType -> PropertyType.ARRAY
+                else -> null
             }
         }
     }

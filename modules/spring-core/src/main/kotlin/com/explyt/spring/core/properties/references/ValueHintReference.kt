@@ -21,10 +21,7 @@ import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.VALUES
-import com.explyt.spring.core.completion.properties.PropertyHint
-import com.explyt.spring.core.completion.properties.PropertyValueRenderer
-import com.explyt.spring.core.completion.properties.ProviderHint
-import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.properties.ClassReferencePropertyRenderer
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.util.PropertyUtil
@@ -49,34 +46,73 @@ class ValueHintReference(
     textRange: TextRange,
 ) : PsiReferenceBase.Poly<PsiElement>(element, textRange, false) {
 
+    fun getResultType(): ResultType {
+        return resolveResultContainer().type
+    }
+
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        val propertyKey = element.propertyKey() ?: return emptyArray()
-        val propertyValue = element.propertyValue() ?: return emptyArray()
-        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
+        return resolveResultContainer().resolveResults
+    }
+
+    private fun resolveResultContainer(): ResolveResultContainer {
+        val propertyKey = element.propertyKey() ?: return emptyResolveResult()
+        val propertyValue = element.propertyValue() ?: return emptyResolveResult()
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyResolveResult()
 
         val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey)
-        val resolveResults = propertyHint?.providers?.flatMap {
-            when (it.name) {
-                SpringProperties.CLASS_REFERENCE -> getClassReference(module, propertyValue)
-                SpringProperties.SPRING_BEAN_REFERENCE -> getSpringBeanReference(module, propertyValue)
-                else -> emptyList()
-            }
-        } ?: emptyList()
+        if (propertyHint != null) {
+            val (providerResolveResults, resultType) = propertyHint.providers
+                .map { processProvider(module, it, propertyValue) }
+                .firstOrNull { it.first.isNotEmpty() } ?: (emptyList<PsiElement>() to ResultType.NONE)
 
-        if (resolveResults.isNotEmpty()) {
-            return resolveResults.map { PsiElementResolveResult(it) }.toTypedArray()
+            if (providerResolveResults.isNotEmpty()) {
+                return ResolveResultContainer(
+                    providerResolveResults.map { PsiElementResolveResult(it) }.toTypedArray(),
+                    resultType
+                )
+            }
+
+            val metadataHintValue = SpringConfigurationPropertiesSearch.getInstance(module.project)
+                .findElementHintValue(module, propertyKey, propertyValue)
+            if (metadataHintValue != null) {
+                return ResolveResultContainer(
+                    arrayOf(PsiElementResolveResult(metadataHintValue.jsonProperty as PsiElement)),
+                    ResultType.METADATA
+                )
+            }
         }
 
         val javaPsiFacade = JavaPsiFacade.getInstance(module.project)
         val configurationProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
-            .findProperty(module, propertyKey) ?: return emptyArray()
-        val propertyType = configurationProperty.type?.replace('$', '.') ?: return emptyArray()
+            .findProperty(module, propertyKey) ?: return emptyResolveResult()
+        val propertyType = configurationProperty.type?.replace('$', '.') ?: return emptyResolveResult()
         val propertyTypeClass = javaPsiFacade.findClass(propertyType, GlobalSearchScope.allScope(module.project))
         if (propertyTypeClass?.isEnum == true) {
-            val field = propertyTypeClass.findFieldByName(propertyValue, true) ?: return emptyArray()
-            return arrayOf(PsiElementResolveResult(field))
+            val field = propertyTypeClass.findFieldByName(propertyValue, true) ?: return emptyResolveResult()
+            return ResolveResultContainer(arrayOf(PsiElementResolveResult(field)), ResultType.ENUM)
         }
-        return emptyArray()
+        return emptyResolveResult()
+    }
+
+    private fun processProvider(
+        module: Module,
+        provider: ProviderHint,
+        propertyValue: String
+    ): Pair<List<PsiElement>, ResultType> {
+        return when (provider.name) {
+            SpringProperties.CLASS_REFERENCE -> getClassReference(module, propertyValue) to ResultType.CLASS_REFERENCE
+            SpringProperties.SPRING_BEAN_REFERENCE -> getSpringBeanReference(
+                module,
+                propertyValue
+            ) to ResultType.SPRING_BEAN
+
+            SpringProperties.HANDLE_AS -> getHandleAsReference(
+                module,
+                provider.parameters,
+                propertyValue
+            ) to ResultType.ENUM
+            else -> emptyList<PsiElement>() to ResultType.NONE
+        }
     }
 
     private fun getSpringBeanReference(module: Module, propertyValue: String): List<PsiElement> {
@@ -89,6 +125,18 @@ class ValueHintReference(
         val findClass = JavaPsiFacade.getInstance(project)
             .findClass(propertyValue, GlobalSearchScope.allScope(project)) ?: return emptyList()
         return listOf(findClass)
+    }
+
+    private fun getHandleAsReference(
+        module: Module,
+        parameters: ProviderParameters?,
+        propertyValue: String
+    ): List<PsiElement> {
+        val project = module.project
+        val target = parameters?.target ?: return emptyList()
+        val findClass = JavaPsiFacade.getInstance(project)
+            .findClass(target, GlobalSearchScope.allScope(project)) ?: return emptyList()
+        return findClass.fields.asSequence().filter { it.name == propertyValue }.toList()
     }
 
     override fun getVariants(): Array<Any> {
@@ -233,5 +281,20 @@ class ValueHintReference(
             return true
         }
         return false
+    }
+
+    private fun emptyResolveResult(): ResolveResultContainer = ResolveResultContainer(emptyArray(), ResultType.NONE)
+
+    class ResolveResultContainer(
+        val resolveResults: Array<ResolveResult>,
+        val type: ResultType
+    )
+
+    enum class ResultType {
+        CLASS_REFERENCE,
+        SPRING_BEAN,
+        ENUM,
+        METADATA,
+        NONE
     }
 }

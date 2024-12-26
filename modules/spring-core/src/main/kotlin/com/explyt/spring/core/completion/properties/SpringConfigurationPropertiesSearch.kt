@@ -70,6 +70,11 @@ class SpringConfigurationPropertiesSearch {
             .flatMap { it.loadPropertyMetadataElements(module) }
     }
 
+    fun findElementHintValue(module: Module, propertyName: String, value: String): ElementHint? {
+        return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
+            .firstNotNullOfOrNull { it.findMetadataValueElement(module, propertyName, value) }
+    }
+
     private fun getKeysProperty(module: Module): List<ConfigurationProperty> {
         return getAllHints(module).asSequence()
             .filter { it.name.endsWith(POSTFIX_KEYS) }

@@ -94,6 +94,14 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
             .toList()
     }
 
+    override fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint? {
+        return findMetadataFiles(module).asSequence()
+            .filterIsInstance<JsonFile>()
+            .mapNotNull { collectElementMetadataHintsValue(it, propertyName, propertyValue) }
+            .firstOrNull()
+    }
+
+
     private fun findMetadataFiles(module: Module, onlyAdditional: Boolean = false): List<PsiFile> {
         val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
 

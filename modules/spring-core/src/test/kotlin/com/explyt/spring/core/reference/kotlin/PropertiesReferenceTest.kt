@@ -24,6 +24,7 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.lang.properties.psi.impl.PropertiesFileImpl
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 
@@ -97,4 +98,23 @@ class PropertiesReferenceTest : ExplytKotlinLightTestCase() {
         val name = (multiResolve[0].element as? PropertiesFileImpl)?.name
         assertEquals(name, "application-default.properties")
     }
+
+    fun testHandleAsValues() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.copyFileToProject("WeekEnum.kt")
+        myFixture.configureByText(
+            "application.properties",
+            """
+main.enum-value-additional=TUE<caret>SDAY
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? ValueHintReference)
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? PsiEnumConstant)?.name
+        assertEquals(name, "TUESDAY")
+    }
+
 }

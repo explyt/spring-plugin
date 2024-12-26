@@ -20,11 +20,14 @@ package com.explyt.spring.core.properties.references
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
+import com.explyt.spring.core.util.PropertyUtil.propertyKeyPsiElement
 import com.explyt.spring.core.util.PropertyUtil.toCommonPropertyForm
 import com.intellij.codeInsight.highlighting.HighlightedReference
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.lang.properties.IProperty
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
@@ -41,6 +44,10 @@ class ExplytPropertyReference(
     private val propertyPlaceholder: Boolean = false
 ) : PsiReferenceBase.Poly<PsiElement>(element, rangeInElement, false), HighlightedReference {
 
+    fun getTextAttributesKey(): TextAttributesKey {
+        return DefaultLanguageHighlighterColors.KEYWORD
+    }
+
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val propertiesMap = DefinedConfigurationPropertiesSearch.getInstance(module.project)
@@ -53,10 +60,11 @@ class ExplytPropertyReference(
             .toTypedArray()
     }
 
-    private fun getResolvedElementWithOriginalText(it: DefinedConfigurationProperty): PsiElement? {
-        val psiElement = it.psiElement ?: return null
-        psiElement.putUserData(PROPERTY_REFERENCE_ORIGINAL_TEXT, propertyKey)
-        return psiElement
+    private fun getResolvedElementWithOriginalText(definedProperty: DefinedConfigurationProperty): PsiElement? {
+        val element = definedProperty.psiElement ?: return null
+        val propertyElement = element.propertyKeyPsiElement() ?: element
+        propertyElement.putUserData(PROPERTY_REFERENCE_ORIGINAL_TEXT, propertyKey)
+        return element
     }
 
     override fun getVariants(): Array<Any> {
