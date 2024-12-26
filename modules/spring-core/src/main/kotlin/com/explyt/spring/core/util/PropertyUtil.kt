@@ -186,13 +186,10 @@ object PropertyUtil {
         possibleFileTypes: Array<FileType>,
         provider: PsiReferenceProvider?
     ): Array<FileReference> {
-        val lengthOfPrefix = text.lengthPrefix("/") + text.lengthPrefix("./")
-        val range = TextRange(textRange.startOffset + lengthOfPrefix, textRange.endOffset)
-
         return FileReferenceSetWithPrefixSupport(
             text,
             element,
-            range.startOffset,
+            textRange.startOffset,
             provider = provider,
             if (possibleFileTypes.isNotEmpty()) possibleFileTypes else null,
             ReferenceType.CLASSPATH,
@@ -315,12 +312,12 @@ object PropertyUtil {
             PLACEHOLDER_SUFFIX
         )
         val result = mutableListOf<T>()
-        for (range in ranges) {
-            val index = range.substring(from).indexOf(SpringProperties.COLON)
-            val textInRange =
-                if (index == -1) range.substring(from) else range.substring(from)
-                    .substringBefore(SpringProperties.COLON)
+        ranges.forEach {
+            val rangeText = it.substring(from)
+            val colonIndex = rangeText.indexOf(SpringProperties.COLON)
 
+            val range = if (colonIndex != -1) TextRange(it.startOffset, it.startOffset + colonIndex) else it
+            val textInRange = range.substring(from)
             result.add(mapping.invoke(textInRange, range))
         }
         return result

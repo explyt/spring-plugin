@@ -18,8 +18,10 @@
 package com.explyt.spring.core.language.profiles
 
 
+import com.explyt.spring.core.color.ExplytConfigurationHighlighting
 import com.explyt.util.ExplytKotlinUtil.mapToArray
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.pom.references.PomService
@@ -31,6 +33,10 @@ open class ProfilePsiReference(
     private val profileName: String,
     range: TextRange,
 ) : PsiReferenceBase<PsiElement>(element, range) {
+
+    fun getTextAttributesKey(): TextAttributesKey {
+        return ExplytConfigurationHighlighting.PROFILE_HIGHLIGHTER_KEY
+    }
 
     override fun resolve(): PsiElement? {
         if (StringUtil.isEmptyOrSpaces(profileName)) return myElement

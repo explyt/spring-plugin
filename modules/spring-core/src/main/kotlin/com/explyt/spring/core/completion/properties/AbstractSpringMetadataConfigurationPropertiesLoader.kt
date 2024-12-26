@@ -18,7 +18,11 @@
 package com.explyt.spring.core.completion.properties
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.spring.core.SpringProperties.HINTS
+import com.explyt.spring.core.SpringProperties.LOGGING_LEVEL
 import com.explyt.spring.core.SpringProperties.NAME
+import com.explyt.spring.core.SpringProperties.VALUE
+import com.explyt.spring.core.SpringProperties.VALUES
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonFactory
@@ -80,6 +84,31 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
             .filter { it.value is JsonStringLiteral && it.value != null }
             .map { ElementHint((it.value as JsonStringLiteral).value, it) }
             .toList()
+    }
+
+    protected fun collectElementMetadataHintsValue(
+        file: JsonFile,
+        propertyName: String,
+        valueName: String
+    ): ElementHint? {
+        val topValue = file.topLevelValue as? JsonObject ?: return null
+        val jsonElement = JsonUtil.getPropertyValueOfType(topValue, HINTS, JsonArray::class.java) ?: return null
+
+        val values = jsonElement.valueList.asSequence()
+            .mapNotNull { it as? JsonObject }
+            .firstOrNull {
+                it.findProperty(NAME)?.value?.text == "\"$propertyName\""
+                        || it.findProperty(NAME)?.value?.text == "\"${propertyName.substringBeforeLast(".")}.$VALUES\""
+                        || it.findProperty(NAME)?.value?.text == "\"$LOGGING_LEVEL.$VALUES\""
+            }
+            ?.findProperty(VALUES)?.value as? JsonArray ?: return null
+
+        val value = values.valueList.asSequence()
+            .mapNotNull { it as? JsonObject }
+            .firstOrNull { it.findProperty(VALUE)?.value?.text == "\"$valueName\"" }
+            ?.propertyList?.firstOrNull { it.name == VALUE } ?: return null
+
+        return ElementHint((value.value as JsonStringLiteral).value, value)
     }
 
     protected fun collectConfigurationProperties(

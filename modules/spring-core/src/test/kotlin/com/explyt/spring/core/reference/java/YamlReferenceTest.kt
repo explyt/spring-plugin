@@ -22,8 +22,10 @@ import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyRefer
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.json.psi.impl.JsonPropertyImpl
 import com.intellij.lang.properties.psi.impl.PropertiesFileImpl
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReference
@@ -511,4 +513,78 @@ logging:
         val ref = (file.findReferenceAt(myFixture.caretOffset) as? JavaClassReference)
         assertNotNull(ref)
     }
+
+    fun testHandleAsValues() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.copyFileToProject("WeekEnum.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  enum-value-additional: TUE<caret>SDAY
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? ValueHintReference)
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? PsiEnumConstant)?.name
+        assertEquals(name, "TUESDAY")
+    }
+
+    fun testHintsValues() {
+        myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+main:
+  name: cre<caret>ate
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? ValueHintReference)
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? JsonPropertyImpl)?.name
+        assertEquals(name, "value")
+    }
+
+    fun testLoggingLevelValue() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+    level:
+        sql: in<caret>fo
+            """.trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? ValueHintReference)
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? JsonPropertyImpl)?.name
+        assertEquals(name, "value")
+    }
+
+    fun testLoggingLevelJavaClassValue() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+logging:
+  level:
+    org.hibernate.SQL: deb<caret>ug
+""".trimIndent()
+        )
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? ValueHintReference)
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val resolveResult = multiResolve[0]
+        val name = (resolveResult.element as? JsonPropertyImpl)?.name
+        assertEquals(name, "value")
+    }
+
 }

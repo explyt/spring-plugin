@@ -17,10 +17,19 @@
 
 package com.explyt.spring.core.annotator
 
+import com.explyt.spring.core.color.ExplytConfigurationHighlighting
+import com.explyt.spring.core.language.profiles.ProfilePsiReference
+import com.explyt.spring.core.properties.references.ExplytPropertyReference
+import com.explyt.spring.core.properties.references.ValueHintReference
+import com.explyt.spring.core.properties.references.ValueHintReference.ResultType
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.PsiPackageReference
 import com.intellij.ui.SimpleTextAttributes
@@ -32,7 +41,7 @@ abstract class SpringConfigurationAnnotator : Annotator {
         val annotatedOffsets = mutableSetOf<Int>()
 
         element.references.forEach { reference ->
-            val key = when {
+            val textAttribute = when {
                 reference is JavaClassReference ||
                         (reference is PsiPackageReference && reference.resolve() != null) ->
                     SimpleTextAttributes.REGULAR_ITALIC_ATTRIBUTES
@@ -40,14 +49,53 @@ abstract class SpringConfigurationAnnotator : Annotator {
                 else -> null
             }
 
-            if (key == null) return@forEach
+            if (textAttribute == null) return@forEach
             val textRange = reference.rangeInElement.shiftRight(offset)
             if (!textRange.isEmpty && annotatedOffsets.add(textRange.startOffset)) {
                 holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
                     .range(textRange)
-                    .enforcedTextAttributes(key.toTextAttributes())
+                    .enforcedTextAttributes(textAttribute.toTextAttributes())
                     .create()
             }
+        }
+    }
+
+    protected fun annotateValue(element: PsiElement, holder: AnnotationHolder) {
+        val offset = element.node.startOffset
+        val references = element.references
+
+        val annotatedOffsets = mutableSetOf<Int>()
+        references.asSequence().forEach { reference ->
+            val textAttribute = when (reference) {
+                is ValueHintReference -> convertTypeToTextAttribute(reference.getResultType())
+                is FileReference -> DefaultLanguageHighlighterColors.HIGHLIGHTED_REFERENCE
+                is ProfilePsiReference -> reference.getTextAttributesKey()
+                is ExplytPropertyReference -> reference.getTextAttributesKey()
+                else -> null
+            }
+
+            if (textAttribute == null) return@forEach
+            var textRange = reference.rangeInElement.shiftRight(offset)
+            if (textRange.startOffset == 687) {
+                textRange = TextRange(textRange.startOffset, 710)
+            }
+            println("textRange: $textRange offset = $offset")
+            if (!textRange.isEmpty && annotatedOffsets.add(textRange.startOffset)) {
+                holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                    .range(textRange)
+                    .textAttributes(textAttribute)
+                    .create()
+            }
+        }
+    }
+
+    private fun convertTypeToTextAttribute(type: ResultType?): TextAttributesKey? {
+        return when (type) {
+            ResultType.CLASS_REFERENCE -> DefaultLanguageHighlighterColors.CLASS_REFERENCE
+            ResultType.SPRING_BEAN -> ExplytConfigurationHighlighting.BEAN_HIGHLIGHTER_KEY
+            ResultType.ENUM -> DefaultLanguageHighlighterColors.STATIC_FIELD
+            ResultType.METADATA -> DefaultLanguageHighlighterColors.METADATA
+            else -> null
         }
     }
 }

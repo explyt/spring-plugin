@@ -679,6 +679,8 @@
         <annotator language="Properties"
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationPropertiesAnnotator"/>
 
+        <colorSettingsPage implementation="com.explyt.spring.core.color.ExplytPropertyColorSettingsPage"/>
+
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">

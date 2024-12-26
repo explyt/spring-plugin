@@ -74,6 +74,17 @@
           }
         }
       ]
+    },
+    {
+      "name": "main.enum-value-additional",
+      "providers": [
+        {
+          "name": "handle-as",
+          "parameters": {
+            "target": "src.WeekEnum"
+          }
+        }
+      ]
     }
   ]
 }

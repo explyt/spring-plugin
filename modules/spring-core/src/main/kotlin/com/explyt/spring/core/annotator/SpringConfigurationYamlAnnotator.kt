@@ -21,6 +21,8 @@ import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.psi.PsiElement
 import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLScalar
+import org.jetbrains.yaml.psi.YAMLSequence
 
 class SpringConfigurationYamlAnnotator : SpringConfigurationAnnotator() {
 
@@ -31,6 +33,15 @@ class SpringConfigurationYamlAnnotator : SpringConfigurationAnnotator() {
         if (!SpringCoreUtil.isConfigurationPropertyFile(file)) return
 
         annotateKey(element, holder)
+        annotateValue(element, holder)
 
+        val yamlValue = element.value ?: return
+        when (yamlValue) {
+            is YAMLScalar -> annotateValue(yamlValue, holder)
+            is YAMLSequence -> yamlValue.items
+                .mapNotNull { it.value }
+                .filterIsInstance<YAMLScalar>()
+                .forEach { annotateValue(it, holder) }
+        }
     }
 }

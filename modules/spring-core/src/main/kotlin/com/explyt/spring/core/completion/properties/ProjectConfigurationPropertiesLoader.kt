@@ -66,6 +66,13 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             .flatMap { collectElementMetadataName(it, HINTS) }
     }
 
+    override fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint? {
+        return findMetadataFiles(module)
+            .filterIsInstance<JsonFile>()
+            .map { collectElementMetadataHintsValue(it, propertyName, propertyValue) }
+            .firstOrNull()
+    }
+
     private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> = runReadNonBlocking {
         val result = hashMapOf<String, ConfigurationProperty>()
 
