@@ -219,9 +219,12 @@ class StatisticService {
         return try {
             Files.createFile(lockFilePath)
         } catch (e: FileAlreadyExistsException) {
-            val lastModifiedInstant = Files.getLastModifiedTime(lockFilePath).toInstant()
-            if (OffsetDateTime.now().minusMinutes(10).toInstant() > lastModifiedInstant) {
-                FileUtil.delete(lockFilePath)
+            try {
+                val lastModifiedInstant = Files.getLastModifiedTime(lockFilePath).toInstant()
+                if (OffsetDateTime.now().minusMinutes(10).toInstant() > lastModifiedInstant) {
+                    FileUtil.delete(lockFilePath)
+                }
+            } catch (_: Exception) {
             }
             null
         }

@@ -88,7 +88,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (!isBeanExist(module, aClass)) {
             problems += getProblemByClassWithoutComponent(aClass, manager, isOnTheFly)
         } else {
-            problems += getProblemConstructors(aClass, manager, isOnTheFly)
+            problems += getProblemConstructors(aClass, module, manager, isOnTheFly)
             val methods = aClass.allMethods
                 .filter { it.isInjectOrAutowiredByRequiredTrue() }
             for (method in methods) {
@@ -105,6 +105,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
     private fun getProblemConstructors(
         aClass: PsiClass,
+        module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor> {
@@ -114,6 +115,12 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         if (uniqueConstructors.size > 1) {
             if (isConfigPropertyWithEmptyConstructor(aClass, uniqueConstructors)) return problems
+
+            val psiBean = SpringSearchServiceFacade.getInstance(aClass.project).getAllActiveBeans(module)
+                .find { it.psiClass.qualifiedName == aClass.qualifiedName }
+            if (psiBean != null && psiBean.psiClass != psiBean.psiMember) {
+                return emptyArray()
+            }
 
             val autowiredConstructors = uniqueConstructors
                 .filter { it.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED) || it.isMetaAnnotatedBy(JavaEeClasses.INJECT.allFqns) }
@@ -165,7 +172,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (element !is PsiVariable) return ProblemDescriptor.EMPTY_ARRAY
 
         val psiType = element.type
-        val nameClass = (psiType.resolveBeanPsiClass ?: psiType.resolvedPsiClass)?.name ?: return ProblemDescriptor.EMPTY_ARRAY
+        val nameClass =
+            (psiType.resolveBeanPsiClass ?: psiType.resolvedPsiClass)?.name ?: return ProblemDescriptor.EMPTY_ARRAY
         val problemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
 
         val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
@@ -180,12 +188,15 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         if (psiType.isOptional || element.isAutowiredByRequiredTrue() == false) {
             if (beanDeclarations.size > 1) {
-                val actualPsiType = psiType.applyIf(psiType.isOptional) { (psiType as PsiClassType).parameters.firstOrNull() ?: PsiTypes.nullType() }
+                val actualPsiType = psiType.applyIf(psiType.isOptional) {
+                    (psiType as PsiClassType).parameters.firstOrNull() ?: PsiTypes.nullType()
+                }
                 if (!actualPsiType.isMultipleBean(module)) {
                     return arrayOf(
                         manager.createProblemDescriptor(
                             problemElement,
-                            getWarningMessageInheritor(module, beanDeclarations,
+                            getWarningMessageInheritor(
+                                module, beanDeclarations,
                                 SpringCoreBundle.message(
                                     "explyt.spring.inspection.bean.autowired.optional.too-many",
                                     nameClass
@@ -224,7 +235,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (beanDeclarations.isEmpty() || !psiType.isMultipleBean(module)) {
             problems += manager.createProblemDescriptor(
                 problemElement,
-                getWarningMessageInheritor(module, beanDeclarations,
+                getWarningMessageInheritor(
+                    module, beanDeclarations,
                     SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.too-many", nameClass)
                 ),
                 AddQualifierQuickFix(SpringCoreClasses.QUALIFIER, problemElement),
@@ -335,7 +347,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         message.append("<html><table><tr><td>")
         message.append(errorText)
         message.append("</td></tr><tr><td><table><tr><td valign='top'> Beans: </td><td>")
-        beanCandidates.map { bean -> "${bean.resolveBeanName(module)} {@link ${bean.targetClass?.name}${(bean as? PsiMethod)?.name?.let { "#$it" } ?: ""}}" }.sorted().joinTo(message, " <br>")
+        beanCandidates.map { bean -> "${bean.resolveBeanName(module)} {@link ${bean.targetClass?.name}${(bean as? PsiMethod)?.name?.let { "#$it" } ?: ""}}" }
+            .sorted().joinTo(message, " <br>")
         message.append("</td></tr></table></td></tr></table></html>")
         return message.toString()
     }

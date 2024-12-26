@@ -22,8 +22,14 @@ import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.PATH_VARIABLE
+import com.explyt.spring.web.SpringWebClasses.REQUEST_BODY
+import com.explyt.spring.web.SpringWebClasses.REQUEST_HEADER
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.SpringWebClasses.REQUEST_PARAM
+import com.explyt.spring.web.parser.CurlParser
+import com.explyt.spring.web.parser.HttpMethod
+import com.explyt.spring.web.parser.HttpParamType
+import com.explyt.spring.web.parser.UrlParser
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.generation.actions.BaseGenerateAction
@@ -40,8 +46,6 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
-import io.ktor.http.*
-import io.ktor.util.*
 
 
 class SpringWebJavaMethodGenerateAction : BaseGenerateAction(WebMethodHandler()) {
@@ -52,40 +56,29 @@ class SpringWebJavaMethodGenerateAction : BaseGenerateAction(WebMethodHandler())
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
         return file.isWritable
                 && super.isValidForFile(project, editor, file)
-                && SpringWebUtil.isSpringWebProject(project)
+                && SpringWebUtil.isSpringWebRequestModule(file)
     }
 
     override fun isValidForClass(targetClass: PsiClass?) = targetClass?.language == JavaLanguage.INSTANCE
 
     companion object {
         val urlValidator = object : InputValidator {
-            override fun checkInput(inputString: String) = !inputString.contains("\\")
+            override fun checkInput(inputString: String): Boolean {
+                if (inputString.startsWith("curl")) {
+                    try {
+                        CurlParser.parse(inputString)
+                        return true
+                    } catch (_: Exception) {
+                        return false
+                    }
+                }
+                return !inputString.contains("\\")
+            }
+
             override fun canClose(inputString: String) = true
-        }
-
-        fun parseUrl(urlString: String): HttMethod {
-            val url = Url(urlString)
-            val methodName = url.pathSegments.last().replace("{", "").replace("}", "").replace("-", "").replace("_", "")
-            val value = getMappingHttpValue(urlString)
-            return HttMethod(methodName, value, getHttpParams(url))
-        }
-
-        private fun getHttpParams(url: Url): List<HttpParam> {
-            return url.pathSegments
-                .filter { it.startsWith("{") && it.endsWith("}") }
-                .map { HttpParam(false, it.replace("{", "").replace("}", ""), null) } +
-                    url.parameters.toMap().map { HttpParam(true, it.key, it.value.joinToString(",")) }
-        }
-
-        private fun getMappingHttpValue(urlString: String): String {
-            return if (urlString.contains("?")) urlString.substringBefore("?") else urlString
         }
     }
 }
-
-data class HttMethod(val name: String, val mappingValue: String, val params: List<HttpParam>)
-
-data class HttpParam(val query: Boolean, val name: String, val value: String?)
 
 private class WebMethodHandler : CodeInsightActionHandler {
 
@@ -95,9 +88,10 @@ private class WebMethodHandler : CodeInsightActionHandler {
             val tittle = SpringWebBundle.message("explyt.spring.action.web.method.generate.dialog.tittle")
             val urlMessage = SpringWebBundle.message("explyt.spring.action.web.method.generate.dialog.url")
             val urlValidator = SpringWebJavaMethodGenerateAction.urlValidator
-            val urlString = Messages.showInputDialog(urlMessage, tittle, null, null, urlValidator)
+            val urlString = Messages.showMultilineInputDialog(project, urlMessage, tittle, null, null, urlValidator)
                 ?.takeIf { it.isNotEmpty() } ?: return@invokeLater
-            val httMethod = SpringWebJavaMethodGenerateAction.parseUrl(urlString)
+            val httpMethod = if (urlString.startsWith("curl"))
+                CurlParser.parse(urlString) else UrlParser.parse(urlString)
 
             runWriteAction {
                 val targetClass = JavaMethodGenerateUtils.getNearTargetClass(editor, file) ?: return@runWriteAction
@@ -106,7 +100,7 @@ private class WebMethodHandler : CodeInsightActionHandler {
                 PsiDocumentManager.getInstance(file.project).commitDocument(document)
 
                 val offsetToInsert = JavaMethodGenerateUtils.findOffsetToInsertMethod(editor, file, targetClass)
-                val template = getTemplate(project, httMethod, targetClass.isInterface) ?: return@runWriteAction
+                val template = getTemplate(project, httpMethod, targetClass.isInterface) ?: return@runWriteAction
 
                 editor.caretModel.moveToOffset(offsetToInsert)
 
@@ -115,26 +109,42 @@ private class WebMethodHandler : CodeInsightActionHandler {
         }
     }
 
-    private fun getTemplate(project: Project, httMethod: HttMethod, isInterface: Boolean): Template? {
+    private fun getTemplate(project: Project, httpMethod: HttpMethod, isInterface: Boolean): Template? {
         val template = TemplateManager.getInstance(project).createTemplate("", "")
 
         template.addTextSegment("@$REQUEST_MAPPING(\n")
-        template.addTextSegment("value = \"${httMethod.mappingValue}\",\n")
-        template.addTextSegment("method = org.springframework.web.bind.annotation.RequestMethod.GET\n")
+        template.addTextSegment("value = \"${httpMethod.getMappingHttpValue()}\",\n")
+        template.addTextSegment("method = org.springframework.web.bind.annotation.RequestMethod.${httpMethod.type}\n")
         template.addTextSegment(")\n")
         if (isInterface) template.addTextSegment("String ") else template.addTextSegment("public String ")
-        val nameExpr = ConstantNode(httMethod.name)
+        val nameExpr = ConstantNode(httpMethod.name)
         template.addVariable("name", nameExpr, nameExpr, true)
         template.addTextSegment("(")
-        if (httMethod.params.isNotEmpty()) {
+        if (httpMethod.params.isNotEmpty()) {
             template.addTextSegment("\n")
-            for ((index, param) in httMethod.params.withIndex()) {
-                if (param.query) {
-                    template.addTextSegment("@$REQUEST_PARAM(name = \"${param.name}\", defaultValue = \"${param.value ?: ""}\") String ${param.name}")
-                } else {
-                    template.addTextSegment("@$PATH_VARIABLE(\"${param.name}\") String ${param.name}")
+            for ((index, param) in httpMethod.params.withIndex()) {
+                when (param.type) {
+                    HttpParamType.QUERY -> {
+                        template.addTextSegment(
+                            "@$REQUEST_PARAM(name = \"${param.name}\", required = false," +
+                                    "defaultValue = \"${param.value ?: ""}\") String ${param.toJavaIdentifier()}"
+                        )
+                    }
+
+                    HttpParamType.PATH -> {
+                        template.addTextSegment("@$PATH_VARIABLE(\"${param.name}\") String ${param.toJavaIdentifier()}")
+                    }
+
+                    HttpParamType.HEADER -> {
+                        template.addTextSegment(
+                            "@$REQUEST_HEADER(name = \"${param.name}\", required = false," +
+                                    "defaultValue = \"${param.value ?: ""}\") String ${param.toJavaIdentifier()}"
+                        )
+                    }
+
+                    HttpParamType.DATA -> template.addTextSegment("@$REQUEST_BODY(required = false) String requestBody")
                 }
-                if (index != httMethod.params.size - 1) {
+                if (index != httpMethod.params.size - 1) {
                     template.addTextSegment(",\n")
                 }
             }

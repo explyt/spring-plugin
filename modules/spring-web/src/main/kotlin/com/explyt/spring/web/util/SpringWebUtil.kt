@@ -22,6 +22,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.SpringWebClasses.WEB_INITIALIZER
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
@@ -54,17 +55,14 @@ import javax.swing.Icon
 object SpringWebUtil {
 
     fun isSpringWebProject(project: Project): Boolean {
-        return LibraryClassCache.searchForLibraryClass(
-            project,
-            WEB_INITIALIZER
-        ) != null
+        return LibraryClassCache.searchForLibraryClass(project, WEB_INITIALIZER) != null
     }
 
-    fun isSpringWebModule(psiElement: PsiElement): Boolean {
+    fun isSpringWebRequestModule(psiElement: PsiElement): Boolean {
         return ModuleUtilCore.findModuleForPsiElement(psiElement)
             ?.let {
                 JavaPsiFacade.getInstance(psiElement.project)
-                    .findClass(WEB_INITIALIZER, it.moduleWithLibrariesScope) != null
+                    .findClass(REQUEST_MAPPING, it.moduleWithLibrariesScope) != null
             } == true
     }
 

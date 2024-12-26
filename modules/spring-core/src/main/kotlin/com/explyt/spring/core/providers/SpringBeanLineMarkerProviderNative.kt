@@ -207,7 +207,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         module: Module,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        val sourcePsi = uClass.sourcePsi ?: return
+        val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findBeanDeclarations(uClass, module) })

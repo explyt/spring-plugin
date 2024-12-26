@@ -217,12 +217,20 @@
     </projectListeners>
 
     <actions>
-        <action id="SpringWebJavaMethodGenerateAction"
+        <action id="Explyt.SpringWebJavaMethodGenerateAction"
                 class="com.explyt.spring.web.action.SpringWebJavaMethodGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
-        <action id="SpringWebKotlinMethodGenerateAction"
+        <action id="Explyt.SpringWebKotlinMethodGenerateAction"
                 class="com.explyt.spring.web.action.SpringWebKotlinMethodGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="Explyt.HttpClientByCurlMethodGenerateAction"
+                class="com.explyt.spring.web.action.HttpClientByCurlJavaMethodGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="Explyt.HttpClientByCurlKotlinMethodGenerateAction"
+                class="com.explyt.spring.web.action.HttpClientByCurlKotlinMethodGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
         <action id="SpringWebProjectOpenApiGenerateAction"

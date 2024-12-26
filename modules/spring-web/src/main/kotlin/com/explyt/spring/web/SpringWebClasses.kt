@@ -30,9 +30,11 @@ object SpringWebClasses {
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
     const val REQUEST_PARAM = "org.springframework.web.bind.annotation.RequestParam"
     const val REQUEST_HEADER = "org.springframework.web.bind.annotation.RequestHeader"
+    const val COOKIE_VALUE = "org.springframework.web.bind.annotation.CookieValue"
     const val REQUEST_BODY = "org.springframework.web.bind.annotation.RequestBody"
     const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
     const val FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
+    const val JAVA_HTTP_CLIENT = "java.net.http.HttpClient"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"
