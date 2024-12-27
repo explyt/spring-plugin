@@ -102,7 +102,7 @@ class OpenApiYamlPathHttpTypeBuilder(
 
         if (!pathVariable.defaultValue.isNullOrBlank()) {
             builder.appendLine()
-            builder.append("$indent      default: ${pathVariable.defaultValue}")
+            builder.append("$indent      default: '${pathVariable.defaultValue}'")
         }
 
         builder.appendLine()

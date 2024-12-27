@@ -24,6 +24,7 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefClient
 import org.jetbrains.concurrency.runAsync
 import java.beans.PropertyChangeListener
 import java.util.*
@@ -35,9 +36,10 @@ class OpenApiCefBrowser(
     private val specKey = UUID.randomUUID()
     private var disposed = false
     private val browser: JBCefBrowser
+    private val jbCefClient: JBCefClient
 
     init {
-        val jbCefClient = JBCefApp.getInstance()
+        jbCefClient = JBCefApp.getInstance()
             .createClient()
 
         browser = JBCefBrowser.createBuilder()
@@ -66,6 +68,7 @@ class OpenApiCefBrowser(
 
     override fun dispose() {
         Disposer.dispose(browser)
+        Disposer.dispose(jbCefClient)
         disposed = true
     }
 
