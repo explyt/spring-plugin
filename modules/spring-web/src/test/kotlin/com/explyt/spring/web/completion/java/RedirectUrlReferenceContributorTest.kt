@@ -19,6 +19,7 @@ package com.explyt.spring.web.completion.java
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.TestUtil.findTypedReferenceAt
 import com.explyt.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
@@ -45,7 +46,7 @@ class RedirectUrlReferenceContributorTest : ExplytJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -64,7 +65,7 @@ class RedirectUrlReferenceContributorTest : ExplytJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -87,7 +88,7 @@ class RedirectUrlReferenceContributorTest : ExplytJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(2, multiResolve.size)
@@ -109,7 +110,7 @@ class RedirectUrlReferenceContributorTest : ExplytJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(0, multiResolve.size)
@@ -128,7 +129,7 @@ class RedirectUrlReferenceContributorTest : ExplytJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -151,7 +152,7 @@ class RedirectUrlReferenceContributorTest : ExplytJavaLightTestCase() {
         """.trimIndent()
         )
 
-        val ref = file.findReferenceAt(myFixture.caretOffset) as? ExplytControllerMethodReference
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(2, multiResolve.size)
