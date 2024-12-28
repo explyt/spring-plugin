@@ -169,7 +169,7 @@ private class HttpClientMethodHandler : CodeInsightActionHandler {
                     "    .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)\n" +
                     "    .build()"
         } else {
-            "client = HttpClient.newHttpClient()"
+            "client = java.net.http.HttpClient.newHttpClient()"
         }
     }
 
