@@ -8,25 +8,43 @@
 
 - Added: support for syntax highlighting in application.yaml and application.properties
 - Added: completion/reference in property starting with logging.level
-- Added: completion in property for field with type Resource the class with @ConfigurationProperties
-- Fixed: support in property for boolean starting with "is"
-- Fixed: reference in property Relaxed Binding
-- Fixed: reference in property for Map values
-- Fixed: include in search for class-reference not only compile dependencies, but runtime as well 
-- Fixed: The ExplytSpringBoot settings lead to the incorrect direction (#13)
-- Fixed: inspection for fields and methods super classes (#14)
+- Fixed: inspection kebab-case false positive for logging level property
+- Fixed: fix inspection resource in tests (#15)
 
 ### Spring Web / OpenAPI
 
 - Added: Action `Generate OpenApi Specification` for project
 - Added: Run in Swagger action for Controller/FeignClient
+- Added: Generate requestBody as custom type schema for Run controller/endpoint action
+- Added: Another design for Spring Endpoints, new Line Marker icons
+- Added: Generation of Http Client and OpenApi spec using cURL
+
+### Other
+
+- Added: Auto Configurations and Message Brokers folders to Spring Explyt View
+- Fixed: stack overflow on jpql file find in EntityAttributeSearcher
+
+## [243.1.2927] - 2024-12-16
+
+### Spring Core/Boot
+
+- Added: completion in property for field with type Resource the class with @ConfigurationProperties
+- Fixed: support in property for boolean starting with "is"
+- Fixed: reference in property Relaxed Binding
+- Fixed: reference in property for Map values
+- Fixed: include in search for class-reference not only compile dependencies, but runtime as well
+- Fixed: The ExplytSpringBoot settings lead to the incorrect direction (#13)
+- Fixed: inspection for fields and methods super classes (#14)
+
+### Spring Web / OpenAPI
+
 - Fixed: Removed navigation from endpoint to openapi path
 - Added: Run in Swagger endpoint action
 - Added: Generate OpenAPI from coRouter function (#10)
 - Added: Floating button for refresh ExplytSpringBoot panel
 - Added: Generate Spring MVC controller method by url in Generate intention
 
-## [243.1.2801] - 2024-12-01
+## 243.1.2801 - 2024-12-01
 
 ### Spring Core/Boot
 
