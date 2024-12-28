@@ -27,6 +27,7 @@ import com.explyt.spring.core.SpringProperties.PREFIX_CLASSPATH_STAR
 import com.explyt.spring.core.SpringProperties.PREFIX_FILE
 import com.explyt.spring.core.SpringProperties.PREFIX_HTTP
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.util.ModuleUtil
 import com.intellij.codeInsight.daemon.quickFix.CreateFilePathFix
 import com.intellij.codeInsight.daemon.quickFix.NewFileLocation
@@ -198,7 +199,11 @@ object ResourceFileInspectionUtil {
 
     private fun getRootPaths(module: Module): List<PsiDirectory> {
         val exModule = ExternalSystemModule.of(module)
-        return exModule.resourceRoots + exModule.sourceRoots
+        val mainRoots = exModule.resourceRoots + exModule.sourceRoots
+        if (SpringSearchServiceFacade.isUnitTest(module.project)) {
+            return exModule.testResourceRoots + exModule.testSourceRoots + mainRoots
+        }
+        return mainRoots
     }
 
     private fun getRootPath(rootPaths: List<PsiDirectory>, fileDirs: Array<String>): PsiDirectory? {

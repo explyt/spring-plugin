@@ -140,7 +140,7 @@ class SpringSearchServiceFacade(private val project: Project) {
             }
         }
 
-        private fun isUnitTest(project: Project): Boolean {
+        fun isUnitTest(project: Project): Boolean {
             val file = FileEditorManager.getInstance(project).selectedEditor?.file ?: return false
             val fileIndex = ProjectRootManager.getInstance(project).fileIndex
             return fileIndex.isInTestSourceContent(file)
