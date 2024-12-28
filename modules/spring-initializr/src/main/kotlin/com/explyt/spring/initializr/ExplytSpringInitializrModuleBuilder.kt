@@ -29,6 +29,7 @@ import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.util.io.FileUtil
@@ -40,6 +41,7 @@ import java.nio.file.Path
 class ExplytSpringInitializrModuleBuilder : ModuleBuilder() {
 
     private var wizardStep: SpringInitializrWizardStep? = null
+    private val logger = Logger.getInstance(ExplytSpringInitializrModuleBuilder::class.java)
 
     override fun getModuleType(): ExplytSpringInitializrModuleType {
         return ExplytSpringInitializrModuleType.getInstance()
@@ -50,16 +52,52 @@ class ExplytSpringInitializrModuleBuilder : ModuleBuilder() {
     }
 
     override fun createProject(name: String, path: String): Project? {
-        val zipFilePath = wizardStep?.downloadFullPath ?: return null
+        logger.info("Start creating project. Name: $name, path: $path")
+
+        val zipFilePath = wizardStep?.downloadFullPath
+        if (zipFilePath == null) {
+            logger.warn("Download is null. Cannot proceed with project creation.")
+            return null
+        }
+        logger.info("Download file path: $zipFilePath")
+
         val zipFile = File(zipFilePath)
-        val extractDirectory = wizardStep?.projectsDirectory ?: return null
-        val extractProject = unzip(zipFile, extractDirectory.toPath()) ?: return null
+        if (!zipFile.exists()) {
+            logger.warn("Download file does not exist: $zipFilePath")
+            return null
+        }
+        val extractDirectory = wizardStep?.projectsDirectory
+        if (extractDirectory == null) {
+            logger.warn("Extract directory is null. Cannot proceed with project creation.")
+            return null
+        }
+        logger.info("Extract directory: ${extractDirectory.absolutePath}")
+
+        val extractProject = try {
+            unzip(zipFile, extractDirectory.toPath())
+        } catch (e: Exception) {
+            logger.error("Failed to unzip file: $zipFilePath", e)
+            return null
+        }
+
+        if (extractProject == null) {
+            logger.warn("Unzipping returned null. Cannot proceed with project creation.")
+            return null
+        }
+        logger.info("Project extracted successfully to: $extractProject")
 
         ApplicationManager.getApplication().invokeLaterOnWriteThread {
-            zipFile.delete()
+            val deleted = zipFile.delete()
+            if (deleted) {
+                logger.info("Deleted ZIP file: $zipFilePath")
+            } else {
+                logger.warn("Failed to delete ZIP file: $zipFilePath")
+            }
             ProjectManagerEx.getInstanceEx().loadAndOpenProject(extractProject)
+            logger.info("Project opened successfully: $extractProject")
             StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_INITIALIZR_OPEN_PROJECT)
         }
+        logger.info("Project creation process completed.")
         return null
     }
 
