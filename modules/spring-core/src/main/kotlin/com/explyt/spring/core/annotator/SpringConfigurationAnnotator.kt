@@ -79,7 +79,6 @@ abstract class SpringConfigurationAnnotator : Annotator {
             if (textRange.startOffset == 687) {
                 textRange = TextRange(textRange.startOffset, 710)
             }
-            println("textRange: $textRange offset = $offset")
             if (!textRange.isEmpty && annotatedOffsets.add(textRange.startOffset)) {
                 holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
                     .range(textRange)

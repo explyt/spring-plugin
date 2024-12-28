@@ -25,6 +25,7 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.ide.util.projectWizard.ModuleWizardStep
 import com.intellij.ide.util.projectWizard.WizardContext
 import com.intellij.openapi.components.StorageScheme
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.Messages
@@ -60,6 +61,8 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
     private var serverUrl = getPropertyValue("explyt.spring.initializr.property.url")
     private val activeProject = ProjectUtil.getActiveProject()
     private var contentToolWindow: SimpleToolWindowPanel = SimpleToolWindowPanel(true, true)
+    private val logger = Logger.getInstance(SpringInitializrWizardStep::class.java)
+
     var projectsDirectory = getActiveDirectory()
 
     var downloadFullPath: String? = null
@@ -320,16 +323,24 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         private val bDelete: JButton?
     ) : CefDownloadHandler {
 
+        private var downloadTimeoutTimer: Timer? = null
+
         override fun onBeforeDownload(
             browser: CefBrowser,
             downloadItem: CefDownloadItem,
             suggestedName: String,
             callback: CefBeforeDownloadCallback
         ) {
+            logger.info("Download initiated. Suggested file name: $suggestedName")
+
             val zipFullPath = downloadFullPath
-            if (zipFullPath != null) {
-                val zipFile = File(zipFullPath)
-                zipFile.delete()
+            zipFullPath?.let {
+                val zipFile = File(it)
+                if (zipFile.delete()) {
+                    logger.info("Previous file deleted: $it")
+                } else {
+                    logger.warn("Failed to delete previous file: $it")
+                }
             }
             parent.cursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
             progressBar?.isIndeterminate = true
@@ -337,8 +348,23 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
                 "explyt.spring.initializr.progress.label.text",
                 suggestedName
             )
+            logger.info("UI updated. Cursor set to wait, progress bar indeterminate.")
 
             callback.Continue(downloadItem.fullPath, false)
+            logger.info("Callback continued with path: ${downloadItem.fullPath}")
+
+            downloadTimeoutTimer = Timer(30_000) {
+                logger.warn("Download timeout reached for file: $suggestedName")
+                SwingUtilities.invokeLater {
+                    parent.cursor = Cursor.getDefaultCursor()
+                    progressBar?.isIndeterminate = false
+                    progressBarLabel?.text = SpringInitializrBundle.message(
+                        "explyt.spring.initializr.timeout.label.text",
+                        suggestedName
+                    )
+                }
+            }.apply { start() }
+            logger.info("Download timeout timer started (30 seconds).")
         }
 
         override fun onDownloadUpdated(
@@ -346,23 +372,37 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
             downloadItem: CefDownloadItem,
             callback: CefDownloadItemCallback
         ) {
-            if (!downloadItem.isComplete) {
-                return
+            if (downloadItem.isInProgress) {
+                val progress = (downloadItem.receivedBytes * 100 / downloadItem.totalBytes).toInt()
+                progressBar?.value = progress
+                logger.info("Download in progress. Received: ${downloadItem.receivedBytes}/${downloadItem.totalBytes} bytes. Progress: $progress%")
+            } else if (downloadItem.isComplete) {
+                logger.info("Download completed successfully. File path: ${downloadItem.fullPath}")
+                try {
+                    downloadFullPath = downloadItem.fullPath
+                    zipFilePath = downloadItem.suggestedFileName
+                    fileName?.text = zipFilePath
+                    logger.info("File path updated in UI: $zipFilePath")
+                } finally {
+                    bDelete?.isEnabled = (!downloadFullPath.isNullOrBlank() && !zipFilePath.isNullOrBlank())
+                    parent.cursor = Cursor.getDefaultCursor()
+                    progressBar?.isIndeterminate = false
+                    progressBarLabel?.text = " "
+                    downloadTimeoutTimer?.stop()
+                    logger.info("UI reset after successful download.")
+                }
+            } else if (downloadItem.isCanceled) {
+                logger.warn("Download was cancelled.")
+                handleCancelledDownload()
             }
+        }
 
-            try {
-                downloadFullPath = downloadItem.fullPath
-                zipFilePath = downloadItem.suggestedFileName
-                if (fileName != null) {
-                    fileName.text = zipFilePath
-                }
-            } finally {
-                if (bDelete != null) {
-                    bDelete.isEnabled = (!downloadFullPath.isNullOrBlank() && !zipFilePath.isNullOrBlank())
-                }
+        private fun handleCancelledDownload() {
+            SwingUtilities.invokeLater {
                 parent.cursor = Cursor.getDefaultCursor()
                 progressBar?.isIndeterminate = false
                 progressBarLabel?.text = " "
+                downloadTimeoutTimer?.stop()
             }
         }
     }
