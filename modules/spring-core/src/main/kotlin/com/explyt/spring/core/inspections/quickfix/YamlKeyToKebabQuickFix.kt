@@ -61,7 +61,7 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
 
                 while (current != null) {
                     val key = current.key
-                    if (key != null && key.text.contains('_')) {
+                    if (key != null) {
                         val textToUpdate = key.text
                         val startOffset = key.textRange.startOffset
                         val end = startOffset + textToUpdate.length
