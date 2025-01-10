@@ -43,6 +43,7 @@ import org.jetbrains.yaml.YAMLLanguage
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.impl.YAMLPlainTextImpl
+import org.jetbrains.yaml.psi.impl.YAMLQuotedTextImpl
 
 @Service(Service.Level.PROJECT)
 class DefinedConfigurationPropertiesSearch(val project: Project) {
@@ -181,7 +182,7 @@ class YamlPropertySource(yamlFile: YAMLFile) : FilePropertySource(yamlFile) {
             return yamlFile.documents.flatMap { document ->
                 val result = mutableListOf<DefinedConfigurationProperty>()
                 PsiTreeUtil.processElements(document, YAMLKeyValue::class.java) { keyValue ->
-                    if (keyValue.value is YAMLPlainTextImpl) {
+                    if (keyValue.value is YAMLPlainTextImpl || keyValue.value is YAMLQuotedTextImpl) {
                         result.add(YamlDefinedConfigurationProperty(keyValue, yamlFile.name))
                     }
                     true
