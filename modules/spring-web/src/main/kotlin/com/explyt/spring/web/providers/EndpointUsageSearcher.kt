@@ -41,7 +41,9 @@ import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ModificationTracker
-import com.intellij.psi.*
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopesCore
@@ -221,12 +223,8 @@ object EndpointUsageSearcher {
             methods += SpringSearchUtils
                 .searchReferenceByMethod(module, psiMethod, GlobalSearchScopesCore.projectTestScope(module.project))
                 .asSequence()
-                .filter { it is PsiReferenceExpression }
-                .map { it.element }
-                .mapNotNull { it.context as? PsiMethodCallExpression }
-                .filterToSet { psiCallExpr ->
-                    val uCallExpression = psiCallExpr.toUElementOfType<UCallExpression>() ?: return@filterToSet false
-
+                .mapNotNull { it.element.context.toUElementOfType<UCallExpression>() }
+                .filterToSet { uCallExpression ->
                     val httpMethodIndex = SpringWebUtil.getHttpMethodIndex(psiMethod)
                     if (httpMethodIndex >= 0) {
                         if (uCallExpression
@@ -241,6 +239,7 @@ object EndpointUsageSearcher {
 
                     return@filterToSet SpringWebUtil.isEndpointMatches(endpoint, urlArg)
                 }
+                .mapNotNull { it.sourcePsi }
         }
 
         return methods.toList()

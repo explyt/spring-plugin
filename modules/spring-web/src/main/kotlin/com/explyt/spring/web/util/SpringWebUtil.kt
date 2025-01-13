@@ -445,7 +445,10 @@ object SpringWebUtil {
     fun getUrlTemplateIndex(psiMethod: PsiMethod) =
         psiMethod.parameterList
             .parameters
-            .indexOfFirst { it.name == URL_TEMPLATE && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING }
+            .indexOfFirst {
+                it.name in URL_TEMPLATE_NAMES
+                        && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING
+            }
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
@@ -471,6 +474,8 @@ object SpringWebUtil {
     const val OPENAPI_SCHEMAS = "schemas"
     const val OPENAPI_PARAMETERS = "parameters"
     private const val URL_TEMPLATE = "urlTemplate"
+    private const val URI_TEMPLATE = "uriTemplate"
+    private val URL_TEMPLATE_NAMES = setOf(URL_TEMPLATE, URI_TEMPLATE)
 
     private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()
     private val TEMPLATE_PARAM_REGEX = Regex("\\{[^}]+}")
