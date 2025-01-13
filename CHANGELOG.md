@@ -6,6 +6,10 @@
 
 ### Spring Core/Boot
 
+## [243.1.3083] - 2024-12-29
+
+### Spring Core/Boot
+
 - Added: support for syntax highlighting in application.yaml and application.properties
 - Added: completion/reference in property starting with logging.level
 - Fixed: inspection kebab-case false positive for logging level property
@@ -24,7 +28,7 @@
 - Added: Auto Configurations and Message Brokers folders to Spring Explyt View
 - Fixed: stack overflow on jpql file find in EntityAttributeSearcher
 
-## [243.1.2927] - 2024-12-16
+## 243.1.2927 - 2024-12-16
 
 ### Spring Core/Boot
 
