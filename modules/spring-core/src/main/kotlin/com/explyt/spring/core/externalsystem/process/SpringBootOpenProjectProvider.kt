@@ -18,7 +18,11 @@
 package com.explyt.spring.core.externalsystem.process
 
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
+import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
+import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.intellij.execution.application.ApplicationConfiguration
+import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.externalSystem.importing.AbstractOpenProjectProvider
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
@@ -28,6 +32,7 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 
 class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
     override val systemId: ProjectSystemId = SYSTEM_ID
@@ -38,11 +43,14 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
     override fun linkToExistingProject(projectFile: VirtualFile, project: Project) =
         linkToExistingProject(projectFile, null, project)
 
-    fun linkToExistingProject(projectFile: VirtualFile, runConfigurationName: String?, project: Project) {
+    fun linkToExistingProject(projectFile: VirtualFile, runConfiguration: RunConfiguration?, project: Project) {
         ExternalProjectsManagerImpl.getInstance(project).setStoreExternally(true)
         val projectSettings = NativeProjectSettings()
         projectSettings.externalProjectPath = projectFile.canonicalPath
-        projectSettings.runConfigurationName = runConfigurationName
+        projectSettings.runConfigurationName = runConfiguration?.name
+
+        projectSettings.runConfigurationType = getConfigurationType(runConfiguration)
+        getConfigurationType(runConfiguration)
         val externalProjectPath = projectSettings.externalProjectPath
         ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
 
@@ -56,6 +64,15 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
                 externalProjectPath,
                 ImportSpecBuilder(project, SYSTEM_ID)
             )
+        }
+    }
+
+    private fun getConfigurationType(runConfiguration: RunConfiguration?): RunConfigurationType {
+        return when (runConfiguration) {
+            is KotlinRunConfiguration -> RunConfigurationType.KOTLIN
+            is SpringBootRunConfiguration -> RunConfigurationType.EXPLYT
+            is ApplicationConfiguration -> RunConfigurationType.APPLICATION
+            else -> RunConfigurationType.EXPLYT
         }
     }
 }

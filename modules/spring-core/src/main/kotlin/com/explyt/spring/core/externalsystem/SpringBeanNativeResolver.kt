@@ -31,10 +31,12 @@ import com.explyt.spring.core.externalsystem.process.AspectInfo
 import com.explyt.spring.core.externalsystem.process.BeanInfo
 import com.explyt.spring.core.externalsystem.process.ExplytCapturingProcessAdapter
 import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
+import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
+import com.explyt.spring.core.runconfiguration.SpringBootConfigurationFactory
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
@@ -44,6 +46,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManager
+import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.ModuleBasedConfigurationOptions
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.executors.DefaultRunExecutor
@@ -74,6 +77,7 @@ import com.intellij.psi.util.InheritanceUtil
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
+import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit.MINUTES
@@ -140,15 +144,14 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
         buildProject(settings, modules)
 
-        val clone = runConfiguration.clone() as SpringBootRunConfiguration
-        clone.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
+        runConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
             .runReadAction(Computable { mainClass.qualifiedName })
 
-        clone.mainClassName = getMainClassName(modules, id, listener)
-        clone.classpathModifications.add(getClasspathExplytModification())
+        runConfiguration.mainClassName = getMainClassName(modules, id, listener)
+        runConfiguration.classpathModifications.add(getClasspathExplytModification())
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
-        executeRunConfiguration(id, clone, processAdapter)
+        executeRunConfiguration(id, runConfiguration, processAdapter)
 
         val contextInfo = processAdapter.getSpringContextInfo()
         val beans = contextInfo.beans
@@ -348,11 +351,74 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     private fun findRunConfiguration(projectPath: String, settings: NativeExecutionSettings?): RunConfiguration? {
         settings ?: return null
         val allConfigurationsList = RunManager.getInstance(settings.project).allConfigurationsList
-        return if (settings.runConfigurationName != null) {
+        if (settings.runConfigurationType == RunConfigurationType.KOTLIN) {
+            val runConfig = allConfigurationsList
+                .filterIsInstance<KotlinRunConfiguration>()
+                .find { it.name == settings.runConfigurationName }
+                ?.let { mapToSpringBootRunConfiguration(it, settings) }
+            if (runConfig != null) {
+                return runConfig
+            }
+        }
+        if (settings.runConfigurationType == RunConfigurationType.APPLICATION) {
+            val runConfig = allConfigurationsList
+                .filterIsInstance<ApplicationConfiguration>()
+                .find { it !is SpringBootRunConfiguration && it.name == settings.runConfigurationName }
+                ?.let { mapToSpringBootRunConfiguration(it, settings) }
+            if (runConfig != null) {
+                return runConfig
+            }
+        }
+        val springBootRunConfiguration = if (settings.runConfigurationName != null) {
             allConfigurationsList.find { it is SpringBootRunConfiguration && it.name == settings.runConfigurationName }
         } else {
             allConfigurationsList.find { checkRunConfiguration(it, projectPath) }
         }
+        return springBootRunConfiguration?.clone()
+    }
+
+    private fun mapToSpringBootRunConfiguration(
+        configuration: KotlinRunConfiguration, settings: NativeExecutionSettings
+    ): SpringBootRunConfiguration? {
+        val mainClass = NativeBootUtils.getMainClass(configuration) ?: return null
+        val module = ModuleUtilCore.findModuleForPsiElement(mainClass) ?: return null
+
+        val runConfiguration = SpringBootConfigurationFactory
+            .createTemplateConfiguration(settings.project)
+            .apply {
+                setModule(module)
+                setMainClass(mainClass)
+                setGeneratedName()
+            }
+        runConfiguration.vmParameters = configuration.vmParameters
+        runConfiguration.envs = configuration.envs
+        runConfiguration.programParameters = configuration.programParameters
+        runConfiguration.isPassParentEnvs = configuration.isPassParentEnvs
+        runConfiguration.alternativeJrePath = configuration.alternativeJrePath
+        runConfiguration.classpathModifications = configuration.classpathModifications
+        return runConfiguration
+    }
+
+    private fun mapToSpringBootRunConfiguration(
+        configuration: ApplicationConfiguration, settings: NativeExecutionSettings
+    ): SpringBootRunConfiguration? {
+        val mainClass = NativeBootUtils.getMainClass(configuration) ?: return null
+        val module = ModuleUtilCore.findModuleForPsiElement(mainClass) ?: return null
+
+        val runConfiguration = SpringBootConfigurationFactory
+            .createTemplateConfiguration(settings.project)
+            .apply {
+                setModule(module)
+                setMainClass(mainClass)
+                setGeneratedName()
+            }
+        runConfiguration.vmParameters = configuration.vmParameters
+        runConfiguration.envs = configuration.envs
+        runConfiguration.programParameters = configuration.programParameters
+        runConfiguration.isPassParentEnvs = configuration.isPassParentEnvs
+        runConfiguration.alternativeJrePath = configuration.alternativeJrePath
+        runConfiguration.classpathModifications = configuration.classpathModifications
+        return runConfiguration
     }
 
     private fun checkRunConfiguration(runConfiguration: RunConfiguration, projectPath: String): Boolean {

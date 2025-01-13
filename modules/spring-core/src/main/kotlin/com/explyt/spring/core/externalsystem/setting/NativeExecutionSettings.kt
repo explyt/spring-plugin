@@ -24,4 +24,9 @@ class NativeExecutionSettings(val project: Project) : ExternalSystemExecutionSet
     var externalProjectMainFilePath: String? = null
     var runConfigurationName: String? = null
     var messageMappingExist: Boolean = false
+    var runConfigurationType = RunConfigurationType.EXPLYT
+}
+
+enum class RunConfigurationType {
+    EXPLYT, KOTLIN, APPLICATION
 }
