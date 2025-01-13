@@ -25,11 +25,13 @@ import com.intellij.openapi.externalSystem.settings.ExternalProjectSettings
 class NativeProjectSettings : ExternalProjectSettings() {
 
     var runConfigurationName: String? = null
+    var runConfigurationType = RunConfigurationType.EXPLYT
 
     override fun clone(): NativeProjectSettings {
         val result = NativeProjectSettings()
         copyTo(result)
         result.runConfigurationName = runConfigurationName
+        result.runConfigurationType = runConfigurationType
         return result
     }
 }

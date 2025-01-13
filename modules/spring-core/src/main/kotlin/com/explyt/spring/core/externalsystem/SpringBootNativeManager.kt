@@ -18,6 +18,7 @@
 package com.explyt.spring.core.externalsystem
 
 import com.explyt.spring.core.externalsystem.setting.*
+import com.explyt.spring.core.externalsystem.setting.RunConfigurationType.EXPLYT
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.intellij.execution.configurations.SimpleJavaParameters
 import com.intellij.openapi.externalSystem.ExternalSystemManager
@@ -51,6 +52,7 @@ class SpringBootNativeManager :
             val executionSettings = NativeExecutionSettings(project)
             executionSettings.externalProjectMainFilePath = projectSettings?.externalProjectPath
             executionSettings.runConfigurationName = projectSettings?.runConfigurationName
+            executionSettings.runConfigurationType = projectSettings?.runConfigurationType ?: EXPLYT
             executionSettings
         }
     }

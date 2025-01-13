@@ -23,7 +23,7 @@ import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.service.SpringSearchService
-import com.intellij.codeInsight.AnnotationUtil
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.lang.java.JavaLanguage
@@ -105,10 +105,14 @@ object NativeBootUtils {
         }
     }
 
+    fun isSupportRunConfiguration(runConfiguration: RunConfiguration?): Boolean {
+        return runConfiguration?.let { getMainClass(it) != null } ?: false
+    }
+
     fun getMainClass(runConfiguration: RunConfiguration): PsiClass? {
         val psiClassList = RunConfigurationUtil.getRunPsiClass(runConfiguration)
         if (psiClassList.size == 1) return psiClassList.first()
-        return psiClassList.find { AnnotationUtil.isAnnotated(it, SPRING_BOOT_APPLICATION, 0) }
+        return psiClassList.find { it.isMetaAnnotatedBy(SPRING_BOOT_APPLICATION) }
     }
 
     private fun getKotlinMainBootClass(psiClass: KtLightClassForFacade): PsiClass? {

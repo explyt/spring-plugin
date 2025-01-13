@@ -39,7 +39,7 @@ object RunConfigurationUtil {
                 runConfiguration.findMainClassFile()?.classes?.toList() ?: emptyList()
             }
 
-            is SpringBootRunConfiguration -> {
+            is ApplicationConfiguration -> {
                 val mainClass = runConfiguration.mainClass
                 if (mainClass is KtLightClassForFacade) {
                     return mainClass.files.flatMap { it.classes.toList() }

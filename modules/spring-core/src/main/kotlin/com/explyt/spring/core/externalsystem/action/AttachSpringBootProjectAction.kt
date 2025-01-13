@@ -21,7 +21,7 @@ import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvider
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
-import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.execution.RunManager
@@ -63,29 +63,31 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
     companion object {
         fun attachProject(project: Project) {
             StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_ADD)
-            val springRunConfiguration = ApplicationManager.getApplication().runReadAction(
+            val selectedRunConfiguration = ApplicationManager.getApplication().runReadAction(
                 Computable { RunManager.getInstance(project).selectedConfiguration?.configuration }
-            ) as? SpringBootRunConfiguration
-            if (springRunConfiguration == null) {
+            )
+            if (selectedRunConfiguration == null) {
                 ApplicationManager.getApplication().invokeLater {
                     externalSystemNotification(message("explyt.external.project.run.config.required.message"), project)
                 }
                 return
             }
 
-            val mainFile = ApplicationManager.getApplication().runReadAction(
-                Computable { springRunConfiguration.mainClass?.containingFile?.virtualFile }
+            val mainClass = ApplicationManager.getApplication().runReadAction(
+                Computable { NativeBootUtils.getMainClass(selectedRunConfiguration) }
             ) ?: return
+            val mainFile = mainClass.containingFile?.virtualFile ?: return
             val canonicalPath = mainFile.canonicalPath ?: return
             if (ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath) != null) {
                 ApplicationManager.getApplication().invokeLater {
-                    val message = message("explyt.external.project.already.linked.message", springRunConfiguration.name)
+                    val message =
+                        message("explyt.external.project.already.linked.message", selectedRunConfiguration.name)
                     externalSystemNotification(message, project)
                 }
                 return
             }
 
-            SpringBootOpenProjectProvider().linkToExistingProject(mainFile, springRunConfiguration.name, project)
+            SpringBootOpenProjectProvider().linkToExistingProject(mainFile, selectedRunConfiguration, project)
         }
 
         private fun externalSystemNotification(message: String, project: Project) {
