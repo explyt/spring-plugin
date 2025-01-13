@@ -47,6 +47,7 @@ class OpenApiCefBrowser(
             .build()
 
         jbCefClient.addRequestHandler(OpenApiCefRequestHandlerAdapter(), browser.cefBrowser)
+        jbCefClient.addDownloadHandler(OpenApiCefDownloadHandler(), browser.cefBrowser)
 
         OpenApiUtils.cacheFile(specKey, file)
         loadHtml()

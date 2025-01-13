@@ -17,7 +17,6 @@
 
 package com.explyt.spring.web.util
 
-import ai.grazie.utils.mpp.UUID
 import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
 import com.explyt.spring.web.editor.openapi.OpenApiUIEditor
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
@@ -123,7 +122,7 @@ class OpenApiFileUtil {
     ) {
         val fileType = YAMLFileType.YML
 
-        val file = File.createTempFile(UUID.random().text, ".${fileType.defaultExtension}")
+        val file = File.createTempFile("openapi-", ".${fileType.defaultExtension}")
         file.deleteOnExit()
         val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
 

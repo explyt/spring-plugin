@@ -17,26 +17,20 @@
 
 package com.explyt.spring.web.editor.openapi
 
-import org.cef.network.CefRequest
-import java.util.*
+import org.cef.browser.CefBrowser
+import org.cef.callback.CefBeforeDownloadCallback
+import org.cef.callback.CefDownloadItem
+import org.cef.handler.CefDownloadHandlerAdapter
 
-class OpenApiCefRequestHandler {
+class OpenApiCefDownloadHandler : CefDownloadHandlerAdapter() {
 
-    fun mutateRequest(request: CefRequest) {
-        request.setHeaderByName(OpenApiUtils.OPENAPI_ORIGINAL_URL, request.url, true)
-        val authHeader = request.getHeaderByName("Authorization")
-        if (authHeader.isNotBlank()) {
-            request.setHeaderByName(OpenApiUtils.OPENAPI_AUTH_HEADER, authHeader, true)
-        }
-        val proxyUrl = OpenApiUtils.proxyUrl()
-        request.url = proxyUrl +
-                if (proxyUrl.contains('?')) "&" else "?" +
-                        "explytCacheBusting=${UUID.randomUUID()}"
-
-    }
-
-    fun isApplicable(request: CefRequest): Boolean {
-        return !request.url.contains(OpenApiUtils.EXPLYT_OPENAPI)
+    override fun onBeforeDownload(
+        browser: CefBrowser?,
+        downloadItem: CefDownloadItem?,
+        suggestedName: String?,
+        callback: CefBeforeDownloadCallback?
+    ) {
+        callback?.Continue("", true)
     }
 
 }

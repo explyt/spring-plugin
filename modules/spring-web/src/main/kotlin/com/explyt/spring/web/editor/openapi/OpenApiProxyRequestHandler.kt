@@ -17,26 +17,32 @@
 
 package com.explyt.spring.web.editor.openapi
 
-import com.intellij.openapi.diagnostic.Logger
+import com.explyt.spring.web.SpringWebBundle
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.util.registry.Registry
-import com.intellij.util.io.HttpRequests
+import com.intellij.util.io.HttpRequests.HttpStatusException
 import io.netty.buffer.ByteBufInputStream
+import io.netty.channel.Channel
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import io.netty.handler.stream.ChunkedStream
 import org.jetbrains.ide.HttpRequestHandler
 import org.jetbrains.io.send
-import java.io.IOException
+import java.io.InputStream
 import java.net.ConnectException
-import java.net.HttpURLConnection
-import java.net.URLConnection
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpRequest.BodyPublishers
+import java.net.http.HttpResponse
+import java.time.Duration
+import kotlin.jvm.optionals.getOrNull
 
 
 class OpenApiProxyRequestHandler : HttpRequestHandler() {
 
     override fun isSupported(request: FullHttpRequest): Boolean {
-        if (!Registry.`is`("openapi.ui.proxy.enable")) return false
-
         return request.uri().startsWith(OpenApiUtils.OPENAPI_INTERNAL_CORS)
     }
 
@@ -46,126 +52,109 @@ class OpenApiProxyRequestHandler : HttpRequestHandler() {
         context: ChannelHandlerContext
     ): Boolean {
         val url = request.headers()[OpenApiUtils.OPENAPI_ORIGINAL_URL] ?: return false
-        val timeout = Registry.intValue("openapi.ui.proxy.timeout")
+        val timeout = Registry.intValue("openapi.ui.proxy.timeout").toLong()
 
-        wrappingExceptionsToResponse(url, request, context) {
-            HttpRequests.request(url).connectTimeout(timeout).readTimeout(timeout)
-                .tuner { connection ->
-                    copyRequestData(connection, request)
-                }.connect { newRequest ->
-                    processRequest(newRequest, request, context)
-                }
+        val httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofMillis(timeout))
+            .build()
+
+        val requestBuilder = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+
+        val auth = request.headers().get(OpenApiUtils.OPENAPI_AUTH_HEADER, "")
+        if (auth.isNotBlank()) {
+            requestBuilder
+                .header("Authorization", auth)
+        }
+        for ((name, value) in request.headers().entries()) {
+            if (name.lowercase() in OpenApiUtils.headersToExclude) continue
+
+            requestBuilder.header(name, value)
+        }
+
+        val httpRequest = requestBuilder
+            .method(request.method().name(), bodyPublisherOf(request))
+            .build()
+
+        try {
+            val response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream())
+
+            val headers = mapToHeaders(response.headers().map())
+
+            val newResponse = DefaultHttpResponse(
+                HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(response.statusCode()),
+                headers
+            )
+
+            val channel = context.channel()
+            channel.write(newResponse)
+            channel.write(ChunkedStream(response.body()))
+            if (isFileInResponse(response)) {
+                channel.flush()
+            } else {
+                channel.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT)
+            }
+            channel.close()
+        } catch (statusException: HttpStatusException) {
+            handleException(
+                statusException,
+                HttpResponseStatus.valueOf(statusException.statusCode),
+                context.channel(),
+                request
+            )
+        } catch (connectException: ConnectException) {
+            handleException(connectException, HttpResponseStatus.BAD_GATEWAY, context.channel(), request)
+        } catch (exception: Exception) {
+            handleException(exception, HttpResponseStatus.EXPECTATION_FAILED, context.channel(), request)
+        } finally {
+            httpClient.close()
         }
 
         return true
     }
 
-    private fun copyRequestData(connection: URLConnection, originalRequest: FullHttpRequest) {
-        if (connection !is HttpURLConnection) return
+    private fun isFileInResponse(response: HttpResponse<InputStream>): Boolean {
+        val contentType = response.headers().firstValue("content-type").getOrNull() ?: return false
 
-        connection.doInput = true
-        connection.doOutput = true
-        connection.requestMethod = originalRequest.method().name()
-
-
-        originalRequest.headers().asSequence()
-            .filter { it.key !in IGNORED_HEADERS }
-            .groupBy { it.key }
-            .map { it.key to squashHeaderValues(it.value) }
-            .forEach { (key, value) ->
-                connection.setRequestProperty(key, value)
-            }
+        return contentType == "application/octet-stream" || contentType.startsWith("image/")
     }
 
-    private fun squashHeaderValues(values: List<Map.Entry<String, String>>): String {
-        return values.asSequence()
-            .map { it.value }
-            .joinToString(",")
-    }
-
-    private fun processRequest(
-        newRequest: HttpRequests.Request,
-        originalRequest: FullHttpRequest,
-        context: ChannelHandlerContext
+    private fun handleException(
+        ex: Exception,
+        responseStatus: HttpResponseStatus,
+        channel: Channel,
+        request: FullHttpRequest
     ) {
-        wrappingExceptionsToResponse(newRequest.url, originalRequest, context) {
-            writeRequestBody(originalRequest, newRequest)
-            redirectResponse(originalRequest, newRequest, context)
+        val url = request.headers()[OpenApiUtils.OPENAPI_ORIGINAL_URL] ?: request.uri()
+
+        Notification(
+            "com.explyt.spring.notification.web",
+            SpringWebBundle.message("explyt.spring.web.notifications"),
+            SpringWebBundle.message(
+                "explyt.spring.web.error",
+                url,
+                ex.message ?: ex
+            ),
+            NotificationType.INFORMATION
+        ).notify(null)
+
+        DefaultHttpResponse(HttpVersion.HTTP_1_1, responseStatus)
+            .send(channel, request)
+    }
+
+    private fun bodyPublisherOf(request: FullHttpRequest): HttpRequest.BodyPublisher {
+        if (request.content().readableBytes() <= 0) {
+            return BodyPublishers.noBody()
+        }
+
+        return BodyPublishers.ofInputStream {
+            ByteBufInputStream(request.content())
         }
     }
 
-    private fun writeRequestBody(originalRequest: FullHttpRequest, newRequest: HttpRequests.Request) {
-        if (originalRequest.content().readableBytes() <= 0) return
-        val connection = newRequest.connection as? HttpURLConnection ?: return
-
-        connection.outputStream.use { outputStream ->
-            ByteBufInputStream(originalRequest.content()).use { inputStream ->
-                inputStream.transferTo(outputStream)
-            }
-        }
-    }
-
-    private fun wrappingExceptionsToResponse(
-        url: String,
-        originalRequest: FullHttpRequest,
-        context: ChannelHandlerContext,
-        unsafeAction: () -> Unit
-    ) {
-        val logger = Logger.getInstance(OpenApiProxyRequestHandler::class.java)
-
-        try {
-            unsafeAction.invoke()
-        } catch (ex: HttpRequests.HttpStatusException) {
-            logger.warn(
-                "Unable to process request to '$url', received status code '${ex.statusCode}'", ex
-            )
-            DefaultHttpResponse(
-                originalRequest.protocolVersion(),
-                HttpResponseStatus.valueOf(ex.statusCode)
-            )
-                .send(context.channel(), originalRequest)
-        } catch (ex: ConnectException) {
-            logger.warn("Unable to execute request to '$url', connection refused", ex)
-            DefaultHttpResponse(
-                originalRequest.protocolVersion(),
-                HttpResponseStatus.valueOf(502)
-            )
-                .send(context.channel(), originalRequest)
-        } catch (ex: IOException) {
-            logger.warn("Unable to execute request to '$url'", ex)
-            DefaultHttpResponse(
-                originalRequest.protocolVersion(),
-                HttpResponseStatus.valueOf(418)
-            )
-                .send(context.channel(), originalRequest)
-        }
-    }
-
-
-    private fun redirectResponse(
-        originalRequest: FullHttpRequest,
-        newRequest: HttpRequests.Request,
-        context: ChannelHandlerContext
-    ) {
-        val httpURLConnection = newRequest.connection as? HttpURLConnection ?: return
-
-        val responseCode = httpURLConnection.responseCode
-        if (responseCode >= 400) throw HttpRequests.HttpStatusException("", responseCode, newRequest.url)
-
-        val httpVersion = originalRequest.protocolVersion()
-        val status = HttpResponseStatus.valueOf(responseCode)
-        val headers = wrapOriginalHeaders(httpURLConnection.headerFields)
-
-        val response = DefaultHttpResponse(httpVersion, status, headers)
-
-        context.channel().write(response)
-
-        newRequest.inputStream.use { inputStream ->
-            context.channel().writeAndFlush(ChunkedStream(inputStream))
-        }
-    }
-
-    private fun wrapOriginalHeaders(originalHeaders: Map<String?, List<String>?>): HttpHeaders {
+    private fun mapToHeaders(originalHeaders: Map<String?, List<String>?>): HttpHeaders {
         val httpHeaders = DefaultHttpHeaders()
 
         for (header in originalHeaders) {
@@ -175,11 +164,6 @@ class OpenApiProxyRequestHandler : HttpRequestHandler() {
         }
 
         return httpHeaders
-    }
-
-
-    companion object {
-        private val IGNORED_HEADERS = setOf(OpenApiUtils.OPENAPI_ORIGINAL_URL, "Accept-Encoding")
     }
 
 }
