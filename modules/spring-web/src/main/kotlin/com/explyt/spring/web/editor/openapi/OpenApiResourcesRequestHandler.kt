@@ -30,7 +30,7 @@ import io.netty.handler.codec.http.QueryStringDecoder
 import org.jetbrains.ide.HttpRequestHandler
 import java.util.*
 
-class OpenApiRequestHandler : HttpRequestHandler() {
+class OpenApiResourcesRequestHandler : HttpRequestHandler() {
 
     override fun process(
         urlDecoder: QueryStringDecoder, request: FullHttpRequest, context: ChannelHandlerContext
@@ -82,7 +82,7 @@ class OpenApiRequestHandler : HttpRequestHandler() {
     override fun isSupported(request: FullHttpRequest): Boolean {
         if (request.method() != HttpMethod.GET) return false
 
-        return request.uri().startsWith("/__explyt-openapi?")
+        return request.uri().startsWith("/${OpenApiUtils.EXPLYT_OPENAPI}?")
     }
 
 }

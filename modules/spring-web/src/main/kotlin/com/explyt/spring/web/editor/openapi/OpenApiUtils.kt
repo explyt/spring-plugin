@@ -80,7 +80,7 @@ object OpenApiUtils {
     }
 
     fun resourceUrl(specKey: UUID): String =
-        "http://localhost:${BuiltInServerManager.getInstance().port}/__explyt-openapi?key=${specKey}&resource"
+        "http://localhost:${BuiltInServerManager.getInstance().port}/${EXPLYT_OPENAPI}?key=${specKey}&resource"
 
     fun resourceUrl(specKey: UUID, resource: String): String =
         "${resourceUrl(specKey)}=$resource"
@@ -176,9 +176,20 @@ object OpenApiUtils {
 
     }
 
-    const val OPENAPI_INTERNAL_CORS = "/__explyt-openapi_internal-cors"
-    const val OPENAPI_ORIGINAL_URL = "__explyt-openapi_original-url"
+    const val EXPLYT_OPENAPI = "explyt-openapi"
+    const val OPENAPI_INTERNAL_CORS = "/${EXPLYT_OPENAPI}_internal-cors"
+    const val OPENAPI_ORIGINAL_URL = "${EXPLYT_OPENAPI}_original-url"
+    const val OPENAPI_AUTH_HEADER = "${EXPLYT_OPENAPI}_auth-header"
     const val OPENAPI_EDITOR_TYPE_ID = "explyt.web.openapi.ui.editor"
+
+    val headersToExclude = setOf(
+        "host",
+        "connection",
+        "content-length",
+        "accept-encoding",
+        "origin",
+        OPENAPI_AUTH_HEADER
+    )
 
     private val ABSOLUTE_PATH_REGEX = Regex("^/?https?:.*")
 }
