@@ -17,6 +17,7 @@
 
 ### Spring Web / OpenAPI
 
+- Fixed: Navigation from endpoint to MockMvc usage (kotlin)
 - Added: Action `Generate OpenApi Specification` for project
 - Added: Run in Swagger action for Controller/FeignClient
 - Added: Generate requestBody as custom type schema for Run controller/endpoint action
