@@ -37,7 +37,6 @@ import java.net.http.HttpRequest
 import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.HttpResponse
 import java.time.Duration
-import kotlin.jvm.optionals.getOrNull
 
 
 class OpenApiProxyRequestHandler : HttpRequestHandler() {
@@ -91,10 +90,10 @@ class OpenApiProxyRequestHandler : HttpRequestHandler() {
             val channel = context.channel()
             channel.write(newResponse)
             channel.write(ChunkedStream(response.body()))
-            if (isFileInResponse(response)) {
-                channel.flush()
-            } else {
+            if (isContentLengthOmitted(response)) {
                 channel.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT)
+            } else {
+                channel.flush()
             }
             channel.close()
         } catch (statusException: HttpStatusException) {
@@ -115,10 +114,8 @@ class OpenApiProxyRequestHandler : HttpRequestHandler() {
         return true
     }
 
-    private fun isFileInResponse(response: HttpResponse<InputStream>): Boolean {
-        val contentType = response.headers().firstValue("content-type").getOrNull() ?: return false
-
-        return contentType == "application/octet-stream" || contentType.startsWith("image/")
+    private fun isContentLengthOmitted(response: HttpResponse<InputStream>): Boolean {
+        return response.headers().firstValue("content-length").isEmpty
     }
 
     private fun handleException(
