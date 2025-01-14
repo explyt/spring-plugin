@@ -24,12 +24,12 @@ import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvid
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
+import com.intellij.codeInsight.daemon.LineMarkerInfo
+import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
-import com.intellij.execution.lineMarker.RunLineMarkerContributor
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -41,55 +41,59 @@ import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.toUElement
+import java.awt.event.MouseEvent
 
-class AttachSpringBootProjectLineMarkerContributor : RunLineMarkerContributor() {
-    override fun getInfo(element: PsiElement): Info? {
+class AttachSpringBootProjectLineMarkerContributor : LineMarkerProviderDescriptor() {
+
+    override fun getName(): String? = null
+
+    override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         val uAnnotation = element.toUElement() as? UAnnotation ?: return null
         if (uAnnotation.qualifiedName != SpringCoreClasses.SPRING_BOOT_APPLICATION) return null
         val uClass = element.toUElement()?.getParentOfType<UClass>() ?: return null
-        val action = createSpringBootExplorerAction(uClass) ?: return null
-        return Info(SpringExplorer, arrayOf(action))
+        val sourcePsi = uAnnotation.sourcePsi ?: return null
+        val canonicalPath = uClass.javaPsi.containingFile.virtualFile.canonicalPath ?: return null
+        return LineMarkerInfo(
+            sourcePsi,
+            sourcePsi.textRange,
+            SpringExplorer,
+            { getTooltipText(element.project, canonicalPath) },
+            AttachProjectIconGutterHandler(canonicalPath),
+            GutterIconRenderer.Alignment.RIGHT,
+            { getTooltipText(element.project, canonicalPath) },
+        )
     }
 
-    private fun createSpringBootExplorerAction(uClass: UClass): AnAction? {
-        val javaPsi = uClass.javaPsi
-        val canonicalPath = javaPsi.containingFile.virtualFile.canonicalPath ?: return null
-        return object : AnAction() {
+    companion object {
+        fun isExist(project: Project, canonicalPath: String) =
+            ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath) != null
 
-            override fun getActionUpdateThread() = ActionUpdateThread.BGT
+        private fun getTooltipText(project: Project, canonicalPath: String): String {
+            return if (isExist(project, canonicalPath)
+            ) message("explyt.external.project.link.line.marker.refresh.text") else
+                message("explyt.external.project.link.line.marker.text")
+        }
+    }
+}
 
-            override fun update(e: AnActionEvent) {
-                super.update(e)
-                val project = e.project ?: return
-                e.presentation.text = getTooltipText(project, canonicalPath)
+class AttachProjectIconGutterHandler(private val canonicalPath: String) : GutterIconNavigationHandler<PsiElement> {
+
+    override fun navigate(e: MouseEvent?, elt: PsiElement?) {
+        val project = elt?.project ?: return
+        val exist = AttachSpringBootProjectLineMarkerContributor.isExist(project, canonicalPath)
+        if (exist) {
+            ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
+                ExternalSystemUtil.refreshProject(
+                    canonicalPath, ImportSpecBuilder(project, SYSTEM_ID)
+                )
             }
-
-            override fun actionPerformed(e: AnActionEvent) {
-                val project = e.project ?: return
-                val exist = isExist(project, canonicalPath)
-                if (exist) {
-                    ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
-                        ExternalSystemUtil.refreshProject(
-                            canonicalPath, ImportSpecBuilder(project, SYSTEM_ID)
-                        )
-                    }
-                } else {
-                    val runConfiguration = getRunConfiguration(project, canonicalPath)
-                    val virtualFile = LocalFileSystem.getInstance().findFileByPath(canonicalPath) ?: return
-                    SpringBootOpenProjectProvider().linkToExistingProject(virtualFile, runConfiguration, project)
-                }
-            }
+        } else {
+            val runConfiguration = getRunConfiguration(project, canonicalPath)
+            val virtualFile = LocalFileSystem.getInstance().findFileByPath(canonicalPath) ?: return
+            SpringBootOpenProjectProvider().linkToExistingProject(virtualFile, runConfiguration, project)
         }
     }
 
-    private fun isExist(project: Project, canonicalPath: String) =
-        ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath) != null
-
-    private fun getTooltipText(project: Project, canonicalPath: String): String {
-        return if (isExist(project, canonicalPath)
-        ) message("explyt.external.project.link.line.marker.refresh.text") else
-            message("explyt.external.project.link.line.marker.text")
-    }
 
     private fun getRunConfiguration(project: Project, canonicalPath: String): RunConfiguration? {
         val currentRunConfiguration = RunManager.getInstance(project).selectedConfiguration?.configuration
