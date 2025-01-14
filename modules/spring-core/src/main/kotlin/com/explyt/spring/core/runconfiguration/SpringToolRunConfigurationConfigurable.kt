@@ -20,9 +20,11 @@ package com.explyt.spring.core.runconfiguration
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
 import com.explyt.spring.core.externalsystem.utils.Constants
+import com.explyt.spring.core.language.profiles.ProfilesLanguage
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.ide.impl.ProjectUtil
+import com.intellij.lang.Language
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.psi.injection.Injectable
@@ -87,7 +89,6 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
 
                 row(message("explyt.spring.settings.sql.language.id.label")) {
                     comboBox(sqlLanguageIdModel, getLanguageCellRenderer())
-                        .align(AlignX.FILL)
                         .resizableColumn()
                         .comment(message("explyt.spring.settings.sql.language.id.tooltip"))
                 }
@@ -134,10 +135,47 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         val languages = InjectedLanguage.getAvailableLanguages()
         val list: MutableList<Injectable> = ArrayList()
         for (language in languages) {
+            if (skipLanguage(language)) continue
             list.add(Injectable.fromLanguage(language))
         }
-        list.sort()
-        return listOf<Injectable?>(null) + list
+
+        return listOf<Injectable?>(null) + list.sortedBy { getSortKey(it) }
+    }
+
+    private fun getSortKey(it: Injectable): String {
+        val lowercase = it.displayName.lowercase()
+        val prefixKey = when {
+            lowercase.contains("sql") -> "0"
+            lowercase.contains("ql") -> "1"
+            else -> "2"
+        }
+        return "${prefixKey}${it.displayName}"
+    }
+
+    private fun skipLanguage(language: Language): Boolean {
+        if (language.id == ProfilesLanguage.INSTANCE.id) return true
+
+        val name = language.displayName.lowercase()
+        if (name.contains("dtd")) return true
+        if (name.contains("xml")) return true
+        if (name.contains("html")) return true
+        if (name.contains("yaml")) return true
+        if (name.contains("gradle")) return true
+        if (name.contains("toml")) return true
+        if (name.contains("svg")) return true
+        if (name.contains("regexp")) return true
+        if (name.contains("markdown")) return true
+        if (name.contains("json")) return true
+        if (name.contains("java")) return true
+        if (name.contains("kotlin")) return true
+        if (name.contains("groovy")) return true
+        if (name.startsWith("properties")) return true
+        if (name.startsWith(".gitignore")) return true
+        if (name.startsWith(".hgignore")) return true
+        if (name.startsWith(".ignore")) return true
+        if (name.startsWith("exclude")) return true
+        if (name.startsWith("textmate")) return true
+        return false
     }
 
     private fun getLanguageCellRenderer(): ColoredListCellRenderer<Injectable> {

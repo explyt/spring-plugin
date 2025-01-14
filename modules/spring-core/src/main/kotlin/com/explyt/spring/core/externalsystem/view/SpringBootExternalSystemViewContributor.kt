@@ -20,6 +20,7 @@ package com.explyt.spring.core.externalsystem.view
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.externalsystem.model.SpringBeanType
 import com.explyt.spring.core.externalsystem.model.SpringProfileData
+import com.explyt.spring.core.externalsystem.model.SpringRunConfigurationData
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.view.nodes.*
 import com.explyt.spring.core.externalsystem.view.nodes.profile.SpringProfileNodes
@@ -34,13 +35,17 @@ import com.intellij.util.containers.MultiMap
 class SpringBootExternalSystemViewContributor : ExternalSystemViewContributor() {
     override fun getSystemId() = SYSTEM_ID
 
-    override fun getKeys(): List<Key<*>> = listOf(SpringBeanData.KEY, SpringProfileData.KEY)
+    override fun getKeys(): List<Key<*>> = listOf(
+        SpringBeanData.KEY, SpringProfileData.KEY, SpringRunConfigurationData.KEY
+    )
 
     override fun createNodes(
         externalProjectsView: ExternalProjectsView,
         dataNodes: MultiMap<Key<*>?, DataNode<*>?>
     ): List<ExternalSystemNode<*>> {
         val profileNodes = dataNodes[SpringProfileData.KEY]
+        val runConfigurationData = dataNodes[SpringRunConfigurationData.KEY]
+            .firstOrNull()?.data as? SpringRunConfigurationData
         val profileViewNodes = profileNodes
             .map { SpringProfileViewNode(externalProjectsView, it as DataNode<SpringProfileData>) }
 
@@ -51,10 +56,13 @@ class SpringBootExternalSystemViewContributor : ExternalSystemViewContributor() 
             .forEach { if (it.data.projectBean) projectBeans.add(it) else libraryBeans.add(it) }
         val splitProjectBeans = splitBeansByType(projectBeans, externalProjectsView)
         val splitLibraryBeans = splitBeansByType(libraryBeans, externalProjectsView)
+        val runConfigurationName = runConfigurationData?.configurationName ?: ""
+        val projectChildNodes = toChildNodes(splitProjectBeans, externalProjectsView)
+        val libraryChildNodes = toChildNodes(splitLibraryBeans, externalProjectsView)
         return listOf(
             SpringProfileNodes(externalProjectsView, profileViewNodes),
-            ProjectBeanNodes(externalProjectsView, toChildNodes(splitProjectBeans, externalProjectsView)),
-            LibraryBeanNodes(externalProjectsView, toChildNodes(splitLibraryBeans, externalProjectsView)),
+            ProjectBeanNodes(externalProjectsView, projectChildNodes, runConfigurationName),
+            LibraryBeanNodes(externalProjectsView, libraryChildNodes),
             *splitProjectBeans.applications.toTypedArray(),
         )
     }

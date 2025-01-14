@@ -23,10 +23,7 @@ import com.explyt.spring.boot.bean.reader.SpringBootBeanEnhancerReaderStarter
 import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.externalsystem.model.SpringAspectData
-import com.explyt.spring.core.externalsystem.model.SpringBeanData
-import com.explyt.spring.core.externalsystem.model.SpringBeanType
-import com.explyt.spring.core.externalsystem.model.SpringProfileData
+import com.explyt.spring.core.externalsystem.model.*
 import com.explyt.spring.core.externalsystem.process.AspectInfo
 import com.explyt.spring.core.externalsystem.process.BeanInfo
 import com.explyt.spring.core.externalsystem.process.ExplytCapturingProcessAdapter
@@ -167,6 +164,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
         fillProfiles(projectDataNode, projectPath, settings.project, runConfiguration)
+        fillRunConfigurationData(projectDataNode, settings)
         return projectDataNode
     }
 
@@ -266,6 +264,15 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         profiles.asSequence().filter { it.isNotEmpty() }
             .map { SpringProfileData(it, runConfiguration.name) }
             .forEach { projectDataNode.createChild(SpringProfileData.KEY, it) }
+    }
+
+    private fun fillRunConfigurationData(
+        projectDataNode: DataNode<ProjectData>,
+        settings: NativeExecutionSettings,
+    ) {
+        val runConfigurationName = settings.runConfigurationName ?: return
+        val data = SpringRunConfigurationData("${runConfigurationName}:${settings.runConfigurationType}")
+        projectDataNode.createChild(SpringRunConfigurationData.KEY, data)
     }
 
     private fun getModule(projectPath: String, project: Project): Module? {
