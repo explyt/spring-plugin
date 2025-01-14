@@ -104,7 +104,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val processor = getLineMarkerElementProcessor(element) ?: return
 
         if (processor.isComponentClassOrBeanMethod()) {
-            val builder = NavigationGutterIconBuilder.create(getComponentIcom(processor))
+            val builder = NavigationGutterIconBuilder.create(getComponentIcon(processor))
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findFieldsAndMethodsWithAutowired() })
                 .setTooltipText(getTooltipMessage(processor))
@@ -155,7 +155,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         else
             SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate.innactive")
 
-    private fun getComponentIcom(processor: LineMarkerElementProcessor) =
+    private fun getComponentIcon(processor: LineMarkerElementProcessor) =
         if (processor.inSpringContextClass == true)
             SpringIcons.SpringBean else SpringIcons.springBeanInactive
 

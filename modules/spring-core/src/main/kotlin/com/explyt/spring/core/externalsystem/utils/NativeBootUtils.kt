@@ -22,24 +22,17 @@ import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
-import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
-import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.externalSystem.dependency.analyzer.DAArtifact
-import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
-import org.jetbrains.kotlin.asJava.classes.KtLightClassForFacade
-import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.toUElement
 
 object NativeBootUtils {
 
@@ -89,22 +82,6 @@ object NativeBootUtils {
         return result
     }
 
-    fun getMainClass(psiClass: PsiClass?): PsiClass? {
-        psiClass ?: return null
-        return when (psiClass.language) {
-            JavaLanguage.INSTANCE -> psiClass
-
-            KotlinLanguage.INSTANCE -> {
-                if (psiClass is KtLightClassForFacade) {
-                    return getKotlinMainBootClass(psiClass)
-                }
-                return null
-            }
-
-            else -> null
-        }
-    }
-
     fun isSupportRunConfiguration(runConfiguration: RunConfiguration?): Boolean {
         return runConfiguration?.let { getMainClass(it) != null } ?: false
     }
@@ -113,31 +90,6 @@ object NativeBootUtils {
         val psiClassList = RunConfigurationUtil.getRunPsiClass(runConfiguration)
         if (psiClassList.size == 1) return psiClassList.first()
         return psiClassList.find { it.isMetaAnnotatedBy(SPRING_BOOT_APPLICATION) }
-    }
-
-    private fun getKotlinMainBootClass(psiClass: KtLightClassForFacade): PsiClass? {
-        val psiClasses = psiClass.files.flatMap { it.classes.toList() }
-        return if (psiClasses.size == 1) {
-            psiClasses[0]
-        } else {
-            findMainSpringBootClass(psiClasses)
-        }
-    }
-
-    private fun findMainSpringBootClass(psiClasses: List<PsiClass>): PsiClass? {
-        if (psiClasses.isEmpty()) return null
-        val module = ModuleUtilCore.findModuleForPsiElement(psiClasses.first()) ?: return null
-        val metaHolder = SpringSearchService.getInstance(module.project)
-            .getMetaAnnotations(module, SPRING_BOOT_APPLICATION)
-
-        for (psiClass in psiClasses) {
-            val uClass = psiClass.toUElement() as? UClass ?: continue
-            val isSpringBootApp = uClass.uAnnotations.asSequence()
-                .mapNotNull { it.javaPsi }
-                .any { metaHolder.contains(it) }
-            if (isSpringBootApp) return psiClass
-        }
-        return null
     }
 
 }

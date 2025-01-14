@@ -26,12 +26,14 @@ import com.intellij.openapi.externalSystem.view.ExternalProjectsView
 import com.intellij.openapi.externalSystem.view.ExternalSystemNode
 
 @Order(10)
-class ProjectBeanNodes(externalProjectsView: ExternalProjectsView, val beans: List<ExternalSystemNode<*>>) :
-    ExternalSystemNode<SpringBeanData>(externalProjectsView, null, null) {
+class ProjectBeanNodes(
+    externalProjectsView: ExternalProjectsView, val beans: List<ExternalSystemNode<*>>, val runConfigurationName: String
+) : ExternalSystemNode<SpringBeanData>(externalProjectsView, null, null) {
 
     override fun update(presentation: PresentationData) {
         super.update(presentation)
         presentation.setIcon(AllIcons.Nodes.ConfigFolder)
+        presentation.tooltip = runConfigurationName
     }
 
     override fun getName() = SpringCoreBundle.message("explyt.external.view.node.project")

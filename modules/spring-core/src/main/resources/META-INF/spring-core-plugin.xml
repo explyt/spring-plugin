@@ -680,7 +680,8 @@
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationPropertiesAnnotator"/>
 
         <colorSettingsPage implementation="com.explyt.spring.core.color.ExplytPropertyColorSettingsPage"/>
-
+        <runLineMarkerContributor language="UAST"
+                                  implementationClass="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectLineMarkerContributor"/>
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">

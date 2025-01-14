@@ -318,10 +318,12 @@ class EndpointsToolWindow(private val project: Project) :
 
         progressBar.setIndeterminate(true)
         progressBar.isVisible = true
+        endpointTree.emptyText.text = "Loading..."
 
         ReadAction.nonBlocking(Callable { getViewData() })
             .inSmartMode(project)
             .finishOnUiThread(ModalityState.current()) {
+                endpointTree.emptyText.text = "Nothing to show"
                 val endpointTreeStructure = EndpointTreeStructure(RootEndpointNode(it))
                 val treeModel = StructureTreeModel<AbstractTreeStructure>(endpointTreeStructure, this)
                 endpointTree.setModel(AsyncTreeModel(treeModel, this))
