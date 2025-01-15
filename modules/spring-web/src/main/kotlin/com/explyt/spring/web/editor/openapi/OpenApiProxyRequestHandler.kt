@@ -51,7 +51,7 @@ class OpenApiProxyRequestHandler : HttpRequestHandler() {
         context: ChannelHandlerContext
     ): Boolean {
         val url = request.headers()[OpenApiUtils.OPENAPI_ORIGINAL_URL] ?: return false
-        val timeout = Registry.intValue("openapi.ui.proxy.timeout").toLong()
+        val timeout = Registry.intValue("explyt.openapi.ui.proxy.timeout").toLong()
 
         val httpClient = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
