@@ -80,13 +80,16 @@ object OpenApiUtils {
     }
 
     fun resourceUrl(specKey: UUID): String =
-        "http://localhost:${BuiltInServerManager.getInstance().port}/${EXPLYT_OPENAPI}?key=${specKey}&resource"
+        "${localServer()}/${EXPLYT_OPENAPI}?key=${specKey}&resource"
 
     fun resourceUrl(specKey: UUID, resource: String): String =
         "${resourceUrl(specKey)}=$resource"
 
     fun proxyUrl(): String =
-        "http://localhost:${BuiltInServerManager.getInstance().port}$OPENAPI_INTERNAL_CORS"
+        "${localServer()}$OPENAPI_INTERNAL_CORS"
+
+    fun localServer(): String =
+        "http://localhost:${BuiltInServerManager.getInstance().port}"
 
     fun createPreviewAction(tag: String, operationId: String): AnAction {
         return object : AnAction({ "Open in UI" }, AllIcons.RunConfigurations.TestState.Run) {

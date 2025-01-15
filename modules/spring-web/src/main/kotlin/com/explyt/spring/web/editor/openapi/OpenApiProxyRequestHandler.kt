@@ -36,6 +36,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.HttpResponse
+import java.net.http.HttpTimeoutException
 import java.time.Duration
 
 
@@ -52,6 +53,11 @@ class OpenApiProxyRequestHandler : HttpRequestHandler() {
     ): Boolean {
         val url = request.headers()[OpenApiUtils.OPENAPI_ORIGINAL_URL] ?: return false
         val timeout = Registry.intValue("explyt.openapi.ui.proxy.timeout").toLong()
+
+        if (url.startsWith(OpenApiUtils.localServer())) {
+            handleException(ConnectException("Servers are not set"), HttpResponseStatus.BAD_GATEWAY, context.channel(), request)
+            return true
+        }
 
         val httpClient = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -103,6 +109,8 @@ class OpenApiProxyRequestHandler : HttpRequestHandler() {
                 context.channel(),
                 request
             )
+        } catch (timeoutException: HttpTimeoutException) {
+            handleException(timeoutException, HttpResponseStatus.GATEWAY_TIMEOUT, context.channel(), request)
         } catch (connectException: ConnectException) {
             handleException(connectException, HttpResponseStatus.BAD_GATEWAY, context.channel(), request)
         } catch (exception: Exception) {
