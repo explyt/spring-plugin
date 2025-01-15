@@ -127,7 +127,8 @@ class OpenApiFileUtil {
         val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
 
         val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(fileType)
-        for (server in servers) {
+        val serversToAdd = servers.ifEmpty { listOf("http://localhost:8080") }
+        for (server in serversToAdd) {
             openapiBuilder.addServer(server)
         }
         for (info in endpointInfos) {
