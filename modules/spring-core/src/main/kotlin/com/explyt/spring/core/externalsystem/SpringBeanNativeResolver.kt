@@ -468,7 +468,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     private fun getBeanType(psiClass: PsiClass, bean: BeanInfo): SpringBeanType {
         return if (bean.methodName != null) {
             SpringBeanType.METHOD
-        } else if (isAnnotated(psiClass, SpringCoreClasses.SPRING_BOOT_APPLICATION)) {
+        } else if (isMetaAnnotated(psiClass, SpringCoreClasses.SPRING_BOOT_APPLICATION)) {
             SpringBeanType.APPLICATION
         } else if (isMetaAnnotated(psiClass, SpringCoreClasses.CONTROLLER)) {
             SpringBeanType.CONTROLLER
