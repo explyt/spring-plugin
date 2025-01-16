@@ -18,12 +18,14 @@
 package com.explyt.spring.core.externalsystem.action
 
 import com.explyt.spring.core.SpringCoreBundle.message
-import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.spring.core.SpringIcons.SpringExplorer
 import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvider
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
@@ -34,12 +36,13 @@ import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
-import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.toUElement
 import java.awt.event.MouseEvent
 
@@ -49,8 +52,8 @@ class AttachSpringBootProjectLineMarkerContributor : LineMarkerProviderDescripto
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         val uAnnotation = element.toUElement() as? UAnnotation ?: return null
-        if (uAnnotation.qualifiedName != SpringCoreClasses.SPRING_BOOT_APPLICATION) return null
-        val uClass = element.toUElement()?.getParentOfType<UClass>() ?: return null
+        val uClass = uAnnotation.uastParent as? UClass ?: return null
+        if (!isSupport(uAnnotation, uClass)) return null
         val sourcePsi = uAnnotation.sourcePsi ?: return null
         val canonicalPath = uClass.javaPsi.containingFile.virtualFile.canonicalPath ?: return null
         return LineMarkerInfo(
@@ -62,6 +65,18 @@ class AttachSpringBootProjectLineMarkerContributor : LineMarkerProviderDescripto
             GutterIconRenderer.Alignment.RIGHT,
             { getTooltipText(element.project, canonicalPath) },
         )
+    }
+
+    private fun isSupport(uAnnotation: UAnnotation, uClass: UClass): Boolean {
+        if (uAnnotation.qualifiedName == SPRING_BOOT_APPLICATION) return true
+        val project = uClass.javaPsi.project
+        if (!uClass.javaPsi.isMetaAnnotatedBy(SPRING_BOOT_APPLICATION)) return false
+        val module = ModuleUtilCore.findModuleForPsiElement(uClass.javaPsi) ?: return false
+        if (JavaPsiFacade.getInstance(project)
+                .findClass(SPRING_BOOT_APPLICATION, module.moduleWithLibrariesScope) == null
+        ) return false
+        val holder = SpringSearchService.getInstance(project).getMetaAnnotations(module, SPRING_BOOT_APPLICATION)
+        return holder.contains(uAnnotation)
     }
 
     companion object {
