@@ -6,6 +6,23 @@
 
 ### Spring Core/Boot
 
+- Fixed: Properties: quick-fix to kebab-case didn't work
+- Fixed: Show correct linemarkers in library files with an enabled Spring Boot panel. 
+
+### Spring Web / OpenAPI
+
+- Added: Swagger is able to download a picture or binary file
+- Fixed: Navigation from endpoint to MockMvc usage (kotlin)
+- Chore: Now swagger uses JCEF browser through HttpClient
+- Fixed: Navigation between MockMvc urls for a new version of MockMvc library
+- Added: Use localhost as default server if server wasn't set in an OpenAPI file
+
+### Other
+
+- Added: Kotlin Run Configuration can be linked to Explyt Spring Boot Panel
+- Added: Show progress while collecting project's endpoints in the Spring Endpoints panel 
+- Added: Sync project with the Explyt Spring Boot panel using linemarker on @SpringBootApplication
+
 ## [243.1.3083] - 2024-12-29
 
 ### Spring Core/Boot
@@ -17,7 +34,6 @@
 
 ### Spring Web / OpenAPI
 
-- Fixed: Navigation from endpoint to MockMvc usage (kotlin)
 - Added: Action `Generate OpenApi Specification` for project
 - Added: Run in Swagger action for Controller/FeignClient
 - Added: Generate requestBody as custom type schema for Run controller/endpoint action
