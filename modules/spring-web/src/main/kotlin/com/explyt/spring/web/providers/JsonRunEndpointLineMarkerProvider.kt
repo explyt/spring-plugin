@@ -19,9 +19,9 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.util.ExplytPsiUtil.getUnquotedText
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.json.psi.*
-import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
@@ -37,7 +37,7 @@ class JsonRunEndpointLineMarkerProvider : RunLineMarkerContributor() {
             JsonStringLiteral::class.java,
             false
         )?.parent as? JsonProperty ?: return null
-        val elementText = unquotedText(element)
+        val elementText = getUnquotedText(element)
         if (elementText != jsonProperty.name) return null
         val jsonFile = jsonProperty.containingFile as? JsonFile ?: return null
         if (!OpenApiUtils.isOpenApi(jsonFile)) return null
@@ -50,12 +50,8 @@ class JsonRunEndpointLineMarkerProvider : RunLineMarkerContributor() {
         val operationId = getSubPropertyValue(jsonProperty, "operationId") ?: return null
 
         return Info(
-            OpenApiUtils.createPreviewAction(unquotedText(firstTag), unquotedText(operationId))
+            OpenApiUtils.createPreviewAction(getUnquotedText(firstTag), getUnquotedText(operationId))
         )
-    }
-
-    private fun unquotedText(psiElement: PsiElement): String {
-        return JsonPsiUtil.stripQuotes(ElementManipulators.getValueText(psiElement))
     }
 
     private fun getSubPropertyValue(jsonProperty: JsonProperty, key: String): JsonValue? {

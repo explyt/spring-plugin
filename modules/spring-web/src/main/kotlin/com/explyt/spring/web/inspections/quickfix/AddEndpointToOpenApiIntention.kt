@@ -32,6 +32,7 @@ import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonFile
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlFiles
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.SourcesUtils
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
@@ -48,7 +49,6 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
-import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -112,7 +112,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                     WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
                         val staticDir =
                             resourceRoot.findSubdirectory("static") ?: resourceRoot.createSubdirectory("static")
-                        navigate(staticDir.add(openApiFile))
+                        ExplytPsiUtil.navigate(staticDir.add(openApiFile))
                     }
                 }
             } else if (openApiFiles.size == 1) {
@@ -178,7 +178,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val newElement = elementGenerator.createProperty(endpointPath, "{${builder}}")
                 addPropertyToObject(newElement, parentObject, generator)
             }
-            navigate(propertyElement)
+            ExplytPsiUtil.navigate(propertyElement)
         }
     }
 
@@ -207,15 +207,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val pathElement = keyValueGenerator.createYamlKeyValue(endpointPath, valueString)
                 parentMapping.putKeyValue(pathElement)
             }
-            navigate(parentMapping.children.lastOrNull())
-        }
-    }
-
-    private fun navigate(psiElement: PsiElement?) {
-        val navigatable = psiElement as? Navigatable ?: return
-
-        ApplicationManager.getApplication().invokeLater {
-            navigatable.navigate(false)
+            ExplytPsiUtil.navigate(parentMapping.children.lastOrNull())
         }
     }
 

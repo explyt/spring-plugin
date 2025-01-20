@@ -20,7 +20,10 @@ package com.explyt.util
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.isInheritorOf
+import com.intellij.json.psi.JsonPsiUtil
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.TextRange
+import com.intellij.pom.Navigatable
 import com.intellij.psi.*
 import com.intellij.psi.util.PropertyUtilBase
 import com.intellij.psi.util.PsiTreeUtil
@@ -275,4 +278,17 @@ object ExplytPsiUtil {
         val ktNamedFunction = this.sourcePsi as? KtNamedFunction ?: return false
         return ktNamedFunction.modifierList?.getModifier(ktModifierKeywordToken) != null
     }
+
+    fun navigate(psiElement: PsiElement?) {
+        val navigatable = psiElement as? Navigatable ?: return
+
+        ApplicationManager.getApplication().invokeLater {
+            navigatable.navigate(false)
+        }
+    }
+
+    fun getUnquotedText(psiElement: PsiElement): String {
+        return JsonPsiUtil.stripQuotes(ElementManipulators.getValueText(psiElement))
+    }
+
 }

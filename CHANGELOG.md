@@ -6,6 +6,10 @@
 
 ### Spring Core/Boot
 
+### Spring Web / OpenAPI
+
+- Added Inspection: `Unknown reference` for openapi `$ref` (yaml, json)
+
 ## [243.1.3155] - 2025-01-17
 
 ### Spring Core/Boot
@@ -38,6 +42,7 @@
 
 ### Spring Web / OpenAPI
 
+- Fixed: Navigation from endpoint to MockMvc usage (kotlin)
 - Added: Action `Generate OpenApi Specification` for project
 - Added: Run in Swagger action for Controller/FeignClient
 - Added: Generate requestBody as custom type schema for Run controller/endpoint action
