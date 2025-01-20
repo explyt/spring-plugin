@@ -6,6 +6,14 @@
 
 ### Spring Core/Boot
 
+### Spring Web / OpenAPI
+
+- Added Inspection: `Unknown reference` for openapi `$ref` (yaml, json)
+
+## [243.1.3155] - 2025-01-17
+
+### Spring Core/Boot
+
 - Fixed: Properties: quick-fix to kebab-case didn't work
 - Fixed: Show correct linemarkers in library files with an enabled Spring Boot panel. 
 
@@ -23,7 +31,7 @@
 - Added: Show progress while collecting project's endpoints in the Spring Endpoints panel 
 - Added: Sync project with the Explyt Spring Boot panel using linemarker on @SpringBootApplication
 
-## [243.1.3083] - 2024-12-29
+## 243.1.3083 - 2024-12-29
 
 ### Spring Core/Boot
 
@@ -34,6 +42,7 @@
 
 ### Spring Web / OpenAPI
 
+- Fixed: Navigation from endpoint to MockMvc usage (kotlin)
 - Added: Action `Generate OpenApi Specification` for project
 - Added: Run in Swagger action for Controller/FeignClient
 - Added: Generate requestBody as custom type schema for Run controller/endpoint action

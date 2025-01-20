@@ -137,6 +137,26 @@
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.web.inspections.OpenApiYamlSpecificationVersionInspection"/>
 
+        <localInspection language="JSON"
+                         shortName="OpenApiJsonUnresolvedReferenceInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.openapi.json.reference"
+                         enabledByDefault="true" level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.OpenApiJsonUnresolvedReferenceInspection"/>
+
+        <localInspection language="yaml"
+                         shortName="OpenApiYamlUnresolvedReferenceInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.openapi.yaml.reference"
+                         enabledByDefault="true" level="ERROR"
+                         implementationClass="com.explyt.spring.web.inspections.OpenApiYamlUnresolvedReferenceInspection"/>
+
         <localInspection language="UAST"
                          shortName="OpenFeignInspection"
                          groupBundle="messages.SpringWebBundle"
@@ -183,7 +203,7 @@
 
         <psi.referenceContributor language="JSON"
                                   implementation="com.explyt.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
-        
+
         <json.jsonSchemaGotoDeclarationSuppressor implementation="com.explyt.spring.web.jsonSchema.OpenApiYamlGotoDeclarationSuppressor"/>
         <json.jsonSchemaGotoDeclarationSuppressor implementation="com.explyt.spring.web.jsonSchema.OpenApiJsonGotoDeclarationSuppressor"/>
 
