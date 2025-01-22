@@ -33,7 +33,6 @@ import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndp
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlFiles
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
-import com.explyt.util.SourcesUtils
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
 import com.intellij.json.psi.JsonElementGenerator
@@ -49,6 +48,9 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.findOrCreateDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -102,17 +104,20 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
             if (openApiFiles.isEmpty()) {
                 val defaultFileType = YAMLFileType.YML
 
-                val resourceRoot = SourcesUtils.getResourceRoots(module, false).firstOrNull()?.toPsiDirectory(project)
+                val rootManager = ModuleRootManager.getInstance(module)
+                val contentRoot = rootManager.contentRoots.firstOrNull() ?: return@invokeLater
 
-                if (resourceRoot != null) {
-                    val openApiFile = OpenApiBuilderFactory.getOpenApiFileBuilder(defaultFileType)
-                        .addEndpoint(endpoint)
-                        .toFile("openapi", project)
+                val openApiFile = OpenApiBuilderFactory.getOpenApiFileBuilder(defaultFileType)
+                    .addEndpoint(endpoint)
+                    .toFile("openapi", project)
 
-                    WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
-                        val staticDir =
-                            resourceRoot.findSubdirectory("static") ?: resourceRoot.createSubdirectory("static")
-                        ExplytPsiUtil.navigate(staticDir.add(openApiFile))
+                WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
+                    val resourcesPath = "${contentRoot.path}/src/main/resources"
+                    val resourcesDir = VfsUtil.createDirectoryIfMissing(resourcesPath) ?: return@run
+
+                    val staticDir = resourcesDir.findOrCreateDirectory("static")
+                    staticDir.toPsiDirectory(project)?.let { psiDirectory ->
+                        ExplytPsiUtil.navigate(psiDirectory.add(openApiFile))
                     }
                 }
             } else if (openApiFiles.size == 1) {
