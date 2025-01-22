@@ -35,6 +35,7 @@ class SpringWebEndpointsSearcher(private val project: Project) {
     fun getLoadersTypes(): Collection<EndpointType> {
         return SpringWebEndpointsLoader.EP_NAME.getExtensions(project)
             .map { it.getType() }
+            .distinct()
     }
 
     fun getAllEndpoints(module: Module, types: List<EndpointType> = emptyList()): List<EndpointElement> {

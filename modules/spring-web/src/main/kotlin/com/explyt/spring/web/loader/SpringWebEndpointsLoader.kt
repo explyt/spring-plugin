@@ -23,6 +23,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 
 interface SpringWebEndpointsLoader {
@@ -41,6 +42,10 @@ interface SpringWebEndpointsLoader {
     fun searchAnnotatedClasses(annotation: PsiClass, module: Module): List<PsiClass> {
         return AnnotatedElementsSearch.searchPsiClasses(annotation, module.moduleWithDependenciesScope)
             .filter { !it.isAnnotationType }
+    }
+
+    fun searchAnnotatedMethods(annotation: PsiClass, module: Module): List<PsiMethod> {
+        return AnnotatedElementsSearch.searchPsiMethods(annotation, module.moduleWithDependenciesScope).toList()
     }
 
     companion object {
@@ -73,6 +78,7 @@ sealed class EndpointData {
 
 enum class EndpointType(val readable: String) {
     SPRING_MVC("Spring MVC"),
+    SPRING_HTTP_EXCHANGE("HttpExchange"),
     SPRING_WEBFLUX("WebFlux"),
     OPENAPI("OpenAPI"),
     SPRING_OPEN_FEIGN("OpenFeign")

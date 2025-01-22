@@ -8,6 +8,7 @@
 
 ### Spring Web / OpenAPI
 
+- Added: Endpoint Tool Window shows HttpExchange endpoints
 - Added Inspection: `Unknown reference` for openapi `$ref` (yaml, json)
 
 ## [243.1.3155] - 2025-01-17
