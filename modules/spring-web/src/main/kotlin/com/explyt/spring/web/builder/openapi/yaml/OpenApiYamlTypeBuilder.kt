@@ -19,6 +19,7 @@ package com.explyt.spring.web.builder.openapi.yaml
 
 import com.explyt.spring.web.builder.openapi.OpenApiTypeBuilder
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
+import com.explyt.spring.web.util.SpringWebUtil.MULTIPART_FILE
 import com.explyt.spring.web.util.SpringWebUtil.simpleTypesMap
 
 class OpenApiYamlTypeBuilder(
@@ -56,6 +57,22 @@ class OpenApiYamlTypeBuilder(
                 )
                 return
             }
+        }
+
+        if (typeQN == MULTIPART_FILE) {
+            addLinesWithIndent(
+                """
+                    $contentType:
+                      schema:
+                        type: object
+                        properties:
+                          file:
+                            type: string
+                            format: binary
+                    """,
+                indent
+            )
+            return
         }
 
         if (simpleTypesMap.containsKey(typeQN)) {

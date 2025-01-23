@@ -295,11 +295,11 @@ object SpringWebUtil {
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
+        if (!psiMethod.isMetaAnnotatedBy(REQUEST_MAPPING)) return null
         val psiClass = psiMethod.containingClass ?: return null
         val controllerName = psiClass.name ?: return null
 
-        val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        val requestMappingMah = MetaAnnotationsHolder.of(module, REQUEST_MAPPING)
         val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .firstOrNull() ?: ""
@@ -501,6 +501,8 @@ object SpringWebUtil {
     const val OPENAPI_UUID = """
               type: string
               format: uuid"""
+
+    const val MULTIPART_FILE = "org.springframework.web.multipart.MultipartFile"
 
     val simpleTypesMap = mapOf(
         "java.lang.String" to OPENAPI_STRING,
