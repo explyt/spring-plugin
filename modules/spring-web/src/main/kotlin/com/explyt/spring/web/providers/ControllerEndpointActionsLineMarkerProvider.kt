@@ -65,6 +65,10 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
         val requestMethods =
             requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
                 .map { it.text.split('.').last() }
+        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
         val returnType = uMethod.returnType
@@ -82,7 +86,9 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
             SpringWebUtil.collectPathVariables(psiMethod),
             SpringWebUtil.collectRequestParameters(psiMethod),
             SpringWebUtil.getRequestBodyInfo(psiMethod),
-            SpringWebUtil.collectRequestHeaders(psiMethod)
+            SpringWebUtil.collectRequestHeaders(psiMethod),
+            produces,
+            consumes
         )
 
         return LineMarkerInfo(

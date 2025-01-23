@@ -8,6 +8,7 @@
 
 ### Spring Web / OpenAPI
 
+- Fixed: Openapi spec generation supports MultipartFile usage
 - Added: HttpExchange endpoint actions
 - Added: Endpoint Tool Window shows HttpExchange endpoints
 - Fixed: `Generate OpenApi Doc` intention - create resources dir if is not exist
