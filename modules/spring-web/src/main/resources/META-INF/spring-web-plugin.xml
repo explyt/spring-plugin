@@ -175,6 +175,8 @@
                                         implementationClass="com.explyt.spring.web.providers.RouterEndpointActionsLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.CoRouterEndpointActionsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.web.providers.HttpExchangeEndpointActionsLineMarkerProvider"/>
 
         <runLineMarkerContributor language="yaml"
                                   implementationClass="com.explyt.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
