@@ -146,10 +146,13 @@ abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
 
     open val description: String?
         get() {
-            val docToken = (psiMember as? PsiJavaDocumentedElement)?.docComment?.childrenOfType<PsiDocToken>() ?: return null
-            return docToken.asSequence()
-                .filter { it.tokenType == JavaDocTokenType.DOC_COMMENT_DATA }
-                .map { it.text }.firstOrNull()
+            val comment = getComment(psiMember)
+            if (comment != null) return comment
+
+            val filedName = psiMember.name?.substringAfter("set")?.replaceFirstChar { it.lowercase() } ?: return null
+            val containingClass = (psiMember as? PsiMethod)?.containingClass ?: return null
+            val psiField = containingClass.findFieldByName(filedName, false) ?: return null
+            return getComment(psiField)
         }
 
     abstract val psiType: PsiType
@@ -164,6 +167,13 @@ abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
 
     override fun toString(): String {
         return name ?: ""
+    }
+
+    private fun getComment(member: PsiMember): String? {
+        val docToken = (member as? PsiJavaDocumentedElement)?.docComment?.childrenOfType<PsiDocToken>() ?: return null
+        return docToken.asSequence()
+            .filter { it.tokenType == JavaDocTokenType.DOC_COMMENT_DATA }
+            .map { it.text }.firstOrNull()
     }
 }
 
