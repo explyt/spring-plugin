@@ -18,6 +18,7 @@
 package com.explyt.spring.core.properties.dataRetriever
 
 import ai.grazie.utils.capitalize
+import com.intellij.lang.java.JavaLanguage
 import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
@@ -54,10 +55,14 @@ class ConstructorParameterConfigurationPropertyDataRetriever(
     companion object {
         fun create(uParameter: UParameter): ConfigurationPropertyDataRetriever? {
             val psiParameter = (uParameter.javaPsi as? PsiParameter) ?: return null
-            if (psiParameter.language != KotlinLanguage.INSTANCE) return null
             val uMethod = (uParameter.uastParent as? UMethod) ?: return null
             if (!uMethod.isConstructor) return null
             val containingClass = uMethod.javaPsi.containingClass ?: return null
+            if (psiParameter.language != KotlinLanguage.INSTANCE) {
+                if (psiParameter.language == JavaLanguage.INSTANCE) {
+                    if (!containingClass.isRecord) return null
+                } else return null
+            }
 
             return ConstructorParameterConfigurationPropertyDataRetriever(
                 uParameter,

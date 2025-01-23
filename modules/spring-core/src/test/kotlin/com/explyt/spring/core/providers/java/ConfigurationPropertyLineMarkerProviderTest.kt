@@ -528,6 +528,43 @@ main:
         TestCase.assertEquals(gutterTargetsStrings.filter { it == "\"main.mime-type\"" }.size, 2)
     }
 
+    fun testConfigurationPropertiesInRecordJava() {
+        myFixture.addFileToProject(
+            APPLICATION_PROPERTIES_FILE_NAME,
+            """
+dgis.api-keys.test=text
+dgis.default-api-key-name=key
+            """.trimIndent()
+        )
+
+        myFixture.configureByText(
+            "DgisConfigurationProperties.java",
+            """
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import java.util.Map;
+
+@ConfigurationProperties("dgis")
+public record DgisConfigurationProperties(
+        Map<String, String> apiKeys,
+        String defaultApiKeyName
+) {}
+            """.trimIndent()
+        )
+        val allBeanGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringSetting)
+        val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
+
+        assertEquals(
+            gutterTargetString
+                .flatMap { gutter -> gutter.filter { it == "dgis.api-keys.test" } }.size,
+            1
+        )
+        assertEquals(
+            gutterTargetString
+                .flatMap { gutter -> gutter.filter { it == "dgis.default-api-key-name" } }.size,
+            1
+        )
+    }
+
     companion object {
         const val APPLICATION_PROPERTIES_FILE_NAME = "application.properties"
         const val APPLICATION_YAML_FILE_NAME = "application.yaml"
