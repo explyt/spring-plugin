@@ -8,6 +8,7 @@
 
 ### Spring Web / OpenAPI
 
+- Added: HttpExchange endpoint actions
 - Added: Endpoint Tool Window shows HttpExchange endpoints
 - Fixed: `Generate OpenApi Doc` intention - create resources dir if is not exist
 - Added Inspection: `Unknown reference` for openapi `$ref` (yaml, json)
