@@ -29,12 +29,12 @@ object ExplytConfigurationHighlighting {
 
     val BEAN_HIGHLIGHTER_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey(
         "BEAN_HIGHLIGHTER",
-        DefaultLanguageHighlighterColors.IDENTIFIER
+        DefaultLanguageHighlighterColors.HIGHLIGHTED_REFERENCE
     )
 
     val PROFILE_HIGHLIGHTER_KEY: TextAttributesKey = TextAttributesKey.createTextAttributesKey(
         "PROFILE_HIGHLIGHTER",
-        DefaultLanguageHighlighterColors.IDENTIFIER
+        DefaultLanguageHighlighterColors.KEYWORD
     )
 
     init {

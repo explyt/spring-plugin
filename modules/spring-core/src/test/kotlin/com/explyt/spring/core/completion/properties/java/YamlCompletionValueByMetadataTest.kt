@@ -260,22 +260,43 @@ resilience4j:
         TestCase.assertEquals(lookupElementStrings?.size, 0)
     }
 
+    fun testCompleteKeyMapValueWithColon() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+resilience4j:
+  ratelimiter:
+    instances:
+      test:
+        re<caret>:                
+            """.trimIndent()
+        )
+        doTest(
+            "register-health-indicator",
+            "limit-refresh-period",
+            "limit-refresh-period.nanos",
+            "limit-refresh-period.seconds"
+        )
+    }
+
     fun _testCompleteKeyMapValue() {
         myFixture.configureByText(
             "application.yaml",
             """
 resilience4j:
   ratelimiter:
-    instances
+    instances:
       test:
-        <caret>                
+        re<caret>                
             """.trimIndent()
         )
         doTest(
-            "limit-for-period" // и еще
+            "register-health-indicator",
+            "limit-refresh-period",
+            "limit-refresh-period.nanos",
+            "limit-refresh-period.seconds"
         )
     }
-
 
     fun _testLoggingLevelAll() {
         myFixture.configureByText(

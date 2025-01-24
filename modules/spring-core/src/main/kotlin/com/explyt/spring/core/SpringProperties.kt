@@ -69,6 +69,7 @@ object SpringProperties {
     const val POSTFIX_KEYS = ".keys"
     const val POSTFIX_VALUES = ".values"
     const val LOGGING_LEVEL = "logging.level"
+    const val MAP_KEY = "mapKey"
 
     const val COLON = ":"
     const val PLACEHOLDER_PREFIX = "\${"
