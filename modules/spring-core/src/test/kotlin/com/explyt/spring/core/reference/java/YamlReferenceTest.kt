@@ -20,6 +20,7 @@ package com.explyt.spring.core.reference.java
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
 import com.explyt.spring.core.properties.references.ValueHintReference
+import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.json.psi.impl.JsonPropertyImpl
@@ -216,7 +217,7 @@ resilience4j:
         val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references?.asSequence()
             ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
+                it as? YamlKeyMapValueReference
             }?.firstOrNull()
 
         assertNotNull(ref)
@@ -395,7 +396,7 @@ spring:
         val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references?.asSequence()
             ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
+                it as? YamlKeyMapValueReference
             }?.firstOrNull()
 
         assertNotNull(ref)
@@ -422,7 +423,7 @@ spring:
         val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references?.asSequence()
             ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
+                it as? YamlKeyMapValueReference
             }?.firstOrNull()
 
         assertNotNull(ref)
@@ -449,7 +450,7 @@ spring:
         val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references?.asSequence()
             ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
+                it as? YamlKeyMapValueReference
             }?.firstOrNull()
 
         assertNotNull(ref)
@@ -476,7 +477,7 @@ spring:
         val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references?.asSequence()
             ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
+                it as? YamlKeyMapValueReference
             }?.firstOrNull()
 
         assertNotNull(ref)

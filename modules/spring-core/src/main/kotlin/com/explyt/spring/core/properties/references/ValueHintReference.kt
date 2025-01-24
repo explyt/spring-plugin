@@ -140,6 +140,7 @@ class ValueHintReference(
     }
 
     override fun getVariants(): Array<Any> {
+        if (element.text.contains("\n")) return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
         val propertyKey = element.propertyKey() ?: return emptyArray()
         val propertyHint = PropertyUtil.getPropertyHint(module, propertyKey)

@@ -50,7 +50,10 @@ class SpringConfigurationPropertiesValueReferenceProvider : PsiReferenceProvider
     }
 
     private fun getPlaceholderValueReferences(element: PsiElement): List<PsiReference> {
-        val text = element.text ?: return emptyList()
+        val text = element.text
+            ?.lines()
+            ?.filterNot { it.trimStart().startsWith("#") }
+            ?.joinToString("\n") ?: return emptyList()
 
         return PropertyUtil.getPlaceholders(text) { placeholder, range ->
             ExplytPropertyReference(element, placeholder, range, true)

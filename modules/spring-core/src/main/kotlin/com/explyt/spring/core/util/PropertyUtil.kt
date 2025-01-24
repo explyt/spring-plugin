@@ -25,6 +25,7 @@ import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
+import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.explyt.spring.core.references.ReferenceType
 import com.explyt.spring.core.service.SpringSearchService
@@ -54,6 +55,10 @@ import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.text.PlaceholderTextRanges
 import com.intellij.webSymbols.utils.NameCaseUtils
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UField
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElement
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLValue
@@ -378,8 +383,12 @@ object PropertyUtil {
         ownerConfigurationClass: PsiClass,
         targetClass: PsiClass,
         prefix: String,
-        result: MutableMap<String, ConfigurationProperty>
+        result: MutableMap<String, ConfigurationProperty>,
+        visitedClasses: MutableSet<String> = mutableSetOf()
     ) {
+        val qualifiedNameClass = targetClass.qualifiedName ?: return
+        if (!visitedClasses.add(qualifiedNameClass)) return
+
         val nestedFields = getNestedPropertyWrappers(targetClass)
         val finalFields = getFieldPropertyWrappers(targetClass)
         val setterMethods = getMethodPropertyWrappers(module, targetClass, nestedFields)
@@ -392,7 +401,8 @@ object PropertyUtil {
                     ownerConfigurationClass,
                     propertyTypeClass,
                     "$prefix.${it.name}",
-                    result
+                    result,
+                    visitedClasses
                 )
             }
         }
@@ -402,6 +412,7 @@ object PropertyUtil {
             val propertyName = propertyWrapper.name
             val psiType = propertyWrapper.psiType
 
+            val name = if (prefix.isEmpty()) "$propertyName" else "$prefix.$propertyName"
             if (psiType is PsiClassType) {
                 val propertyTypeClass = psiType.resolve()
                 val javaFile = propertyTypeClass?.containingFile as? PsiJavaFile ?: continue
@@ -413,13 +424,13 @@ object PropertyUtil {
                         module,
                         ownerConfigurationClass,
                         propertyTypeClass,
-                        "$prefix.$propertyName",
-                        result
+                        name,
+                        result,
+                        visitedClasses
                     )
                 }
             }
 
-            val name = "$prefix.$propertyName"
             result[name] = ConfigurationProperty(
                 name,
                 ConfigurationPropertiesLoader.getPropertyType(propertyWrapper.psiType),
@@ -468,7 +479,7 @@ object PropertyUtil {
         val fields = if (targetClass.isEnum || targetClass.isCharsetTypeClass() || targetClass.isMimeTypeClass()) {
             emptyList()
         } else {
-            targetClass.allFields.filter {
+            targetClass.fields.filter {
                 it.isNonStatic
                         && it.isFinal
                         && !it.isMetaAnnotatedBy(SpringCoreClasses.NESTED_CONFIGURATION_PROPERTIES)
@@ -564,6 +575,60 @@ object PropertyUtil {
     ): PsiMember? {
         return (foundClass.findMethodsByName(setterName, true).firstOrNull()
             ?: foundClass.findFieldByName(fieldName, true))
+    }
+
+    fun configurationProperty(
+        project: Project,
+        module: Module,
+        propertyKey: String
+    ): ConfigurationProperty? {
+        val findProperty = SpringConfigurationPropertiesSearch.getInstance(project)
+            .findProperty(module, propertyKey)
+        if (findProperty == null) {
+            return SpringConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
+                .find { propertyKey.startsWith(it.name) }
+        }
+        return findProperty
+    }
+
+    fun resolveResults(sourceMember: PsiMember): Array<ResolveResult> {
+        val uElement = sourceMember.toUElement() ?: return emptyArray()
+
+        return if ((uElement is UClass || uElement is UMethod || uElement is UField)) {
+            PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
+        } else {
+            emptyArray()
+        }
+    }
+
+    fun getMethodsTypeByMap(module: Module, valueType: String, prefix: String): List<PsiMember> {
+        val result = hashMapOf<String, ConfigurationProperty>()
+        val project = module.project
+        val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
+        val foundClass =
+            JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
+                ?: return emptyList()
+
+        collectConfigurationProperty(module, foundClass, foundClass, "", result)
+
+        return result.asSequence()
+            .filter {
+                isSameProperty(it.key.substringAfter("."), prefix)
+                        || isSameProperty(it.key, prefix)
+            }
+            .map { value -> value.value.sourceType?.let { findSourceMember(prefix, it, project) } }
+            .filterNotNullTo(mutableListOf())
+    }
+
+    fun isNameSetMethod(name: String?, propertyMapValue: String): Boolean {
+        return name?.lowercase() ==
+                "set${
+                    propertyMapValue
+                        .substringAfterLast(".")
+                        .replace("-", "")
+                        .replace("_", "")
+                        .lowercase()
+                }"
     }
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()

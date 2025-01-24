@@ -27,6 +27,8 @@ import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
 import com.explyt.spring.core.properties.references.MetaConfigurationKeyReference
+import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
+import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.explyt.spring.core.util.PropertyUtil
@@ -40,6 +42,7 @@ import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.json.JsonUtil
 import com.intellij.json.psi.*
+import com.intellij.lang.properties.PropertiesLanguage
 import com.intellij.navigation.ItemPresentation
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -70,17 +73,24 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return PsiReference.EMPTY_ARRAY
         val allHints = SpringConfigurationPropertiesSearch.getInstance(element.project).getAllHints(module)
 
-        val keyHint: PropertyHint = allHints.find { hint ->
+        val keyHint: PropertyHint? = allHints.find { hint ->
             val hintName = hint.name
             val keysIdx = hintName.lastIndexOf(POSTFIX_KEYS)
             if (keysIdx == -1) {
                 return@find false
             }
             propertyKey.startsWith(hintName.substring(0, keysIdx))
-        } ?: return arrayOf(
-            ConfigurationPropertyKeyReference(element, module, propertyKey),
-            MetaConfigurationKeyReference(element, module, propertyKey)
-        )
+        }
+        if (keyHint == null) {
+            return if (isMapValue(module, propertyKey)) {
+                getMapValueReferences(element, module, propertyKey)
+            } else {
+                arrayOf(
+                    ConfigurationPropertyKeyReference(element, module, propertyKey),
+                    MetaConfigurationKeyReference(element, module, propertyKey)
+                )
+            }
+        }
 
         val referencesByPrefixKey = getPsiReferencesByPrefixKeys(propertyKey, module, keyHint, element)
         if (referencesByPrefixKey.isNotEmpty()) {
@@ -92,6 +102,91 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         }
 
         return arrayOf(ConfigurationPropertyKeyReference(element, module, propertyKey))
+    }
+
+    private fun getMapValueReferences(
+        element: PsiElement,
+        module: Module,
+        propertyKey: String
+    ): Array<PsiReference> {
+        val prefixes = generatePrefixes(propertyKey.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED))
+        val properties = SpringConfigurationPropertiesSearch.getInstance(element.project)
+            .getAllProperties(module)
+        val foundProperty = properties.asSequence()
+            .filter { property -> prefixes.any { prefix -> property.isMap() && property.name == prefix } }
+            .firstOrNull() ?: return PsiReference.EMPTY_ARRAY
+
+        return when (element.language) {
+            YAMLLanguage.INSTANCE -> getMapValueReferencesForYaml(module, element, propertyKey, foundProperty.name)
+            PropertiesLanguage.INSTANCE -> getMapValueReferencesForProperties(
+                module,
+                element,
+                propertyKey,
+                foundProperty.type
+            )
+
+            else -> emptyArray()
+        }
+    }
+
+    private fun getMapValueReferencesForYaml(
+        module: Module,
+        element: PsiElement,
+        propertyKey: String,
+        propertyName: String
+    ): Array<PsiReference> {
+        val references = mutableListOf<PsiReference>()
+
+        val propertyKeyPath = propertyKey.substringAfter("$propertyName.").split(".")
+        val elementText = element.text
+
+        var currentOffset = 0
+        propertyKeyPath.forEach { key ->
+            val keyIndex = elementText.indexOf(key, currentOffset)
+            if (keyIndex != -1) {
+                val startOffset = keyIndex
+                val endOffset = startOffset + key.length
+
+                val textRange = TextRange(startOffset, endOffset)
+                references.add(YamlKeyMapValueReference(element, module, propertyKey, textRange))
+
+                currentOffset = endOffset
+            }
+        }
+        return references.toTypedArray()
+    }
+
+    private fun getMapValueReferencesForProperties(
+        module: Module,
+        element: PsiElement,
+        propertyKey: String,
+        propertyType: String?
+    ): Array<PsiReference> {
+        val project = module.project
+        val valueType = PropertyUtil.getValueClassNameInMap(propertyType) ?: return emptyArray()
+        val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
+        val foundClass =
+            JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
+                ?: return emptyArray()
+        if (foundClass.qualifiedName?.startsWith("java.lang") == true) return PsiReference.EMPTY_ARRAY
+
+        val results = hashMapOf<String, ConfigurationProperty>()
+
+        PropertyUtil.collectConfigurationProperty(module, foundClass, foundClass, "", results)
+        val startOffset = propertyKey
+            .substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)
+            .substringBeforeLast(".")
+            .length + 1
+
+        return results.values.distinctBy { it.name }.mapNotNull {
+            val value = propertyKey.substringAfterLast(".")
+            val textRange = TextRange(startOffset, startOffset + value.length)
+            if (element.textLength >= textRange.endOffset) {
+                PropertiesKeyMapValueReference(element, module, textRange, it)
+            } else {
+                null
+            }
+        }.toTypedArray()
     }
 
     private fun getPsiReferencesByPrefixKeys(
@@ -155,6 +250,31 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
             .references
     }
 
+    private fun isMapValue(
+        module: Module,
+        propertyKey: String
+    ): Boolean {
+        val prefixes = generatePrefixes(propertyKey.substringBefore(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED))
+        val project = module.project
+        val properties = SpringConfigurationPropertiesSearch.getInstance(project)
+            .getAllProperties(module)
+        if (properties.any { it.name == propertyKey }) return false
+
+        val property = properties.asSequence()
+            .filter { property -> prefixes.any { prefix -> property.isMap() && property.name == prefix } }
+            .firstOrNull() ?: return false
+        return generatePrefixes(property.name).size + 2 == prefixes.size
+    }
+
+    private fun generatePrefixes(key: String): List<String> {
+        val parts = key.split(".")
+        val prefixes = mutableListOf<String>()
+        for (i in parts.indices) {
+            prefixes.add(parts.take(parts.size - i).joinToString("."))
+        }
+        return prefixes
+    }
+
 }
 
 class ConfigurationPropertyKeyReference(
@@ -175,12 +295,13 @@ class ConfigurationPropertyKeyReference(
     }
 
     private fun resultConfigKeyPsiElement(project: Project, module: Module): Array<ResolveResult> {
-        val foundProperty = configurationProperty(project, module) ?: return emptyArray()
+        val foundProperty = PropertyUtil.configurationProperty(project, module, propertyKey) ?: return emptyArray()
 
         val sourceType = when {
             foundProperty.propertyType == PropertyType.MAP -> {
                 return handleMapProperty(project, foundProperty)
             }
+
             PropertyUtil.isSameProperty(foundProperty.name, propertyKey) -> {
                 foundProperty.sourceType ?: return emptyArray()
             }
@@ -194,15 +315,6 @@ class ConfigurationPropertyKeyReference(
 
         val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project) ?: return emptyArray()
         return resolveResults(sourceMember)
-    }
-
-    private fun resolveBooleanSourceType(foundProperty: ConfigurationProperty): String? {
-        if (toBooleanAlias(foundProperty.name, foundProperty.type)
-            == toBooleanAlias(propertyKey, foundProperty.type)
-        ) {
-            return foundProperty.sourceType
-        }
-        return null
     }
 
     private fun handleMapProperty(project: Project, foundProperty: ConfigurationProperty): Array<ResolveResult> {
@@ -219,16 +331,9 @@ class ConfigurationPropertyKeyReference(
             val source = PropertyUtil.findSourceMember("", valueType, project) ?: return emptyArray()
             resolveResults(source)
         } else {
-            val methods = getMethodsTypeByMap(project, valueType, propertyMapValue).filter {
-                it.name?.lowercase() ==
-                        "set${
-                            propertyMapValue
-                                .substringAfterLast(".")
-                                .replace("-", "")
-                                .replace("_", "")
-                                .lowercase()
-                        }"
-            }.ifEmpty { return emptyArray() }
+            val methods = PropertyUtil.getMethodsTypeByMap(module, valueType, propertyMapValue)
+                .filter { PropertyUtil.isNameSetMethod(it.name, propertyMapValue) }
+                .ifEmpty { return emptyArray() }
             resolveResults(methods.first())
         }
     }
@@ -242,6 +347,15 @@ class ConfigurationPropertyKeyReference(
         return resolveResults(source)
     }
 
+    private fun resolveBooleanSourceType(foundProperty: ConfigurationProperty): String? {
+        if (toBooleanAlias(foundProperty.name, foundProperty.type)
+            == toBooleanAlias(propertyKey, foundProperty.type)
+        ) {
+            return foundProperty.sourceType
+        }
+        return null
+    }
+
     private fun resolveResults(sourceMember: PsiMember): Array<ResolveResult> {
         val uElement = sourceMember.toUElement() ?: return emptyArray()
 
@@ -252,53 +366,43 @@ class ConfigurationPropertyKeyReference(
         }
     }
 
-    private fun configurationProperty(
-        project: Project,
-        module: Module
-    ): ConfigurationProperty? {
-        val findProperty = SpringConfigurationPropertiesSearch.getInstance(project)
-            .findProperty(module, propertyKey)
-        if (findProperty == null) {
-            return SpringConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
-                .find { propertyKey.startsWith(it.name) }
-        }
-        return findProperty
-    }
-
     override fun getVariants(): Array<Any> {
-        if (mode == null) {
-            return emptyArray()
-        }
-        val existingKeys = if (mode == HINTS) loadExistingNameKeys() else emptySet()
-        val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        if (mode == null) return emptyArray()
+
+        val project = module.project
+        val properties = SpringConfigurationPropertiesSearch.getInstance(project)
             .getAllProperties(module)
 
-        val results = mutableListOf<LookupElement>()
+        val existingKeys = if (mode == HINTS) loadExistingNameKeys() else emptySet()
+        return properties
+            .flatMap { generateVariantsByMetadataHints(existingKeys, it) }
+            .toTypedArray()
+    }
 
-        properties.forEach {
-            if (it.isMap()) {
-                createVariant(existingKeys, it.name + POSTFIX_KEYS, results, it)
-                createVariant(existingKeys, it.name + POSTFIX_VALUES, results, it)
-            } else {
-                createVariant(existingKeys, it.name, results, it)
-            }
+    private fun generateVariantsByMetadataHints(
+        existingKeys: Set<String>,
+        property: ConfigurationProperty
+    ): List<LookupElement> {
+        return if (property.isMap()) {
+            listOfNotNull(
+                createVariant(existingKeys, property.name + POSTFIX_KEYS, property),
+                createVariant(existingKeys, property.name + POSTFIX_VALUES, property)
+            )
+        } else {
+            listOfNotNull(createVariant(existingKeys, property.name, property))
         }
-        return results.toTypedArray()
     }
 
     private fun createVariant(
         existingKeys: Set<String>,
         keysName: String,
-        results: MutableList<LookupElement>,
         property: ConfigurationProperty
-    ) {
-        if (existingKeys.contains(keysName)) return
+    ): LookupElement? {
+        if (existingKeys.contains(keysName)) return null
 
-        results.add(
-            LookupElementBuilder.create(property, keysName)
+        return LookupElementBuilder.create(property, keysName)
                 .withRenderer(PropertyRenderer())
                 .withInsertHandler(StatisticInsertHandler(StatisticActionId.COMPLETION_PROPERTY_KEY_CONFIGURATION))
-        )
     }
 
     private fun loadExistingNameKeys(): Set<String> {
@@ -326,25 +430,6 @@ class ConfigurationPropertyKeyReference(
         )
     }
 
-    private fun getMethodsTypeByMap(project: Project, valueType: String, prefix: String): List<PsiMember> {
-        val result = hashMapOf<String, ConfigurationProperty>()
-        val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
-        val foundClass =
-            JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
-                ?: return emptyList()
-
-        PropertyUtil.collectConfigurationProperty(
-            module,
-            foundClass,
-            foundClass,
-            "",
-            result
-        )
-
-        return result.filter { PropertyUtil.isSameProperty(it.key.substringAfter("."), prefix) }
-            .map { value -> value.value.sourceType?.let { PropertyUtil.findSourceMember(prefix, it, project) } }
-            .filterNotNull()
-    }
 }
 
 class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
