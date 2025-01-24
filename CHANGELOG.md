@@ -10,6 +10,8 @@
 
 ### Spring Web / OpenAPI
 
+- Added: JAX-RS endpoint actions
+- Added: Endpoint Tool Window shows JAX-RS endpoints
 - Fixed: Openapi spec generation supports MultipartFile usage
 - Added: HttpExchange endpoint actions
 - Added: Endpoint Tool Window shows HttpExchange endpoints

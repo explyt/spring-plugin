@@ -36,6 +36,9 @@ object SpringWebClasses {
     const val FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
     const val JAVA_HTTP_CLIENT = "java.net.http.HttpClient"
     const val HTTP_EXCHANGE = "org.springframework.web.service.annotation.HttpExchange"
+    const val JAX_RS_APPLICATION_PATH = "javax.ws.rs.ApplicationPath"
+    const val JAX_RS_PATH = "javax.ws.rs.Path"
+    const val JAX_RS_HTTP_METHOD = "javax.ws.rs.HttpMethod"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"

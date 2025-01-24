@@ -17,6 +17,7 @@
 
 package com.explyt.spring.web.loader
 
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
@@ -39,10 +40,8 @@ interface SpringWebEndpointsLoader {
             .filter { SpringWebUtil.isEndpointMatches(it.path, searchUrl) }
     }
 
-    fun searchAnnotatedClasses(annotation: PsiClass, module: Module): List<PsiClass> {
-        return AnnotatedElementsSearch.searchPsiClasses(annotation, module.moduleWithDependenciesScope)
-            .filter { !it.isAnnotationType }
-    }
+    fun searchAnnotatedClasses(annotation: PsiClass, module: Module): List<PsiClass> =
+        SpringSearchService.getInstance(module.project).searchAnnotatedClasses(annotation, module)
 
     fun searchAnnotatedMethods(annotation: PsiClass, module: Module): List<PsiMethod> {
         return AnnotatedElementsSearch.searchPsiMethods(annotation, module.moduleWithDependenciesScope).toList()
@@ -79,6 +78,7 @@ sealed class EndpointData {
 enum class EndpointType(val readable: String) {
     SPRING_MVC("Spring MVC"),
     SPRING_HTTP_EXCHANGE("HttpExchange"),
+    SPRING_JAX_RS("JAX-RS"),
     SPRING_WEBFLUX("WebFlux"),
     OPENAPI("OpenAPI"),
     SPRING_OPEN_FEIGN("OpenFeign")

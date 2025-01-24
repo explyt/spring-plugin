@@ -16,6 +16,8 @@
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringHttpExchangeLoader"/>
         <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.JaxRsExchangeLoader"/>
+        <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebFluxEndpointsLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
@@ -177,6 +179,8 @@
                                         implementationClass="com.explyt.spring.web.providers.CoRouterEndpointActionsLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.HttpExchangeEndpointActionsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.web.providers.JaxRsEndpointActionsLineMarkerProvider"/>
 
         <runLineMarkerContributor language="yaml"
                                   implementationClass="com.explyt.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>

@@ -17,9 +17,16 @@
 
 package com.explyt.spring.web.service
 
+import com.explyt.spring.core.service.MetaAnnotationsHolder
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
+import com.explyt.util.CacheUtils
+import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
@@ -66,4 +73,28 @@ class SpringWebEndpointsSearcher(private val project: Project) {
             .filter { types.isEmpty() || types.contains(it.getType()) }
             .flatMapTo(mutableListOf()) { it.getEndpointElements(urlPath, module) }
     }
+
+    fun getJaxRsApplicationPath(module: Module): String {
+        return CacheUtils.getCachedValue(
+            module,
+            ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+        ) {
+            val applicationPathMah = MetaAnnotationsHolder.of(module, SpringWebClasses.JAX_RS_APPLICATION_PATH)
+
+            val httpAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
+                module, SpringWebClasses.JAX_RS_APPLICATION_PATH, false
+            ).takeIf { it.isNotEmpty() } ?: emptyList()
+
+            httpAnnotations.asSequence()
+                .flatMap {
+                    SpringSearchService.getInstance(module.project)
+                        .searchAnnotatedClasses(it, module)
+                }
+                .flatMap { applicationPathMah.getAnnotationMemberValues(it, setOf("value")) }
+                .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+                .filter { it.isNotBlank() }
+                .firstOrNull() ?: ""
+        }
+    }
+
 }
