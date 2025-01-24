@@ -118,6 +118,11 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun searchAnnotatedClasses(annotation: PsiClass, module: Module): List<PsiClass> {
+        return AnnotatedElementsSearch.searchPsiClasses(annotation, module.moduleWithDependenciesScope)
+            .filter { !it.isAnnotationType }
+    }
+
     private fun doGetAllBeansClassesConsideringContext(project: Project): FoundBeans {
         val active = mutableSetOf<PsiBean>()
         val excluded = mutableSetOf<PsiBean>()
@@ -880,4 +885,5 @@ object SpringSearchUtils {
         }
         return result
     }
+
 }
