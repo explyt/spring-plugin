@@ -11,6 +11,7 @@
 
 ### Spring Web / OpenAPI
 
+- Fixed: Endpoint's RunLinemarker is always available, removed `Run in Swagger` action from endpoint's actions
 - Added: JAX-RS run linemarker (spec generation)
 - Added: JAX-RS endpoint actions
 - Added: Endpoint Tool Window shows JAX-RS endpoints

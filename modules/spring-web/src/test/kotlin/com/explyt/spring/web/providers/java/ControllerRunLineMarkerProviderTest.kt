@@ -44,14 +44,13 @@ class ControllerRunLineMarkerProviderTest : ExplytJavaLightTestCase() {
         val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == AllIcons.RunConfigurations.TestState.Run }
 
-        assertEquals(1, lineMarkers.size)
+        assertEquals(2, lineMarkers.size)
 
         assertEquals(
-            "ProductController",
+            setOf("ProductController", "getProduct"),
             lineMarkers
                 .mapNotNull { it as? LineMarkerInfo.LineMarkerGutterIconRenderer<*> }
-                .map { it.lineMarkerInfo.element?.text }
-                .firstOrNull()
+                .mapNotNullTo(mutableSetOf()) { it.lineMarkerInfo.element?.text }
         )
     }
 
@@ -62,14 +61,13 @@ class ControllerRunLineMarkerProviderTest : ExplytJavaLightTestCase() {
         val lineMarkers = myFixture.findAllGutters()
             .filter { it.icon == AllIcons.RunConfigurations.TestState.Run }
 
-        assertEquals(1, lineMarkers.size)
+        assertEquals(2, lineMarkers.size)
 
         assertEquals(
-            "ProductClient",
+            setOf("ProductClient", "getProduct"),
             lineMarkers
                 .mapNotNull { it as? LineMarkerInfo.LineMarkerGutterIconRenderer<*> }
-                .map { it.lineMarkerInfo.element?.text }
-                .firstOrNull()
+                .mapNotNullTo(mutableSetOf()) { it.lineMarkerInfo.element?.text }
         )
     }
 

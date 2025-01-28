@@ -22,6 +22,7 @@ import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.collectJaxRsArgumentInfos
 import com.explyt.spring.web.util.SpringWebUtil.getJaxRsConsumes
@@ -63,7 +64,7 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
         val path = SpringWebUtil.getJaxRsPaths(psiMethod, module).asSequence()
-            .filter { isAbsolutePath(it) }
+            .map { if (isAbsolutePath(it)) it else "$DEFAULT_SERVER/$it" }
             .firstOrNull() ?: return null
 
         val serverPart = getServerFromPath(path) ?: return null
