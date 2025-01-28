@@ -732,18 +732,23 @@
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
         </action>
 
-        <action id="PostConstructGenerateAction" class="com.explyt.spring.core.action.PostConstructJavaGenerateAction">
+        <action id="Explyt.PostConstructGenerateAction"
+                class="com.explyt.spring.core.action.PostConstructJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
-        <action id="PreDestroyGenerateAction" class="com.explyt.spring.core.action.PreDestroyJavaGenerateAction">
+        <action id="Explyt.PreDestroyGenerateAction" class="com.explyt.spring.core.action.PreDestroyJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
-        <action id="PostConstructGenerateActionKotlin"
+        <action id="Explyt.PostConstructGenerateActionKotlin"
                 class="com.explyt.spring.core.action.PostConstructKotlinGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
-        <action id="PreDestroyKotlinGenerateAction"
+        <action id="Explyt.PreDestroyKotlinGenerateAction"
                 class="com.explyt.spring.core.action.PreDestroyKotlinGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="Explyt.KotlinSpringBootRunGenerateAction"
+                class="com.explyt.spring.core.action.SpringBootAnalyzeRunGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
 

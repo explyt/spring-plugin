@@ -24,6 +24,7 @@ import org.springframework.core.metrics.StartupStep;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.Supplier;
 
 public class SpringBootBeanReaderStarter {
@@ -45,6 +46,22 @@ public class SpringBootBeanReaderStarter {
         springApplication.run(args);
     }
 
+    public static ConfigurableApplicationContext wrapToExplytBeanAnalyze(
+            List<Class<?>> primarySources, String[] args
+    ) {
+        ExplytApplicationStartup applicationStartup = new ExplytApplicationStartup();
+        SpringApplication springApplication = new SpringApplication(primarySources.toArray(new Class[0])) {
+            @Override
+            protected ConfigurableApplicationContext createApplicationContext() {
+                ConfigurableApplicationContext context = super.createApplicationContext();
+                applicationStartup.context = context;
+                return context;
+            }
+        };
+        springApplication.setApplicationStartup(applicationStartup);
+        return springApplication.run(args);
+    }
+
     private static Class<?> getApplicationClass() {
         String className = System.getenv("explyt.spring.appClassName");
         try {
@@ -54,7 +71,7 @@ public class SpringBootBeanReaderStarter {
         }
     }
 
-    private static class ExplytApplicationStartup implements ApplicationStartup {
+    public static class ExplytApplicationStartup implements ApplicationStartup {
         public ConfigurableApplicationContext context;
 
         @Override

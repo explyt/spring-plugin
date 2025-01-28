@@ -108,4 +108,5 @@ enum class StatisticActionId(description: String) {
     GENERATE_PRE_DESTROY("Method generate - @PreDestroy"),
     GENERATE_WEB_METHOD("Method generate - Spring Web Method from generate menu"),
     GENERATE_HTTP_CLIENT_METHOD("Method generate - Curl to HttpClient method"),
+    GENERATE_SPRING_BOOT_BEAN_ANALYZE("Generate code block - Spring Boot startup wrapper for beans analyzer"),
 }
