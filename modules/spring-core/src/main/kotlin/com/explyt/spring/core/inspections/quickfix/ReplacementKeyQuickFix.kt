@@ -18,6 +18,7 @@
 package com.explyt.spring.core.inspections.quickfix
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.util.RenameUtil
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.lang.properties.psi.impl.PropertyImpl
 import com.intellij.openapi.application.ApplicationManager
@@ -26,7 +27,11 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.searches.ReferencesSearch
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.psi.KtPsiFactory
 
 class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
@@ -50,13 +55,37 @@ class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
         WriteCommandAction.runWriteCommandAction(project, "Replace key", null, {
             if (editor != null) {
                 val startOffset = startElement.textRange.startOffset
-                val end = startOffset + startElement.text.substringBefore("=").length
+                val oldKey = startElement.text.substringBefore("=")
+                val end = startOffset + oldKey.length
                 editor.caretModel.moveToOffset(startOffset)
                 editor.selectionModel.setSelection(startOffset, end)
                 EditorModificationUtil.deleteSelectedText(editor)
                 EditorModificationUtil.insertStringAtCaret(editor, key)
+
+                renameUsages(project, startElement, key)
+                RenameUtil.renameSameProperty(project, startElement, oldKey, key)
             }
         }, containingFile)
+    }
 
+    private fun renameUsages(project: Project, elementToRename: PsiElement, newKey: String) {
+        val usages = ReferencesSearch.search(elementToRename).findAll().toList()
+        if (usages.isEmpty()) return
+
+        for (usage in usages) {
+            val usageElement = usage.element
+            val oldText = usageElement.text.substringAfter("{").substringBefore("}").substringBefore(":")
+            val newText = usageElement.text.replace(oldText, newKey)
+            val newElement = if (usageElement.language == KotlinLanguage.INSTANCE) {
+                val factory = KtPsiFactory(usageElement.project)
+                factory.createExpression(newText)
+            } else {
+                PsiElementFactory.getInstance(usageElement.project)
+                    .createExpressionFromText(newText, usageElement.context)
+            }
+            WriteCommandAction.runWriteCommandAction(project) {
+                usageElement.replace(newElement)
+            }
+        }
     }
 }

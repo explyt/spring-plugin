@@ -32,10 +32,9 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiElementResolveResult
-import com.intellij.psi.PsiReferenceBase
-import com.intellij.psi.ResolveResult
+import com.intellij.psi.*
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.psi.KtPsiFactory
 
 class ExplytPropertyReference(
     element: PsiElement,
@@ -83,6 +82,36 @@ class ExplytPropertyReference(
                     .withIcon(AllIcons.Nodes.Property)
                     .withTypeText(psiElement?.containingFile?.name)
             }.toTypedArray()
+    }
+
+    override fun handleElementRename(newElementName: String): PsiElement {
+        val references = element.references.asSequence()
+            .filterIsInstance<ExplytPropertyReference>()
+            .flatMap { ref ->
+                ref.multiResolve(false).asSequence().mapNotNull { it.element }
+            }.toList()
+
+        if (references.isEmpty()) {
+            return super.handleElementRename(newElementName)
+        }
+
+        val oldKey = propertyKey.substringAfterLast('.')
+        val newText = if (newElementName.contains(".")) newElementName
+        else element.text.replace(oldKey, newElementName)
+
+        if (newElementName.contains(".")) {
+            return super.handleElementRename(newElementName)
+        }
+
+        val newElement = if (element.language == KotlinLanguage.INSTANCE) {
+            val factory = KtPsiFactory(element.project)
+            factory.createExpression(newText)
+        } else {
+            PsiElementFactory.getInstance(element.project)
+                .createExpressionFromText(newText, element.context)
+        }
+        if (element.text == newElement.text) return super.handleElementRename(newElementName)
+        return element.replace(newElement)
     }
 
     private fun getPropertyPlaceholderVariants(allProperties: List<DefinedConfigurationProperty>) =

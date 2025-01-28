@@ -1,0 +1,3 @@
+server:
+  timing_new:
+    minutes-to-next-claim: 470

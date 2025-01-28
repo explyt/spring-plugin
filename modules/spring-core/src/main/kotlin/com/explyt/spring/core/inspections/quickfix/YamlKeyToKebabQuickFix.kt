@@ -22,6 +22,7 @@ import com.explyt.spring.core.statistic.StatisticActionId.PREVIEW_YAML_SWITCH_KE
 import com.explyt.spring.core.statistic.StatisticActionId.QUICK_FIX_YAML_SWITCH_KEY_TO_KEBAB_CASE
 import com.explyt.spring.core.statistic.StatisticUtil.registerActionUsage
 import com.explyt.spring.core.util.PropertyUtil.toKebabCase
+import com.explyt.spring.core.util.RenameUtil
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
@@ -29,7 +30,12 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.searches.ReferencesSearch
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.psi.KtPsiFactory
+import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.impl.YAMLKeyValueImpl
 
 class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionActionOnPsiElement(element) {
@@ -65,14 +71,43 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
                         val textToUpdate = key.text
                         val startOffset = key.textRange.startOffset
                         val end = startOffset + textToUpdate.length
+                        val newKey = toKebabCase(textToUpdate)
+
+                        if (key.text == newKey) return@runWriteCommandAction
                         editor.caretModel.moveToOffset(startOffset)
                         editor.selectionModel.setSelection(startOffset, end)
-                        EditorModificationUtil.insertStringAtCaret(editor, toKebabCase(textToUpdate))
+                        EditorModificationUtil.insertStringAtCaret(editor, newKey)
+
+                        val fullName = YAMLUtil.getConfigFullName(current)
+                        renameUsages(current, toKebabCase(fullName))
+                        RenameUtil.renameSameProperty(project, startElement, fullName, toKebabCase(fullName))
                     }
                     current = current.parent?.parent as? YAMLKeyValueImpl
                 }
             }
         }, containingFile)
 
+    }
+
+    private fun renameUsages(elementToRename: YAMLKeyValueImpl, newFullName: String) {
+        val usages = ReferencesSearch.search(elementToRename).findAll().toList()
+        if (usages.isEmpty()) return
+
+        val project = elementToRename.project
+        for (usage in usages) {
+            val usageElement = usage.element
+            val oldText = usageElement.text.substringAfter("{").substringBefore("}").substringBefore(":")
+            val newText = usageElement.text.replace(oldText, newFullName)
+            val newElement = if (usageElement.language == KotlinLanguage.INSTANCE) {
+                val factory = KtPsiFactory(usageElement.project)
+                factory.createExpression(newText)
+            } else {
+                PsiElementFactory.getInstance(usageElement.project)
+                    .createExpressionFromText(newText, usageElement.context)
+            }
+            WriteCommandAction.runWriteCommandAction(project) {
+                usageElement.replace(newElement)
+            }
+        }
     }
 }

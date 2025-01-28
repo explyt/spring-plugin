@@ -7,6 +7,7 @@
 ### Spring Core/Boot
 
 - Added: in properties/yaml completion for map value
+- Fixed: rename property name in properties/yaml files and @Value
 
 ### Spring Web / OpenAPI
 

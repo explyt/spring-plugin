@@ -682,6 +682,9 @@
         <colorSettingsPage implementation="com.explyt.spring.core.color.ExplytPropertyColorSettingsPage"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                   implementationClass="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectLineMarkerContributor"/>
+
+        <renamePsiElementProcessor
+                implementation="com.explyt.spring.core.properties.rename.SpringValueRenameProcessor"/>
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">
