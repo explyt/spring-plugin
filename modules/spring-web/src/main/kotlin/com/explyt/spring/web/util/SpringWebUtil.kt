@@ -22,13 +22,22 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_CONSUMES
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_DEFAULT
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_HEADER_PARAM
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_HTTP_METHOD
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH_PARAM
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_PRODUCES
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_QUERY_PARAM
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.SpringWebClasses.WEB_INITIALIZER
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALUE
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
+import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOptional
 import com.explyt.util.ExplytUastUtil.getCommentText
@@ -336,10 +345,110 @@ object SpringWebUtil {
         )
     }
 
-    private fun removeParams(url: String): String {
+    fun removeParams(url: String): String {
         val pos = url.indexOfFirst { it == '?' }
         val withoutParams = if (pos == -1) url else url.substring(0, pos + 1)
         return withoutParams.ifBlank { "/" }
+    }
+
+    fun getJaxRsPaths(psiMember: PsiMember, module: Module): List<String> {
+        val pathMah = MetaAnnotationsHolder.of(module, SpringWebClasses.JAX_RS_PATH)
+
+        val paths = pathMah.getAnnotationMemberValues(psiMember, setOf("value"))
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+            .map { it.replace(QueryParamRx, "{$1}") }
+
+        return paths
+    }
+
+    fun getJaxRsHttpMethods(psiMethod: PsiMethod, module: Module): List<String> {
+        val httpMethodMah = MetaAnnotationsHolder.of(module, JAX_RS_HTTP_METHOD)
+
+        return httpMethodMah.getAnnotationMemberValues(psiMethod, setOf("value"))
+            .map { ExplytPsiUtil.getUnquotedText(it) }
+    }
+
+    fun getJaxRsProduces(psiMethod: PsiMethod, module: Module): List<String> {
+        val producesMah = MetaAnnotationsHolder.of(module, JAX_RS_PRODUCES)
+        return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+    }
+
+    fun getJaxRsConsumes(psiMethod: PsiMethod, module: Module): List<String> {
+        val producesMah = MetaAnnotationsHolder.of(module, JAX_RS_CONSUMES)
+        return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+    }
+
+    fun collectJaxRsArgumentInfos(psiMethod: PsiMethod, module: Module): JaxRsArgumentInfos {
+        return JaxRsArgumentInfos(
+            collectJaxRsArgumentInfo(psiMethod, JAX_RS_PATH_PARAM, module),
+            collectJaxRsArgumentInfo(psiMethod, JAX_RS_QUERY_PARAM, module),
+            collectJaxRsArgumentInfo(psiMethod, JAX_RS_HEADER_PARAM, module)
+        )
+    }
+
+    private fun collectJaxRsArgumentInfo(
+        psiMethod: PsiMethod,
+        paramAnnotationFqn: String,
+        module: Module
+    ): List<PathArgumentInfo> {
+        val annotatedParams = psiMethod.parameterList.parameters
+            .filter { it.isMetaAnnotatedBy(paramAnnotationFqn) }
+        val paramMah = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, paramAnnotationFqn)
+        val defaultValueMah = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, JAX_RS_DEFAULT)
+
+        val paramInfos = mutableListOf<PathArgumentInfo>()
+        for (param in annotatedParams) {
+            val paramAnnotation = param.annotations.firstOrNull {
+                paramMah.contains(it)
+            } ?: continue
+            val defaultValueAnnotation = param.annotations.firstOrNull {
+                defaultValueMah.contains(it)
+            }
+
+            val paramType = param.type
+            val isMap = paramType.isMapWithStringKey()
+            val isOptional = !isMap && paramType.isOptional
+            val typeFqn = getTypeFqn(paramType, psiMethod.language)
+
+            val defaultValue = defaultValueAnnotation?.let { annotation ->
+                defaultValueMah.getAnnotationMemberValues(annotation, setOf("value"))
+                    .map { it.getStringValue() }
+                    .firstOrNull()
+            }
+
+            val memberValues = paramMah.getAnnotationMemberValues(paramAnnotation, setOf("value"))
+            if (memberValues.isEmpty()) {
+                paramInfos.add(
+                    PathArgumentInfo(
+                        param.name,
+                        param,
+                        !isOptional,
+                        isMap,
+                        typeFqn,
+                        defaultValue
+                    )
+                )
+            } else {
+                memberValues.forEach {
+                    val name = it.getStringValue() ?: return@forEach
+                    paramInfos.add(
+                        PathArgumentInfo(
+                            name,
+                            it,
+                            !isOptional,
+                            isMap,
+                            typeFqn,
+                            defaultValue
+                        )
+                    )
+                }
+            }
+        }
+        return paramInfos
     }
 
     fun getTargetRenderer(): PsiTargetPresentationRenderer<PsiElement> {
@@ -452,6 +561,7 @@ object SpringWebUtil {
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
+    val QueryParamRx = Regex("""\{([^:}]+):[^}]*}""")
 
     data class PathArgumentInfo(
         val name: String,
@@ -461,6 +571,13 @@ object SpringWebUtil {
         val typeFqn: String,
         val defaultValue: String? = null
     )
+
+    data class JaxRsArgumentInfos(
+        val pathParameters: List<PathArgumentInfo>,
+        val queryParameters: List<PathArgumentInfo>,
+        val headerParameters: List<PathArgumentInfo>
+    )
+
 
     val REQUEST_METHODS =
         setOf("get", "head", "post", "put", "patch", "delete", "options", "trace", "request", "multipart", "method")

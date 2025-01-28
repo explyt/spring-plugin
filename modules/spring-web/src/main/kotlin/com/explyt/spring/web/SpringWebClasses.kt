@@ -39,6 +39,12 @@ object SpringWebClasses {
     const val JAX_RS_APPLICATION_PATH = "javax.ws.rs.ApplicationPath"
     const val JAX_RS_PATH = "javax.ws.rs.Path"
     const val JAX_RS_HTTP_METHOD = "javax.ws.rs.HttpMethod"
+    const val JAX_RS_PRODUCES = "javax.ws.rs.Produces"
+    const val JAX_RS_CONSUMES = "javax.ws.rs.Consumes"
+    const val JAX_RS_PATH_PARAM = "javax.ws.rs.PathParam"
+    const val JAX_RS_QUERY_PARAM = "javax.ws.rs.QueryParam"
+    const val JAX_RS_HEADER_PARAM = "javax.ws.rs.HeaderParam"
+    const val JAX_RS_DEFAULT = "javax.ws.rs.DefaultValue"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"

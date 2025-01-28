@@ -111,6 +111,16 @@ object OpenApiUtils {
 
     }
 
+    fun getServerFromPath(path: String): String? {
+        if (!isAbsolutePath(path)) return null
+
+        val doubleSlashPos = path.indexOf("//")
+        if (doubleSlashPos == -1) return null
+
+        val splitPoint = path.indexOf('/', doubleSlashPos + 2)
+        return if (splitPoint == -1) path else path.substring(0, splitPoint)
+    }
+
     fun isAbsolutePath(path: String) = ABSOLUTE_PATH_REGEX.matches(path)
 
     fun unwrapType(typeCanonical: String): ComponentSchemaInfo {
