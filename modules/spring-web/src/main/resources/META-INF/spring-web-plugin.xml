@@ -190,6 +190,8 @@
                                   implementationClass="com.explyt.spring.web.providers.ControllerRunLineMarkerProvider"/>
         <runLineMarkerContributor language="UAST"
                                   implementationClass="com.explyt.spring.web.providers.EndpointRunLineMarkerProvider"/>
+        <runLineMarkerContributor language="UAST"
+                                  implementationClass="com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider"/>
 
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>

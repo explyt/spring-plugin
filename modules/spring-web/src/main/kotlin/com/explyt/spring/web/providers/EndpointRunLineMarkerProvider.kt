@@ -19,9 +19,11 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.util.SpringWebUtil.removeParams
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
 import com.intellij.codeInsight.AnnotationUtil
@@ -58,16 +60,6 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         return Info(
             RunInSwaggerAction(listOf(endpointInfo), listOf(server))
         )
-    }
-
-    private fun getServerFromPath(path: String): String? {
-        if (!isAbsolutePath(path)) return null
-
-        val doubleSlashPos = path.indexOf("//")
-        if (doubleSlashPos == -1) return null
-
-        val splitPoint = path.indexOf('/', doubleSlashPos + 2)
-        return if (splitPoint == -1) path else path.substring(0, splitPoint)
     }
 
     private fun getEndpointInfo(uMethod: UMethod, apiPath: String): EndpointInfo? {
@@ -110,12 +102,6 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             produces,
             consumes
         )
-    }
-
-    private fun removeParams(url: String): String {
-        val pos = url.indexOfFirst { it == '?' }
-        val withoutParams = if (pos == -1) url else url.substring(0, pos + 1)
-        return withoutParams.ifBlank { "/" }
     }
 
 }
