@@ -33,7 +33,6 @@ import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
-import com.explyt.spring.core.runconfiguration.SpringBootConfigurationFactory
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
@@ -42,8 +41,6 @@ import com.explyt.util.ExplytPsiUtil.isPublic
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.execution.ProgramRunnerUtil
-import com.intellij.execution.RunManager
-import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.ModuleBasedConfigurationOptions
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.executors.DefaultRunExecutor
@@ -74,7 +71,6 @@ import com.intellij.psi.util.InheritanceUtil
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
-import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit.MINUTES
@@ -100,16 +96,16 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     ): DataNode<ProjectData> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REFRESH)
 
-        val runConfiguration = findRunConfigurationReadAction(projectPath, settings)
+        val runConfigurationHolder = findRunConfigurationReadAction(projectPath, settings)
         if (isPreviewMode) {
-            return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfiguration), null)
+            return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfigurationHolder), null)
         }
         settings ?: throw ExternalSystemException("No settings")
-        runConfiguration ?: nothingException(settings)
+        runConfigurationHolder ?: nothingException(settings)
         try {
             return synchronized(this::class.java) {
                 try {
-                    getProjectDataNode(id, projectPath, runConfiguration, settings, listener)
+                    getProjectDataNode(id, projectPath, runConfigurationHolder, settings, listener)
                 } catch (e: AlreadyDisposedException) {
                     throw ExternalSystemException("Project data is disposed. Please try again")
                 }
@@ -129,22 +125,23 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     private fun getProjectDataNode(
         id: ExternalSystemTaskId,
         projectPath: String,
-        runConfiguration: SpringBootRunConfiguration,
+        runConfigurationHolder: RunConfigurationHolder,
         settings: NativeExecutionSettings,
         listener: ExternalSystemTaskNotificationListener,
     ): DataNode<ProjectData> {
-        val mainClass = ApplicationManager.getApplication()
-            .runReadAction(Computable { NativeBootUtils.getMainClass(runConfiguration) })
-            ?: throw ExternalSystemException("No main class run configuration found")
-
+        val runConfiguration = runConfigurationHolder.runConfiguration
         val modules = runConfiguration.modules
 
         buildProject(settings, modules)
 
-        runConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
-            .runReadAction(Computable { mainClass.qualifiedName })
-
-        runConfiguration.mainClassName = getMainClassName(modules, id, listener)
+        if (!runConfigurationHolder.useOriginalMainMethod) {
+            val mainClass = ApplicationManager.getApplication()
+                .runReadAction(Computable { NativeBootUtils.getMainClass(runConfiguration) })
+                ?: throw ExternalSystemException("No main class run configuration found")
+            runConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
+                .runReadAction(Computable { mainClass.qualifiedName })
+            runConfiguration.mainClassName = getMainClassName(modules, id, listener)
+        }
         runConfiguration.classpathModifications.add(getClasspathExplytModification())
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
@@ -155,7 +152,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val aspects = contextInfo.aspects
         val aspectBeanInfoByName = getAspectBeanInfoMapByName(beans, aspects)
 
-        val projectData = projectData(projectPath, runConfiguration)
+        val projectData = projectData(projectPath, runConfigurationHolder)
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
 
         detectMessageMapping(settings)
@@ -163,7 +160,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
-        fillProfiles(projectDataNode, projectPath, settings.project, runConfiguration)
+        fillProfiles(projectDataNode, projectPath, settings, runConfiguration)
         fillRunConfigurationData(projectDataNode, settings)
         return projectDataNode
     }
@@ -255,11 +252,12 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     private fun fillProfiles(
         projectDataNode: DataNode<ProjectData>,
         projectPath: String,
-        project: Project,
-        runConfiguration: SpringBootRunConfiguration
+        settings: NativeExecutionSettings,
+        runConfiguration: RunConfiguration
     ) {
-        val module = getModule(projectPath, project) ?: return
-        val profiles = SpringProfilesService.getInstance(project).loadExistingProfiles(module)
+        if (settings.runConfigurationType != RunConfigurationType.EXPLYT) return
+        val module = getModule(projectPath, settings.project) ?: return
+        val profiles = SpringProfilesService.getInstance(settings.project).loadExistingProfiles(module)
         if (profiles == DEFAULT_PROFILE_LIST) return
         profiles.asSequence().filter { it.isNotEmpty() }
             .map { SpringProfileData(it, runConfiguration.name) }
@@ -337,101 +335,20 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         projectBean = psiClassLocation.containingFile?.virtualFile?.let { fileIndex.isInSource(it) } == true
     )
 
-    private fun projectData(projectPath: String, configuration: RunConfiguration?): ProjectData {
+    private fun projectData(projectPath: String, configuration: RunConfigurationHolder?): ProjectData {
         val directoryPath = LocalFileSystem.getInstance().findFileByPath(projectPath)
             ?.takeIf { it.isFile }?.parent?.canonicalPath
             ?: throw ExternalSystemException("File not found $projectPath")
-
-        val projectData = ProjectData(
-            SYSTEM_ID, configuration?.name ?: SYSTEM_ID.readableName, directoryPath, projectPath
-        )
+        val projectName = configuration?.runConfiguration?.name ?: SYSTEM_ID.readableName
+        val projectData = ProjectData(SYSTEM_ID, projectName, directoryPath, projectPath)
         return projectData
     }
 
     private fun findRunConfigurationReadAction(
         projectPath: String, settings: NativeExecutionSettings?
-    ): SpringBootRunConfiguration? {
+    ): RunConfigurationHolder? {
         return ApplicationManager.getApplication()
-            .runReadAction(Computable { findRunConfiguration(projectPath, settings) as? SpringBootRunConfiguration })
-    }
-
-    private fun findRunConfiguration(projectPath: String, settings: NativeExecutionSettings?): RunConfiguration? {
-        settings ?: return null
-        val allConfigurationsList = RunManager.getInstance(settings.project).allConfigurationsList
-        if (settings.runConfigurationType == RunConfigurationType.KOTLIN) {
-            val runConfig = allConfigurationsList
-                .filterIsInstance<KotlinRunConfiguration>()
-                .find { it.name == settings.runConfigurationName }
-                ?.let { mapToSpringBootRunConfiguration(it, settings) }
-            if (runConfig != null) {
-                return runConfig
-            }
-        }
-        if (settings.runConfigurationType == RunConfigurationType.APPLICATION) {
-            val runConfig = allConfigurationsList
-                .filterIsInstance<ApplicationConfiguration>()
-                .find { it !is SpringBootRunConfiguration && it.name == settings.runConfigurationName }
-                ?.let { mapToSpringBootRunConfiguration(it, settings) }
-            if (runConfig != null) {
-                return runConfig
-            }
-        }
-        val springBootRunConfiguration = if (settings.runConfigurationName != null) {
-            allConfigurationsList.find { it is SpringBootRunConfiguration && it.name == settings.runConfigurationName }
-        } else {
-            allConfigurationsList.find { checkRunConfiguration(it, projectPath) }
-        }
-        return springBootRunConfiguration?.clone()
-    }
-
-    private fun mapToSpringBootRunConfiguration(
-        configuration: KotlinRunConfiguration, settings: NativeExecutionSettings
-    ): SpringBootRunConfiguration? {
-        val mainClass = NativeBootUtils.getMainClass(configuration) ?: return null
-        val module = ModuleUtilCore.findModuleForPsiElement(mainClass) ?: return null
-
-        val runConfiguration = SpringBootConfigurationFactory
-            .createTemplateConfiguration(settings.project)
-            .apply {
-                setModule(module)
-                setMainClass(mainClass)
-                setGeneratedName()
-            }
-        runConfiguration.vmParameters = configuration.vmParameters
-        runConfiguration.envs = configuration.envs
-        runConfiguration.programParameters = configuration.programParameters
-        runConfiguration.isPassParentEnvs = configuration.isPassParentEnvs
-        runConfiguration.alternativeJrePath = configuration.alternativeJrePath
-        runConfiguration.classpathModifications = configuration.classpathModifications
-        return runConfiguration
-    }
-
-    private fun mapToSpringBootRunConfiguration(
-        configuration: ApplicationConfiguration, settings: NativeExecutionSettings
-    ): SpringBootRunConfiguration? {
-        val mainClass = NativeBootUtils.getMainClass(configuration) ?: return null
-        val module = ModuleUtilCore.findModuleForPsiElement(mainClass) ?: return null
-
-        val runConfiguration = SpringBootConfigurationFactory
-            .createTemplateConfiguration(settings.project)
-            .apply {
-                setModule(module)
-                setMainClass(mainClass)
-                setGeneratedName()
-            }
-        runConfiguration.vmParameters = configuration.vmParameters
-        runConfiguration.envs = configuration.envs
-        runConfiguration.programParameters = configuration.programParameters
-        runConfiguration.isPassParentEnvs = configuration.isPassParentEnvs
-        runConfiguration.alternativeJrePath = configuration.alternativeJrePath
-        runConfiguration.classpathModifications = configuration.classpathModifications
-        return runConfiguration
-    }
-
-    private fun checkRunConfiguration(runConfiguration: RunConfiguration, projectPath: String): Boolean {
-        return if (runConfiguration is SpringBootRunConfiguration) {
-            runConfiguration.mainClass?.containingFile?.virtualFile?.canonicalPath == projectPath
-        } else false
+            .runReadAction(Computable { RunConfigurationExtractor.findRunConfiguration(projectPath, settings) })
     }
 
     private fun getEnvironment(
