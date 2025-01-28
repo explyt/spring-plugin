@@ -127,7 +127,7 @@ class OpenApiFileUtil {
         val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
 
         val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(fileType)
-        val serversToAdd = servers.ifEmpty { listOf("http://localhost:8080") }
+        val serversToAdd = servers.ifEmpty { listOf(DEFAULT_SERVER) }
         for (server in serversToAdd) {
             openapiBuilder.addServer(server)
         }
@@ -181,6 +181,8 @@ class OpenApiFileUtil {
         val INSTANCE: OpenApiFileUtil = OpenApiFileUtil()
         val SPECIFICATION_TYPE_KEY: Key<CachedValue<OpenApiSpecificationType>> = Key.create("openApiSpecificationType")
         val SPECIFICATION_ICON_TYPE_KEY: Key<OpenApiSpecificationType> = Key.create("openApiIconSpecificationType")
+
+        const val DEFAULT_SERVER = "http://localhost:8080"
 
         private var reg30: Regex
         private var reg31: Regex

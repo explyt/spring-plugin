@@ -22,6 +22,7 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.removeParams
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -49,11 +50,11 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .firstOrNull() ?: ""
-        if (!isAbsolutePath(path)) return null
+        val fullPath = if (isAbsolutePath(path)) path else "$DEFAULT_SERVER/$path"
 
-        val serverPart = getServerFromPath(path) ?: return null
+        val serverPart = getServerFromPath(fullPath) ?: return null
         val server = if (serverPart.startsWith('/')) serverPart.substring(1) else serverPart
-        val apiPart = if (serverPart.length == path.length) "/" else path.substring(serverPart.length)
+        val apiPart = if (serverPart.length == fullPath.length) "/" else fullPath.substring(serverPart.length)
 
         val endpointInfo = getEndpointInfo(uMethod, apiPart) ?: return null
 
