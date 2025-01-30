@@ -45,6 +45,10 @@ object SpringWebClasses {
     const val JAX_RS_QUERY_PARAM = "javax.ws.rs.QueryParam"
     const val JAX_RS_HEADER_PARAM = "javax.ws.rs.HeaderParam"
     const val JAX_RS_DEFAULT = "javax.ws.rs.DefaultValue"
+    const val RETROFIT_PATH_PARAM = "retrofit2.http.Path"
+    const val RETROFIT_QUERY_PARAM = "retrofit2.http.Query"
+    const val RETROFIT_HEADER_PARAM = "retrofit2.http.Header"
+    const val RETROFIT_HTTP = "retrofit2.http.HTTP"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"

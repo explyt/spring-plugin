@@ -181,6 +181,8 @@
                                         implementationClass="com.explyt.spring.web.providers.HttpExchangeEndpointActionsLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.JaxRsEndpointActionsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.web.providers.RetrofitEndpointActionsLineMarkerProvider"/>
 
         <runLineMarkerContributor language="yaml"
                                   implementationClass="com.explyt.spring.web.providers.YamlRunEndpointLineMarkerProvider"/>
@@ -192,6 +194,8 @@
                                   implementationClass="com.explyt.spring.web.providers.EndpointRunLineMarkerProvider"/>
         <runLineMarkerContributor language="UAST"
                                   implementationClass="com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider"/>
+        <runLineMarkerContributor language="UAST"
+                                  implementationClass="com.explyt.spring.web.providers.RetrofitRunLineMarkerProvider"/>
 
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
