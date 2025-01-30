@@ -30,6 +30,10 @@ import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH_PARAM
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_PRODUCES
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_QUERY_PARAM
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
+import com.explyt.spring.web.SpringWebClasses.RETROFIT_HEADER_PARAM
+import com.explyt.spring.web.SpringWebClasses.RETROFIT_HTTP
+import com.explyt.spring.web.SpringWebClasses.RETROFIT_PATH_PARAM
+import com.explyt.spring.web.SpringWebClasses.RETROFIT_QUERY_PARAM
 import com.explyt.spring.web.SpringWebClasses.WEB_INITIALIZER
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALUE
@@ -380,13 +384,108 @@ object SpringWebUtil {
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
     }
 
-    fun collectJaxRsArgumentInfos(psiMethod: PsiMethod, module: Module): JaxRsArgumentInfos {
-        return JaxRsArgumentInfos(
+    fun collectJaxRsArgumentInfos(psiMethod: PsiMethod, module: Module): HttpArgumentInfos {
+        return HttpArgumentInfos(
             collectJaxRsArgumentInfo(psiMethod, JAX_RS_PATH_PARAM, module),
             collectJaxRsArgumentInfo(psiMethod, JAX_RS_QUERY_PARAM, module),
             collectJaxRsArgumentInfo(psiMethod, JAX_RS_HEADER_PARAM, module)
         )
     }
+
+    fun collectRetrofitArgumentInfos(psiMethod: PsiMethod, module: Module): HttpArgumentInfos {
+        return HttpArgumentInfos(
+            collectRetrofitArgumentInfo(psiMethod, RETROFIT_PATH_PARAM, module),
+            collectRetrofitArgumentInfo(psiMethod, RETROFIT_QUERY_PARAM, module),
+            collectRetrofitArgumentInfo(psiMethod, RETROFIT_HEADER_PARAM, module)
+        )
+    }
+
+    private fun collectRetrofitArgumentInfo(
+        psiMethod: PsiMethod,
+        paramAnnotationFqn: String,
+        module: Module
+    ): List<PathArgumentInfo> {
+        val annotatedParams = psiMethod.parameterList.parameters
+            .filter { it.isMetaAnnotatedBy(paramAnnotationFqn) }
+        val paramMah = SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, paramAnnotationFqn)
+
+        val paramInfos = mutableListOf<PathArgumentInfo>()
+        for (param in annotatedParams) {
+            val paramAnnotation = param.annotations.firstOrNull {
+                paramMah.contains(it)
+            } ?: continue
+
+            val paramType = param.type
+            val isMap = paramType.isMapWithStringKey()
+            val isOptional = !isMap && paramType.isOptional
+            val typeFqn = getTypeFqn(paramType, psiMethod.language)
+
+            val memberValues = paramMah.getAnnotationMemberValues(paramAnnotation, "value")
+            if (memberValues.isEmpty()) {
+                paramInfos.add(
+                    PathArgumentInfo(
+                        param.name,
+                        param,
+                        !isOptional,
+                        isMap,
+                        typeFqn,
+                        null
+                    )
+                )
+            } else {
+                memberValues.forEach {
+                    val name = it.getStringValue() ?: return@forEach
+                    paramInfos.add(
+                        PathArgumentInfo(
+                            name,
+                            it,
+                            !isOptional,
+                            isMap,
+                            typeFqn,
+                            null
+                        )
+                    )
+                }
+            }
+        }
+        return paramInfos
+    }
+
+
+    fun getRetrofitHttpMethod(psiMethod: PsiMethod, module: Module): HttpMethod? {
+        for (httpMethodAnnotationFqn in listOf(
+            "retrofit2.http.GET",
+            "retrofit2.http.PATCH",
+            "retrofit2.http.DELETE",
+            "retrofit2.http.HEAD",
+            "retrofit2.http.OPTIONS",
+            "retrofit2.http.POST",
+            "retrofit2.http.PUT"
+        )) {
+            if (psiMethod.isMetaAnnotatedBy(httpMethodAnnotationFqn)) {
+                val httpMethodMah = MetaAnnotationsHolder.of(module, httpMethodAnnotationFqn)
+                val path = httpMethodMah.getAnnotationMemberValues(psiMethod, "value")
+                    .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+                    .firstOrNull() ?: "/"
+                val requestMethod = httpMethodAnnotationFqn.split('.').last()
+
+                return HttpMethod(path, requestMethod)
+            }
+        }
+
+        if (!psiMethod.isMetaAnnotatedBy(RETROFIT_HTTP)) return null
+
+        val httpMethodMah = MetaAnnotationsHolder.of(module, RETROFIT_HTTP)
+        val path = httpMethodMah.getAnnotationMemberValues(psiMethod, "value")
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+            .firstOrNull() ?: "/"
+        val requestMethod = httpMethodMah.getAnnotationMemberValues(psiMethod, "method")
+            .map { ExplytPsiUtil.getUnquotedText(it) }.firstOrNull() ?: return null
+
+        return HttpMethod(path, requestMethod)
+    }
+
 
     private fun collectJaxRsArgumentInfo(
         psiMethod: PsiMethod,
@@ -572,12 +671,13 @@ object SpringWebUtil {
         val defaultValue: String? = null
     )
 
-    data class JaxRsArgumentInfos(
+    data class HttpArgumentInfos(
         val pathParameters: List<PathArgumentInfo>,
         val queryParameters: List<PathArgumentInfo>,
         val headerParameters: List<PathArgumentInfo>
     )
 
+    data class HttpMethod(val path: String, val requestMethod: String)
 
     val REQUEST_METHODS =
         setOf("get", "head", "post", "put", "patch", "delete", "options", "trace", "request", "multipart", "method")

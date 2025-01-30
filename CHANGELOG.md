@@ -11,6 +11,8 @@
 
 ### Spring Web / OpenAPI
 
+- Added: Retrofit run linemarker (spec generation)
+- Added: Retrofit endpoint actions
 - Fixed: Endpoint's RunLinemarker is always available, removed `Run in Swagger` action from endpoint's actions
 - Added: JAX-RS run linemarker (spec generation)
 - Added: JAX-RS endpoint actions

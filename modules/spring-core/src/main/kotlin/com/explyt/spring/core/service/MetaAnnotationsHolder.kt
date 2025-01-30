@@ -78,6 +78,21 @@ class MetaAnnotationsHolder private constructor(
             }
     }
 
+    fun getAnnotationMemberValues(psiMember: PsiMember, targetMethod: String): Set<PsiAnnotationMemberValue> {
+        val targetMethods = setOf(targetMethod)
+        return psiMember.annotations
+            .flatMapTo(mutableSetOf()) {
+                getAnnotationMemberValues(it, targetMethods)
+            }
+    }
+
+    fun getAnnotationMemberValues(
+        psiAnnotation: PsiAnnotation,
+        targetMethod: String
+    ): Set<PsiAnnotationMemberValue> {
+        return getAnnotationMemberValues(psiAnnotation, setOf(targetMethod))
+    }
+
     fun getAnnotationMemberValues(
         psiAnnotation: PsiAnnotation,
         targetMethods: Set<String>
