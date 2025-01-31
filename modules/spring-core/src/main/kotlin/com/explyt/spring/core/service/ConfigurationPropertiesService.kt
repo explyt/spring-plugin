@@ -41,8 +41,6 @@ import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
-private const val MAX_RECURSION_DEPTH = 10
-
 @Service(Service.Level.PROJECT)
 class ConfigurationPropertiesService(private val project: Project) {
 
@@ -99,11 +97,14 @@ class ConfigurationPropertiesService(private val project: Project) {
     }
 
     private fun fillPrefixMap(
-        prefixData: ConfigurationPropertyClassPrefix, prefixByQualifiedName: MutableMap<String, String>, depth: Int = 0
+        prefixData: ConfigurationPropertyClassPrefix,
+        prefixByQualifiedName: MutableMap<String, String>,
+        visitedClasses: MutableSet<String> = mutableSetOf()
     ) {
-        if (depth > MAX_RECURSION_DEPTH) return
         val psiClass = prefixData.psiClass
         val qualifiedName = psiClass.qualifiedName ?: return
+        if (!visitedClasses.add(qualifiedName)) return
+
         prefixByQualifiedName[qualifiedName] = prefixData.prefix
 
         val fields = psiClass.fields.takeIf { it.isNotEmpty() } ?: return
@@ -118,7 +119,7 @@ class ConfigurationPropertiesService(private val project: Project) {
             if (ProjectRootManager.getInstance(project).fileIndex.isInSource(file)) {
                 val prefix = prefixData.prefix + "${field.name}."
                 val propertyClassPrefix = ConfigurationPropertyClassPrefix(resolvedPsiClass, prefix)
-                fillPrefixMap(propertyClassPrefix, prefixByQualifiedName, depth + 1)
+                fillPrefixMap(propertyClassPrefix, prefixByQualifiedName, visitedClasses)
             }
         }
     }

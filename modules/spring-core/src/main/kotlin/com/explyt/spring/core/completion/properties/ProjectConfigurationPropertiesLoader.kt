@@ -23,6 +23,7 @@ import com.explyt.spring.core.SpringProperties.HINTS
 import com.explyt.spring.core.SpringProperties.PROPERTIES
 import com.explyt.spring.core.completion.properties.utils.ProjectConfigurationPropertiesUtil
 import com.explyt.spring.core.util.PropertyUtil
+import com.explyt.spring.core.util.RenameUtil
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
 import com.explyt.util.runReadNonBlocking
 import com.intellij.json.psi.JsonFile
@@ -31,7 +32,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocToken
 import com.intellij.psi.util.childrenOfType
-import java.util.*
 
 
 class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
@@ -120,17 +120,7 @@ abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
     open val name: String?
         get() {
             val propertyName = com.intellij.psi.util.PropertyUtil.getPropertyName(psiMember) ?: return null
-            val builder = StringBuilder(propertyName)
-
-            var i = 1
-            while (i < builder.length - 1) {
-                if (isUnderscoreRequired(builder[i - 1], builder[i], builder[i + 1])) {
-                    builder.insert(i++, '-')
-                }
-                i++
-            }
-
-            return builder.toString().lowercase(Locale.getDefault())
+            return RenameUtil.convertSetterToPKebabCase(propertyName)
         }
 
     open val type: String
@@ -160,10 +150,6 @@ abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
     abstract val default: Any?
 
     abstract val deprecation:  DeprecationInfo?
-
-    private fun isUnderscoreRequired(before: Char, current: Char, after: Char): Boolean {
-        return Character.isLowerCase(before) && Character.isUpperCase(current) && Character.isLowerCase(after)
-    }
 
     override fun toString(): String {
         return name ?: ""

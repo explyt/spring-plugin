@@ -15,26 +15,31 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.providers
+package com;
 
-import com.explyt.spring.core.util.PropertyUtil
-import com.intellij.codeInsight.daemon.ImplicitUsageProvider
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethod
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
-class SpringConfigurationPropertyUsageProvider : ImplicitUsageProvider {
-    override fun isImplicitUsage(element: PsiElement): Boolean {
-        if (element !is PsiMethod) return false
-        val properties = PropertyUtil.findPropertyByConfigurationPropertyElement(element)?.properties ?: return false
-        return properties.isNotEmpty()
+@ConfigurationProperties(prefix = "lss")
+public class LssConfigurationProperties {
+    private LssPlanConfiguration lssPlanConfiguration = new LssPlanConfiguration();
+
+    public LssPlanConfiguration getLssPlanConfiguration() {
+        return lssPlanConfiguration;
     }
 
-    override fun isImplicitRead(element: PsiElement): Boolean {
-        return false
+    public void setLssPlanConfiguration(LssPlanConfiguration lssPlanConfiguration) {
+        this.lssPlanConfiguration = lssPlanConfiguration;
     }
 
-    override fun isImplicitWrite(element: PsiElement): Boolean {
-        return false
-    }
+    static class LssPlanConfiguration {
+        private Boolean isExact = false;
 
+        public Boolean getExact() {
+            return isExact;
+        }
+
+        public void setExactNew(Boolean exact) {
+            isExact = exact;
+        }
+    }
 }

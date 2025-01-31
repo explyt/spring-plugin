@@ -6,6 +6,7 @@
 
 ### Spring Core/Boot
 
+- Added: rename property for @ConfigurationProperties class methods (java) or constructor parameters (kotlin)
 - Added: in properties/yaml completion for map value
 - Fixed: rename property name in properties/yaml files and @Value
 
