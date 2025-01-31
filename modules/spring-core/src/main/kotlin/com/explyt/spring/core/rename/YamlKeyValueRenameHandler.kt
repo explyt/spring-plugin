@@ -15,13 +15,12 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.properties.rename
+package com.explyt.spring.core.rename
 
 import com.explyt.spring.core.util.RenameUtil
 import com.intellij.lang.properties.IProperty
 import com.intellij.psi.PsiElement
 import com.intellij.refactoring.rename.RenamePsiElementProcessor
-import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
 
@@ -31,20 +30,7 @@ class SpringValueRenameProcessor : RenamePsiElementProcessor() {
     }
 
     override fun prepareRenaming(element: PsiElement, newName: String, allRenames: MutableMap<PsiElement, String>) {
-        when (element) {
-            is YAMLKeyValue -> {
-                val fullName = YAMLUtil.getConfigFullName(element)
-                val newFullName = fullName.replace(element.keyText, newName)
-                RenameUtil.renameSameProperty(element.project, element, fullName, newFullName)
-            }
-
-            is IProperty -> {
-                val key = element.key
-                if (key != null) {
-                    RenameUtil.renameSameProperty(element.project, element, key, newName)
-                }
-            }
-        }
+        RenameUtil.renameProperty(element, newName)
         super.prepareRenaming(element, newName, allRenames)
     }
 }

@@ -684,7 +684,9 @@
                                   implementationClass="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectLineMarkerContributor"/>
 
         <renamePsiElementProcessor
-                implementation="com.explyt.spring.core.properties.rename.SpringValueRenameProcessor"/>
+                implementation="com.explyt.spring.core.rename.SpringValueRenameProcessor"/>
+        <renamePsiElementProcessor
+                implementation="com.explyt.spring.core.rename.ConfigurationPropertyPsiElementProcessor"/>
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">

@@ -28,10 +28,34 @@ import com.intellij.psi.util.parentOfType
 import org.jetbrains.yaml.YAMLElementGenerator
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
+import java.util.*
 
 object RenameUtil {
 
-    fun renameSameProperty(project: Project, baseElement: PsiElement, oldKey: String, newKey: String) {
+    fun renameProperty(element: PsiElement, newName: String, prefix: String = "", renameBaseElement: Boolean = false) {
+        when (element) {
+            is YAMLKeyValue -> {
+                val fullName = YAMLUtil.getConfigFullName(element)
+                val newFullName = fullName.replace(element.keyText, newName)
+                renameSameProperty(element.project, element, fullName, newFullName, renameBaseElement)
+            }
+
+            is IProperty -> {
+                val key = element.key
+                if (key != null) {
+                    renameSameProperty(element.project, element, key, prefix + newName, renameBaseElement)
+                }
+            }
+        }
+    }
+
+    fun renameSameProperty(
+        project: Project,
+        baseElement: PsiElement,
+        oldKey: String,
+        newKey: String,
+        renameBaseElement: Boolean = false
+    ) {
         val module = ModuleUtilCore.findModuleForPsiElement(baseElement) ?: return
 
         val properties = DefinedConfigurationPropertiesSearch.getInstance(project)
@@ -42,7 +66,7 @@ object RenameUtil {
 
         properties
             .mapNotNull { it.psiElement }
-            .filter { it.containingFile != baseElement.containingFile }
+            .filter { it.containingFile != baseElement.containingFile || renameBaseElement }
             .forEach { elementToRename ->
                 when (elementToRename) {
                     is YAMLKeyValue -> {
@@ -89,5 +113,24 @@ object RenameUtil {
             elementToRename.replace(newElement)
         }
     }
+
+    fun convertSetterToPKebabCase(propertyName: String): String {
+        val builder = StringBuilder(propertyName)
+
+        var i = 1
+        while (i < builder.length - 1) {
+            if (isUnderscoreRequired(builder[i - 1], builder[i], builder[i + 1])) {
+                builder.insert(i++, '-')
+            }
+            i++
+        }
+
+        return builder.toString().lowercase(Locale.getDefault())
+    }
+
+    private fun isUnderscoreRequired(before: Char, current: Char, after: Char): Boolean {
+        return Character.isLowerCase(before) && Character.isUpperCase(current) && Character.isLowerCase(after)
+    }
+
 
 }

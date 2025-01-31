@@ -15,26 +15,12 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.providers
+package com
 
-import com.explyt.spring.core.util.PropertyUtil
-import com.intellij.codeInsight.daemon.ImplicitUsageProvider
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiMethod
+import org.springframework.boot.context.properties.ConfigurationProperties
 
-class SpringConfigurationPropertyUsageProvider : ImplicitUsageProvider {
-    override fun isImplicitUsage(element: PsiElement): Boolean {
-        if (element !is PsiMethod) return false
-        val properties = PropertyUtil.findPropertyByConfigurationPropertyElement(element)?.properties ?: return false
-        return properties.isNotEmpty()
-    }
-
-    override fun isImplicitRead(element: PsiElement): Boolean {
-        return false
-    }
-
-    override fun isImplicitWrite(element: PsiElement): Boolean {
-        return false
-    }
-
-}
+@ConfigurationProperties(prefix = "lss")
+data class LssConfigurationProperties(
+    var modeForStudio: String = "",
+    var tokenForStudio: String = "",
+)

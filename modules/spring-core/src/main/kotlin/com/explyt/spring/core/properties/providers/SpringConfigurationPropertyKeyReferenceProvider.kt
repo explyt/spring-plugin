@@ -35,6 +35,7 @@ import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.DOT
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
 import com.explyt.spring.core.util.PropertyUtil.toBooleanAlias
+import com.explyt.spring.core.util.RenameUtil
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.completion.CompletionUtilCore
 import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider
@@ -54,6 +55,8 @@ import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassRe
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceSet
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.ProcessingContext
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UMethod
@@ -430,6 +433,9 @@ class ConfigurationPropertyKeyReference(
         )
     }
 
+    override fun handleElementRename(newElementName: String): PsiElement {
+        return super.handleElementRename(newElementName)
+    }
 }
 
 class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
@@ -468,6 +474,29 @@ class ConfigKeyPsiElement(private val member: PsiMember) : FakePsiElement() {
 
     override fun getName(): String? {
         return member.name
+    }
+
+    override fun setName(name: String): PsiElement {
+        if (member !is PsiMethod) return member
+        val result = PropertyUtil.findPropertyByConfigurationPropertyElement(member) ?: return rename(name)
+
+        val newPropertyName = RenameUtil.convertSetterToPKebabCase(name.substringAfter("set"))
+        val prefix = RenameUtil.convertSetterToPKebabCase(result.prefix)
+        result.properties
+            .forEach { RenameUtil.renameProperty(it, newPropertyName, prefix, true) }
+
+        return rename(name)
+    }
+
+    private fun rename(newName: String): PsiElement {
+        if (member.language == KotlinLanguage.INSTANCE) {
+            val name = newName.substringAfter("set").replaceFirstChar { it.lowercase() }
+            (member.toUElement()?.sourcePsi as? KtParameter)?.setName(name)
+        } else {
+            (member as? PsiNamedElement)?.setName(newName)
+        }
+
+        return member
     }
 
 }

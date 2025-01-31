@@ -25,6 +25,8 @@ import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
+import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetriever
+import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.explyt.spring.core.references.ReferenceType
@@ -44,6 +46,7 @@ import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
@@ -631,9 +634,29 @@ object PropertyUtil {
                 }"
     }
 
+    fun findPropertyByConfigurationPropertyElement(element: PsiElement): PropertySearchResult? {
+        if (!SpringCoreUtil.isSpringProject(element.project)) return null
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
+
+        val dataRetriever = ConfigurationPropertyDataRetrieverFactory.createFor(element.toUElement()) ?: return null
+        val psiClass = dataRetriever.getContainingClass() ?: return null
+        val memberName = dataRetriever.getMemberName() ?: return null
+        val prefixValue = ConfigurationPropertyDataRetriever.getPrefixValue(psiClass)
+
+        if (prefixValue.isBlank()) return null
+
+        val properties = dataRetriever.getRelatedProperties(prefixValue, memberName, module)
+        return PropertySearchResult(prefixValue, properties)
+    }
+
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()
     private val INT_REGEX = "[-+]?[0-9]+".toRegex()
     private val DOUBLE_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?".toRegex()
 
 }
+
+data class PropertySearchResult(
+    val prefix: String,
+    val properties: List<PsiElement>
+)
