@@ -71,6 +71,8 @@ object SpringProperties {
     const val LOGGING_LEVEL = "logging.level"
     const val MAP_KEY = "mapKey"
 
+    const val SPRING_JPA_PROPERTIES = "spring.jpa.properties"
+
     const val COLON = ":"
     const val PLACEHOLDER_PREFIX = "\${"
     const val PLACEHOLDER_SUFFIX = "}"

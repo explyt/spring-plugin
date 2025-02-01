@@ -15,9 +15,10 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.completion.properties
+package com.explyt.spring.core.completion.renderer
 
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.completion.properties.ValueHint
 import com.explyt.util.ExplytTextUtil.getFirstSentenceWithoutDot
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementPresentation

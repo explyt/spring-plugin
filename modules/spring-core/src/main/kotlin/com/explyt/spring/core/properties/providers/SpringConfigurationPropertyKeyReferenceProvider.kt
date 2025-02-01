@@ -24,7 +24,12 @@ import com.explyt.spring.core.SpringProperties.LOGGING_LEVEL
 import com.explyt.spring.core.SpringProperties.NAME
 import com.explyt.spring.core.SpringProperties.POSTFIX_KEYS
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
-import com.explyt.spring.core.completion.properties.*
+import com.explyt.spring.core.SpringProperties.SPRING_JPA_PROPERTIES
+import com.explyt.spring.core.completion.properties.ConfigurationProperty
+import com.explyt.spring.core.completion.properties.PropertyHint
+import com.explyt.spring.core.completion.properties.PropertyType
+import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.explyt.spring.core.completion.renderer.PropertyRenderer
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
 import com.explyt.spring.core.properties.references.MetaConfigurationKeyReference
 import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
@@ -298,6 +303,7 @@ class ConfigurationPropertyKeyReference(
     }
 
     private fun resultConfigKeyPsiElement(project: Project, module: Module): Array<ResolveResult> {
+        if (!isConfigKeyPsiElement()) return emptyArray()
         val foundProperty = PropertyUtil.configurationProperty(project, module, propertyKey) ?: return emptyArray()
 
         val sourceType = when {
@@ -425,6 +431,9 @@ class ConfigurationPropertyKeyReference(
         }
         return result
     }
+
+    private fun isConfigKeyPsiElement(): Boolean =
+        !propertyKey.startsWith(SPRING_JPA_PROPERTIES)
 
     override fun getUnresolvedMessagePattern(): String {
         return SpringCoreBundle.message(

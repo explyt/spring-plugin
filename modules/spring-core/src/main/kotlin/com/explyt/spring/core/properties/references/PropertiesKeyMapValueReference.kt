@@ -17,8 +17,8 @@
 
 package com.explyt.spring.core.properties.references
 
+import com.explyt.spring.core.completion.insertHandler.YamlKeyConfigurationPropertyInsertHandler
 import com.explyt.spring.core.completion.properties.ConfigurationProperty
-import com.explyt.spring.core.completion.yaml.YamlKeyConfigurationPropertyInsertHandler
 import com.explyt.spring.core.util.PropertyUtil
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
