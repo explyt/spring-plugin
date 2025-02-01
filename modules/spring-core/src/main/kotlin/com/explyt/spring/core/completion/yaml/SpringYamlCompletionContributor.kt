@@ -18,9 +18,10 @@
 package com.explyt.spring.core.completion.yaml
 
 import com.explyt.spring.core.SpringProperties.LOGGING_LEVEL
+import com.explyt.spring.core.completion.insertHandler.YamlKeyConfigurationPropertyInsertHandler
 import com.explyt.spring.core.completion.properties.ConfigurationProperty
-import com.explyt.spring.core.completion.properties.PropertyRenderer
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.explyt.spring.core.completion.renderer.PropertyRenderer
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.YamlUtil
 import com.intellij.codeInsight.completion.*

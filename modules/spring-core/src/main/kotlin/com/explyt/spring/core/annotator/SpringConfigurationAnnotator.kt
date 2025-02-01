@@ -22,7 +22,6 @@ import com.explyt.spring.core.language.profiles.ProfilePsiReference
 import com.explyt.spring.core.properties.references.ExplytPropertyReference
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.core.properties.references.ValueHintReference.ResultType
-import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
@@ -87,8 +86,7 @@ abstract class SpringConfigurationAnnotator : Annotator {
             is ValueHintReference -> convertTypeToTextAttribute(reference.getResultType())
             is FileReference -> DefaultLanguageHighlighterColors.HIGHLIGHTED_REFERENCE
             is ProfilePsiReference -> reference.getTextAttributesKey()
-            is ExplytPropertyReference -> reference.getTextAttributesKey()
-            is YamlKeyMapValueReference -> DefaultLanguageHighlighterColors.FUNCTION_DECLARATION
+            is ExplytPropertyReference -> reference.getTextAttributesKey() //            is YamlKeyMapValueReference -> DefaultLanguageHighlighterColors.FUNCTION_DECLARATION
             else -> null
         }
     }

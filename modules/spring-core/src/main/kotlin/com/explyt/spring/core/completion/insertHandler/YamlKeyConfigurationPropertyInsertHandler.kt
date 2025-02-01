@@ -15,7 +15,7 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.completion.yaml
+package com.explyt.spring.core.completion.insertHandler
 
 import com.explyt.spring.core.SpringProperties.COLON
 import com.explyt.spring.core.completion.properties.ConfigurationProperty

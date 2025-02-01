@@ -58,6 +58,7 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val slf4j_2_0_7 = TestLibrary("org.slf4j:slf4j-api:2.0.7", true)
 
         val resilience4j_2_2_0 = TestLibrary("io.github.resilience4j:resilience4j-spring-boot3:2.2.0", true)
+        val hibernate_5_6_15 = TestLibrary("org.hibernate:hibernate-entitymanager:5.6.15.Final", true)
     }
 }
 

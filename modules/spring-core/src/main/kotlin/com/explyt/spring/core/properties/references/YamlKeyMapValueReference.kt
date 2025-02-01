@@ -17,10 +17,10 @@
 
 package com.explyt.spring.core.properties.references
 
+import com.explyt.spring.core.completion.insertHandler.YamlKeyConfigurationPropertyInsertHandler
 import com.explyt.spring.core.completion.properties.ConfigurationProperty
 import com.explyt.spring.core.completion.properties.PropertyType
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
-import com.explyt.spring.core.completion.yaml.YamlKeyConfigurationPropertyInsertHandler
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.util.ExplytKotlinUtil.mapToList
 import com.intellij.codeInsight.completion.CompletionUtilCore

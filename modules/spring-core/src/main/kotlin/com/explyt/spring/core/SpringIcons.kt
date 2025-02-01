@@ -41,4 +41,5 @@ object SpringIcons {
     val SpringBoot = load("com/explyt/spring/core/icons/spring-promo.svg")
     val SpringUpdate = LayeredIcon.layeredIcon(arrayOf(SpringBoot, RefreshChanges))
     val SpringBootToolWindow = load("com/explyt/spring/core/icons/springToolWindow.svg")
+    val Hibernate = load("com/explyt/spring/core/icons/hibernate.svg")
 }

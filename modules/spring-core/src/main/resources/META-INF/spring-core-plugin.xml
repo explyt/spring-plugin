@@ -72,15 +72,20 @@
                            bundle="messages.SpringCoreBundle"
                            key="explyt.spring.common.notifications"/>
 
-        <completion.contributor language="any"
-                                id="com.explyt.spring.core.propertiesCompletionContributor"
-                                order="after yamlContributor"
-                                implementationClass="com.explyt.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
-
         <completion.contributor id="yamlContributor"
                                 language="yaml"
                                 order="first"
                                 implementationClass="com.explyt.spring.core.completion.yaml.SpringYamlCompletionContributor"/>
+
+        <completion.contributor language="any"
+                                id="jpaPropertiesCompletionContributor"
+                                order="after yamlContributor"
+                                implementationClass="com.explyt.spring.core.completion.JpaPropertiesCompletionContributor"/>
+
+        <completion.contributor language="any"
+                                id="propertiesCompletionContributor"
+                                order="after jpaPropertiesCompletionContributor"
+                                implementationClass="com.explyt.spring.core.completion.properties.SpringPropertiesCompletionContributor"/>
 
         <completion.contributor language="UAST"
                                 order="first"

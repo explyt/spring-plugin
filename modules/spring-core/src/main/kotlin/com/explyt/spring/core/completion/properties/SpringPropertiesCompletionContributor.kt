@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.completion.properties
 
+import com.explyt.spring.core.completion.renderer.PropertyRenderer
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.explyt.spring.core.statistic.StatisticService
