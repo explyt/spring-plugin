@@ -231,6 +231,10 @@
                            bundle="messages.SpringWebBundle"
                            key="explyt.spring.web.notifications"/>
 
+        <editorNotificationProvider implementation="com.explyt.spring.web.httpclient.HttpRunnerEditorPanelProvider"/>
+        <editorNotificationProvider implementation="com.explyt.spring.web.httpclient.HttpSuggestionPanelProvider"
+                                    order="last"/>
+
         <registryKey
                 defaultValue="10000"
                 description="Timeout (ms) for proxied request"
@@ -239,6 +243,9 @@
                 defaultValue="false"
                 description="Swagger - download in silent mode without 'Save As' dialog"
                 key="explyt.openapi.download.silent.mode"/>
+        <registryKey
+                defaultValue="https://download.jetbrains.com/resources/intellij/http-client/232.7295.16/intellij-http-client.zip"
+                description="Url for default download HTTP Cli" key="explyt.http.cli.url"/>
 
         <toolWindow id="Explyt Endpoints"
                     anchor="right"
@@ -272,8 +279,11 @@
                 class="com.explyt.spring.web.action.HttpClientByCurlKotlinMethodGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
-        <action id="SpringWebProjectOpenApiGenerateAction"
+        <action id="Explyt.SpringWebProjectOpenApiGenerateAction"
                 class="com.explyt.spring.web.action.SpringWebProjectOpenApiGenerateAction">
+        </action>
+
+        <action id="Explyt.HttpRunFileAction" class="com.explyt.spring.web.httpclient.action.HttpRunFileAction">
         </action>
     </actions>
 

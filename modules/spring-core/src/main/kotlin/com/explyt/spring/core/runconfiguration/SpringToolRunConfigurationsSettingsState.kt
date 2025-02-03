@@ -46,6 +46,9 @@ class SpringToolRunConfigurationsSettingsState :
     @get:Property(surroundWithTag = true)
     var sqlLanguageId by string("")
 
+    @get:Property(surroundWithTag = true)
+    var httpCliPath by string("")
+
     override fun getState(): SpringToolRunConfigurationsSettingsState = this
 
     override fun loadState(state: SpringToolRunConfigurationsSettingsState) {
