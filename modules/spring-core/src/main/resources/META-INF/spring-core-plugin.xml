@@ -5,6 +5,8 @@
     <depends>com.intellij.properties</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
     <depends optional="true" config-file="spring-core-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
+    <depends optional="true" config-file="spring-core-sh.xml">org.jetbrains.plugins.terminal</depends>
+    <depends optional="true" config-file="spring-core-sh.xml">com.jetbrains.sh</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.core.configurationPropertiesLoader" dynamic="true"

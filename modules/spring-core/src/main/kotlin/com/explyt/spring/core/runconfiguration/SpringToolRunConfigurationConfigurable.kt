@@ -23,20 +23,35 @@ import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.language.profiles.ProfilesLanguage
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.ZipDownloader
+import com.intellij.execution.RunManager
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.lang.Language
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.observable.properties.AtomicBooleanProperty
 import com.intellij.openapi.observable.properties.PropertyGraph
 import com.intellij.openapi.options.SearchableConfigurable
+import com.intellij.openapi.ui.emptyText
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.injection.Injectable
+import com.intellij.sh.run.ShConfigurationType
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindSelected
+import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.util.concurrency.AppExecutorUtil
 import org.intellij.plugins.intelliLang.inject.InjectedLanguage
+import java.nio.file.Path
+import java.util.concurrent.Callable
 import javax.swing.JComponent
 import javax.swing.JList
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
 
 
 class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
@@ -48,7 +63,11 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     private val isBeanFilterEnabled = propertyGraph.property(false)
     private val isCollectStatisticBind = propertyGraph.property(false)
     private val isShowFloatingRefreshActionBind = propertyGraph.property(false)
+    private val httpCliPathBind = propertyGraph.property("")
     private val sqlLanguageIdModel = CollectionComboBoxModel(getAvailableLanguages())
+    private val shellScriptEnabledProperty: AtomicBooleanProperty = AtomicBooleanProperty(shellScriptEnabled())
+    private val downloadEnabled: AtomicBooleanProperty = AtomicBooleanProperty(true)
+    private val downloadShow: AtomicBooleanProperty = AtomicBooleanProperty(settingsState.httpCliPath.isNullOrEmpty())
 
     override fun getId(): String = ID
 
@@ -92,6 +111,21 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .resizableColumn()
                         .comment(message("explyt.spring.settings.sql.language.id.tooltip"))
                 }
+
+                row(message("explyt.spring.settings.http.cli.path")) {
+                    textFieldWithBrowseButton(
+                        message("explyt.spring.settings.http.cli.path"), null, { it.path }
+                    )
+                        .bindText(httpCliPathBind)
+                        .align(AlignX.FILL)
+                        .resizableColumn()
+                        .applyToComponent { toolTipText = message("explyt.spring.settings.http.cli.path") }
+                        .applyToComponent { emptyText.text = toolTipText }
+                    button(message("explyt.spring.settings.http.cli.download.button")) { download() }
+                        .applyToComponent { toolTipText = message("explyt.spring.settings.http.cli.path.tooltip") }
+                        .enabledIf(downloadEnabled)
+                        .visibleIf(downloadShow)
+                }.visibleIf(shellScriptEnabledProperty)
             }
         }
     }
@@ -102,6 +136,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         isCollectStatisticBind.set(settingsState.isCollectStatistic)
         isShowFloatingRefreshActionBind.set(settingsState.isShowFloatingRefreshAction)
         sqlLanguageIdModel.selectedItem = getCurrentLanguageId()
+        httpCliPathBind.set(settingsState.httpCliPath ?: "")
     }
 
     override fun isModified(): Boolean {
@@ -110,6 +145,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         if (settingsState.isCollectStatistic != isCollectStatisticBind.get()) return true
         if (settingsState.isShowFloatingRefreshAction != isShowFloatingRefreshActionBind.get()) return true
         if ((settingsState.sqlLanguageId ?: "") != (sqlLanguageIdModel.selected?.id ?: "")) return true
+        if ((settingsState.httpCliPath ?: "") != (httpCliPathBind.get())) return true
         return false
     }
 
@@ -120,6 +156,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         settingsState.isCollectStatistic = isCollectStatisticBind.get()
         settingsState.isShowFloatingRefreshAction = isShowFloatingRefreshActionBind.get()
         settingsState.sqlLanguageId = sqlLanguageIdModel.selected?.id
+        settingsState.httpCliPath = httpCliPathBind.get()
 
         ProjectUtil.getActiveProject()?.let { project -> UastModelTrackerInvalidateAction.invalidate(project) }
     }
@@ -197,7 +234,37 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         }
     }
 
+    private fun download() {
+        downloadEnabled.set(false)
+        ReadAction.nonBlocking(Callable {
+            ZipDownloader.download(
+                message("explyt.spring.settings.http.cli.path.tooltip"),
+                Registry.stringValue("explyt.http.cli.url"),
+                Path(PathManager.getTempPath(), "explyt.zip")
+            )
+        })
+            .finishOnUiThread(ModalityState.current()) {
+                downloadEnabled.set(true)
+                getResultPath(it)?.let { path -> httpCliPathBind.set(path.absolutePathString()) }
+            }
+            .submit(AppExecutorUtil.getAppExecutorService())
+    }
+
+    private fun getResultPath(resultDir: Path?): Path? {
+        return resultDir?.toFile()?.listFiles()?.first { it.isDirectory }?.toPath()
+    }
+
     companion object {
         const val ID = "com.explyt.spring.runConfigurations"
+
+        fun shellScriptEnabled(): Boolean {
+            val project = ProjectUtil.getActiveProject() ?: return false
+            return try {
+                RunManager.getInstance(project).getConfigurationTemplate(ShConfigurationType.getInstance())
+                true
+            } catch (e: NoClassDefFoundError) {
+                false
+            }
+        }
     }
 }

@@ -31,7 +31,9 @@ val intellijPlugins = listOf(
     "com.intellij.java",
     "com.intellij.properties",
     "org.jetbrains.plugins.yaml",
-    "org.jetbrains.kotlin"
+    "org.jetbrains.kotlin",
+    "org.jetbrains.plugins.terminal",
+    "com.jetbrains.sh"
 )
 
 ext {
