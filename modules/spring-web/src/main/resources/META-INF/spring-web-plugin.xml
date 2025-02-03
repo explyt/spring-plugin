@@ -196,6 +196,8 @@
                                   implementationClass="com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider"/>
         <runLineMarkerContributor language="UAST"
                                   implementationClass="com.explyt.spring.web.providers.RetrofitRunLineMarkerProvider"/>
+        <runLineMarkerContributor language="HTTP"
+                                  implementationClass="com.explyt.spring.web.providers.HttpRunLineMarkerProvider"/>
 
         <psi.referenceContributor language="UAST"
                                   implementation="com.explyt.spring.web.references.contributors.UastMockMvcUrlReferenceContributor"/>
@@ -218,8 +220,10 @@
         <psi.referenceContributor language="JSON"
                                   implementation="com.explyt.spring.web.references.contributors.OpenApiJsonInnerReferenceContributor"/>
 
-        <json.jsonSchemaGotoDeclarationSuppressor implementation="com.explyt.spring.web.jsonSchema.OpenApiYamlGotoDeclarationSuppressor"/>
-        <json.jsonSchemaGotoDeclarationSuppressor implementation="com.explyt.spring.web.jsonSchema.OpenApiJsonGotoDeclarationSuppressor"/>
+        <json.jsonSchemaGotoDeclarationSuppressor
+                implementation="com.explyt.spring.web.jsonSchema.OpenApiYamlGotoDeclarationSuppressor"/>
+        <json.jsonSchemaGotoDeclarationSuppressor
+                implementation="com.explyt.spring.web.jsonSchema.OpenApiJsonGotoDeclarationSuppressor"/>
 
         <fileEditorProvider implementation="com.explyt.spring.web.editor.openapi.OpenApiUIEditorProvider"/>
 
@@ -254,6 +258,18 @@
 
         <postStartupActivity
                 implementation="com.explyt.spring.web.service.ToolWindowService$StartupActivity"/>
+
+        <fileType name="Http File"
+                  implementationClass="com.explyt.spring.web.language.http.HttpFileType"
+                  fieldName="INSTANCE"
+                  extensions="http"
+                  language="HTTP"/>
+        <highlightErrorFilter order="first"
+                              implementation="com.explyt.spring.web.language.http.HttpErrorFilter"/>
+
+        <lang.parserDefinition
+                language="HTTP"
+                implementationClass="com.explyt.spring.web.language.http.HttpParserDefinition"/>
 
     </extensions>
 
