@@ -10,6 +10,8 @@
 - Added: completion for Hibernate settings in configuration property
 - Added: in properties/yaml completion for map value
 - Fixed: rename property name in properties/yaml files and @Value
+- Fixed: configuration: show comment for property from field in case of missing setter method
+- Fixed: configuration: no property linemarkers for java record `@ConfigurationProperties`
 
 ### Spring Web / OpenAPI
 
@@ -22,8 +24,15 @@
 - Fixed: Openapi spec generation supports MultipartFile usage
 - Added: HttpExchange endpoint actions
 - Added: Endpoint Tool Window shows HttpExchange endpoints
-- Fixed: `Generate OpenApi Doc` intention - create resources dir if is not exist
+- Fixed: `Generate OpenApi Doc` intention - create dir 'resources' if it does not exist
 - Added Inspection: `Unknown reference` for openapi `$ref` (yaml, json)
+
+### Other
+
+- Added: Spring Boot Panel: Generate special starter code to connect the panel to scan project beans for complex projects
+- Added: Support 'http' and 'rest' file extensions
+- Added: Ability to specify cli runner (like JetBrains HttpClient or HttpYac) to execute http-scripts and other RFC 2616 scripts
+- Added: Linemarkers in 'http' and 'rest' to execute statement
 
 ## [243.1.3155] - 2025-01-17
 
