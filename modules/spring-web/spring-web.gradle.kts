@@ -42,6 +42,14 @@ intellijPlatform {
     instrumentCode = false
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs("src/main/gen")
+        }
+    }
+}
+
 tasks {
     runIde { enabled = false }
     publishPlugin { enabled = false }

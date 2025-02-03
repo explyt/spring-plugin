@@ -1,0 +1,61 @@
+/*
+ * Copyright © 2024 Explyt Ltd
+ *
+ * All rights reserved.
+ *
+ * This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
+ *
+ * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
+ *
+ * By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
+ * If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
+ *
+ * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+ *
+ * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
+ */
+
+{
+    parserClass="com.explyt.spring.web.language.http.parser.HttpParser"
+
+    extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+    psiClassPrefix="Http"
+    psiImplClassSuffix="Impl"
+    psiPackage="com.explyt.spring.web.language.http.psi"
+    psiPackage="com.explyt.spring.web.language.http.psi.impl"
+
+    elementTypeHolderClass="com.explyt.spring.web.language.http.psi.HttpTypes"
+    elementTypeClass="com.explyt.spring.web.language.http.psi.HttpElementType"
+    tokenTypeClass="com.explyt.spring.web.language.http.psi.HttpTokenType"
+
+    tokens = [
+        REQUEST_SEPARATOR = 'regexp:###.*'
+        LBRACES = '{{'
+        RBRACES = '}}'
+        HTTP = 'http://'
+        HTTPS = 'https://'
+
+        line_comment="regexp:(//|#).*"
+        whitespace = 'regexp:\s+'
+    ]
+    consumeTokenMethod = "consumeTokenFast"
+}
+
+http_file ::= requests
+
+requests ::= request_block*
+
+request_block ::= request_without_separator | request_with_separator
+
+private request_without_separator ::= REQUEST_SEPARATOR* request {pin=2;recoverWhile=recover_request}
+private request_with_separator ::= REQUEST_SEPARATOR+ request
+
+request ::= method? url {pin=2;recoverWhile=recover_request}
+private recover_request ::= !(REQUEST_SEPARATOR)
+url ::= HTTP | HTTPS | variable
+variable ::= LBRACES IDENTIFIER RBRACES {pin=1}
+//any_content ::= 'regexp:.*' {recoverWhile=recover_any_content}
+//private recover_any_content ::= !(request_separator)
+
+method ::= GET | POST | PUT | DELETE | PATCH | HEAD | OPTIONS
