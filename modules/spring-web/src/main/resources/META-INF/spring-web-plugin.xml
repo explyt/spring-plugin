@@ -262,7 +262,7 @@
         <fileType name="Http File"
                   implementationClass="com.explyt.spring.web.language.http.HttpFileType"
                   fieldName="INSTANCE"
-                  extensions="http"
+                  extensions="http;rest"
                   language="HTTP"/>
         <highlightErrorFilter order="first"
                               implementation="com.explyt.spring.web.language.http.HttpErrorFilter"/>
