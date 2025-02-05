@@ -248,7 +248,7 @@
                 description="Swagger - download in silent mode without 'Save As' dialog"
                 key="explyt.openapi.download.silent.mode"/>
         <registryKey
-                defaultValue="https://download.jetbrains.com/resources/intellij/http-client/232.7295.16/intellij-http-client.zip"
+                defaultValue="https://download-cdn.jetbrains.com/resources/intellij/http-client/242.21829.56/intellij-http-client.zip"
                 description="Url for default download HTTP Cli" key="explyt.http.cli.url"/>
 
         <toolWindow id="Explyt Endpoints"
