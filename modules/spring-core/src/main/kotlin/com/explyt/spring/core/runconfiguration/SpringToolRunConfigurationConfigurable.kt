@@ -121,6 +121,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .resizableColumn()
                         .applyToComponent { toolTipText = message("explyt.spring.settings.http.cli.path") }
                         .applyToComponent { emptyText.text = toolTipText }
+                        .comment(message("explyt.spring.settings.http.cli.comment"))
                     button(message("explyt.spring.settings.http.cli.download.button")) { download() }
                         .applyToComponent { toolTipText = message("explyt.spring.settings.http.cli.path.tooltip") }
                         .enabledIf(downloadEnabled)

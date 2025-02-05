@@ -1,23 +1,23 @@
 Last updated: October 27, 2024
 
-End User License Agreement (EULA) of Spring Explyt Plugin
+End User License Agreement (EULA) of Explyt Spring Plugin
 
 ## IMPORTANT!
 Be sure to carefully read and understand all of the rights, obligations and restrictions set forth in this EULA. 
 
-BY AGREEING TO THE TERMS OF THIS EULA, USING, INSTALLING OR DOWNLOADING THE SOFTWARE (SPRING EXPLYT PLUGIN), YOU (AS DEFINED BELOW) ACCEPT AND AGREE TO BE BOUND BY THE TERMS AND CONDITIONS OF THIS EULA. IF YOU DO NOT ACCEPT THE TERMS AND CONDITIONS OF THIS EULA, THEN DO NOT USE, INSTALL OR DOWNLOAD THE EXPLYT SPRING TOOLS. IF YOU HAVE ALREADY DOWNLOADED OR INSTALLED THE EXPLYT SPRING TOOLS YOU SHOULD REMOVE THEM FROM YOUR SYSTEM AND DESTROY ALL COPIES.
+BY AGREEING TO THE TERMS OF THIS EULA, USING, INSTALLING OR DOWNLOADING THE SOFTWARE (EXPLYT SPRING PLUGIN), YOU (AS DEFINED BELOW) ACCEPT AND AGREE TO BE BOUND BY THE TERMS AND CONDITIONS OF THIS EULA. IF YOU DO NOT ACCEPT THE TERMS AND CONDITIONS OF THIS EULA, THEN DO NOT USE, INSTALL OR DOWNLOAD THE EXPLYT SPRING TOOLS. IF YOU HAVE ALREADY DOWNLOADED OR INSTALLED THE EXPLYT SPRING TOOLS YOU SHOULD REMOVE THEM FROM YOUR SYSTEM AND DESTROY ALL COPIES.
 
-ADDITIONALY YOU AND DEVELOPER WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION LAWSUIT OR CLASS-WIDE ARBITRATION.
+ADDITIONALLY, YOU AND DEVELOPER WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION LAWSUIT OR CLASS-WIDE ARBITRATION.
 
-IN CASE YOU WANT TO USE PLUGIN SOURCE CODE YOU MUST ACCEPT THE EXPLYT SOURCE LICENSE WHICH IS AVAILIBLE HERE https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+IN CASE YOU WANT TO USE PLUGIN SOURCE CODE, YOU MUST ACCEPT THE EXPLYT SOURCE LICENSE WHICH IS AVAILABLE HERE https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
 
 Notice: This EULA can be accepted by You in case if You just want to use Plugin without utilising its source code or contributing to Plugin development.   
 
 ## DEFINITIONS
 ### Developer
-Explyt Ltd, copyright owner and developer of the Spring Explyt Plugin, with a principal place of business at (Office A, RAK DAO Business Centre, RAK BANK ROC Office, Ground Floor, Al Rifaa, Sheikh Mohammed Bin Zayed Road, Ras Al Khaimah, United Arab Emirates), company incorporated under the laws and regulations of RAK DAO and United Arab Emirates, company's licence №07010386.
+Explyt Ltd, copyright owner and developer of the Explyt Spring Plugin, with a principal place of business at (Office A, RAK DAO Business Centre, RAK BANK ROC Office, Ground Floor, Al Rifaa, Sheikh Mohammed Bin Zayed Road, Ras Al Khaimah, United Arab Emirates), company incorporated under the laws and regulations of RAK DAO and United Arab Emirates, company's licence №07010386.
 
-### Spring Explyt Plugin ("Plugin")
+### Explyt Spring Plugin ("Plugin")
 A Plugin developed by Developer that is designed to enhance the coding and development experience within JetBrains Products, specifically for Spring Framework, Spring Boot, Spring Data JPA, Spring Security, Spring Web, among others. This Plugin provides functionalities which are explicitly intended to aid the development process by generating code and facilitating Spring technology implementations.
 
 ### JetBrains
@@ -33,7 +33,7 @@ The digital distribution service provided by JetBrains or an JetBrains Affiliate
 The suite of software programs and services offered by JetBrains, which includes IntelliJ IDEA and other integrated development environments (IDEs).
 
 ### IntelliJ IDEA
-The IntelliJ IDEA is a JetBrains-owned IDE that supports the development of software across various programming languages, including the functionality to extend its capabilities via Plugins such as Spring Explyt Plugin.
+The IntelliJ IDEA is a JetBrains-owned IDE that supports the development of software across various programming languages, including the functionality to extend its capabilities via Plugins such as Explyt Spring Plugin.
 
 ### User(s)
 The end users who have the ability to access and concurrently utilize the Plugin under this EULA.
@@ -42,7 +42,7 @@ The end users who have the ability to access and concurrently utilize the Plugin
 An individual or legal entity agreeing to the terms of this EULA upon downloading, installing, or using the Plugin.
 
 ### Site
-The official online presence of Spring Explyt Plugin, which can be accessed via [https://explyt.com/].
+The official online presence of Explyt Spring Plugin, which can be accessed via [https://explyt.com/].
 
 ## AGREEMENT COVERAGE
 This EULA delineates the terms and conditions under which the Plugin is made available to You via the Plugin Marketplace. By engaging with the Plugin, You enter into this binding agreement EULA with Developer.
@@ -64,7 +64,7 @@ You may use the Plugin in your projects (embed it) as it is provided by the Deve
 You must give appropriate credit to the Developer and provide a link to this EULA. You may do so in any reasonable manner, but not in any way that suggests the Developer endorses you or your use.
 
 ### Usage Rights
-You are granted the right to employ the Plugin in congruence with the technical documentation provided on the Site or the Spring Explyt Plugin page on the Plugin Marketplace, over the duration specified by Developer in any jurisdiction where JetBrains Products are legally accessible.
+You are granted the right to employ the Plugin in congruence with the technical documentation provided on the Site or the Explyt Spring Plugin page on the Plugin Marketplace, over the duration specified by Developer in any jurisdiction where JetBrains Products are legally accessible.
 
 ### Plugin functionality
 The Plugin is subject to functionality limitations as outlined on the Site, which Developer reserves the right to modify without prior notification.
@@ -82,7 +82,7 @@ Developer provides the Plugin on an "as is" and "as available" basis. Developer 
 IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR USE, INCURRED BY LICENSEE OR ANY THIRD PARTY, WHETHER IN AN ACTION IN CONTRACT OR TORT, ARISING FROM LICENSEE'S ACCESS TO, OR USE OF, THE SOFTWARE.
 
 ### Commercial Use and Inquiries
-Commercial use of the Spring Explyt Plugin is permitted under this EULA, provided that all terms and conditions are met.
+Commercial use of the Explyt Spring Plugin is permitted under this EULA, provided that all terms and conditions are met.
 
 ### Termination
 This EULA may be terminated unilaterally by Developer in the event of any breach by the User of its terms and conditions. Upon termination, the User may be required, under applicable law, to compensate Developer for any damages or pay statuary compensation for any breaches of the terms and conditions that constitute an infringement of Developer's exclusive rights to the Plugin.
