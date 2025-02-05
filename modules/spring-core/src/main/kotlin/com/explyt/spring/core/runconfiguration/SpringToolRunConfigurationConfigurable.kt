@@ -114,7 +114,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
 
                 row(message("explyt.spring.settings.http.cli.path")) {
                     textFieldWithBrowseButton(
-                        message("explyt.spring.settings.http.cli.path"), null, { it.path }
+                        browseDialogTitle = message("explyt.spring.settings.http.cli.path"), fileChosen = { it.path }
                     )
                         .bindText(httpCliPathBind)
                         .align(AlignX.FILL)
