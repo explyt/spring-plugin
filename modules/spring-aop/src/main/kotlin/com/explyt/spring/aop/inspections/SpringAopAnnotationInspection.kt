@@ -31,6 +31,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.ThrowableComputable
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.codeinsight.utils.findExistingEditor
 import org.jetbrains.kotlin.idea.quickfix.AddAnnotationFix.Kind
@@ -109,10 +110,10 @@ class AddClassAnnotationKotlinFix(private val annotationFqName: String) : LocalQ
         val editor = ktElement.findExistingEditor() ?: return
         val ktFile = ktElement.containingFile as? KtFile ?: return
 
-        ApplicationManager.getApplication().runWriteAction {
+        ApplicationManager.getApplication().runWriteIntentReadAction(ThrowableComputable {
             org.jetbrains.kotlin.idea.quickfix.AddAnnotationFix(
                 ktElement, ClassId.topLevel(FqName(annotationFqName)), Kind.Self
-            ).invokeAsAction(editor, ktFile)
-        }
+            ).asIntention().invokeAsAction(editor, ktFile)
+        })
     }
 }
