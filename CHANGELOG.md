@@ -6,6 +6,10 @@
 
 ### Spring Core/Boot
 
+## [243.1.3333] - 2025-02-11
+
+### Spring Core/Boot
+
 - Added: rename property for @ConfigurationProperties class methods (java) or constructor parameters (kotlin)
 - Added: completion for Hibernate settings in configuration property
 - Added: in properties/yaml completion for map value
@@ -34,7 +38,7 @@
 - Added: Ability to specify cli runner (like JetBrains HttpClient or HttpYac) to execute http-scripts and other RFC 2616 scripts
 - Added: Linemarkers in 'http' and 'rest' to execute statement
 
-## [243.1.3155] - 2025-01-17
+## 243.1.3155 - 2025-01-17
 
 ### Spring Core/Boot
 
