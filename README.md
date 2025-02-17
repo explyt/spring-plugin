@@ -2,7 +2,7 @@
 ![example workflow](https://github.com/explyt/spring-plugin/actions/workflows/build.yaml/badge.svg)
 ![GitHub Release](https://img.shields.io/github/v/release/explyt/spring-plugin)
 [![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring%20EN-252850?style=plastic&logo=telegram)](https://t.me/explytspring_en)
-[![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring%20RU-252850?style=plastic&logo=telegram)](https://t.me/explytspring_en)
+[![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring%20RU-252850?style=plastic&logo=telegram)](https://t.me/explytspring)
 
 **Explyt Spring Plugin** supercharges your IntelliJ IDEA Community Edition with advanced Spring Framework features—usually only available in the Ultimate Edition. Develop Spring applications faster and smarter with enhanced tools for beans, configurations, endpoints, and more.
 
