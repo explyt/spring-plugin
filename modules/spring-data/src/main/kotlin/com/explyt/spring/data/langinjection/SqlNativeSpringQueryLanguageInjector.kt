@@ -21,7 +21,6 @@ import com.explyt.jpa.langinjection.JpqlInjectorBase
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.data.SpringDataClasses
-import com.explyt.spring.data.SpringDataClasses.JDBC_TEMPLATE
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
@@ -36,7 +35,7 @@ import org.jetbrains.uast.*
 
 class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
     override fun isValidPlace(uElement: UElement): Boolean {
-        return isNativeQuery(uElement) || isJdbcTemplate(uElement)
+        return isNativeQuery(uElement) || isJdbcTemplateLike(uElement)
     }
 
     private fun isNativeQuery(uElement: UElement): Boolean {
@@ -49,17 +48,16 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
             ?.evaluate() == true
     }
 
-    private fun isJdbcTemplate(uElement: UElement): Boolean {
+    private fun isJdbcTemplateLike(uElement: UElement): Boolean {
         val uCallExpression = uElement.getParentOfType<UCallExpression>() ?: return false
         val expressionIndex = getExpressionIndex(uCallExpression, uElement) ?: return false
 
         val method = uCallExpression.tryResolve() as? PsiMethod ?: return false
-        val psiClass = method.containingClass ?: return false
 
         if (method.parameterList.getParameter(expressionIndex)?.name?.contains("sql", true) == false) {
             return false
         }
-        return InheritanceUtil.isInheritor(psiClass, JDBC_TEMPLATE)
+        return true
     }
 
     private fun getExpressionIndex(uCallExpression: UCallExpression, uElement: UElement): Int? {
