@@ -4,7 +4,8 @@
 
 ## [Unreleased]
 
-### Spring Core/Boot
+### Spring Data
+- Added: Support inject sql to `sql` named parameter functions (#16) 
 
 ## [243.1.3333] - 2025-02-11
 
