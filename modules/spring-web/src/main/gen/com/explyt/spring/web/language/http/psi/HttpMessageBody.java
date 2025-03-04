@@ -5,15 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface HttpRequestBlock extends PsiElement {
+public interface HttpMessageBody extends PsiElement {
 
   @NotNull
-  List<HttpComment> getCommentList();
-
-  @NotNull
-  HttpRequest getRequest();
-
-  @Nullable
-  HttpRequestDefiner getRequestDefiner();
+  List<HttpMessageLine> getMessageLineList();
 
 }

@@ -1,15 +1,15 @@
 // This is a generated file. Not intended for manual editing.
 package generated.psi.impl;
 
-import com.explyt.spring.web.language.http.psi.HttpMethod;
-import com.explyt.spring.web.language.http.psi.HttpRequest;
-import com.explyt.spring.web.language.http.psi.HttpUrl;
-import com.explyt.spring.web.language.http.psi.HttpVisitor;
-import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import java.util.List;
+import org.jetbrains.annotations.*;
 import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.intellij.psi.util.PsiTreeUtil;
+import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import com.explyt.spring.web.language.http.psi.*;
 
 public class HttpRequestImpl extends ASTWrapperPsiElement implements HttpRequest {
 
@@ -28,15 +28,21 @@ public class HttpRequestImpl extends ASTWrapperPsiElement implements HttpRequest
   }
 
   @Override
+  @NotNull
+  public List<HttpFieldLine> getFieldLineList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpFieldLine.class);
+  }
+
+  @Override
   @Nullable
-  public HttpMethod getMethod() {
-    return findChildByClass(HttpMethod.class);
+  public HttpMessageBody getMessageBody() {
+    return findChildByClass(HttpMessageBody.class);
   }
 
   @Override
   @NotNull
-  public HttpUrl getUrl() {
-    return findNotNullChildByClass(HttpUrl.class);
+  public HttpRequestLine getRequestLine() {
+    return findNotNullChildByClass(HttpRequestLine.class);
   }
 
 }

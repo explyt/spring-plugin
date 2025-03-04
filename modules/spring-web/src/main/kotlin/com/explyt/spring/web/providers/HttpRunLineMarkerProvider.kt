@@ -19,8 +19,8 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.web.httpclient.action.HttpRunFileAction
 import com.explyt.spring.web.language.http.psi.HttpRequest
+import com.explyt.spring.web.language.http.psi.HttpRequestLine
 import com.explyt.spring.web.language.http.psi.HttpTypes
-import com.explyt.spring.web.language.http.psi.HttpUrl
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
@@ -35,10 +35,9 @@ class HttpRunLineMarkerProvider : RunLineMarkerContributor() {
     override fun getInfo(psiElement: PsiElement): Info? {
         val leafElement = psiElement as? LeafPsiElement ?: return null
         if (leafElement.tokenType !in URL_TYPES) return null
-        val httpUrlElement = leafElement.parentOfType<HttpUrl>() ?: return null
-        val httpRequest = httpUrlElement.parent as? HttpRequest ?: return null
-        val file =leafElement.containingFile.virtualFile ?: return null
-
+        val httpRequestLineElement = leafElement.parentOfType<HttpRequestLine>() ?: return null
+        val httpRequest = httpRequestLineElement.parent as? HttpRequest ?: return null
+        val file = leafElement.containingFile.virtualFile ?: return null
 
         val line = httpRequest.getLineNumber(true)
 
@@ -52,7 +51,7 @@ class HttpRunLineMarkerProvider : RunLineMarkerContributor() {
     }
 
     companion object {
-        private val URL_TYPES = setOf(HttpTypes.HTTP, HttpTypes.HTTPS, HttpTypes.LBRACES)
+        private val URL_TYPES = setOf(HttpTypes.REQUEST_TARGET)
     }
 
 }

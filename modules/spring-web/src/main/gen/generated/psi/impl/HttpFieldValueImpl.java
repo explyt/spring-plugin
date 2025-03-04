@@ -11,14 +11,14 @@ import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.explyt.spring.web.language.http.psi.*;
 
-public class HttpRequestBlockImpl extends ASTWrapperPsiElement implements HttpRequestBlock {
+public class HttpFieldValueImpl extends ASTWrapperPsiElement implements HttpFieldValue {
 
-  public HttpRequestBlockImpl(@NotNull ASTNode node) {
+  public HttpFieldValueImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull HttpVisitor visitor) {
-    visitor.visitRequestBlock(this);
+    visitor.visitFieldValue(this);
   }
 
   @Override
@@ -29,20 +29,8 @@ public class HttpRequestBlockImpl extends ASTWrapperPsiElement implements HttpRe
 
   @Override
   @NotNull
-  public List<HttpComment> getCommentList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpComment.class);
-  }
-
-  @Override
-  @NotNull
-  public HttpRequest getRequest() {
-    return findNotNullChildByClass(HttpRequest.class);
-  }
-
-  @Override
-  @Nullable
-  public HttpRequestDefiner getRequestDefiner() {
-    return findChildByClass(HttpRequestDefiner.class);
+  public PsiElement getFieldContent() {
+    return findNotNullChildByType(FIELD_CONTENT);
   }
 
 }
