@@ -178,7 +178,9 @@ internal class MyUastPsiTreeChangeAdapter(
         ) {
             //tracker for root package search
             modelTracker.incModificationCount()
-            if (isNotTest(psiFile)) {
+            if (isNotTest(psiFile)
+                && checkIsSpringReloadAnnotation(eventType, child, parent, grandParent, unsafeGrandChild)
+            ) {
                 annotationTracker.incModificationCount()
             }
             return
@@ -195,6 +197,71 @@ internal class MyUastPsiTreeChangeAdapter(
             || child is LazyParseablePsiElement
         ) {
             modelTracker.incModificationCount()
+        }
+    }
+
+    private fun checkIsSpringReloadAnnotation(
+        eventType: PsiTreeChangeEventImpl.PsiEventType?,
+        child: PsiElement?, parent: PsiElement?, grandParent: PsiElement?, unsafeGrandChild: PsiElement?
+    ): Boolean {
+        eventType ?: return false
+        if (eventType != CHILD_ADDED && eventType != CHILD_REPLACED) return false
+        val qualifiedName = getAnnotationQualifiedName(child, parent, grandParent, unsafeGrandChild) ?: return false
+        return (qualifiedName.startsWith("org.spring")
+                && !qualifiedName.contains("Autowired")
+                && !qualifiedName.contains("Qualifier")
+                && !qualifiedName.contains("Value")
+                && !qualifiedName.contains("Lazy")
+                && !qualifiedName.contains("Primary"))
+    }
+
+    private fun getAnnotationQualifiedName(
+        child: PsiElement?,
+        parent: PsiElement?,
+        grandParent: PsiElement?,
+        unsafeGrandChild: PsiElement?
+    ): String? {
+        return try {
+            var uAnnotation = toUElementWithCatch(child)
+            if (uAnnotation == null) {
+                uAnnotation = toUElementWithCatch(parent)
+            }
+            if (uAnnotation == null) {
+                uAnnotation = toUElementWithCatch(grandParent)
+            }
+            if (uAnnotation == null) {
+                uAnnotation = toUElementWithCatch(unsafeGrandChild)
+            }
+            if (uAnnotation == null) {
+                uAnnotation = findAnnotationInParent(child)
+            }
+            if (uAnnotation == null) {
+                uAnnotation = findAnnotationInParent(parent)
+            }
+            uAnnotation?.qualifiedName
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun toUElementWithCatch(child: PsiElement?): UAnnotation? {
+        return try {
+            child?.toUElement() as? UAnnotation
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun findAnnotationInParent(psiElement: PsiElement?): UAnnotation? {
+        try {
+            var uElement = psiElement.toUElement() ?: return null
+            for (i in 0..10) {
+                if (uElement is UAnnotation) return uElement
+                uElement = uElement.uastParent ?: return null
+            }
+            return null
+        } catch (e: Exception) {
+            return null
         }
     }
 

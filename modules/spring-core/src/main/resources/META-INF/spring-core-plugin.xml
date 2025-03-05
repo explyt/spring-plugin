@@ -658,6 +658,8 @@
                      description="Enable statistic in debug mode"/>
         <registryKey key="explyt.statistic.interval" defaultValue="3600"
                      description="Update statistic interval seconds"/>
+        <registryKey key="explyt.spring.native.javaagent" defaultValue="true"
+                     description="Use -javaagent to get bean info"/>
         <registryKey key="EXPLYTSPRINGBOOT.system.in.process" defaultValue="true"
                      description="Whether IDEA should use 'in-process' mode for interaction with plugin api"/>
         <intentionAction>
@@ -688,7 +690,7 @@
 
         <colorSettingsPage implementation="com.explyt.spring.core.color.ExplytPropertyColorSettingsPage"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                  implementationClass="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectLineMarkerContributor"/>
+                                        implementationClass="com.explyt.spring.core.externalsystem.action.AttachSpringProjectLineMarkerContributor"/>
 
         <renamePsiElementProcessor
                 implementation="com.explyt.spring.core.rename.SpringValueRenameProcessor"/>
@@ -757,10 +759,6 @@
         </action>
         <action id="Explyt.PreDestroyKotlinGenerateAction"
                 class="com.explyt.spring.core.action.PreDestroyKotlinGenerateAction">
-            <add-to-group group-id="GenerateGroup" anchor="last"/>
-        </action>
-        <action id="Explyt.KotlinSpringBootRunGenerateAction"
-                class="com.explyt.spring.core.action.SpringBootAnalyzeRunGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
 

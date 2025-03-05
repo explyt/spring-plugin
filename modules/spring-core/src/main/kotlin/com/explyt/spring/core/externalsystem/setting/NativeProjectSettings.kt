@@ -25,6 +25,7 @@ import com.intellij.openapi.externalSystem.settings.ExternalProjectSettings
 class NativeProjectSettings : ExternalProjectSettings() {
 
     var runConfigurationName: String? = null
+    var qualifiedMainClassName: String? = null
     var runConfigurationType = RunConfigurationType.EXPLYT
 
     override fun clone(): NativeProjectSettings {
@@ -32,6 +33,7 @@ class NativeProjectSettings : ExternalProjectSettings() {
         copyTo(result)
         result.runConfigurationName = runConfigurationName
         result.runConfigurationType = runConfigurationType
+        result.qualifiedMainClassName = qualifiedMainClassName
         return result
     }
 }

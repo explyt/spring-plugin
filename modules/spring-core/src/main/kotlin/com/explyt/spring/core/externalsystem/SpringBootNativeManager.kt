@@ -53,6 +53,7 @@ class SpringBootNativeManager :
             executionSettings.externalProjectMainFilePath = projectSettings?.externalProjectPath
             executionSettings.runConfigurationName = projectSettings?.runConfigurationName
             executionSettings.runConfigurationType = projectSettings?.runConfigurationType ?: EXPLYT
+            executionSettings.qualifiedMainClassName = projectSettings?.qualifiedMainClassName
             executionSettings
         }
     }

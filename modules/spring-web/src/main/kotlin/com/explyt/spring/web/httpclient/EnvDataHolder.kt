@@ -96,7 +96,7 @@ class EnvDataHolder(
         envModel.removeAll()
         envModel.add("")
         envList.forEach { envModel.add(it) }
-        envModel.selectedItem = envList[0]
+        envModel.selectedItem = envModel.items[0]
     }
 
     fun selectEnv() {

@@ -17,7 +17,9 @@
 
 package com.explyt.spring.core.externalsystem.action
 
+import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreBundle.message
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.spring.core.SpringIcons.SpringExplorer
 import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvider
@@ -30,6 +32,7 @@ import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.execution.RunManager
+import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
@@ -38,19 +41,50 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.toUElement
+import com.intellij.psi.util.PsiMethodUtil
+import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
+import org.jetbrains.uast.*
 import java.awt.event.MouseEvent
 
-class AttachSpringBootProjectLineMarkerContributor : LineMarkerProviderDescriptor() {
+class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() {
 
     override fun getName(): String? = null
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
+        return if (Registry.`is`("explyt.spring.native.javaagent")) {
+            springProject(element)
+        } else {
+            springBootProject(element)
+        }
+    }
+
+    private fun springProject(element: PsiElement): LineMarkerInfo<PsiElement>? {
+        LibraryClassCache.searchForLibraryClass(element.project, SpringCoreClasses.COMPONENT) ?: return null
+        val uMethod = element.toUElement() as? UMethod ?: return null
+        val javaPsi = uMethod.javaPsi
+        if (!PsiMethodUtil.isMainMethod(javaPsi)) return null
+        if (!isSpringMainMethod(uMethod)) return null
+        val virtualFile = javaPsi.containingFile.virtualFile
+        val canonicalPath = virtualFile.canonicalPath ?: return null
+        if (ProjectRootManager.getInstance(element.project).fileIndex.isInTestSourceContent(virtualFile)) return null
+        val containingClass = javaPsi.containingClass?.qualifiedName ?: return null
+        return LineMarkerInfo(
+            element,
+            element.textRange,
+            SpringExplorer,
+            { getTooltipText(element.project, canonicalPath) },
+            AttachProjectIconGutterHandler(canonicalPath, containingClass),
+            GutterIconRenderer.Alignment.LEFT,
+            { getTooltipText(element.project, canonicalPath) },
+        )
+    }
+
+    private fun springBootProject(element: PsiElement): LineMarkerInfo<PsiElement>? {
         val uAnnotation = element.toUElement() as? UAnnotation ?: return null
         val uClass = uAnnotation.uastParent as? UClass ?: return null
         if (!isSupport(uAnnotation, uClass)) return null
@@ -61,8 +95,8 @@ class AttachSpringBootProjectLineMarkerContributor : LineMarkerProviderDescripto
             sourcePsi.textRange,
             SpringExplorer,
             { getTooltipText(element.project, canonicalPath) },
-            AttachProjectIconGutterHandler(canonicalPath),
-            GutterIconRenderer.Alignment.RIGHT,
+            AttachProjectIconGutterHandler(canonicalPath, null),
+            GutterIconRenderer.Alignment.LEFT,
             { getTooltipText(element.project, canonicalPath) },
         )
     }
@@ -79,6 +113,14 @@ class AttachSpringBootProjectLineMarkerContributor : LineMarkerProviderDescripto
         return holder.contains(uAnnotation)
     }
 
+    private fun isSpringMainMethod(uMethod: UMethod): Boolean {
+        if (uMethod.getContainingUClass()?.javaPsi?.isMetaAnnotatedBy(SPRING_BOOT_APPLICATION) == true) return true
+
+        val bodyText = uMethod.uastBody?.sourcePsi?.text ?: return false
+        return bodyText.contains("runApplication") || bodyText.contains("run(")
+                || bodyText.contains("ApplicationContext")
+    }
+
     companion object {
         fun isExist(project: Project, canonicalPath: String) =
             ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath) != null
@@ -91,11 +133,12 @@ class AttachSpringBootProjectLineMarkerContributor : LineMarkerProviderDescripto
     }
 }
 
-class AttachProjectIconGutterHandler(private val canonicalPath: String) : GutterIconNavigationHandler<PsiElement> {
+class AttachProjectIconGutterHandler(private val canonicalPath: String, private val qualifiedClassName: String?) :
+    GutterIconNavigationHandler<PsiElement> {
 
     override fun navigate(e: MouseEvent?, elt: PsiElement?) {
         val project = elt?.project ?: return
-        val exist = AttachSpringBootProjectLineMarkerContributor.isExist(project, canonicalPath)
+        val exist = AttachSpringProjectLineMarkerContributor.isExist(project, canonicalPath)
         if (exist) {
             ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
                 ExternalSystemUtil.refreshProject(
@@ -103,12 +146,30 @@ class AttachProjectIconGutterHandler(private val canonicalPath: String) : Gutter
                 )
             }
         } else {
-            val runConfiguration = getRunConfiguration(project, canonicalPath)
+            val runConfiguration = qualifiedClassName?.let { getRunConfigurationForClass(project, it) }
+                ?: getRunConfiguration(project, canonicalPath)
             val virtualFile = LocalFileSystem.getInstance().findFileByPath(canonicalPath) ?: return
-            SpringBootOpenProjectProvider().linkToExistingProject(virtualFile, runConfiguration, project)
+            SpringBootOpenProjectProvider().linkToExistingProject(
+                virtualFile,
+                runConfiguration,
+                qualifiedClassName,
+                project
+            )
         }
     }
 
+    private fun getRunConfigurationForClass(project: Project, qualifiedClassName: String): RunConfiguration? {
+        val currentRunConfiguration = RunManager.getInstance(project).selectedConfiguration?.configuration
+        val selectedRunConfiguration = currentRunConfiguration
+            ?.takeIf { checkRunConfigurationForClassName(currentRunConfiguration, qualifiedClassName) }
+        if (selectedRunConfiguration != null) return selectedRunConfiguration
+        return RunManager.getInstance(project).allConfigurationsList
+            .filterIsInstance<SpringBootRunConfiguration>()
+            .firstOrNull { checkRunConfigurationForClassName(it, qualifiedClassName) }
+            ?: RunManager.getInstance(project).allConfigurationsList.firstOrNull {
+                checkRunConfigurationForClassName(it, qualifiedClassName)
+            }
+    }
 
     private fun getRunConfiguration(project: Project, canonicalPath: String): RunConfiguration? {
         val currentRunConfiguration = RunManager.getInstance(project).selectedConfiguration?.configuration
@@ -130,5 +191,13 @@ class AttachProjectIconGutterHandler(private val canonicalPath: String) : Gutter
             return true
         }
         return false
+    }
+
+    private fun checkRunConfigurationForClassName(
+        runConfiguration: RunConfiguration, qualifiedClassName: String
+    ) = when (runConfiguration) {
+        is KotlinRunConfiguration -> runConfiguration.runClass == qualifiedClassName
+        is ApplicationConfiguration -> runConfiguration.mainClassName == qualifiedClassName
+        else -> false
     }
 }

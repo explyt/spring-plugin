@@ -87,7 +87,9 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
                 return
             }
 
-            SpringBootOpenProjectProvider().linkToExistingProject(mainFile, selectedRunConfiguration, project)
+            SpringBootOpenProjectProvider().linkToExistingProject(
+                mainFile, selectedRunConfiguration, mainClass.qualifiedName, project
+            )
         }
 
         private fun externalSystemNotification(message: String, project: Project) {

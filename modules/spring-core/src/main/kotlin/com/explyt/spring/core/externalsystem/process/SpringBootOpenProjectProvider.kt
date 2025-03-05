@@ -40,16 +40,18 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
     override fun isProjectFile(file: VirtualFile) = file.extension == "java" || file.extension == "kt"
 
     override fun linkToExistingProject(projectFile: VirtualFile, project: Project) =
-        linkToExistingProject(projectFile, null, project)
+        linkToExistingProject(projectFile, null, null, project)
 
-    fun linkToExistingProject(projectFile: VirtualFile, runConfiguration: RunConfiguration?, project: Project) {
+    fun linkToExistingProject(
+        projectFile: VirtualFile, runConfiguration: RunConfiguration?, qualifiedMainClassName: String?, project: Project
+    ) {
         ExternalProjectsManagerImpl.getInstance(project).setStoreExternally(true)
         val projectSettings = NativeProjectSettings()
         projectSettings.externalProjectPath = projectFile.canonicalPath
         projectSettings.runConfigurationName = runConfiguration?.name
 
         projectSettings.runConfigurationType = getConfigurationType(runConfiguration)
-        getConfigurationType(runConfiguration)
+        projectSettings.qualifiedMainClassName = qualifiedMainClassName
         val externalProjectPath = projectSettings.externalProjectPath
         ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
 
