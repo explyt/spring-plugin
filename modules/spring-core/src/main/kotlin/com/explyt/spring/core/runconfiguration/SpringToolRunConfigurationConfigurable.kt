@@ -263,7 +263,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
             return try {
                 RunManager.getInstance(project).getConfigurationTemplate(ShConfigurationType.getInstance())
                 true
-            } catch (e: NoClassDefFoundError) {
+            } catch (_: NoClassDefFoundError) {
                 false
             }
         }
