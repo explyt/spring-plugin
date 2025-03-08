@@ -7,7 +7,15 @@ import com.intellij.psi.PsiElement;
 
 public class HttpVisitor extends PsiElementVisitor {
 
+  public void visitAnyRequestBlock(@NotNull HttpAnyRequestBlock o) {
+    visitPsiElement(o);
+  }
+
   public void visitComment(@NotNull HttpComment o) {
+    visitPsiElement(o);
+  }
+
+  public void visitDummyRequestBlock(@NotNull HttpDummyRequestBlock o) {
     visitPsiElement(o);
   }
 
@@ -20,14 +28,6 @@ public class HttpVisitor extends PsiElementVisitor {
   }
 
   public void visitFieldValue(@NotNull HttpFieldValue o) {
-    visitPsiElement(o);
-  }
-
-  public void visitMessageBody(@NotNull HttpMessageBody o) {
-    visitPsiElement(o);
-  }
-
-  public void visitMessageLine(@NotNull HttpMessageLine o) {
     visitPsiElement(o);
   }
 

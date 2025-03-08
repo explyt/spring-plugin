@@ -68,6 +68,8 @@
         //
         // Reformed variant:
         // FV_CHAR ( ( SP | HTAB )* FV_CHAR )*
+
+        REQUEST_BODY="regexp:[^#]*"
     ]
     consumeTokenMethod = "consumeTokenFast"
 }
@@ -76,12 +78,19 @@
 
 http_file ::= requests
 
-requests ::= ( request_block | request_definer | comment | CRLF )*
+requests ::= any_request_block
 
-request_block ::= ( request_definer CRLF )?
-                  ( comment CRLF )*
-                  request
-{ pin=3; recoverWhile=recover_request }
+any_request_block ::= ( request_block | dummy_request_block )*
+{ pin=1; recoverWhile=recover_request }
+
+request_block ::= CRLF* request_definer? CRLF*
+                  ( comment CRLF* )*
+                  request CRLF*
+{ pin=5 }
+
+dummy_request_block ::= CRLF* request_definer? CRLF*
+                        ( comment CRLF* )*
+{ pin=2; recoverWhile=recover_request }
 
 ///////////////////////////////////////////////// PRE-REQUEST COMMENTS /////////////////////////////////////////////////
 
@@ -93,7 +102,7 @@ tag_comment_line ::= COMMENT_SEPARATOR [ WHITE_SPACE ] TAG_TOKEN
 
 request ::= request_line [ CRLF
             ( field_line [ CRLF ] )*
-            [ CRLF message_body ] ]
+            [ CRLF REQUEST_BODY ] ]
 { pin=1; recoverWhile=recover_request }
 
 ///////////////////////////////////////////////////// REQUEST LINE /////////////////////////////////////////////////////
@@ -112,11 +121,6 @@ field_line ::= field_name ":" [OWS] field_value [OWS]
 
 field_name ::= HTTP_TOKEN
 field_value ::= FIELD_CONTENT
-
-///////////////////////////////////////////////////// MESSAGE BODY /////////////////////////////////////////////////////
-
-message_body ::= ( message_line | CRLF )+
-message_line ::= ANY_TOKEN
 
 ////////////////////////////////////////////////////// RECOVERIES //////////////////////////////////////////////////////
 

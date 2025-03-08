@@ -29,20 +29,8 @@ public class HttpRequestsImpl extends ASTWrapperPsiElement implements HttpReques
 
   @Override
   @NotNull
-  public List<HttpComment> getCommentList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpComment.class);
-  }
-
-  @Override
-  @NotNull
-  public List<HttpRequestBlock> getRequestBlockList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpRequestBlock.class);
-  }
-
-  @Override
-  @NotNull
-  public List<HttpRequestDefiner> getRequestDefinerList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpRequestDefiner.class);
+  public HttpAnyRequestBlock getAnyRequestBlock() {
+    return findNotNullChildByClass(HttpAnyRequestBlock.class);
   }
 
 }

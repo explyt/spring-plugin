@@ -11,14 +11,14 @@ import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.explyt.spring.web.language.http.psi.*;
 
-public class HttpMessageBodyImpl extends ASTWrapperPsiElement implements HttpMessageBody {
+public class HttpAnyRequestBlockImpl extends ASTWrapperPsiElement implements HttpAnyRequestBlock {
 
-  public HttpMessageBodyImpl(@NotNull ASTNode node) {
+  public HttpAnyRequestBlockImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull HttpVisitor visitor) {
-    visitor.visitMessageBody(this);
+    visitor.visitAnyRequestBlock(this);
   }
 
   @Override
@@ -29,8 +29,14 @@ public class HttpMessageBodyImpl extends ASTWrapperPsiElement implements HttpMes
 
   @Override
   @NotNull
-  public List<HttpMessageLine> getMessageLineList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpMessageLine.class);
+  public List<HttpDummyRequestBlock> getDummyRequestBlockList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpDummyRequestBlock.class);
+  }
+
+  @Override
+  @NotNull
+  public List<HttpRequestBlock> getRequestBlockList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpRequestBlock.class);
   }
 
 }

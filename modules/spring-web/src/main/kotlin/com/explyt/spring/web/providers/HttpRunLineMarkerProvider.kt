@@ -34,7 +34,7 @@ class HttpRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
         val leafElement = psiElement as? LeafPsiElement ?: return null
-        if (leafElement.tokenType !in URL_TYPES) return null
+        if (leafElement.tokenType == HttpTypes.REQUEST_TARGET) return null
         val httpRequestLineElement = leafElement.parentOfType<HttpRequestLine>() ?: return null
         val httpRequest = httpRequestLineElement.parent as? HttpRequest ?: return null
         val file = leafElement.containingFile.virtualFile ?: return null
@@ -48,10 +48,6 @@ class HttpRunLineMarkerProvider : RunLineMarkerContributor() {
                 }
             }
         )
-    }
-
-    companion object {
-        private val URL_TYPES = setOf(HttpTypes.REQUEST_TARGET)
     }
 
 }

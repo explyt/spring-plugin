@@ -17,7 +17,6 @@
 
 package com.explyt.spring.web.language.http
 
-import com.explyt.spring.web.language.http.psi.HttpMessageBody
 import com.explyt.spring.web.language.http.psi.HttpRequestDefiner
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
@@ -27,24 +26,17 @@ import com.intellij.openapi.editor.colors.TextAttributesKey.createTextAttributes
 import com.intellij.psi.PsiElement
 
 class HttpSyntaxHighlighterAnnotator : Annotator {
+    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
+        if (element is HttpRequestDefiner)
+            holder.newSilentAnnotation(HighlightSeverity.TEXT_ATTRIBUTES).textAttributes(REQUEST_DEFINER).create()
+    }
+
     companion object {
         @JvmStatic
         val REQUEST_DEFINER = createTextAttributesKey(
             "HTTP_REQUEST_DEFINER",
             DefaultLanguageHighlighterColors.LINE_COMMENT
         )
-
-        @JvmStatic
-        val MESSAGE_BODY = createTextAttributesKey(
-            "HTTP_MESSAGE_BODY",
-            DefaultLanguageHighlighterColors.STRING
-        )
     }
 
-    override fun annotate(element: PsiElement, holder: AnnotationHolder) {
-        if (element is HttpRequestDefiner)
-            holder.newSilentAnnotation(HighlightSeverity.TEXT_ATTRIBUTES).textAttributes(REQUEST_DEFINER).create()
-        else if (element is HttpMessageBody)
-            holder.newSilentAnnotation(HighlightSeverity.TEXT_ATTRIBUTES).textAttributes(MESSAGE_BODY).create()
-    }
 }

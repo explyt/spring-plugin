@@ -8,12 +8,12 @@ import generated.psi.impl.*;
 
 public interface HttpTypes {
 
+  IElementType ANY_REQUEST_BLOCK = new HttpElementType("ANY_REQUEST_BLOCK");
   IElementType COMMENT = new HttpElementType("COMMENT");
+  IElementType DUMMY_REQUEST_BLOCK = new HttpElementType("DUMMY_REQUEST_BLOCK");
   IElementType FIELD_LINE = new HttpElementType("FIELD_LINE");
   IElementType FIELD_NAME = new HttpElementType("FIELD_NAME");
   IElementType FIELD_VALUE = new HttpElementType("FIELD_VALUE");
-  IElementType MESSAGE_BODY = new HttpElementType("MESSAGE_BODY");
-  IElementType MESSAGE_LINE = new HttpElementType("MESSAGE_LINE");
   IElementType METHOD = new HttpElementType("METHOD");
   IElementType REQUEST = new HttpElementType("REQUEST");
   IElementType REQUESTS = new HttpElementType("REQUESTS");
@@ -32,6 +32,7 @@ public interface HttpTypes {
   IElementType HTTP_TOKEN = new HttpTokenType("HTTP_TOKEN");
   IElementType HTTP_VERSION = new HttpTokenType("HTTP_VERSION");
   IElementType OWS = new HttpTokenType("OWS");
+  IElementType REQUEST_BODY = new HttpTokenType("REQUEST_BODY");
   IElementType REQUEST_SEPARATOR = new HttpTokenType("###");
   IElementType REQUEST_TARGET = new HttpTokenType("REQUEST_TARGET");
   IElementType SP = new HttpTokenType(" ");
@@ -43,8 +44,14 @@ public interface HttpTypes {
   class Factory {
     public static PsiElement createElement(ASTNode node) {
       IElementType type = node.getElementType();
-      if (type == COMMENT) {
+      if (type == ANY_REQUEST_BLOCK) {
+        return new HttpAnyRequestBlockImpl(node);
+      }
+      else if (type == COMMENT) {
         return new HttpCommentImpl(node);
+      }
+      else if (type == DUMMY_REQUEST_BLOCK) {
+        return new HttpDummyRequestBlockImpl(node);
       }
       else if (type == FIELD_LINE) {
         return new HttpFieldLineImpl(node);
@@ -54,12 +61,6 @@ public interface HttpTypes {
       }
       else if (type == FIELD_VALUE) {
         return new HttpFieldValueImpl(node);
-      }
-      else if (type == MESSAGE_BODY) {
-        return new HttpMessageBodyImpl(node);
-      }
-      else if (type == MESSAGE_LINE) {
-        return new HttpMessageLineImpl(node);
       }
       else if (type == METHOD) {
         return new HttpMethodImpl(node);

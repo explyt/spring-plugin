@@ -38,6 +38,7 @@ REQUEST_TARGET=[^ \t\n\x0B\f\r]*
 HTTP_VERSION=HTTP"/"[0-9]\.[0-9]
 FIELD_CONTENT=[\p{Graph}\x80-\xff]([ \t]*[\p{Graph}\x80-\xff])*
 HTTP_TOKEN=[!#$%&'*+\-.\^_`|~\p{Alnum}}]+
+REQUEST_BODY=[^#]*
 
 %state REQUEST_NAME_STATE
 %state TAG_COMMENT_STATE
@@ -111,7 +112,7 @@ HTTP_TOKEN=[!#$%&'*+\-.\^_`|~\p{Alnum}}]+
 
 <MESSAGE_BODY_STATE> {
 // REMEMBER: there is still {BODY_REQUEST_SEPARATOR}
-  {ANY_TOKEN}               { return ANY_TOKEN; }
+  {REQUEST_BODY}               { return REQUEST_BODY; }
 }
 
 ///////////////////////////////////////////////////////// CORE /////////////////////////////////////////////////////////

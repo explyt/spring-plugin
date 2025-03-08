@@ -28,6 +28,30 @@ import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 
 class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
+    override fun getHighlightingLexer(): Lexer {
+        return HttpLexerAdapter()
+    }
+
+    override fun getTokenHighlights(tokenType: IElementType?): Array<TextAttributesKey> {
+        if (tokenType == HttpTypes.COMMENT_LINE || tokenType == HttpTypes.COMMENT_SEPARATOR)
+            return COMMENT_KEYS
+        if (tokenType == HttpTypes.TAG_TOKEN)
+            return TAG_TOKEN_KEYS
+        if (tokenType == HttpTypes.HTTP_TOKEN)
+            return HTTP_TOKEN_KEYS
+        if (tokenType == HttpTypes.REQUEST_TARGET)
+            return REQUEST_TARGET_KEYS
+        if (tokenType == HttpTypes.HTTP_VERSION)
+            return HTTP_VERSION_KEYS
+        if (tokenType == HttpTypes.FIELD_CONTENT)
+            return FIELD_CONTENT_KEYS
+        if (tokenType == HttpTypes.REQUEST_BODY)
+            return REQUEST_BODY_KEYS
+        if (tokenType == TokenType.BAD_CHARACTER)
+            return BAD_CHARACTER_KEYS
+        return EMPTY_KEYS
+    }
+
     companion object {
         @JvmStatic
         val COMMENT = createTextAttributesKey(
@@ -66,6 +90,12 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
         )
 
         @JvmStatic
+        val REQUEST_BODY = createTextAttributesKey(
+            "HTTP_REQUEST_BODY",
+            DefaultLanguageHighlighterColors.STRING
+        )
+
+        @JvmStatic
         val COMMENT_KEYS = arrayOf(COMMENT)
 
         @JvmStatic
@@ -84,6 +114,9 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
         val FIELD_CONTENT_KEYS = arrayOf(FIELD_CONTENT)
 
         @JvmStatic
+        val REQUEST_BODY_KEYS = arrayOf(REQUEST_BODY)
+
+        @JvmStatic
         val BAD_CHARACTER_KEYS = arrayOf(createTextAttributesKey(
             "SIMPLE_BAD_CHARACTER",
             HighlighterColors.BAD_CHARACTER
@@ -91,28 +124,6 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
 
         @JvmStatic
         val EMPTY_KEYS = arrayOf<TextAttributesKey>()
-    }
-
-    override fun getHighlightingLexer(): Lexer {
-        return HttpLexerAdapter()
-    }
-
-    override fun getTokenHighlights(tokenType: IElementType?): Array<TextAttributesKey> {
-        if (tokenType == HttpTypes.COMMENT_LINE || tokenType == HttpTypes.COMMENT_SEPARATOR)
-            return COMMENT_KEYS
-        if (tokenType == HttpTypes.TAG_TOKEN)
-            return TAG_TOKEN_KEYS
-        if (tokenType == HttpTypes.HTTP_TOKEN)
-            return HTTP_TOKEN_KEYS
-        if (tokenType == HttpTypes.REQUEST_TARGET)
-            return REQUEST_TARGET_KEYS
-        if (tokenType == HttpTypes.HTTP_VERSION)
-            return HTTP_VERSION_KEYS
-        if (tokenType == HttpTypes.FIELD_CONTENT)
-            return FIELD_CONTENT_KEYS
-        if (tokenType == TokenType.BAD_CHARACTER)
-            return BAD_CHARACTER_KEYS
-        return EMPTY_KEYS
     }
 
 }
