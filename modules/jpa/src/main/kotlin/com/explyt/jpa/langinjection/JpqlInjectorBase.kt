@@ -47,19 +47,19 @@ abstract class JpqlInjectorBase() : MultiHostInjector {
         val flattenExpression = uElement !is UInjectionHost
         val concatenationsFacade =
             UStringConcatenationsFacade.createFromUExpression(uElement, flattenExpression) ?: return
-
+        val hosts = concatenationsFacade.psiLanguageInjectionHosts.toList()
+        if (hosts.isEmpty()) {
+            return
+        }
         registrar.startInjecting(language)
-
-        concatenationsFacade.psiLanguageInjectionHosts
-            .forEach { host ->
-                registrar.addPlace(
-                    null,
-                    null,
-                    host,
-                    host.contentRange.shiftLeft(host.textOffset)
-                )
-            }
-
+        hosts.forEach { host ->
+            registrar.addPlace(
+                null,
+                null,
+                host,
+                host.contentRange.shiftLeft(host.textOffset)
+            )
+        }
         registrar.doneInjecting()
     }
 
