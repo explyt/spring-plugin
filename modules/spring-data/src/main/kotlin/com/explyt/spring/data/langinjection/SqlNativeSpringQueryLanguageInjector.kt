@@ -25,6 +25,7 @@ import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.NlsSafe
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.CachedValueProvider
@@ -53,11 +54,19 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
         val expressionIndex = getExpressionIndex(uCallExpression, uElement) ?: return false
 
         val method = uCallExpression.tryResolve() as? PsiMethod ?: return false
+        if (method.parameterList.parametersCount == 0) return false
 
-        if (method.parameterList.getParameter(expressionIndex)?.name?.contains("sql", true) == false) {
-            return false
+        val parameterName = getParameterName(method, expressionIndex) ?: return false
+        return parameterName.contains("sql", true)
+    }
+
+    private fun getParameterName(method: PsiMethod, expressionIndex: Int): String? {
+        val parameter = method.parameterList.getParameter(expressionIndex)
+        if (parameter == null) {
+            val lastParameter = method.parameterList.parameters.lastOrNull()
+            return lastParameter?.takeIf { it.isVarArgs }?.name
         }
-        return true
+        return parameter.name
     }
 
     private fun getExpressionIndex(uCallExpression: UCallExpression, uElement: UElement): Int? {

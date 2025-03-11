@@ -195,6 +195,26 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
         injectionTestFixture2.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
     }
 
+    fun testVarargInjection() {
+        @Language("JAVA") val code = """  
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.jdbc.core.JdbcTemplate;
+            import org.springframework.stereotype.Component;
+            import java.nio.file.Path;
+            
+            @Component
+            class TestService {
+                public void testQuery() {
+                    var path = Path.of("first", "second", "select * from <caret>ts"); 
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.java", code.trimIndent())
+        val injectionTestFixture1 = InjectionTestFixture(myFixture)
+        injectionTestFixture1.assertInjectedLangAtCaret(null)
+    }
+
     fun testJdbcTemplateUpdateInjection() {
         @Language("JAVA") val code = """  
             import org.springframework.beans.factory.annotation.Autowired;
