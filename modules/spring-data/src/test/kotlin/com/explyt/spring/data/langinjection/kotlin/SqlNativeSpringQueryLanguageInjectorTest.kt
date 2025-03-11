@@ -162,6 +162,25 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
         injectionTestFixture2.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
     }
 
+    fun testVarargInjection() {
+        @Language("kotlin") val code = """  
+            import org.springframework.jdbc.core.JdbcTemplate
+            import org.springframework.stereotype.Component
+            import java.nio.file.Path
+            
+            @Component 
+            class TestService(val jdbcTemplate: JdbcTemplate) {
+                fun testQuery() {
+                    val path = Path.of("first", "second", "select * from <caret>ts") 
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.kt", code.trimIndent())
+        val injectionTestFixture1 = InjectionTestFixture(myFixture)
+        injectionTestFixture1.assertInjectedLangAtCaret(null)
+    }
+
     fun testJdbcTemplateUpdateInjection() {
         @Language("kotlin") val code = """  
             import org.springframework.jdbc.core.JdbcTemplate
