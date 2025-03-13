@@ -1,16 +1,15 @@
 // This is a generated file. Not intended for manual editing.
 package generated.psi.impl;
 
-import com.explyt.spring.web.language.http.psi.HttpRequestBlock;
-import com.explyt.spring.web.language.http.psi.HttpRequests;
-import com.explyt.spring.web.language.http.psi.HttpVisitor;
-import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import java.util.List;
+import org.jetbrains.annotations.*;
 import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
+import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import com.explyt.spring.web.language.http.psi.*;
 
 public class HttpRequestsImpl extends ASTWrapperPsiElement implements HttpRequests {
 
@@ -30,8 +29,8 @@ public class HttpRequestsImpl extends ASTWrapperPsiElement implements HttpReques
 
   @Override
   @NotNull
-  public List<HttpRequestBlock> getRequestBlockList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpRequestBlock.class);
+  public HttpAnyRequestBlock getAnyRequestBlock() {
+    return findNotNullChildByClass(HttpAnyRequestBlock.class);
   }
 
 }

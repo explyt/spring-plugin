@@ -11,14 +11,14 @@ import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.explyt.spring.web.language.http.psi.*;
 
-public class HttpRequestBlockImpl extends ASTWrapperPsiElement implements HttpRequestBlock {
+public class HttpAnyRequestBlockImpl extends ASTWrapperPsiElement implements HttpAnyRequestBlock {
 
-  public HttpRequestBlockImpl(@NotNull ASTNode node) {
+  public HttpAnyRequestBlockImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull HttpVisitor visitor) {
-    visitor.visitRequestBlock(this);
+    visitor.visitAnyRequestBlock(this);
   }
 
   @Override
@@ -29,20 +29,14 @@ public class HttpRequestBlockImpl extends ASTWrapperPsiElement implements HttpRe
 
   @Override
   @NotNull
-  public List<HttpComment> getCommentList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpComment.class);
+  public List<HttpDummyRequestBlock> getDummyRequestBlockList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpDummyRequestBlock.class);
   }
 
   @Override
   @NotNull
-  public HttpRequest getRequest() {
-    return findNotNullChildByClass(HttpRequest.class);
-  }
-
-  @Override
-  @Nullable
-  public HttpRequestDefiner getRequestDefiner() {
-    return findChildByClass(HttpRequestDefiner.class);
+  public List<HttpRequestBlock> getRequestBlockList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpRequestBlock.class);
   }
 
 }

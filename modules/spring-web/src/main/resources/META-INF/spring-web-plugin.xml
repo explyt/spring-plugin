@@ -271,6 +271,16 @@
                 language="HTTP"
                 implementationClass="com.explyt.spring.web.language.http.HttpParserDefinition"/>
 
+        <!-- HTTP SYNTAX HIGHLIGHTING -->
+        <lang.syntaxHighlighterFactory
+                language="HTTP"
+                implementationClass="com.explyt.spring.web.language.http.HttpSyntaxHighlighterFactory"/>
+        <annotator
+                language="HTTP"
+                implementationClass="com.explyt.spring.web.language.http.HttpSyntaxHighlighterAnnotator"/>
+        <colorSettingsPage
+                implementation="com.explyt.spring.web.language.http.HttpColorSettingsPage"/>
+
     </extensions>
 
     <projectListeners>
@@ -304,4 +314,5 @@
     </actions>
 
     <depends>com.intellij.modules.json</depends>
+    <depends>com.intellij.java</depends>
 </idea-plugin>

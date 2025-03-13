@@ -1,12 +1,15 @@
 // This is a generated file. Not intended for manual editing.
 package generated.psi.impl;
 
-import com.explyt.spring.web.language.http.psi.HttpMethod;
-import com.explyt.spring.web.language.http.psi.HttpVisitor;
-import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import java.util.List;
+import org.jetbrains.annotations.*;
 import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
-import org.jetbrains.annotations.NotNull;
+import com.intellij.psi.util.PsiTreeUtil;
+import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import com.explyt.spring.web.language.http.psi.*;
 
 public class HttpMethodImpl extends ASTWrapperPsiElement implements HttpMethod {
 
@@ -22,6 +25,12 @@ public class HttpMethodImpl extends ASTWrapperPsiElement implements HttpMethod {
   public void accept(@NotNull PsiElementVisitor visitor) {
     if (visitor instanceof HttpVisitor) accept((HttpVisitor)visitor);
     else super.accept(visitor);
+  }
+
+  @Override
+  @NotNull
+  public PsiElement getHttpToken() {
+    return findNotNullChildByType(HTTP_TOKEN);
   }
 
 }
