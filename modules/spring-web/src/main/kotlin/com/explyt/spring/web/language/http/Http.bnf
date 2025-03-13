@@ -30,32 +30,99 @@
     tokenTypeClass="com.explyt.spring.web.language.http.psi.HttpTokenType"
 
     tokens = [
-        REQUEST_SEPARATOR = 'regexp:###.*'
-        LBRACES = '{{'
-        RBRACES = '}}'
-        HTTP = 'http://'
-        HTTPS = 'https://'
+        CRLF="regexp:\r?\n"
+        SP=" "
+        // HTAB="regexp:\t"
+        OWS="regexp:[ \t]*" // Optional White Space
 
-        line_comment="regexp:(//|#).*"
-        whitespace = 'regexp:\s+'
+        REQUEST_SEPARATOR = '###'
+        BODY_REQUEST_SEPARATOR='regexp:###.*'
+
+        COMMENT_SEPARATOR = 'regexp://|#'
+        COMMENT_LINE = 'regexp:(//|#).*'
+        TAG_COMMENT_LINE_1 = 'regexp:#\s+@.+'
+        TAG_COMMENT_LINE_2 = 'regexp://\s+@.+'
+
+        ANY_TOKEN="regexp:.*"
+        TAG_TOKEN="regexp:@.*"
+
+        REQUEST_TARGET="regexp:\S*"
+        HTTP_VERSION="regexp:HTTP/\d\.\d"// HTTP-name "/" DIGIT "." DIGIT
+        // HTTP-name = %s"HTTP"
+
+        // LBRACES = '{{'
+        // RBRACES = '}}'
+        // IDENTIFIER = "regexp:\$?\p{Alnum}+"
+
+        HTTP_TOKEN="regexp:[!#$%&'*+\-.^_`|~\p{Alnum}}]+" // 1*tchar
+        // tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+        //       / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+        //       / DIGIT / ALPHA
+
+        COLON=":"
+        FIELD_CONTENT="regexp:[\p{Graph}\x80-\xff]([ \t]*[\p{Graph}\x80-\xff])*"
+        // field-content = field-vchar
+        //                 [ 1*( SP / HTAB / field-vchar ) field-vchar ]
+        // field-vchar = VCHAR / obs-text
+        // obs-text = %x80-FF
+        //
+        // Reformed variant:
+        // FV_CHAR ( ( SP | HTAB )* FV_CHAR )*
+
+        REQUEST_BODY="regexp:[^#]*"
     ]
     consumeTokenMethod = "consumeTokenFast"
 }
 
+////////////////////////////////////////////////////// FILE BASE ///////////////////////////////////////////////////////
+
 http_file ::= requests
 
-requests ::= request_block*
+requests ::= any_request_block
 
-request_block ::= request_without_separator | request_with_separator
+any_request_block ::= ( request_block | dummy_request_block )*
+{ pin=1; recoverWhile=recover_request }
 
-private request_without_separator ::= REQUEST_SEPARATOR* request {pin=2;recoverWhile=recover_request}
-private request_with_separator ::= REQUEST_SEPARATOR+ request
+request_block ::= CRLF* request_definer? CRLF*
+                  ( comment CRLF* )*
+                  request CRLF*
+{ pin=5 }
 
-request ::= method? url {pin=2;recoverWhile=recover_request}
+dummy_request_block ::= CRLF* request_definer? CRLF*
+                        ( comment CRLF* )*
+{ pin=2; recoverWhile=recover_request }
+
+///////////////////////////////////////////////// PRE-REQUEST COMMENTS /////////////////////////////////////////////////
+
+request_definer ::= REQUEST_SEPARATOR [ ANY_TOKEN ]
+comment ::= COMMENT_LINE | tag_comment_line
+tag_comment_line ::= COMMENT_SEPARATOR [ WHITE_SPACE ] TAG_TOKEN
+
+////////////////////////////////////////////////// REQUEST STRUCTURE ///////////////////////////////////////////////////
+
+request ::= request_line [ CRLF
+            ( field_line [ CRLF ] )*
+            [ CRLF REQUEST_BODY ] ]
+{ pin=1; recoverWhile=recover_request }
+
+///////////////////////////////////////////////////// REQUEST LINE /////////////////////////////////////////////////////
+
+request_line ::= method SP REQUEST_TARGET [ SP HTTP_VERSION ]
+{ pin=1; recoverWhile=recover_line }
+
+method ::= HTTP_TOKEN
+
+// TODO: variable ::= LBRACES IDENTIFIER RBRACES {pin=1}
+
+////////////////////////////////////////////////////// FIELD LINE //////////////////////////////////////////////////////
+
+field_line ::= field_name ":" [OWS] field_value [OWS]
+{ pin=2; recoverWhile=recover_line }
+
+field_name ::= HTTP_TOKEN
+field_value ::= FIELD_CONTENT
+
+////////////////////////////////////////////////////// RECOVERIES //////////////////////////////////////////////////////
+
 private recover_request ::= !(REQUEST_SEPARATOR)
-url ::= HTTP | HTTPS | variable
-variable ::= LBRACES IDENTIFIER RBRACES {pin=1}
-//any_content ::= 'regexp:.*' {recoverWhile=recover_any_content}
-//private recover_any_content ::= !(request_separator)
-
-method ::= GET | POST | PUT | DELETE | PATCH | HEAD | OPTIONS
+private recover_line ::= !(CRLF)

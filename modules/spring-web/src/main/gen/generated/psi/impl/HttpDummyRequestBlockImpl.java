@@ -11,14 +11,14 @@ import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.explyt.spring.web.language.http.psi.*;
 
-public class HttpRequestBlockImpl extends ASTWrapperPsiElement implements HttpRequestBlock {
+public class HttpDummyRequestBlockImpl extends ASTWrapperPsiElement implements HttpDummyRequestBlock {
 
-  public HttpRequestBlockImpl(@NotNull ASTNode node) {
+  public HttpDummyRequestBlockImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull HttpVisitor visitor) {
-    visitor.visitRequestBlock(this);
+    visitor.visitDummyRequestBlock(this);
   }
 
   @Override
@@ -31,12 +31,6 @@ public class HttpRequestBlockImpl extends ASTWrapperPsiElement implements HttpRe
   @NotNull
   public List<HttpComment> getCommentList() {
     return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpComment.class);
-  }
-
-  @Override
-  @NotNull
-  public HttpRequest getRequest() {
-    return findNotNullChildByClass(HttpRequest.class);
   }
 
   @Override
