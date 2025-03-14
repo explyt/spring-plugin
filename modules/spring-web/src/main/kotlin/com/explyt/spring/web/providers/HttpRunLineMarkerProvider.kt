@@ -20,7 +20,9 @@ package com.explyt.spring.web.providers
 import com.explyt.spring.web.httpclient.action.HttpRunFileAction
 import com.explyt.spring.web.language.http.psi.HttpRequest
 import com.explyt.spring.web.language.http.psi.HttpRequestLine
+import com.explyt.spring.web.language.http.psi.HttpRequestTarget
 import com.explyt.spring.web.language.http.psi.HttpTypes
+import com.explyt.spring.web.language.http.psi.HttpVariable
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
@@ -34,8 +36,17 @@ class HttpRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
         val leafElement = psiElement as? LeafPsiElement ?: return null
-        if (leafElement.tokenType != HttpTypes.REQUEST_TARGET) return null
-        val httpRequestLineElement = leafElement.parentOfType<HttpRequestLine>() ?: return null
+
+        val convertedElement = when (leafElement.tokenType) {
+            HttpTypes.REQUEST_TARGET_VALUE -> psiElement
+            HttpTypes.IDENTIFIER           -> leafElement.parentOfType<HttpVariable>() ?: return null
+            else                           -> return null
+        }
+
+        val httpRequestTargetElement = convertedElement.parentOfType<HttpRequestTarget>() ?: return null
+        if (convertedElement !== httpRequestTargetElement.firstChild) return null
+
+        val httpRequestLineElement = httpRequestTargetElement.parentOfType<HttpRequestLine>() ?: return null
         val httpRequest = httpRequestLineElement.parent as? HttpRequest ?: return null
         val file = leafElement.containingFile.virtualFile ?: return null
 

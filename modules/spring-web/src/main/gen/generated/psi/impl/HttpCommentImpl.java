@@ -28,15 +28,27 @@ public class HttpCommentImpl extends ASTWrapperPsiElement implements HttpComment
   }
 
   @Override
-  @Nullable
-  public HttpTagCommentLine getTagCommentLine() {
-    return findChildByClass(HttpTagCommentLine.class);
+  @NotNull
+  public List<HttpVariable> getVariableList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpVariable.class);
   }
 
   @Override
   @Nullable
   public PsiElement getCommentLine() {
     return findChildByType(COMMENT_LINE);
+  }
+
+  @Override
+  @Nullable
+  public PsiElement getCommentSeparator() {
+    return findChildByType(COMMENT_SEPARATOR);
+  }
+
+  @Override
+  @Nullable
+  public PsiElement getTagToken() {
+    return findChildByType(TAG_TOKEN);
   }
 
 }

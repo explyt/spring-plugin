@@ -11,9 +11,9 @@ public interface HttpRequestLine extends PsiElement {
   HttpMethod getMethod();
 
   @Nullable
-  PsiElement getHttpVersion();
+  HttpRequestTarget getRequestTarget();
 
   @Nullable
-  PsiElement getRequestTarget();
+  PsiElement getHttpVersion();
 
 }

@@ -11,14 +11,14 @@ import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.explyt.spring.web.language.http.psi.*;
 
-public class HttpFieldNameImpl extends ASTWrapperPsiElement implements HttpFieldName {
+public class HttpRequestBodyImpl extends ASTWrapperPsiElement implements HttpRequestBody {
 
-  public HttpFieldNameImpl(@NotNull ASTNode node) {
+  public HttpRequestBodyImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull HttpVisitor visitor) {
-    visitor.visitFieldName(this);
+    visitor.visitRequestBody(this);
   }
 
   @Override

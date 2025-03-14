@@ -5,12 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface HttpTagCommentLine extends PsiElement {
+public interface HttpVariable extends PsiElement {
 
   @NotNull
-  PsiElement getCommentSeparator();
-
-  @NotNull
-  PsiElement getTagToken();
+  PsiElement getIdentifier();
 
 }
