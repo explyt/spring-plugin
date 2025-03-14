@@ -5,8 +5,20 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+- Added: use -javaagent for getting spring context
 
-## [243.1.3333] - 2025-02-11
+### Http Client
+- Added: Baseline HTTP parser + lexer + syntax highlighter. (#23)
+
+### Spring Data
+- Fixed: sql was tried to be injected in invalid places 
+
+## [243.1.3351] - 2025-02-20
+
+### Spring Data
+- Added: Support inject sql to `sql` named parameter functions (#16) 
+
+## 243.1.3333 - 2025-02-11
 
 ### Spring Core/Boot
 

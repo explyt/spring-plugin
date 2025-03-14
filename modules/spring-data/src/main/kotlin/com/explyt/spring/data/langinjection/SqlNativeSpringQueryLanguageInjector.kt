@@ -21,11 +21,11 @@ import com.explyt.jpa.langinjection.JpqlInjectorBase
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.data.SpringDataClasses
-import com.explyt.spring.data.SpringDataClasses.JDBC_TEMPLATE
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.NlsSafe
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.CachedValueProvider
@@ -36,7 +36,7 @@ import org.jetbrains.uast.*
 
 class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
     override fun isValidPlace(uElement: UElement): Boolean {
-        return isNativeQuery(uElement) || isJdbcTemplate(uElement)
+        return isNativeQuery(uElement) || isJdbcTemplateLike(uElement)
     }
 
     private fun isNativeQuery(uElement: UElement): Boolean {
@@ -49,17 +49,24 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
             ?.evaluate() == true
     }
 
-    private fun isJdbcTemplate(uElement: UElement): Boolean {
+    private fun isJdbcTemplateLike(uElement: UElement): Boolean {
         val uCallExpression = uElement.getParentOfType<UCallExpression>() ?: return false
         val expressionIndex = getExpressionIndex(uCallExpression, uElement) ?: return false
 
         val method = uCallExpression.tryResolve() as? PsiMethod ?: return false
-        val psiClass = method.containingClass ?: return false
+        if (method.parameterList.parametersCount == 0) return false
 
-        if (method.parameterList.getParameter(expressionIndex)?.name?.contains("sql", true) == false) {
-            return false
+        val parameterName = getParameterName(method, expressionIndex) ?: return false
+        return parameterName.contains("sql", true)
+    }
+
+    private fun getParameterName(method: PsiMethod, expressionIndex: Int): String? {
+        val parameter = method.parameterList.getParameter(expressionIndex)
+        if (parameter == null) {
+            val lastParameter = method.parameterList.parameters.lastOrNull()
+            return lastParameter?.takeIf { it.isVarArgs }?.name
         }
-        return InheritanceUtil.isInheritor(psiClass, JDBC_TEMPLATE)
+        return parameter.name
     }
 
     private fun getExpressionIndex(uCallExpression: UCallExpression, uElement: UElement): Int? {

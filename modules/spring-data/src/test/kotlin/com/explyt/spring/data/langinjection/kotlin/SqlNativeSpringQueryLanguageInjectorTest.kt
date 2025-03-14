@@ -27,7 +27,7 @@ import org.intellij.lang.annotations.Language
 class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
-        TestLibrary.springDataJpa_3_1_0, TestLibrary.jakarta_persistence_3_1_0
+        TestLibrary.springDataJpa_3_4_0, TestLibrary.jakarta_persistence_3_1_0
     )
 
     override fun setUp() {
@@ -58,7 +58,6 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
 
     fun testJdbcTemplateQueryInjection() {
         @Language("kotlin") val code = """  
-            import org.springframework.beans.factory.annotation.Autowired
             import org.springframework.jdbc.core.JdbcTemplate
             import org.springframework.stereotype.Component
             
@@ -75,9 +74,56 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
         injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
     }
 
+    fun testNamedParameterJdbcTemplateQueryInjection() {
+        @Language("kotlin") val code = """  
+            import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource
+            import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
+            import org.springframework.stereotype.Component
+            
+            class Employee(var firstName: String)
+
+            @Component
+            class TestService(val namedParameterJdbcTemplate: NamedParameterJdbcTemplate) {
+                fun testQuery() {
+                    val employee = Employee("James")
+                    val namedParameters = BeanPropertySqlParameterSource(employee)
+                    (namedParameterJdbcTemplate as NamedParameterJdbcTemplate).query(
+                        "SELECT COUNT(*) FROM EMPLOYEE<caret> WHERE FIRST_NAME = :firstName"
+                        , namedParameters) { rs -> "" }
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.kt", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
+    fun testJdbcClientQueryInjection() {
+        @Language("kotlin") val code = """  
+            import org.springframework.jdbc.core.RowCountCallbackHandler
+            import org.springframework.jdbc.core.simple.JdbcClient
+            import org.springframework.stereotype.Component
+            
+            @Component
+            class TestService(val jdbcClient: JdbcClient) {
+                fun testQuery() {
+                    val countCallbackHandler = RowCountCallbackHandler()
+                    jdbcClient.sql("SELECT COUNT(*) FROM EMPLOYEE<caret> WHERE FIRST_NAME = ?")
+                        .param("James")
+                        .query(countCallbackHandler)
+                    countCallbackHandler.getRowCount()
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.kt", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
     fun testJdbcTemplateExecuteInjection() {
         @Language("kotlin") val code = """  
-            import org.springframework.beans.factory.annotation.Autowired
             import org.springframework.jdbc.core.JdbcTemplate
             import org.springframework.stereotype.Component
             
@@ -96,7 +142,6 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
 
     fun testJdbcTemplateBatchUpdateInjection() {
         @Language("kotlin") val code = """  
-            import org.springframework.beans.factory.annotation.Autowired
             import org.springframework.jdbc.core.JdbcTemplate
             import org.springframework.stereotype.Component
             
@@ -117,12 +162,31 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
         injectionTestFixture2.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
     }
 
+    fun testVarargInjection() {
+        @Language("kotlin") val code = """  
+            import org.springframework.jdbc.core.JdbcTemplate
+            import org.springframework.stereotype.Component
+            import java.nio.file.Path
+            
+            @Component 
+            class TestService(val jdbcTemplate: JdbcTemplate) {
+                fun testQuery() {
+                    val path = Path.of("first", "second", "select * from <caret>ts") 
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.kt", code.trimIndent())
+        val injectionTestFixture1 = InjectionTestFixture(myFixture)
+        injectionTestFixture1.assertInjectedLangAtCaret(null)
+    }
+
     fun testJdbcTemplateUpdateInjection() {
         @Language("kotlin") val code = """  
-            import org.springframework.beans.factory.annotation.Autowired
             import org.springframework.jdbc.core.JdbcTemplate
             import org.springframework.stereotype.Component
             
+            @Component
             class TestService(val jdbcTemplate: JdbcTemplate) {
                 fun testQuery() {
                     jdbcTemplate.update("update ttt set id=1<caret>")
@@ -137,10 +201,10 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
 
     fun testJdbcTemplateUpdateInjectionMultiLine() {
         @Language("kotlin") val code = """  
-            import org.springframework.beans.factory.annotation.Autowired
             import org.springframework.jdbc.core.JdbcTemplate
             import org.springframework.stereotype.Component
             
+            @Component 
             class TestService(val jdbcTemplate: JdbcTemplate) {
                 fun testQuery() {
                     jdbcTemplate.update("update ttt %s" +

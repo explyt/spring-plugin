@@ -33,7 +33,6 @@ import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
-import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -41,6 +40,8 @@ import com.explyt.util.ExplytPsiUtil.isPublic
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.execution.ProgramRunnerUtil
+import com.intellij.execution.application.ApplicationConfiguration
+import com.intellij.execution.configurations.ModuleBasedConfiguration
 import com.intellij.execution.configurations.ModuleBasedConfigurationOptions
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.executors.DefaultRunExecutor
@@ -71,6 +72,8 @@ import com.intellij.psi.util.InheritanceUtil
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
+import com.intellij.util.execution.ParametersListUtil
+import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit.MINUTES
@@ -95,13 +98,14 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         listener: ExternalSystemTaskNotificationListener
     ): DataNode<ProjectData> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REFRESH)
-
         val runConfigurationHolder = findRunConfigurationReadAction(projectPath, settings)
         if (isPreviewMode) {
             return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfigurationHolder), null)
         }
         settings ?: throw ExternalSystemException("No settings")
         runConfigurationHolder ?: nothingException(settings)
+        if (runConfigurationHolder.isEmpty()) nothingException(settings)
+
         try {
             return synchronized(this::class.java) {
                 try {
@@ -129,20 +133,15 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         settings: NativeExecutionSettings,
         listener: ExternalSystemTaskNotificationListener,
     ): DataNode<ProjectData> {
-        val runConfiguration = runConfigurationHolder.runConfiguration
-        val modules = runConfiguration.modules
-
+        val runConfiguration = getRunConfiguration(runConfigurationHolder)
+        val modules = getModules(runConfigurationHolder)
         buildProject(settings, modules)
 
-        if (!runConfigurationHolder.useOriginalMainMethod) {
-            val mainClass = ApplicationManager.getApplication()
-                .runReadAction(Computable { NativeBootUtils.getMainClass(runConfiguration) })
-                ?: throw ExternalSystemException("No main class run configuration found")
-            runConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
-                .runReadAction(Computable { mainClass.qualifiedName })
-            runConfiguration.mainClassName = getMainClassName(modules, id, listener)
+        if (runConfigurationHolder.agentRunConfiguration != null) {
+            patchJavaAgent(runConfigurationHolder.agentRunConfiguration)
+        } else {
+            patchClasspath(runConfigurationHolder, modules, id, listener)
         }
-        runConfiguration.classpathModifications.add(getClasspathExplytModification())
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
         executeRunConfiguration(id, runConfiguration, processAdapter)
@@ -165,6 +164,56 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         return projectDataNode
     }
 
+    private fun patchClasspath(
+        runConfigurationHolder: RunConfigurationHolder,
+        modules: Array<Module>,
+        id: ExternalSystemTaskId,
+        listener: ExternalSystemTaskNotificationListener
+    ) {
+        val explytRunConfiguration = runConfigurationHolder.runConfiguration ?: throw RuntimeException()
+
+        val mainClass = ApplicationManager.getApplication()
+            .runReadAction(Computable { NativeBootUtils.getMainClass(explytRunConfiguration) })
+            ?: throw ExternalSystemException("No main class run configuration found")
+        explytRunConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
+            .runReadAction(Computable { mainClass.qualifiedName })
+        explytRunConfiguration.mainClassName = getMainClassName(modules, id, listener)
+        explytRunConfiguration.classpathModifications.add(getClasspathExplytModification())
+    }
+
+    private fun patchJavaAgent(runConfiguration: RunConfiguration) {
+        val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.Constants::class.java)
+        val javaAgentEscaping = ParametersListUtil.escape("-javaagent:$agentJarPath")
+        if (runConfiguration is ApplicationConfiguration) {
+            if (runConfiguration.vmParameters == null) {
+                runConfiguration.vmParameters = javaAgentEscaping
+            } else {
+                runConfiguration.vmParameters += " $javaAgentEscaping"
+            }
+        } else if (runConfiguration is KotlinRunConfiguration) {
+            if (runConfiguration.vmParameters == null) {
+                runConfiguration.vmParameters = javaAgentEscaping
+            } else {
+                runConfiguration.vmParameters += " $javaAgentEscaping"
+            }
+        }
+    }
+
+    private fun getRunConfiguration(runConfigurationHolder: RunConfigurationHolder): RunConfiguration {
+        return runConfigurationHolder.runConfiguration
+            ?: (runConfigurationHolder.agentRunConfiguration ?: throw RuntimeException())
+    }
+
+    private fun getModules(runConfigurationHolder: RunConfigurationHolder): Array<Module> {
+        return if (runConfigurationHolder.runConfiguration != null) {
+            runConfigurationHolder.runConfiguration.modules
+        } else if (runConfigurationHolder.agentRunConfiguration is ModuleBasedConfiguration<*, *>) {
+            runConfigurationHolder.agentRunConfiguration.modules
+        } else {
+            throw RuntimeException()
+        }
+    }
+
     private fun detectMessageMapping(settings: NativeExecutionSettings) {
         val messageMappingExist = ApplicationManager.getApplication()
             .runReadAction(Computable {
@@ -185,7 +234,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     }
 
     private fun executeRunConfiguration(
-        id: ExternalSystemTaskId, clone: SpringBootRunConfiguration, processAdapter: ExplytCapturingProcessAdapter
+        id: ExternalSystemTaskId, clone: RunConfiguration, processAdapter: ExplytCapturingProcessAdapter
     ) {
         val descriptor = getDescriptor()
         val environment = getEnvironment(id, clone, processAdapter, descriptor)
@@ -339,7 +388,8 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val directoryPath = LocalFileSystem.getInstance().findFileByPath(projectPath)
             ?.takeIf { it.isFile }?.parent?.canonicalPath
             ?: throw ExternalSystemException("File not found $projectPath")
-        val projectName = configuration?.runConfiguration?.name ?: SYSTEM_ID.readableName
+        val runConfiguration = configuration?.agentRunConfiguration ?: configuration?.runConfiguration
+        val projectName = runConfiguration?.name ?: SYSTEM_ID.readableName
         val projectData = ProjectData(SYSTEM_ID, projectName, directoryPath, projectPath)
         return projectData
     }

@@ -27,7 +27,7 @@ import org.intellij.lang.annotations.Language
 class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
-        TestLibrary.springDataJpa_3_1_0,
+        TestLibrary.springDataJpa_3_4_0,
     )
 
     override fun setUp() {
@@ -68,8 +68,74 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
                 @Autowired
                 private JdbcTemplate jdbcTemplate;
                 
-                public TestService() {
+                public void testQuery() {
                     jdbcTemplate.query("select uv12.a as p21 from users<caret> u", (rs, rowNum) -> "");
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.java", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
+    fun testNamedParameterJdbcTemplateQueryInjection() {
+        @Language("JAVA") val code = """  
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
+            import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+            import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+            import org.springframework.stereotype.Component;
+            
+            class Employee {
+                private String firstName;
+                public void setFirstName(String firstName) {
+                    this.firstName = firstName;
+                }
+            }
+            
+            @Component
+            class TestService {
+            
+                @Autowired
+                private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+                
+                public void testQuery() {
+                    Employee employee = new Employee();
+                    employee.setFirstName("James");
+                    SqlParameterSource namedParameters = new BeanPropertySqlParameterSource(employee);
+
+                    namedParameterJdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM EMPLOYEE<caret> WHERE FIRST_NAME = :firstName"
+                        , namedParameters, Integer.class);
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.java", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
+    fun testJdbcClientQueryInjection() {
+        @Language("JAVA") val code = """  
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.jdbc.core.RowCountCallbackHandler;
+            import org.springframework.jdbc.core.simple.JdbcClient;
+            import org.springframework.stereotype.Component;
+            
+            @Component
+            class TestService {
+            
+                @Autowired
+                private JdbcClient jdbcClient;
+                
+                public void testQuery() {
+                    RowCountCallbackHandler countCallbackHandler = new RowCountCallbackHandler();
+                    jdbcClient.sql("SELECT COUNT(*) FROM EMPLOYEE<caret> WHERE FIRST_NAME = ?")
+                        .param("James")
+                        .query(countCallbackHandler);
+                    countCallbackHandler.getRowCount();
                 }
             }
             """
@@ -91,8 +157,8 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
                 @Autowired
                 private JdbcTemplate jdbcTemplate;
                 
-                public TestService() {
-                    jdbcTemplate.execute("select uv12.a as p21 <caret>from users u join employe e where u.p21 > 0 and e.id=0 ");
+                public void testQuery() {
+                    jdbcTemplate.execute("select uv12.a as p21 <caret>from users u join employee e where u.p21 > 0 and e.id=0 ");
                 }
             }
             """
@@ -114,7 +180,7 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
                 @Autowired
                 private JdbcTemplate jdbcTemplate;
                 
-                public TestService() {
+                public void testQuery() {
                     jdbcTemplate.batchUpdate("select * from t%s", "select uv12.a as p21 from users u%s);
                 }
             }
@@ -129,6 +195,26 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
         injectionTestFixture2.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
     }
 
+    fun testVarargInjection() {
+        @Language("JAVA") val code = """  
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.jdbc.core.JdbcTemplate;
+            import org.springframework.stereotype.Component;
+            import java.nio.file.Path;
+            
+            @Component
+            class TestService {
+                public void testQuery() {
+                    var path = Path.of("first", "second", "select * from <caret>ts"); 
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.java", code.trimIndent())
+        val injectionTestFixture1 = InjectionTestFixture(myFixture)
+        injectionTestFixture1.assertInjectedLangAtCaret(null)
+    }
+
     fun testJdbcTemplateUpdateInjection() {
         @Language("JAVA") val code = """  
             import org.springframework.beans.factory.annotation.Autowired;
@@ -141,7 +227,7 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
                 @Autowired
                 private JdbcTemplate jdbcTemplate;
                 
-                public TestService() {
+                public void testQuery() {
                     jdbcTemplate.update("update ttt set id=1<caret>");
                 }
             }
@@ -164,7 +250,7 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
                 @Autowired
                 private JdbcTemplate jdbcTemplate;
                 
-                public TestService() {
+                public void testQuery() {
                     jdbcTemplate.update("update ttt%s" +
                             " set id=1%s");
                 }

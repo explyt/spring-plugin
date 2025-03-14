@@ -17,7 +17,6 @@
 
 package com.explyt.spring.core.externalsystem
 
-import com.explyt.spring.core.action.EXPLYT_APPLICATION_RUN
 import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
 import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
 import com.explyt.spring.core.runconfiguration.SpringBootConfigurationFactory
@@ -26,25 +25,30 @@ import com.intellij.execution.RunManager
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.registry.Registry
+import com.intellij.openapi.vfs.VfsUtil
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
-import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElement
-import org.jetbrains.uast.visitor.AbstractUastVisitor
+import kotlin.io.path.Path
 
 object RunConfigurationExtractor {
+
     fun findRunConfiguration(projectPath: String, settings: NativeExecutionSettings?): RunConfigurationHolder? {
         settings ?: return null
         val allConfigurationsList = RunManager.getInstance(settings.project).allConfigurationsList
+        val isJavaAgent = Registry.`is`("explyt.spring.native.javaagent")
         if (settings.runConfigurationType == RunConfigurationType.KOTLIN) {
             val runConfig = allConfigurationsList
                 .filterIsInstance<KotlinRunConfiguration>()
                 .find { it.name == settings.runConfigurationName }
             if (runConfig != null) {
-                val useOriginal = useOriginalRunConfiguration(runConfig)
+                if (isJavaAgent) {
+                    return RunConfigurationHolder(agentRunConfiguration = runConfig.clone())
+                }
                 val runConfiguration = mapToSpringBootRunConfiguration(runConfig, settings) ?: return null
-                return RunConfigurationHolder(useOriginal, runConfiguration)
+                return RunConfigurationHolder(runConfiguration)
             }
         }
         if (settings.runConfigurationType == RunConfigurationType.APPLICATION) {
@@ -52,9 +56,11 @@ object RunConfigurationExtractor {
                 .filterIsInstance<ApplicationConfiguration>()
                 .find { it !is SpringBootRunConfiguration && it.name == settings.runConfigurationName }
             if (runConfig != null) {
-                val useOriginal = useOriginalRunConfiguration(runConfig)
+                if (isJavaAgent) {
+                    return RunConfigurationHolder(agentRunConfiguration = runConfig.clone())
+                }
                 val runConfiguration = mapToSpringBootRunConfiguration(runConfig, settings) ?: return null
-                return RunConfigurationHolder(useOriginal, runConfiguration)
+                return RunConfigurationHolder(runConfiguration)
             }
         }
         val runConfig = if (settings.runConfigurationName != null) {
@@ -62,12 +68,13 @@ object RunConfigurationExtractor {
         } else {
             allConfigurationsList.find { checkRunConfiguration(it, projectPath) }
         }
-
         if (runConfig is SpringBootRunConfiguration) {
-            val useOriginal = useOriginalRunConfiguration(runConfig)
-            return RunConfigurationHolder(useOriginal, runConfig.clone() as SpringBootRunConfiguration)
+            if (isJavaAgent) {
+                return RunConfigurationHolder(agentRunConfiguration = runConfig.clone())
+            }
+            return RunConfigurationHolder(runConfig.clone() as SpringBootRunConfiguration)
         }
-        return null
+        return createDefaultRunConfiguration(settings)?.let { RunConfigurationHolder(agentRunConfiguration = it) }
     }
 
     private fun checkRunConfiguration(runConfiguration: RunConfiguration, projectPath: String): Boolean {
@@ -76,38 +83,12 @@ object RunConfigurationExtractor {
         } else false
     }
 
-    private fun useOriginalRunConfiguration(kotlinRunConfiguration: KotlinRunConfiguration): Boolean {
-        val uClass = getKotlinUClass(kotlinRunConfiguration) ?: return false
-        return useOriginalRunConfiguration(uClass)
-    }
-
     private fun getKotlinUClass(kotlinRunConfiguration: KotlinRunConfiguration): UClass? {
         val mainClassFile = kotlinRunConfiguration.findMainClassFile() ?: return null
         val runClassQualifiedName = kotlinRunConfiguration.runClass ?: return null
         val uFile = mainClassFile.toUElement() as? UFile ?: return null
         return uFile.classes
             .firstOrNull { it.javaPsi.name != null && runClassQualifiedName.endsWith(it.javaPsi.name!!) }
-    }
-
-    private fun useOriginalRunConfiguration(applicationConfiguration: ApplicationConfiguration): Boolean {
-        val mainUClass = applicationConfiguration.mainClass?.toUElement() as? UClass ?: return false
-        return useOriginalRunConfiguration(mainUClass)
-    }
-
-    private fun useOriginalRunConfiguration(uClass: UClass): Boolean {
-        val uMethod = uClass.methods.firstOrNull { it.name == "main" } ?: return false
-        val uastBody = uMethod.uastBody ?: return false
-        val visitor = object : AbstractUastVisitor() {
-            var isExplytApplicationRun = false
-            override fun visitCallExpression(node: UCallExpression): Boolean {
-                if (!isExplytApplicationRun && node.asSourceString().contains(EXPLYT_APPLICATION_RUN)) {
-                    isExplytApplicationRun = true
-                }
-                return super.visitCallExpression(node)
-            }
-        }
-        uastBody.accept(visitor)
-        return visitor.isExplytApplicationRun
     }
 
     private fun mapToSpringBootRunConfiguration(
@@ -130,6 +111,22 @@ object RunConfigurationExtractor {
         runConfiguration.isPassParentEnvs = configuration.isPassParentEnvs
         runConfiguration.alternativeJrePath = configuration.alternativeJrePath
         runConfiguration.classpathModifications = configuration.classpathModifications
+        return runConfiguration
+    }
+
+    private fun createDefaultRunConfiguration(settings: NativeExecutionSettings): SpringBootRunConfiguration? {
+        val qualifiedMainClassName = settings.qualifiedMainClassName ?: return null
+        val externalProjectMainFilePath = settings.externalProjectMainFilePath ?: return null
+        val virtualFile = VfsUtil.findFile(Path(externalProjectMainFilePath), false) ?: return null
+        val module = ModuleUtilCore.findModuleForFile(virtualFile, settings.project) ?: return null
+
+        val runConfiguration = SpringBootConfigurationFactory
+            .createTemplateConfiguration(settings.project)
+            .apply {
+                setModule(module)
+                mainClassName = qualifiedMainClassName
+                setGeneratedName()
+            }
         return runConfiguration
     }
 
@@ -158,6 +155,8 @@ object RunConfigurationExtractor {
 
 
 data class RunConfigurationHolder(
-    val useOriginalMainMethod: Boolean = false,
-    val runConfiguration: SpringBootRunConfiguration
-)
+    val runConfiguration: SpringBootRunConfiguration? = null,
+    val agentRunConfiguration: RunConfiguration? = null
+) {
+    fun isEmpty() = runConfiguration == null && agentRunConfiguration == null
+}

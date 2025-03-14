@@ -15,19 +15,12 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.externalsystem.setting
+package com.explyt.spring.boot.bean.reader;
 
-import com.intellij.openapi.externalSystem.model.settings.ExternalSystemExecutionSettings
-import com.intellij.openapi.project.Project
-
-class NativeExecutionSettings(val project: Project) : ExternalSystemExecutionSettings() {
-    var externalProjectMainFilePath: String? = null
-    var runConfigurationName: String? = null
-    var qualifiedMainClassName: String? = null
-    var messageMappingExist: Boolean = false
-    var runConfigurationType = RunConfigurationType.EXPLYT
-}
-
-enum class RunConfigurationType {
-    EXPLYT, KOTLIN, APPLICATION
+public interface Constants {
+    String EXPLYT_BEAN_INFO_START = "ExplytBeanInfoStart";
+    String EXPLYT_BEAN_INFO_END = "ExplytBeanInfoEnd";
+    String EXPLYT_BEAN_INFO = "ExplytBeanInfo:";
+    String EXPLYT_AOP_INFO = "ExplytBeanAopInfo:";
+    String SPRING_EXPLYT_ERROR_MESSAGE = "I am Explyt Spring";
 }
