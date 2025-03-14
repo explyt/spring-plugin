@@ -43,6 +43,10 @@ public class HttpVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitRequestBody(@NotNull HttpRequestBody o) {
+    visitPsiElement(o);
+  }
+
   public void visitRequestDefiner(@NotNull HttpRequestDefiner o) {
     visitPsiElement(o);
   }
@@ -51,11 +55,15 @@ public class HttpVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitRequestTarget(@NotNull HttpRequestTarget o) {
+    visitPsiElement(o);
+  }
+
   public void visitRequests(@NotNull HttpRequests o) {
     visitPsiElement(o);
   }
 
-  public void visitTagCommentLine(@NotNull HttpTagCommentLine o) {
+  public void visitVariable(@NotNull HttpVariable o) {
     visitPsiElement(o);
   }
 

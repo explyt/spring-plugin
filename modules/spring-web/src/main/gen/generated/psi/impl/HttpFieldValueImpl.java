@@ -29,8 +29,8 @@ public class HttpFieldValueImpl extends ASTWrapperPsiElement implements HttpFiel
 
   @Override
   @NotNull
-  public PsiElement getFieldContent() {
-    return findNotNullChildByType(FIELD_CONTENT);
+  public List<HttpVariable> getVariableList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpVariable.class);
   }
 
 }

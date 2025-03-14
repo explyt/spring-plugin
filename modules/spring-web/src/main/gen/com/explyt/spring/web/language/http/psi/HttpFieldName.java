@@ -8,6 +8,6 @@ import com.intellij.psi.PsiElement;
 public interface HttpFieldName extends PsiElement {
 
   @NotNull
-  PsiElement getHttpToken();
+  List<HttpVariable> getVariableList();
 
 }
