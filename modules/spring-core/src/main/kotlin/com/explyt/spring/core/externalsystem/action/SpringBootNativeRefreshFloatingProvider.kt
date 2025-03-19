@@ -41,14 +41,12 @@ class SpringBootNativeRefreshFloatingProvider
 class AnnotationTrackerHolderService(val project: Project) {
 
     private val annotationTrackerHolder = AtomicLong(
-        ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
-            .getOnlyAnnotationModificationCount()
+        ModificationTrackerManager.getInstance(project).getRefreshFloatingAnnotationTracker().modificationCount
     )
 
     fun updateAnnotationTrackerHolder() {
         annotationTrackerHolder.set(
-            ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
-                .getOnlyAnnotationModificationCount()
+            ModificationTrackerManager.getInstance(project).getRefreshFloatingAnnotationTracker().modificationCount
         )
     }
 
@@ -56,9 +54,9 @@ class AnnotationTrackerHolderService(val project: Project) {
         val settingsState = SpringToolRunConfigurationsSettingsState.getInstance()
         if (!settingsState.isShowFloatingRefreshAction) return false
 
-        val modificationTracker = ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
+        val modificationTracker = ModificationTrackerManager.getInstance(project).getRefreshFloatingAnnotationTracker()
         val currentTracker = annotationTrackerHolder.get()
-        val modificationCount = modificationTracker.getOnlyAnnotationModificationCount()
+        val modificationCount = modificationTracker.modificationCount
         return currentTracker < modificationCount
     }
 

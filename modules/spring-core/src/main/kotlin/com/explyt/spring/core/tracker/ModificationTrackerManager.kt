@@ -24,6 +24,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ModificationTracker
+import com.intellij.openapi.util.SimpleModificationTracker
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.impl.BulkVirtualFileListenerAdapter
 import com.intellij.psi.PsiManager
@@ -34,10 +35,13 @@ class ModificationTrackerManager(val project: Project) : Disposable {
     private val uastAnnotationTracker = ExplytAnnotationModificationTracker(project)
     private val propertyTracker = ExplytPropertyModificationTracker(project)
     private val externalSystemTracker = SpringBootExternalSystemTracker(project)
+    private val refreshFloatingAnnotationTracker = SimpleModificationTracker()
 
     init {
         PsiManager.getInstance(project).addPsiTreeChangeListener(
-            MyUastPsiTreeChangeAdapter(project, uastModelTracker, uastAnnotationTracker, propertyTracker), this
+            MyUastPsiTreeChangeAdapter(
+                project, uastModelTracker, uastAnnotationTracker, propertyTracker, refreshFloatingAnnotationTracker
+            ), this
         )
         project.messageBus.connect(this)
             .subscribe(
@@ -59,10 +63,13 @@ class ModificationTrackerManager(val project: Project) : Disposable {
 
     fun getExternalSystemTracker() = externalSystemTracker
 
+    fun getRefreshFloatingAnnotationTracker() = refreshFloatingAnnotationTracker
+
     fun invalidateAll() {
         uastModelTracker.incModificationCount()
         uastAnnotationTracker.incModificationCount()
         externalSystemTracker.incModificationCount()
+        refreshFloatingAnnotationTracker.incModificationCount()
 
         AnnotationTrackerHolderService.getInstance(project).updateAnnotationTrackerHolder()
     }
