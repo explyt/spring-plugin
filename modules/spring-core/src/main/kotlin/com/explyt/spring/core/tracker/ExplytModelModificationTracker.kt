@@ -88,6 +88,7 @@ internal class MyUastPsiTreeChangeAdapter(
     private val modelTracker: ExplytModelModificationTracker,
     private val annotationTracker: ExplytAnnotationModificationTracker,
     private val propertyTracker: ExplytPropertyModificationTracker,
+    private val refreshFloatingAnnotationTracker: SimpleModificationTracker,
 ) : PsiTreeChangeAdapter() {
     private val uastPsiPossibleTypes = HashMap<String, CachedValue<UastPsiPossibleTypes>>()
     private val beforeChildAddRemoveSet = setOf(BEFORE_CHILD_ADDITION, BEFORE_CHILD_REMOVAL)
@@ -178,10 +179,11 @@ internal class MyUastPsiTreeChangeAdapter(
         ) {
             //tracker for root package search
             modelTracker.incModificationCount()
-            if (isNotTest(psiFile)
-                && checkIsSpringReloadAnnotation(eventType, child, parent, grandParent, unsafeGrandChild)
-            ) {
+            if (isNotTest(psiFile)) {
                 annotationTracker.incModificationCount()
+                if (checkIsSpringReloadAnnotation(eventType, child, parent, grandParent, unsafeGrandChild)) {
+                    refreshFloatingAnnotationTracker.incModificationCount()
+                }
             }
             return
         }
