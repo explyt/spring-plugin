@@ -169,12 +169,12 @@ public class AspectJAopUtilsDecorator {
     private static void explytPrintAopMethodData(String aspectName, String aspectMethodName, String beanName, Method method) {
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
-        String parametersString = "";
+        StringBuilder parametersString = new StringBuilder();
         if (parameterTypes != null && parameterTypes.length > 0) {
             for (Class<?> parameterType : parameterTypes) {
-                parametersString += "," + parameterType.getName();
+                parametersString.append(",").append(parameterType.getName());
             }
-            parametersString = parametersString.substring(1);
+            parametersString = new StringBuilder(parametersString.substring(1));
         }
         String formatted = String.format(
                 AOP_INFO_TEMPLATE, aspectName, aspectMethodName, beanName, methodName, parametersString
