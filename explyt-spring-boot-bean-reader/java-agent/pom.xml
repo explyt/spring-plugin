@@ -18,9 +18,9 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.javassist</groupId>
-            <artifactId>javassist</artifactId>
-            <version>3.30.2-GA</version>
+            <groupId>io.github.grisha9</groupId>
+            <artifactId>declarative-bytecode-patcher</artifactId>
+            <version>0.2</version>
         </dependency>
     </dependencies>
 
@@ -42,7 +42,7 @@
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                        <Premain-Class>tech.ytsaurus.spyt.patch.SparkPatchAgent</Premain-Class>
+                                        <Premain-Class>io.github.grisha9.PatchAgentPremain</Premain-Class>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>

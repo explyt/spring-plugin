@@ -88,6 +88,7 @@ public class AbstractApplicationContextDecorator {
                     className = springDataType;
                 }
             }
+            if (className == null) continue;
             beanTypeByNameMap.put(beanName, methodType != null ? methodType : className);
             methodName = methodName == null ? "null" : "\"" + methodName + "\"";
             methodType = methodType == null ? "null" : "\"" + methodType + "\"";
