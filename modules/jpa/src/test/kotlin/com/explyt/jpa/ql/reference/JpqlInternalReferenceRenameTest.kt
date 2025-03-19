@@ -18,6 +18,9 @@
 package com.explyt.jpa.ql.reference
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.Computable
+import com.intellij.openapi.vfs.readText
 import com.intellij.testFramework.TestDataPath
 
 private const val TEST_DATA_PATH = "reference/internal/rename"
@@ -49,6 +52,8 @@ class JpqlInternalReferenceRenameTest : ExplytJavaLightTestCase() {
 
         myFixture.renameElement(element, "newName")
 
-        myFixture.checkResultByFile("$name.txt")
+        val vfResult = myFixture.copyFileToProject("$name.txt", "$name.txt")
+        val resultText = ApplicationManager.getApplication().runReadAction(Computable { vfResult.readText() })
+        myFixture.checkResult(resultText)
     }
 }

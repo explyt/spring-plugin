@@ -20,6 +20,7 @@ package com.explyt.spring.core.properties.kotlin
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.PsiElement
+import org.intellij.lang.annotations.Language
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
 class RenameSpringValueExplytPropertyReferenceTest : ExplytKotlinLightTestCase() {
@@ -42,8 +43,8 @@ class RenameSpringValueExplytPropertyReferenceTest : ExplytKotlinLightTestCase()
 
         myFixture.checkResult("server.timing_new.minutes-to-next-claim=480")
 
-        myFixture.checkResultByFile("UserHandler.kt", "UserHandler_after.kt", true)
-        myFixture.checkResultByFile("application.properties", "application_after.properties", true)
+        myFixture.checkResult("UserHandler.kt", UserHandler_after, true)
+        myFixture.checkResult("application.properties", "server.timing_new.minutes-to-next-claim=470", true)
     }
 
     fun testRenameYaml() {
@@ -73,8 +74,22 @@ server:
 """.trimIndent()
         )
 
-        myFixture.checkResultByFile("UserHandler.kt", "UserHandler_after.kt", true)
-        myFixture.checkResultByFile("application.yaml", "application_after.yaml", true)
+        myFixture.checkResult("UserHandler.kt", UserHandler_after, true)
+        myFixture.checkResult("application.yaml", """
+server:
+  timing_new:
+    minutes-to-next-claim: 470
+        """.trimIndent(), true)
     }
 
 }
+
+@Language("kotlin")
+private val UserHandler_after = """
+import org.springframework.beans.factory.annotation.Value
+
+class UserHandler {
+    @Value("\${'$'}{server.timing_new.minutes-to-next-claim}")
+    private val minutesToNextClaim: Long = 470L
+}
+""".trimIndent()

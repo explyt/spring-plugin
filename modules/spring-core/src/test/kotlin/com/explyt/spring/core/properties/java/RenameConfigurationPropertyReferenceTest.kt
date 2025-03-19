@@ -22,6 +22,7 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
+import org.intellij.lang.annotations.Language
 
 class RenameConfigurationPropertyReferenceTest : ExplytJavaLightTestCase() {
 
@@ -68,8 +69,8 @@ lss:
 """.trimIndent()
         )
 
-        myFixture.checkResultByFile("LssConfigurationProperties.java", "LssConfigurationProperties_after.java", true)
-        myFixture.checkResultByFile("application-config.properties", "application-config_after.properties", true)
+        myFixture.checkResult("LssConfigurationProperties.java", LssConfigurationProperties_after, true)
+        myFixture.checkResult("application-config.properties", "lss.lss-plan-configuration.exact-new=false", true)
     }
 
     fun testRenameFromProperties() {
@@ -106,8 +107,12 @@ lss.lss-plan-configuration.exact-new=false
 """.trimIndent()
         )
 
-        myFixture.checkResultByFile("LssConfigurationProperties.java", "LssConfigurationProperties_after.java", true)
-        myFixture.checkResultByFile("application-config.yaml", "application-config_after.yaml", true)
+        myFixture.checkResult("LssConfigurationProperties.java", LssConfigurationProperties_after, true)
+        myFixture.checkResult("application-config.yaml", """
+lss:
+  lss-plan-configuration:
+    exact-new: true
+        """.trimIndent(), true)
     }
 
     fun testRenameFromMethod() {
@@ -123,17 +128,53 @@ lss:
     exact: true
 """.trimIndent()
         )
-        myFixture.configureByFile(
-            "LssConfigurationProperties.java",
-        )
+        myFixture.configureByFile("LssConfigurationProperties.java")
         val element = myFixture.findElementByText("setExact", PsiElement::class.java)
 
         assertNotNull(element)
         myFixture.renameElement(element!!, "setExactNew")
 
-        myFixture.checkResultByFile("LssConfigurationProperties.java", "LssConfigurationProperties_after.java", true)
-        myFixture.checkResultByFile("application-config.yaml", "application-config_after.yaml", true)
-        myFixture.checkResultByFile("application-config.properties", "application-config_after.properties", true)
+        myFixture.checkResult(LssConfigurationProperties_after, true)
+        myFixture.checkResult(
+            "application-config.yaml", """
+lss:
+  lss-plan-configuration:
+    exact-new: true
+        """.trimIndent(), true
+        )
+        myFixture.checkResult("application-config.properties", "lss.lss-plan-configuration.exact-new=false", true)
     }
 
 }
+
+@Language("JAVA")
+private val LssConfigurationProperties_after = """           
+            package com;
+
+            import org.springframework.boot.context.properties.ConfigurationProperties;
+
+            @ConfigurationProperties(prefix = "lss")
+            public class LssConfigurationProperties {
+                private LssPlanConfiguration lssPlanConfiguration = new LssPlanConfiguration();
+
+                public LssPlanConfiguration getLssPlanConfiguration() {
+                    return lssPlanConfiguration;
+                }
+
+                public void setLssPlanConfiguration(LssPlanConfiguration lssPlanConfiguration) {
+                    this.lssPlanConfiguration = lssPlanConfiguration;
+                }
+
+                static class LssPlanConfiguration {
+                    private Boolean isExact = false;
+
+                    public Boolean getExact() {
+                        return isExact;
+                    }
+
+                    public void setExactNew(Boolean exact) {
+                        isExact = exact;
+                    }
+                }
+            }
+        """.trimIndent()

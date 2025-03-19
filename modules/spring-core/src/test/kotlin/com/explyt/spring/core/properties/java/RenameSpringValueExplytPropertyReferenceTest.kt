@@ -41,8 +41,15 @@ class RenameSpringValueExplytPropertyReferenceTest : ExplytJavaLightTestCase() {
 
         myFixture.checkResult("server.timing_new.minutes-to-next-claim=480")
 
-        myFixture.checkResultByFile("UserHandler.java", "UserHandler_after.java", true)
-        myFixture.checkResultByFile("application.properties", "application_after.properties", true)
+        myFixture.checkResult("UserHandler.java", """
+            import org.springframework.beans.factory.annotation.Value;
+
+            public class UserHandler {
+                @Value("${'$'}{server.timing_new.minutes-to-next-claim:3}")
+                private Integer fooFromProperties;
+            }
+        """.trimIndent(), true)
+        myFixture.checkResult("application.properties", "server.timing_new.minutes-to-next-claim=470", true)
     }
 
     fun testRenameYaml() {
@@ -72,8 +79,19 @@ server:
 """.trimIndent()
         )
 
-        myFixture.checkResultByFile("UserHandler.java", "UserHandler_after.java", true)
-        myFixture.checkResultByFile("application.yaml", "application_after.yaml", true)
+        myFixture.checkResult("UserHandler.java", """
+            import org.springframework.beans.factory.annotation.Value;
+
+            public class UserHandler {
+                @Value("${'$'}{server.timing_new.minutes-to-next-claim:3}")
+                private Integer fooFromProperties;
+            }
+        """.trimIndent(), true)
+        myFixture.checkResult("application.yaml", """
+server:
+  timing_new:
+    minutes-to-next-claim: 470
+        """.trimIndent(), true)
     }
 
 }

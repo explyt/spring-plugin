@@ -25,6 +25,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.uast.UastVisitorAdapter
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UThisExpression
 import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -45,9 +46,8 @@ private class CallExpressionVisitor(private val holder: ProblemsHolder) : Abstra
     private fun checkCallExpression(node: UCallExpression) {
         val containingUClass = node.getContainingUClass() ?: return
         val sourcePsi = node.sourcePsi ?: return
-        SpringSearchService.getInstance(sourcePsi.project)
         val methodsInfo = SpringSearchService.getInstance(sourcePsi.project).getBeanMethods(containingUClass)
-        if (node.receiver != null) return //check method qualifier
+        if (node.receiver != null && node.receiver !is UThisExpression) return //check method qualifier
         if (node.kind != UastCallKind.METHOD_CALL) return
         if (!methodsInfo.beanPublicAnnotatedMethodNames.contains(node.methodName)) return
         val psiMethod = node.resolve() ?: return

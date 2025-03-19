@@ -22,6 +22,7 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
+import org.intellij.lang.annotations.Language
 
 class RenameConfigurationPropertyReferenceTest : ExplytKotlinLightTestCase() {
 
@@ -63,9 +64,16 @@ lss:
         val resolveResult = multiResolve[0]
         myFixture.renameElement(resolveResult.element!!, "setModeForStudioNew")
 
-        myFixture.checkResultByFile("LssConfigurationProperties.kt", "LssConfigurationProperties_after.kt", true)
-        myFixture.checkResultByFile("application-config.yaml", "application-config_after.yaml", true)
-        myFixture.checkResultByFile("application-config.properties", "application-config_after.properties", true)
+        myFixture.checkResult("LssConfigurationProperties.kt", LssConfigurationProperties_after, true)
+        myFixture.checkResult("application-config.yaml", """
+lss:
+  mode-for-studio-new: EDGE7
+  token-for-studio: EDGE10
+        """.trimIndent(), true)
+        myFixture.checkResult("application-config.properties", """
+lss.mode-for-studio-new=EDGE7
+lss.token-for-studio=EDGE10
+        """.trimIndent(), true)
     }
 
     fun testRenameFromProperties() {
@@ -99,9 +107,16 @@ lss.token-for-studio=EDGE10
         val resolveResult = multiResolve[0]
         myFixture.renameElement(resolveResult.element!!, "setModeForStudioNew")
 
-        myFixture.checkResultByFile("LssConfigurationProperties.kt", "LssConfigurationProperties_after.kt", true)
-        myFixture.checkResultByFile("application-config.yaml", "application-config_after.yaml", true)
-        myFixture.checkResultByFile("application-config.properties", "application-config_after.properties", true)
+        myFixture.checkResult("LssConfigurationProperties.kt", LssConfigurationProperties_after, true)
+        myFixture.checkResult("application-config.yaml", """
+lss:
+  mode-for-studio-new: EDGE7
+  token-for-studio: EDGE10
+        """.trimIndent(), true)
+        myFixture.checkResult("application-config.properties", """
+lss.mode-for-studio-new=EDGE7
+lss.token-for-studio=EDGE10
+        """.trimIndent(), true)
     }
 
     fun testRenameFromMethod() {
@@ -128,9 +143,29 @@ lss.token-for-studio=EDGE10
         assertNotNull(element)
         myFixture.renameElement(element!!, "modeForStudioNew")
 
-        myFixture.checkResultByFile("LssConfigurationProperties.kt", "LssConfigurationProperties_after.kt", true)
-        myFixture.checkResultByFile("application-config.yaml", "application-config_after.yaml", true)
-        myFixture.checkResultByFile("application-config.properties", "application-config_after.properties", true)
+        myFixture.checkResult("LssConfigurationProperties.kt", LssConfigurationProperties_after, true)
+        myFixture.checkResult("application-config.yaml", """
+lss:
+  mode-for-studio-new: EDGE7
+  token-for-studio: EDGE10
+        """.trimIndent(), true)
+        myFixture.checkResult("application-config.properties", """
+lss.mode-for-studio-new=EDGE7
+lss.token-for-studio=EDGE10
+        """.trimIndent(), true)
     }
 
 }
+
+@Language("kotlin")
+private val LssConfigurationProperties_after = """           
+            package com
+
+            import org.springframework.boot.context.properties.ConfigurationProperties
+            
+            @ConfigurationProperties(prefix = "lss")
+            data class LssConfigurationProperties(
+                var modeForStudioNew: String = "",
+                var tokenForStudio: String = "",
+            )
+        """.trimIndent()

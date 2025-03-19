@@ -20,9 +20,9 @@ package com.explyt.util
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.isInheritorOf
-import com.intellij.json.psi.JsonPsiUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.pom.Navigatable
 import com.intellij.psi.*
 import com.intellij.psi.util.PropertyUtilBase
@@ -288,7 +288,7 @@ object ExplytPsiUtil {
     }
 
     fun getUnquotedText(psiElement: PsiElement): String {
-        return JsonPsiUtil.stripQuotes(ElementManipulators.getValueText(psiElement))
+        return StringUtil.unquoteString(ElementManipulators.getValueText(psiElement))
     }
 
 }
