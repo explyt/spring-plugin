@@ -23,8 +23,6 @@ import com.explyt.spring.core.SpringCoreClasses.DEPENDS_ON
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
-import com.explyt.util.ExplytPsiUtil.toSourcePsi
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -32,6 +30,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.evaluateString
 
 
 class SpringDependsOnBeanInspection : SpringBaseUastLocalInspectionTool() {
@@ -63,21 +62,17 @@ class SpringDependsOnBeanInspection : SpringBaseUastLocalInspectionTool() {
         val beanNames = service.getAllBeanByNames(module)
 
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, DEPENDS_ON)
-        val psiAnnotation = uMember.uAnnotations.asSequence()
-            .mapNotNull { it.javaPsi }
-            .firstOrNull { metaHolder.contains(it) }
-            ?: return null
+        val uAnnotation = uMember.uAnnotations.firstOrNull { metaHolder.contains(it) } ?: return null
 
-        val annotationMemberValues = metaHolder.getAnnotationMemberValues(psiAnnotation, setOf("value"))
+        val annotationMemberValues = metaHolder.getAnnotationMemberValues(uAnnotation, setOf("value"))
 
         return annotationMemberValues.asSequence()
             .filter {
-                !beanNames.contains(
-                    AnnotationUtil.getStringAttributeValue(it)
-                )
+                val valueString = it.evaluateString()?.takeIf { it.isNotBlank() } ?: return@filter false
+                !beanNames.contains(valueString)
             }
             .mapNotNull {
-                val sourcePsi = it.toSourcePsi() ?: return@mapNotNull null
+                val sourcePsi = it.sourcePsi ?: return@mapNotNull null
 
                 manager.createProblemDescriptor(
                     sourcePsi,

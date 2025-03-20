@@ -24,8 +24,6 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.util.ExplytPsiUtil.fitsForReference
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
-import com.explyt.util.ExplytPsiUtil.toSourcePsi
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.impl.quickfix.createVoidMethodFixes
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
@@ -34,6 +32,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.jvm.JvmModifier
 import com.intellij.openapi.module.ModuleUtilCore
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.evaluateString
 import java.util.regex.Pattern
 
 
@@ -45,29 +44,28 @@ class SpringUnknownBeanMethodInspection : SpringBaseUastLocalInspectionTool() {
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
         val method = uMethod.javaPsi
+        val returnTypeClass = method.returnType?.resolveBeanPsiClass ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(method) ?: return null
         val searchService = SpringSearchService.getInstance(method.project)
 
         val metaHolder = searchService.getMetaAnnotations(module, BEAN)
-        val initDestroyMethodValues = metaHolder.getAnnotationMemberValues(method, setOf("initMethod", "destroyMethod"))
+        val initDestroyMethodValues = metaHolder.getAnnotationValues(uMethod, setOf("initMethod", "destroyMethod"))
 
         val problems: MutableList<ProblemDescriptor> = mutableListOf()
 
-        for (member in (initDestroyMethodValues)) {
-            val methodName = AnnotationUtil.getStringAttributeValue(member)
-            val returnTypeClass = method.returnType?.resolveBeanPsiClass ?: continue
+        for (member in initDestroyMethodValues) {
+            val memberSourcePsi = member.sourcePsi ?: continue
+            val methodName = member.evaluateString() ?: continue
 
-            if (methodName.isNullOrBlank() || methodName == "(inferred)") continue
+            if (methodName.isBlank() || methodName == "(inferred)") continue
             if (returnTypeClass.allMethods.any {
-                    fitsForReference(it)
-                            && it.name == methodName }) continue
+                    fitsForReference(it) && it.name == methodName
+                }) continue
 
             val fixes: MutableList<LocalQuickFix> = mutableListOf()
             if (isMethodNameValid(methodName)) {
                 fixes += createVoidMethodFixes(returnTypeClass, methodName, JvmModifier.PRIVATE)
             }
-
-            val memberSourcePsi = member.toSourcePsi() ?: continue
 
             problems += manager.createProblemDescriptor(
                 memberSourcePsi,

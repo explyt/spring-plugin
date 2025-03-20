@@ -19,6 +19,7 @@ package com.explyt.spring.core.service
 
 import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringProperties
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
@@ -28,8 +29,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 
 class MetaAnnotationsHolder private constructor(
     private val rootFqn: String,
@@ -71,6 +71,13 @@ class MetaAnnotationsHolder private constructor(
         )
     }
 
+    fun getAnnotationValues(uAnnotated: UAnnotated, targetMethods: Set<String>): Set<UExpression> {
+        return uAnnotated.uAnnotations.flatMapTo(mutableSetOf()) {
+            getAnnotationMemberValues(it, targetMethods)
+        }
+    }
+
+    @Deprecated("Use UAST method instead this. getAnnotationValues(org.jetbrains.uast.UAnnotated, java.util.Set)")
     fun getAnnotationMemberValues(psiMember: PsiMember, targetMethods: Set<String>): Set<PsiAnnotationMemberValue> {
         return psiMember.annotations
             .flatMapTo(mutableSetOf()) {
@@ -78,6 +85,7 @@ class MetaAnnotationsHolder private constructor(
             }
     }
 
+    @Deprecated("Use UAST method instead this. getAnnotationMemberValues(org.jetbrains.uast.UAnnotation, java.util.Set)")
     fun getAnnotationMemberValues(psiMember: PsiMember, targetMethod: String): Set<PsiAnnotationMemberValue> {
         val targetMethods = setOf(targetMethod)
         return psiMember.annotations
@@ -86,13 +94,12 @@ class MetaAnnotationsHolder private constructor(
             }
     }
 
-    fun getAnnotationMemberValues(
-        psiAnnotation: PsiAnnotation,
-        targetMethod: String
-    ): Set<PsiAnnotationMemberValue> {
+    @Deprecated("Use UAST method instead this. getAnnotationMemberValues(org.jetbrains.uast.UAnnotation, java.util.Set)")
+    fun getAnnotationMemberValues(psiAnnotation: PsiAnnotation, targetMethod: String): Set<PsiAnnotationMemberValue> {
         return getAnnotationMemberValues(psiAnnotation, setOf(targetMethod))
     }
 
+    @Deprecated("Use UAST method instead this. getAnnotationMemberValues(org.jetbrains.uast.UAnnotation, java.util.Set)")
     fun getAnnotationMemberValues(
         psiAnnotation: PsiAnnotation,
         targetMethods: Set<String>
@@ -117,6 +124,35 @@ class MetaAnnotationsHolder private constructor(
                     )
                 }
                 .flatMap { currentPsiAnnotation.getMemberValues(it.attributeName) }
+
+        }
+
+        return annotationMemberValues.toSet()
+    }
+
+    fun getAnnotationMemberValues(annotation: UAnnotation, targetMethods: Set<String>): Set<UExpression> {
+        val annotationMemberValues = mutableListOf<UExpression>()
+        val annotationsToProceed = mutableListOf(annotation)
+
+        while (annotationMemberValues.isEmpty() && annotationsToProceed.isNotEmpty()) {
+            val currentUAnnotation = annotationsToProceed.removeFirst()
+            val annotationFqn = currentUAnnotation.qualifiedName ?: return setOf()
+            val annotationInfo = annotationByFqn[annotationFqn] ?: continue
+
+            annotationsToProceed.addAll(
+                annotationInfo.annotationType.annotations.mapNotNull { it.toUElement() as? UAnnotation }
+            )
+
+            annotationMemberValues += currentUAnnotation.attributeValues.asSequence()
+                .filter {
+                    isAttributeRelatedWith(
+                        annotationFqn,
+                        it.name ?: SpringProperties.VALUE,
+                        rootFqn,
+                        targetMethods
+                    )
+                }
+                .flatMap { getValues(it.expression) }
 
         }
 
@@ -155,6 +191,15 @@ class MetaAnnotationsHolder private constructor(
 
             }
             return MetaAnnotationsHolder(parentFqn, annotationByFqn)
+        }
+
+        fun getValues(uExpression: UExpression?): List<UExpression> {
+            uExpression ?: return emptyList()
+            return if (uExpression is UCallExpression) {
+                uExpression.valueArguments
+            } else {
+                listOf(uExpression)
+            }
         }
     }
 
@@ -196,6 +241,27 @@ object AliasUtils {
             } ?: alias.parentOfType<PsiClass>()
     }
 
+    fun getAliasedClass(annotation: UAnnotation): PsiClass? {
+        val psiClass = annotation.findAttributeValue("annotation")
+            ?.let { getPsiClasses(it).firstOrNull() } ?: return null
+
+        return if (psiClass.qualifiedName == JavaCoreClasses.ANNOTATION) {
+            annotation.getParentOfType<UClass>()
+        } else {
+            psiClass
+        }
+    }
+
+    fun getPsiClasses(uExpression: UExpression?): List<PsiClass> {
+        uExpression ?: return emptyList()
+        return MetaAnnotationsHolder.getValues(uExpression).mapNotNull { getPsiClass(it) }
+    }
+
+    private fun getPsiClass(uExpression: UExpression): PsiClass? {
+        val uClassLiteralExpression = uExpression as? UClassLiteralExpression ?: return null
+        return uClassLiteralExpression.type?.resolvedPsiClass
+    }
+
     private fun getAliasedClassJava(memberValue: PsiAnnotationMemberValue): PsiClass? {
         return memberValue
             .childrenOfType<PsiTypeElement>()
@@ -208,6 +274,16 @@ object AliasUtils {
         return memberValue
             .toUElement()
             ?.sourcePsi
+            ?.children?.asSequence()
+            ?.mapNotNull { it.reference }
+            ?.mapNotNull { it.resolve() }
+            ?.mapNotNull { it.toUElement() }
+            ?.mapNotNull { it.javaPsi as? PsiClass }
+            ?.firstOrNull()
+    }
+
+    private fun getAliasedClassKt(uElement: UElement): PsiClass? {
+        return uElement.sourcePsi
             ?.children?.asSequence()
             ?.mapNotNull { it.reference }
             ?.mapNotNull { it.resolve() }
