@@ -44,7 +44,6 @@ class SpringUnknownAliasMethodInspection : SpringBaseUastLocalInspectionTool() {
         val method = uMethod.javaPsi
         val parentClass = method.parentOfType<PsiClass>() ?: return null
         val aliasAnnotation = uMethod.findAnnotation(SpringCoreClasses.ALIAS_FOR) ?: return null
-        //val aliasAnnotation = method.getAnnotation(SpringCoreClasses.ALIAS_FOR) ?: return null
         val aliasedClass = AliasUtils.getAliasedClass(aliasAnnotation) ?: return null
         val aliasedClassQn = aliasedClass.qualifiedName ?: return null
 

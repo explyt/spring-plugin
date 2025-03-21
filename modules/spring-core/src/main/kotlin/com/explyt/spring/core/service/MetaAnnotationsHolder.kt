@@ -282,16 +282,6 @@ object AliasUtils {
             ?.firstOrNull()
     }
 
-    private fun getAliasedClassKt(uElement: UElement): PsiClass? {
-        return uElement.sourcePsi
-            ?.children?.asSequence()
-            ?.mapNotNull { it.reference }
-            ?.mapNotNull { it.resolve() }
-            ?.mapNotNull { it.toUElement() }
-            ?.mapNotNull { it.javaPsi as? PsiClass }
-            ?.firstOrNull()
-    }
-
     fun getAliasedMethodName(alias: PsiAnnotation): String? {
         return listOf(
             alias.findAttributeValue("value"),
