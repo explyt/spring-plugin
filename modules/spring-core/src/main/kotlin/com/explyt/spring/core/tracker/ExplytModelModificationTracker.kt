@@ -181,9 +181,9 @@ internal class MyUastPsiTreeChangeAdapter(
             modelTracker.incModificationCount()
             if (isNotTest(psiFile)) {
                 annotationTracker.incModificationCount()
-                if (checkIsSpringReloadAnnotation(eventType, child, parent, grandParent, unsafeGrandChild)) {
-                    refreshFloatingAnnotationTracker.incModificationCount()
-                }
+                //if (checkIsSpringReloadAnnotation(eventType, child, parent, grandParent, unsafeGrandChild)) {
+                refreshFloatingAnnotationTracker.incModificationCount()
+                //}
             }
             return
         }

@@ -41,7 +41,7 @@ import org.jetbrains.uast.toUElementOfType
 class SpringEntityPackageScanService(private val project: Project) {
 
     fun getPackages(module: Module): Set<String> {
-        return CachedValuesManager.getManager(project).getCachedValue(project) {
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
                 getAllPackagesInner(module),
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
