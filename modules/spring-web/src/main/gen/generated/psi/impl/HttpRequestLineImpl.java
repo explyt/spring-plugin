@@ -35,14 +35,14 @@ public class HttpRequestLineImpl extends ASTWrapperPsiElement implements HttpReq
 
   @Override
   @Nullable
-  public PsiElement getHttpVersion() {
-    return findChildByType(HTTP_VERSION);
+  public HttpRequestTarget getRequestTarget() {
+    return findChildByClass(HttpRequestTarget.class);
   }
 
   @Override
   @Nullable
-  public PsiElement getRequestTarget() {
-    return findChildByType(REQUEST_TARGET);
+  public PsiElement getHttpVersion() {
+    return findChildByType(HTTP_VERSION);
   }
 
 }
