@@ -5,6 +5,14 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+- Added: migrate agent to declarative-bytecode-patcher
+
+### Other
+- Fixed: various bugfixes
+
+## [243.1.3391] - 2025-03-14
+
+### Spring Core/Boot
 - Added: use -javaagent for getting spring context
 
 ### Http Client
@@ -13,7 +21,7 @@
 ### Spring Data
 - Fixed: sql was tried to be injected in invalid places 
 
-## [243.1.3351] - 2025-02-20
+## 243.1.3351 - 2025-02-20
 
 ### Spring Data
 - Added: Support inject sql to `sql` named parameter functions (#16) 
