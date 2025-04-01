@@ -443,7 +443,8 @@ object SpringCoreUtil {
                 }
             }
             return this.isEqualOrInheritor(beanPsiType)
-                    && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType))
+                    && (beanPsiType.parameters.isEmpty() || this.equalParamsWithBound(beanPsiType)
+                    || this.isAllParametersAssignable(beanPsiType))
         }
         if (beanPsiType is PsiWildcardType) {
             return this.matchesWildcardType(beanPsiType)
@@ -667,6 +668,15 @@ object SpringCoreUtil {
         return ((this.qualifiedName == JavaCoreClasses.CHARSET)
                 || (this.superClass?.qualifiedName == JavaCoreClasses.CHARSET)
                 || (this.interfaces.any { it.qualifiedName == JavaCoreClasses.CHARSET }))
+    }
+
+    fun PsiClassType.isAllParametersAssignable(otherPsiType: PsiClassType): Boolean {
+        if (otherPsiType.isCollection || otherPsiType.isMap) return false
+        if (this.parameterCount != otherPsiType.parameterCount) return false
+        this.parameters.forEachIndexed { idx, it ->
+            if (!it.isAssignableFrom(otherPsiType.parameters[idx])) return false
+        }
+        return true
     }
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"
