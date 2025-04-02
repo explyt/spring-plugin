@@ -7,7 +7,7 @@ import com.intellij.psi.PsiElement;
 
 public interface HttpRequestDefiner extends PsiElement {
 
-  @Nullable
-  PsiElement getAnyToken();
+  @NotNull
+  List<HttpVariable> getVariableList();
 
 }

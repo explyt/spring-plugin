@@ -10,10 +10,10 @@ public interface HttpRequest extends PsiElement {
   @NotNull
   List<HttpFieldLine> getFieldLineList();
 
+  @Nullable
+  HttpRequestBody getRequestBody();
+
   @NotNull
   HttpRequestLine getRequestLine();
-
-  @Nullable
-  PsiElement getRequestBody();
 
 }

@@ -28,9 +28,9 @@ public class HttpRequestDefinerImpl extends ASTWrapperPsiElement implements Http
   }
 
   @Override
-  @Nullable
-  public PsiElement getAnyToken() {
-    return findChildByType(ANY_TOKEN);
+  @NotNull
+  public List<HttpVariable> getVariableList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpVariable.class);
   }
 
 }

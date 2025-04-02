@@ -7,13 +7,13 @@ import com.intellij.psi.PsiElement;
 
 public interface HttpRequestLine extends PsiElement {
 
-  @NotNull
+  @Nullable
   HttpMethod getMethod();
+
+  @NotNull
+  HttpRequestTarget getRequestTarget();
 
   @Nullable
   PsiElement getHttpVersion();
-
-  @Nullable
-  PsiElement getRequestTarget();
 
 }

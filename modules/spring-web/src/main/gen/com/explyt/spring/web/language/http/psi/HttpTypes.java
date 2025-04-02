@@ -18,28 +18,34 @@ public interface HttpTypes {
   IElementType REQUEST = new HttpElementType("REQUEST");
   IElementType REQUESTS = new HttpElementType("REQUESTS");
   IElementType REQUEST_BLOCK = new HttpElementType("REQUEST_BLOCK");
+  IElementType REQUEST_BODY = new HttpElementType("REQUEST_BODY");
   IElementType REQUEST_DEFINER = new HttpElementType("REQUEST_DEFINER");
   IElementType REQUEST_LINE = new HttpElementType("REQUEST_LINE");
-  IElementType TAG_COMMENT_LINE = new HttpElementType("TAG_COMMENT_LINE");
+  IElementType REQUEST_TARGET = new HttpElementType("REQUEST_TARGET");
+  IElementType VARIABLE = new HttpElementType("VARIABLE");
 
-  IElementType ANY_TOKEN = new HttpTokenType("ANY_TOKEN");
   IElementType BODY_REQUEST_SEPARATOR = new HttpTokenType("BODY_REQUEST_SEPARATOR");
   IElementType COLON = new HttpTokenType(":");
   IElementType COMMENT_LINE = new HttpTokenType("COMMENT_LINE");
   IElementType COMMENT_SEPARATOR = new HttpTokenType("COMMENT_SEPARATOR");
   IElementType CRLF = new HttpTokenType("CRLF");
-  IElementType FIELD_CONTENT = new HttpTokenType("FIELD_CONTENT");
+  IElementType FIELD_CONTENT_TOKEN = new HttpTokenType("FIELD_CONTENT_TOKEN");
+  IElementType FULL_REQUEST_LINE = new HttpTokenType("FULL_REQUEST_LINE");
+  IElementType GET_OMMITED_REQUEST_LINE = new HttpTokenType("GET_OMMITED_REQUEST_LINE");
   IElementType HTTP_TOKEN = new HttpTokenType("HTTP_TOKEN");
   IElementType HTTP_VERSION = new HttpTokenType("HTTP_VERSION");
+  IElementType IDENTIFIER = new HttpTokenType("IDENTIFIER");
+  IElementType LBRACES = new HttpTokenType("{{");
+  IElementType META_TOKEN = new HttpTokenType("META_TOKEN");
   IElementType OWS = new HttpTokenType("OWS");
-  IElementType REQUEST_BODY = new HttpTokenType("REQUEST_BODY");
+  IElementType RBRACES = new HttpTokenType("}}");
+  IElementType REQUEST_BODY_VALUE = new HttpTokenType("REQUEST_BODY_VALUE");
   IElementType REQUEST_SEPARATOR = new HttpTokenType("###");
-  IElementType REQUEST_TARGET = new HttpTokenType("REQUEST_TARGET");
+  IElementType REQUEST_TARGET_VALUE = new HttpTokenType("REQUEST_TARGET_VALUE");
   IElementType SP = new HttpTokenType(" ");
   IElementType TAG_COMMENT_LINE_1 = new HttpTokenType("TAG_COMMENT_LINE_1");
   IElementType TAG_COMMENT_LINE_2 = new HttpTokenType("TAG_COMMENT_LINE_2");
   IElementType TAG_TOKEN = new HttpTokenType("TAG_TOKEN");
-  IElementType WHITE_SPACE = new HttpTokenType("WHITE_SPACE");
 
   class Factory {
     public static PsiElement createElement(ASTNode node) {
@@ -74,14 +80,20 @@ public interface HttpTypes {
       else if (type == REQUEST_BLOCK) {
         return new HttpRequestBlockImpl(node);
       }
+      else if (type == REQUEST_BODY) {
+        return new HttpRequestBodyImpl(node);
+      }
       else if (type == REQUEST_DEFINER) {
         return new HttpRequestDefinerImpl(node);
       }
       else if (type == REQUEST_LINE) {
         return new HttpRequestLineImpl(node);
       }
-      else if (type == TAG_COMMENT_LINE) {
-        return new HttpTagCommentLineImpl(node);
+      else if (type == REQUEST_TARGET) {
+        return new HttpRequestTargetImpl(node);
+      }
+      else if (type == VARIABLE) {
+        return new HttpVariableImpl(node);
       }
       throw new AssertionError("Unknown element type: " + type);
     }
