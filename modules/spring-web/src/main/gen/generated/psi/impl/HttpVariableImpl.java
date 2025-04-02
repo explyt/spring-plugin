@@ -28,9 +28,9 @@ public class HttpVariableImpl extends ASTWrapperPsiElement implements HttpVariab
   }
 
   @Override
-  @NotNull
+  @Nullable
   public PsiElement getIdentifier() {
-    return findNotNullChildByType(IDENTIFIER);
+    return findChildByType(IDENTIFIER);
   }
 
 }

@@ -29,8 +29,8 @@ public class HttpRequestsImpl extends ASTWrapperPsiElement implements HttpReques
 
   @Override
   @NotNull
-  public HttpAnyRequestBlock getAnyRequestBlock() {
-    return findNotNullChildByClass(HttpAnyRequestBlock.class);
+  public List<HttpAnyRequestBlock> getAnyRequestBlockList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpAnyRequestBlock.class);
   }
 
 }

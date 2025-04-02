@@ -7,10 +7,10 @@ import com.intellij.psi.PsiElement;
 
 public interface HttpAnyRequestBlock extends PsiElement {
 
-  @NotNull
-  List<HttpDummyRequestBlock> getDummyRequestBlockList();
+  @Nullable
+  HttpDummyRequestBlock getDummyRequestBlock();
 
-  @NotNull
-  List<HttpRequestBlock> getRequestBlockList();
+  @Nullable
+  HttpRequestBlock getRequestBlock();
 
 }

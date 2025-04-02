@@ -28,15 +28,15 @@ public class HttpRequestLineImpl extends ASTWrapperPsiElement implements HttpReq
   }
 
   @Override
-  @NotNull
+  @Nullable
   public HttpMethod getMethod() {
-    return findNotNullChildByClass(HttpMethod.class);
+    return findChildByClass(HttpMethod.class);
   }
 
   @Override
-  @Nullable
+  @NotNull
   public HttpRequestTarget getRequestTarget() {
-    return findChildByClass(HttpRequestTarget.class);
+    return findNotNullChildByClass(HttpRequestTarget.class);
   }
 
   @Override

@@ -33,29 +33,20 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
     }
 
     override fun getTokenHighlights(tokenType: IElementType?): Array<TextAttributesKey> {
-        if (tokenType == HttpTypes.REQUEST_SEPARATOR)
-            return REQUEST_SEPARATOR_KEYS
-        if (tokenType in COMMENT_TYPES)
-            return COMMENT_KEYS
-        if (tokenType == HttpTypes.META_TOKEN)
-            return META_TOKEN_KEYS
-        if (tokenType == HttpTypes.TAG_TOKEN)
-            return TAG_TOKEN_KEYS
-        if (tokenType == HttpTypes.IDENTIFIER)
-            return IDENTIFIER_KEYS
-        if (tokenType == HttpTypes.HTTP_TOKEN)
-            return HTTP_TOKEN_KEYS
-        if (tokenType == HttpTypes.REQUEST_TARGET_VALUE)
-            return REQUEST_TARGET_KEYS
-        if (tokenType == HttpTypes.HTTP_VERSION)
-            return HTTP_VERSION_KEYS
-        if (tokenType == HttpTypes.FIELD_CONTENT_TOKEN)
-            return FIELD_CONTENT_KEYS
-        if (tokenType == HttpTypes.REQUEST_BODY_VALUE)
-            return REQUEST_BODY_KEYS
-        if (tokenType == TokenType.BAD_CHARACTER)
-            return BAD_CHARACTER_KEYS
-        return EMPTY_KEYS
+        return when (tokenType) {
+            HttpTypes.REQUEST_SEPARATOR    -> REQUEST_SEPARATOR_KEYS
+            in COMMENT_TYPES               -> COMMENT_KEYS
+            HttpTypes.META_TOKEN           -> META_TOKEN_KEYS
+            HttpTypes.TAG_TOKEN            -> TAG_TOKEN_KEYS
+            HttpTypes.IDENTIFIER           -> IDENTIFIER_KEYS
+            HttpTypes.HTTP_TOKEN           -> HTTP_TOKEN_KEYS
+            HttpTypes.REQUEST_TARGET_VALUE -> REQUEST_TARGET_KEYS
+            HttpTypes.HTTP_VERSION         -> HTTP_VERSION_KEYS
+            HttpTypes.FIELD_CONTENT_TOKEN  -> FIELD_CONTENT_KEYS
+            HttpTypes.REQUEST_BODY_VALUE   -> REQUEST_BODY_KEYS
+            TokenType.BAD_CHARACTER        -> BAD_CHARACTER_KEYS
+            else                           -> EMPTY_KEYS
+        }
     }
 
     companion object {

@@ -30,6 +30,8 @@ public interface HttpTypes {
   IElementType COMMENT_SEPARATOR = new HttpTokenType("COMMENT_SEPARATOR");
   IElementType CRLF = new HttpTokenType("CRLF");
   IElementType FIELD_CONTENT_TOKEN = new HttpTokenType("FIELD_CONTENT_TOKEN");
+  IElementType FULL_REQUEST_LINE = new HttpTokenType("FULL_REQUEST_LINE");
+  IElementType GET_OMMITED_REQUEST_LINE = new HttpTokenType("GET_OMMITED_REQUEST_LINE");
   IElementType HTTP_TOKEN = new HttpTokenType("HTTP_TOKEN");
   IElementType HTTP_VERSION = new HttpTokenType("HTTP_VERSION");
   IElementType IDENTIFIER = new HttpTokenType("IDENTIFIER");
