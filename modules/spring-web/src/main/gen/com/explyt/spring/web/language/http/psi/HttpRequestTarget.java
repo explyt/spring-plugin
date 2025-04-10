@@ -5,12 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface HttpAnyRequestBlock extends PsiElement {
+public interface HttpRequestTarget extends PsiElement {
 
-  @Nullable
-  HttpDummyRequestBlock getDummyRequestBlock();
-
-  @Nullable
-  HttpRequestBlock getRequestBlock();
+  @NotNull
+  List<HttpVariable> getVariableList();
 
 }

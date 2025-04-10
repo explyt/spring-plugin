@@ -33,26 +33,31 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
     }
 
     override fun getTokenHighlights(tokenType: IElementType?): Array<TextAttributesKey> {
-        if (tokenType == HttpTypes.COMMENT_LINE || tokenType == HttpTypes.COMMENT_SEPARATOR)
-            return COMMENT_KEYS
-        if (tokenType == HttpTypes.TAG_TOKEN)
-            return TAG_TOKEN_KEYS
-        if (tokenType == HttpTypes.HTTP_TOKEN)
-            return HTTP_TOKEN_KEYS
-        if (tokenType == HttpTypes.REQUEST_TARGET)
-            return REQUEST_TARGET_KEYS
-        if (tokenType == HttpTypes.HTTP_VERSION)
-            return HTTP_VERSION_KEYS
-        if (tokenType == HttpTypes.FIELD_CONTENT)
-            return FIELD_CONTENT_KEYS
-        if (tokenType == HttpTypes.REQUEST_BODY)
-            return REQUEST_BODY_KEYS
-        if (tokenType == TokenType.BAD_CHARACTER)
-            return BAD_CHARACTER_KEYS
-        return EMPTY_KEYS
+        return when (tokenType) {
+            HttpTypes.REQUEST_SEPARATOR    -> REQUEST_SEPARATOR_KEYS
+            in COMMENT_TYPES               -> COMMENT_KEYS
+            HttpTypes.META_TOKEN           -> META_TOKEN_KEYS
+            HttpTypes.TAG_TOKEN            -> TAG_TOKEN_KEYS
+            HttpTypes.IDENTIFIER           -> IDENTIFIER_KEYS
+            HttpTypes.HTTP_TOKEN           -> HTTP_TOKEN_KEYS
+            HttpTypes.REQUEST_TARGET_VALUE -> REQUEST_TARGET_KEYS
+            HttpTypes.HTTP_VERSION         -> HTTP_VERSION_KEYS
+            HttpTypes.FIELD_CONTENT_TOKEN  -> FIELD_CONTENT_KEYS
+            HttpTypes.REQUEST_BODY_VALUE   -> REQUEST_BODY_KEYS
+            TokenType.BAD_CHARACTER        -> BAD_CHARACTER_KEYS
+            else                           -> EMPTY_KEYS
+        }
     }
 
     companion object {
+        private val COMMENT_TYPES = setOf(HttpTypes.COMMENT_LINE, HttpTypes.COMMENT_SEPARATOR)
+
+        @JvmStatic
+        val REQUEST_SEPARATOR = createTextAttributesKey(
+            "HTTP_REQUEST_SEPARATOR",
+            DefaultLanguageHighlighterColors.LINE_COMMENT
+        )
+
         @JvmStatic
         val COMMENT = createTextAttributesKey(
             "HTTP_COMMENT",
@@ -60,9 +65,21 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
         )
 
         @JvmStatic
+        val META_TOKEN = createTextAttributesKey(
+            "HTTP_META_TOKEN",
+            DefaultLanguageHighlighterColors.IDENTIFIER
+        )
+
+        @JvmStatic
         val TAG_TOKEN = createTextAttributesKey(
             "HTTP_TAG_TOKEN",
             DefaultLanguageHighlighterColors.METADATA
+        )
+
+        @JvmStatic
+        val IDENTIFIER = createTextAttributesKey(
+            "HTTP_VARIABLE_IDENTIFIER",
+            DefaultLanguageHighlighterColors.CONSTANT
         )
 
         @JvmStatic
@@ -80,7 +97,7 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
         @JvmStatic
         val HTTP_VERSION = createTextAttributesKey(
             "HTTP_VERSION",
-            DefaultLanguageHighlighterColors.CONSTANT
+            DefaultLanguageHighlighterColors.NUMBER
         )
 
         @JvmStatic
@@ -96,10 +113,19 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
         )
 
         @JvmStatic
+        val REQUEST_SEPARATOR_KEYS = arrayOf(REQUEST_SEPARATOR)
+
+        @JvmStatic
         val COMMENT_KEYS = arrayOf(COMMENT)
 
         @JvmStatic
+        val META_TOKEN_KEYS = arrayOf(META_TOKEN)
+
+        @JvmStatic
         val TAG_TOKEN_KEYS = arrayOf(TAG_TOKEN)
+
+        @JvmStatic
+        val IDENTIFIER_KEYS = arrayOf(IDENTIFIER)
 
         @JvmStatic
         val HTTP_TOKEN_KEYS = arrayOf(HTTP_TOKEN)
@@ -118,7 +144,7 @@ class HttpSyntaxHighlighter : SyntaxHighlighterBase() {
 
         @JvmStatic
         val BAD_CHARACTER_KEYS = arrayOf(createTextAttributesKey(
-            "SIMPLE_BAD_CHARACTER",
+            "HTTP_BAD_CHARACTER",
             HighlighterColors.BAD_CHARACTER
         ))
 

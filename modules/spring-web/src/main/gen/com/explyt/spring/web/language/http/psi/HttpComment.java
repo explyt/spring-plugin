@@ -7,10 +7,16 @@ import com.intellij.psi.PsiElement;
 
 public interface HttpComment extends PsiElement {
 
-  @Nullable
-  HttpTagCommentLine getTagCommentLine();
+  @NotNull
+  List<HttpVariable> getVariableList();
 
   @Nullable
   PsiElement getCommentLine();
+
+  @Nullable
+  PsiElement getCommentSeparator();
+
+  @Nullable
+  PsiElement getTagToken();
 
 }
