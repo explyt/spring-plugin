@@ -8,6 +8,6 @@ import com.intellij.psi.PsiElement;
 public interface HttpRequests extends PsiElement {
 
   @NotNull
-  HttpAnyRequestBlock getAnyRequestBlock();
+  List<HttpAnyRequestBlock> getAnyRequestBlockList();
 
 }

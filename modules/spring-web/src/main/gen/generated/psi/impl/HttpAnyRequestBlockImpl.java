@@ -28,15 +28,15 @@ public class HttpAnyRequestBlockImpl extends ASTWrapperPsiElement implements Htt
   }
 
   @Override
-  @NotNull
-  public List<HttpDummyRequestBlock> getDummyRequestBlockList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpDummyRequestBlock.class);
+  @Nullable
+  public HttpDummyRequestBlock getDummyRequestBlock() {
+    return findChildByClass(HttpDummyRequestBlock.class);
   }
 
   @Override
-  @NotNull
-  public List<HttpRequestBlock> getRequestBlockList() {
-    return PsiTreeUtil.getChildrenOfTypeAsList(this, HttpRequestBlock.class);
+  @Nullable
+  public HttpRequestBlock getRequestBlock() {
+    return findChildByClass(HttpRequestBlock.class);
   }
 
 }

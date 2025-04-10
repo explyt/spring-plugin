@@ -32,7 +32,6 @@
     tokens = [
         CRLF="regexp:\r?\n"
         SP=" "
-        // HTAB="regexp:\t"
         OWS="regexp:[ \t]*" // Optional White Space
 
         REQUEST_SEPARATOR = '###'
@@ -40,19 +39,21 @@
 
         COMMENT_SEPARATOR = 'regexp://|#'
         COMMENT_LINE = 'regexp:(//|#).*'
-        TAG_COMMENT_LINE_1 = 'regexp:#\s+@.+'
-        TAG_COMMENT_LINE_2 = 'regexp://\s+@.+'
+        TAG_COMMENT_LINE_1 = 'regexp:#\s*@.+'
+        TAG_COMMENT_LINE_2 = 'regexp://\s*@.+'
 
-        ANY_TOKEN="regexp:.*"
-        TAG_TOKEN="regexp:@.*"
+        META_TOKEN="regexp:([^\\{}\s]|\\\\|\\\{|\\})*"
+        TAG_TOKEN="regexp:@([^\\{}\s]|\\\\|\\\{|\\})*"
 
-        REQUEST_TARGET="regexp:\S*"
-        HTTP_VERSION="regexp:HTTP/\d\.\d"// HTTP-name "/" DIGIT "." DIGIT
-        // HTTP-name = %s"HTTP"
+        LBRACES = '{{'
+        RBRACES = '}}'
+        IDENTIFIER = "regexp:\$?[\w\-_.\[\]]+"
 
-        // LBRACES = '{{'
-        // RBRACES = '}}'
-        // IDENTIFIER = "regexp:\$?\p{Alnum}+"
+        FULL_REQUEST_LINE="regexp:[!#$%&'*+\-.^_`|~\p{Alnum}}]+ \S+( HTTP/\d\.\d)?"
+        GET_OMMITED_REQUEST_LINE="regexp:\S+( HTTP/\d\.\d)?"
+
+        REQUEST_TARGET_VALUE="regexp:[^\s{}]*"
+        HTTP_VERSION="regexp:HTTP/\d\.\d"
 
         HTTP_TOKEN="regexp:[!#$%&'*+\-.^_`|~\p{Alnum}}]+" // 1*tchar
         // tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
@@ -60,16 +61,11 @@
         //       / DIGIT / ALPHA
 
         COLON=":"
-        FIELD_CONTENT="regexp:[\p{Graph}\x80-\xff]([ \t]*[\p{Graph}\x80-\xff])*"
-        // field-content = field-vchar
-        //                 [ 1*( SP / HTAB / field-vchar ) field-vchar ]
+        FIELD_CONTENT_TOKEN="regexp:([!\"$-.0-\[\]-z|~\x80-\xff]|\\\\|\\/|\\#|\\\{|\\})*" // field-vchar*
         // field-vchar = VCHAR / obs-text
         // obs-text = %x80-FF
-        //
-        // Reformed variant:
-        // FV_CHAR ( ( SP | HTAB )* FV_CHAR )*
 
-        REQUEST_BODY="regexp:[^#]*"
+        REQUEST_BODY_VALUE="regexp:([^\\/#{}]|\\\\|\\/|\\#|\\\{|\\})*"
     ]
     consumeTokenMethod = "consumeTokenFast"
 }
@@ -78,51 +74,66 @@
 
 http_file ::= requests
 
-requests ::= any_request_block
+requests ::= any_request_block*
 
-any_request_block ::= ( request_block | dummy_request_block )*
+any_request_block ::= ( request_block | dummy_request_block )
 { pin=1; recoverWhile=recover_request }
 
 request_block ::= CRLF* request_definer? CRLF*
                   ( comment CRLF* )*
-                  request CRLF*
+                  request
 { pin=5 }
 
-dummy_request_block ::= CRLF* request_definer? CRLF*
+dummy_request_block ::= CRLF* ( request_definer | comment )? CRLF+
                         ( comment CRLF* )*
-{ pin=2; recoverWhile=recover_request }
+{ pin=3; recoverWhile=recover_request }
 
 ///////////////////////////////////////////////// PRE-REQUEST COMMENTS /////////////////////////////////////////////////
 
-request_definer ::= REQUEST_SEPARATOR [ ANY_TOKEN ]
+request_definer ::= REQUEST_SEPARATOR ( META_TOKEN | variable )*
 comment ::= COMMENT_LINE | tag_comment_line
-tag_comment_line ::= COMMENT_SEPARATOR [ WHITE_SPACE ] TAG_TOKEN
+private tag_comment_line ::= COMMENT_SEPARATOR TAG_TOKEN ( META_TOKEN | variable )*
 
 ////////////////////////////////////////////////// REQUEST STRUCTURE ///////////////////////////////////////////////////
 
-request ::= request_line [ CRLF
-            ( field_line [ CRLF ] )*
-            [ CRLF REQUEST_BODY ] ]
+request ::= request_line [ expanded_crlf
+            ( field_line [ expanded_crlf ] )*
+            [ expanded_crlf [ request_body ] ] ]
 { pin=1; recoverWhile=recover_request }
 
 ///////////////////////////////////////////////////// REQUEST LINE /////////////////////////////////////////////////////
 
-request_line ::= method SP REQUEST_TARGET [ SP HTTP_VERSION ]
-{ pin=1; recoverWhile=recover_line }
+request_line ::= [ method SP ] request_target [ SP HTTP_VERSION ]
+{ pin=2; recoverWhile=recover_line }
 
 method ::= HTTP_TOKEN
 
-// TODO: variable ::= LBRACES IDENTIFIER RBRACES {pin=1}
+request_target ::= ( REQUEST_TARGET_VALUE | variable )+
 
 ////////////////////////////////////////////////////// FIELD LINE //////////////////////////////////////////////////////
 
 field_line ::= field_name ":" [OWS] field_value [OWS]
 { pin=2; recoverWhile=recover_line }
 
-field_name ::= HTTP_TOKEN
-field_value ::= FIELD_CONTENT
+field_name ::= (HTTP_TOKEN | variable )+
+
+field_value ::= field_content ( [ OWS ] field_content )* // field-vchar [ 1*( SP / HTAB / field-vchar ) field-vchar ]
+private field_content ::= FIELD_CONTENT_TOKEN | variable
+
+///////////////////////////////////////////////////// REQUEST BODY /////////////////////////////////////////////////////
+
+request_body ::= ( REQUEST_BODY_VALUE | COMMENT_LINE | variable )+
+
+///////////////////////////////////////////////////////// CORE /////////////////////////////////////////////////////////
+
+private expanded_crlf ::= [ COMMENT_LINE ] CRLF
+
+variable ::= recoverable_variable RBRACES
+private recoverable_variable ::= LBRACES IDENTIFIER
+{ pin=1; recoverWhile=recover_variable }
 
 ////////////////////////////////////////////////////// RECOVERIES //////////////////////////////////////////////////////
 
 private recover_request ::= !(REQUEST_SEPARATOR)
-private recover_line ::= !(CRLF)
+private recover_line ::= !(COMMENT_LINE | CRLF)
+private recover_variable ::= !(RBRACES | CRLF)

@@ -11,14 +11,14 @@ import static com.explyt.spring.web.language.http.psi.HttpTypes.*;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.explyt.spring.web.language.http.psi.*;
 
-public class HttpTagCommentLineImpl extends ASTWrapperPsiElement implements HttpTagCommentLine {
+public class HttpVariableImpl extends ASTWrapperPsiElement implements HttpVariable {
 
-  public HttpTagCommentLineImpl(@NotNull ASTNode node) {
+  public HttpVariableImpl(@NotNull ASTNode node) {
     super(node);
   }
 
   public void accept(@NotNull HttpVisitor visitor) {
-    visitor.visitTagCommentLine(this);
+    visitor.visitVariable(this);
   }
 
   @Override
@@ -28,15 +28,9 @@ public class HttpTagCommentLineImpl extends ASTWrapperPsiElement implements Http
   }
 
   @Override
-  @NotNull
-  public PsiElement getCommentSeparator() {
-    return findNotNullChildByType(COMMENT_SEPARATOR);
-  }
-
-  @Override
-  @NotNull
-  public PsiElement getTagToken() {
-    return findNotNullChildByType(TAG_TOKEN);
+  @Nullable
+  public PsiElement getIdentifier() {
+    return findChildByType(IDENTIFIER);
   }
 
 }
