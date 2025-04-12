@@ -22,6 +22,7 @@ object JavaCoreClasses {
 
     const val PACKAGE_KOTLIN = "kotlin"
     const val PACKAGE_JAVA_LANG = "java.lang"
+    const val PACKAGE_JAVA_TIME = "java.time"
 
     const val LOCALE = "java.util.Locale"
     const val CHARSET = "java.nio.charset.Charset"

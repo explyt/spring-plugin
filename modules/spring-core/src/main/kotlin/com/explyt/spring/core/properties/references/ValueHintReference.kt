@@ -21,10 +21,7 @@ import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.VALUES
-import com.explyt.spring.core.completion.properties.PropertyHint
-import com.explyt.spring.core.completion.properties.ProviderHint
-import com.explyt.spring.core.completion.properties.ProviderParameters
-import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
+import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.completion.renderer.PropertyValueRenderer
 import com.explyt.spring.core.properties.ClassReferencePropertyRenderer
 import com.explyt.spring.core.service.SpringSearchServiceFacade
@@ -115,6 +112,7 @@ class ValueHintReference(
                 provider.parameters,
                 propertyValue
             ) to ResultType.ENUM
+
             else -> emptyList<PsiElement>() to ResultType.NONE
         }
     }
@@ -158,8 +156,11 @@ class ValueHintReference(
             result.addAll(getVariantsByHint(propertyHint))
         }
 
-        val configurationProperty =
-            SpringConfigurationPropertiesSearch.getInstance(module.project).findProperty(module, propertyKey)
+        val configurationProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
+            .findProperty(module, propertyKey)
+            ?: SpringPropertiesCompletionContributor.getDynamicMapProperties(module, propertyKey)
+                .firstOrNull { it.name == propertyKey }
+
         configurationProperty?.type?.replace('$', '.')?.let {
             result.addAll(getVariantsByPropertyType(it))
         }
@@ -171,7 +172,8 @@ class ValueHintReference(
         propertyHint: PropertyHint
     ): List<Any> {
         val result = mutableListOf<Any>()
-        result.addAll(propertyHint.values
+        result.addAll(
+            propertyHint.values
             .filter { it.value != null }
             .map { LookupElementBuilder.create(it, it.value!!).withRenderer(PropertyValueRenderer()) })
 

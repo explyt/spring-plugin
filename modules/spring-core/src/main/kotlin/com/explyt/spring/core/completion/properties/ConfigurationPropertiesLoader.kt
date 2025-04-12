@@ -19,14 +19,15 @@ package com.explyt.spring.core.completion.properties
 
 import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.PrimitiveTypes
+import com.explyt.util.ExplytPsiUtil.isMap
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
-import com.intellij.psi.PsiArrayType
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiType
+import com.intellij.openapi.project.Project
+import com.intellij.psi.*
 import com.intellij.psi.util.InheritanceUtil
+import org.jetbrains.kotlin.idea.base.util.allScope
 
 interface ConfigurationPropertiesLoader {
 
@@ -46,11 +47,38 @@ interface ConfigurationPropertiesLoader {
         )
 
         fun getPropertyType(psiType: PsiType?): PropertyType? {
+            if (psiType?.isMap == true && psiType is PsiClassType) {
+                if (psiType.parameters[0].resolvedPsiClass?.isEnum == true) {
+                    return PropertyType.ENUM_MAP
+                }
+            }
+
             if (psiType is PsiArrayType) return PropertyType.ARRAY
             return getPropertyType(psiType?.resolvedPsiClass)
         }
 
-        fun getPropertyType(psiClass: PsiClass?): PropertyType? {
+        fun getPropertyType(psiClass: PsiClass?, type: String?): PropertyType? {
+            val propertyType = type?.let {
+                psiClass ?: return@let null
+                if (!type.contains(".Map<")) return@let null
+                if (getKeyPsiClass(type, psiClass.project)?.isEnum == true) PropertyType.ENUM_MAP else null
+            }
+            return propertyType ?: getPropertyType(psiClass)
+        }
+
+        fun getKeyPsiClass(type: String?, project: Project): PsiClass? {
+            val types = type?.substringAfter("<")?.substringBefore(">")?.split(",") ?: return null
+            if (types.size != 2) return null
+            return JavaPsiFacade.getInstance(project).findClass(types[0], project.allScope())
+        }
+
+        fun getValuePsiClass(type: String?, project: Project): PsiClass? {
+            val types = type?.substringAfter("<")?.substringBefore(">")?.split(",") ?: return null
+            if (types.size != 2) return null
+            return JavaPsiFacade.getInstance(project).findClass(types[1], project.allScope())
+        }
+
+        private fun getPropertyType(psiClass: PsiClass?): PropertyType? {
             return when {
                 InheritanceUtil.isInheritor(psiClass, Map::class.java.name) -> PropertyType.MAP
                 InheritanceUtil.isInheritor(psiClass, Iterable::class.java.name) -> PropertyType.LIST
@@ -71,7 +99,7 @@ data class ConfigurationProperty(
     var deprecation: DeprecationInfo?,
     val inLineYaml: Boolean = false
 ) {
-    fun isMap() = propertyType == PropertyType.MAP
+    fun isMap() = propertyType == PropertyType.MAP || propertyType == PropertyType.ENUM_MAP
 
     fun isList() = propertyType == PropertyType.LIST
 
@@ -92,5 +120,5 @@ data class ElementHint(
 )
 
 enum class PropertyType {
-    LIST, MAP, ARRAY
+    LIST, MAP, ARRAY, ENUM_MAP
 }

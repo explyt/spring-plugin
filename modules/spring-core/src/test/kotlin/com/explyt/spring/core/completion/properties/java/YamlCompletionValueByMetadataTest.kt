@@ -272,10 +272,8 @@ resilience4j:
             """.trimIndent()
         )
         doTest(
-            "register-health-indicator",
-            "limit-refresh-period",
-            "limit-refresh-period.nanos",
-            "limit-refresh-period.seconds"
+            "resilience4j.ratelimiter.instances.test.register-health-indicator",
+            "resilience4j.ratelimiter.instances.test.limit-refresh-period"
         )
     }
 

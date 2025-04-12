@@ -25,6 +25,7 @@ import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
 import com.explyt.spring.core.completion.properties.*
+import com.explyt.spring.core.completion.properties.ConfigurationPropertiesLoader.Companion.getKeyPsiClass
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetriever
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
@@ -58,10 +59,7 @@ import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.text.PlaceholderTextRanges
 import com.intellij.webSymbols.utils.NameCaseUtils
-import org.jetbrains.uast.UClass
-import org.jetbrains.uast.UField
-import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLValue
@@ -421,6 +419,7 @@ object PropertyUtil {
                 val javaFile = propertyTypeClass?.containingFile as? PsiJavaFile ?: continue
 
                 if (javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_LANG &&
+                    javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_TIME &&
                     javaFile.packageName != JavaCoreClasses.PACKAGE_KOTLIN
                 ) {
                     collectConfigurationProperty(
@@ -442,6 +441,25 @@ object PropertyUtil {
                 propertyWrapper.description,
                 propertyWrapper.default,
                 propertyWrapper.deprecation
+            )
+        }
+    }
+
+    fun getEnumProperties(project: Project, property: ConfigurationProperty): List<ConfigurationProperty> {
+        if (property.propertyType != PropertyType.ENUM_MAP) return emptyList()
+        val enumPsiClass = getKeyPsiClass(property.type, project) ?: return emptyList()
+        val valuePsiClass = ConfigurationPropertiesLoader.getValuePsiClass(property.type, project)
+        val uKeyClass = enumPsiClass.toUElement() as? UClass ?: return emptyList()
+        val enumKeys = uKeyClass.uastDeclarations.filterIsInstance<UEnumConstant>()
+        return enumKeys.map {
+            val propName = "${property.name}.${it.name}"
+            ConfigurationProperty(
+                propName,
+                PropertyType.ENUM_MAP,
+                valuePsiClass?.qualifiedName,
+                enumPsiClass.qualifiedName,
+                null, null,
+                getDeprecationInfo(it)
             )
         }
     }
@@ -580,15 +598,11 @@ object PropertyUtil {
             ?: foundClass.findFieldByName(fieldName, true))
     }
 
-    fun configurationProperty(
-        project: Project,
-        module: Module,
-        propertyKey: String
-    ): ConfigurationProperty? {
-        val findProperty = SpringConfigurationPropertiesSearch.getInstance(project)
+    fun configurationProperty(module: Module, propertyKey: String): ConfigurationProperty? {
+        val findProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .findProperty(module, propertyKey)
         if (findProperty == null) {
-            return SpringConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
+            return SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
                 .find { propertyKey.startsWith(it.name) }
         }
         return findProperty
@@ -597,7 +611,7 @@ object PropertyUtil {
     fun resolveResults(sourceMember: PsiMember): Array<ResolveResult> {
         val uElement = sourceMember.toUElement() ?: return emptyArray()
 
-        return if ((uElement is UClass || uElement is UMethod || uElement is UField)) {
+        return if (uElement is UClass || uElement is UMethod || uElement is UField) {
             PsiElementResolveResult.createResults(ConfigKeyPsiElement(sourceMember))
         } else {
             emptyArray()
@@ -647,6 +661,20 @@ object PropertyUtil {
 
         val properties = dataRetriever.getRelatedProperties(prefixValue, memberName, module)
         return PropertySearchResult(prefixValue, properties)
+    }
+
+    private fun getDeprecationInfo(item: UEnumConstant): DeprecationInfo? {
+        val annotationDeprecated = item.uAnnotations
+            .find { it.qualifiedName?.contains(java.lang.Deprecated::class.java.simpleName) == true } ?: return null
+        return DeprecationInfo(DeprecationInfoLevel.WARNING, reason = annotationDeprecated.asRenderString())
+    }
+
+    fun getKeyValuePair(propertyKey: String, foundProperty: ConfigurationProperty): Pair<String, String> {
+        if (propertyKey == propertyKey.substringAfter("${foundProperty.name}.")) return Pair("", "")
+        val propertyMapKey = propertyKey.substringAfter("${foundProperty.name}.").substringBefore(".")
+        var propertyMapValue = propertyKey.substringAfter("$propertyMapKey.")
+        if (propertyMapValue == propertyKey) propertyMapValue = ""
+        return Pair(propertyMapKey, propertyMapValue)
     }
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
