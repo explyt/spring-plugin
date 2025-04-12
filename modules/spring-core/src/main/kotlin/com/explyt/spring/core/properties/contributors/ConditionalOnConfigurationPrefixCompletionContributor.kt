@@ -27,6 +27,7 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.patterns.PlatformPatterns
+import com.intellij.psi.PsiInvalidElementAccessException
 import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UNamedExpression
@@ -52,21 +53,25 @@ class ConditionalOnConfigurationPrefixCompletionContributor : CompletionContribu
         ) {
             val psiElement = parameters.position
             val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return
-            val uElement = psiElement.parent.toUElement() ?: return
-            val uLiteralExpression = uElement.getParentOfType<UNamedExpression>() ?: return
-            val uAnnotation = uElement.getParentOfType<UAnnotation>() ?: return
-            val annotationQn = uAnnotation.qualifiedName ?: return
-            val attributeName = uLiteralExpression.name ?: return
+            try {
+                val uElement = psiElement.parent.toUElement() ?: return
+                val uLiteralExpression = uElement.getParentOfType<UNamedExpression>() ?: return
+                val uAnnotation = uElement.getParentOfType<UAnnotation>() ?: return
+                val annotationQn = uAnnotation.qualifiedName ?: return
+                val attributeName = uLiteralExpression.name ?: return
 
-            val annotationHolder = SpringSearchService.getInstance(module.project)
-                .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
-            if (!annotationHolder.isAttributeRelatedWith(
-                    annotationQn,
-                    attributeName,
-                    SpringCoreClasses.CONDITIONAL_ON_PROPERTY,
-                    setOf("prefix")
-                )
-            ) return
+                val annotationHolder = SpringSearchService.getInstance(module.project)
+                    .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
+                if (!annotationHolder.isAttributeRelatedWith(
+                        annotationQn,
+                        attributeName,
+                        SpringCoreClasses.CONDITIONAL_ON_PROPERTY,
+                        setOf("prefix")
+                    )
+                ) return
+            } catch (_: PsiInvalidElementAccessException) {
+                return
+            }
 
             val allProperties = SpringConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllProperties(module)
