@@ -66,7 +66,7 @@ class ConfigurationPropertiesService(private val project: Project) {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
                 getRootConfigurationPropertiesClassesWithPrefixInner(),
-                ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }

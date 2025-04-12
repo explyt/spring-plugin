@@ -8,7 +8,7 @@
         <multiHostInjector
                 implementation="com.explyt.spring.data.langinjection.JpqNamedNativeQueryLanguageInjector"/>
         <completion.contributor language="UAST"
-                                implementationClass="com.explyt.spring.data.completion.SpringDataBaseCompletionContributor"
+                                implementationClass="com.explyt.spring.data.completion.SpringDataMethodCompletionContributor"
                                 order="before javaMemberName"/>
 
         <localInspection language="UAST"

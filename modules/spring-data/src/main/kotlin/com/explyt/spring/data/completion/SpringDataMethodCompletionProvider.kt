@@ -40,7 +40,7 @@ import org.jetbrains.uast.*
 import org.springframework.data.repository.query.parser.PartTree
 import kotlin.math.max
 
-class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters>() {
+class SpringDataMethodCompletionProvider : CompletionProvider<CompletionParameters>() {
     private val existPattern = PartTree.EXISTS_PATTERN.split("|")
     private val countPattern = PartTree.COUNT_PATTERN.split("|")
     private val removePattern = PartTree.DELETE_PATTERN.split("|")
@@ -98,7 +98,7 @@ class SpringDataBaseCompletionProvider : CompletionProvider<CompletionParameters
         }
     }
 
-    private fun SpringDataBaseCompletionProvider.getLookupElements(
+    private fun SpringDataMethodCompletionProvider.getLookupElements(
         lookupStrings: Set<String>, prefix: String, suffix: String, methodPrefix: String
     ): Set<LookupElement> {
         if (methodPrefix == prefix) return getCompletionVariants(lookupStrings, prefix, suffix)

@@ -31,13 +31,13 @@ import com.intellij.util.ProcessingContext
 import org.jetbrains.uast.*
 
 
-class SpringDataBaseCompletionContributor : CompletionContributor() {
+class SpringDataMethodCompletionContributor : CompletionContributor() {
 
     init {
         val javaFieldCapture = PsiJavaPatterns.psiElement(
             PsiIdentifier::class.java
         ).withParent(PsiField::class.java)
-            .with(object : PatternCondition<PsiElement>(SpringDataBaseCompletionContributor::class.java.simpleName) {
+            .with(object : PatternCondition<PsiElement>(SpringDataMethodCompletionContributor::class.java.simpleName) {
                 override fun accepts(psiElement: PsiElement, context: ProcessingContext): Boolean {
                     val psiClass = PsiTreeUtil.getParentOfType(psiElement, PsiClass::class.java)
                     return psiClass != null && SpringDataUtil.isRepository(psiClass)
@@ -64,6 +64,6 @@ class SpringDataBaseCompletionContributor : CompletionContributor() {
         }
 
         val completionPattern = StandardPatterns.or(javaFieldCapture, uastMethodCapture)
-        extend(CompletionType.BASIC, completionPattern, SpringDataBaseCompletionProvider())
+        extend(CompletionType.BASIC, completionPattern, SpringDataMethodCompletionProvider())
     }
 }
