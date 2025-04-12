@@ -42,9 +42,7 @@ class SpringConfigurationPropertiesSearch {
 
     fun getAllProperties(module: Module): List<ConfigurationProperty> {
         return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
-            .asSequence().flatMap {
-                it.loadProperties(module)
-            }.toList()
+            .flatMap { it.loadProperties(module) }
     }
 
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {

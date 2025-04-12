@@ -121,40 +121,39 @@ abstract class AbstractSpringMetadataConfigurationPropertiesLoader(project: Proj
             loadMetadata(metaDataFileText, metaDataFilePath, SpringConfigurationPropertiesMetadata::class.java)
                 ?: return
 
-        metadata.properties?.forEach {
-            val propertyName = it.name
-            if (propertyName != null) {
-                val existProperty = configurationProperties[propertyName]
-                val psiClass = getPsiClass(project, it.type)
-                if (existProperty == null) {
-                    configurationProperties[propertyName] = ConfigurationProperty(
-                        name = propertyName,
-                        type = it.type,
-                        propertyType = ConfigurationPropertiesLoader.getPropertyType(psiClass),
-                        sourceType = it.sourceType,
-                        description = it.description,
-                        defaultValue = it.defaultValue,
-                        deprecation = deprecationInfo(it.deprecation)
-                    )
-                } else {
-                    if (existProperty.type.isNullOrEmpty()) {
-                        existProperty.type = it.type
-                    }
-                    if (existProperty.propertyType == null) {
-                        existProperty.propertyType = ConfigurationPropertiesLoader.getPropertyType(psiClass)
-                    }
-                    if (existProperty.sourceType.isNullOrEmpty()) {
-                        existProperty.sourceType = it.sourceType
-                    }
-                    if (existProperty.description.isNullOrEmpty()) {
-                        existProperty.description = it.description
-                    }
-                    if (existProperty.defaultValue == null) {
-                        existProperty.defaultValue = it.defaultValue
-                    }
-                    if (existProperty.deprecation == null) {
-                        existProperty.deprecation = deprecationInfo(it.deprecation)
-                    }
+        for (it in metadata.properties ?: emptyList()) {
+            val propertyName = it.name ?: continue
+
+            val existProperty = configurationProperties[propertyName]
+            val psiClass = getPsiClass(project, it.type)
+            if (existProperty == null) {
+                configurationProperties[propertyName] = ConfigurationProperty(
+                    name = propertyName,
+                    type = it.type,
+                    propertyType = ConfigurationPropertiesLoader.getPropertyType(psiClass, it.type),
+                    sourceType = it.sourceType,
+                    description = it.description,
+                    defaultValue = it.defaultValue,
+                    deprecation = deprecationInfo(it.deprecation)
+                )
+            } else {
+                if (existProperty.type.isNullOrEmpty()) {
+                    existProperty.type = it.type
+                }
+                if (existProperty.propertyType == null) {
+                    existProperty.propertyType = ConfigurationPropertiesLoader.getPropertyType(psiClass, it.type)
+                }
+                if (existProperty.sourceType.isNullOrEmpty()) {
+                    existProperty.sourceType = it.sourceType
+                }
+                if (existProperty.description.isNullOrEmpty()) {
+                    existProperty.description = it.description
+                }
+                if (existProperty.defaultValue == null) {
+                    existProperty.defaultValue = it.defaultValue
+                }
+                if (existProperty.deprecation == null) {
+                    existProperty.deprecation = deprecationInfo(it.deprecation)
                 }
             }
         }

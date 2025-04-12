@@ -89,6 +89,7 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
             SpringCoreClasses.BEAN, // meta: + annotation_type
             SpringCoreClasses.AUTOWIRED, // meta: + annotation_type
             SpringCoreClasses.VALUE, // meta: + annotation_type
+            SpringCoreClasses.MESSAGE_MAPPING,
             "org.springframework.context.event.EventListener", // meta: + annotation_type
             "org.springframework.jmx.export.annotation.ManagedOperation",
             "org.springframework.jmx.export.annotation.ManagedAttribute",

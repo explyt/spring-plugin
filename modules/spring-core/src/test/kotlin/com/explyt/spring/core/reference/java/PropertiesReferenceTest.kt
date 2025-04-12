@@ -102,16 +102,11 @@ class PropertiesReferenceTest : ExplytJavaLightTestCase() {
             "resilience4j.ratelimiter.instances.test.limit-for<caret>-period=1"
         )
 
-        val refs = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull { it as? PropertiesKeyMapValueReference }
-            ?.toList()
-
-        assertNotNull(refs)
-        assertNotEmpty(refs!!)
-        val multiResolve = refs.map { it.multiResolve(true) }.firstOrNull { it.isNotEmpty() }
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
         assertNotNull(multiResolve)
-        assertEquals(1, multiResolve!!.size)
+        assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setLimitForPeriod")
     }
@@ -122,12 +117,7 @@ class PropertiesReferenceTest : ExplytJavaLightTestCase() {
             "spring.cloud.openfeign.client.config.test.micrometer.en<caret>abled"
         )
 
-        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
-            }?.firstOrNull()
-
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference)
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -245,16 +235,11 @@ class PropertiesReferenceTest : ExplytJavaLightTestCase() {
             "application.properties",
             "spring.cloud.openfeign.client.config.test.connect-<caret>timeout"
         )
-        val refs = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull { it as? PropertiesKeyMapValueReference }
-            ?.toList()
-
-        assertNotNull(refs)
-        assertNotEmpty(refs!!)
-        val multiResolve = refs.map { it.multiResolve(true) }.firstOrNull { it.isNotEmpty() }
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
         assertNotNull(multiResolve)
-        assertEquals(1, multiResolve!!.size)
+        assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setConnectTimeout")
     }
@@ -265,16 +250,11 @@ class PropertiesReferenceTest : ExplytJavaLightTestCase() {
             "spring.cloud.openfeign.client.config.test.connect_<caret>timeout"
         )
 
-        val refs = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull { it as? PropertiesKeyMapValueReference }
-            ?.toList()
-
-        assertNotNull(refs)
-        assertNotEmpty(refs!!)
-        val multiResolve = refs.map { it.multiResolve(true) }.firstOrNull { it.isNotEmpty() }
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
         assertNotNull(multiResolve)
-        assertEquals(1, multiResolve!!.size)
+        assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setConnectTimeout")
     }
@@ -284,16 +264,12 @@ class PropertiesReferenceTest : ExplytJavaLightTestCase() {
             "application.properties",
             "spring.cloud.openfeign.client.config.test.connect<caret>Timeout"
         )
-        val refs = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull { it as? PropertiesKeyMapValueReference }
-            ?.toList()
 
-        assertNotNull(refs)
-        assertNotEmpty(refs!!)
-        val multiResolve = refs.map { it.multiResolve(true) }.firstOrNull { it.isNotEmpty() }
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
         assertNotNull(multiResolve)
-        assertEquals(1, multiResolve!!.size)
+        assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setConnectTimeout")
     }
@@ -303,16 +279,11 @@ class PropertiesReferenceTest : ExplytJavaLightTestCase() {
             "application.properties",
             "spring.cloud.openfeign.client.config.test.CONNECT_<caret>TIMEOUT"
         )
-        val refs = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull { it as? PropertiesKeyMapValueReference }
-            ?.toList()
-
-        assertNotNull(refs)
-        assertNotEmpty(refs!!)
-        val multiResolve = refs.map { it.multiResolve(true) }.firstOrNull { it.isNotEmpty() }
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
         assertNotNull(multiResolve)
-        assertEquals(1, multiResolve!!.size)
+        assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setConnectTimeout")
     }

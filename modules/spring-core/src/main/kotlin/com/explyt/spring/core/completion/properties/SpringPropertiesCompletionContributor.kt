@@ -21,15 +21,20 @@ import com.explyt.spring.core.completion.renderer.PropertyRenderer
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticInsertHandler
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.PropertyUtil
+import com.explyt.spring.core.util.PropertyUtil.collectConfigurationProperty
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.lang.properties.IProperty
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.lang.properties.psi.impl.PropertyKeyImpl
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.patterns.PlatformPatterns
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.ProcessingContext
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
@@ -67,8 +72,7 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
             val currentKey = getCurrentKey(element, parameters) ?: return
 
-            val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
-                .getAllPropertiesWithSubKeys(module)
+            val properties = getProperties(module, if (isYaml) currentKey.fullKey else currentKey.prefix)
             val parameterKeys = getKeysFromFile(parameters).filter { it != currentKey.fullKey }
 
             val reducedProperties = properties
@@ -95,9 +99,19 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
                             }
                         }
 
-                    result.withPrefixMatcher(currentKey.startKey).addElement(lookupElement)
+                    val prefix = if (isYaml && currentKey.fullKey.contains(".")) {
+                        currentKey.fullKey.substringBeforeLast(".") + "." + currentKey.startKey
+                    } else currentKey.startKey
+                    result.withPrefixMatcher(prefix).addElement(lookupElement)
                 }
             }
+        }
+
+        private fun getProperties(module: Module, propertyKey: String): List<ConfigurationProperty> {
+            val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
+                .getAllPropertiesWithSubKeys(module)
+            val dynamicMapProperties = getDynamicMapProperties(module, propertyKey)
+            return if (dynamicMapProperties.size > 1) dynamicMapProperties else properties
         }
 
         private fun handleInsertInYaml(
@@ -153,8 +167,10 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
             val key = parameters.position.text.substring(0, cursor - keyStart)
 
             val keyResult = YAMLUtil.getConfigFullName(yamlKey)
-            val prefix = if (key.isEmpty()) keyResult.substringBefore(".${CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED}")
-            else keyResult.substringBefore(".$key")
+            val prefix =
+                (if (key.isEmpty()) keyResult.substringBefore(".${CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED}")
+                else keyResult.substringBefore(".$key"))
+                    .replace(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED, "").replace(" ", "")
             val fullKey = keyResult
                 .replace(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED, "").replace(" ", "")
             return CurrentKey(prefix, key, fullKey)
@@ -181,4 +197,31 @@ class SpringPropertiesCompletionContributor : CompletionContributor() {
         val startKey: String,
         val fullKey: String
     )
+
+    companion object {
+        fun getDynamicMapProperties(module: Module, propertyKey: String): List<ConfigurationProperty> {
+            val foundProperty = PropertyUtil.configurationProperty(module, propertyKey)
+            return if (foundProperty?.isMap() == true) {
+                val resultOfMapProp = mutableListOf<ConfigurationProperty>(foundProperty)
+                if (foundProperty.propertyType == PropertyType.ENUM_MAP) {
+                    resultOfMapProp += PropertyUtil.getEnumProperties(module.project, foundProperty)
+                }
+                val keyValuePair = PropertyUtil.getKeyValuePair(propertyKey, foundProperty)
+                if (keyValuePair.first.isEmpty()) return resultOfMapProp
+
+                val valueType = PropertyUtil.getValueClassNameInMap(foundProperty.type) ?: return resultOfMapProp
+                val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
+
+                val result = hashMapOf<String, ConfigurationProperty>()
+                val scope = GlobalSearchScope.allScope(module.project)
+                val foundClass = JavaPsiFacade.getInstance(module.project).findClass(qualifiedName, scope)
+                    ?: return resultOfMapProp
+                val namePrefix = foundProperty.name + "." + keyValuePair.first
+                collectConfigurationProperty(module, foundClass, foundClass, namePrefix, result)
+                resultOfMapProp.addAll(result.values)
+
+                resultOfMapProp
+            } else emptyList()
+        }
+    }
 }

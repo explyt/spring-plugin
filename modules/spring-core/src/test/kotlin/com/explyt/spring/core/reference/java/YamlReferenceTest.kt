@@ -164,12 +164,7 @@ resilience4j:
                     """.trimIndent()
         )
 
-        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
-            }?.firstOrNull()
-
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? YamlKeyMapValueReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
@@ -189,17 +184,12 @@ resilience4j:
                     """.trimIndent()
         )
 
-        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
-            }?.firstOrNull()
-
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? YamlKeyMapValueReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
-        assertEquals(name, "InstanceProperties")
+        assertEquals("instances", name)
     }
 
     fun testRefKeyMapValue() {
@@ -242,12 +232,7 @@ spring:
         """.trimIndent()
         )
 
-        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
-            ?.references?.asSequence()
-            ?.mapNotNull {
-                it as? ConfigurationPropertyKeyReference
-            }?.firstOrNull()
-
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? YamlKeyMapValueReference
         assertNotNull(ref)
         val multiResolve = ref!!.multiResolve(true)
         assertEquals(1, multiResolve.size)
