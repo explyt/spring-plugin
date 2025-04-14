@@ -30,6 +30,7 @@ java {
 val intellijPlugins = listOf(
     "com.intellij.java",
     "com.intellij.properties",
+    "org.intellij.intelliLang",
     "org.jetbrains.plugins.yaml",
     "org.jetbrains.kotlin",
     "org.jetbrains.plugins.terminal",

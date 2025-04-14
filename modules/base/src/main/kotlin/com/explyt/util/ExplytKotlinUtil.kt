@@ -17,8 +17,6 @@
 
 package com.explyt.util
 
-import org.jetbrains.kotlin.j2k.toKotlinTypesMap
-
 object ExplytKotlinUtil {
 
     fun toKotlinType(javaFqName: String): String {

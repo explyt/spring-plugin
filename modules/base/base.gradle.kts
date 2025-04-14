@@ -23,11 +23,14 @@ plugins {
 
 val intellijPlugins = listOf(
         "com.intellij.java",
-        "org.jetbrains.kotlin"
+        "org.jetbrains.kotlin",
+        "com.intellij.modules.json",
 )
 ext {
     set("intellijPlugins", intellijPlugins)
 }
+
+evaluationDependsOn(":test-framework")
 
 val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
@@ -50,8 +53,6 @@ tasks {
 dependencies {
     implementation("io.sentry:sentry:7.12.1")
     intellijPlatform {
-        instrumentationTools()
-
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
         jetbrainsRuntime()
         bundledPlugins(intellijPlugins)

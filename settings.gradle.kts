@@ -16,7 +16,7 @@ pluginManagement {
 
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
-    id("org.jetbrains.intellij.platform.settings") version "2.2.1"
+    id("org.jetbrains.intellij.platform.settings") version "2.5.0"
 }
 
 @Suppress("UnstableApiUsage")
@@ -35,6 +35,7 @@ dependencyResolutionManagement {
     }
 }
 
+includeProject("test-framework")
 includeProject("base")
 includeProject("spring-core")
 includeProject("spring-data")
@@ -46,7 +47,6 @@ includeProject("spring-integration")
 includeProject("spring-messaging")
 includeProject("spring-aop")
 includeProject("jpa")
-includeProject("test-framework")
 includeProject("spring-gradle")
 includeProject("spring-bootstrap")
 

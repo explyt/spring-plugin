@@ -1,6 +1,9 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+    <depends optional="true" config-file="base-plugin-withKotlin.xml">org.jetbrains.kotlin</depends>
+    <depends>com.intellij.modules.json</depends>
+    <depends>com.intellij.modules.lang</depends>
 
     <extensionPoints>
     </extensionPoints>

@@ -37,6 +37,12 @@ java {
     sourceCompatibility = JavaVersion.VERSION_21
 }
 
+tasks {
+    withType<JavaCompile> {
+        options.compilerArgs.add("-Xlint:-serial")
+    }
+}
+
 intellijPlatform {
     buildSearchableOptions = false
     instrumentCode = false
