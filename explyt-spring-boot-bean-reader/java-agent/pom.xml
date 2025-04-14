@@ -20,7 +20,7 @@
         <dependency>
             <groupId>io.github.grisha9</groupId>
             <artifactId>declarative-bytecode-patcher</artifactId>
-            <version>0.2</version>
+            <version>0.3</version>
         </dependency>
     </dependencies>
 
@@ -30,6 +30,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.2.4</version>
+                <configuration>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                </configuration>
+
                 <executions>
                     <execution>
                         <id>shade-jar-without-dependencies</id>
@@ -46,6 +50,12 @@
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
+                            <relocations>
+                                <relocation>
+                                    <pattern>javassist</pattern>
+                                    <shadedPattern>javassist.explyt</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>

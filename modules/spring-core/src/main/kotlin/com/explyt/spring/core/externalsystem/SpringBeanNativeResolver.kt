@@ -78,6 +78,8 @@ import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit.MINUTES
 import javax.swing.JPanel
+import kotlin.io.path.Path
+import kotlin.io.path.name
 
 private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.config.ConfigData"
 
@@ -184,17 +186,18 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     private fun patchJavaAgent(runConfiguration: RunConfiguration) {
         val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.Constants::class.java)
         val javaAgentEscaping = ParametersListUtil.escape("-javaagent:$agentJarPath")
+        val javaAgentParams = "$javaAgentEscaping -Dpatcher.filter.agent.name=${Path(agentJarPath).name}"
         if (runConfiguration is ApplicationConfiguration) {
             if (runConfiguration.vmParameters == null) {
-                runConfiguration.vmParameters = javaAgentEscaping
+                runConfiguration.vmParameters = javaAgentParams
             } else {
-                runConfiguration.vmParameters += " $javaAgentEscaping"
+                runConfiguration.vmParameters += " $javaAgentParams"
             }
         } else if (runConfiguration is KotlinRunConfiguration) {
             if (runConfiguration.vmParameters == null) {
-                runConfiguration.vmParameters = javaAgentEscaping
+                runConfiguration.vmParameters = javaAgentParams
             } else {
-                runConfiguration.vmParameters += " $javaAgentEscaping"
+                runConfiguration.vmParameters += " $javaAgentParams"
             }
         }
     }

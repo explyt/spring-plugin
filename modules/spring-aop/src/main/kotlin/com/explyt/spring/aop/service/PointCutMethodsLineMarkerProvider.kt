@@ -32,6 +32,8 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiType
+import com.intellij.psi.util.TypeConversionUtil
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.toUElement
 
@@ -53,10 +55,12 @@ class PointCutMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
             for (method in uClass.methods) {
                 val sourcePsi = method.uastAnchor?.sourcePsi ?: continue
                 if (method.isPrivate) continue
-                val springAspectDataByMethod = aspectDataByMethodName[method.name] ?: continue
+                val springAspectsListByMethod = aspectDataByMethodName[method.name] ?: continue
+                val parametersCount = method.javaPsi.parameterList.parameters.size
                 val parametersList = method.javaPsi.parameterList.parameters
-                    .mapNotNull { it.type.resolvedPsiClass?.qualifiedName }
-                val aspectDataFilteredByParams = springAspectDataByMethod
+                    .mapNotNull { toTypeQualifiedName(it.type) }
+                val aspectDataFilteredByParams = springAspectsListByMethod
+                    .filter { it.methodQualifiedParams.size == parametersCount }
                     .filter { it.methodQualifiedParams == parametersList }
                     .takeIf { it.isNotEmpty() } ?: continue
                 val builder = NavigationGutterIconBuilder.create(SpringAopIcons.Advice)
@@ -68,6 +72,18 @@ class PointCutMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 result.add(builder.createLineMarkerInfo(sourcePsi))
             }
         }
+    }
+
+    private fun toTypeQualifiedName(psiType: PsiType): String? {
+        val qualifiedName = psiType.resolvedPsiClass?.qualifiedName
+        if (qualifiedName != null) return qualifiedName
+        if (TypeConversionUtil.isPrimitiveAndNotNull(psiType)) {
+            return psiType.canonicalText
+        }
+        if (TypeConversionUtil.isPrimitiveWrapper(psiType)) {
+            return psiType.canonicalText
+        }
+        return qualifiedName
     }
 
     private fun findMethods(aspects: List<SpringAspectData>, project: Project): Collection<PsiElement> {
