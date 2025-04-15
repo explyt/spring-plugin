@@ -47,6 +47,8 @@ interface SpringWebEndpointsLoader {
         return AnnotatedElementsSearch.searchPsiMethods(annotation, module.moduleWithDependenciesScope).toList()
     }
 
+    fun isApplicable(module: Module): Boolean
+
     companion object {
         val EP_NAME = ProjectExtensionPointName<SpringWebEndpointsLoader>(
             "com.explyt.spring.web.springWebEndpointsLoader"

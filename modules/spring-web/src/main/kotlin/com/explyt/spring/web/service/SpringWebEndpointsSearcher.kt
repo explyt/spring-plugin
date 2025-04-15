@@ -46,8 +46,9 @@ class SpringWebEndpointsSearcher(private val project: Project) {
     }
 
     fun getAllEndpoints(module: Module, types: List<EndpointType> = emptyList()): List<EndpointElement> {
-        return SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project)
+        return SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project).asSequence()
             .filter { types.isEmpty() || types.contains(it.getType()) }
+            .filter { it.isApplicable(module) }
             .flatMapTo(mutableListOf()) { it.searchEndpoints(module) }
     }
 

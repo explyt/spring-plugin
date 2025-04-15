@@ -56,7 +56,7 @@ class SpringWebJavaMethodGenerateAction : BaseGenerateAction(WebMethodHandler())
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
         return file.isWritable
                 && super.isValidForFile(project, editor, file)
-                && SpringWebUtil.isSpringWebRequestModule(file)
+                && SpringWebUtil.isWebRequestModule(file)
     }
 
     override fun isValidForClass(targetClass: PsiClass?) = targetClass?.language == JavaLanguage.INSTANCE

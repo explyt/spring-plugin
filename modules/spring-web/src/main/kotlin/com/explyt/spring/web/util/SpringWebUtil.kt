@@ -26,6 +26,7 @@ import com.explyt.spring.web.SpringWebClasses.JAX_RS_CONSUMES
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_DEFAULT
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_HEADER_PARAM
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_HTTP_METHOD
+import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH_PARAM
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_PRODUCES
 import com.explyt.spring.web.SpringWebClasses.JAX_RS_QUERY_PARAM
@@ -71,7 +72,7 @@ object SpringWebUtil {
         return LibraryClassCache.searchForLibraryClass(project, WEB_INITIALIZER) != null
     }
 
-    fun isSpringWebRequestModule(psiElement: PsiElement): Boolean {
+    fun isWebRequestModule(psiElement: PsiElement): Boolean {
         return ModuleUtilCore.findModuleForPsiElement(psiElement)
             ?.let {
                 JavaPsiFacade.getInstance(psiElement.project)
@@ -79,11 +80,29 @@ object SpringWebUtil {
             } == true
     }
 
-    fun isSpringWebModule(module: Module): Boolean {
-        return LibraryClassCache.searchForLibraryClass(
-            module,
-            WEB_INITIALIZER
-        ) != null
+    fun isWebModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(WEB_INITIALIZER, module.moduleWithLibrariesScope) != null
+    }
+
+    fun isFluxWebModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringWebClasses.FLUX, module.moduleWithLibrariesScope) != null
+    }
+
+    fun isRsWebModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(JAX_RS_PATH, module.moduleWithLibrariesScope) != null
+    }
+
+    fun isExchangeWebModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringWebClasses.HTTP_EXCHANGE, module.moduleWithLibrariesScope) != null
+    }
+
+    fun isFeignWebModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringWebClasses.FEIGN_CLIENT, module.moduleWithLibrariesScope) != null
     }
 
     fun hasJakartaClasses(module: Module): Boolean {

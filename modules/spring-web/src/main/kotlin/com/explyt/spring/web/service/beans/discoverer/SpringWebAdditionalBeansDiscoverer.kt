@@ -26,7 +26,7 @@ import com.intellij.openapi.module.Module
 class SpringWebAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
 
     override fun accepts(module: Module): Boolean {
-        return SpringWebUtil.isSpringWebModule(module)
+        return SpringWebUtil.isWebModule(module)
     }
 
     override fun discoverBeans(module: Module): Collection<PsiBean> {

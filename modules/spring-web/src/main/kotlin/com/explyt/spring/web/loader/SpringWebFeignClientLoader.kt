@@ -22,6 +22,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.UastUtil.getPropertyValue
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
@@ -40,6 +41,8 @@ import org.jetbrains.uast.toUElementOfType
 
 class SpringWebFeignClientLoader(val project: Project) : SpringWebEndpointsLoader {
     private val cachedValuesManager = CachedValuesManager.getManager(project)
+
+    override fun isApplicable(module: Module) = SpringWebUtil.isFeignWebModule(module)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {

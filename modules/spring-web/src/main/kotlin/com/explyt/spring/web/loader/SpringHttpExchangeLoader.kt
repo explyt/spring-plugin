@@ -35,6 +35,8 @@ class SpringHttpExchangeLoader(private val project: Project) : SpringWebEndpoint
 
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
+    override fun isApplicable(module: Module) = SpringWebUtil.isExchangeWebModule(module)
+
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(

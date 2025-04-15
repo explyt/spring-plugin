@@ -36,6 +36,8 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
+    override fun isApplicable(module: Module) = SpringWebUtil.isRsWebModule(module)
+
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(
