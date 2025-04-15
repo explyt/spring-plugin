@@ -20,6 +20,7 @@ package com.explyt.spring.web.loader
 import com.explyt.spring.web.providers.EndpointUsageSearcher.getOpenApiJsonEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.getOpenApiYamlEndpoints
 import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
+import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ModificationTracker
@@ -28,6 +29,8 @@ import com.intellij.psi.util.CachedValuesManager
 
 
 class SpringWebOpenApiEndpointsLoader(private val project: Project) : SpringWebEndpointsLoader {
+
+    override fun isApplicable(module: Module) = SpringWebUtil.isWebModule(module)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return CachedValuesManager.getManager(project).getCachedValue(module) {

@@ -34,6 +34,8 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
 
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
+    override fun isApplicable(module: Module) = SpringWebUtil.isWebModule(module)
+
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {
             CachedValueProvider.Result(

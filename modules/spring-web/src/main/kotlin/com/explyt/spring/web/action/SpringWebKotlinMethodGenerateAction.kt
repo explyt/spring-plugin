@@ -53,7 +53,7 @@ class SpringWebKotlinMethodGenerateAction : BaseGenerateAction(KotlinWebMethodHa
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
         if (!file.isWritable || file !is KtFile || file.isCompiled) return false
-        return SpringWebUtil.isSpringWebRequestModule(file)
+        return SpringWebUtil.isWebRequestModule(file)
     }
 }
 

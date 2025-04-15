@@ -19,6 +19,7 @@ package com.explyt.spring.web.loader
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -34,6 +35,8 @@ class SpringWebFluxEndpointsLoader(private val project: Project) : SpringWebEndp
             SpringWebCoRouterLoader()
         )
     )
+
+    override fun isApplicable(module: Module) = SpringWebUtil.isFluxWebModule(module)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {

@@ -17,12 +17,14 @@
 
 package com.explyt.spring.web.providers
 
+import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
+import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER_HOST
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.removeParams
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -57,10 +59,31 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         val apiPart = if (serverPart.length == fullPath.length) "/" else fullPath.substring(serverPart.length)
 
         val endpointInfo = getEndpointInfo(uMethod, apiPart) ?: return null
-
+        val servers = applyServerPortSettings(psiElement, server)
         return Info(
-            RunInSwaggerAction(listOf(endpointInfo), listOf(server))
+            RunInSwaggerAction(listOf(endpointInfo), servers)
         )
+    }
+
+    private fun applyServerPortSettings(psiElement: PsiElement, server: String): List<String> {
+        if (server != DEFAULT_SERVER) return listOf(server)
+        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return listOf(DEFAULT_SERVER)
+
+        val ports = (DefinedConfigurationPropertiesSearch.getInstance(psiElement.project)
+            .findProperties(module, "server.port").asSequence()
+            .mapNotNull { it.value } + listOf("8080"))
+            .map {
+                if (it.contains("{")) {
+                    it.substringAfter("{").substringBefore("}").substringAfter(":")
+                } else {
+                    it
+                }
+            }
+            .map { DEFAULT_SERVER_HOST + it }
+            .distinct()
+            .toList()
+            .takeIf { it.isNotEmpty() } ?: listOf(DEFAULT_SERVER)
+        return ports
     }
 
     private fun getEndpointInfo(uMethod: UMethod, apiPath: String): EndpointInfo? {

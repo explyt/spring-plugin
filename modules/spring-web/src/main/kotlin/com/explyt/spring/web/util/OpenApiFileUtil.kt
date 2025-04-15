@@ -183,6 +183,7 @@ class OpenApiFileUtil {
         val SPECIFICATION_ICON_TYPE_KEY: Key<OpenApiSpecificationType> = Key.create("openApiIconSpecificationType")
 
         const val DEFAULT_SERVER = "http://localhost:8080"
+        const val DEFAULT_SERVER_HOST = "http://localhost:"
 
         private var reg30: Regex
         private var reg31: Regex
