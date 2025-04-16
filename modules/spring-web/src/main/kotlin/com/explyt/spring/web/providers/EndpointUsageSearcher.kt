@@ -72,6 +72,11 @@ object EndpointUsageSearcher {
             .flatMap { collectOpenApiJsonEndpoints(it) }
     }
 
+    fun getOpenApiJsonEndpoints(project: Project): List<EndpointData> {
+        return findOpenApiJsonFiles(project)
+            .flatMap { collectOpenApiJsonEndpoints(it) }
+    }
+
     fun findOpenApiJsonFiles(module: Module): List<JsonFile> {
         val project = module.project
         val psiManager = PsiManager.getInstance(project)
@@ -84,6 +89,18 @@ object EndpointUsageSearcher {
                 .filter { OpenApiUtils.isOpenApi(it) }
                 .toList()
         }
+    }
+
+    private fun findOpenApiJsonFiles(project: Project): List<JsonFile> {
+        val psiManager = PsiManager.getInstance(project)
+
+        return FilenameIndex.getAllFilesByExt(project, "json", GlobalSearchScope.projectScope(project))
+            .asSequence()
+            .mapNotNull { psiManager.findFile(it) }
+            .filterIsInstance<JsonFile>()
+            .filter { OpenApiUtils.isOpenApi(it) }
+            .toList()
+
     }
 
 
@@ -143,6 +160,11 @@ object EndpointUsageSearcher {
         }
     }
 
+    fun getOpenApiYamlEndpoints(project: Project): List<EndpointData> {
+        return findOpenApiYamlFiles(project)
+            .flatMap { collectOpenApiYamlEndpoints(it) }
+    }
+
     fun findOpenApiYamlFiles(module: Module): List<YAMLFile> {
         val project = module.project
         val psiManager = PsiManager.getInstance(project)
@@ -160,6 +182,22 @@ object EndpointUsageSearcher {
                 .filter { OpenApiUtils.isOpenApi(it) }
                 .toList()
         }
+    }
+
+    fun findOpenApiYamlFiles(project: Project): List<YAMLFile> {
+        val psiManager = PsiManager.getInstance(project)
+
+        return (FilenameIndex.getAllFilesByExt(
+            project, "yaml",
+            GlobalSearchScope.projectScope(project)
+        ) + FilenameIndex.getAllFilesByExt(
+            project, "yml",
+            GlobalSearchScope.projectScope(project)
+        )).asSequence()
+            .mapNotNull { psiManager.findFile(it) }
+            .filterIsInstance<YAMLFile>()
+            .filter { OpenApiUtils.isOpenApi(it) }
+            .toList()
     }
 
     private fun modificationTracker(project: Project): ModificationTracker? {
