@@ -23,10 +23,7 @@ import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
-import com.explyt.spring.web.loader.EndpointData
-import com.explyt.spring.web.loader.EndpointElement
-import com.explyt.spring.web.loader.EndpointType
-import com.explyt.spring.web.loader.Referrer
+import com.explyt.spring.web.loader.*
 import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.PATHS
@@ -39,14 +36,18 @@ import com.explyt.util.ExplytKotlinUtil.mapToList
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.ModificationTracker
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopesCore
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
@@ -59,7 +60,10 @@ object EndpointUsageSearcher {
         requestMethods: List<String>,
         module: Module
     ): List<PsiElement> {
-        return getOpenApiJsonEndpoints(module).asSequence()
+        return findOpenApiJsonData(module.project).asSequence()
+            .filter { it.psiFile is JsonFile }
+            .filter { ModuleUtilCore.findModuleForFile(it.psiFile) == module }
+            .flatMap { it.endpoints }
             .filterIsInstance<EndpointData.ReferrerData>()
             .map { it.referrer }
             .filter { it.path == path }
@@ -67,40 +71,17 @@ object EndpointUsageSearcher {
             .mapToList { it.psiElement }
     }
 
-    fun getOpenApiJsonEndpoints(module: Module): List<EndpointData> {
-        return findOpenApiJsonFiles(module)
-            .flatMap { collectOpenApiJsonEndpoints(it) }
-    }
-
-    fun getOpenApiJsonEndpoints(project: Project): List<EndpointData> {
-        return findOpenApiJsonFiles(project)
-            .flatMap { collectOpenApiJsonEndpoints(it) }
-    }
-
-    fun findOpenApiJsonFiles(module: Module): List<JsonFile> {
-        val project = module.project
-        val psiManager = PsiManager.getInstance(project)
-
-        return getCachedValue(module, modificationTracker(project)) {
-            FilenameIndex.getAllFilesByExt(module.project, "json", GlobalSearchScope.moduleScope(module))
+    fun findOpenApiJsonData(project: Project): List<EndpointFileData> {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            val result = FilenameIndex.getAllFilesByExt(project, "json", GlobalSearchScope.projectScope(project))
                 .asSequence()
-                .mapNotNull { psiManager.findFile(it) }
+                .mapNotNull { it.findPsiFile(project) }
                 .filterIsInstance<JsonFile>()
                 .filter { OpenApiUtils.isOpenApi(it) }
+                .map { EndpointFileData(it, collectOpenApiJsonEndpoints(it)) }
                 .toList()
+            CachedValueProvider.Result(result, modificationTracker(project))
         }
-    }
-
-    private fun findOpenApiJsonFiles(project: Project): List<JsonFile> {
-        val psiManager = PsiManager.getInstance(project)
-
-        return FilenameIndex.getAllFilesByExt(project, "json", GlobalSearchScope.projectScope(project))
-            .asSequence()
-            .mapNotNull { psiManager.findFile(it) }
-            .filterIsInstance<JsonFile>()
-            .filter { OpenApiUtils.isOpenApi(it) }
-            .toList()
-
     }
 
 
@@ -143,7 +124,10 @@ object EndpointUsageSearcher {
         requestMethods: List<String>,
         module: Module
     ): List<PsiElement> {
-        return getOpenApiYamlEndpoints(module).asSequence()
+        return findOpenApiYamlData(module.project).asSequence()
+            .filter { it.psiFile is YAMLFile }
+            .filter { ModuleUtilCore.findModuleForFile(it.psiFile) == module }
+            .flatMap { it.endpoints }
             .filterIsInstance<EndpointData.ReferrerData>()
             .map { it.referrer }
             .filter { it.path == path }
@@ -151,53 +135,26 @@ object EndpointUsageSearcher {
             .mapToList { it.psiElement }
     }
 
-    fun getOpenApiYamlEndpoints(module: Module): List<EndpointData> {
-        val project = module.project
-
-        return getCachedValue(module, modificationTracker(project)) {
-            findOpenApiYamlFiles(module)
-                .flatMap { collectOpenApiYamlEndpoints(it) }
-        }
-    }
-
-    fun getOpenApiYamlEndpoints(project: Project): List<EndpointData> {
-        return findOpenApiYamlFiles(project)
-            .flatMap { collectOpenApiYamlEndpoints(it) }
-    }
-
-    fun findOpenApiYamlFiles(module: Module): List<YAMLFile> {
-        val project = module.project
-        val psiManager = PsiManager.getInstance(project)
-
-        return getCachedValue(module, modificationTracker(project)) {
-            (FilenameIndex.getAllFilesByExt(
-                module.project, "yaml",
-                GlobalSearchScope.moduleScope(module)
-            ) + FilenameIndex.getAllFilesByExt(
-                module.project, "yml",
-                GlobalSearchScope.moduleScope(module)
-            )).asSequence()
-                .mapNotNull { psiManager.findFile(it) }
+    fun findOpenApiYamlData(project: Project): List<EndpointFileData> {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            val result = findOpenApiYamlFiles(project).asSequence()
+                .mapNotNull { it.findPsiFile(project) }
                 .filterIsInstance<YAMLFile>()
                 .filter { OpenApiUtils.isOpenApi(it) }
+                .map { EndpointFileData(it, collectOpenApiYamlEndpoints(it)) }
                 .toList()
+            CachedValueProvider.Result(result, modificationTracker(project))
         }
     }
 
-    fun findOpenApiYamlFiles(project: Project): List<YAMLFile> {
-        val psiManager = PsiManager.getInstance(project)
-
+    private fun findOpenApiYamlFiles(project: Project): List<VirtualFile> {
         return (FilenameIndex.getAllFilesByExt(
             project, "yaml",
             GlobalSearchScope.projectScope(project)
         ) + FilenameIndex.getAllFilesByExt(
             project, "yml",
             GlobalSearchScope.projectScope(project)
-        )).asSequence()
-            .mapNotNull { psiManager.findFile(it) }
-            .filterIsInstance<YAMLFile>()
-            .filter { OpenApiUtils.isOpenApi(it) }
-            .toList()
+        ))
     }
 
     private fun modificationTracker(project: Project): ModificationTracker? {

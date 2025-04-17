@@ -77,6 +77,8 @@ sealed class EndpointData {
     data class EndpointElementData(val endpointElement: EndpointElement) : EndpointData()
 }
 
+data class EndpointFileData(val psiFile: PsiFile, val endpoints: List<EndpointData>)
+
 enum class EndpointType(val readable: String) {
     SPRING_MVC("Spring MVC"),
     SPRING_HTTP_EXCHANGE("HttpExchange"),

@@ -28,9 +28,8 @@ import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathHttpTypeBuilder
 import com.explyt.spring.web.builder.openapi.yaml.OpenApiYamlPathBuilder
 import com.explyt.spring.web.builder.openapi.yaml.OpenApiYamlPathHttpTypeBuilder
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonFiles
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlData
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlFiles
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction
@@ -86,7 +85,9 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: return
 
         ReadAction.nonBlocking<List<PsiFile>> {
-            findOpenApiYamlFiles(module) + findOpenApiJsonFiles(module)
+            (findOpenApiYamlData(project) + findOpenApiYamlData(project))
+                .map { it.psiFile }
+                .filter { ModuleUtilCore.findModuleForFile(it) == module }
         }
             .finishOnUiThread(ModalityState.current()) { openApiFiles ->
                 proceedFiles(openApiFiles, module)
