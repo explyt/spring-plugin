@@ -34,7 +34,7 @@ class HttpSyntaxHighlighterAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         val leafElement = element as? LeafPsiElement ?: return
 
-        if (leafElement.tokenType in BRACES_TYPES) {
+        if (leafElement.elementType in BRACES_TYPES) {
             val grandParentElement = element.parent?.parent ?: return
 
             val textAttribute = when (grandParentElement) {
