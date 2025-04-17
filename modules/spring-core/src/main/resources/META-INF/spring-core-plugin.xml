@@ -5,6 +5,7 @@
     <depends>com.intellij.java</depends>
     <depends>com.intellij.properties</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
+    <depends>com.intellij.modules.json</depends>
     <depends optional="true" config-file="spring-core-sh.xml">org.jetbrains.plugins.terminal</depends>
     <depends optional="true" config-file="spring-core-sh.xml">com.jetbrains.sh</depends>
 

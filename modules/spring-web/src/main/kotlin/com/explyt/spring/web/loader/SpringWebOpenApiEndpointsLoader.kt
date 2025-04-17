@@ -17,15 +17,11 @@
 
 package com.explyt.spring.web.loader
 
-import com.explyt.spring.web.providers.EndpointUsageSearcher.getOpenApiJsonEndpoints
-import com.explyt.spring.web.providers.EndpointUsageSearcher.getOpenApiYamlEndpoints
-import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonData
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlData
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.ModificationTracker
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 
 
 class SpringWebOpenApiEndpointsLoader(private val project: Project) : SpringWebEndpointsLoader {
@@ -33,31 +29,15 @@ class SpringWebOpenApiEndpointsLoader(private val project: Project) : SpringWebE
     override fun isApplicable(module: Module) = true
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
-        return searchEndpoints(module.project)
-            .filter { module == ModuleUtilCore.findModuleForPsiElement(it.psiElement) }
-    }
-
-    fun searchEndpoints(project: Project): List<EndpointElement> {
-        return CachedValuesManager.getManager(project).getCachedValue(project) {
-            val modificationTracker = project.getService(OpenApiLanguagesModificationTracker::class.java)
-                ?: ModificationTracker.NEVER_CHANGED
-            CachedValueProvider.Result(doSearchEndpoints(project), modificationTracker)
-        }
+        return (findOpenApiJsonData(project).asSequence() + findOpenApiYamlData(project).asSequence())
+            .filter { module == ModuleUtilCore.findModuleForPsiElement(it.psiFile) }
+            .flatMap { it.endpoints }
+            .filterIsInstance<EndpointData.EndpointElementData>()
+            .map { it.endpointElement }
+            .toList()
     }
 
     override fun getType(): EndpointType {
         return EndpointType.OPENAPI
     }
-
-    private fun doSearchEndpoints(project: Project): List<EndpointElement> {
-        return listOf(
-            getOpenApiJsonEndpoints(project),
-            getOpenApiYamlEndpoints(project)
-        )
-            .flatMap { result ->
-                result.filterIsInstance<EndpointData.EndpointElementData>()
-                    .map { it.endpointElement }
-            }
-    }
-
 }
