@@ -5,12 +5,29 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+- Added: SPI bean navigation support (#29)
+- Added: Support properties mapped to Map<Enum, V> (#28)
+- Fixed: generic bean navigation for beans with java fragments
+- Fixed: escape command line to start javaagent
+
+### Spring Web / OpenApi
+- Added: add to an openapi file all possible servers and ports from configs
+- Fixed: optimize endpoints search
+- Fixed: optimize editing of temporal openapi files
+
+### Other
+- HttpClient: added variable and line comment support in http files. (#26)
+- Improve test build
+
+## [243.1.3438] - 2025-03-25
+
+### Spring Core/Boot
 - Added: migrate agent to declarative-bytecode-patcher
 
 ### Other
 - Fixed: various bugfixes
 
-## [243.1.3391] - 2025-03-14
+## 243.1.3391 - 2025-03-14
 
 ### Spring Core/Boot
 - Added: use -javaagent for getting spring context
