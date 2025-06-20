@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,26 +15,16 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.service
+package com.explyt.quarkus.core
 
-import com.explyt.spring.core.util.SpringCoreUtil.getBeanName
-import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMember
+import com.intellij.AbstractBundle
+import org.jetbrains.annotations.PropertyKey
 
-data class PsiBean(
-    val name: String,
-    val psiClass: PsiClass,
-    val psiQualifier: PsiAnnotation? = null,
-    val psiMember: PsiMember = psiClass,
-    val isPrimary: Boolean = false,
-) {
+private const val BUNDLE = "messages.QuarkusCoreBundle"
 
-    constructor(psiClass: PsiClass) : this(
-        name = psiClass.getBeanName() ?: "",
-        psiClass = psiClass,
-        psiMember = psiClass
-    )
+object QuarkusCoreBundle : AbstractBundle(BUNDLE) {
 
-    fun isMember() = psiMember != psiClass
+    @JvmStatic
+    fun message(key: @PropertyKey(resourceBundle = BUNDLE) String, vararg params: Any): String =
+        getMessage(key, *params)
 }

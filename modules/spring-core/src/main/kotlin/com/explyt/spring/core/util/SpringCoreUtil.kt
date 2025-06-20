@@ -338,6 +338,7 @@ object SpringCoreUtil {
                 }
                 targetClasses.any { it.matchesWildcardType(psiType) }
             }
+
             else -> false
         }
     }
@@ -425,7 +426,7 @@ object SpringCoreUtil {
         return this.getMetaAnnotation(SpringCoreClasses.QUALIFIERS)
     }
 
-    private fun PsiType.isEqualOrInheritorBeanType(beanPsiType: PsiType): Boolean {
+    fun PsiType.isEqualOrInheritorBeanType(beanPsiType: PsiType): Boolean {
         if (this == beanPsiType) {
             return true
         }
@@ -602,7 +603,7 @@ object SpringCoreUtil {
         } else true
     }
 
-    private fun getPsiType(field: PsiField): PsiType? {
+    fun getPsiType(field: PsiField): PsiType? {
         val type = field.type.beanPsiType
         if (type is PsiClassType) {
             return type.psiClassType
@@ -633,6 +634,20 @@ object SpringCoreUtil {
         }
     }
 
+
+    fun PsiType.isExactMatch(sourcePsiType: PsiType): Boolean {
+        val isSourcePsiTypeHasParameters = sourcePsiType.psiClassType?.let { it.parameterCount > 0 } == true
+        val isSourcePsiTypeHasSingleUnboundedWildcardType = sourcePsiType.psiClassType?.let {
+            it.parameterCount == 1 && !it.parameters[0].isBounded()
+        } == true
+
+        val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
+        return this.isEqualOrInheritorBeanType(sourcePsiType) ||
+                this == sourcePsiType
+                || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
+                && resolvedSourcePsiClass != null && this.resolvedPsiClass == resolvedSourcePsiClass
+    }
+
     fun Collection<PsiMethod>.filterByBeanPsiType(beanPsiType: PsiType): Sequence<PsiMethod> {
         val inheritedPsiMethods = this.asSequence().filter {
             it.returnPsiType?.isEqualOrInheritorBeanType(beanPsiType) == true
@@ -641,6 +656,10 @@ object SpringCoreUtil {
         // Example: @Bean E dBean() { return new D(); }
         // val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
         return inheritedPsiMethods // + filterByInheritedTypes
+    }
+
+    fun PsiType.isEqualOrInheritorType(beanPsiType: PsiType): Boolean {
+        return this.isEqualOrInheritorBeanType(beanPsiType)
     }
 
 
