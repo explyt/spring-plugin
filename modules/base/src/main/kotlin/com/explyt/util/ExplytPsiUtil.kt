@@ -181,6 +181,9 @@ object ExplytPsiUtil {
     val PsiType.isCollection: Boolean
         get() = this.isInheritorOf(java.util.Collection::class.java.canonicalName)
 
+    val PsiType.isList: Boolean
+        get() = this.isInheritorOf(java.util.List::class.java.canonicalName)
+
     val PsiType.isInterface: Boolean
         get() = resolvedPsiClass?.isInterface ?: false
 

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,26 +15,12 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.service
+package com.explyt.quarkus.bean.reader;
 
-import com.explyt.spring.core.util.SpringCoreUtil.getBeanName
-import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMember
-
-data class PsiBean(
-    val name: String,
-    val psiClass: PsiClass,
-    val psiQualifier: PsiAnnotation? = null,
-    val psiMember: PsiMember = psiClass,
-    val isPrimary: Boolean = false,
-) {
-
-    constructor(psiClass: PsiClass) : this(
-        name = psiClass.getBeanName() ?: "",
-        psiClass = psiClass,
-        psiMember = psiClass
-    )
-
-    fun isMember() = psiMember != psiClass
+public interface Constants {
+    String EXPLYT_BEAN_INFO_START = "ExplytBeanInfoStart";
+    String EXPLYT_BEAN_INFO_END = "ExplytBeanInfoEnd";
+    String EXPLYT_BEAN_INFO = "ExplytBeanInfo:";
+    String EXPLYT_AOP_INFO = "ExplytBeanAopInfo:";
+    String SPRING_EXPLYT_ERROR_MESSAGE = "I am Explyt Quarkus";
 }

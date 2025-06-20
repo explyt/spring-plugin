@@ -65,7 +65,7 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
         if (uElement is UPolyadicExpression || uElement is ULiteralExpression) {
             val value = try {
                 uElement.evaluate() as? String
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             } ?: return
             val element = uElement.sourcePsi ?: return

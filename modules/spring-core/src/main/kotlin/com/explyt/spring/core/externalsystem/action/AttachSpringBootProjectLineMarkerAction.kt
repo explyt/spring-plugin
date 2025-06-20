@@ -73,9 +73,10 @@ class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() 
         val canonicalPath = virtualFile.canonicalPath ?: return null
         if (ProjectRootManager.getInstance(element.project).fileIndex.isInTestSourceContent(virtualFile)) return null
         val containingClass = javaPsi.containingClass?.qualifiedName ?: return null
+        val sourcePsi = uMethod.uastAnchor?.sourcePsi ?: return null
         return LineMarkerInfo(
-            element,
-            element.textRange,
+            sourcePsi,
+            sourcePsi.textRange,
             SpringExplorer,
             { getTooltipText(element.project, canonicalPath) },
             AttachProjectIconGutterHandler(canonicalPath, containingClass),
@@ -88,7 +89,7 @@ class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() 
         val uAnnotation = element.toUElement() as? UAnnotation ?: return null
         val uClass = uAnnotation.uastParent as? UClass ?: return null
         if (!isSupport(uAnnotation, uClass)) return null
-        val sourcePsi = uAnnotation.sourcePsi ?: return null
+        val sourcePsi = uAnnotation.uastAnchor?.sourcePsi ?: return null
         val canonicalPath = uClass.javaPsi.containingFile.virtualFile.canonicalPath ?: return null
         return LineMarkerInfo(
             sourcePsi,
