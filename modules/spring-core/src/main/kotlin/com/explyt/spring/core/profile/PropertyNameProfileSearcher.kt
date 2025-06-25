@@ -50,7 +50,7 @@ class PropertyNameProfileSearcher : ProfileSearcher {
         return CachedValuesManager.getManager(project).getCachedValue(module) {
             CachedValueProvider.Result(
                 getProfilesFromProperties(module, propertiesSearch)
-                        + propertiesSearch.searchPropertyFiles(module).flatMap { getProfiles(it) },
+                        + propertiesSearch.searchPropertyFiles().flatMap { getProfiles(it) },
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
