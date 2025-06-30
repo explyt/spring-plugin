@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+### Quarkus
+- Feature: Support Quarkus DI (#34)
+
+### Spring Core/Boot
+- feat: application.yaml enum key error (#32)
+- fix: since 2025.1 (251) DownloadHandler in JCefBrowser does not work (#35)
+- feat: 2025.2 (252) initial support
+
+## [251.1.3531] - 2025-04-17
+
 ### Spring Core/Boot
 - Added: SPI bean navigation support (#29)
 - Added: Support properties mapped to Map<Enum, V> (#28)
@@ -19,7 +29,7 @@
 - HttpClient: added variable and line comment support in http files. (#26)
 - Improve test build
 
-## [243.1.3438] - 2025-03-25
+## 243.1.3438 - 2025-03-25
 
 ### Spring Core/Boot
 - Added: migrate agent to declarative-bytecode-patcher
