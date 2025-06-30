@@ -51,7 +51,9 @@ tasks {
 
 
 dependencies {
-    implementation("io.sentry:sentry:1.7.27")
+    implementation("io.sentry:sentry:1.7.27") {
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-core")
+    }
     intellijPlatform {
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
         jetbrainsRuntime()
