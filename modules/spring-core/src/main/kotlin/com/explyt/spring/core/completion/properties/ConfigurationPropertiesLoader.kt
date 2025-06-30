@@ -47,7 +47,7 @@ interface ConfigurationPropertiesLoader {
         )
 
         fun getPropertyType(psiType: PsiType?): PropertyType? {
-            if (psiType?.isMap == true && psiType is PsiClassType) {
+            if (psiType?.isMap == true && psiType is PsiClassType && psiType.parameters.isNotEmpty()) {
                 if (psiType.parameters[0].resolvedPsiClass?.isEnum == true) {
                     return PropertyType.ENUM_MAP
                 }
