@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,26 +15,14 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.service
+package com.explyt.quarkus.core
 
-import com.explyt.spring.core.util.SpringCoreUtil.getBeanName
-import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMember
+import com.intellij.openapi.util.IconLoader
 
-data class PsiBean(
-    val name: String,
-    val psiClass: PsiClass,
-    val psiQualifier: PsiAnnotation? = null,
-    val psiMember: PsiMember = psiClass,
-    val isPrimary: Boolean = false,
-) {
+object QuarkusCoreIcons {
+    private fun load(path: String) = IconLoader.getIcon(path, QuarkusCoreIcons.javaClass)
 
-    constructor(psiClass: PsiClass) : this(
-        name = psiClass.getBeanName() ?: "",
-        psiClass = psiClass,
-        psiMember = psiClass
-    )
-
-    fun isMember() = psiMember != psiClass
+    val Advice = load("com/explyt/quarkus/aop/icons/abstractAdvice.svg")
+    val Bean = load("com/explyt/quarkus/aop/icons/bean.svg")
+    val BeanDependencies = load("com/explyt/quarkus/aop/icons/beanDependencies.svg")
 }
