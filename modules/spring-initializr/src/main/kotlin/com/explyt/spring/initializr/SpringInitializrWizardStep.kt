@@ -25,6 +25,7 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.ide.util.projectWizard.ModuleWizardStep
 import com.intellij.ide.util.projectWizard.WizardContext
 import com.intellij.openapi.components.StorageScheme
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.guessProjectDir
@@ -38,23 +39,33 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.fields.ExtendableTextField
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.util.io.HttpRequests
+import com.intellij.util.queryParameters
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
+import com.jetbrains.rd.util.URI
 import org.cef.browser.CefBrowser
+import org.cef.browser.CefFrame
 import org.cef.callback.CefBeforeDownloadCallback
 import org.cef.callback.CefDownloadItem
 import org.cef.callback.CefDownloadItemCallback
 import org.cef.handler.CefDownloadHandler
+import org.cef.handler.CefRequestHandlerAdapter
+import org.cef.handler.CefResourceRequestHandler
+import org.cef.misc.BoolRef
+import org.cef.network.CefRequest
 import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Paths
 import javax.swing.*
 import javax.swing.border.LineBorder
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
+import kotlin.io.path.name
 
 
 class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWizardStep() {
@@ -302,7 +313,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         browser.cefBrowser.createImmediately()
 
         val client = browser.jbCefClient
-        client.addDownloadHandler(
+       /* client.addDownloadHandler(
             DownloadHandler(
                 contentToolWindow,
                 progressBar,
@@ -310,6 +321,67 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
                 eFileName,
                 btnDelete
             ), browser.cefBrowser
+        )*/
+
+        client.addRequestHandler(
+            object : CefRequestHandlerAdapter() {
+                override fun getResourceRequestHandler(
+                    browser: CefBrowser?,
+                    frame: CefFrame?,
+                    request: CefRequest?,
+                    isNavigation: Boolean,
+                    isDownload: Boolean,
+                    requestInitiator: String?,
+                    disableDefaultHandling: BoolRef?
+                ): CefResourceRequestHandler? {
+                    val url = request?.url?.takeIf { it.contains("starter.zip", true) } ?: return null
+
+                    val uri = URI.create(url)
+                    val queryParameters = uri.queryParameters
+                    val name = queryParameters["name"] ?: return null
+
+                    contentToolWindow.cursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+                    progressBar?.isIndeterminate = true
+                    progressBarLabel?.text = SpringInitializrBundle.message(
+                        "explyt.spring.initializr.progress.label.text", name
+                    )
+                    logger.info("UI updated. Cursor set to wait, progress bar indeterminate.")
+                    val baseDirectoryFile = projectsDirectory ?: Files.createTempDirectory("spring.io").toFile()
+                    var targetFile = File(baseDirectoryFile, "$name.zip")
+
+                    if (targetFile.isFile) {
+                        logger.info("File already exist")
+                        targetFile = File(Files.createTempDirectory("spring.io").toFile(), "$name.zip")
+                    }
+                    val resultPath = targetFile.toPath()
+                    val parent = resultPath.parent
+
+                    val partFile = parent.resolve("${resultPath.name}.part-${System.currentTimeMillis()}")
+                    try {
+                        HttpRequests.request(url)
+                            .forceHttps(false)
+                            .connectTimeout(30_000)
+                            .readTimeout(30_000)
+                            .saveToFile(partFile, null)
+                    } catch (t: Throwable) {
+                        if (t is ControlFlowException)
+                            throw RuntimeException("canceled")
+                    }
+                    FileUtil.rename(partFile.toFile(), targetFile)
+
+                    SwingUtilities.invokeLater {
+                        val downloadItemLocation = targetFile.absolutePath
+                        contentToolWindow.setCursor(Cursor.getDefaultCursor())
+                        downloadFullPath = downloadItemLocation
+                        zipFilePath = targetFile.getName()
+                        eFileName?.text = zipFilePath
+                        progressBar?.setIndeterminate(false)
+
+                    }
+                    return null
+                }
+            },
+            browser.cefBrowser
         )
 
         return browser
