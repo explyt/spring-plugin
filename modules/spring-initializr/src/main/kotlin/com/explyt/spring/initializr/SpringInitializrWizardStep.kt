@@ -134,14 +134,30 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
     }
 
     private fun checkDirectoryForUnzip(): Boolean {
-        val projectPath = projectsDirectory?.path ?: return false
-        val zipPath = zipFilePath ?: return false
-        val unzip = Paths.get(projectPath, FileUtil.getNameWithoutExtension(zipPath))
-        val file = File(unzip.toString())
-        if (file.isDirectory) {
+        val projectPath = projectsDirectory?.path
+        if (projectPath.isNullOrBlank()) {
             Messages.showWarningDialog(
                 contentToolWindow,
-                "Directory '$unzip' is not empty!\nSelect a different location",
+                SpringInitializrBundle.message("explyt.spring.initializr.check.path"),
+                "Warning"
+            )
+            return false
+        }
+        val zipPath = zipFilePath
+        if (zipPath.isNullOrBlank()) {
+            Messages.showWarningDialog(
+                contentToolWindow,
+                SpringInitializrBundle.message("explyt.spring.initializr.check.zip-path"),
+                "Warning"
+            )
+            return false
+        }
+        val unzip = Paths.get(projectPath, FileUtil.getNameWithoutExtension(zipPath))
+        val file = File(unzip.toString())
+        if (file.isDirectory || file.exists()) {
+            Messages.showWarningDialog(
+                contentToolWindow,
+                SpringInitializrBundle.message("explyt.spring.initializr.check.target-directory", unzip),
                 "Warning"
             )
             return false
