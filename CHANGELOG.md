@@ -4,7 +4,13 @@
 
 ## [Unreleased]
 
-- Feature: Support Quarkus DI
+### Quarkus
+- Feature: Support Quarkus DI (#34)
+
+### Spring Core/Boot
+- feat: application.yaml enum key error (#32)
+- fix: since 2025.1 (251) DownloadHandler in JCefBrowser does not work (#35)
+- feat: 2025.2 (252) initial support
 
 ## [251.1.3531] - 2025-04-17
 
