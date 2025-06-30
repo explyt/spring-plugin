@@ -17,12 +17,10 @@
 
 package com.explyt.base
 
-import com.intellij.diagnostic.IdeaReportingEvent
+import com.intellij.diagnostic.LogMessage
 import com.intellij.ide.DataManager
-import com.intellij.ide.plugins.IdeaPluginDescriptor
 import com.intellij.idea.IdeaLogger
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.IdeaLoggingEvent
 import com.intellij.openapi.diagnostic.SubmittedReportInfo
@@ -30,25 +28,31 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.util.Consumer
-import io.sentry.Sentry
-import io.sentry.SentryEvent
-import io.sentry.SentryLevel
+import io.sentry.SentryClient
+import io.sentry.SentryClientFactory
+import io.sentry.event.Event
+import io.sentry.event.EventBuilder
+import io.sentry.event.interfaces.ExceptionInterface
 import java.awt.Component
 
 
 class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter() {
+
+    val sentryClient: SentryClient = SentryClientFactory.sentryClient(
+        "https://7e30ca42b0df43d3b31837cdb77b38f9@app.glitchtip.com/11916"
+    )
+
     init {
-        Sentry.init { options ->
-            options.dsn = "https://2ce963913d1f6bc5d2a4f4dd9ee56c8c@o4507647290310656.ingest.de.sentry.io/4507647358468176"
-            // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
-            // We recommend adjusting this value in production.
-            options.tracesSampleRate = 1.0
-            // When first trying Sentry it's good to see what the SDK is doing:
-            options.isDebug = true
-            options.tags += "ide.build" to ApplicationInfo.getInstance().build.asString()
-            if (pluginDescriptor is IdeaPluginDescriptor) {
-                options.tags += "plugin.build" to (pluginDescriptor as IdeaPluginDescriptor).version
-            }
+        sentryClient.apply {
+            val properties = System.getProperties()
+            addTag("plugin.version", PluginContext.pluginVersion)
+            addTag("idea.kotlin.plugin.use.k2", properties.getProperty("idea.kotlin.plugin.use.k2", "false"))
+            addTag("ide.build", PluginContext.ideBuild)
+            addTag("environment.java.version", properties.getProperty("java.version", "unknown"))
+            addTag("environment.java.vm.name", properties.getProperty("java.vm.name", "unknown"))
+            addTag("environment.java.vendor.version", properties.getProperty("java.vendor.version", "unknown"))
+            environment = properties.getProperty("os.name", "unknown") + " " + properties.getProperty("os.version", "unknown")
+            release = PluginContext.pluginVersion
         }
     }
 
@@ -61,31 +65,37 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
         object : Task.Backgroundable(project, BaseBundle.message("explyt.base.report.background")) {
             override fun run(indicator: ProgressIndicator) {
                 for (ideaEvent in events) {
-                    val event = SentryEvent()
-                    event.level = SentryLevel.ERROR
-                    // set server name to empty to avoid tracking personal data
-                    event.serverName = ""
+                    val eventBuilder = EventBuilder()
+                        .withMessage(ideaEvent.throwable.message)
+                        .withLevel(Event.Level.ERROR)
+                        .withSentryInterface(ExceptionInterface(ideaEvent.throwable))
+                        .withExtra("last_action", IdeaLogger.ourLastActionId)
+                    /* TODO:
+                        it seems last action is not actual for the moment of submitting the issue.
+                        It is better to track for last actions and put them into breadcrumbs,
+                        in that case we have a chance to find out reproduce path.
+                     */
 
-                    // this is the tricky part
-                    // ideaEvent.throwable is a com.intellij.diagnostic.IdeaReportingEvent.TextBasedThrowable
-                    // This is a wrapper and is only providing the original stack trace via 'printStackTrace(...)',
-                    // but not via 'getStackTrace()'.
-                    //
-                    // Sentry accesses Throwable.getStackTrace(),
-                    // So, we workaround this by retrieving the original exception from the data property
-                    if (ideaEvent is IdeaReportingEvent) {
-                        event.throwable = ideaEvent.data.throwable
-                        event.release = ideaEvent.plugin?.version
-                    } else {
-                        // ignoring this ideaEvent, you might not want to do this
-                        event.throwable = ideaEvent.throwable
+                    additionalInfo?.let {
+                        eventBuilder.withExtra("event.info", it)
+                    }
+                    ideaEvent.message?.let {
+                        eventBuilder.withExtra("event.message", it)
+                    }
+                    ideaEvent.attachments.forEach {
+                        eventBuilder.withExtra(it.name, it.encodedBytes)
+                    }
+                    ideaEvent.plugin?.let {
+                        eventBuilder.withTag("event.plugin.id", it.pluginId.idString)
+                        eventBuilder.withTag("event.plugin.version", it.version)
+                    }
+                    // TODO: find non internal api to retrieve exception time
+                    (ideaEvent.data as? LogMessage)?.let {
+                        eventBuilder.withTimestamp(it.date)
                     }
 
-                    event.setExtra("last_action", IdeaLogger.ourLastActionId)
-                    Sentry.captureEvent(event)
+                    sentryClient.sendEvent(eventBuilder)
                 }
-                // might be useful to debug the exception
-
                 // by default, Sentry is sending async in a background thread
 
                 ApplicationManager.getApplication().invokeLater {

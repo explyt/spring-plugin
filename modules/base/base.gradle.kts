@@ -51,7 +51,7 @@ tasks {
 
 
 dependencies {
-    implementation("io.sentry:sentry:7.12.1")
+    implementation("io.sentry:sentry:1.7.27")
     intellijPlatform {
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
         jetbrainsRuntime()
