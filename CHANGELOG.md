@@ -9,8 +9,14 @@
 
 ### Spring Core/Boot
 - feat: application.yaml enum key error (#32)
+
+### Spring Initializr
 - fix: since 2025.1 (251) DownloadHandler in JCefBrowser does not work (#35)
+- chore: display verbose errors while Spring Project creation
+
+### Other
 - feat: 2025.2 (252) initial support
+- chore: migrate from sentry to glichtip
 
 ## [251.1.3531] - 2025-04-17
 

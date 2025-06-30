@@ -5,12 +5,8 @@ on:
     branches:
       - 'release/**'
 
-env:
-  BRANCH_NAME: $GITHUB_REF_NAME
-  BUILD_NUMBER: $GITHUB_RUN_ID
-
 jobs:
-  build:
+  assemble:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -22,9 +18,9 @@ jobs:
           java-version: 21
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      - run: ESCAPED_BRANCH_NAME="$(echo "$BRANCH_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
+      - run: ESCAPED_BRANCH_NAME="$(echo "$GITHUB_REF_NAME" | sed -e 's|release/||g' |  sed -e 's|/|_|g' )"
       - name: Sign Plugin
-        run: ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$BUILD_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$BUILD_NUMBER -PsetUntilVersion | tee build.log
+        run: ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$GITHUB_RUN_ID -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$GITHUB_RUN_ID -PsetUntilVersion | tee build.log
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
