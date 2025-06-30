@@ -25,15 +25,15 @@ object PluginContext {
         PluginManager.getPluginByClass(SentryErrorReporter::class.java)?.version ?: "Unknown"
     }
 
-    val ideVersion by lazy {
-        ApplicationInfo.getInstance().build.asStringWithoutProductCode()
-    }
-
     val ideName: String by lazy {
         ApplicationInfo.getInstance().build.productCode
     }
 
     val ideBuild: String by lazy {
+        ApplicationInfo.getInstance().build.let { it.productCode + "-" + it.components[0] }
+    }
+
+    val ideFullVersion: String by lazy {
         ApplicationInfo.getInstance().build.toString()
     }
 }

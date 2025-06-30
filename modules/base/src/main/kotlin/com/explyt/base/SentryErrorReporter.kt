@@ -46,17 +46,21 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
         sentryClient.apply {
             val properties = System.getProperties()
             addTag("plugin.version", PluginContext.pluginVersion)
-            addTag("idea.kotlin.plugin.use.k2", properties.getProperty("idea.kotlin.plugin.use.k2", "false"))
+            addExtra("idea.kotlin.plugin.use.k2", properties.getProperty("idea.kotlin.plugin.use.k2", "false"))
             addTag("ide.build", PluginContext.ideBuild)
-            addTag("environment.java.version", properties.getProperty("java.version", "unknown"))
-            addTag("environment.java.vm.name", properties.getProperty("java.vm.name", "unknown"))
-            addTag("environment.java.vendor.version", properties.getProperty("java.vendor.version", "unknown"))
+            addExtra("ide.version", PluginContext.ideFullVersion)
+            addExtra("environment.java.version", properties.getProperty("java.version", "unknown"))
+            addExtra("environment.java.vendor.version", properties.getProperty("java.vendor.version", "unknown"))
             environment = properties.getProperty("os.name", "unknown") + " " + properties.getProperty("os.version", "unknown")
             release = PluginContext.pluginVersion
         }
     }
 
     override fun getReportActionText(): String = BaseBundle.message("explyt.base.report.action")
+
+    override fun getReporterAccount(): String? {
+        return System.getProperties().getProperty("user.name", "anonymous")
+    }
 
     override fun submit(events: Array<out IdeaLoggingEvent>, additionalInfo: String?, parentComponent: Component, consumer: Consumer<in SubmittedReportInfo>): Boolean {
         val context = DataManager.getInstance().getDataContext(parentComponent)
@@ -69,6 +73,7 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
                         .withMessage(ideaEvent.throwable.message)
                         .withLevel(Event.Level.ERROR)
                         .withSentryInterface(ExceptionInterface(ideaEvent.throwable))
+                        .withExtra("user.name", reporterAccount)
                         .withExtra("last_action", IdeaLogger.ourLastActionId)
                     /* TODO:
                         it seems last action is not actual for the moment of submitting the issue.
@@ -88,10 +93,6 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
                     ideaEvent.plugin?.let {
                         eventBuilder.withTag("event.plugin.id", it.pluginId.idString)
                         eventBuilder.withTag("event.plugin.version", it.version)
-                    }
-                    // TODO: find non internal api to retrieve exception time
-                    (ideaEvent.data as? LogMessage)?.let {
-                        eventBuilder.withTimestamp(it.date)
                     }
 
                     sentryClient.sendEvent(eventBuilder)
