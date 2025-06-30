@@ -49,6 +49,7 @@ includeProject("jpa")
 includeProject("test-framework")
 includeProject("spring-gradle")
 includeProject("spring-bootstrap")
+includeProject("quarkus-core")
 
 fun includeProject(name: String, path: String = "modules/$name") {
     include(":$name")

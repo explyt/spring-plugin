@@ -19,6 +19,7 @@ package com.explyt.util
 
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtil
@@ -26,6 +27,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.GlobalSearchScopeUtil
+import org.jetbrains.kotlin.idea.base.util.allScope
+import org.jetbrains.kotlin.idea.base.util.projectScope
 
 object ModuleUtil {
 
@@ -44,6 +47,13 @@ object ModuleUtil {
 
     fun getContentRootFile(psiElement: PsiElement): VirtualFile? {
         return psiElement.project.guessProjectDir()
+    }
+
+    fun getOnlyLibrarySearchScope(project: Project): GlobalSearchScope {
+        return GlobalSearchScopeUtil.toGlobalSearchScope(
+            project.allScope().intersectWith(GlobalSearchScope.notScope(project.projectScope())),
+            project
+        )
     }
 
     fun getOnlyLibrarySearchScope(module: Module): GlobalSearchScope {

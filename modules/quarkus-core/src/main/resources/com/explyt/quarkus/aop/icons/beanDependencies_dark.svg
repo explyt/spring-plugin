@@ -1,0 +1,25 @@
+<!--
+  - Copyright © 2025 Explyt Ltd
+  -
+  - All rights reserved.
+  -
+  - This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
+  -
+  - You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
+  -
+  - By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
+  - If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
+  -
+  - You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+  -
+  - Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
+  -->
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12.4211 3.54342C15.2863 6.40854 16.0769 10.3148 13.1805 13.2112C10.284 16.1076 6.22827 15.2144 3.48908 12.4753C0.749897 9.73619 -0.0649635 5.63356 2.76887 2.79978C5.60271 -0.0339965 9.55592 0.678305 12.4211 3.54342Z"
+          fill="#45322B"/>
+    <path fill-rule="evenodd" clip-rule="evenodd"
+          d="M12.4211 3.54342C15.2863 6.40854 16.0769 10.3148 13.1805 13.2112C10.284 16.1076 6.22826 15.2144 3.48908 12.4753C0.749897 9.73619 -0.0649632 5.63356 2.76887 2.79978C5.60271 -0.0339965 9.55592 0.678305 12.4211 3.54342ZM11.7126 4.25194C13.025 5.56439 13.8035 7.05797 13.9658 8.47924C14.1089 9.73177 13.7837 10.9927 12.8122 12.1344L3.84627 3.1686C4.96097 2.22632 6.21752 1.89609 7.47661 2.03083C8.90451 2.18363 10.4065 2.94592 11.7126 4.25194ZM3.13864 3.87802L12.1028 12.842C10.9657 13.8003 9.67759 14.1137 8.3937 13.9615C6.93895 13.7891 5.43927 13.0084 4.19761 11.7668C2.96238 10.5316 2.1978 9.02377 2.03495 7.5621C1.89119 6.27175 2.20946 4.98843 3.13864 3.87802Z"
+          fill="#C77D55"/>
+    <path fill="#AFB1B3" d="M4,13.8 L4,16 L1,13 L4,10 L4,12.2 L9,12.2 L9,13.8 L4,13.8 Z"
+          transform="matrix(-1 0 0 1 10 0)"/>
+</svg>

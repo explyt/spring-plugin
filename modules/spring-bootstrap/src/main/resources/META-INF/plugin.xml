@@ -51,4 +51,5 @@
     <xi:include href="spring-aop-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="jpa-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="spring-gradle-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="quarkus-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
 </idea-plugin>
