@@ -18,7 +18,7 @@ jobs:
           java-version: 21
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      - run: echo "ESCAPED_BRANCH_NAME=$(echo '$GITHUB_REF_NAME' | sed -e 's|release/||g' | sed -e 's|/|_|g' )" >> $GITHUB_ENV
+      - run: echo "ESCAPED_BRANCH_NAME=$(echo "$GITHUB_REF_NAME" | sed -e 's|release/||g' | sed -e 's|/|_|g' )" >> $GITHUB_ENV
       - name: Sign Plugin
         run: ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$GITHUB_RUN_ID -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$GITHUB_RUN_ID -PsetUntilVersion | tee build.log
       - name: Archive production artifacts
