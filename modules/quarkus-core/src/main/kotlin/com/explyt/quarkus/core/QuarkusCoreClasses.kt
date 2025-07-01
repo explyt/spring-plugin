@@ -32,6 +32,7 @@ object QuarkusCoreClasses {
 
     const val INTERCEPTOR = "jakarta.interceptor.Interceptor"
     const val INTERCEPTOR_BINDING = "jakarta.interceptor.InterceptorBinding"
+    const val HTTP_METHOD = "jakarta.ws.rs.HttpMethod"
 
     const val CORE_CLASS = "io.quarkus.runtime.configuration.AbstractConfigBuilder"
 

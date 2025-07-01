@@ -53,6 +53,8 @@ import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLMapping
 
+private const val MAX_FILE_SIZE_BYTES = 1024 * 1024
+
 object EndpointUsageSearcher {
 
     fun findOpenApiJsonEndpoints(
@@ -77,13 +79,13 @@ object EndpointUsageSearcher {
                 .asSequence()
                 .mapNotNull { it.findPsiFile(project) }
                 .filterIsInstance<JsonFile>()
+                .filter { it.virtualFile.length < MAX_FILE_SIZE_BYTES }
                 .filter { OpenApiUtils.isOpenApi(it) }
                 .map { EndpointFileData(it, collectOpenApiJsonEndpoints(it)) }
                 .toList()
             CachedValueProvider.Result(result, modificationTracker(project))
         }
     }
-
 
     private fun collectOpenApiJsonEndpoints(file: JsonFile): List<EndpointData> {
         if (!OpenApiUtils.isOpenApi(file)) return emptyList()

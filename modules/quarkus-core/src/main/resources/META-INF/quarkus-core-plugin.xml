@@ -17,6 +17,8 @@
 
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
+        <implicitUsageProvider implementation="com.explyt.quarkus.core.provider.QuarkusImplicitUsageProvider"/>
+
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.quarkus.core.service.QuarkusBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"

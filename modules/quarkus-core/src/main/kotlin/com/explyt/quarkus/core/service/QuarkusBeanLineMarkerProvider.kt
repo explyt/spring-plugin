@@ -151,6 +151,7 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             result.add(builder.createLineMarkerInfo(sourcePsi))
             return
         }
+        if (uField.isStatic || uField.hasInitializer()) return
         if (!isInjectExpression(psiField) && !isLombokAnnotatedClassFieldExpression(psiField)) return
 
         val sourcePsi = uField.uastAnchor?.sourcePsi ?: return

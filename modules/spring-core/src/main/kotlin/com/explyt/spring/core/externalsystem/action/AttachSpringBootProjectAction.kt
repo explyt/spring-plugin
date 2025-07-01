@@ -28,12 +28,15 @@ import com.intellij.execution.RunManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemNotificationManager
 import com.intellij.openapi.externalSystem.service.notification.NotificationCategory.WARNING
 import com.intellij.openapi.externalSystem.service.notification.NotificationData
 import com.intellij.openapi.externalSystem.service.notification.NotificationSource
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
+import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
@@ -79,10 +82,8 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
             val mainFile = mainClass.containingFile?.virtualFile ?: return
             val canonicalPath = mainFile.canonicalPath ?: return
             if (ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath) != null) {
-                ApplicationManager.getApplication().invokeLater {
-                    val message =
-                        message("explyt.external.project.already.linked.message", selectedRunConfiguration.name)
-                    externalSystemNotification(message, project)
+                ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
+                    ExternalSystemUtil.refreshProject(canonicalPath, ImportSpecBuilder(project, SYSTEM_ID))
                 }
                 return
             }
