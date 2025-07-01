@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+
+## [251.1.15986533443] - 2025-07-01
+
 ### Quarkus
 - Feature: Support Quarkus DI (#34)
 
@@ -18,7 +21,7 @@
 - feat: 2025.2 (252) initial support
 - chore: migrate from sentry to glichtip
 
-## [251.1.3531] - 2025-04-17
+## 251.1.3531 - 2025-04-17
 
 ### Spring Core/Boot
 - Added: SPI bean navigation support (#29)
