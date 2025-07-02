@@ -20,7 +20,7 @@ package com.explyt.spring.web.service
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
-import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
@@ -80,10 +80,11 @@ class SpringWebEndpointsSearcher(private val project: Project) {
             module,
             ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
         ) {
-            val applicationPathMah = MetaAnnotationsHolder.of(module, SpringWebClasses.JAX_RS_APPLICATION_PATH)
+            val applicationPathTargetClass = WebEeClasses.JAX_RS_APPLICATION_PATH.getTargetClass(module)
+            val applicationPathMah = MetaAnnotationsHolder.of(module, applicationPathTargetClass)
 
             val httpAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
-                module, SpringWebClasses.JAX_RS_APPLICATION_PATH, false
+                module, applicationPathTargetClass, false
             ).takeIf { it.isNotEmpty() } ?: emptyList()
 
             httpAnnotations.asSequence()

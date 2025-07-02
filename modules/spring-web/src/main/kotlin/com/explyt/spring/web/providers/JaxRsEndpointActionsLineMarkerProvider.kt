@@ -2,7 +2,7 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.web.SpringWebBundle
-import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
@@ -43,7 +43,8 @@ class JaxRsEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.JAX_RS_HTTP_METHOD)) return null
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
+        if (!psiMethod.isMetaAnnotatedBy(httpMethodTargetClass)) return null
         val psiClass = psiMethod.containingClass ?: return null
         val className = psiClass.name ?: return null
 
@@ -51,8 +52,9 @@ class JaxRsEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
             .filter { !OpenApiUtils.isAbsolutePath(it) }
             .firstOrNull() ?: return null
 
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
         val applicationPath = SpringWebEndpointsSearcher.getInstance(module.project).getJaxRsApplicationPath(module)
-        val prefix = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.JAX_RS_PATH)) {
+        val prefix = if (psiClass.isMetaAnnotatedBy(pathTargetClass)) {
             SpringWebUtil.getJaxRsPaths(psiClass, module)
                 .firstOrNull() ?: ""
         } else {

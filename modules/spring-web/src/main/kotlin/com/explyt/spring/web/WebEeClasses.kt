@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,25 +15,23 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.util
+package com.explyt.spring.web
 
-import com.intellij.openapi.module.Module
-import com.intellij.psi.JavaPsiFacade
+import com.explyt.util.MultiVendorClass
+import kotlin.reflect.KProperty
 
-class MultiVendorClass(subFqn: String) {
-    val javax: String = "javax.$subFqn"
-    val jakarta: String = "jakarta.$subFqn"
+object WebEeClasses {
+    val JAX_RS_APPLICATION_PATH by "ws.rs.ApplicationPath"
+    val JAX_RS_PATH by "ws.rs.Path"
+    val JAX_RS_HTTP_METHOD by "ws.rs.HttpMethod"
+    val JAX_RS_PRODUCES by "ws.rs.Produces"
+    val JAX_RS_CONSUMES by "ws.rs.Consumes"
+    val JAX_RS_PATH_PARAM by "ws.rs.PathParam"
+    val JAX_RS_QUERY_PARAM by "ws.rs.QueryParam"
+    val JAX_RS_HEADER_PARAM by "ws.rs.HeaderParam"
+    val JAX_RS_DEFAULT by "ws.rs.DefaultValue"
 
-    val allFqns by lazy { listOf(javax, jakarta) }
-
-    fun check(fqn: String?): Boolean = fqn in allFqns
-
-    fun getTargetClass(module: Module?): String {
-        module ?: return this.jakarta
-        return if (isJakartaModule(module)) this.jakarta else this.javax
-    }
-    fun isJakartaModule(module: Module): Boolean {
-        return JavaPsiFacade.getInstance(module.project)
-            .findClass(this.jakarta, module.moduleWithLibrariesScope) != null
+    private operator fun String.getValue(jpaClasses: WebEeClasses, property: KProperty<*>): MultiVendorClass {
+        return MultiVendorClass(this)
     }
 }

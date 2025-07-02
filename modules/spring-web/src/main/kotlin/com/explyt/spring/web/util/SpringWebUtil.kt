@@ -22,20 +22,13 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
 import com.explyt.spring.web.SpringWebClasses
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_CONSUMES
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_DEFAULT
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_HEADER_PARAM
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_HTTP_METHOD
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH_PARAM
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_PRODUCES
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_QUERY_PARAM
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.SpringWebClasses.RETROFIT_HEADER_PARAM
 import com.explyt.spring.web.SpringWebClasses.RETROFIT_HTTP
 import com.explyt.spring.web.SpringWebClasses.RETROFIT_PATH_PARAM
 import com.explyt.spring.web.SpringWebClasses.RETROFIT_QUERY_PARAM
 import com.explyt.spring.web.SpringWebClasses.WEB_INITIALIZER
+import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALUE
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
@@ -72,6 +65,11 @@ object SpringWebUtil {
         return LibraryClassCache.searchForLibraryClass(project, WEB_INITIALIZER) != null
     }
 
+    fun isEeWebProject(project: Project): Boolean {
+        return LibraryClassCache.searchForLibraryClass(project, WebEeClasses.JAX_RS_PATH.jakarta) != null
+                || LibraryClassCache.searchForLibraryClass(project, WebEeClasses.JAX_RS_PATH.javax) != null
+    }
+
     fun isWebRequestModule(psiElement: PsiElement): Boolean {
         return ModuleUtilCore.findModuleForPsiElement(psiElement)
             ?.let {
@@ -91,8 +89,14 @@ object SpringWebUtil {
     }
 
     fun isRsWebModule(module: Module): Boolean {
+        return isJakartaModule(module)
+                || JavaPsiFacade.getInstance(module.project)
+            .findClass(WebEeClasses.JAX_RS_PATH.javax, module.moduleWithLibrariesScope) != null
+    }
+
+    fun isJakartaModule(module: Module): Boolean {
         return JavaPsiFacade.getInstance(module.project)
-            .findClass(JAX_RS_PATH, module.moduleWithLibrariesScope) != null
+            .findClass(WebEeClasses.JAX_RS_PATH.jakarta, module.moduleWithLibrariesScope) != null
     }
 
     fun isExchangeWebModule(module: Module): Boolean {
@@ -375,7 +379,8 @@ object SpringWebUtil {
     }
 
     fun getJaxRsPaths(psiMember: PsiMember, module: Module): List<String> {
-        val pathMah = MetaAnnotationsHolder.of(module, SpringWebClasses.JAX_RS_PATH)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        val pathMah = MetaAnnotationsHolder.of(module, pathTargetClass)
 
         val paths = pathMah.getAnnotationMemberValues(psiMember, setOf("value"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
@@ -385,29 +390,35 @@ object SpringWebUtil {
     }
 
     fun getJaxRsHttpMethods(psiMethod: PsiMethod, module: Module): List<String> {
-        val httpMethodMah = MetaAnnotationsHolder.of(module, JAX_RS_HTTP_METHOD)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
+        val httpMethodMah = MetaAnnotationsHolder.of(module, httpMethodTargetClass)
 
         return httpMethodMah.getAnnotationMemberValues(psiMethod, setOf("value"))
-            .map { ExplytPsiUtil.getUnquotedText(it) }
+            .map { ExplytPsiUtil.getUnquotedText(it) }.ifEmpty { listOf("GET") }
     }
 
     fun getJaxRsProduces(psiMethod: PsiMethod, module: Module): List<String> {
-        val producesMah = MetaAnnotationsHolder.of(module, JAX_RS_PRODUCES)
+        val producesTargetClass = WebEeClasses.JAX_RS_PRODUCES.getTargetClass(module)
+        val producesMah = MetaAnnotationsHolder.of(module, producesTargetClass)
         return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
     }
 
     fun getJaxRsConsumes(psiMethod: PsiMethod, module: Module): List<String> {
-        val producesMah = MetaAnnotationsHolder.of(module, JAX_RS_CONSUMES)
+        val consumesTargetClass = WebEeClasses.JAX_RS_CONSUMES.getTargetClass(module)
+        val producesMah = MetaAnnotationsHolder.of(module, consumesTargetClass)
         return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
     }
 
     fun collectJaxRsArgumentInfos(psiMethod: PsiMethod, module: Module): HttpArgumentInfos {
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH_PARAM.getTargetClass(module)
+        val queryTargetClass = WebEeClasses.JAX_RS_QUERY_PARAM.getTargetClass(module)
+        val headerTargetClass = WebEeClasses.JAX_RS_HEADER_PARAM.getTargetClass(module)
         return HttpArgumentInfos(
-            collectJaxRsArgumentInfo(psiMethod, JAX_RS_PATH_PARAM, module),
-            collectJaxRsArgumentInfo(psiMethod, JAX_RS_QUERY_PARAM, module),
-            collectJaxRsArgumentInfo(psiMethod, JAX_RS_HEADER_PARAM, module)
+            collectJaxRsArgumentInfo(psiMethod, pathTargetClass, module),
+            collectJaxRsArgumentInfo(psiMethod, queryTargetClass, module),
+            collectJaxRsArgumentInfo(psiMethod, headerTargetClass, module)
         )
     }
 
@@ -515,8 +526,9 @@ object SpringWebUtil {
             .filter { it.isMetaAnnotatedBy(paramAnnotationFqn) }
         val paramMah = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, paramAnnotationFqn)
+        val defaultTargetClass = WebEeClasses.JAX_RS_DEFAULT.getTargetClass(module)
         val defaultValueMah = SpringSearchService.getInstance(module.project)
-            .getMetaAnnotations(module, JAX_RS_DEFAULT)
+            .getMetaAnnotations(module, defaultTargetClass)
 
         val paramInfos = mutableListOf<PathArgumentInfo>()
         for (param in annotatedParams) {
