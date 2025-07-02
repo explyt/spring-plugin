@@ -17,8 +17,7 @@
 
 package com.explyt.spring.web.providers
 
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_HTTP_METHOD
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH
+import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
@@ -46,7 +45,6 @@ import org.jetbrains.uast.getUParentForIdentifier
 class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
-        if (!SpringWebUtil.isSpringWebProject(psiElement.project)) return null
         val uParent = getUParentForIdentifier(psiElement) ?: return null
 
         return when (uParent) {
@@ -58,8 +56,7 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     private fun getInfo(uMethod: UMethod): Info? {
         val psiMethod = uMethod.javaPsi
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_HTTP_METHOD)) return null
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_PATH)) return null
+        if (!psiMethod.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)) return null
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
@@ -80,7 +77,7 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     private fun getInfo(uClass: UClass): Info? {
         val psiClass = uClass.javaPsi
-        if (!psiClass.isMetaAnnotatedBy(JAX_RS_PATH)) return null
+        if (!psiClass.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)) return null
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
 
@@ -140,8 +137,8 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val psiMethod = uMethod.javaPsi
 
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_HTTP_METHOD)) return null
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_PATH)) return null
+        if (!psiMethod.isMetaAnnotatedBy(WebEeClasses.JAX_RS_HTTP_METHOD.allFqns)) return null
+        if (!psiMethod.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)) return null
         val psiClass = psiMethod.containingClass ?: return null
         val controllerName = psiClass.name ?: return null
 

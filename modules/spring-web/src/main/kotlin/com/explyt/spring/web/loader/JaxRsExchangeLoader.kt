@@ -19,7 +19,7 @@ package com.explyt.spring.web.loader
 
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
-import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
@@ -27,6 +27,7 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.util.CachedValueProvider
@@ -53,12 +54,14 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
         val applicationPath = SpringWebEndpointsSearcher.getInstance(project).getJaxRsApplicationPath(module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
         val httpMethodAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
-            module, SpringWebClasses.JAX_RS_HTTP_METHOD, false
+            module, httpMethodTargetClass, false
         ).takeIf { it.isNotEmpty() } ?: return emptyList()
 
-        val pathMah = MetaAnnotationsHolder.of(module, SpringWebClasses.JAX_RS_PATH)
-        val httpMethodMah = MetaAnnotationsHolder.of(module, SpringWebClasses.JAX_RS_HTTP_METHOD)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        val pathMah = MetaAnnotationsHolder.of(module, pathTargetClass)
+        val httpMethodMah = MetaAnnotationsHolder.of(module, httpMethodTargetClass)
 
         val processedClasses = mutableSetOf<String>()
         val endpoints = mutableListOf<EndpointElement>()
@@ -89,9 +92,10 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
             .ifEmpty { listOf("") }
 
         val result = mutableListOf<EndpointElement>()
-
+        val module = ModuleUtil.findModuleForPsiElement(annotatedClass)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
         for (method in annotatedClass.allMethods) {
-            if (!method.isMetaAnnotatedBy(SpringWebClasses.JAX_RS_HTTP_METHOD)) continue
+            if (!method.isMetaAnnotatedBy(httpMethodTargetClass)) continue
 
             val pathValues = pathMah.getAnnotationMemberValues(method, TARGET_VALUE)
                 .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
