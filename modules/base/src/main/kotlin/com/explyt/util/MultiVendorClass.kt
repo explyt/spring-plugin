@@ -24,7 +24,7 @@ class MultiVendorClass(subFqn: String) {
     val javax: String = "javax.$subFqn"
     val jakarta: String = "jakarta.$subFqn"
 
-    val allFqns by lazy { listOf(javax, jakarta) }
+    val allFqns by lazy { listOf(jakarta, javax) }
 
     fun check(fqn: String?): Boolean = fqn in allFqns
 

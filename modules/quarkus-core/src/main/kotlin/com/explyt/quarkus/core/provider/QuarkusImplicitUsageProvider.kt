@@ -48,7 +48,7 @@ class QuarkusImplicitUsageProvider : ImplicitUsageProvider {
             return element.isMetaAnnotatedBy(IMPLICIT_METHOD_ANNOTATIONS)
         }
         if (element is PsiField) {
-            return element.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES)
+            return element.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns)
         }
         return false
     }
@@ -56,7 +56,7 @@ class QuarkusImplicitUsageProvider : ImplicitUsageProvider {
     // assigned but not used
     override fun isImplicitRead(element: PsiElement): Boolean {
         if (element is PsiField) {
-            return element.isAnnotatedBy(QuarkusCoreClasses.PRODUCES)
+            return element.isAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns)
         }
         return false
     }
@@ -72,12 +72,11 @@ class QuarkusImplicitUsageProvider : ImplicitUsageProvider {
     companion object {
 
         private val IMPLICIT_FIELD_ANNOTATIONS = JavaEeClasses.INJECT.allFqns +
-                JavaEeClasses.RESOURCE.allFqns + QuarkusCoreClasses.PRODUCES
+                JavaEeClasses.RESOURCE.allFqns + QuarkusCoreClasses.PRODUCES.allFqns
 
-
-        private val IMPLICIT_METHOD_ANNOTATIONS = setOf(
-            QuarkusCoreClasses.PRODUCES, QuarkusCoreClasses.HTTP_METHOD
-        ) + JavaEeClasses.INJECT.allFqns +
+        private val IMPLICIT_METHOD_ANNOTATIONS = QuarkusCoreClasses.PRODUCES.allFqns +
+                QuarkusCoreClasses.HTTP_METHOD.allFqns +
+                JavaEeClasses.INJECT.allFqns +
                 JavaEeClasses.RESOURCE.allFqns +
                 JavaEeClasses.POST_CONSTRUCT.allFqns +
                 JavaEeClasses.PRE_DESTROY.allFqns

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2025 Explyt Ltd
+ * Copyright © 2024 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,12 +15,14 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.quarkus.core.service
+package com.explyt.quarkus.core.linemarker
 
 import com.explyt.quarkus.core.QuarkusCoreBundle.message
 import com.explyt.quarkus.core.QuarkusCoreClasses
 import com.explyt.quarkus.core.QuarkusCoreIcons
 import com.explyt.quarkus.core.QuarkusUtil
+import com.explyt.quarkus.core.service.QuarkusDelegateSearchService
+import com.explyt.quarkus.core.service.QuarkusSearchService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isNonPrivate
 import com.explyt.util.ExplytPsiUtil.isPrivate
@@ -62,8 +64,8 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val uClass = uMethod.getContainingUClass() ?: return
         if (uClass.isInterface) return
         val sourceMethodPsi = uMethod.uastAnchor?.sourcePsi ?: return
-        if (uClass.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR)) {
-            val delegateClasses = QuarkusDelegateSearchService.getInstance(project).getDelegateClasses(uClass)
+        if (uClass.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns)) {
+            val delegateClasses = QuarkusDelegateSearchService.Companion.getInstance(project).getDelegateClasses(uClass)
             if (isDecoratedMethod(uMethod, delegateClasses)) {
                 val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
@@ -74,7 +76,7 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 result.add(builder.createLineMarkerInfo(sourceMethodPsi))
             }
         } else {
-            val classes = QuarkusDelegateSearchService.getInstance(project).allDelegatedClasses()
+            val classes = QuarkusDelegateSearchService.Companion.getInstance(project).allDelegatedClasses()
             if (isDecoratedMethod(uMethod, classes)) {
                 val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
@@ -96,9 +98,9 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun findDecoratedMethods(uMethod: UMethod, delegateClasses: Set<PsiClass>): Collection<PsiElement> {
         val psiMethod = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
-        val methods = QuarkusSearchService.getInstance(psiMethod.project).allBeanSequence(module)
+        val methods = QuarkusSearchService.Companion.getInstance(psiMethod.project).allBeanSequence(module)
             .filter { psiBean -> delegateClasses.any { psiBean.psiClass.isInheritor(it, true) } }
-            .filter { psiBean -> !psiBean.psiClass.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR) }
+            .filter { psiBean -> !psiBean.psiClass.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns) }
             .flatMap { psiBean -> psiBean.psiClass.allMethods.filter { it.isNonPrivate && it.name == psiMethod.name } }
             .filter { it.containingClass?.isInterface != true }
             .toList()
@@ -110,8 +112,8 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun findDecorator(uMethod: UMethod): Collection<PsiElement> {
         val psiMethod = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
-        return QuarkusSearchService.getInstance(psiMethod.project).allBeanSequence(module)
-            .filter { psiBean -> psiBean.psiClass.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR) }
+        return QuarkusSearchService.Companion.getInstance(psiMethod.project).allBeanSequence(module)
+            .filter { psiBean -> psiBean.psiClass.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns) }
             .flatMap { psiBean -> psiBean.psiClass.allMethods.filter { it.isNonPrivate && it.name == psiMethod.name } }
             .filter { it.containingClass?.isInterface != true }
             .filter { it.getSignature(EMPTY) == psiMethod.getSignature(EMPTY) }
@@ -125,7 +127,7 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
             uAnnotation.resolve()
         } ?: return emptyList()
         return AnnotatedElementsSearch.searchPsiClasses(annotationClass, annotationClass.project.projectScope())
-            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR) }
+            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns) }
     }
 }
 

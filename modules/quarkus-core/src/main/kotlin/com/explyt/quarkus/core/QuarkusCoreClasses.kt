@@ -17,24 +17,31 @@
 
 package com.explyt.quarkus.core
 
+import com.explyt.util.MultiVendorClass
+import kotlin.reflect.KProperty
+
 object QuarkusCoreClasses {
-    const val NORMAL_SCOPE = "jakarta.enterprise.context.NormalScope"
-    const val SCOPE = "jakarta.inject.Scope"
-    const val PATH = "jakarta.ws.rs.Path"
-    const val PRODUCES = "jakarta.enterprise.inject.Produces"
-    const val INJECT = "jakarta.inject.Inject"
-    const val INSTANCE = "jakarta.enterprise.inject.Instance"
+    val NORMAL_SCOPE by "enterprise.context.NormalScope"
+    val SCOPE by "inject.Scope"
+    val PATH by "ws.rs.Path"
+    val PRODUCES by "enterprise.inject.Produces"
+    val INJECT by "inject.Inject"
+    val INSTANCE by "enterprise.inject.Instance"
+
+    val DECORATOR by "decorator.Decorator"
+    val DELEGATE by "decorator.Delegate"
+
+    val INTERCEPTOR by "interceptor.Interceptor"
+    val INTERCEPTOR_BINDING by "interceptor.InterceptorBinding"
+    val HTTP_METHOD by "ws.rs.HttpMethod"
+
     const val ALL = "io.quarkus.arc.All"
     const val DEFAULT_BEAN = "io.quarkus.arc.DefaultBean"
-
-    const val DECORATOR = "jakarta.decorator.Decorator"
-    const val DELEGATE = "jakarta.decorator.Delegate"
-
-    const val INTERCEPTOR = "jakarta.interceptor.Interceptor"
-    const val INTERCEPTOR_BINDING = "jakarta.interceptor.InterceptorBinding"
-    const val HTTP_METHOD = "jakarta.ws.rs.HttpMethod"
-
     const val CORE_CLASS = "io.quarkus.runtime.configuration.AbstractConfigBuilder"
 
-    val COMPONENTS_ANNO = setOf(NORMAL_SCOPE, SCOPE, PATH, INTERCEPTOR, DECORATOR)
+    val COMPONENTS_ANNO = (NORMAL_SCOPE.allFqns + SCOPE.allFqns + PATH.allFqns + INTERCEPTOR.allFqns + DECORATOR.allFqns).toSet()
+
+    private operator fun String.getValue(jpaClasses: QuarkusCoreClasses, property: KProperty<*>): MultiVendorClass {
+        return MultiVendorClass(this)
+    }
 }

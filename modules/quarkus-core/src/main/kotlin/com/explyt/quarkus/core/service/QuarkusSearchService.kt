@@ -140,7 +140,7 @@ class QuarkusSearchService(private val project: Project) {
         val psiClass = psiBean.psiClass.takeIf { it.isValid } ?: return emptyList()
         val methodBeans = psiClass.allMethods.asSequence()
             .filter { it.isNonPrivate }
-            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES) }
+            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns) }
             .mapNotNull { method ->
                 //todo array
                 method.returnType?.resolvedPsiClass?.let { psiClass ->
@@ -148,7 +148,7 @@ class QuarkusSearchService(private val project: Project) {
                 }
             }
         val fieldBeans = psiClass.allFields.asSequence()
-            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES) }
+            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns) }
             .mapNotNull { field ->
                 field.type.resolvedPsiClass?.let { psiClass ->
                     PsiBean(field.name, psiClass, null, field) //todo qualifiers
@@ -167,7 +167,7 @@ class QuarkusSearchService(private val project: Project) {
             return type.parameters.firstOrNull()
         }
 
-        if (type.isInheritorOf(QuarkusCoreClasses.INSTANCE)) {
+        if (QuarkusCoreClasses.INSTANCE.allFqns.any { type.isInheritorOf(it) }) {
             return type.parameters.firstOrNull()
         }
 
@@ -185,7 +185,7 @@ class QuarkusSearchService(private val project: Project) {
             return type.isInheritorOf(List::class.java.canonicalName)
         }
 
-        return type.isInheritorOf(QuarkusCoreClasses.INSTANCE)
+        return QuarkusCoreClasses.INSTANCE.allFqns.any { type.isInheritorOf(it) }
     }
 
     fun findActiveBeanDeclarations(

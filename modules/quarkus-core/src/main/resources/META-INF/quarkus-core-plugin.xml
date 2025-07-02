@@ -20,13 +20,13 @@
         <implicitUsageProvider implementation="com.explyt.quarkus.core.provider.QuarkusImplicitUsageProvider"/>
 
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.quarkus.core.service.QuarkusBeanLineMarkerProvider"/>
+                                        implementationClass="com.explyt.quarkus.core.linemarker.QuarkusBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.quarkus.core.service.QuarkusBeanLibraryLineMarkerProvider"/>
+                                        implementationClass="com.explyt.quarkus.core.linemarker.QuarkusBeanLibraryLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.quarkus.core.service.QuarkusInterceptorLineMarkerProvider"/>
+                                        implementationClass="com.explyt.quarkus.core.linemarker.QuarkusInterceptorLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.quarkus.core.service.QuarkusDecoratorLineMarkerProvider"/>
+                                        implementationClass="com.explyt.quarkus.core.linemarker.QuarkusDecoratorLineMarkerProvider"/>
     </extensions>
 
     <actions>
