@@ -1,5 +1,5 @@
 /*
- * Copyright © 2025 Explyt Ltd
+ * Copyright © 2024 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,7 +15,7 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.quarkus.core.service
+package com.explyt.quarkus.core.linemarker
 
 import com.explyt.quarkus.core.QuarkusCoreBundle.message
 import com.explyt.quarkus.core.QuarkusCoreClasses
@@ -55,7 +55,7 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (uElement is UClass) {
             val javaPsiClass = uElement.javaPsi
             val uAnnotations = uElement.uAnnotations
-            if (javaPsiClass.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR)) {
+            if (javaPsiClass.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns)) {
                 getInterceptorBindingAnnotationQualifiedNames(uAnnotations)
                     .forEach {
                         val sourcePsi = uElement.uastAnchor?.sourcePsi ?: return@forEach
@@ -99,7 +99,7 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun isInterceptorBindingAnno(uAnnotation: UAnnotation): Boolean {
         val psiAnnotation = uAnnotation.javaPsi ?: return false
-        return psiAnnotation.isMetaAnnotatedByOrSelf(QuarkusCoreClasses.INTERCEPTOR_BINDING)
+        return psiAnnotation.isMetaAnnotatedByOrSelf(QuarkusCoreClasses.INTERCEPTOR_BINDING.allFqns)
     }
 
     private fun findInterceptorUsages(
@@ -108,7 +108,7 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val searchScope = currentClass.project.projectScope()
         val annotationClass = uAnnotation.resolve() ?: return emptyList()
         return AnnotatedElementsSearch.searchPsiMembers(annotationClass, searchScope)
-            .filter { !it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR) }
+            .filter { !it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns) }
 
     }
 
@@ -119,7 +119,7 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
             uAnnotation.resolve()
         } ?: return emptyList()
         return AnnotatedElementsSearch.searchPsiClasses(annotationClass, annotationClass.project.allScope())
-            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR) }
+            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns) }
     }
 }
 
