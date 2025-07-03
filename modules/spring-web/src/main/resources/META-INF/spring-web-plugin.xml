@@ -181,8 +181,7 @@
                                         implementationClass="com.explyt.spring.web.providers.CoRouterEndpointActionsLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.HttpExchangeEndpointActionsLineMarkerProvider"/>
-        <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.spring.web.providers.JaxRsEndpointActionsLineMarkerProvider"/>
+
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.web.providers.RetrofitEndpointActionsLineMarkerProvider"/>
 

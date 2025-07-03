@@ -1,5 +1,5 @@
 /*
- * Copyright © 2025 Explyt Ltd
+ * Copyright © 2024 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,7 +15,7 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.quarkus.core.service
+package com.explyt.quarkus.core.linemarker
 
 import com.explyt.quarkus.core.QuarkusCoreBundle.message
 import com.explyt.quarkus.core.QuarkusCoreClasses
@@ -31,6 +31,7 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import org.jetbrains.kotlin.idea.base.util.allScope
 import org.jetbrains.kotlin.idea.base.util.projectScope
@@ -55,7 +56,7 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (uElement is UClass) {
             val javaPsiClass = uElement.javaPsi
             val uAnnotations = uElement.uAnnotations
-            if (javaPsiClass.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR)) {
+            if (javaPsiClass.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns)) {
                 getInterceptorBindingAnnotationQualifiedNames(uAnnotations)
                     .forEach {
                         val sourcePsi = uElement.uastAnchor?.sourcePsi ?: return@forEach
@@ -68,30 +69,28 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
                         result.add(builder.createLineMarkerInfo(sourcePsi))
                     }
             } else {
-                val sourcePsi = uElement.uastAnchor?.sourcePsi ?: return
                 getInterceptorBindingAnnotationQualifiedNames(uAnnotations)
-                    .forEach { goToDeclarationMarker(it, sourcePsi, result) }
+                    .forEach { goToDeclarationMarker(it, result) }
             }
         }
         if (uElement is UMethod) {
-            val sourcePsi = uElement.uastAnchor?.sourcePsi ?: return
             getInterceptorBindingAnnotationQualifiedNames(uElement.uAnnotations)
-                .forEach { goToDeclarationMarker(it, sourcePsi, result) }
+                .forEach { goToDeclarationMarker(it, result) }
         }
     }
 
     private fun goToDeclarationMarker(
         annotation: UAnnotation,
-        sourcePsi: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
     ) {
+        val element = annotation.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { goToInterceptor(annotation) })
             .setTooltipText(message("explyt.quarkus.gutter.interceptor.goto.tooltip"))
             .setPopupTitle(message("explyt.quarkus.gutter.interceptor.goto.popup.title"))
             .setEmptyPopupText(message("explyt.quarkus.gutter.interceptor.goto.empty"))
-        result.add(builder.createLineMarkerInfo(sourcePsi))
+        result.add(builder.createLineMarkerInfo(element))
     }
 
     private fun getInterceptorBindingAnnotationQualifiedNames(uAnnotations: List<UAnnotation>): Sequence<UAnnotation> =
@@ -99,7 +98,7 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun isInterceptorBindingAnno(uAnnotation: UAnnotation): Boolean {
         val psiAnnotation = uAnnotation.javaPsi ?: return false
-        return psiAnnotation.isMetaAnnotatedByOrSelf(QuarkusCoreClasses.INTERCEPTOR_BINDING)
+        return psiAnnotation.isMetaAnnotatedByOrSelf(QuarkusCoreClasses.INTERCEPTOR_BINDING.allFqns)
     }
 
     private fun findInterceptorUsages(
@@ -108,18 +107,35 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val searchScope = currentClass.project.projectScope()
         val annotationClass = uAnnotation.resolve() ?: return emptyList()
         return AnnotatedElementsSearch.searchPsiMembers(annotationClass, searchScope)
-            .filter { !it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR) }
+            .filter { !it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns) }
 
     }
 
     private fun goToInterceptor(uAnnotation: UAnnotation): Collection<PsiElement> {
-        val annotationClass = if (uAnnotation.getContainingUClass()?.isAnnotationType == true) {
+        val isAnnotationType = uAnnotation.getContainingUClass()?.isAnnotationType == true
+        val annotationClass = if (isAnnotationType) {
             uAnnotation.getContainingUClass()?.javaPsi
         } else {
             uAnnotation.resolve()
         } ?: return emptyList()
         return AnnotatedElementsSearch.searchPsiClasses(annotationClass, annotationClass.project.allScope())
-            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR) }
+            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns) }
+            .ifEmpty { getDefault(isAnnotationType, annotationClass) }
+    }
+
+    private fun getDefault(isAnnotationType: Boolean, annotationClass: PsiClass): Collection<PsiElement> {
+        return if (isAnnotationType) {
+            val qualifiedName = annotationClass.qualifiedName ?: return emptyList()
+            val annotationText = "@$qualifiedName"
+            val psiAnnotation = try {
+                PsiElementFactory.getInstance(annotationClass.project)
+                    .createAnnotationFromText(annotationText, annotationClass)
+                    .toUElement() as? UAnnotation ?: return emptyList()
+            } catch (_: Exception) {
+                return emptyList()
+            }
+            findInterceptorUsages(psiAnnotation, annotationClass)
+        } else listOf(annotationClass)
     }
 }
 

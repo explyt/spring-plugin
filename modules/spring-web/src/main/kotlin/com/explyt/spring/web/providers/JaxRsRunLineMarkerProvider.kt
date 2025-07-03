@@ -17,36 +17,32 @@
 
 package com.explyt.spring.web.providers
 
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_HTTP_METHOD
-import com.explyt.spring.web.SpringWebClasses.JAX_RS_PATH
+import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
+import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
-import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.SpringWebUtil
-import com.explyt.spring.web.util.SpringWebUtil.collectJaxRsArgumentInfos
-import com.explyt.spring.web.util.SpringWebUtil.getJaxRsConsumes
-import com.explyt.spring.web.util.SpringWebUtil.getJaxRsHttpMethods
-import com.explyt.spring.web.util.SpringWebUtil.getJaxRsProduces
+import com.explyt.spring.web.util.SpringWebUtil.PathArgumentInfo
 import com.explyt.spring.web.util.SpringWebUtil.getTypeFqn
-import com.explyt.spring.web.util.SpringWebUtil.removeParams
 import com.explyt.spring.web.util.SpringWebUtil.simplifyUrl
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.explyt.util.ExplytUastUtil.getCommentText
+import com.explyt.util.ExplytPsiUtil.isOptional
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
-import org.jetbrains.kotlin.lombok.utils.decapitalize
+import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.getUParentForIdentifier
 
 class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     override fun getInfo(psiElement: PsiElement): Info? {
-        if (!SpringWebUtil.isSpringWebProject(psiElement.project)) return null
         val uParent = getUParentForIdentifier(psiElement) ?: return null
 
         return when (uParent) {
@@ -58,38 +54,53 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     private fun getInfo(uMethod: UMethod): Info? {
         val psiMethod = uMethod.javaPsi
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_HTTP_METHOD)) return null
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_PATH)) return null
+        if (!psiMethod.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)
+            && !psiMethod.isMetaAnnotatedBy(WebEeClasses.JAX_RS_HTTP_METHOD.allFqns)
+        ) return null
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
-
-        val path = SpringWebUtil.getJaxRsPaths(psiMethod, module).asSequence()
-            .map { if (isAbsolutePath(it)) it else "$DEFAULT_SERVER/$it" }
+        val fullPath = SpringWebUtil.getJaxRsPaths(psiMethod, module).asSequence()
+            .map { if (isAbsolutePath(it)) it else getFullPath(it, module, uMethod) }
             .firstOrNull() ?: return null
 
-        val serverPart = getServerFromPath(path) ?: return null
+        val serverPart = getServerFromPath(fullPath) ?: return null
         val server = if (serverPart.startsWith('/')) serverPart.substring(1) else serverPart
-        val apiPart = if (serverPart.length == path.length) "/" else path.substring(serverPart.length)
-
-        val endpointInfo = getMethodEndpointInfo(uMethod, module, apiPart) ?: return null
+        val apiPart = if (serverPart.length == fullPath.length) "/" else fullPath.substring(serverPart.length)
+        val endpointInfo = JaxRsEndpointActionsLineMarkerProvider
+            .getEndpointInfo(apiPart, uMethod, module) ?: return null
 
         return Info(
             RunInSwaggerAction(listOf(endpointInfo), listOf(server))
         )
     }
 
+    private fun getFullPath(path: String, module: Module, uMethod: UMethod): String {
+        val applicationPath = SpringWebEndpointsSearcher.getInstance(module.project).getJaxRsApplicationPath(module)
+        val prefix = getClassPrefix(uMethod.getContainingUClass()?.javaPsi, module) ?: ""
+        if (isAbsolutePath(prefix)) return simplifyUrl("$prefix/$path")
+        val simplifyUrl = simplifyUrl("$applicationPath/$prefix/$path")
+        val fullPath = if (simplifyUrl.startsWith('/')) simplifyUrl.substring(1) else simplifyUrl
+        return "$DEFAULT_SERVER/$fullPath"
+    }
+
+    private fun getClassPrefix(javaPsiClass: PsiClass?, module: Module): String? {
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        return if (javaPsiClass != null && javaPsiClass.isMetaAnnotatedBy(pathTargetClass)) {
+            SpringWebUtil.getJaxRsPaths(javaPsiClass, module).firstOrNull()
+        } else null
+    }
+
     private fun getInfo(uClass: UClass): Info? {
         val psiClass = uClass.javaPsi
-        if (!psiClass.isMetaAnnotatedBy(JAX_RS_PATH)) return null
+        if (!psiClass.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)) return null
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
 
-        val servers = SpringWebUtil.getJaxRsPaths(psiClass, module)
-            .filter { isAbsolutePath(it) }
+        val jaxRsPaths = SpringWebUtil.getJaxRsPaths(psiClass, module)
+        val servers = jaxRsPaths.filter { isAbsolutePath(it) }
 
-        val prefix = servers.firstOrNull { !isAbsolutePath(it) } ?: ""
         val endpointInfos = uClass.methods
-            .mapNotNull { getClassEndpointInfo(it, module, prefix) }
+            .mapNotNull { JaxRsEndpointActionsLineMarkerProvider.getEndpointInfo(it) }
 
         return Info(
             RunInSwaggerAction(endpointInfos, servers)
@@ -97,92 +108,29 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
     }
 
-
-    private fun getMethodEndpointInfo(uMethod: UMethod, module: Module, apiPath: String): EndpointInfo? {
-        ProgressManager.checkCanceled()
-
-        val psiMethod = uMethod.javaPsi
-
-        val requestMethods = getJaxRsHttpMethods(psiMethod, module)
-        if (requestMethods.isEmpty()) return null
-
-        val produces = getJaxRsProduces(psiMethod, module)
-        val consumes = getJaxRsConsumes(psiMethod, module)
-
-        val fullPath = simplifyUrl(removeParams(apiPath))
-
-        val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = getTypeFqn(returnType, psiMethod.language)
-
-        val argumentInfos = collectJaxRsArgumentInfos(psiMethod, module)
-
-        return EndpointInfo(
-            fullPath,
-            requestMethods,
-            psiMethod,
-            uMethod.name,
-            "default",
-            description,
-            returnTypeFqn,
-            argumentInfos.pathParameters,
-            argumentInfos.queryParameters,
-            null,
-            argumentInfos.headerParameters,
-
-            produces,
-            consumes
-        )
-    }
-
-    private fun getClassEndpointInfo(uMethod: UMethod, module: Module, prefix: String = ""): EndpointInfo? {
-        ProgressManager.checkCanceled()
-
-        val psiMethod = uMethod.javaPsi
-
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_HTTP_METHOD)) return null
-        if (!psiMethod.isMetaAnnotatedBy(JAX_RS_PATH)) return null
-        val psiClass = psiMethod.containingClass ?: return null
-        val controllerName = psiClass.name ?: return null
-
-        val path = SpringWebUtil.getJaxRsPaths(psiMethod, module).asSequence()
-            .filter { !isAbsolutePath(it) }
-            .firstOrNull() ?: return null
-
-        val produces = getJaxRsProduces(psiMethod, module)
-        val consumes = getJaxRsConsumes(psiMethod, module)
-
-        val fullPath = simplifyUrl("$prefix/${removeParams(path)}")
-
-        val requestMethods = getJaxRsHttpMethods(psiMethod, module)
-        if (requestMethods.isEmpty()) return null
-
-        val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = getTypeFqn(returnType, psiMethod.language)
-
-        val argumentInfos = collectJaxRsArgumentInfos(psiMethod, module)
-
-        return EndpointInfo(
-            fullPath,
-            requestMethods,
-            psiMethod,
-            uMethod.name,
-            controllerName.replace("controller", "", true)
-                .decapitalize(),
-            description,
-            returnTypeFqn,
-            argumentInfos.pathParameters,
-            argumentInfos.queryParameters,
-            null,
-            argumentInfos.headerParameters,
-            produces,
-            consumes
-        )
-    }
-
     companion object {
         const val VALUE = "value"
+
+        fun getRequestBodyInfo(psiMethod: PsiMethod, requestMethods: List<String>): PathArgumentInfo? {
+            if (requestMethods.size == 1 && requestMethods[0].lowercase() == "get") return null
+            val bodyParams = psiMethod.parameterList.parameters.filter { it.annotations.isEmpty() }
+
+            for (param in bodyParams) {
+                val paramType = param.type
+                val isMap = paramType.isMapWithStringKey()
+                val isOptional = !isMap && paramType.isOptional
+                val typeFqn = getTypeFqn(paramType, psiMethod.language)
+
+                return PathArgumentInfo(
+                    param.name,
+                    param,
+                    !isOptional,
+                    isMap,
+                    typeFqn
+                )
+            }
+            return null
+        }
     }
 
 }

@@ -391,8 +391,10 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
                         downloadFullPath = downloadItemLocation
                         zipFilePath = targetFile.getName()
                         eFileName?.text = zipFilePath
-                        progressBar?.setIndeterminate(false)
-
+                        progressBar?.isIndeterminate = false
+                        progressBarLabel?.text = SpringInitializrBundle.message(
+                            "explyt.spring.initializr.progress.label.finish"
+                        )
                     }
                     return null
                 }

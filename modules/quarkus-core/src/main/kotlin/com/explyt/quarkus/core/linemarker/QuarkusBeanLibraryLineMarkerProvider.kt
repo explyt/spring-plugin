@@ -1,5 +1,5 @@
 /*
- * Copyright © 2025 Explyt Ltd
+ * Copyright © 2024 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,18 +15,18 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.quarkus.core.service
+package com.explyt.quarkus.core.linemarker
 
 import com.explyt.quarkus.core.QuarkusCoreBundle
 import com.explyt.quarkus.core.QuarkusCoreClasses
 import com.explyt.quarkus.core.QuarkusCoreIcons
 import com.explyt.quarkus.core.QuarkusUtil
 import com.explyt.quarkus.core.QuarkusUtil.isCandidateQuarkus
+import com.explyt.quarkus.core.service.QuarkusSearchService
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isLombokAnnotatedClassFieldExpression
 import com.explyt.spring.core.service.PsiBean
-import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
@@ -105,7 +105,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
         uClass: UClass,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        if (uClass.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR)) return
+        if (uClass.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns)) return
 
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Bean)
@@ -129,7 +129,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val psiField = uField.javaPsi as? PsiField ?: return
-        if (psiField.isAnnotatedBy(QuarkusCoreClasses.PRODUCES)) {
+        if (psiField.isAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns)) {
             val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
             val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Bean)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
@@ -170,7 +170,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return
         }
 
-        if (method.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES)) {
+        if (method.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns)) {
             val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Bean)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithInject(method.returnType, method) })
@@ -214,16 +214,15 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun getBeanDeclarations(uVariable: UVariable): Collection<PsiElement> {
-        val sourcePsi = uVariable.sourcePsi ?: return emptyList()
+        val sourcePsi = uVariable.javaPsi ?: return emptyList()
         val project = sourcePsi.project
-        //todo to Quarkus Qualifier
-        val qualifierAnnotation = (sourcePsi as? PsiModifierListOwner)?.getQualifierAnnotation()
+
         val allActiveBeans = QuarkusSearchService.getInstance(project).allBeanSequence().toList()
         val activeBean = QuarkusSearchService.getInstance(project)
-            .findActiveBeanDeclarations(allActiveBeans, uVariable, null)
-        if ((sourcePsi as? PsiModifierListOwner)?.isMetaAnnotatedBy(QuarkusCoreClasses.DELEGATE) == true) {
+            .findActiveBeanDeclarations(allActiveBeans, uVariable,)
+        if ((sourcePsi as? PsiModifierListOwner)?.isMetaAnnotatedBy(QuarkusCoreClasses.DELEGATE.allFqns) == true) {
             return activeBean.filter {
-                if (it is PsiClass) !it.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR) else true
+                if (it is PsiClass) !it.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns) else true
             }
         }
         return activeBean
@@ -242,7 +241,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
             .flatMap { field ->
                 field.asSequence()
-                    .filter { it.isAnnotatedBy(QuarkusCoreClasses.INJECT) }
+                    .filter { it.isAnnotatedBy(QuarkusCoreClasses.INJECT.allFqns) }
                     .filter { it.isCandidateQuarkus(targetType, targetClasses, targetClass) }
                     .mapNotNull { it.navigationElement.toUElement() as? UVariable }
             }.toSet()
@@ -254,8 +253,8 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
-                        it.isAnnotatedBy(QuarkusCoreClasses.INJECT)
-                                || it.isAnnotatedBy(QuarkusCoreClasses.PRODUCES)
+                        it.isAnnotatedBy(QuarkusCoreClasses.INJECT.allFqns)
+                                || it.isAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns)
                                 || it.isConstructor
                                 && bean in componentBeans
                     }
@@ -266,8 +265,8 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         val result = allFieldsWithAutowired + allParametersWithAutowired
-        if (uElement is UClass && uElement.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR)) {
-            return result.filter { !it.isMetaAnnotatedBy(QuarkusCoreClasses.DELEGATE) }
+        if (uElement is UClass && uElement.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns)) {
+            return result.filter { !it.isMetaAnnotatedBy(QuarkusCoreClasses.DELEGATE.allFqns) }
         }
         return result
     }

@@ -18,9 +18,8 @@
 package com.explyt.spring.web.service
 
 import com.explyt.spring.core.SpringCoreBundle
-import com.explyt.spring.core.util.SpringCoreUtil
-import com.explyt.spring.web.util.SpringWebUtil
-import com.intellij.collaboration.ui.toolwindow.dontHideOnEmptyContent
+import com.explyt.spring.web.util.SpringWebUtil.isEeWebProject
+import com.explyt.spring.web.util.SpringWebUtil.isSpringWebProject
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
@@ -29,7 +28,6 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
@@ -52,7 +50,7 @@ class ToolWindowService(private val project: Project) {
     }
 
     fun changeToolWindow(toolWindowId: String) {
-        ReadAction.nonBlocking(Callable { SpringWebUtil.isSpringWebProject(project) })
+        ReadAction.nonBlocking(Callable { isSpringWebProject(project) || isEeWebProject(project)})
             .inSmartMode(project)
             .finishOnUiThread(ModalityState.nonModal()) { isVisible ->
                 updateToolWindowVisibility(toolWindowId, isVisible)

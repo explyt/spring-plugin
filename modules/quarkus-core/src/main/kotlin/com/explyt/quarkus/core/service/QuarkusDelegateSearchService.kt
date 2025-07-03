@@ -42,7 +42,7 @@ class QuarkusDelegateSearchService(private val project: Project) {
         return CachedValuesManager.getManager(project).getCachedValue(decoratorClass) {
             CachedValueProvider.Result(
                 decoratorClass.fields.asSequence()
-                    .filter { it.isMetaAnnotatedBy(DELEGATE) }
+                    .filter { it.isMetaAnnotatedBy(DELEGATE.allFqns) }
                     .mapNotNull { it.type.resolvedPsiClass }
                     .toSet(),
                 decoratorClass
@@ -60,7 +60,9 @@ class QuarkusDelegateSearchService(private val project: Project) {
     }
 
     private fun findAllDelegatedClasses(): Set<PsiClass> {
-        val delegateAnno = LibraryClassCache.searchForLibraryClass(project, DELEGATE) ?: return emptySet()
+        val delegateAnno = LibraryClassCache.searchForLibraryClass(project, DELEGATE.jakarta)
+            ?: LibraryClassCache.searchForLibraryClass(project, DELEGATE.javax)
+            ?: return emptySet()
         return AnnotatedElementsSearch.searchPsiMembers(delegateAnno, project.projectScope()).asSequence()
             .mapNotNull { it.toUElement() }
             .filterIsInstance<UVariable>()
