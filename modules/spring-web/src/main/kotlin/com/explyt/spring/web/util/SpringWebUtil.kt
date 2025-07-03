@@ -379,6 +379,7 @@ object SpringWebUtil {
     }
 
     fun getJaxRsPaths(psiMember: PsiMember, module: Module): List<String> {
+        if (!psiMember.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)) return listOf("")
         val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
         val pathMah = MetaAnnotationsHolder.of(module, pathTargetClass)
 

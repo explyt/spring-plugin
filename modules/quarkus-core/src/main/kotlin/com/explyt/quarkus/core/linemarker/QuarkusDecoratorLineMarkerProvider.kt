@@ -36,9 +36,6 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiSubstitutor.EMPTY
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
-import org.jetbrains.kotlin.idea.base.util.projectScope
-import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.getUParentForIdentifier
@@ -98,7 +95,7 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun findDecoratedMethods(uMethod: UMethod, delegateClasses: Set<PsiClass>): Collection<PsiElement> {
         val psiMethod = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
-        val methods = QuarkusSearchService.Companion.getInstance(psiMethod.project).allBeanSequence(module)
+        val methods = QuarkusSearchService.getInstance(psiMethod.project).allBeanSequence(module)
             .filter { psiBean -> delegateClasses.any { psiBean.psiClass.isInheritor(it, true) } }
             .filter { psiBean -> !psiBean.psiClass.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns) }
             .flatMap { psiBean -> psiBean.psiClass.allMethods.filter { it.isNonPrivate && it.name == psiMethod.name } }
@@ -112,22 +109,12 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun findDecorator(uMethod: UMethod): Collection<PsiElement> {
         val psiMethod = uMethod.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
-        return QuarkusSearchService.Companion.getInstance(psiMethod.project).allBeanSequence(module)
+        return QuarkusSearchService.getInstance(psiMethod.project).allBeanSequence(module)
             .filter { psiBean -> psiBean.psiClass.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns) }
             .flatMap { psiBean -> psiBean.psiClass.allMethods.filter { it.isNonPrivate && it.name == psiMethod.name } }
             .filter { it.containingClass?.isInterface != true }
             .filter { it.getSignature(EMPTY) == psiMethod.getSignature(EMPTY) }
             .toList()
-    }
-
-    private fun goToInterceptor(uAnnotation: UAnnotation): Collection<PsiElement> {
-        val annotationClass = if (uAnnotation.getContainingUClass()?.isAnnotationType == true) {
-            uAnnotation.getContainingUClass()?.javaPsi
-        } else {
-            uAnnotation.resolve()
-        } ?: return emptyList()
-        return AnnotatedElementsSearch.searchPsiClasses(annotationClass, annotationClass.project.projectScope())
-            .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns) }
     }
 }
 

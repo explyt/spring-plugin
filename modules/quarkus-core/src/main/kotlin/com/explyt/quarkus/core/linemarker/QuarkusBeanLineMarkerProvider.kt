@@ -27,7 +27,6 @@ import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isLombokAnnotatedClassFieldExpression
 import com.explyt.spring.core.service.PsiBean
-import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
@@ -117,7 +116,7 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun findBeans(module: Module, uElement: UElement): List<PsiBean> {
         val beanClass = QuarkusUtil.getBeanClass(uElement) ?: return emptyList()
-        return QuarkusSearchService.Companion.getInstance(module.project).allBeanSequence(module)
+        return QuarkusSearchService.getInstance(module.project).allBeanSequence(module)
             .filter { it.psiClass == beanClass }.toList()
     }
 
@@ -176,7 +175,7 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return
         } else if (method.isConstructor) {
             val beanClass = method.getContainingUClass()?.javaPsi ?: return
-            val allBeanSequence = QuarkusSearchService.Companion.getInstance(module.project).allBeanSequence(module)
+            val allBeanSequence = QuarkusSearchService.getInstance(module.project).allBeanSequence(module)
             if (allBeanSequence.none { it.psiClass == beanClass }) return
             checkMethodParameters(method, module, result)
             return
@@ -220,20 +219,18 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun findBeanDeclarations(uClass: UClass, module: Module): List<PsiElement> {
         val targetClass = QuarkusUtil.getBeanClass(uClass) ?: return emptyList()
-        return QuarkusSearchService.Companion.getInstance(uClass.javaPsi.project).allBeanSequence(module)
+        return QuarkusSearchService.getInstance(uClass.javaPsi.project).allBeanSequence(module)
             .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
             .map { it.psiMember }
             .toList()
     }
 
     private fun getBeanDeclarations(uVariable: UVariable, module: Module): Collection<PsiElement> {
-        val sourcePsi = uVariable.sourcePsi ?: return emptyList()
-        //todo to Quarkus Qualifier
-        val qualifierAnnotation = (sourcePsi as? PsiModifierListOwner)?.getQualifierAnnotation()
-        val allActiveBeans = QuarkusSearchService.Companion.getInstance(module.project).allBeanSequence(module).toList()
-        val activeBean = QuarkusSearchService.Companion.getInstance(module.project)
-            .findActiveBeanDeclarations(allActiveBeans, uVariable, null)
-        if ((sourcePsi as? PsiModifierListOwner)?.isMetaAnnotatedBy(QuarkusCoreClasses.DELEGATE.allFqns) == true) {
+        val javaPsi = uVariable.javaPsi ?: return emptyList()
+        val allActiveBeans = QuarkusSearchService.getInstance(module.project).allBeanSequence(module).toList()
+        val activeBean = QuarkusSearchService.getInstance(module.project)
+            .findActiveBeanDeclarations(allActiveBeans, uVariable)
+        if ((javaPsi as? PsiModifierListOwner)?.isMetaAnnotatedBy(QuarkusCoreClasses.DELEGATE.allFqns) == true) {
             return activeBean.filter {
                 if (it is PsiClass) !it.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns) else true
             }
@@ -247,7 +244,7 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val project = module.project
         val targetClass = QuarkusUtil.getBeanClass(uElement) ?: return emptyList()
         val targetClasses = targetClass.allSupers()
-        val searchService = QuarkusSearchService.Companion.getInstance(project)
+        val searchService = QuarkusSearchService.getInstance(project)
         val componentBeans = searchService.allBeanSequence(module).filter { !it.isMember() }.toSet()
 
         val allFieldsWithAutowired = searchService.allBeanSequence(module)
