@@ -27,7 +27,6 @@ import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isLombokAnnotatedClassFieldExpression
 import com.explyt.spring.core.service.PsiBean
-import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
@@ -65,7 +64,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         val psiClass = uClass.javaPsi
         if (!QuarkusUtil.isBeanCandidateClass(psiClass)) return
-        val libraryBeans = QuarkusSearchService.Companion.getInstance(element.project).getLibraryBeans()
+        val libraryBeans = QuarkusSearchService.getInstance(element.project).getLibraryBeans()
         val targetQualifiedName = psiClass.qualifiedName
         val findPsiBean = libraryBeans.find { it.psiClass.qualifiedName == targetQualifiedName }
         if (findPsiBean != null || psiClass.isMetaAnnotatedBy(QuarkusCoreClasses.COMPONENTS_ANNO)) {
@@ -121,7 +120,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun findBeans(module: Module, uElement: UElement): List<PsiBean> {
         val beanClass = QuarkusUtil.getBeanClass(uElement) ?: return emptyList()
-        return QuarkusSearchService.Companion.getInstance(module.project).allBeanSequence(module)
+        return QuarkusSearchService.getInstance(module.project).allBeanSequence(module)
             .filter { it.psiClass == beanClass }.toList()
     }
 
@@ -165,7 +164,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return
         } else if (method.isConstructor) {
             val beanClass = method.getContainingUClass()?.javaPsi ?: return
-            val allBeanSequence = QuarkusSearchService.Companion.getInstance(project).allBeanSequence()
+            val allBeanSequence = QuarkusSearchService.getInstance(project).allBeanSequence()
             if (allBeanSequence.none { it.psiClass == beanClass }) return
             checkMethodParameters(method, result)
             return
@@ -208,20 +207,19 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun findBeanDeclarations(uClass: UClass): List<PsiElement> {
         val targetClass = QuarkusUtil.getBeanClass(uClass) ?: return emptyList()
-        return QuarkusSearchService.Companion.getInstance(uClass.javaPsi.project).allBeanSequence()
+        return QuarkusSearchService.getInstance(uClass.javaPsi.project).allBeanSequence()
             .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
             .map { it.psiMember }
             .toList()
     }
 
     private fun getBeanDeclarations(uVariable: UVariable): Collection<PsiElement> {
-        val sourcePsi = uVariable.sourcePsi ?: return emptyList()
+        val sourcePsi = uVariable.javaPsi ?: return emptyList()
         val project = sourcePsi.project
-        //todo to Quarkus Qualifier
-        val qualifierAnnotation = (sourcePsi as? PsiModifierListOwner)?.getQualifierAnnotation()
-        val allActiveBeans = QuarkusSearchService.Companion.getInstance(project).allBeanSequence().toList()
-        val activeBean = QuarkusSearchService.Companion.getInstance(project)
-            .findActiveBeanDeclarations(allActiveBeans, uVariable, null)
+
+        val allActiveBeans = QuarkusSearchService.getInstance(project).allBeanSequence().toList()
+        val activeBean = QuarkusSearchService.getInstance(project)
+            .findActiveBeanDeclarations(allActiveBeans, uVariable,)
         if ((sourcePsi as? PsiModifierListOwner)?.isMetaAnnotatedBy(QuarkusCoreClasses.DELEGATE.allFqns) == true) {
             return activeBean.filter {
                 if (it is PsiClass) !it.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns) else true
@@ -236,7 +234,7 @@ class QuarkusBeanLibraryLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val project = uElement.javaPsi?.project ?: return emptyList()
         val targetClass = QuarkusUtil.getBeanClass(uElement) ?: return emptyList()
         val targetClasses = targetClass.allSupers()
-        val searchService = QuarkusSearchService.Companion.getInstance(project)
+        val searchService = QuarkusSearchService.getInstance(project)
         val componentBeans = searchService.allBeanSequence().filter { !it.isMember() }.toSet()
 
         val allFieldsWithAutowired = searchService.allBeanSequence()

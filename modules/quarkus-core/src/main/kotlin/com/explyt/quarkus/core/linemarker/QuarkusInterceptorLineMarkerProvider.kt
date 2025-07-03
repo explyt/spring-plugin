@@ -31,6 +31,7 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import org.jetbrains.kotlin.idea.base.util.allScope
 import org.jetbrains.kotlin.idea.base.util.projectScope
@@ -68,30 +69,28 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
                         result.add(builder.createLineMarkerInfo(sourcePsi))
                     }
             } else {
-                val sourcePsi = uElement.uastAnchor?.sourcePsi ?: return
                 getInterceptorBindingAnnotationQualifiedNames(uAnnotations)
-                    .forEach { goToDeclarationMarker(it, sourcePsi, result) }
+                    .forEach { goToDeclarationMarker(it, result) }
             }
         }
         if (uElement is UMethod) {
-            val sourcePsi = uElement.uastAnchor?.sourcePsi ?: return
             getInterceptorBindingAnnotationQualifiedNames(uElement.uAnnotations)
-                .forEach { goToDeclarationMarker(it, sourcePsi, result) }
+                .forEach { goToDeclarationMarker(it, result) }
         }
     }
 
     private fun goToDeclarationMarker(
         annotation: UAnnotation,
-        sourcePsi: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
     ) {
+        val element = annotation.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { goToInterceptor(annotation) })
             .setTooltipText(message("explyt.quarkus.gutter.interceptor.goto.tooltip"))
             .setPopupTitle(message("explyt.quarkus.gutter.interceptor.goto.popup.title"))
             .setEmptyPopupText(message("explyt.quarkus.gutter.interceptor.goto.empty"))
-        result.add(builder.createLineMarkerInfo(sourcePsi))
+        result.add(builder.createLineMarkerInfo(element))
     }
 
     private fun getInterceptorBindingAnnotationQualifiedNames(uAnnotations: List<UAnnotation>): Sequence<UAnnotation> =
@@ -113,13 +112,30 @@ class QuarkusInterceptorLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun goToInterceptor(uAnnotation: UAnnotation): Collection<PsiElement> {
-        val annotationClass = if (uAnnotation.getContainingUClass()?.isAnnotationType == true) {
+        val isAnnotationType = uAnnotation.getContainingUClass()?.isAnnotationType == true
+        val annotationClass = if (isAnnotationType) {
             uAnnotation.getContainingUClass()?.javaPsi
         } else {
             uAnnotation.resolve()
         } ?: return emptyList()
         return AnnotatedElementsSearch.searchPsiClasses(annotationClass, annotationClass.project.allScope())
             .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.INTERCEPTOR.allFqns) }
+            .ifEmpty { getDefault(isAnnotationType, annotationClass) }
+    }
+
+    private fun getDefault(isAnnotationType: Boolean, annotationClass: PsiClass): Collection<PsiElement> {
+        return if (isAnnotationType) {
+            val qualifiedName = annotationClass.qualifiedName ?: return emptyList()
+            val annotationText = "@$qualifiedName"
+            val psiAnnotation = try {
+                PsiElementFactory.getInstance(annotationClass.project)
+                    .createAnnotationFromText(annotationText, annotationClass)
+                    .toUElement() as? UAnnotation ?: return emptyList()
+            } catch (_: Exception) {
+                return emptyList()
+            }
+            findInterceptorUsages(psiAnnotation, annotationClass)
+        } else listOf(annotationClass)
     }
 }
 

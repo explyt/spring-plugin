@@ -24,6 +24,7 @@ import com.explyt.spring.core.JavaEeClasses.PRIORITY
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil.filterByQualifier
+import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isEqualOrInheritorType
 import com.explyt.spring.core.util.SpringCoreUtil.isExactMatch
 import com.explyt.spring.core.util.SpringCoreUtil.matchesWildcardType
@@ -113,8 +114,8 @@ class QuarkusSearchService(private val project: Project) {
         val annotationPsiClasses = getBeanAnnotations()
         return annotationPsiClasses.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
-            .filter { QuarkusUtil.isBeanCandidateClass(it) } // todo check it
-            .map { PsiBean(it.qualifiedName!!, it, null, it) }
+            .filter { QuarkusUtil.isBeanCandidateClass(it) }
+            .map { PsiBean(it.qualifiedName!!, it, it.getQualifierAnnotation(), it) }
             .toList()
     }
 
@@ -144,14 +145,14 @@ class QuarkusSearchService(private val project: Project) {
             .mapNotNull { method ->
                 //todo array
                 method.returnType?.resolvedPsiClass?.let { psiClass ->
-                    PsiBean(method.name, psiClass, null, method) //todo qualifiers
+                    PsiBean(method.name, psiClass, method.getQualifierAnnotation(), method)
                 }
             }
         val fieldBeans = psiClass.allFields.asSequence()
             .filter { it.isMetaAnnotatedBy(QuarkusCoreClasses.PRODUCES.allFqns) }
             .mapNotNull { field ->
                 field.type.resolvedPsiClass?.let { psiClass ->
-                    PsiBean(field.name, psiClass, null, field) //todo qualifiers
+                    PsiBean(field.name, psiClass, field.getQualifierAnnotation(), field)
                 }
             }
         return (methodBeans + fieldBeans).toList()
@@ -191,19 +192,18 @@ class QuarkusSearchService(private val project: Project) {
     fun findActiveBeanDeclarations(
         allPsiBeans: Collection<PsiBean>,
         uVariable: UVariable,
-        qualifier: PsiAnnotation?
     ): List<PsiMember> {
+
         val psiTypeForSearch = getTypeForSearch(uVariable)
         val sourcePsiType = uVariable.type
+        val qualifier = (uVariable.javaPsi as? PsiModifierListOwner)?.getQualifierAnnotation()
         val beanNameFromQualifier = qualifier?.resolveBeanName()
         val isMultipleBean = AtomicBoolean(isMultiBeans(uVariable))
 
-        val resultByType: List<PsiBean> = if (psiTypeForSearch != null) {
-            findActiveBeanDeclarations(
-                allPsiBeans, isMultipleBean, sourcePsiType, psiTypeForSearch, qualifier, beanNameFromQualifier
-            )
+        val resultByType: Collection<PsiBean> = if (psiTypeForSearch != null) {
+            findActiveBeanDeclarations(allPsiBeans, isMultipleBean, sourcePsiType, psiTypeForSearch)
         } else {
-            allPsiBeans.filter { it.filterByQualifier(qualifier, beanNameFromQualifier) }
+            allPsiBeans
         }
 
         if (resultByType.size == 1) {
@@ -216,7 +216,7 @@ class QuarkusSearchService(private val project: Project) {
         val byNameFromQualifierBean = resultByType
             .filter { it.filterByQualifier(qualifier, beanNameFromQualifier) }
             .map { it.psiMember }
-        return byNameFromQualifierBean.ifEmpty { byNameFromQualifierBean }
+        return byNameFromQualifierBean.ifEmpty { resultByType.map { it.psiMember } }
     }
 
     private fun findActiveBeanDeclarations(
@@ -224,8 +224,6 @@ class QuarkusSearchService(private val project: Project) {
         atomicIsMultipleBean: AtomicBoolean,
         sourcePsiType: PsiType,
         psiTypeForSearch: PsiType,
-        qualifier: PsiAnnotation?,
-        beanNameFromQualifier: String?
     ): List<PsiBean> {
         //it.isAssigFrom todo try it for isExactMatch
 
@@ -252,20 +250,17 @@ class QuarkusSearchService(private val project: Project) {
 
         val foundPsiBeans = byTypeMemberBeans + byTypeClassBeans
 
-        val aResultByTypeAndQualifier: List<PsiBean> = foundPsiBeans
-            .filter { it.filterByQualifier(qualifier, beanNameFromQualifier) }
-
-        if (aResultByTypeAndQualifier.isEmpty()) {
+        if (foundPsiBeans.isEmpty()) {
             return emptyList()
         }
 
-        if (aResultByTypeAndQualifier.size > 1 && !atomicIsMultipleBean.get()) {
+        if (foundPsiBeans.size > 1 && !atomicIsMultipleBean.get()) {
             val byPrimary =
-                aResultByTypeAndQualifier.filter { !it.psiMember.isMetaAnnotatedBy(QuarkusCoreClasses.DEFAULT_BEAN) }
+                foundPsiBeans.filter { !it.psiMember.isMetaAnnotatedBy(QuarkusCoreClasses.DEFAULT_BEAN) }
             if (byPrimary.isNotEmpty()) {
                 return byPrimary
             }
-            val byPriority = aResultByTypeAndQualifier.asSequence()
+            val byPriority = foundPsiBeans.asSequence()
                 .filter { it.psiMember.isMetaAnnotatedBy(PRIORITY.allFqns) }
                 .groupBy {
                     it.psiMember.getMetaAnnotation(PRIORITY.allFqns)?.getLongValue()?.toInt() ?: Int.MAX_VALUE
@@ -275,7 +270,7 @@ class QuarkusSearchService(private val project: Project) {
                 return byPriority[highestPriority] ?: emptyList()
             }
         }
-        return aResultByTypeAndQualifier
+        return foundPsiBeans
     }
 
     private fun getProducesMemberType(bean: PsiBean): PsiType? {
