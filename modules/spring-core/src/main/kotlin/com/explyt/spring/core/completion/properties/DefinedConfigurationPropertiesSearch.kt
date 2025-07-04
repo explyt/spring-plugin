@@ -55,12 +55,10 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
 
     private val psiManager = PsiManager.getInstance(project)
 
-    fun searchPropertyFiles(module: Module): List<PsiFile> {
-        val project = module.project
-
-        return CachedValuesManager.getManager(project).getCachedValue(module) {
+    fun searchPropertyFiles(): List<PsiFile> {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
-                findPropertyFiles(module),
+                findPropertyFiles(project),
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
@@ -136,17 +134,17 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
         )
     }
 
-    private fun findPropertyFiles(module: Module): List<PsiFile> {
+    private fun findPropertyFiles(project: Project): List<PsiFile> {
         val collectProcessor = CommonProcessors.CollectProcessor<VirtualFile>()
 
-        val propertyFileNames = FilenameIndex.getAllFilenames(module.project).asSequence()
+        val propertyFileNames = FilenameIndex.getAllFilenames(project).asSequence()
             .filter { fileMask.matches(it) }
             .toSet()
 
         FilenameIndex.processFilesByNames(
             propertyFileNames,
             true,
-            GlobalSearchScope.projectScope(module.project),
+            GlobalSearchScope.projectScope(project),
             null,
             collectProcessor
         )
