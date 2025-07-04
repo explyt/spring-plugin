@@ -19,6 +19,7 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.service.MetaAnnotationsHolder
+import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
@@ -31,9 +32,11 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUParentForIdentifier
 
@@ -49,9 +52,9 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
-        val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .firstOrNull() ?: ""
+
+        val path = getUrlPath(requestMappingMah, psiMethod)
+
         val fullPath = if (isAbsolutePath(path)) path else "$DEFAULT_SERVER/$path"
 
         val serverPart = getServerFromPath(fullPath) ?: return null
@@ -61,8 +64,31 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         val endpointInfo = getEndpointInfo(uMethod, apiPart) ?: return null
         val servers = applyServerPortSettings(psiElement, server)
         return Info(
-            RunInSwaggerAction(listOf(endpointInfo), servers)
+            AllIcons.RunConfigurations.TestState.Run,
+            arrayOf(RunInSwaggerAction(listOf(endpointInfo), servers)),
+            { SpringWebBundle.message("explyt.web.run.linemarker.swagger.title") }
         )
+    }
+
+    private fun getUrlPath(
+        requestMappingMah: MetaAnnotationsHolder,
+        psiMethod: PsiMethod,
+    ): String {
+        var path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+            .firstOrNull() ?: ""
+        if (isAbsolutePath(path)) return path
+
+        val containingClass = psiMethod.containingClass ?: return path
+        val prefix = if (containingClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
+            requestMappingMah.getAnnotationMemberValues(containingClass, setOf("path", "value"))
+                .firstNotNullOfOrNull { AnnotationUtil.getStringAttributeValue(it) } ?: ""
+        } else ""
+        if (prefix.isNotEmpty()) {
+            path = SpringWebUtil.simplifyUrl("$prefix/$path")
+            path = if (path.startsWith('/')) path.substring(1) else path
+        }
+        return path
     }
 
     private fun applyServerPortSettings(psiElement: PsiElement, server: String): List<String> {

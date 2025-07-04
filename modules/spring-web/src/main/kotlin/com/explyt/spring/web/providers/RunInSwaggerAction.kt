@@ -19,6 +19,7 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.util.OpenApiFileUtil
 import com.intellij.icons.AllIcons
@@ -29,8 +30,7 @@ import com.intellij.openapi.fileEditor.TextEditorWithPreview
 class RunInSwaggerAction(
     private val endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
     private val servers: List<String>
-) :
-    AnAction({ "Open in Swagger UI" }, AllIcons.RunConfigurations.TestState.Run) {
+) : AnAction({ SpringWebBundle.message("explyt.web.run.linemarker.swagger.title") }, AllIcons.RunConfigurations.TestState.Run) {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 

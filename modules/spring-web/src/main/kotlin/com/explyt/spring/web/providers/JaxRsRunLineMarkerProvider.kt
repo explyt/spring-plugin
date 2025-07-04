@@ -18,6 +18,7 @@
 package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
+import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
@@ -30,6 +31,7 @@ import com.explyt.spring.web.util.SpringWebUtil.simplifyUrl
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOptional
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiClass
@@ -70,7 +72,9 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
             .getEndpointInfo(apiPart, uMethod, module) ?: return null
 
         return Info(
-            RunInSwaggerAction(listOf(endpointInfo), listOf(server))
+            AllIcons.RunConfigurations.TestState.Run,
+            arrayOf(RunInSwaggerAction(listOf(endpointInfo), listOf(server))),
+            { SpringWebBundle.message("explyt.web.run.linemarker.swagger.title") }
         )
     }
 
@@ -103,9 +107,10 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
             .mapNotNull { JaxRsEndpointActionsLineMarkerProvider.getEndpointInfo(it) }
 
         return Info(
-            RunInSwaggerAction(endpointInfos, servers)
+            AllIcons.RunConfigurations.TestState.Run,
+            arrayOf(RunInSwaggerAction(endpointInfos, servers)),
+            { SpringWebBundle.message("explyt.web.run.linemarker.swagger.title") }
         )
-
     }
 
     companion object {

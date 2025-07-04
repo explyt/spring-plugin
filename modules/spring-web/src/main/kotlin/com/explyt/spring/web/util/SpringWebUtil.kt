@@ -29,6 +29,7 @@ import com.explyt.spring.web.SpringWebClasses.RETROFIT_PATH_PARAM
 import com.explyt.spring.web.SpringWebClasses.RETROFIT_QUERY_PARAM
 import com.explyt.spring.web.SpringWebClasses.WEB_INITIALIZER
 import com.explyt.spring.web.WebEeClasses
+import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALUE
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
@@ -339,6 +340,7 @@ object SpringWebUtil {
         val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .firstOrNull() ?: ""
+        if (isAbsolutePath(path)) return null
         val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
         val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
