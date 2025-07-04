@@ -76,6 +76,9 @@ class QuarkusImplicitUsageProvider : ImplicitUsageProvider {
 
         private val IMPLICIT_METHOD_ANNOTATIONS = QuarkusCoreClasses.PRODUCES.allFqns +
                 QuarkusCoreClasses.HTTP_METHOD.allFqns +
+                QuarkusCoreClasses.AROUNT_TIMEOUT.allFqns +
+                QuarkusCoreClasses.AROUNT_CONSTRUCT.allFqns +
+                QuarkusCoreClasses.AROUNT_INVOKE.allFqns +
                 JavaEeClasses.INJECT.allFqns +
                 JavaEeClasses.RESOURCE.allFqns +
                 JavaEeClasses.POST_CONSTRUCT.allFqns +

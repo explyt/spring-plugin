@@ -28,6 +28,10 @@ object QuarkusCoreClasses {
     val INJECT by "inject.Inject"
     val INSTANCE by "enterprise.inject.Instance"
 
+    val AROUNT_TIMEOUT by "interceptor.AroundTimeout"
+    val AROUNT_INVOKE by "interceptor.AroundInvoke"
+    val AROUNT_CONSTRUCT by "interceptor.AroundConstruct"
+
     val DECORATOR by "decorator.Decorator"
     val DELEGATE by "decorator.Delegate"
 
