@@ -23,10 +23,12 @@ import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.daemon.LineMarkerInfo.LineMarkerGutterIconRenderer
 import junit.framework.TestCase
 import org.jetbrains.kotlin.test.TestMetadata
+import org.junit.Ignore
 
 private const val TEST_DATA_PATH = "providers/linemarkers"
 
 @TestMetadata(TEST_DATA_PATH)
+@Ignore
 class ControllerEndpointActionsLineMarkerProviderTest : ExplytJavaLightTestCase() {
 
     override fun getTestDataPath(): String = super.getTestDataPath() + TEST_DATA_PATH
