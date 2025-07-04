@@ -149,7 +149,9 @@ class SpringSearchService(private val project: Project) {
     fun getProjectBeans(): Set<PsiBean> {
         return cachedValuesManager.getCachedValue(project) {
             CachedValueProvider.Result(
-                project.modules.flatMapTo(mutableSetOf()) { getProjectBeanPsiClassesAnnotatedByComponent(it) },
+                project.modules
+                    .filter { SpringCoreUtil.isSpringModule(it) }
+                    .flatMapTo(mutableSetOf()) { getProjectBeanPsiClassesAnnotatedByComponent(it) },
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }

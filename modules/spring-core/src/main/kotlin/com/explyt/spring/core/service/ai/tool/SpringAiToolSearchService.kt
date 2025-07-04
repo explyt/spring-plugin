@@ -23,6 +23,7 @@ import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.util.runReadNonBlocking
+import com.google.gson.Gson
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -35,9 +36,9 @@ class SpringAiToolSearchService(private val project: Project) {
         fun getInstance(project: Project): SpringAiToolSearchService = project.service()
     }
 
-    fun getProjectInfo(): AiToolSpringProject {
+    fun getProjectInfoJson(): String {
         val propertyFiles = getApplicationPropertyFiles()
-        return runReadNonBlocking {
+        val springProject = runReadNonBlocking {
             val projectBeans = if (SpringSearchServiceFacade.isExternalProjectExist(project)) {
                 NativeSearchService.getInstance(project).getProjectBeans()
             } else {
@@ -46,6 +47,7 @@ class SpringAiToolSearchService(private val project: Project) {
             val aiToolBeans = mapToAI(projectBeans)
             AiToolSpringProject(aiToolBeans, propertyFiles)
         }
+        return Gson().toJson(springProject)
     }
 
     private fun getApplicationPropertyFiles(): List<String> {
