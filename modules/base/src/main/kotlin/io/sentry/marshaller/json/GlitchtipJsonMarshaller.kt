@@ -36,7 +36,7 @@ import java.util.zip.GZIPOutputStream
 /**
  * Almost implementation copied from JsonMarshaller because of private methods
  */
-class GlichtipJsonMarshaller @JvmOverloads constructor(
+class GlitchtipJsonMarshaller @JvmOverloads constructor(
     /**
      * Maximum length for a message.
      */
