@@ -140,6 +140,11 @@ object SpringCoreUtil {
         return LibraryClassCache.searchForLibraryClass(module, SpringCoreClasses.COMPONENT) != null
     }
 
+    fun isSpringModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringCoreClasses.COMPONENT, module.moduleWithLibrariesScope) != null
+    }
+
     fun isSpringProject(project: Project): Boolean {
         return LibraryClassCache.searchForLibraryClass(project, CORE_ENVIRONMENT) != null
     }

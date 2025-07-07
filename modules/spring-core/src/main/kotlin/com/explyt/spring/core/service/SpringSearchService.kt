@@ -146,6 +146,17 @@ class SpringSearchService(private val project: Project) {
         return FoundBeans(active, excluded)
     }
 
+    fun getProjectBeans(): Set<PsiBean> {
+        return cachedValuesManager.getCachedValue(project) {
+            CachedValueProvider.Result(
+                project.modules
+                    .filter { SpringCoreUtil.isSpringModule(it) }
+                    .flatMapTo(mutableSetOf()) { getProjectBeanPsiClassesAnnotatedByComponent(it) },
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
     private fun getAllBeansClasses(module: Module): FoundBeans {
         synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
@@ -401,6 +412,25 @@ class SpringSearchService(private val project: Project) {
 
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanPsiMethods(module)
+            .asSequence()
+            .flatMap { method ->
+                // for array created separated method: searchArrayComponentPsiClassesByBeanMethods
+                method.returnType?.resolvedPsiClass?.let { psiClass ->
+                    method.resolveBeanName.asSequence()
+                        .map { PsiBean(it, psiClass, method.getQualifierAnnotation(), method) }
+                } ?: emptySequence()
+            }
+            .filter { SpringCoreUtil.isSpringBeanCandidateClass(it.psiClass) }
+            .toSet()
+    }
+
+    private fun searchComponentPsiClassesByBeanMethods(psiBeans: Collection<PsiBean>): Set<PsiBean> {
+        return psiBeans.asSequence()
+            .map { it.psiClass }
+            .filter { it.isValid }
+            .flatMap { it.allMethods.asSequence() }
+            .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
+            .filter { isActive(it) }
             .asSequence()
             .flatMap { method ->
                 // for array created separated method: searchArrayComponentPsiClassesByBeanMethods
@@ -742,6 +772,25 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun getProjectBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
+        val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+        val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
+        val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
+        val allModuleWithDependenciesBeans = filterBeansByPackage(
+            searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope),
+            modulePackagesHolder, module
+        )
+        val extraComponents = getExtraComponents(module, modulePackagesHolder)
+        val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
+        val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
+        val configurationProperties = searchConfigurationPropertiesBean(module, scope)
+
+        val psiBeans = moduleWithDependenciesBeans + importedPsiBeans + configurationProperties
+        val methodsPsiBeans = searchComponentPsiClassesByBeanMethods(psiBeans)
+
+        return psiBeans + methodsPsiBeans
+    }
+
     companion object {
         fun getInstance(project: Project): SpringSearchService = project.service()
     }
@@ -885,5 +934,4 @@ object SpringSearchUtils {
         }
         return result
     }
-
 }
