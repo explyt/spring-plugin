@@ -28,6 +28,7 @@ import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isLombokAnnotatedClassFieldExpression
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
+import com.explyt.util.ExplytKotlinUtil.mapToList
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -40,6 +41,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.*
+import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.*
 
@@ -66,11 +68,16 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val findBeans = findBeans(module, uElement)
             val inContextBean = findBeans.isNotEmpty()
 
-            if (findBeans.any { it.isMember() }) {
+            val isDirectlyMemberDeclaration = findBeans.any { it.isMember() }
+            if (isDirectlyMemberDeclaration) {
                 addProducesBeanDeclaration(uElement, module, result)
             }
             if (inContextBean) {
                 addContextBean(uElement, module, result)
+                processConstructorMethods(uElement, module, result)
+            } else if (!isDirectlyMemberDeclaration && isInheritorMemberDeclaration(module, uElement)) {
+                addContextBean(uElement, module, result)
+                addProducesBeanDeclaration(uElement, module, result)
                 processConstructorMethods(uElement, module, result)
             }
 
@@ -79,6 +86,13 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         } else if (uElement is UMethod) {
             processMethod(uElement, module, result)
         }
+    }
+
+    private fun isInheritorMemberDeclaration(module: Module, uElement: UClass): Boolean {
+        return QuarkusSearchService.getInstance(module.project).searchBeansByProject().asSequence()
+            .filter { it.isMember() }
+            .filter { it.psiClass.qualifiedName != null }
+            .any { InheritanceUtil.isInheritor(uElement.javaPsi, it.psiClass.qualifiedName!!) }
     }
 
     private fun addProducesBeanDeclaration(
@@ -219,10 +233,19 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun findBeanDeclarations(uClass: UClass, module: Module): List<PsiElement> {
         val targetClass = QuarkusUtil.getBeanClass(uClass) ?: return emptyList()
-        return QuarkusSearchService.getInstance(uClass.javaPsi.project).allBeanSequence(module)
-            .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
-            .map { it.psiMember }
-            .toList()
+        val directBeanDeclaration = QuarkusSearchService.getInstance(uClass.javaPsi.project).allBeanSequence(module)
+            .filter { it.isMember() }
+            .filter { it.psiClass == targetClass }
+            .mapToList { it.psiMember }
+        val inheritorBeanDeclaration = QuarkusSearchService.getInstance(module.project)
+            .searchBeansByProject().asSequence()
+            .filter { it.isMember() }
+            .filter { it.psiClass != targetClass }
+            .filter { it.psiClass.qualifiedName != null }
+            .filter { InheritanceUtil.isInheritor(uClass.javaPsi, it.psiClass.qualifiedName!!) }
+            .filter { it.psiMember.toUElement()?.asRenderString()?.contains(it.psiClass.qualifiedName!!) == true }
+            .mapToList { it.psiMember }
+        return directBeanDeclaration + inheritorBeanDeclaration
     }
 
     private fun getBeanDeclarations(uVariable: UVariable, module: Module): Collection<PsiElement> {

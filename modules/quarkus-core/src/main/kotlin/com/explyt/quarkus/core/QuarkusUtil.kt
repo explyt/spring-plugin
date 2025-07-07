@@ -53,6 +53,7 @@ object QuarkusUtil {
 
     fun isBeanCandidateClass(psiClass: PsiClass): Boolean {
         return psiClass.isValid
+                && !psiClass.isInterface
                 && psiClass !is PsiTypeParameter
                 && psiClass.isNonPrivate
                 && !psiClass.isAnnotationType
