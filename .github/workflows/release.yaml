@@ -34,4 +34,11 @@ jobs:
           retention-days: 5
           path: |
             modules/spring-bootstrap/build/distributions/*.zip
+      - name: Build log
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          compression-level: 0
+          retention-days: 5
+          path: |
             build.log
