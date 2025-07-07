@@ -23,21 +23,8 @@ import io.sentry.event.interfaces.*
 import io.sentry.marshaller.Marshaller
 import io.sentry.marshaller.json.*
 
-/**
- * Default implementation of [SentryClientFactory].
- *
- *
- * In most cases this is the implementation to use or extend for additional features.
- */
 class GlitchtipSentryClientFactory @JvmOverloads constructor(lookup: Lookup = Lookup.getDefault()) : DefaultSentryClientFactory(lookup) {
 
-    /**
-     * Creates a JSON marshaller that will convert every [io.sentry.event.Event] in a format
-     * handled by the Sentry server.
-     *
-     * @param dsn Data Source Name of the Sentry server.
-     * @return a [JsonMarshaller] to process the events.
-     */
     override fun createMarshaller(dsn: Dsn?): Marshaller {
         val maxMessageLength = getMaxMessageLength(dsn)
         val marshaller = createJsonMarshaller(maxMessageLength)
@@ -69,8 +56,6 @@ class GlitchtipSentryClientFactory @JvmOverloads constructor(lookup: Lookup = Lo
             DebugMetaInterfaceBinding()
         )
         val httpBinding = HttpInterfaceBinding()
-        //TODO: Add a way to clean the HttpRequest
-        //httpBinding.
         marshaller.addInterfaceBinding(HttpInterface::class.java, httpBinding)
 
         // Enable compression unless the option is set to false
