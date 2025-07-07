@@ -80,6 +80,6 @@ class GlitchtipSentryClientFactory @JvmOverloads constructor(lookup: Lookup = Lo
     }
 
     override fun createJsonMarshaller(maxMessageLength: Int): JsonMarshaller {
-        return GlichtipJsonMarshaller(maxMessageLength)
+        return GlitchtipJsonMarshaller(maxMessageLength)
     }
 }
