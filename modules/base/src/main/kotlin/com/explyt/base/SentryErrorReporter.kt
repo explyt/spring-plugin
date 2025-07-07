@@ -17,7 +17,6 @@
 
 package com.explyt.base
 
-import com.intellij.diagnostic.LogMessage
 import com.intellij.ide.DataManager
 import com.intellij.idea.IdeaLogger
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -28,8 +27,8 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.util.Consumer
+import io.sentry.GlitchtipSentryClientFactory
 import io.sentry.SentryClient
-import io.sentry.SentryClientFactory
 import io.sentry.event.Event
 import io.sentry.event.EventBuilder
 import io.sentry.event.interfaces.ExceptionInterface
@@ -38,8 +37,8 @@ import java.awt.Component
 
 class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter() {
 
-    val sentryClient: SentryClient = SentryClientFactory.sentryClient(
-        "https://7e30ca42b0df43d3b31837cdb77b38f9@app.glitchtip.com/11916"
+    val sentryClient: SentryClient = GlitchtipSentryClientFactory().createClient(
+        "https://7e30ca42b0df43d3b31837cdb77b38f9@get.explyt.dev/glitchtip/11916"
     )
 
     init {
