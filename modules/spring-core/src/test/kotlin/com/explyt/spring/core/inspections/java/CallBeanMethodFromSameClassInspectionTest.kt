@@ -15,102 +15,101 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.inspections.kotlin
+package com.explyt.spring.core.inspections.java
 
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.inspections.CallBeanMethodFromSomeClassInspection
-import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.core.inspections.CallBeanMethodFromSameClassInspection
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
 
 
-class CallBeanMethodFromSomeClassInspectionTest : ExplytInspectionKotlinTestCase() {
+class CallBeanMethodFromSameClassInspectionTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     override fun setUp() {
         super.setUp()
-        myFixture.enableInspections(CallBeanMethodFromSomeClassInspection::class.java)
+        myFixture.enableInspections(CallBeanMethodFromSameClassInspection::class.java)
     }
 
     fun testValidSimpleMethodCall() {
         myFixture.configureByText(
-            "SpringComponent.kt",
+            "SpringComponent.java",
             """
             @${SpringCoreClasses.COMPONENT}            
-            class SpringComponent {
-                fun method():String {
-		            return methodSimple()
+            public class SpringComponent {
+                public String method() {
+		            return methodSimple(); 
 	            }
                 	            
-	            fun methodSimple():String {
-		            return "simple"
+	            public String methodSimple() {
+		            return "simple";
 	            }
             }
             """.trimIndent()
         )
-        myFixture.testHighlighting("SpringComponent.kt")
+        myFixture.testHighlighting("SpringComponent.java")
     }
 
     fun testCacheableMethodCall() {
         myFixture.configureByText(
-            "SpringComponent.kt",
+            "SpringComponent.java",
             """
             @${SpringCoreClasses.COMPONENT}            
-            class SpringComponent {
-                fun method():String {
-		            return <warning>cacheableMethod()</warning>
+            public class SpringComponent {
+                public String method() {
+		            return <warning>cacheableMethod()</warning>; 
 	            }
 
                 @${SpringCoreClasses.CACHEABLE}	            
-	            fun cacheableMethod():String {
-		            return "cacheable"
-	            }
-            }
-            """.trimIndent()
-        )
-        myFixture.testHighlighting("SpringComponent.kt")
-    }
-
-    fun testCacheableOnClassMethodCall() {
-        myFixture.configureByText(
-            "SpringComponent.kt",
-            """
-            @${SpringCoreClasses.COMPONENT}
-            @${SpringCoreClasses.CACHEABLE}
-            class SpringComponent {
-                fun method():String {
-		            return <warning>cacheableMethod()</warning>; 
-	            }
-                	            
-	            fun cacheableMethod():String {
+	            public String cacheableMethod() {
 		            return "cacheable";
 	            }
             }
             """.trimIndent()
         )
-        myFixture.testHighlighting("SpringComponent.kt")
+        myFixture.testHighlighting("SpringComponent.java")
     }
 
-    fun testCacheableFromQualifierCall() {
+    fun testCacheableOnClassMethodCall() {
         myFixture.configureByText(
-            "SpringComponent.kt",
+            "SpringComponent.java",
             """
-            @${SpringCoreClasses.COMPONENT}            
-            class SpringComponent {
-            
-                @${SpringCoreClasses.AUTOWIRED}
-                val self: SpringComponent? = null
-            
-                fun method():String? {
-		            return self?.cacheableMethod()
+            @${SpringCoreClasses.COMPONENT}
+            @${SpringCoreClasses.CACHEABLE}
+            public class SpringComponent {
+                public String method() {
+		            return <warning>cacheableMethod()</warning>; 
 	            }
-
-                @${SpringCoreClasses.CACHEABLE}	            
-	            fun cacheableMethod():String {
-		            return "cacheable"
+                	            
+	            public String cacheableMethod() {
+		            return "cacheable";
 	            }
             }
             """.trimIndent()
         )
-        myFixture.testHighlighting("SpringComponent.kt")
+        myFixture.testHighlighting("SpringComponent.java")
+    }
+
+    fun testCacheableFromQualifierCall() {
+        myFixture.configureByText(
+            "SpringComponent.java",
+            """
+            @${SpringCoreClasses.COMPONENT}            
+            public class SpringComponent {
+                @${SpringCoreClasses.AUTOWIRED}
+                SpringComponent self;
+            
+                public String method() {
+		            return self.cacheableMethod(); 
+	            }
+                	            
+                @${SpringCoreClasses.CACHEABLE}
+	            public String cacheableMethod() {
+		            return "cacheable";
+	            }
+            }
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("SpringComponent.java")
     }
 }

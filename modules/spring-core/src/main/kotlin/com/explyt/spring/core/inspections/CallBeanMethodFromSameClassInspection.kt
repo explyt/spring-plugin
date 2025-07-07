@@ -30,7 +30,7 @@ import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class CallBeanMethodFromSomeClassInspection : SpringBaseLocalInspectionTool() {
+class CallBeanMethodFromSameClassInspection : SpringBaseLocalInspectionTool() {
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return UastVisitorAdapter(CallExpressionVisitor(holder), true)
     }

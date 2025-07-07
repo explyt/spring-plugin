@@ -334,7 +334,7 @@
                          key="explyt.spring.inspection.method.same.class"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.explyt.spring.core.inspections.CallBeanMethodFromSomeClassInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.CallBeanMethodFromSameClassInspection"/>
 
         <localInspection language="UAST"
                          groupBundle="messages.SpringCoreBundle"
