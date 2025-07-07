@@ -88,7 +88,7 @@ class QuarkusSearchService(private val project: Project) {
         }
     }
 
-    private fun searchBeansByProject(): List<PsiBean> {
+    fun searchBeansByProject(): List<PsiBean> {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             val searchScope = project.projectScope()
             val beansByAnnotations = searchBeansByAnnotations(searchScope)
