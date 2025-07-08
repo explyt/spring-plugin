@@ -17,6 +17,7 @@
 
 package com.explyt.base
 
+import com.intellij.diagnostic.LogMessage
 import com.intellij.ide.DataManager
 import com.intellij.idea.IdeaLogger
 import com.intellij.openapi.actionSystem.CommonDataKeys
