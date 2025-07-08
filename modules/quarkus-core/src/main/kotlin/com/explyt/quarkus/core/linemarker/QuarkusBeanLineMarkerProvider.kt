@@ -80,7 +80,6 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 addProducesBeanDeclaration(uElement, module, result)
                 processConstructorMethods(uElement, module, result)
             }
-
         } else if (uElement is UField) {
             processField(uElement, module, result)
         } else if (uElement is UMethod) {
@@ -165,9 +164,27 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             result.add(builder.createLineMarkerInfo(sourcePsi))
             return
         }
-        if (uField.isStatic || (uField.hasInitializer() && !isInjectExpression(psiField))) return
-        if (!isInjectExpression(psiField) && !isLombokAnnotatedClassFieldExpression(psiField)) return
+        if (uField.isStatic || (psiField.hasInitializer() && !isInjectExpression(psiField))) return
+        val isLombokField = isLombokAnnotatedClassFieldExpression(psiField)
+        if (!isInjectExpression(psiField) && !isLombokField) return
+        if (isLombokField) {
+            val containingUClass = uField.getContainingUClass() ?: return
+            val containingClass = containingUClass.javaPsi
+            if (containingClass.isMetaAnnotatedBy(QuarkusCoreClasses.COMPONENTS_ANNO)
+                || isInheritorMemberDeclaration(module, containingUClass)
+            ) {
+                injectFieldLineMarker(uField, module, result)
+            }
+        } else {
+            injectFieldLineMarker(uField, module, result)
+        }
+    }
 
+    private fun injectFieldLineMarker(
+        uField: UField,
+        module: Module,
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
+    ) {
         val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.BeanDependencies)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
