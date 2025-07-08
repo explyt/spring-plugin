@@ -18,51 +18,10 @@
 package io.sentry
 
 import io.sentry.config.Lookup
-import io.sentry.dsn.Dsn
-import io.sentry.event.interfaces.*
-import io.sentry.marshaller.Marshaller
-import io.sentry.marshaller.json.*
+import io.sentry.marshaller.json.GlitchtipJsonMarshaller
+import io.sentry.marshaller.json.JsonMarshaller
 
 class GlitchtipSentryClientFactory @JvmOverloads constructor(lookup: Lookup = Lookup.getDefault()) : DefaultSentryClientFactory(lookup) {
-
-    override fun createMarshaller(dsn: Dsn?): Marshaller {
-        val maxMessageLength = getMaxMessageLength(dsn)
-        val marshaller = createJsonMarshaller(maxMessageLength)
-
-        // Set JSON marshaller bindings
-        val stackTraceBinding = StackTraceInterfaceBinding()
-        // Enable common frames hiding unless its value is 'false'.
-        stackTraceBinding.setRemoveCommonFramesWithEnclosing(getHideCommonFramesEnabled(dsn))
-        stackTraceBinding.setInAppFrames(getInAppFrames(dsn))
-
-        marshaller.addInterfaceBinding(
-            StackTraceInterface::class.java,
-            stackTraceBinding
-        )
-        marshaller.addInterfaceBinding(
-            ExceptionInterface::class.java,
-            ExceptionInterfaceBinding(stackTraceBinding)
-        )
-        marshaller.addInterfaceBinding(
-            MessageInterface::class.java,
-            MessageInterfaceBinding(maxMessageLength)
-        )
-        marshaller.addInterfaceBinding(
-            UserInterface::class.java,
-            UserInterfaceBinding()
-        )
-        marshaller.addInterfaceBinding(
-            DebugMetaInterface::class.java,
-            DebugMetaInterfaceBinding()
-        )
-        val httpBinding = HttpInterfaceBinding()
-        marshaller.addInterfaceBinding(HttpInterface::class.java, httpBinding)
-
-        // Enable compression unless the option is set to false
-        marshaller.setCompression(getCompressionEnabled(dsn))
-
-        return marshaller
-    }
 
     override fun createJsonMarshaller(maxMessageLength: Int): JsonMarshaller {
         return GlitchtipJsonMarshaller(maxMessageLength)
