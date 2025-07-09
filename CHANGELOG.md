@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Quarkus
+- feat: Detect Quarkus endpoints in the Endpoint panel
+- fix: Various bug fixes
+
+### Other
+- feat: Add Spring tool for the Explyt AI platform
+- fix: GlitchTip error reporting
 
 ## [251.1.15986533443] - 2025-07-01
 
