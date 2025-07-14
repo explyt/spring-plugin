@@ -23,6 +23,7 @@ import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.externalSystem.importing.AbstractOpenProjectProvider
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
@@ -56,10 +57,13 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
         val externalProjectPath = projectSettings.externalProjectPath
         ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
 
-        ExternalSystemUtil.refreshProject(
-            externalProjectPath,
-            ImportSpecBuilder(project, SYSTEM_ID).usePreviewMode().use(MODAL_SYNC)
-        )
+        if (ApplicationManager.getApplication().isWriteAccessAllowed
+            || ApplicationManager.getApplication().isWriteIntentLockAcquired) {
+            ExternalSystemUtil.refreshProject(
+                externalProjectPath,
+                ImportSpecBuilder(project, SYSTEM_ID).usePreviewMode().use(MODAL_SYNC)
+            )
+        }
 
         ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
             ExternalSystemUtil.refreshProject(

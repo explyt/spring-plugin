@@ -699,6 +699,9 @@
                 implementation="com.explyt.spring.core.rename.SpringValueRenameProcessor"/>
         <renamePsiElementProcessor
                 implementation="com.explyt.spring.core.rename.ConfigurationPropertyPsiElementProcessor"/>
+
+        <debugger.extraDebugNodesProvider implementation="com.explyt.spring.core.debug.SpringDebuggerContextRenderer"/>
+        <runConfigurationExtension implementation="com.explyt.spring.core.debug.SpringDebuggerRunConfigurationExtension"/>
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">
@@ -752,6 +755,12 @@
         <action id="Explyt.PostConstructGenerateAction"
                 class="com.explyt.spring.core.action.PostConstructJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+        <action id="TransactionStatusAction"
+                class="com.explyt.spring.core.action.DebugTestAction"
+                icon="com/explyt/spring/core/icons/springToolWindow.svg"
+                text="Current Transaction Status">
+            <add-to-group group-id="XDebugger.ToolWindow.TopToolbar3" anchor="last"/>
         </action>
         <action id="Explyt.PreDestroyGenerateAction" class="com.explyt.spring.core.action.PreDestroyJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>

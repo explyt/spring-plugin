@@ -25,14 +25,23 @@ import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.execution.configurations.RunConfigurationBase
+import com.intellij.execution.wsl.WslPath
 import com.intellij.openapi.externalSystem.dependency.analyzer.DAArtifact
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
+import com.intellij.util.PathUtil
+import com.intellij.util.execution.ParametersListUtil
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+
+const val EXPLYT_AGENT_JAR = "explyt-java-agent"
 
 object NativeBootUtils {
 
@@ -92,4 +101,24 @@ object NativeBootUtils {
         return psiClassList.find { it.isMetaAnnotatedBy(SPRING_BOOT_APPLICATION) }
     }
 
+    fun getJavaAgentParam(): String {
+        val agentJarPath = getAgentPath()
+        if (!agentJarPath.contains(EXPLYT_AGENT_JAR)) throw RuntimeException("Unknown jar")
+        return ParametersListUtil.escape("-javaagent:$agentJarPath")
+    }
+
+    fun getAgentPath(): String {
+        val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.Constants::class.java)
+        if (SystemInfo.isWindows) {
+            val winPath = Path(agentJarPath)
+            val windowsAbsolutePath = winPath.absolutePathString()
+            val wslDistribution = WslPath.getDistributionByWindowsUncPath(windowsAbsolutePath) ?: return agentJarPath
+            return wslDistribution.getWslPath(winPath) ?: agentJarPath
+        }
+        return agentJarPath
+    }
+
+    fun getConfigurationId(configuration: RunConfigurationBase<*>): String {
+        return configuration.type.displayName + ":" + configuration.name
+    }
 }

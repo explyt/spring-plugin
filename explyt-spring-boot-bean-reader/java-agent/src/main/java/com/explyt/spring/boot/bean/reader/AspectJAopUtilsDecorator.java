@@ -166,7 +166,9 @@ public class AspectJAopUtilsDecorator {
     }
 
     @AddMethod
-    private static void explytPrintAopMethodData(String aspectName, String aspectMethodName, String beanName, Method method) {
+    private static void explytPrintAopMethodData(
+            String aspectName, String aspectMethodName, String beanName, Method method
+    ) {
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
         StringBuilder parametersString = new StringBuilder();

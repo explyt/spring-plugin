@@ -29,6 +29,7 @@ import tech.ytsaurus.spyt.patch.annotations.Decorate;
 import tech.ytsaurus.spyt.patch.annotations.DecoratedMethod;
 import tech.ytsaurus.spyt.patch.annotations.OriginClass;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.TreeMap;
@@ -42,9 +43,28 @@ public class AbstractApplicationContextDecorator {
     @DecoratedMethod
     protected void registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
         __registerBeanPostProcessors(beanFactory);
-
+        String debugRunConfigurationId = getExplytSpringRunConfigurationId();
+        if (!debugRunConfigurationId.isEmpty()) {
+            setExplytContextForDebug(debugRunConfigurationId);
+            return;
+        }
         explytPrintBeans(beanFactory);
         throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
+    }
+
+
+    @AddMethod
+    private void setExplytContextForDebug(String debugRunConfigurationId) {
+        try {
+            Class<?> aClass = Class.forName("com.explyt.spring.boot.bean.reader.ExplytContext");
+            Field contextField = aClass.getDeclaredField("context");
+            contextField.set(null, this);
+            Field configurationIdField = aClass.getDeclaredField("configurationId");
+            configurationIdField.set(null, debugRunConfigurationId);
+            System.out.println("Explyt Spring Debug attached");
+        } catch (Exception e) {
+            throw new RuntimeException("no context class", e);
+        }
     }
 
     protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
@@ -151,6 +171,13 @@ public class AbstractApplicationContextDecorator {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @AddMethod
+    private String getExplytSpringRunConfigurationId() {
+        String debugParam = System.getenv(DEBUG_PROGRAM_PARAM);
+        debugParam = debugParam != null ? debugParam : System.getProperty(DEBUG_PROGRAM_PARAM);
+        return debugParam == null || debugParam.isEmpty() ? "" : debugParam;
     }
 }
 

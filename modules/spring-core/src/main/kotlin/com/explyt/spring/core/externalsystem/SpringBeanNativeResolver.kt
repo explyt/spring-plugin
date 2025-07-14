@@ -69,10 +69,8 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.isFile
 import com.intellij.psi.PsiClass
 import com.intellij.psi.util.InheritanceUtil
-import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
-import com.intellij.util.execution.ParametersListUtil
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
@@ -112,7 +110,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             return synchronized(this::class.java) {
                 try {
                     getProjectDataNode(id, projectPath, runConfigurationHolder, settings, listener)
-                } catch (e: AlreadyDisposedException) {
+                } catch (_: Exception) {
                     throw ExternalSystemException("Project data is disposed. Please try again")
                 }
             }
@@ -185,7 +183,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
     private fun patchJavaAgent(runConfiguration: RunConfiguration) {
         val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.Constants::class.java)
-        val javaAgentEscaping = ParametersListUtil.escape("-javaagent:$agentJarPath")
+        val javaAgentEscaping = NativeBootUtils.getJavaAgentParam()
         val javaAgentParams = "$javaAgentEscaping -Dpatcher.filter.agent.name=${Path(agentJarPath).name}"
         if (runConfiguration is ApplicationConfiguration) {
             if (runConfiguration.vmParameters == null) {
