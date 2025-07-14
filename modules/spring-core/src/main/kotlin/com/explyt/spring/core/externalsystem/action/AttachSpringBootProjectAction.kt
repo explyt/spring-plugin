@@ -25,6 +25,7 @@ import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.intellij.execution.RunManager
+import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
@@ -65,7 +66,6 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
 
     companion object {
         fun attachProject(project: Project) {
-            StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_ADD)
             val selectedRunConfiguration = ApplicationManager.getApplication().runReadAction(
                 Computable { RunManager.getInstance(project).selectedConfiguration?.configuration }
             )
@@ -75,6 +75,11 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
                 }
                 return
             }
+            attachProject(project, selectedRunConfiguration)
+        }
+
+        fun attachProject(project: Project, selectedRunConfiguration: RunConfiguration) {
+            StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_ADD)
 
             val mainClass = ApplicationManager.getApplication().runReadAction(
                 Computable { NativeBootUtils.getMainClass(selectedRunConfiguration) }
