@@ -18,6 +18,7 @@
 package com.explyt.spring.core.externalsystem.action
 
 import com.explyt.spring.core.externalsystem.model.BeanSearch
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.externalSystem.action.ExternalSystemNodeAction
@@ -41,9 +42,11 @@ class ChangeEnabledDiAction : ExternalSystemNodeAction<BeanSearch>(BeanSearch::c
             .getExternalProjectData(project, projectSystemId, externalData.projectPath)
             ?.externalProjectStructure?.find(BeanSearch.KEY)?.data
         beanSearch?.let { it.enabled = externalData.enabled }
-        ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, projectSystemId)
 
+        ModificationTrackerManager.getInstance(project).invalidateAll()
         PsiManager.getInstance(project).dropPsiCaches()
         DaemonCodeAnalyzer.getInstance(project).restart()
+
+        ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, projectSystemId)
     }
 }

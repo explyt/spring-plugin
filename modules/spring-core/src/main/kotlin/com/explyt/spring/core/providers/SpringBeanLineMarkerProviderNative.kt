@@ -94,7 +94,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     }
 
     private fun isContextBean(module: Module, uElement: UElement): Boolean {
-        val allBeanClasses = NativeSearchService.getInstance(module.project).getAllBeanClasses(module)
+        val allBeanClasses = NativeSearchService.getInstance(module.project).getAllBeanClasses()
         return SpringSearchUtils.getBeanClass(uElement) in allBeanClasses
     }
 
@@ -112,16 +112,16 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     ) {
         val psiField = uField.javaPsi as? PsiField ?: return
         if (!isAutowiredFieldExpression(psiField) && !isLombokAnnotatedClassFieldExpression(psiField)) return
-        if (checkParam(psiField, module)) {
-            val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
-                .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, module) })
-                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
-                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
-                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
-            result.add(builder.createLineMarkerInfo(sourcePsi))
-        }
+
+        val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
+        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+            .setAlignment(GutterIconRenderer.Alignment.LEFT)
+            .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, module) })
+            .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+            .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+            .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
+        result.add(builder.createLineMarkerInfo(sourcePsi))
+
     }
 
     private fun processConstructorMethods(
@@ -163,7 +163,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
 
     private fun isMethodBean(module: Module, method: UMethod) =
         NativeSearchService.getInstance(module.project)
-            .getAllActiveBeans(module)
+            .getAllActiveBeans()
             .any { it.psiMember == method.sourcePsi || it.psiMember == method.javaPsi }
 
     private fun checkMethodParameters(
@@ -172,17 +172,14 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         for (uParameter in method.uastParameters) {
-            val psiParameter = uParameter.javaPsi as? PsiParameter ?: continue
-            if (checkParam(psiParameter, module)) {
-                val sourcePsi = uParameter.uastAnchor?.sourcePsi ?: continue
-                val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
-                    .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                    .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, module) })
-                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
-                result.add(builder.createLineMarkerInfo(sourcePsi))
-            }
+            val sourcePsi = uParameter.uastAnchor?.sourcePsi ?: continue
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, module) })
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
+            result.add(builder.createLineMarkerInfo(sourcePsi))
         }
     }
 
@@ -210,7 +207,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(NotNullLazyValue.lazy { findBeanDeclarations(uClass, module) })
+            .setTargets(NotNullLazyValue.lazy { findBeanDeclarations(uClass) })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
             .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
@@ -278,7 +275,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
         val nativeSearchService = NativeSearchService.getInstance(project)
-        val allBeans = nativeSearchService.getAllActiveBeans(module)
+        val allBeans = nativeSearchService.getAllActiveBeans()
 
         val allFieldsWithAutowired = allBeans.asSequence()
             .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
@@ -299,7 +296,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                         it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
                                 || it.isConstructor
-                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { it.isCandidate(targetType, targetClass, targetClasses) }
@@ -311,7 +308,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val filteredByName = allByType.filter {
             val beanName = it.name ?: return@filter true
             val beanPsiType = it.type
-            val allActiveBeans = nativeSearchService.getAllActiveBeans(module)
+            val allActiveBeans = nativeSearchService.getAllActiveBeans()
             val resolvedBeanTargets = nativeSearchService.findActiveBeanDeclarations(
                 allActiveBeans, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
             )
@@ -327,28 +324,28 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         return uClass ?: uMethod ?: throw RuntimeException("No uElement")
     }
 
-    private fun findBeanDeclarations(uClass: UClass, module: Module): List<PsiElement> {
+    private fun findBeanDeclarations(uClass: UClass): List<PsiElement> {
         val targetClass = SpringSearchUtils.getBeanClass(uClass) ?: return emptyList()
-        return NativeSearchService.getInstance(uClass.javaPsi.project).getAllActiveBeans(module).asSequence()
+        return NativeSearchService.getInstance(uClass.javaPsi.project).getAllActiveBeans().asSequence()
             .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
             .map { it.psiMember }
             .toList()
     }
 
-    private fun checkParam(psiVariable: PsiVariable, module: Module): Boolean {
+    private fun checkParam(psiVariable: PsiVariable): Boolean {
         val nativeSearchService = NativeSearchService.getInstance(psiVariable.project)
-        val allBeansClassesWithAncestors = nativeSearchService.getAllBeansClassesWithAncestors(module)
+        val allBeansClassesWithAncestors = emptySet<PsiClass>()//nativeSearchService.getAllBeansClassesWithAncestors()
         if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors, psiVariable.language)) {
             return true
         }
-        val componentBeanPsiMethods = nativeSearchService.getBeanPsiMethods(module)
+        val componentBeanPsiMethods = nativeSearchService.getBeanPsiMethods()
         val hasExactType = componentBeanPsiMethods.filterByExactMatch(psiVariable.type).any()
         if (hasExactType) {
             return true
         }
         val arrayPsiType = psiVariable.type.getArrayType()
         if (arrayPsiType != null) {
-            return nativeSearchService.searchArrayPsiClassesByBeanMethods(module).asSequence()
+            return nativeSearchService.searchArrayPsiClassesByBeanMethods().asSequence()
                 .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
                 .any { arrayPsiType.isAssignableFrom(it) }
         }
@@ -368,7 +365,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val beanPsiType = uVariable.type
         val beanName = uVariable.name ?: return emptyList()
         val qualifierAnnotation = (sourcePsi as? PsiModifierListOwner)?.getQualifierAnnotation()
-        val allActiveBeans = NativeSearchService.getInstance(module.project).getAllActiveBeans(module)
+        val allActiveBeans = NativeSearchService.getInstance(module.project).getAllActiveBeans()
         val activeBean = NativeSearchService.getInstance(module.project).findActiveBeanDeclarations(
             allActiveBeans, beanName, language, beanPsiType, qualifierAnnotation
         )
@@ -384,7 +381,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     }
 
     private fun getArrayBeans(arrayPsiType: PsiArrayType, module: Module): List<PsiMember> {
-        return NativeSearchService.getInstance(module.project).searchArrayPsiClassesByBeanMethods(module)
+        return NativeSearchService.getInstance(module.project).searchArrayPsiClassesByBeanMethods()
             .asSequence()
             .filter {
                 it.psiMember is PsiMethod && it.psiMember.returnType != null
