@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -17,11 +17,27 @@
 
 package com.explyt.spring.boot.bean.reader;
 
-public interface Constants {
-    String EXPLYT_BEAN_INFO_START = "ExplytBeanInfoStart";
-    String EXPLYT_BEAN_INFO_END = "ExplytBeanInfoEnd";
-    String EXPLYT_BEAN_INFO = "ExplytBeanInfo:";
-    String EXPLYT_AOP_INFO = "ExplytBeanAopInfo:";
-    String SPRING_EXPLYT_ERROR_MESSAGE = "I am Explyt Spring";
-    String DEBUG_PROGRAM_PARAM = "explyt.spring.debug.id";
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.context.support.AbstractApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
+import tech.ytsaurus.spyt.patch.annotations.AddClass;
+
+/**
+ * it should be equals to ExplytContext in explyt-context-holder module
+ */
+@AddClass
+public class ExplytContext {
+    public static AbstractApplicationContext context;
+
+    public static AbstractApplicationContext getContext() {
+        return context;
+    }
+
+    public static ConfigurableEnvironment getEnvironment() {
+        return context.getEnvironment();
+    }
+
+    public static ConfigurableListableBeanFactory getBeanFactory() {
+        return context.getBeanFactory();
+    }
 }

@@ -196,7 +196,7 @@ class SpringBeanLineMarkerProviderArrayTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     fun testLineMarkerOptional_toAutowired_arrayI() {
@@ -409,7 +409,7 @@ class SpringBeanLineMarkerProviderArrayTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     private fun getArrayClasses(): String {

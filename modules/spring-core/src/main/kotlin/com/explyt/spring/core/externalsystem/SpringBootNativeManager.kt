@@ -17,15 +17,18 @@
 
 package com.explyt.spring.core.externalsystem
 
+import com.explyt.spring.core.externalsystem.model.BeanSearch
 import com.explyt.spring.core.externalsystem.setting.*
 import com.explyt.spring.core.externalsystem.setting.RunConfigurationType.EXPLYT
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.intellij.execution.configurations.SimpleJavaParameters
 import com.intellij.openapi.externalSystem.ExternalSystemManager
+import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Pair
 import com.intellij.util.Function
+import org.jetbrains.kotlin.idea.base.externalSystem.find
 
 class SpringBootNativeManager :
     ExternalSystemManager<NativeProjectSettings, SettingsListener, NativeSettings, LocalSettings, NativeExecutionSettings> {
@@ -54,9 +57,14 @@ class SpringBootNativeManager :
             executionSettings.runConfigurationName = projectSettings?.runConfigurationName
             executionSettings.runConfigurationType = projectSettings?.runConfigurationType ?: EXPLYT
             executionSettings.qualifiedMainClassName = projectSettings?.qualifiedMainClassName
+            executionSettings.beanSearch = getBeanSearch(project, projectPath)
             executionSettings
         }
     }
+
+    private fun getBeanSearch(project: Project, projectPath: String): Boolean = ProjectDataManager.getInstance()
+        .getExternalProjectData(project, SYSTEM_ID, projectPath)
+        ?.externalProjectStructure?.find(BeanSearch.KEY)?.data?.enabled ?: false
 
     override fun getProjectResolverClass() = SpringBeanNativeResolver::class.java
 

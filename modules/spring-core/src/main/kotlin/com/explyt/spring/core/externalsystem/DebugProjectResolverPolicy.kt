@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,15 +15,10 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.externalsystem.utils
+package com.explyt.spring.core.externalsystem
 
-import com.intellij.openapi.externalSystem.model.ProjectSystemId
-import java.util.*
+import com.intellij.openapi.externalSystem.importing.ProjectResolverPolicy
 
-object Constants {
-    const val SPRING_BOOT_NATIVE_ID = "ExplytSpringBoot"
-    const val DEBUG_SESSION_NAME = "DebugSession"
-
-    //should be equals with SpringToolRunConfigurationConfigurable display name
-    val SYSTEM_ID = ProjectSystemId(SPRING_BOOT_NATIVE_ID.uppercase(Locale.getDefault()), "Explyt Spring")
+class DebugProjectResolverPolicy(val rawBeanData: String): ProjectResolverPolicy {
+    override fun isPartialDataResolveAllowed() = false
 }

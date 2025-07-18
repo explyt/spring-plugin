@@ -200,7 +200,7 @@ class SpringBeanLineMarkerProviderMapTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     fun testLineMarkerMap_toAutowired_mapStringWithBeanI() {

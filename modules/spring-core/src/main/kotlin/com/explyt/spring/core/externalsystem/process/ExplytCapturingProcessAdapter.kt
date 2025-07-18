@@ -26,6 +26,7 @@ import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotifica
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.registry.Registry
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class ExplytCapturingProcessAdapter(
     private val id: ExternalSystemTaskId,
@@ -57,40 +58,50 @@ class ExplytCapturingProcessAdapter(
     }
 
     fun await() {
-        latch.await()
+        latch.await(1, TimeUnit.MINUTES)
     }
 
     fun getSpringContextInfo(): SpringContextInfo {
-        latch.await()
-        val beanInfos = mutableListOf<BeanInfo>()
-        val aspectInfos = mutableListOf<AspectInfo>()
-        for (line in output.stdoutLines) {
-            if (line.startsWith(BeanPrinter.EXPLYT_BEAN_INFO)) {
-                val jsonString = line.substringAfter(BeanPrinter.EXPLYT_BEAN_INFO)
-                getBeanInfo(jsonString)?.let { beanInfos.add(it) }
-            } else if (line.startsWith(BeanPrinter.EXPLYT_AOP_INFO)) {
-                val jsonString = line.substringAfter(BeanPrinter.EXPLYT_AOP_INFO)
-                getAopInfo(jsonString)?.let { aspectInfos.add(it) }
-            }
-        }
-        return SpringContextInfo(beanInfos, aspectInfos)
-    }
-
-    private fun getBeanInfo(it: String) = try {
-        gson.fromJson(it, BeanInfo::class.java)
-    } catch (e: Exception) {
-        null
-    }
-
-    private fun getAopInfo(it: String) = try {
-        gson.fromJson(it, AspectInfo::class.java)
-    } catch (e: Exception) {
-        null
+        latch.await(1, TimeUnit.MINUTES)
+        return getSpringContextInfo(output.stdoutLines, gson)
     }
 
     private fun checkExplytLogStart(text: String?) {
         if (!explytLog && text?.contains(BeanPrinter.EXPLYT_BEAN_INFO_START) == true) {
             explytLog = true
+        }
+    }
+
+    companion object {
+        fun getSpringContextInfo(lines: List<String>): SpringContextInfo {
+            return getSpringContextInfo(lines, Gson())
+        }
+
+        private fun getSpringContextInfo(lines: List<String>, gson: Gson): SpringContextInfo {
+            val beanInfos = mutableListOf<BeanInfo>()
+            val aspectInfos = mutableListOf<AspectInfo>()
+            for (line in lines) {
+                if (line.startsWith(BeanPrinter.EXPLYT_BEAN_INFO)) {
+                    val jsonString = line.substringAfter(BeanPrinter.EXPLYT_BEAN_INFO)
+                    getBeanInfo(jsonString, gson)?.let { beanInfos.add(it) }
+                } else if (line.startsWith(BeanPrinter.EXPLYT_AOP_INFO)) {
+                    val jsonString = line.substringAfter(BeanPrinter.EXPLYT_AOP_INFO)
+                    getAopInfo(jsonString, gson)?.let { aspectInfos.add(it) }
+                }
+            }
+            return SpringContextInfo(beanInfos, aspectInfos)
+        }
+
+        private fun getBeanInfo(it: String, gson: Gson) = try {
+            gson.fromJson(it, BeanInfo::class.java)
+        } catch (_: Exception) {
+            null
+        }
+
+        private fun getAopInfo(it: String, gson: Gson) = try {
+            gson.fromJson(it, AspectInfo::class.java)
+        } catch (_: Exception) {
+            null
         }
     }
 }

@@ -699,6 +699,9 @@
                 implementation="com.explyt.spring.core.rename.SpringValueRenameProcessor"/>
         <renamePsiElementProcessor
                 implementation="com.explyt.spring.core.rename.ConfigurationPropertyPsiElementProcessor"/>
+
+        <debugger.extraDebugNodesProvider implementation="com.explyt.spring.core.debug.SpringDebuggerContextRenderer"/>
+        <runConfigurationExtension implementation="com.explyt.spring.core.debug.SpringDebuggerRunConfigurationExtension"/>
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">
@@ -709,6 +712,8 @@
         <action id="NavigateToSpringBean" class="com.explyt.spring.core.externalsystem.action.BeanNavigationAction"/>
         <action id="Explyt.ExternalView.ProfileChanged"
                 class="com.explyt.spring.core.externalsystem.action.ChangeProfileStateAction"/>
+        <action id="Explyt.ExternalView.EnableDiChanged"
+                class="com.explyt.spring.core.externalsystem.action.ChangeEnabledDiAction"/>
         <action id="SpringBootExplyt.ExternalSystem.AttachProject"
                 class="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
         <action id="SpringBootExplyt.ExternalSystem.DetachAllProjects"
