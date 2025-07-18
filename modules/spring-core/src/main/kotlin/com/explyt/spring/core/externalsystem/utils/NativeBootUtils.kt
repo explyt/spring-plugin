@@ -118,6 +118,17 @@ object NativeBootUtils {
         return agentJarPath
     }
 
+    fun getContextLibPath(): String {
+        val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.ContextHolder::class.java)
+        if (SystemInfo.isWindows) {
+            val winPath = Path(agentJarPath)
+            val windowsAbsolutePath = winPath.absolutePathString()
+            val wslDistribution = WslPath.getDistributionByWindowsUncPath(windowsAbsolutePath) ?: return agentJarPath
+            return wslDistribution.getWslPath(winPath) ?: agentJarPath
+        }
+        return agentJarPath
+    }
+
     fun getConfigurationId(configuration: RunConfigurationBase<*>): String {
         return configuration.type.displayName + ":" + configuration.name
     }

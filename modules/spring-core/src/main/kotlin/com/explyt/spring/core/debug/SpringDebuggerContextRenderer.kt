@@ -112,7 +112,8 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
     private fun removeOld(nowTime: LocalDateTime?) {
         if (CacheProcess.debugMap.size > 32) {
             val oldKeys = CacheProcess.debugMap.entries
-                .filter { (_, value) -> value.plusMinutes(30) < nowTime }
+                .sortedByDescending { it.value }
+                .drop(3)
                 .map { it.key }
             oldKeys.forEach { CacheProcess.debugMap.remove(it) }
         }
@@ -166,7 +167,11 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         debugProcess: DebugProcessImpl,
         evaluationContext: EvaluationContextImpl
     ): ClassType? = try {
-        debugProcess.findLoadedClass(evaluationContext, EXPLYT_SPRING_CONTEXT_CLASS, evaluationContext.classLoader)
+        debugProcess.findLoadedClass(
+            evaluationContext,
+            "com.explyt.spring.boot.bean.reader.InternalHolderContext",
+            evaluationContext.classLoader
+        )
     } catch (_: EvaluateException) {
         null
     } as? ClassType

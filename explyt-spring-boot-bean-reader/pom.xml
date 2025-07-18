@@ -26,6 +26,7 @@
         <module>java-agent</module>
         <module>classpath-lib</module>
         <module>java-agent-quarkus</module>
+        <module>explyt-context-holder</module>
     </modules>
 
     <packaging>pom</packaging>

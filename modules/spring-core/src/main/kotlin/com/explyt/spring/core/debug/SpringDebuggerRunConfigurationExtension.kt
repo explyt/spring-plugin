@@ -38,7 +38,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import kotlin.io.path.Path
 
-const val EXPLYT_SPRING_CONTEXT_CLASS = "com.explyt.spring.boot.bean.reader.ExplytContext"
+const val EXPLYT_SPRING_HOLDER_MARKER_CLASS = "com.explyt.spring.boot.bean.reader.ContextHolder"
 
 class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
     override fun <T : RunConfigurationBase<*>?> updateJavaParameters(
@@ -49,7 +49,6 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         javaParameters.vmParametersList.add(javaAgentEscaping)
         javaParameters.vmParametersList.addProperty("explyt.spring.debug.id", getConfigurationId(configuration))
 
-        //todo only one class!!! && provide scope
         getModule(configuration)?.let {
             ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(it) }
         }
@@ -69,11 +68,13 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
     }
 
     private fun addExplytContextLibrary(module: Module) {
-        val libraryRoot = Path(NativeBootUtils.getAgentPath())
+        val libraryRoot = Path(NativeBootUtils.getContextLibPath())
         LocalFileSystem.getInstance().refreshAndFindFileByIoFile(libraryRoot.toFile())
         val urlForLibraryRoot = VfsUtil.getUrlForLibraryRoot(libraryRoot)
 
-        val hasLibraryClass = runReadAction { JavaLibraryUtil.hasLibraryClass(module, EXPLYT_SPRING_CONTEXT_CLASS) }
+        val hasLibraryClass = runReadAction {
+            JavaLibraryUtil.hasLibraryClass(module, EXPLYT_SPRING_HOLDER_MARKER_CLASS)
+        }
         if (hasLibraryClass) return
         val librariesUrls = listOf(urlForLibraryRoot)
         ModuleRootModificationUtil.addModuleLibrary(
