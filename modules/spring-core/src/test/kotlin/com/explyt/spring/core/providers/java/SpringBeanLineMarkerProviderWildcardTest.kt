@@ -432,7 +432,7 @@ class SpringBeanLineMarkerProviderWildcardTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     fun testLineMarkerWildcard_toAutowired_mapWildcardSuperA() {

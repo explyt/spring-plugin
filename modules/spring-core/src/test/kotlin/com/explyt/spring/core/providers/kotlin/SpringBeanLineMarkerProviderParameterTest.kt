@@ -118,7 +118,7 @@ class SpringBeanLineMarkerProviderParameterTest : ExplytKotlinLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        TestCase.assertEquals(allBeanGutters.size, 0)
+        TestCase.assertEquals(allBeanGutters.size, 1)
     }
 
     fun testLineMarkerParameter_toAutowired() {
