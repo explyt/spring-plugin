@@ -23,7 +23,8 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import tech.ytsaurus.spyt.patch.annotations.AddClass;
 
 /**
- * it should be equals to ExplytContext in explyt-context-holder module
+ * it should be equals to ExplytContext in explyt-java-agent module.
+ * Need to added to project classpath with provided scope for evaluation.
  */
 @AddClass
 public class ExplytContext {

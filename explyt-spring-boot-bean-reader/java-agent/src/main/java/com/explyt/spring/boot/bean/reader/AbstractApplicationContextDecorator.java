@@ -57,11 +57,17 @@ public class AbstractApplicationContextDecorator {
     @AddMethod
     private void setExplytContextForDebug(String debugRunConfigurationId) {
         try {
-            Class<?> aClass = Class.forName("com.explyt.spring.boot.bean.reader.ExplytContext");
+            Class<?> aClass = Class.forName("com.explyt.spring.boot.bean.reader.InternalHolderContext");
             Field contextField = aClass.getDeclaredField("context");
+            contextField.setAccessible(true);
             contextField.set(null, this);
             Field configurationIdField = aClass.getDeclaredField("configurationId");
             configurationIdField.set(null, debugRunConfigurationId);
+
+            Class<?> aClassContext = Class.forName("com.explyt.spring.boot.bean.reader.ExplytContext");
+            contextField = aClassContext.getDeclaredField("context");
+            contextField.set(null, this);
+
             System.out.println("Explyt Spring Debug attached");
         } catch (Exception e) {
             throw new RuntimeException("no context class", e);
@@ -71,6 +77,15 @@ public class AbstractApplicationContextDecorator {
     protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
     }
 
+    /**
+     * Printing context data.
+     * Result and return value usages in com.explyt.spring.boot.bean.reader.InternalHolderContext#getRawBeanData()
+     * via reflection.
+     *
+     * @param beanFactory
+     * @param result
+     * @return
+     */
     @AddMethod
     public List<String> explytPrintBeans(ConfigurableListableBeanFactory beanFactory, List<String> result) {
         System.out.println(EXPLYT_BEAN_INFO_START);
