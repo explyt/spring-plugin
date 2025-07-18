@@ -33,6 +33,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
 import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
 import com.explyt.spring.core.util.SpringCoreUtil.filterByQualifier
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
+import com.explyt.spring.core.util.SpringCoreUtil.isComponentCandidate
 import com.explyt.spring.core.util.SpringCoreUtil.matchesWildcardType
 import com.explyt.spring.core.util.SpringCoreUtil.possibleMultipleBean
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
@@ -210,31 +211,6 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    private fun getAllBeansClassesWithAncestors(module: Module): Set<PsiClass> {
-        synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
-            return cachedValuesManager.getCachedValue(module) {
-                CachedValueProvider.Result(
-                    getActiveBeansClasses(module)
-                        .flatMapTo(mutableSetOf()) { it.psiClass.supers.asSequence() + it.psiClass },
-                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-                )
-            }
-        }
-    }
-
-    @Deprecated("Don use directly. Use SpringSearchServiceFacade")
-    fun getAllBeansClassesWithAncestorsLight(module: Module): Set<PsiClass> {
-        synchronized(getMutexString(MutexType.SEARCH, module)) {
-            return cachedValuesManager.getCachedValue(module) {
-                CachedValueProvider.Result(
-                    searchAllBeanLight(module)
-                        .flatMapTo(mutableSetOf()) { it.psiClass.supers.asSequence() + it.psiClass },
-                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-                )
-            }
-        }
-    }
-
     @VisibleForTesting
     fun getAllActiveBeans(module: Module): Set<PsiClass> {
         synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
@@ -299,28 +275,6 @@ class SpringSearchService(private val project: Project) {
             }
         } catch (e: AlreadyDisposedException) {
             return emptySet()
-        }
-    }
-
-    fun getBeanPsiClassesAnnotatedByComponentForNative(module: Module): Set<PsiBean> {
-        synchronized(getMutexString(MutexType.SEARCH_FOR_NATIVE, module)) {
-            return cachedValuesManager.getCachedValue(module) {
-                val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-                val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
-                val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
-
-                val moduleBeans = searchBeanPsiClassesByAnnotations(module, annotationPsiClasses, scope)
-                val extraComponents = getExtraComponents(module, modulePackagesHolder)
-                val result = (moduleBeans + extraComponents).asSequence()
-                    .filter { !isAnnotated(it, SpringCoreClasses.PROFILE) }
-                    .filter { !isAnnotated(it, SpringCoreClasses.CONDITIONAL) }
-                    .filter { !isAnnotated(it, SpringCoreClasses.DEPENDS_ON) }
-                    .toSet()
-                CachedValueProvider.Result(
-                    result,
-                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-                )
-            }
         }
     }
 
@@ -710,7 +664,8 @@ class SpringSearchService(private val project: Project) {
         }
         val psiElement = uClass.sourcePsi ?: return false
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return false
-        return getAllBeansClassesWithAncestors(module).contains(uClass.javaPsi)
+
+        return isComponentCandidate(uClass.javaPsi) || getAllActiveBeans(module).contains(uClass.javaPsi)
     }
 
     @Deprecated("1 usages")

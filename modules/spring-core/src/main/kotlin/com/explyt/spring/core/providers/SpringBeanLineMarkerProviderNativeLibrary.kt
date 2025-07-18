@@ -28,11 +28,6 @@ import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
-import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.canResolveBeanClass
-import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
-import com.explyt.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.spring.core.util.SpringCoreUtil.isComponentCandidate
@@ -90,22 +85,18 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
     ) {
 
         val fields = uClass.fields.takeIf { it.isNotEmpty() } ?: return
-        val allBeansClassesWithAncestors = libraryBeans.flatMapTo(mutableSetOf()) {
-            it.psiClass.supers.asSequence() + it.psiClass
-        }
         for (uField in fields) {
             val psiField = uField.javaPsi as? PsiField ?: continue
             if (!isAutowiredFieldExpression(psiField)) continue
-            if (checkParam(psiField, libraryBeans, allBeansClassesWithAncestors)) {
-                val sourcePsi = uField.uastAnchor?.sourcePsi ?: continue
-                val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
-                    .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                    .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, libraryBeans) })
-                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
-                result.add(builder.createLineMarkerInfo(sourcePsi))
-            }
+
+            val sourcePsi = uField.uastAnchor?.sourcePsi ?: continue
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, libraryBeans) })
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
+            result.add(builder.createLineMarkerInfo(sourcePsi))
         }
     }
 
@@ -146,21 +137,16 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val uastParameters = method.uastParameters.takeIf { it.isNotEmpty() } ?: return
-        val allBeansClassesWithAncestors = libraryBeans.flatMapTo(mutableSetOf()) {
-            it.psiClass.supers.asSequence() + it.psiClass
-        }
+
         for (uParameter in uastParameters) {
-            val psiParameter = uParameter.javaPsi as? PsiParameter ?: continue
-            if (checkParam(psiParameter, libraryBeans, allBeansClassesWithAncestors)) {
-                val sourcePsi = uParameter.uastAnchor?.sourcePsi ?: continue
-                val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
-                    .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                    .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, libraryBeans) })
-                    .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
-                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
-                    .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
-                result.add(builder.createLineMarkerInfo(sourcePsi))
-            }
+            val sourcePsi = uParameter.uastAnchor?.sourcePsi ?: continue
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, libraryBeans) })
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
+            result.add(builder.createLineMarkerInfo(sourcePsi))
         }
     }
 
@@ -252,28 +238,6 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
 
     private fun getUElement(uClass: UClass?, uMethod: UMethod?): UElement {
         return uClass ?: uMethod ?: throw RuntimeException("No uElement")
-    }
-
-    private fun checkParam(
-        psiVariable: PsiVariable,
-        libraryBeans: List<PsiBean>,
-        allBeansClassesWithAncestors: MutableSet<PsiClass>
-    ): Boolean {
-        if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors, psiVariable.language)) {
-            return true
-        }
-        val componentBeanPsiMethods = libraryBeans.mapNotNull { it.psiMember as? PsiMethod }
-        val hasExactType = componentBeanPsiMethods.filterByExactMatch(psiVariable.type).any()
-        if (hasExactType) {
-            return true
-        }
-        val beanPsiType = psiVariable.type.beanPsiType
-        val foundInheritedTypes = if (beanPsiType != null) {
-            componentBeanPsiMethods.filterByBeanPsiType(beanPsiType).any()
-        } else {
-            componentBeanPsiMethods.filterByInheritedTypes(psiVariable.type, null).any()
-        }
-        return foundInheritedTypes
     }
 
     private fun getBeanDeclarations(uVariable: UVariable, libraryBeans: List<PsiBean>): Collection<PsiElement> {

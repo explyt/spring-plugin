@@ -208,7 +208,7 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     fun testLineMarkerOptional_toAutowired_A_aParameter() {
@@ -291,7 +291,7 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     fun testLineMarkerOptional_toAutowired_optionalI() {
@@ -415,7 +415,7 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     fun testLineMarkerOptional_toAutowired_optionalMapStringI() {
@@ -509,7 +509,7 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
 
         val allBeanGutters = myFixture.findAllGutters()
             .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
+        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     private fun getOptionalClasses(): String {
