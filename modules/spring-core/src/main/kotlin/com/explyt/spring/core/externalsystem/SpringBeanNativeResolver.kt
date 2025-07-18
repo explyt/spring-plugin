@@ -29,6 +29,7 @@ import com.explyt.spring.core.externalsystem.process.BeanInfo
 import com.explyt.spring.core.externalsystem.process.ExplytCapturingProcessAdapter
 import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
 import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
+import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.profile.SpringProfilesService
@@ -50,6 +51,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.externalSystem.importing.ProjectResolverPolicy
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.externalSystem.model.ProjectKeys
@@ -95,9 +97,30 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         projectPath: String,
         isPreviewMode: Boolean,
         settings: NativeExecutionSettings?,
+        resolverPolicy: ProjectResolverPolicy?,
         listener: ExternalSystemTaskNotificationListener
-    ): DataNode<ProjectData> {
+    ): DataNode<ProjectData>? {
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REFRESH)
+        if (resolverPolicy is DebugProjectResolverPolicy && resolverPolicy.rawBeanData.isNotEmpty()) {
+            settings ?: throw ExternalSystemException("No settings")
+            val rawBeans = resolverPolicy.rawBeanData.split(";")
+            val contextInfo = ExplytCapturingProcessAdapter.getSpringContextInfo(rawBeans)
+            val beans = contextInfo.beans
+            val aspects = contextInfo.aspects
+            val aspectBeanInfoByName = getAspectBeanInfoMapByName(beans, aspects)
+
+            val projectData = projectData(projectPath, Constants.DEBUG_SESSION_NAME)
+            val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
+
+            detectMessageMapping(settings)
+            beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
+                .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
+            aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
+                .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
+            return projectDataNode
+        } else if (projectPath == Constants.DEBUG_SESSION_NAME) {
+            return null
+        }
         val runConfigurationHolder = findRunConfigurationReadAction(projectPath, settings)
         if (isPreviewMode) {
             return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfigurationHolder), null)
@@ -386,11 +409,15 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     )
 
     private fun projectData(projectPath: String, configuration: RunConfigurationHolder?): ProjectData {
-        val directoryPath = LocalFileSystem.getInstance().findFileByPath(projectPath)
-            ?.takeIf { it.isFile }?.parent?.canonicalPath
-            ?: throw ExternalSystemException("File not found $projectPath")
         val runConfiguration = configuration?.agentRunConfiguration ?: configuration?.runConfiguration
         val projectName = runConfiguration?.name ?: SYSTEM_ID.readableName
+        return projectData(projectPath, projectName)
+    }
+
+    private fun projectData(projectPath: String, projectName: String): ProjectData {
+        val directoryPath = LocalFileSystem.getInstance().findFileByPath(projectPath)
+            ?.takeIf { it.isFile }?.parent?.canonicalPath
+            ?: Constants.DEBUG_SESSION_NAME
         val projectData = ProjectData(SYSTEM_ID, projectName, directoryPath, projectPath)
         return projectData
     }

@@ -98,6 +98,11 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
             )
         }
 
+        fun attachDebugProject(project: Project, rawBeanData: String, runConfigurationId: String) {
+            StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_ADD)
+            SpringBootOpenProjectProvider().attachDebugProject(project, rawBeanData, runConfigurationId)
+        }
+
         private fun externalSystemNotification(message: String, project: Project) {
             val notification = NotificationData("", message, WARNING, NotificationSource.TASK_EXECUTION)
             notification.isBalloonNotification = true

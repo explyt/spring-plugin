@@ -22,6 +22,11 @@ import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import tech.ytsaurus.spyt.patch.annotations.AddClass;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 @AddClass
 public class ExplytContext {
     public static String configurationId;
@@ -41,5 +46,29 @@ public class ExplytContext {
 
     public static ConfigurableListableBeanFactory getBeanFactory() {
         return context.getBeanFactory();
+    }
+
+    public static String getRawBeanData() {
+        if (context == null) return "";
+        Class<?> aClass = context.getClass();
+        Method[] declaredMethods = aClass.getMethods();
+        Method method = Arrays.stream(declaredMethods)
+                .filter(it -> "explytPrintBeans".equals(it.getName()))
+                .findAny()
+                .orElse(null);
+        if (method == null) return "";
+        try {
+            ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+            List<String> result = new ArrayList<>(beanFactory.getBeanDefinitionCount());
+            method.invoke(context, beanFactory, result);
+            if (result.size() <= 1) return "";
+            StringBuilder builder = new StringBuilder(1000);
+            for (String rowBeanInfo : result) {
+                builder.append(";").append(rowBeanInfo);
+            }
+            return builder.substring(1);
+        } catch (Exception e) {
+            return "error";
+        }
     }
 }

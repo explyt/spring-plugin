@@ -17,8 +17,10 @@
 
 package com.explyt.spring.core.externalsystem.process
 
+import com.explyt.spring.core.externalsystem.DebugProjectResolverPolicy
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
+import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.intellij.execution.application.ApplicationConfiguration
@@ -58,7 +60,8 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
         ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
 
         if (ApplicationManager.getApplication().isWriteAccessAllowed
-            || ApplicationManager.getApplication().isWriteIntentLockAcquired) {
+            || ApplicationManager.getApplication().isWriteIntentLockAcquired
+        ) {
             ExternalSystemUtil.refreshProject(
                 externalProjectPath,
                 ImportSpecBuilder(project, SYSTEM_ID).usePreviewMode().use(MODAL_SYNC)
@@ -70,6 +73,23 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
                 externalProjectPath,
                 ImportSpecBuilder(project, SYSTEM_ID)
             )
+        }
+    }
+
+    fun attachDebugProject(project: Project, rawBeanData: String, runConfigurationId: String) {
+        ExternalProjectsManagerImpl.getInstance(project).setStoreExternally(true)
+        val canonicalPath = Constants.DEBUG_SESSION_NAME
+        ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).unlinkExternalProject(canonicalPath)
+
+        val projectSettings = NativeProjectSettings()
+        projectSettings.externalProjectPath = canonicalPath
+        projectSettings.runConfigurationId = runConfigurationId
+        ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
+
+        ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
+            val importSpecBuilder = ImportSpecBuilder(project, SYSTEM_ID)
+                .projectResolverPolicy(DebugProjectResolverPolicy(rawBeanData))
+            ExternalSystemUtil.refreshProject(canonicalPath, importSpecBuilder)
         }
     }
 
