@@ -481,6 +481,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
+                    || javaPsi.isAnnotatedBy(SpringCoreClasses.MOCK_BEAN)
+                    || javaPsi.isAnnotatedBy(SpringCoreClasses.SPY_BEAN)
         }
 
         fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {
