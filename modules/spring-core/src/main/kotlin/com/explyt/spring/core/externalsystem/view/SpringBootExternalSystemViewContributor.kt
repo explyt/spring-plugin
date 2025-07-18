@@ -17,12 +17,10 @@
 
 package com.explyt.spring.core.externalsystem.view
 
-import com.explyt.spring.core.externalsystem.model.SpringBeanData
-import com.explyt.spring.core.externalsystem.model.SpringBeanType
-import com.explyt.spring.core.externalsystem.model.SpringProfileData
-import com.explyt.spring.core.externalsystem.model.SpringRunConfigurationData
+import com.explyt.spring.core.externalsystem.model.*
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.view.nodes.*
+import com.explyt.spring.core.externalsystem.view.nodes.profile.BeanSearchNode
 import com.explyt.spring.core.externalsystem.view.nodes.profile.SpringProfileNodes
 import com.explyt.spring.core.externalsystem.view.nodes.profile.SpringProfileViewNode
 import com.intellij.openapi.externalSystem.model.DataNode
@@ -36,7 +34,7 @@ class SpringBootExternalSystemViewContributor : ExternalSystemViewContributor() 
     override fun getSystemId() = SYSTEM_ID
 
     override fun getKeys(): List<Key<*>> = listOf(
-        SpringBeanData.KEY, SpringProfileData.KEY, SpringRunConfigurationData.KEY
+        SpringBeanData.KEY, SpringProfileData.KEY, SpringRunConfigurationData.KEY, BeanSearch.KEY
     )
 
     override fun createNodes(
@@ -59,7 +57,12 @@ class SpringBootExternalSystemViewContributor : ExternalSystemViewContributor() 
         val runConfigurationName = runConfigurationData?.configurationName ?: ""
         val projectChildNodes = toChildNodes(splitProjectBeans, externalProjectsView)
         val libraryChildNodes = toChildNodes(splitLibraryBeans, externalProjectsView)
-        return listOf(
+
+        val beanSearchData = dataNodes[BeanSearch.KEY].mapNotNull { it as DataNode<BeanSearch> }
+        val beanSearchNodeList = beanSearchData.takeIf { it.isNotEmpty() }
+            ?.let { listOf(BeanSearchNode(externalProjectsView, it.first())) } ?: emptyList()
+
+        return beanSearchNodeList + listOf(
             SpringProfileNodes(externalProjectsView, profileViewNodes),
             ProjectBeanNodes(externalProjectsView, projectChildNodes, runConfigurationName),
             LibraryBeanNodes(externalProjectsView, libraryChildNodes),
