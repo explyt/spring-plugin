@@ -42,7 +42,9 @@ public class AspectJAopUtilsDecorator {
             "{\"aspectName\":\"%s\", \"aspectMethodName\":\"%s\", \"beanName\":\"%s\", \"methodName\":\"%s\", \"methodParams\":\"%s\"}";
 
     @AddMethod
-    public static void explytPrintAopData(ConfigurableListableBeanFactory beanFactory, Map<String, String> beanClassByName) {
+    public static void explytPrintAopData(
+            ConfigurableListableBeanFactory beanFactory, Map<String, String> beanClassByName, List<String> result
+    ) {
         try {
             Class.forName("org.aspectj.lang.annotation.Aspect");
         } catch (ClassNotFoundException e) {
@@ -58,7 +60,7 @@ public class AspectJAopUtilsDecorator {
             if (source == null || source.toString().startsWith("org.springframework.")) continue;
             Class<?> beanClass = explytGetBeanClass(beanName, beanClassByName);
             if (beanClass == null) continue;
-            explytCheckMethods(beanClass, advisors, beanName);
+            explytCheckMethods(beanClass, advisors, beanName, result);
         }
     }
 
@@ -95,7 +97,9 @@ public class AspectJAopUtilsDecorator {
     }
 
     @AddMethod
-    private static void explytCheckMethods(Class<?> beanClass, List<Advisor> advisors, String beanName) {
+    private static void explytCheckMethods(
+            Class<?> beanClass, List<Advisor> advisors, String beanName, List<String> result
+    ) {
         for (Advisor advisor : advisors) {
             if (advisor instanceof AspectJPrecedenceInformation) {
                 String aspectName = ((AspectJPrecedenceInformation) advisor).getAspectName();
@@ -109,7 +113,7 @@ public class AspectJAopUtilsDecorator {
                 if (advisor instanceof PointcutAdvisor) {
                     List<Method> applyMethods = explytGetApplyMethods(((PointcutAdvisor) advisor).getPointcut(), beanClass);
                     for (Method applyMethod : applyMethods) {
-                        explytPrintAopMethodData(aspectName, aspectMethodName, beanName, applyMethod);
+                        explytPrintAopMethodData(aspectName, aspectMethodName, beanName, applyMethod, result);
                     }
                 }
             }
@@ -167,8 +171,7 @@ public class AspectJAopUtilsDecorator {
 
     @AddMethod
     private static void explytPrintAopMethodData(
-            String aspectName, String aspectMethodName, String beanName, Method method
-    ) {
+            String aspectName, String aspectMethodName, String beanName, Method method, List<String> result) {
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
         StringBuilder parametersString = new StringBuilder();
@@ -178,10 +181,14 @@ public class AspectJAopUtilsDecorator {
             }
             parametersString = new StringBuilder(parametersString.substring(1));
         }
-        String formatted = String.format(
+        String aspectRawInfo = String.format(
                 AOP_INFO_TEMPLATE, aspectName, aspectMethodName, beanName, methodName, parametersString
         );
-        System.out.println(formatted);
+        if (result != null) {
+            result.add(aspectRawInfo);
+        } else {
+            System.out.println(aspectRawInfo);
+        }
     }
 
 }

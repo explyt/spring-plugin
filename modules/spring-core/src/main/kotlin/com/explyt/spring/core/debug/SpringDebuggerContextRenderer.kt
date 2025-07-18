@@ -18,7 +18,7 @@
 package com.explyt.spring.core.debug
 
 import com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction
-import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.intellij.debugger.DebuggerContext
 import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.debugger.engine.JavaValue
@@ -29,25 +29,19 @@ import com.intellij.debugger.engine.evaluation.EvaluationContextImpl
 import com.intellij.debugger.impl.DebuggerUtilsImpl
 import com.intellij.debugger.ui.impl.watch.ValueDescriptorImpl
 import com.intellij.debugger.ui.tree.ExtraDebugNodesProvider
-import com.intellij.execution.RunManager
-import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
-import com.intellij.xdebugger.frame.XNamedValue
-import com.intellij.xdebugger.frame.XValueChildrenList
-import com.intellij.xdebugger.frame.XValueNode
-import com.intellij.xdebugger.frame.XValuePlace
+import com.intellij.xdebugger.frame.*
 import com.jetbrains.rd.util.concurrentMapOf
 import com.sun.jdi.*
 import java.time.LocalDateTime
 
 
 class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
-    val debugMap = concurrentMapOf<String, LocalDateTime>()
 
     override fun addExtraNodes(evaluationContext: EvaluationContext, children: XValueChildrenList) {
+        if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return
         val project = evaluationContext.project ?: return
         val debugProcess = evaluationContext.debugProcess as? DebugProcessImpl ?: return
         val nodeManagerImpl = debugProcess.xdebugProcess?.nodeManager ?: return
@@ -55,75 +49,117 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         val evaluationContextImpl = evaluationContext as? EvaluationContextImpl ?: return
         if (!debugProcess.isEvaluationPossible(suspendContext)) return
 
-        val applicationAddress = debugProcess.connection.applicationAddress ?: return
         val explytContextClass = getExplytContextInstance(debugProcess, evaluationContext) ?: return
         val springContext = getSpringContextRef(evaluationContext, explytContextClass) ?: return
-        val runConfigurationId = getRunConfigurationId(evaluationContext, explytContextClass)
-        val transactionData = getTransactionData(debugProcess, evaluationContext)
+        val transactionData = getTransactionManagerData(debugProcess, evaluationContext)
 
         val debugContextDescriptor = DebugSpringContextDescriptor(project, springContext)
         val value = JavaValue.create(null, debugContextDescriptor, evaluationContextImpl, nodeManagerImpl, false)
         children.add(0, value)
-        if (transactionData != null) {
+        transactionData?.let {
+            val valueTxStatus = getTransactionStatus(debugProcess, evaluationContextImpl)?.let {
+                val descriptor = TransactionStatusDescriptor(project, it)
+                JavaValue.create(null, descriptor, evaluationContextImpl, nodeManagerImpl, false)
+            }
+
             children.add(1, object : XNamedValue("Explyt: Active Transaction") {
                 override fun canNavigateToSource(): Boolean = false
                 override fun computePresentation(node: XValueNode, place: XValuePlace) {
-                    node.setPresentation(AllIcons.Actions.IntentionBulb, null, transactionData, false)
+                    node.setPresentation(AllIcons.Actions.IntentionBulb, null, transactionData, valueTxStatus != null)
+                }
+
+                override fun computeChildren(node: XCompositeNode) {
+                    if (valueTxStatus == null) return super.computeChildren(node)
+                    node.addChildren(XValueChildrenList.singleton(valueTxStatus), false)
+                    node.addChildren(XValueChildrenList.EMPTY, true)
                 }
             })
         }
 
-        syncBeanToolWindow(project, applicationAddress, runConfigurationId)
+        syncDebugBeanToolWindow(project, evaluationContext, debugProcess, explytContextClass)
     }
 
-    private fun syncBeanToolWindow(project: Project, applicationAddress: String, runConfigurationId: String?) {
-        if (applicationAddress.isEmpty() || runConfigurationId == null) return
+    private fun syncDebugBeanToolWindow(
+        project: Project,
+        evaluationContext: EvaluationContextImpl,
+        debugProcess: DebugProcessImpl,
+        explytContextClass: ClassType
+    ) {
+        val applicationAddress = debugProcess.connection.applicationAddress?.takeIf { it.isNotEmpty() } ?: return
         if (!isNeedSync(applicationAddress)) return
-        val runConfiguration = runReadAction {
-            RunManager.getInstance(project).allConfigurationsList
-                .asSequence()
-                .filterIsInstance<RunConfigurationBase<*>>()
-                .find { NativeBootUtils.getConfigurationId(it) == runConfigurationId }
-        } ?: return
+        val runConfigurationId = getRunConfigurationId(evaluationContext, explytContextClass) ?: return
+        val rawBeanData = getRawBeanData(evaluationContext, explytContextClass)?.takeIf { it.isNotEmpty() } ?: return
         ApplicationManager.getApplication().runReadAction {
-            AttachSpringBootProjectAction.attachProject(project, runConfiguration)
+            AttachSpringBootProjectAction.attachDebugProject(project, rawBeanData, runConfigurationId)
         }
     }
 
     private fun isNeedSync(applicationAddress: String): Boolean {
-        val time = debugMap[applicationAddress]
+        val time = CacheProcess.debugMap[applicationAddress]
         if (time == null) {
-            debugMap.put(applicationAddress, LocalDateTime.now())
+            CacheProcess.debugMap.put(applicationAddress, LocalDateTime.now())
             return true
         }
         val nowTime = LocalDateTime.now()
         if (time.plusMinutes(10) < nowTime) {
-            debugMap.put(applicationAddress, LocalDateTime.now())
+            CacheProcess.debugMap.put(applicationAddress, LocalDateTime.now())
             return true
         }
+        removeOld(nowTime)
         return false
+    }
+
+    private fun removeOld(nowTime: LocalDateTime?) {
+        if (CacheProcess.debugMap.size > 32) {
+            val oldKeys = CacheProcess.debugMap.entries
+                .filter { (_, value) -> value.plusMinutes(30) < nowTime }
+                .map { it.key }
+            oldKeys.forEach { CacheProcess.debugMap.remove(it) }
+        }
     }
 
     private fun getSpringContextRef(
         evaluationContext: EvaluationContextImpl, explytContextClass: ClassType
-    ): ObjectReference? = evaluationContext.computeAndKeep {
-        DebuggerUtilsImpl.invokeClassMethod(
-            evaluationContext,
-            explytContextClass,
-            "getContext",
-            null,
-            emptyList()
-        ) as? ObjectReference
+    ): ObjectReference? {
+        return try {
+            evaluationContext.computeAndKeep {
+                DebuggerUtilsImpl.invokeClassMethod(
+                    evaluationContext,
+                    explytContextClass,
+                    "getContext",
+                    null,
+                    emptyList()
+                ) as? ObjectReference
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun getRawBeanData(
+        evaluationContext: EvaluationContextImpl, explytContextClass: ClassType
+    ): String? {
+        return try {
+            (DebuggerUtilsImpl.invokeClassMethod(
+                evaluationContext, explytContextClass, "getRawBeanData", null, emptyList()
+            ) as? StringReference)?.value()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun getRunConfigurationId(
         evaluationContext: EvaluationContextImpl, explytContextClass: ClassType
     ): String? {
-        return (evaluationContext.computeAndKeep {
-            DebuggerUtilsImpl.invokeClassMethod(
-                evaluationContext, explytContextClass, "getConfigurationId", null, emptyList()
-            ) as? StringReference
-        })?.value()
+        return try {
+            (evaluationContext.computeAndKeep {
+                DebuggerUtilsImpl.invokeClassMethod(
+                    evaluationContext, explytContextClass, "getConfigurationId", null, emptyList()
+                ) as? StringReference
+            })?.value()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun getExplytContextInstance(
@@ -135,7 +171,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         null
     } as? ClassType
 
-    private fun getTransactionData(
+    private fun getTransactionManagerData(
         debugProcess: DebugProcessImpl,
         evaluationContext: EvaluationContextImpl
     ): String? {
@@ -169,7 +205,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
             ) as? ObjectReference)?.let { mapToLevelString(it) } ?: ""
 
             "Isolation=$level, ReadOnly=$isReadOnly"
-        } catch (_: EvaluateException) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -186,6 +222,30 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
             else -> "DEFAULT"
         }
     }
+
+    private fun getTransactionStatus(
+        debugProcess: DebugProcessImpl,
+        evaluationContext: EvaluationContextImpl
+    ): ObjectReference? {
+        return try {
+            val txManager = "org.springframework.transaction.interceptor.TransactionAspectSupport"
+            val txReferenceType = debugProcess.findLoadedClass(
+                evaluationContext, txManager, evaluationContext.classLoader
+            ) as? ClassType ?: return null
+
+            return evaluationContext.computeAndKeep {
+                DebuggerUtilsImpl.invokeClassMethod(
+                    evaluationContext,
+                    txReferenceType,
+                    "currentTransactionStatus",
+                    null,
+                    emptyList()
+                ) as? ObjectReference
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
 
 private class DebugSpringContextDescriptor(project: Project, value: Value) : ValueDescriptorImpl(project, value) {
@@ -194,4 +254,16 @@ private class DebugSpringContextDescriptor(project: Project, value: Value) : Val
     override fun getDescriptorEvaluation(context: DebuggerContext?) = null
 
     override fun calcValueName() = "Explyt: Spring Context"
+}
+
+private class TransactionStatusDescriptor(project: Project, value: Value) : ValueDescriptorImpl(project, value) {
+    override fun calcValue(contextImpl: EvaluationContextImpl?): Value = value
+
+    override fun getDescriptorEvaluation(context: DebuggerContext?) = null
+
+    override fun calcValueName() = "Transaction status"
+}
+
+private object CacheProcess {
+    val debugMap = concurrentMapOf<String, LocalDateTime>()
 }

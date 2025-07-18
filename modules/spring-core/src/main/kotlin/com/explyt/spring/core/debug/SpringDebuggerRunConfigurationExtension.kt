@@ -21,6 +21,7 @@ import com.explyt.spring.core.externalsystem.utils.EXPLYT_AGENT_JAR
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils.getConfigurationId
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.intellij.execution.JavaRunConfigurationBase
 import com.intellij.execution.RunConfigurationExtension
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.JavaParameters
@@ -35,7 +36,6 @@ import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
-import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import kotlin.io.path.Path
 
 const val EXPLYT_SPRING_CONTEXT_CLASS = "com.explyt.spring.boot.bean.reader.ExplytContext"
@@ -49,6 +49,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         javaParameters.vmParametersList.add(javaAgentEscaping)
         javaParameters.vmParametersList.addProperty("explyt.spring.debug.id", getConfigurationId(configuration))
 
+        //todo only one class!!! && provide scope
         getModule(configuration)?.let {
             ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(it) }
         }
@@ -56,7 +57,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
 
     override fun isApplicableFor(configuration: RunConfigurationBase<*>): Boolean {
         if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return false
-        return configuration is ApplicationConfiguration || configuration is KotlinRunConfiguration
+        return configuration is ApplicationConfiguration || configuration is JavaRunConfigurationBase
     }
 
     private fun getModule(runConfiguration: RunConfigurationBase<*>): Module? {
@@ -78,7 +79,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         ModuleRootModificationUtil.addModuleLibrary(
             module, "explyt-spring-context",
             librariesUrls, emptyList(),
-            DependencyScope.COMPILE
+            DependencyScope.PROVIDED
         )
     }
 }
