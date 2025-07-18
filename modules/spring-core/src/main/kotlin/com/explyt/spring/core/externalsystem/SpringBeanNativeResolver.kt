@@ -102,22 +102,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     ): DataNode<ProjectData>? {
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REFRESH)
         if (resolverPolicy is DebugProjectResolverPolicy && resolverPolicy.rawBeanData.isNotEmpty()) {
-            settings ?: throw ExternalSystemException("No settings")
-            val rawBeans = resolverPolicy.rawBeanData.split(";")
-            val contextInfo = ExplytCapturingProcessAdapter.getSpringContextInfo(rawBeans)
-            val beans = contextInfo.beans
-            val aspects = contextInfo.aspects
-            val aspectBeanInfoByName = getAspectBeanInfoMapByName(beans, aspects)
-
-            val projectData = projectData(projectPath, Constants.DEBUG_SESSION_NAME)
-            val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
-
-            detectMessageMapping(settings)
-            beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
-                .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
-            aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
-                .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
-            return projectDataNode
+            return getDebugProjectNode(settings, resolverPolicy, projectPath, id, listener)
         } else if (projectPath == Constants.DEBUG_SESSION_NAME) {
             return null
         }
@@ -140,6 +125,31 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         } finally {
             cancellationMap.remove(id)
         }
+    }
+
+    private fun getDebugProjectNode(
+        settings: NativeExecutionSettings?,
+        resolverPolicy: DebugProjectResolverPolicy,
+        projectPath: String,
+        id: ExternalSystemTaskId,
+        listener: ExternalSystemTaskNotificationListener
+    ): DataNode<ProjectData> {
+        settings ?: throw ExternalSystemException("No settings")
+        val rawBeans = resolverPolicy.rawBeanData.split(";")
+        val contextInfo = ExplytCapturingProcessAdapter.getSpringContextInfo(rawBeans)
+        val beans = contextInfo.beans
+        val aspects = contextInfo.aspects
+        val aspectBeanInfoByName = getAspectBeanInfoMapByName(beans, aspects)
+
+        val projectData = projectData(projectPath, Constants.DEBUG_SESSION_NAME)
+        val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
+
+        detectMessageMapping(settings)
+        beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
+            .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
+        aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
+            .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
+        return projectDataNode
     }
 
     private fun nothingException(settings: NativeExecutionSettings): Nothing {
@@ -177,13 +187,15 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val projectData = projectData(projectPath, runConfigurationHolder)
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
 
+        fillProfiles(projectDataNode, projectPath, settings, runConfiguration)
+        fillRunConfigurationData(projectDataNode, settings)
+        fillBeanSearch(projectDataNode, settings)
+
         detectMessageMapping(settings)
         beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
             .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
-        fillProfiles(projectDataNode, projectPath, settings, runConfiguration)
-        fillRunConfigurationData(projectDataNode, settings)
         return projectDataNode
     }
 
@@ -344,6 +356,11 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val runConfigurationName = settings.runConfigurationName ?: return
         val data = SpringRunConfigurationData("${runConfigurationName}:${settings.runConfigurationType}")
         projectDataNode.createChild(SpringRunConfigurationData.KEY, data)
+    }
+
+    private fun fillBeanSearch(projectDataNode: DataNode<ProjectData>, settings: NativeExecutionSettings) {
+        val projectPath = projectDataNode.data.linkedExternalProjectPath
+        projectDataNode.createChild(BeanSearch.KEY, BeanSearch(settings.beanSearch, projectPath))
     }
 
     private fun getModule(projectPath: String, project: Project): Module? {

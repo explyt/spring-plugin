@@ -20,6 +20,7 @@ package com.explyt.spring.core.service
 import com.explyt.spring.core.JavaEeClasses.PRIORITY
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
+import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -57,6 +58,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
 import org.jetbrains.kotlin.idea.util.projectStructure.getModule
@@ -155,9 +157,17 @@ class NativeSearchService(private val project: Project) {
     }
 
     fun getActiveProjectsNode(): List<DataNode<ProjectData>> {
+        if (XDebuggerManager.getInstance(project).currentSession != null) {
+            return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
+                .asSequence()
+                .mapNotNull { it.externalProjectStructure }
+                .filter { it.data.externalName == Constants.DEBUG_SESSION_NAME }
+                .toList()
+        }
         return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
             .asSequence()
             .mapNotNull { it.externalProjectStructure }
+            .filter { it.data.externalName != Constants.DEBUG_SESSION_NAME }
             .filter { !it.isIgnored }
             .filter { it.children.isNotEmpty() }
             .toList()
@@ -269,6 +279,7 @@ class NativeSearchService(private val project: Project) {
     private fun isDependentModule(module: Module): Boolean {
         val projectPaths = getActiveProjectsNode().map { it.data.linkedExternalProjectPath }
         if (projectPaths.isEmpty()) return false
+        if (projectPaths[0] == Constants.DEBUG_SESSION_NAME) return true
         for (projectPath in projectPaths) {
             if (isDependentModule(module, getMainModule(projectPath))) {
                 return true

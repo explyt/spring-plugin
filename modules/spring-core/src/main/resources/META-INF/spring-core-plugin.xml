@@ -712,6 +712,8 @@
         <action id="NavigateToSpringBean" class="com.explyt.spring.core.externalsystem.action.BeanNavigationAction"/>
         <action id="Explyt.ExternalView.ProfileChanged"
                 class="com.explyt.spring.core.externalsystem.action.ChangeProfileStateAction"/>
+        <action id="Explyt.ExternalView.EnableDiChanged"
+                class="com.explyt.spring.core.externalsystem.action.ChangeEnabledDiAction"/>
         <action id="SpringBootExplyt.ExternalSystem.AttachProject"
                 class="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
         <action id="SpringBootExplyt.ExternalSystem.DetachAllProjects"
@@ -755,12 +757,6 @@
         <action id="Explyt.PostConstructGenerateAction"
                 class="com.explyt.spring.core.action.PostConstructJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
-        </action>
-        <action id="TransactionStatusAction"
-                class="com.explyt.spring.core.action.DebugTestAction"
-                icon="com/explyt/spring/core/icons/springToolWindow.svg"
-                text="Current Transaction Status">
-            <add-to-group group-id="XDebugger.ToolWindow.TopToolbar3" anchor="last"/>
         </action>
         <action id="Explyt.PreDestroyGenerateAction" class="com.explyt.spring.core.action.PreDestroyJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>

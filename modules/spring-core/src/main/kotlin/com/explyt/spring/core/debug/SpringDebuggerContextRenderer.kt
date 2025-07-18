@@ -105,11 +105,11 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
             CacheProcess.debugMap.put(applicationAddress, LocalDateTime.now())
             return true
         }
-        removeOld(nowTime)
+        removeOld()
         return false
     }
 
-    private fun removeOld(nowTime: LocalDateTime?) {
+    private fun removeOld() {
         if (CacheProcess.debugMap.size > 32) {
             val oldKeys = CacheProcess.debugMap.entries
                 .sortedByDescending { it.value }

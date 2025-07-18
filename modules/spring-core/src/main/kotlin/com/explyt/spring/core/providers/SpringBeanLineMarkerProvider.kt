@@ -75,21 +75,19 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         elements: MutableList<out PsiElement>,
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
-        if (isExternalProjectExist(elements)) {
-            val module = getModule(elements)
-            if (module != null) {
-                SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
-            } else {
-                SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
-            }
+        val module = getModule(elements)
+        if (module == null) {
+            SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
+        } else if (isExternalProjectExist(elements)) {
+            SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
         } else {
             super.collectSlowLineMarkers(elements, result)
         }
     }
 
     private fun isExternalProjectExist(elements: MutableList<out PsiElement>): Boolean {
-        return elements.firstOrNull()
-            ?.let { SpringSearchServiceFacade.isExternalProjectExist(it.project) } ?: false
+        val project = elements.firstOrNull()?.project ?: return false
+        return SpringSearchServiceFacade.isExternalProjectExist(project)
     }
 
     private fun getModule(elements: MutableList<out PsiElement>): Module? {
@@ -369,17 +367,18 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allParametersWithAutowired = mutableSetOf<UVariable>()
             allBeans.forEach { bean ->
                 val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
-                allParametersWithAutowired.addAll(methods.asSequence()
-                    .filter {
-                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
-                                || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor
-                                && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
-                    }
-                    .flatMap { it.parameterList.parameters.asSequence() }
-                    .filter { it.isCandidate(targetType, targetClass, targetClasses) }
-                    .map { it.navigationElement.toUElement() as? UVariable }
-                    .filterNotNull().toSet())
+                allParametersWithAutowired.addAll(
+                    methods.asSequence()
+                        .filter {
+                            it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                                    || it.isAnnotatedBy(SpringCoreClasses.BEAN)
+                                    || it.isConstructor
+                                    && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                        }
+                        .flatMap { it.parameterList.parameters.asSequence() }
+                        .filter { it.isCandidate(targetType, targetClass, targetClasses) }
+                        .map { it.navigationElement.toUElement() as? UVariable }
+                        .filterNotNull().toSet())
             }
 
             val allByType = allFieldsWithAutowired + allParametersWithAutowired

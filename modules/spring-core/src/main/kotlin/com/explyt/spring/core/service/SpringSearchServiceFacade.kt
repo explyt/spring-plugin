@@ -17,12 +17,15 @@
 
 package com.explyt.spring.core.service
 
+import com.explyt.spring.core.externalsystem.model.BeanSearch
+import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -30,6 +33,7 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.xdebugger.XDebuggerManager
 
 @Service(Service.Level.PROJECT)
 class SpringSearchServiceFacade(private val project: Project) {
@@ -131,6 +135,13 @@ class SpringSearchServiceFacade(private val project: Project) {
         fun getInstance(project: Project): SpringSearchServiceFacade = project.service()
 
         fun isExternalProjectExist(project: Project): Boolean {
+            val debugSession = XDebuggerManager.getInstance(project).currentSession
+            if (debugSession != null) {
+                val debugProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
+                    .getLinkedProjectSettings(Constants.DEBUG_SESSION_NAME)
+                return debugProjectSettings != null //todo check that spring debug - debugSession.sessionName
+            }
+
             if (isUnitTest(project)) return false
             return CachedValuesManager.getManager(project).getCachedValue(project) {
                 CachedValueProvider.Result(
@@ -147,10 +158,13 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
 
         private fun isExternalProjectExistInternal(project: Project): Boolean {
-            return ProjectDataManager.getInstance()
-                .getExternalProjectsData(project, SYSTEM_ID)
-                .filter { it.externalProjectStructure?.isIgnored == false }
-                .find { it.externalProjectStructure?.children?.isNotEmpty() == true } != null
+            val firstOrNull = ProjectDataManager.getInstance()
+                .getExternalProjectsData(project, SYSTEM_ID).asSequence()
+                .mapNotNull { it.externalProjectStructure }
+                .filter { !it.isIgnored }
+                .filter { it.data.externalName != Constants.DEBUG_SESSION_NAME }
+                .firstOrNull { it.children.any { node -> (node.data as? BeanSearch)?.enabled == true } }
+            return firstOrNull != null
         }
     }
 }
