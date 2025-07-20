@@ -56,13 +56,16 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
 
     override fun isApplicableFor(configuration: RunConfigurationBase<*>): Boolean {
         if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return false
-        return configuration is ApplicationConfiguration || configuration is JavaRunConfigurationBase
+        return configuration is ApplicationConfiguration
+                || configuration is JavaRunConfigurationBase
+//                || configuration is ExternalSystemRunConfiguration
     }
 
     private fun getModule(runConfiguration: RunConfigurationBase<*>): Module? {
         return when (runConfiguration) {
             is ApplicationConfiguration -> runConfiguration.modules.firstOrNull()
             is ModuleBasedConfiguration<*, *> -> runConfiguration.modules.firstOrNull()
+            //is ExternalSystemRunConfiguration -> runConfiguration.getUserData()
             else -> null
         }
     }

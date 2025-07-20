@@ -25,6 +25,6 @@ import com.intellij.psi.PsiFile
 abstract class SpringDataBaseUastLocalInspectionTool : SpringBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return LibraryClassCache.searchForLibraryClass(file.project, SpringDataClasses.SPRING_RESOURCE) != null
+        return LibraryClassCache.searchForLibraryClass(file.project, SpringDataClasses.REPOSITORY) != null
     }
 }
