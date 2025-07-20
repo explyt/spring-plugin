@@ -64,7 +64,7 @@ public class AbstractApplicationContextDecorator {
             Field configurationIdField = aClass.getDeclaredField("configurationId");
             configurationIdField.set(null, debugRunConfigurationId);
 
-            Class<?> aClassContext = Class.forName("com.explyt.spring.boot.bean.reader.ExplytContext");
+            Class<?> aClassContext = Class.forName("explyt.Explyt");
             contextField = aClassContext.getDeclaredField("context");
             contextField.set(null, this);
 
