@@ -15,7 +15,7 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.boot.bean.reader;
+package explyt;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.support.AbstractApplicationContext;
@@ -23,10 +23,11 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import tech.ytsaurus.spyt.patch.annotations.AddClass;
 
 /**
- * it should be equals to ExplytContext in explyt-context-holder module
+ * it should be equals to Explyt in explyt-java-agent module.
+ * Need to added to project classpath with provided scope for evaluation.
  */
 @AddClass
-public class ExplytContext {
+public class Explyt {
     public static AbstractApplicationContext context;
 
     public static AbstractApplicationContext getContext() {
