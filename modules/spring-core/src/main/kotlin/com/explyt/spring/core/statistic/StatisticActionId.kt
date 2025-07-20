@@ -59,6 +59,8 @@ enum class StatisticActionId(description: String) {
     GUTTER_OPENAPI_CONTROLLER_OPEN_IN_SWAGGER("Gutter line marker for controller/feignClient generating openapi preview"),
     GUTTER_CONTROLLER_ENDPOINT_USAGE("Gutter line marker for Controllers - navigation to endpoint usage"),
 
+    GUTTER_DEBUG_DATA_METHOD_EVALUATE("Gutter line marker for spring data debug method evaluate"),
+
     QUICK_FIX_OPENAPI_GENERATE_COMPONENT("Quick fixed - created missing component from ref"),
 
 

@@ -18,15 +18,14 @@
 package com.explyt.spring.core.service
 
 import com.explyt.spring.core.externalsystem.model.BeanSearch
-import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
-import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -34,7 +33,6 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.xdebugger.XDebuggerManager
 
 @Service(Service.Level.PROJECT)
 class SpringSearchServiceFacade(private val project: Project) {
@@ -113,15 +111,7 @@ class SpringSearchServiceFacade(private val project: Project) {
         fun getInstance(project: Project): SpringSearchServiceFacade = project.service()
 
         fun isExternalProjectExist(project: Project): Boolean {
-            val debugSession = XDebuggerManager.getInstance(project).currentSession
-            if (debugSession != null) {
-                val debugProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
-                    .getLinkedProjectSettings(Constants.DEBUG_SESSION_NAME) as? NativeProjectSettings
-                return debugProjectSettings != null
-                        && debugProjectSettings.runConfigurationId != null
-                        && debugSession.sessionName.isNotBlank()
-                        && debugProjectSettings.runConfigurationId!!.contains(debugSession.sessionName)
-            }
+            if (SpringCoreUtil.isExplytDebug(project)) return true
 
             if (isUnitTest(project)) return false
             return CachedValuesManager.getManager(project).getCachedValue(project) {

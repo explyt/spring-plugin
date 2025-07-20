@@ -222,7 +222,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val uMethod = (uParent.uastParent as? UMethod)?.takeIf { filterMethod(it) } ?: return false
 
                 val psiMethod = uMethod.javaPsi
-                return (uMethod.isConstructor
+                return ((uMethod.isConstructor && isComponent(uMethod))
                         || isAutowiredMethodExpression(psiMethod)
                         || isBeanMethodExpression(psiMethod)
                         ) && !dependsOnIncorrectBean(uMethod.getContainingUClass()?.javaPsi)
@@ -294,6 +294,15 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .filter { it.first.contains(qualifiedName) }
                 .map { it.second.psiElement }
                 .toList()
+        }
+
+        private fun isComponent(uMethod: UMethod): Boolean {
+            val uClass = uMethod.getContainingUClass() ?: return false
+            if (!SpringCoreUtil.isSpringBeanCandidateClass(uClass.javaPsi)) return false
+            if (isComponentCandidate(uClass.javaPsi)) {
+                return true
+            }
+            return springSearchService.isInSpringContext(uParent, module)
         }
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {

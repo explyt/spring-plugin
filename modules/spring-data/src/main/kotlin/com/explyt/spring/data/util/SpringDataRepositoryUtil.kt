@@ -21,7 +21,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.util.PsiAnnotationUtils
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.spring.data.SpringDataClasses
-import com.explyt.spring.data.SpringDataClasses.SPRING_RESOURCE
+import com.explyt.spring.data.SpringDataClasses.REPOSITORY
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.openapi.module.ModuleUtilCore
@@ -37,8 +37,8 @@ object SpringDataRepositoryUtil {
 
         val psiClassType = JavaPsiFacade.getInstance(repositoryClass.project).elementFactory.createType(repositoryClass)
 
-        val psiType = PsiUtil.substituteTypeParameter(psiClassType, SPRING_RESOURCE, 0, false) ?: return null
-        val idPsiType = PsiUtil.substituteTypeParameter(psiClassType, SPRING_RESOURCE, 1, false) ?: return null
+        val psiType = PsiUtil.substituteTypeParameter(psiClassType, REPOSITORY, 0, false) ?: return null
+        val idPsiType = PsiUtil.substituteTypeParameter(psiClassType, REPOSITORY, 1, false) ?: return null
         val psiClass = (psiType as? PsiClassType)?.resolve() ?: return null
         return RepositoryTypes(psiClass, idPsiType)
     }
