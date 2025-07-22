@@ -74,6 +74,8 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
                         .withSentryInterface(ExceptionInterface(ideaEvent.throwable))
                         .withExtra("user.name", reporterAccount)
                         .withExtra("last_action", IdeaLogger.ourLastActionId)
+                        .withExtra("event.stacktrace", ideaEvent.throwableText)
+
                     /* TODO:
                         it seems last action is not actual for the moment of submitting the issue.
                         It is better to track for last actions and put them into breadcrumbs,
