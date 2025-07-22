@@ -19,11 +19,13 @@ package com.explyt.spring.core.service
 
 import com.explyt.spring.core.JavaEeClasses.PRIORITY
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.externalsystem.model.BeanSearch
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiTypeKotlin
 import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
@@ -35,6 +37,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.possibleMultipleBean
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.util.ExplytAnnotationUtil.getLongValue
+import com.explyt.util.ExplytKotlinUtil.filterToList
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isGeneric
@@ -53,7 +56,6 @@ import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
 import java.util.concurrent.atomic.AtomicBoolean
@@ -140,20 +142,14 @@ class NativeSearchService(private val project: Project) {
     }
 
     fun getActiveProjectsNode(): List<DataNode<ProjectData>> {
-        if (XDebuggerManager.getInstance(project).currentSession != null) {
+        if (SpringCoreUtil.isExplytDebug(project)) {
             return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
                 .asSequence()
                 .mapNotNull { it.externalProjectStructure }
-                .filter { it.data.externalName == Constants.DEBUG_SESSION_NAME }
-                .toList()
+                .filterToList { it.data.externalName == Constants.DEBUG_SESSION_NAME }
         }
-        return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
-            .asSequence()
-            .mapNotNull { it.externalProjectStructure }
-            .filter { it.data.externalName != Constants.DEBUG_SESSION_NAME }
-            .filter { !it.isIgnored }
-            .filter { it.children.isNotEmpty() }
-            .toList()
+        return getLoadedProjects(project)
+            .filterToList { isActiveDiPredicate(it) }
     }
 
     fun getLibraryBeans(): List<PsiBean> {
@@ -352,5 +348,15 @@ class NativeSearchService(private val project: Project) {
         private val LOG = Logger.getInstance(NativeSearchService::class.java)
 
         fun getInstance(project: Project): NativeSearchService = project.service()
+
+        fun getLoadedProjects(project: Project): Sequence<DataNode<ProjectData>> =
+            ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
+                .asSequence()
+                .mapNotNull { it.externalProjectStructure }
+                .filter { it.data.externalName != Constants.DEBUG_SESSION_NAME }
+                .filter { !it.isIgnored }
+
+        fun isActiveDiPredicate(node: DataNode<ProjectData>): Boolean =
+            node.children.any { (it.data as? BeanSearch)?.enabled == true }
     }
 }

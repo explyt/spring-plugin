@@ -26,6 +26,7 @@ import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvid
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isPublic
@@ -43,7 +44,6 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
-import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
@@ -58,7 +58,7 @@ class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() 
     override fun getName(): String? = null
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
-        return if (Registry.`is`("explyt.spring.native.javaagent")) {
+        return if (SpringToolRunConfigurationsSettingsState.getInstance().isJavaAgentMode) {
             springProject(element)
         } else {
             springBootProject(element)

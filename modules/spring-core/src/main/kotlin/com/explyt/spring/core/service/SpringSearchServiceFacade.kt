@@ -17,15 +17,13 @@
 
 package com.explyt.spring.core.service
 
-import com.explyt.spring.core.externalsystem.model.BeanSearch
-import com.explyt.spring.core.externalsystem.utils.Constants
-import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
+import com.explyt.spring.core.service.NativeSearchService.Companion.getLoadedProjects
+import com.explyt.spring.core.service.NativeSearchService.Companion.isActiveDiPredicate
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -129,13 +127,7 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
 
         private fun isExternalProjectExistInternal(project: Project): Boolean {
-            val firstOrNull = ProjectDataManager.getInstance()
-                .getExternalProjectsData(project, SYSTEM_ID).asSequence()
-                .mapNotNull { it.externalProjectStructure }
-                .filter { !it.isIgnored }
-                .filter { it.data.externalName != Constants.DEBUG_SESSION_NAME }
-                .firstOrNull { it.children.any { node -> (node.data as? BeanSearch)?.enabled == true } }
-            return firstOrNull != null
+            return getLoadedProjects(project).any { isActiveDiPredicate(it) }
         }
     }
 }

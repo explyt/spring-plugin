@@ -81,7 +81,7 @@ private class EvaluateInDebugAction(val qualifiedName: String, val methodName: S
             ExternalSystemNotificationManager.getInstance(project).showNotification(SYSTEM_ID, notification)
             return
         }
-        val className = if (language == JavaLanguage.INSTANCE) "$qualifiedName.class" else "$qualifiedName::class.java"
+        val className = "$qualifiedName.class"// else "$qualifiedName::class.java"
         val fromText = XExpressionImpl.fromText(
             "explyt.Explyt.context.getBean($className).$methodName()", EvaluationMode.EXPRESSION)
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_DEBUG_DATA_METHOD_EVALUATE)
