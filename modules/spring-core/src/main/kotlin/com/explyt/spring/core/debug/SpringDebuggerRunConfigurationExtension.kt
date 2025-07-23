@@ -17,10 +17,12 @@
 
 package com.explyt.spring.core.debug
 
+import com.explyt.spring.boot.bean.reader.Constants.DEBUG_PROGRAM_PARAM
 import com.explyt.spring.core.externalsystem.utils.EXPLYT_AGENT_JAR
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils.getConfigurationId
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.execution.JavaRunConfigurationBase
 import com.intellij.execution.RunConfigurationExtension
 import com.intellij.execution.application.ApplicationConfiguration
@@ -31,6 +33,7 @@ import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootModificationUtil
@@ -44,21 +47,20 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
     override fun <T : RunConfigurationBase<*>?> updateJavaParameters(
         configuration: T & Any, javaParameters: JavaParameters, runnerSettings: RunnerSettings?
     ) {
+        val module = getModule(configuration)?.takeIf { isSpringModule(it) } ?: return
         if (javaParameters.vmParametersList.parametersString.contains(EXPLYT_AGENT_JAR)) return
         val javaAgentEscaping = NativeBootUtils.getJavaAgentParam()
         javaParameters.vmParametersList.add(javaAgentEscaping)
-        javaParameters.vmParametersList.addProperty("explyt.spring.debug.id", getConfigurationId(configuration))
+        javaParameters.vmParametersList.addProperty(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
 
-        getModule(configuration)?.let {
-            ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(it) }
-        }
+        ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(module) }
     }
 
     override fun isApplicableFor(configuration: RunConfigurationBase<*>): Boolean {
         if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return false
         return configuration is ApplicationConfiguration
                 || configuration is JavaRunConfigurationBase
-//                || configuration is ExternalSystemRunConfiguration
+                || configuration is ExternalSystemRunConfiguration
     }
 
     private fun getModule(runConfiguration: RunConfigurationBase<*>): Module? {
@@ -69,6 +71,8 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
             else -> null
         }
     }
+
+    private fun isSpringModule(module: Module): Boolean = SpringCoreUtil.isSpringModule(module)
 
     private fun addExplytContextLibrary(module: Module) {
         val libraryRoot = Path(NativeBootUtils.getContextLibPath())
