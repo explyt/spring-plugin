@@ -74,6 +74,7 @@ object SpringProperties {
     const val SPRING_JPA_PROPERTIES = "spring.jpa.properties"
 
     const val COLON = ":"
+    const val PROPERTY_COMMENT = "#"
     const val PLACEHOLDER_PREFIX = "\${"
     const val PLACEHOLDER_SUFFIX = "}"
 
