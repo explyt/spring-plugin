@@ -320,6 +320,10 @@ object PropertyUtil {
         val result = mutableListOf<T>()
         ranges.forEach {
             val rangeText = it.substring(from)
+            // Check if a placeholder is within comment
+            if (from.lastIndexOf(SpringProperties.PROPERTY_COMMENT).let { it >= 0 && it > from.lastIndexOf("\n") }) {
+                return@forEach
+            }
             val colonIndex = rangeText.indexOf(SpringProperties.COLON)
 
             val range = if (colonIndex != -1) TextRange(it.startOffset, it.startOffset + colonIndex) else it
