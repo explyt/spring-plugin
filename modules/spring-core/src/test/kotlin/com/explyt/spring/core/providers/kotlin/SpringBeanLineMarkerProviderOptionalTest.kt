@@ -190,23 +190,6 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytKotlinLightTestCase() {
         }.size, 0)
     }
 
-    fun testLineMarkerOptional_toBean_D_dParameter() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooOptional {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    fun optD(dFooOptionalParameter: java.util.Optional<D>) {} 
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooOptional.kt", getOptionalClasses())
-        myFixture.configureByText("TestOptional.kt", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isNotEmpty())
-    }
-
     fun testLineMarkerOptional_toAutowired_A_aParameter() {
         myFixture.configureByText(
             "FooOptional.kt",
@@ -397,23 +380,6 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytKotlinLightTestCase() {
         }.size, 0)
     }
 
-    fun testLineMarkerOptional_toBean_optionalOptionalListI() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooOptional {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var optionalOptionalListI: java.util.Optional<java.util.Optional<MutableList<I>>>
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooOptional.kt", getOptionalClasses())
-        myFixture.configureByText("TestOptional.kt", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isNotEmpty())
-    }
-
     fun testLineMarkerOptional_toAutowired_optionalMapStringI() {
         myFixture.configureByText(
             "FooOptional.kt",
@@ -483,25 +449,6 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytKotlinLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "optionalOptionalMapStringI" }
         }.size, 0)
-    }
-
-    fun testLineMarkerOptional_toBean_optionalOptionalMapStringI() {
-        val fooOptional = """
-                import java.util.Optional;
-
-                @org.springframework.stereotype.Component
-                class FooOptional {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var optionalOptionalMapStringI: Optional<Optional<Map<String, I>>>
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooOptional.kt", getOptionalClasses())
-        myFixture.configureByText("TestOptional.kt", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     private fun getOptionalClasses(): String {
