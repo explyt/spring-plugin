@@ -30,6 +30,7 @@ import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.util.ExternalSystemBundle
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.xdebugger.XDebuggerManager
 
 class SpringBootFloatingProjectRefreshAction : DumbAwareAction() {
 
@@ -60,7 +61,8 @@ class SpringBootFloatingProjectRefreshAction : DumbAwareAction() {
         )
         e.presentation.icon = SpringIcons.SpringUpdate
 
-        e.presentation.isEnabledAndVisible = SpringSearchServiceFacade.isExternalProjectExist(project)
+        e.presentation.isEnabledAndVisible = XDebuggerManager.getInstance(project).currentSession == null
+                && SpringSearchServiceFacade.isExternalProjectExist(project)
                 && AnnotationTrackerHolderService.getInstance(project).needUpdate()
     }
 

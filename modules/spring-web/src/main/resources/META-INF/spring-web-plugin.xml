@@ -195,7 +195,7 @@
                                   implementationClass="com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider"/>
         <runLineMarkerContributor language="UAST"
                                   implementationClass="com.explyt.spring.web.providers.RetrofitRunLineMarkerProvider"/>
-        <runLineMarkerContributor language="HTTP"
+        <runLineMarkerContributor language="HTTP-EXPLYT"
                                   implementationClass="com.explyt.spring.web.providers.HttpRunLineMarkerProvider"/>
 
         <psi.referenceContributor language="UAST"
@@ -262,20 +262,20 @@
                   implementationClass="com.explyt.spring.web.language.http.HttpFileType"
                   fieldName="INSTANCE"
                   extensions="http;rest"
-                  language="HTTP"/>
+                  language="HTTP-EXPLYT"/>
         <highlightErrorFilter order="first"
                               implementation="com.explyt.spring.web.language.http.HttpErrorFilter"/>
 
         <lang.parserDefinition
-                language="HTTP"
+                language="HTTP-EXPLYT"
                 implementationClass="com.explyt.spring.web.language.http.HttpParserDefinition"/>
 
         <!-- HTTP SYNTAX HIGHLIGHTING -->
         <lang.syntaxHighlighterFactory
-                language="HTTP"
+                language="HTTP-EXPLYT"
                 implementationClass="com.explyt.spring.web.language.http.HttpSyntaxHighlighterFactory"/>
         <annotator
-                language="HTTP"
+                language="HTTP-EXPLYT"
                 implementationClass="com.explyt.spring.web.language.http.HttpSyntaxHighlighterAnnotator"/>
         <colorSettingsPage
                 implementation="com.explyt.spring.web.language.http.HttpColorSettingsPage"/>

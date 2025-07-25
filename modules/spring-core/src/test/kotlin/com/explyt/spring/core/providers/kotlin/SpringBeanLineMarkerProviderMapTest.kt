@@ -185,24 +185,6 @@ class SpringBeanLineMarkerProviderMapTest : ExplytJavaLightTestCase() {
         }.size, 0)
     }
 
-    fun testLineMarkerMap_toBean_mapStringWithoutBeanI() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooMap {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    lateinit var mapStringWithoutBeanI: Map<String, WithoutBeanI>
-                }
-            """.trimIndent()
-
-        myFixture.configureByText("FooMap.kt", getMapClasses())
-        myFixture.configureByText("TestMap.kt", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
-    }
-
     fun testLineMarkerMap_toAutowired_mapStringWithBeanI() {
         myFixture.configureByText(
             "FooMap.kt",

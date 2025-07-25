@@ -20,11 +20,11 @@ package com.explyt.spring.core.externalsystem.action
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.intellij.execution.RunManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
-import com.intellij.openapi.util.registry.Registry
 
 class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
     init {
@@ -40,7 +40,7 @@ class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
         val presentation = e.presentation
         val project = e.project ?: return
         val selectedConfiguration = RunManager.getInstance(project).selectedConfiguration?.configuration
-        presentation.isEnabledAndVisible = !Registry.`is`("explyt.spring.native.javaagent")
+        presentation.isEnabledAndVisible = !SpringToolRunConfigurationsSettingsState.getInstance().isJavaAgentMode
                 && NativeBootUtils.isSupportRunConfiguration(selectedConfiguration)
     }
 

@@ -26,8 +26,10 @@ import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvid
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.ExplytPsiUtil.isPublic
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
@@ -42,10 +44,10 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
-import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiMethodUtil
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.uast.*
@@ -56,7 +58,7 @@ class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() 
     override fun getName(): String? = null
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
-        return if (Registry.`is`("explyt.spring.native.javaagent")) {
+        return if (SpringToolRunConfigurationsSettingsState.getInstance().isJavaAgentMode) {
             springProject(element)
         } else {
             springBootProject(element)
@@ -67,9 +69,9 @@ class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() 
         LibraryClassCache.searchForLibraryClass(element.project, SpringCoreClasses.COMPONENT) ?: return null
         val uMethod = element.toUElement() as? UMethod ?: return null
         val javaPsi = uMethod.javaPsi
-        if (!PsiMethodUtil.isMainMethod(javaPsi)) return null
+        if (!isMainMethod(javaPsi)) return null
         if (!isSpringMainMethod(uMethod)) return null
-        val virtualFile = javaPsi.containingFile.virtualFile
+        val virtualFile = javaPsi.containingFile?.virtualFile ?: return null
         val canonicalPath = virtualFile.canonicalPath ?: return null
         if (ProjectRootManager.getInstance(element.project).fileIndex.isInTestSourceContent(virtualFile)) return null
         val containingClass = javaPsi.containingClass?.qualifiedName ?: return null
@@ -85,12 +87,21 @@ class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() 
         )
     }
 
+    private fun isMainMethod(javaPsi: PsiMethod): Boolean {
+        val mainMethod = PsiMethodUtil.isMainMethod(javaPsi)
+        if (!mainMethod) {
+            return javaPsi.name == "main" && javaPsi.isPublic
+                    && javaPsi.containingClass?.qualifiedName?.contains(".Companion") == true
+        }
+        return mainMethod
+    }
+
     private fun springBootProject(element: PsiElement): LineMarkerInfo<PsiElement>? {
         val uAnnotation = element.toUElement() as? UAnnotation ?: return null
         val uClass = uAnnotation.uastParent as? UClass ?: return null
         if (!isSupport(uAnnotation, uClass)) return null
         val sourcePsi = uAnnotation.uastAnchor?.sourcePsi ?: return null
-        val canonicalPath = uClass.javaPsi.containingFile.virtualFile.canonicalPath ?: return null
+        val canonicalPath = uClass.javaPsi.containingFile?.virtualFile?.canonicalPath ?: return null
         return LineMarkerInfo(
             sourcePsi,
             sourcePsi.textRange,

@@ -44,6 +44,12 @@ class SpringToolRunConfigurationsSettingsState :
     var isShowFloatingRefreshAction by property(true)
 
     @get:Property(surroundWithTag = true)
+    var isDebugMode by property(true)
+
+    @get:Property(surroundWithTag = true)
+    var isJavaAgentMode by property(true)
+
+    @get:Property(surroundWithTag = true)
     var sqlLanguageId by string("")
 
     @get:Property(surroundWithTag = true)

@@ -24,7 +24,7 @@ import com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.spring.data.SpringDataClasses
-import com.explyt.spring.data.SpringDataClasses.SPRING_RESOURCE
+import com.explyt.spring.data.SpringDataClasses.REPOSITORY
 import com.explyt.spring.data.service.SpringDataPackageScanService
 import com.explyt.spring.data.util.SpringDataUtil
 import com.intellij.openapi.module.Module
@@ -37,7 +37,7 @@ class SpringDataAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
     }
 
     override fun getExtraComponents(module: Module): Collection<PsiBean> {
-        val repositoryPsiClass = LibraryClassCache.searchForLibraryClass(module, SPRING_RESOURCE) ?: return emptySet()
+        val repositoryPsiClass = LibraryClassCache.searchForLibraryClass(module, REPOSITORY) ?: return emptySet()
         val scope = module.moduleWithDependenciesScope
         return ClassInheritorsSearch.search(repositoryPsiClass, scope, true)
             .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
