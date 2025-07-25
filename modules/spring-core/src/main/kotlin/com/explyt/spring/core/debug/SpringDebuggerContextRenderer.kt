@@ -33,9 +33,9 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.frame.*
-import com.jetbrains.rd.util.concurrentMapOf
 import com.sun.jdi.*
 import java.time.LocalDateTime
+import java.util.concurrent.atomic.AtomicReference
 
 
 class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
@@ -95,28 +95,21 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
     }
 
     private fun isNeedSync(applicationAddress: String): Boolean {
-        val time = CacheProcess.debugMap[applicationAddress]
-        if (time == null) {
-            CacheProcess.debugMap.put(applicationAddress, LocalDateTime.now())
+        val state = DebugToolWindowCache.state.get()
+        if (state == null) {
+            DebugToolWindowCache.state.set(DebugProcessState(applicationAddress, LocalDateTime.now()))
+            return true
+        }
+        if (state.addressId != applicationAddress) {
+            DebugToolWindowCache.state.set(DebugProcessState(applicationAddress, LocalDateTime.now()))
             return true
         }
         val nowTime = LocalDateTime.now()
-        if (time.plusMinutes(10) < nowTime) {
-            CacheProcess.debugMap.put(applicationAddress, LocalDateTime.now())
+        if (state.time.plusMinutes(5) < nowTime) {
+            DebugToolWindowCache.state.set(DebugProcessState(applicationAddress, LocalDateTime.now()))
             return true
         }
-        removeOld()
         return false
-    }
-
-    private fun removeOld() {
-        if (CacheProcess.debugMap.size > 32) {
-            val oldKeys = CacheProcess.debugMap.entries
-                .sortedByDescending { it.value }
-                .drop(3)
-                .map { it.key }
-            oldKeys.forEach { CacheProcess.debugMap.remove(it) }
-        }
     }
 
     private fun getSpringContextRef(
@@ -269,6 +262,8 @@ private class TransactionStatusDescriptor(project: Project, value: Value) : Valu
     override fun calcValueName() = "Transaction status"
 }
 
-private object CacheProcess {
-    val debugMap = concurrentMapOf<String, LocalDateTime>()
+private object DebugToolWindowCache {
+    var state: AtomicReference<DebugProcessState> = AtomicReference(null)
 }
+
+private data class DebugProcessState(val addressId: String, val time: LocalDateTime)

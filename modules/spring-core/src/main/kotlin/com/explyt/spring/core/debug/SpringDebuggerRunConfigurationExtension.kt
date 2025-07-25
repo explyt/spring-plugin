@@ -23,6 +23,7 @@ import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils.getConfigurationId
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.debugger.impl.GenericDebuggerRunnerSettings
 import com.intellij.execution.JavaRunConfigurationBase
 import com.intellij.execution.RunConfigurationExtension
 import com.intellij.execution.application.ApplicationConfiguration
@@ -33,7 +34,6 @@ import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootModificationUtil
@@ -47,6 +47,8 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
     override fun <T : RunConfigurationBase<*>?> updateJavaParameters(
         configuration: T & Any, javaParameters: JavaParameters, runnerSettings: RunnerSettings?
     ) {
+        if (runnerSettings !is GenericDebuggerRunnerSettings) return
+
         val module = getModule(configuration)?.takeIf { isSpringModule(it) } ?: return
         if (javaParameters.vmParametersList.parametersString.contains(EXPLYT_AGENT_JAR)) return
         val javaAgentEscaping = NativeBootUtils.getJavaAgentParam()
@@ -60,14 +62,12 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return false
         return configuration is ApplicationConfiguration
                 || configuration is JavaRunConfigurationBase
-                || configuration is ExternalSystemRunConfiguration
     }
 
     private fun getModule(runConfiguration: RunConfigurationBase<*>): Module? {
         return when (runConfiguration) {
             is ApplicationConfiguration -> runConfiguration.modules.firstOrNull()
             is ModuleBasedConfiguration<*, *> -> runConfiguration.modules.firstOrNull()
-            //is ExternalSystemRunConfiguration -> runConfiguration.getUserData()
             else -> null
         }
     }
