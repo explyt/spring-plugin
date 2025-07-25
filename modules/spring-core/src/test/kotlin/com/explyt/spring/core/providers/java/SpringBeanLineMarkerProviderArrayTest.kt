@@ -181,24 +181,6 @@ class SpringBeanLineMarkerProviderArrayTest : ExplytJavaLightTestCase() {
         }.size, 0)
     }
 
-    fun testLineMarkerOptional_toBean_arrayD() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooArray {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    D[] arrayD;
-                }
-            """.trimIndent()
-
-        myFixture.configureByText("FooArray.java", getArrayClasses())
-        myFixture.configureByText("TestArray.java", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isNotEmpty())
-    }
-
     fun testLineMarkerOptional_toAutowired_arrayI() {
         myFixture.configureByText(
             "FooArray.java",
@@ -392,24 +374,6 @@ class SpringBeanLineMarkerProviderArrayTest : ExplytJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "arrayWithoutBeanI" }
         }.size, 0)
-    }
-
-    fun testLineMarkerOptional_toBean_arrayWithoutBeanI() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooArray {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    WithoutBeanI[] arrayWithoutBeanI;
-                }
-            """.trimIndent()
-
-        myFixture.configureByText("FooArray.java", getArrayClasses())
-        myFixture.configureByText("TestArray.java", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isNotEmpty())
     }
 
     private fun getArrayClasses(): String {

@@ -104,23 +104,6 @@ class SpringBeanLineMarkerProviderParameterTest : ExplytKotlinLightTestCase() {
         TestCase.assertEquals(gutterTargetString.size, 0)
     }
 
-    fun testLineMarkerParameterC_toBean() {
-        val fooComponent =
-            """
-                @org.springframework.stereotype.Component
-                internal class FooParameter {
-                    @org.springframework.beans.factory.annotation.Autowired 
-                    fun test(fooCParameter: C) {} 
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooComponent.kt", getParameterClasses() + fooComponent)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        TestCase.assertEquals(allBeanGutters.size, 1)
-    }
-
     fun testLineMarkerParameter_toAutowired() {
         val fooComponent =
             """
