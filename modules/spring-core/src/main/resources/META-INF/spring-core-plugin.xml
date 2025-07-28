@@ -661,6 +661,8 @@
                      description="Enable statistic in debug mode"/>
         <registryKey key="explyt.statistic.interval" defaultValue="3600"
                      description="Update statistic interval seconds"/>
+        <registryKey key="explyt.spring.agent.path" defaultValue=""
+                     description="Custom path for agent jar"/>
         <registryKey key="EXPLYTSPRINGBOOT.system.in.process" defaultValue="true"
                      description="Whether IDEA should use 'in-process' mode for interaction with plugin api"/>
         <intentionAction>
