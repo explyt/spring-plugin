@@ -56,11 +56,12 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         val module = getModule(configuration)?.takeIf { isSpringModule(it) } ?: return
         if (javaParameters.vmParametersList.parametersString.contains(EXPLYT_AGENT_JAR)) return
 
+        val javaAgentPath = NativeBootUtils.getAgentPath()
         if (configuration is ExternalSystemRunConfiguration) {
             configuration.settings.env.put(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
+            configuration.settings.env.put("JAVA_TOOL_OPTIONS", "-javaagent:\"$javaAgentPath\"")
         } else {
-            val javaAgentEscaping = NativeBootUtils.getJavaAgentParam()
-            javaParameters.vmParametersList.add(javaAgentEscaping)
+            javaParameters.vmParametersList.add("-javaagent:$javaAgentPath")
             javaParameters.vmParametersList.addProperty(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
         }
 

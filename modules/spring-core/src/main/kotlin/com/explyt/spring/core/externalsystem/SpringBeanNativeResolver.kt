@@ -73,6 +73,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
+import com.intellij.util.execution.ParametersListUtil
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
@@ -218,7 +219,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
     private fun patchJavaAgent(runConfiguration: RunConfiguration) {
         val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.Constants::class.java)
-        val javaAgentEscaping = NativeBootUtils.getJavaAgentParam()
+        val javaAgentEscaping = ParametersListUtil.escape("-javaagent:${NativeBootUtils.getAgentPath()}")
         val javaAgentParams = "$javaAgentEscaping -Dpatcher.filter.agent.name=${Path(agentJarPath).name}"
         if (runConfiguration is ApplicationConfiguration) {
             if (runConfiguration.vmParameters == null) {
