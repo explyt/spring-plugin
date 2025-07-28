@@ -200,7 +200,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 "getCurrentTransactionIsolationLevel",
                 null,
                 emptyList()
-            ) as? ObjectReference)?.let { mapToLevelString(it) } ?: ""
+            ) as? ObjectReference)?.let { mapToLevelString(it) } ?: "DEFAULT"
 
             "Isolation=$level, ReadOnly=$isReadOnly"
         } catch (_: Exception) {
