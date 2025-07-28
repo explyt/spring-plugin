@@ -724,13 +724,15 @@
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyTreeGroup"/>
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.UsagesTreeGroup"/>
         </action>
+        <action id="Explyt.Toolbar.SpringDebugEnabledAction" class="com.explyt.spring.core.externalsystem.action.SpringDebugEnabledAction"/>
         <!--<action id="SpringBootExplyt.ActiveExternalProjectAction"
                 class="com.explyt.spring.core.externalsystem.action.ActiveExternalProjectAction">
             <add-to-group group-id="ExternalSystemView.BaseProjectMenu"/>
         </action>-->
         <group id="SpringBootExplyt.View.ActionsToolbar.CenterPanel">
             <separator/>
-            <reference id="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
+            <reference ref="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
+            <reference ref="Explyt.Toolbar.SpringDebugEnabledAction"/>
             <separator/>
             <add-to-group group-id="ExternalSystemView.ActionsToolbar.CenterPanel" anchor="last"/>
         </group>
