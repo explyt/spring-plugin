@@ -47,6 +47,8 @@ import kotlin.io.path.Path
 
 const val EXPLYT_SPRING_HOLDER_MARKER_CLASS = "com.explyt.spring.boot.bean.reader.ContextHolder"
 
+private const val JAVA_TOOL_OPTIONS = "JAVA_TOOL_OPTIONS"
+
 class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
     override fun <T : RunConfigurationBase<*>?> updateJavaParameters(
         configuration: T & Any, javaParameters: JavaParameters, runnerSettings: RunnerSettings?
@@ -59,7 +61,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         val javaAgentPath = NativeBootUtils.getAgentPath()
         if (configuration is ExternalSystemRunConfiguration) {
             configuration.settings.env.put(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
-            configuration.settings.env.put("JAVA_TOOL_OPTIONS", "-javaagent:\"$javaAgentPath\"")
+            configuration.settings.env.put(JAVA_TOOL_OPTIONS, "-javaagent:\"$javaAgentPath\"")
         } else {
             javaParameters.vmParametersList.add("-javaagent:$javaAgentPath")
             javaParameters.vmParametersList.addProperty(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))

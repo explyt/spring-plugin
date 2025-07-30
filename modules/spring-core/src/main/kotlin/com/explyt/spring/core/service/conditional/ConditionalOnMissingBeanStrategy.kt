@@ -55,7 +55,11 @@ class ConditionalOnMissingBeanStrategy(module: Module) : ExclusionStrategy {
         } else {
             PsiAnnotationUtils.getTypeNames(classAttributes)
         }
-        return classesQn.isNotEmpty() && foundBeans.all { classesQn.contains(it.psiClass.qualifiedName) }
+
+        return classesQn.isNotEmpty() && foundBeans.asSequence().filter { isNotSame(it, dependant) }
+            .any { classesQn.contains(it.psiClass.qualifiedName) }
     }
+
+    private fun isNotSame(bean: PsiBean, dependant: PsiMember) = bean.psiMember != dependant
 
 }

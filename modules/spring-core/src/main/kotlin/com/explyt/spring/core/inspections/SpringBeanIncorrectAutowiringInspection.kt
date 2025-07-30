@@ -55,6 +55,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor> {
+        if (SpringCoreUtil.isExplytDebug(manager.project)) return ProblemDescriptor.EMPTY_ARRAY
+
         val field = uField.javaPsi as? PsiField ?: return ProblemDescriptor.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(field) ?: return ProblemDescriptor.EMPTY_ARRAY
         if (!field.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)) return ProblemDescriptor.EMPTY_ARRAY
@@ -80,6 +82,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor> {
+        if (SpringCoreUtil.isExplytDebug(manager.project)) return ProblemDescriptor.EMPTY_ARRAY
+
         val aClass = uClass.javaPsi
         val module = ModuleUtilCore.findModuleForPsiElement(aClass) ?: return ProblemDescriptor.EMPTY_ARRAY
         if (!SpringCoreUtil.isSpringBeanCandidateClass(aClass)) return ProblemDescriptor.EMPTY_ARRAY
@@ -181,7 +185,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             .findActiveBeanDeclarations(
                 module,
                 element.name ?: "",
-                element.getLanguage(),
+                element.language,
                 psiType,
                 element.getQualifierAnnotation()
             )

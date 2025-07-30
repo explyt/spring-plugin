@@ -28,6 +28,7 @@ import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.explyt.spring.core.properties.SpringPropertySourceSearch
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.util.ExplytAnnotationUtil
@@ -709,6 +710,7 @@ object SpringCoreUtil {
     }
 
     fun isExplytDebug(project: Project): Boolean {
+        if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return false
         val debugSession = XDebuggerManager.getInstance(project).currentSession
         if (debugSession != null) {
             val debugProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
