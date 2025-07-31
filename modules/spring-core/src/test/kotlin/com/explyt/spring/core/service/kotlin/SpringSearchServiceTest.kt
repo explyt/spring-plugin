@@ -22,6 +22,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.psi.PsiMethod
 import junit.framework.TestCase
 import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 
@@ -75,5 +76,17 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
         TestCase.assertTrue(beanNames.contains("com.outerimport.OuterImportBean"))
         TestCase.assertTrue(beanNames.contains("com.outer2.Outer2"))
         TestCase.assertTrue(beanNames.contains("com.outer3.Outer3"))
+    }
+
+    fun testComponentMissingBeanSearch() {
+        val virtualFile = myFixture.copyDirectoryToProject("service/conditionalOnMissingBean", "")
+        val module = virtualFile.getModule(project)
+        assertNotNull(module)
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module!!)
+        val beanTestClass = beans.filter { it.name == "testClass" }
+        assertEquals(1, beanTestClass.size)
+        val psiBean = beanTestClass[0]
+        assertTrue(psiBean.psiMember is PsiMethod)
+        assertTrue((psiBean.psiMember as PsiMethod).containingClass?.qualifiedName == "com.app.AppConfiguration")
     }
 }
