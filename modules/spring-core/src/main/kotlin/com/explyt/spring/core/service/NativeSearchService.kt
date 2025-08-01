@@ -152,10 +152,32 @@ class NativeSearchService(private val project: Project) {
             .filterToList { isActiveDiPredicate(it) }
     }
 
+    fun getActiveProjectsNodeForLibrary(): List<DataNode<ProjectData>> {
+        if (SpringCoreUtil.isExplytDebug(project)) {
+            return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
+                .asSequence()
+                .mapNotNull { it.externalProjectStructure }
+                .filterToList { it.data.externalName == Constants.DEBUG_SESSION_NAME }
+        }
+        return getLoadedProjects(project).toList()
+    }
+
     fun getLibraryBeans(): List<PsiBean> {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
                 getLibraryBeansInner(),
+                ModificationTrackerManager.getInstance(project).getExternalSystemTracker()
+            )
+        }
+    }
+
+    /**
+     * For library source code analyze only.
+     * */
+    fun getAllProjectNodesLibraryBeans(): List<PsiBean> {
+        return CachedValuesManager.getManager(project).getCachedValue(project) {
+            CachedValueProvider.Result(
+                getAllLibraryBeansInner(),
                 ModificationTrackerManager.getInstance(project).getExternalSystemTracker()
             )
         }
@@ -178,6 +200,12 @@ class NativeSearchService(private val project: Project) {
 
     private fun getLibraryBeansInner(): List<PsiBean> {
         val beansData = getActiveProjectsNode()
+            .flatMapTo(mutableSetOf()) { it.findAll(SpringBeanData.KEY).map { beanData -> beanData.data } }
+        return getBeans(beansData, false)
+    }
+
+    private fun getAllLibraryBeansInner(): List<PsiBean> {
+        val beansData = getActiveProjectsNodeForLibrary()
             .flatMapTo(mutableSetOf()) { it.findAll(SpringBeanData.KEY).map { beanData -> beanData.data } }
         return getBeans(beansData, false)
     }
