@@ -54,7 +54,7 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
 
         val psiClass = uClass.javaPsi
         if (!isSpringBeanCandidateClass(psiClass)) return
-        val libraryBeans = NativeSearchService.getInstance(element.project).getLibraryBeans()
+        val libraryBeans = NativeSearchService.getInstance(element.project).getAllProjectNodesLibraryBeans()
         val targetQualifiedName = psiClass.qualifiedName
         val contextBean = libraryBeans.find { isContextClass(it, targetQualifiedName) }
         val isComponentCandidate = isComponentCandidate(psiClass)
