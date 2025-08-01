@@ -51,8 +51,8 @@ class AspectSearchService(private val project: Project) {
 
 
     fun getAspectsData(): List<SpringAspectData> {
-        return NativeSearchService.getInstance(project).getActiveProjectsNode()
-            .flatMap { it.findAll(SpringAspectData.KEY).map { it.data } }
+        return NativeSearchService.getInstance(project).getAllProjectsNode()
+            .flatMap { it.findAll(SpringAspectData.KEY).map { node -> node.data } }
     }
 
     companion object {
