@@ -23,6 +23,7 @@ import com.explyt.spring.data.SpringDataClasses
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.AnnotationUtil.CHECK_HIERARCHY
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.PropertyUtilBase
@@ -34,7 +35,11 @@ object SpringDataUtil {
     }
 
     fun isSpringDataProject(module: Module): Boolean {
-        return LibraryClassCache.searchForLibraryClass(module, SpringDataClasses.SPRING_RESOURCE) != null
+        return LibraryClassCache.searchForLibraryClass(module, SpringDataClasses.REPOSITORY) != null
+    }
+
+    fun isSpringDataProject(project: Project): Boolean {
+        return LibraryClassCache.searchForLibraryClass(project, SpringDataClasses.REPOSITORY) != null
     }
 
     fun isSpringDataJpaModule(module: Module): Boolean {
@@ -42,7 +47,7 @@ object SpringDataUtil {
     }
 
     fun isRepository(psiClass: PsiClass): Boolean {
-        return InheritanceUtil.isInheritor(psiClass, SpringDataClasses.SPRING_RESOURCE) ||
+        return InheritanceUtil.isInheritor(psiClass, SpringDataClasses.REPOSITORY) ||
                 AnnotationUtil.isAnnotated(psiClass, SpringDataClasses.REPOSITORY_ANNOTATION, CHECK_HIERARCHY)
     }
 

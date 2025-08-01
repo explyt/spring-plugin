@@ -20,7 +20,7 @@ package com.explyt.spring.web.language.http
 import com.intellij.lang.Language
 
 
-class HttpLanguage private constructor() : Language("HTTP") {
+class HttpLanguage private constructor() : Language("HTTP-EXPLYT") {
 
     companion object {
         @JvmField

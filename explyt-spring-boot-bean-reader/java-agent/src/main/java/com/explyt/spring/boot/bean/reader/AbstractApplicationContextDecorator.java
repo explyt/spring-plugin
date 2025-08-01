@@ -29,7 +29,9 @@ import tech.ytsaurus.spyt.patch.annotations.Decorate;
 import tech.ytsaurus.spyt.patch.annotations.DecoratedMethod;
 import tech.ytsaurus.spyt.patch.annotations.OriginClass;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -42,19 +44,54 @@ public class AbstractApplicationContextDecorator {
     @DecoratedMethod
     protected void registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
         __registerBeanPostProcessors(beanFactory);
-
-        explytPrintBeans(beanFactory);
+        String debugRunConfigurationId = getExplytSpringRunConfigurationId();
+        if (!debugRunConfigurationId.isEmpty()) {
+            setExplytContextForDebug(debugRunConfigurationId);
+            return;
+        }
+        explytPrintBeans(beanFactory, null);
         throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
+    }
+
+
+    @AddMethod
+    private void setExplytContextForDebug(String debugRunConfigurationId) {
+        try {
+            Class<?> aClass = Class.forName("com.explyt.spring.boot.bean.reader.InternalHolderContext");
+            Field contextField = aClass.getDeclaredField("context");
+            contextField.setAccessible(true);
+            contextField.set(null, this);
+            Field configurationIdField = aClass.getDeclaredField("configurationId");
+            configurationIdField.set(null, debugRunConfigurationId);
+
+            Class<?> aClassContext = Class.forName("explyt.Explyt");
+            contextField = aClassContext.getDeclaredField("context");
+            contextField.set(null, this);
+
+            System.out.println("Explyt Spring Debug attached");
+        } catch (Exception e) {
+            throw new RuntimeException("no context class", e);
+        }
     }
 
     protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
     }
 
+    /**
+     * Printing context data.
+     * Result and return value usages in com.explyt.spring.boot.bean.reader.InternalHolderContext#getRawBeanData()
+     * via reflection.
+     *
+     * @param beanFactory
+     * @param result
+     * @return
+     */
     @AddMethod
-    private void explytPrintBeans(ConfigurableListableBeanFactory beanFactory) {
+    public List<String> explytPrintBeans(ConfigurableListableBeanFactory beanFactory, List<String> result) {
         System.out.println(EXPLYT_BEAN_INFO_START);
         Map<String, String> beanTypeByNameMap = new TreeMap<>();
         String[] definitionNames = beanFactory.getBeanDefinitionNames();
+        if (definitionNames.length > 2000) result = null;
         for (String beanName : definitionNames) {
             BeanDefinition definition = beanFactory.getBeanDefinition(beanName);
 
@@ -92,18 +129,22 @@ public class AbstractApplicationContextDecorator {
             beanTypeByNameMap.put(beanName, methodType != null ? methodType : className);
             methodName = methodName == null ? "null" : "\"" + methodName + "\"";
             methodType = methodType == null ? "null" : "\"" + methodType + "\"";
-            System.out.println(
-                    EXPLYT_BEAN_INFO +
-                            "{\"className\": \"" + className + "\"," +
-                            "\"beanName\": \"" + beanName + "\"," +
-                            "\"methodName\": " + methodName + "," +
-                            "\"methodType\": " + methodType + "," +
-                            "\"scope\": \"" + scope + "\"," +
-                            "\"primary\": " + primary + "}"
-            );
+            String beanRawInfo = EXPLYT_BEAN_INFO +
+                    "{\"className\": \"" + className + "\"," +
+                    "\"beanName\": \"" + beanName + "\"," +
+                    "\"methodName\": " + methodName + "," +
+                    "\"methodType\": " + methodType + "," +
+                    "\"scope\": \"" + scope + "\"," +
+                    "\"primary\": " + primary + "}";
+            if (result != null) {
+                result.add(beanRawInfo);
+            } else {
+                System.out.println(beanRawInfo);
+            }
         }
-        explytPrintAopData(beanFactory, beanTypeByNameMap);
+        explytPrintAopData(beanFactory, beanTypeByNameMap, result);
         System.out.println(EXPLYT_BEAN_INFO_END);
+        return result;
     }
 
     @AddMethod
@@ -138,19 +179,28 @@ public class AbstractApplicationContextDecorator {
     }
 
     @AddMethod
-    private static void explytPrintAopData(ConfigurableListableBeanFactory beanFactory, Map<String, String> map) {
+    private static void explytPrintAopData(
+            ConfigurableListableBeanFactory beanFactory, Map<String, String> map, List<String> result
+    ) {
         try {
             Class<?> aopReaderClass = Class.forName("org.springframework.aop.aspectj.AspectJAopUtils");
             Method[] methods = aopReaderClass.getMethods();
             for (Method method : methods) {
                 if ("explytPrintAopData".equals(method.getName())) {
-                    method.invoke(null, beanFactory, map);
+                    method.invoke(null, beanFactory, map, result);
                     return;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @AddMethod
+    private String getExplytSpringRunConfigurationId() {
+        String debugParam = System.getenv(DEBUG_PROGRAM_PARAM);
+        debugParam = debugParam != null ? debugParam : System.getProperty(DEBUG_PROGRAM_PARAM);
+        return debugParam == null || debugParam.isEmpty() ? "" : debugParam;
     }
 }
 

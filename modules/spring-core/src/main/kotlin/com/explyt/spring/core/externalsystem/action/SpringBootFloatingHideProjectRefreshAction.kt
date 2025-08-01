@@ -25,6 +25,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.externalSystem.util.ExternalSystemBundle
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.xdebugger.XDebuggerManager
 
 class SpringBootFloatingHideProjectRefreshAction : DumbAwareAction() {
 
@@ -41,7 +42,8 @@ class SpringBootFloatingHideProjectRefreshAction : DumbAwareAction() {
             return
         }
 
-        e.presentation.isEnabledAndVisible = SpringSearchServiceFacade.isExternalProjectExist(project)
+        e.presentation.isEnabledAndVisible = XDebuggerManager.getInstance(project).currentSession == null
+                && SpringSearchServiceFacade.isExternalProjectExist(project)
                 && AnnotationTrackerHolderService.getInstance(project).needUpdate()
     }
 

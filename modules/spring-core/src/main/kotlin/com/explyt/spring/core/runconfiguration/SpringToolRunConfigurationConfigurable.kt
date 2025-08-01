@@ -53,6 +53,10 @@ import javax.swing.JList
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 
+private const val articleUrl =
+    "https://medium.com/@explytspring/stop-playing-catch-up-with-spring-introducing-the-explyt-spring-plugin-for-idea-community-0be380b36a75"
+private const val articleJavaagentUrl =
+    "https://medium.com/@explytspring/explyt-spring-plugin-patching-spring-bytecode-to-enhance-application-context-recognition-0817fb52b056"
 
 class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     private val settingsState = SpringToolRunConfigurationsSettingsState.getInstance()
@@ -63,6 +67,8 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     private val isBeanFilterEnabled = propertyGraph.property(false)
     private val isCollectStatisticBind = propertyGraph.property(false)
     private val isShowFloatingRefreshActionBind = propertyGraph.property(false)
+    private val isDebugModeBind = propertyGraph.property(false)
+    private val isJavaAgentModeBind = propertyGraph.property(false)
     private val httpCliPathBind = propertyGraph.property("")
     private val sqlLanguageIdModel = CollectionComboBoxModel(getAvailableLanguages())
     private val shellScriptEnabledProperty: AtomicBooleanProperty = AtomicBooleanProperty(shellScriptEnabled())
@@ -106,6 +112,22 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .resizableColumn()
                 }
 
+                row {
+                    checkBox(message("explyt.spring.settings.debug.label"))
+                        .align(AlignX.FILL)
+                        .bindSelected(isDebugModeBind)
+                        .resizableColumn()
+                }
+
+                row {
+                    checkBox(message("explyt.spring.settings.javaagent.label"))
+                        .align(AlignX.FILL)
+                        .applyToComponent { toolTipText = message("explyt.spring.settings.javaagent.tooltip") }
+                        .bindSelected(isJavaAgentModeBind)
+                        .comment("<html><a href=\"$articleUrl\">Article one</a> and <a href=\"$articleJavaagentUrl\">article two</a> about this</html>")
+                        .resizableColumn()
+                }
+
                 row(message("explyt.spring.settings.sql.language.id.label")) {
                     comboBox(sqlLanguageIdModel, getLanguageCellRenderer())
                         .resizableColumn()
@@ -136,6 +158,8 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         isBeanFilterEnabled.set(settingsState.isBeanFilterEnabled)
         isCollectStatisticBind.set(settingsState.isCollectStatistic)
         isShowFloatingRefreshActionBind.set(settingsState.isShowFloatingRefreshAction)
+        isDebugModeBind.set(settingsState.isDebugMode)
+        isJavaAgentModeBind.set(settingsState.isJavaAgentMode)
         sqlLanguageIdModel.selectedItem = getCurrentLanguageId()
         httpCliPathBind.set(settingsState.httpCliPath ?: "")
     }
@@ -145,6 +169,8 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) return true
         if (settingsState.isCollectStatistic != isCollectStatisticBind.get()) return true
         if (settingsState.isShowFloatingRefreshAction != isShowFloatingRefreshActionBind.get()) return true
+        if (settingsState.isDebugMode != isDebugModeBind.get()) return true
+        if (settingsState.isJavaAgentMode != isJavaAgentModeBind.get()) return true
         if ((settingsState.sqlLanguageId ?: "") != (sqlLanguageIdModel.selected?.id ?: "")) return true
         if ((settingsState.httpCliPath ?: "") != (httpCliPathBind.get())) return true
         return false
@@ -156,6 +182,8 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
         settingsState.isCollectStatistic = isCollectStatisticBind.get()
         settingsState.isShowFloatingRefreshAction = isShowFloatingRefreshActionBind.get()
+        settingsState.isDebugMode = isDebugModeBind.get()
+        settingsState.isJavaAgentMode = isJavaAgentModeBind.get()
         settingsState.sqlLanguageId = sqlLanguageIdModel.selected?.id
         settingsState.httpCliPath = httpCliPathBind.get()
 

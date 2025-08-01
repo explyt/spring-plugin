@@ -194,23 +194,6 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
         }.size, 0)
     }
 
-    fun testLineMarkerOptional_toBean_D_dParameter() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooOptional {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    void optD(java.util.Optional<D> dFooOptionalParameter) {} 
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooOptional.java", getOptionalClasses())
-        myFixture.configureByText("TestOptional.java", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
-    }
-
     fun testLineMarkerOptional_toAutowired_A_aParameter() {
         myFixture.configureByText(
             "FooOptional.java",
@@ -275,23 +258,6 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "optionalInter" }
         }.size, 0)
-    }
-
-    fun testLineMarkerOptional_toBean_WithoutBeanI() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooOptional {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    java.util.Optional<WithoutBeanI> optionalInter; 
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooOptional.java", getOptionalClasses())
-        myFixture.configureByText("TestOptional.java", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
     }
 
     fun testLineMarkerOptional_toAutowired_optionalI() {
@@ -401,23 +367,6 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
         }.size, 0)
     }
 
-    fun testLineMarkerOptional_toBean_optionalOptionalListI() {
-        val fooOptional = """
-                @org.springframework.stereotype.Component
-                class FooOptional {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    java.util.Optional<java.util.Optional<java.util.List<I>>> optionalOptionalListI;
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooOptional.java", getOptionalClasses())
-        myFixture.configureByText("TestOptional.java", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
-    }
-
     fun testLineMarkerOptional_toAutowired_optionalMapStringI() {
         myFixture.configureByText(
             "FooOptional.java",
@@ -490,26 +439,6 @@ class SpringBeanLineMarkerProviderOptionalTest : ExplytJavaLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter ->
             gutter.filter { it == "optionalOptionalMapStringI" }
         }.size, 0)
-    }
-
-    fun testLineMarkerOptional_toBean_optionalOptionalMapStringI() {
-        val fooOptional = """
-                import java.util.Map;
-                import java.util.Optional;
-
-                @org.springframework.stereotype.Component
-                class FooOptional {
-                    @org.springframework.beans.factory.annotation.Autowired
-                    Optional<Optional<Map<String, I>>> optionalOptionalMapStringI;
-                }
-            """.trimIndent()
-        myFixture.configureByText("FooOptional.java", getOptionalClasses())
-        myFixture.configureByText("TestOptional.java", fooOptional)
-        myFixture.doHighlighting()
-
-        val allBeanGutters = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.SpringBeanDependencies }
-        assertTrue(allBeanGutters.isEmpty())
     }
 
     private fun getOptionalClasses(): String {

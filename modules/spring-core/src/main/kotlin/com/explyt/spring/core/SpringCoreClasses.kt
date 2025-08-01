@@ -140,6 +140,9 @@ object SpringCoreClasses {
 
     const val MESSAGE_MAPPING = "org.springframework.messaging.handler.annotation.MessageMapping"
 
+    const val MOCK_BEAN = "org.springframework.boot.test.mock.mockito.MockBean"
+    const val SPY_BEAN = "org.springframework.boot.test.mock.mockito.SpyBean"
+
     const val HIBERNATE_CFG_AVAILABLE_SETTING = "org.hibernate.cfg.AvailableSettings"
 
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)

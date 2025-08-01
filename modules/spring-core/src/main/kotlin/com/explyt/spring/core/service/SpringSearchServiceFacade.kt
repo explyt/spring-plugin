@@ -17,12 +17,13 @@
 
 package com.explyt.spring.core.service
 
-import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
+import com.explyt.spring.core.service.NativeSearchService.Companion.getLoadedProjects
+import com.explyt.spring.core.service.NativeSearchService.Companion.isActiveDiPredicate
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
@@ -40,17 +41,10 @@ class SpringSearchServiceFacade(private val project: Project) {
         return springSearchService.getAllBeansClassesConsideringContext(project)
     }
 
-    fun getAllActiveBeanClasses(module: Module): Set<PsiClass> {
-        return if (isExternalProjectExist(project)) {
-            nativeSearchService.getAllBeanClasses(module)
-        } else {
-            springSearchService.getAllActiveBeans(module)
-        }
-    }
 
     fun getAllActiveBeans(module: Module): Set<PsiBean> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.getAllActiveBeans(module)
+            nativeSearchService.getAllActiveBeans()
         } else {
             springSearchService.getActiveBeansClasses(module)
         }
@@ -58,31 +52,15 @@ class SpringSearchServiceFacade(private val project: Project) {
 
     fun getAllActiveBeansLight(module: Module): Set<PsiClass> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.getAllBeanClasses(module)
+            nativeSearchService.getAllBeanClasses()
         } else {
             springSearchService.getAllActiveBeansLight(module)
         }
     }
 
-    fun getBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
-        return if (isExternalProjectExist(project)) {
-            nativeSearchService.getBeanPsiClassesAnnotatedByComponent(module)
-        } else {
-            springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
-        }
-    }
-
-    fun getAllBeansClassesWithAncestors(module: Module): Set<PsiClass> {
-        return if (isExternalProjectExist(project)) {
-            nativeSearchService.getAllBeansClassesWithAncestors(module)
-        } else {
-            springSearchService.getAllBeansClassesWithAncestorsLight(module)
-        }
-    }
-
     fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.getBeanPsiMethods(module)
+            nativeSearchService.getBeanPsiMethods()
         } else {
             springSearchService.getComponentBeanPsiMethods(module)
         }
@@ -90,7 +68,7 @@ class SpringSearchServiceFacade(private val project: Project) {
 
     fun searchArrayComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.searchArrayPsiClassesByBeanMethods(module)
+            nativeSearchService.searchArrayPsiClassesByBeanMethods()
         } else {
             springSearchService.searchArrayComponentPsiClassesByBeanMethods(module)
         }
@@ -98,7 +76,7 @@ class SpringSearchServiceFacade(private val project: Project) {
 
     fun getAllBeanByNames(module: Module): Map<String, List<PsiBean>> {
         return if (isExternalProjectExist(project)) {
-            nativeSearchService.getAllBeanByNames(module)
+            nativeSearchService.getAllBeanByNames()
         } else {
             springSearchService.getAllBeanByNames(module)
         }
@@ -120,7 +98,7 @@ class SpringSearchServiceFacade(private val project: Project) {
         qualifier: PsiAnnotation? = null
     ): List<PsiMember> {
         return if (isExternalProjectExist(project)) {
-            val beans = nativeSearchService.getAllActiveBeans(module)
+            val beans = nativeSearchService.getAllActiveBeans()
             nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             springSearchService.findActiveBeanDeclarations(module, byBeanName, language, byBeanPsiType, qualifier)
@@ -131,6 +109,8 @@ class SpringSearchServiceFacade(private val project: Project) {
         fun getInstance(project: Project): SpringSearchServiceFacade = project.service()
 
         fun isExternalProjectExist(project: Project): Boolean {
+            if (SpringCoreUtil.isExplytDebug(project)) return true
+
             if (isUnitTest(project)) return false
             return CachedValuesManager.getManager(project).getCachedValue(project) {
                 CachedValueProvider.Result(
@@ -147,10 +127,7 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
 
         private fun isExternalProjectExistInternal(project: Project): Boolean {
-            return ProjectDataManager.getInstance()
-                .getExternalProjectsData(project, SYSTEM_ID)
-                .filter { it.externalProjectStructure?.isIgnored == false }
-                .find { it.externalProjectStructure?.children?.isNotEmpty() == true } != null
+            return getLoadedProjects(project).any { isActiveDiPredicate(it) }
         }
     }
 }

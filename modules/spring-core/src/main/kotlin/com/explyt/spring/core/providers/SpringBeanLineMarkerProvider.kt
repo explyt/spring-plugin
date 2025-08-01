@@ -25,11 +25,6 @@ import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
-import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.canResolveBeanClass
-import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
-import com.explyt.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.explyt.spring.core.util.SpringCoreUtil.getArrayType
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
@@ -75,21 +70,19 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         elements: MutableList<out PsiElement>,
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
-        if (isExternalProjectExist(elements)) {
-            val module = getModule(elements)
-            if (module != null) {
-                SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
-            } else {
-                SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
-            }
+        val module = getModule(elements)
+        if (module == null) {
+            SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
+        } else if (isExternalProjectExist(elements)) {
+            SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
         } else {
             super.collectSlowLineMarkers(elements, result)
         }
     }
 
     private fun isExternalProjectExist(elements: MutableList<out PsiElement>): Boolean {
-        return elements.firstOrNull()
-            ?.let { SpringSearchServiceFacade.isExternalProjectExist(it.project) } ?: false
+        val project = elements.firstOrNull()?.project ?: return false
+        return SpringSearchServiceFacade.isExternalProjectExist(project)
     }
 
     private fun getModule(elements: MutableList<out PsiElement>): Module? {
@@ -219,43 +212,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         }
 
         fun isFieldOrAutowiredParameter(): Boolean {
-            fun checkParam(psiVariable: PsiVariable): Boolean = with(springSearchService) {
-                val javaPsiClass = uParent.getContainingUClass()?.javaPsi ?: return false
-                val isClassIsComponentConstructed = SpringCoreUtil.isSpringBeanCandidateClass(javaPsiClass)
-                        && isComponentCandidate(javaPsiClass)
-
-                if (!isClassIsComponentConstructed) {
-                    return false
-                }
-                val allBeansClassesWithAncestors = getAllBeansClassesWithAncestorsLight(module)
-                if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors, psiVariable.language)) {
-                    return true
-                }
-                val componentBeanPsiMethods = getComponentBeanPsiMethods(module)
-                val hasExactType = componentBeanPsiMethods.filterByExactMatch(psiVariable.type).isNotEmpty()
-                if (hasExactType) {
-                    return true
-                }
-                val arrayPsiType = psiVariable.type.getArrayType()
-                if (arrayPsiType != null) {
-                    return searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
-                        .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
-                        .any { arrayPsiType.isAssignableFrom(it) }
-                }
-                val beanPsiType = psiVariable.type.beanPsiType
-                val foundInheritedTypes = if (beanPsiType != null) {
-                    componentBeanPsiMethods.filterByBeanPsiType(beanPsiType).isNotEmpty()
-                } else {
-                    componentBeanPsiMethods.filterByInheritedTypes(psiVariable.type, null).isNotEmpty()
-                }
-                return foundInheritedTypes
-            }
-
             if (uParent is UField) {
                 val psiField = uParent.javaPsi.takeIf { it is PsiField }?.let { it as PsiField } ?: return false
-                if (!checkParam(psiField)) {
-                    return false
-                }
                 return (isAutowiredFieldExpression(psiField) || isLombokAnnotatedClassFieldExpression(psiField))
                         && !dependsOnIncorrectBean(psiField.containingClass)
             }
@@ -263,13 +221,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (uParent is UParameter) {
                 val uMethod = (uParent.uastParent as? UMethod)?.takeIf { filterMethod(it) } ?: return false
 
-                val psiParameter =
-                    uParent.javaPsi.takeIf { it is PsiParameter }?.let { it as PsiParameter } ?: return false
-                if (!checkParam(psiParameter)) {
-                    return false
-                }
                 val psiMethod = uMethod.javaPsi
-                return (uMethod.isConstructor
+                return ((uMethod.isConstructor && isComponent(uMethod))
                         || isAutowiredMethodExpression(psiMethod)
                         || isBeanMethodExpression(psiMethod)
                         ) && !dependsOnIncorrectBean(uMethod.getContainingUClass()?.javaPsi)
@@ -343,6 +296,15 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .toList()
         }
 
+        private fun isComponent(uMethod: UMethod): Boolean {
+            val uClass = uMethod.getContainingUClass() ?: return false
+            if (!SpringCoreUtil.isSpringBeanCandidateClass(uClass.javaPsi)) return false
+            if (isComponentCandidate(uClass.javaPsi)) {
+                return true
+            }
+            return springSearchService.isInSpringContext(uParent, module)
+        }
+
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
             StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
             val isArrayType = uParent is UMethod && uParent.returnType is PsiArrayType
@@ -369,17 +331,18 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allParametersWithAutowired = mutableSetOf<UVariable>()
             allBeans.forEach { bean ->
                 val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
-                allParametersWithAutowired.addAll(methods.asSequence()
-                    .filter {
-                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
-                                || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor
-                                && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
-                    }
-                    .flatMap { it.parameterList.parameters.asSequence() }
-                    .filter { it.isCandidate(targetType, targetClass, targetClasses) }
-                    .map { it.navigationElement.toUElement() as? UVariable }
-                    .filterNotNull().toSet())
+                allParametersWithAutowired.addAll(
+                    methods.asSequence()
+                        .filter {
+                            it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                                    || it.isAnnotatedBy(SpringCoreClasses.BEAN)
+                                    || it.isConstructor
+                                    && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                        }
+                        .flatMap { it.parameterList.parameters.asSequence() }
+                        .filter { it.isCandidate(targetType, targetClass, targetClasses) }
+                        .map { it.navigationElement.toUElement() as? UVariable }
+                        .filterNotNull().toSet())
             }
 
             val allByType = allFieldsWithAutowired + allParametersWithAutowired
@@ -482,6 +445,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
+                    || javaPsi.isAnnotatedBy(SpringCoreClasses.MOCK_BEAN)
+                    || javaPsi.isAnnotatedBy(SpringCoreClasses.SPY_BEAN)
         }
 
         fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {

@@ -280,4 +280,17 @@ class SpringBeanLineMarkerProviderSimpleTest : ExplytKotlinLightTestCase() {
 
         TestCase.assertTrue(gutterTargetString.flatten().all { it == "foo()" })
     }
+
+    fun testNoLineMarkerOnConstructorParam() {
+        val person = """                
+                class Person(val name:String)
+            """.trimIndent()
+
+        myFixture.configureByText("Person.kt", person)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.SpringBeanDependencies }
+        assertTrue(allBeanGutters.isEmpty())
+    }
 }

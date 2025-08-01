@@ -25,6 +25,7 @@ import com.intellij.openapi.externalSystem.settings.ExternalProjectSettings
 class NativeProjectSettings : ExternalProjectSettings() {
 
     var runConfigurationName: String? = null
+    var runConfigurationId: String? = null
     var qualifiedMainClassName: String? = null
     var runConfigurationType = RunConfigurationType.EXPLYT
 
@@ -32,6 +33,7 @@ class NativeProjectSettings : ExternalProjectSettings() {
         val result = NativeProjectSettings()
         copyTo(result)
         result.runConfigurationName = runConfigurationName
+        result.runConfigurationId = runConfigurationId
         result.runConfigurationType = runConfigurationType
         result.qualifiedMainClassName = qualifiedMainClassName
         return result

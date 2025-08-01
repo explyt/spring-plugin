@@ -21,11 +21,11 @@ import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
 import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
 import com.explyt.spring.core.runconfiguration.SpringBootConfigurationFactory
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.intellij.execution.RunManager
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.VfsUtil
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.uast.UClass
@@ -38,7 +38,7 @@ object RunConfigurationExtractor {
     fun findRunConfiguration(projectPath: String, settings: NativeExecutionSettings?): RunConfigurationHolder? {
         settings ?: return null
         val allConfigurationsList = RunManager.getInstance(settings.project).allConfigurationsList
-        val isJavaAgent = Registry.`is`("explyt.spring.native.javaagent")
+        val isJavaAgent = SpringToolRunConfigurationsSettingsState.getInstance().isJavaAgentMode
         if (settings.runConfigurationType == RunConfigurationType.KOTLIN) {
             val runConfig = allConfigurationsList
                 .filterIsInstance<KotlinRunConfiguration>()
