@@ -136,7 +136,8 @@ class NativeSearchService(private val project: Project) {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
             CachedValueProvider.Result(
                 getSpringMethodBeansInner(),
-                ModificationTrackerManager.getInstance(project).getExternalSystemTracker()
+                ModificationTrackerManager.getInstance(project).getExternalSystemTracker(),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
