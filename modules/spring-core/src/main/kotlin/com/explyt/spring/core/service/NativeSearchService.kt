@@ -153,7 +153,7 @@ class NativeSearchService(private val project: Project) {
             .filterToList { isActiveDiPredicate(it) }
     }
 
-    fun getActiveProjectsNodeForLibrary(): List<DataNode<ProjectData>> {
+    fun getAllProjectsNode(): List<DataNode<ProjectData>> {
         if (SpringCoreUtil.isExplytDebug(project)) {
             return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
                 .asSequence()
@@ -206,7 +206,7 @@ class NativeSearchService(private val project: Project) {
     }
 
     private fun getAllLibraryBeansInner(): List<PsiBean> {
-        val beansData = getActiveProjectsNodeForLibrary()
+        val beansData = getAllProjectsNode()
             .flatMapTo(mutableSetOf()) { it.findAll(SpringBeanData.KEY).map { beanData -> beanData.data } }
         return getBeans(beansData, false)
     }
