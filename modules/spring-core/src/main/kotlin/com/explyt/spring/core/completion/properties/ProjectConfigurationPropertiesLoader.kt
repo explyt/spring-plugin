@@ -31,6 +31,8 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocToken
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
 
 
@@ -79,24 +81,47 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
         val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(module)
 
         for (annotatedElement in annotatedElements) {
-            val prefix = ProjectConfigurationPropertiesUtil
-                .extractConfigurationPropertyPrefix(module, annotatedElement) ?: continue
-            val configurationPropertiesType = when (annotatedElement) {
-                is PsiClass -> annotatedElement
-                is PsiMethod -> annotatedElement.returnPsiClass
-                else -> null
-            } ?: continue
-
-            PropertyUtil.collectConfigurationProperty(
-                module,
-                configurationPropertiesType,
-                configurationPropertiesType,
-                prefix,
-                result
+            result.putAll(
+                loadPropertiesFromConfigurationFileCache(module, annotatedElement)
             )
         }
 
         result
+    }
+
+    private fun loadPropertiesFromConfigurationFileCache(
+        module: Module,
+        annotatedElement: PsiModifierListOwner,
+    ): Map<String, ConfigurationProperty> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(annotatedElement) {
+            CachedValueProvider.Result(
+                loadPropertiesFromConfigurationFile(module, annotatedElement),
+                annotatedElement
+            )
+        }
+    }
+
+    private fun loadPropertiesFromConfigurationFile(
+        module: Module,
+        annotatedElement: PsiModifierListOwner,
+    ): Map<String, ConfigurationProperty> {
+        val result = hashMapOf<String, ConfigurationProperty>()
+        val prefix = ProjectConfigurationPropertiesUtil
+            .extractConfigurationPropertyPrefix(module, annotatedElement) ?: return emptyMap()
+        val configurationPropertiesType = when (annotatedElement) {
+            is PsiClass -> annotatedElement
+            is PsiMethod -> annotatedElement.returnPsiClass
+            else -> null
+        } ?: return emptyMap()
+
+        PropertyUtil.collectConfigurationProperty(
+            module,
+            configurationPropertiesType,
+            configurationPropertiesType,
+            prefix,
+            result
+        )
+        return result
     }
 
     private fun loadPropertiesFromMetadata(module: Module): HashMap<String, ConfigurationProperty> {
