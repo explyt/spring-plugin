@@ -756,6 +756,11 @@
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
         </action>
 
+        <action id="Explyt.SpringPropertyFolderAction"
+                class="com.explyt.spring.core.settings.SpringPropertyFolderAction">
+            <add-to-group group-id="MarkRootGroup" anchor="last" />
+        </action>
+
         <action id="Explyt.PostConstructGenerateAction"
                 class="com.explyt.spring.core.action.PostConstructJavaGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
