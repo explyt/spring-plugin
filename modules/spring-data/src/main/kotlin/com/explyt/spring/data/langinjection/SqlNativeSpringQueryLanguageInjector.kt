@@ -25,18 +25,21 @@ import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.util.NlsSafe
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.uast.*
+import org.jetbrains.uast.expressions.UInjectionHost
 
 
 class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
     override fun isValidPlace(uElement: UElement): Boolean {
-        return isNativeQuery(uElement) || isJdbcTemplateLike(uElement)
+        return isNativeQuery(uElement) || (
+                uElement is UInjectionHost && (
+                        isJdbcTemplateLike(uElement) || isStringDefinedAsSqlVariable(uElement)
+                )
+        )
     }
 
     private fun isNativeQuery(uElement: UElement): Boolean {
@@ -49,9 +52,27 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
             ?.evaluate() == true
     }
 
-    private fun isJdbcTemplateLike(uElement: UElement): Boolean {
-        val uCallExpression = uElement.getParentOfType<UCallExpression>() ?: return false
-        val expressionIndex = getExpressionIndex(uCallExpression, uElement) ?: return false
+    private fun isStringDefinedAsSqlVariable(uElement: UInjectionHost): Boolean {
+        // uElement is guaranteed to be a string literal or string template
+        val parent = (uElement as? UElement)?.uastParent
+        // Case 1: direct string initializer
+        if (parent is UVariable && parent.name?.contains("sql", ignoreCase = true) ?: false && parent.uastInitializer == uElement) {
+            return true
+        }
+
+        // Case 2: string literal is receiver of a call expression (e.g., .trimIndent()),
+        val variable = parent?.uastParent as? UVariable
+        if (variable != null) {
+            if (variable.name?.contains("sql", ignoreCase = true) ?: false && variable.uastInitializer == parent) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun isJdbcTemplateLike(uElement: UInjectionHost): Boolean {
+        val uCallExpression = (uElement as? UElement)?.getParentOfType<UCallExpression>() ?: return false
+        val expressionIndex = getExpressionIndex(uCallExpression, uElement as UElement) ?: return false
 
         val method = uCallExpression.tryResolve() as? PsiMethod ?: return false
         if (method.parameterList.parametersCount == 0) return false
