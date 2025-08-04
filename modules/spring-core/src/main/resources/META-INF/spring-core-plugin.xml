@@ -692,8 +692,6 @@
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationPropertiesAnnotator"/>
 
         <colorSettingsPage implementation="com.explyt.spring.core.color.ExplytPropertyColorSettingsPage"/>
-        <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.spring.core.externalsystem.action.AttachSpringProjectLineMarkerContributor"/>
 
         <renamePsiElementProcessor
                 implementation="com.explyt.spring.core.rename.SpringValueRenameProcessor"/>
@@ -739,8 +737,8 @@
             <add-to-group group-id="ExternalSystemView.ActionsToolbar.CenterPanel" anchor="last"/>
         </group>
         <group id="SpringBootExplyt.View.ActionsToolbar.LeftPanel">
-            <reference id="SpringBootExplyt.ExternalSystem.AttachProject"/>
-            <reference id="SpringBootExplyt.ExternalSystem.DetachAllProjects"/>
+            <reference ref="SpringBootExplyt.ExternalSystem.AttachProject"/>
+            <reference ref="SpringBootExplyt.ExternalSystem.DetachAllProjects"/>
             <add-to-group group-id="ExternalSystemView.ActionsToolbar.LeftPanel" anchor="after"
                           relative-to-action="ExternalSystem.RefreshAllProjects"/>
         </group>
