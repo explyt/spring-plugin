@@ -36,7 +36,8 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
 
 
-class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
+class ProjectConfigurationPropertiesLoader(project: Project) :
+    AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
     override fun loadProperties(module: Module): List<ConfigurationProperty> = runReadNonBlocking {
         val projectProperties = loadPropertiesFromConfiguration(module)
@@ -75,19 +76,20 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             .firstOrNull()
     }
 
-    private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> = runReadNonBlocking {
-        val result = hashMapOf<String, ConfigurationProperty>()
+    private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> =
+        runReadNonBlocking {
+            val result = hashMapOf<String, ConfigurationProperty>()
 
-        val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(module)
+            val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(module)
 
-        for (annotatedElement in annotatedElements) {
-            result.putAll(
-                loadPropertiesFromConfigurationFileCache(module, annotatedElement)
-            )
+            for (annotatedElement in annotatedElements) {
+                result.putAll(
+                    loadPropertiesFromConfigurationFileCache(module, annotatedElement)
+                )
+            }
+
+            result
         }
-
-        result
-    }
 
     private fun loadPropertiesFromConfigurationFileCache(
         module: Module,
@@ -95,8 +97,7 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
     ): Map<String, ConfigurationProperty> {
         return CachedValuesManager.getManager(module.project).getCachedValue(annotatedElement) {
             CachedValueProvider.Result(
-                loadPropertiesFromConfigurationFile(module, annotatedElement),
-                annotatedElement
+                loadPropertiesFromConfigurationFile(module, annotatedElement), annotatedElement
             )
         }
     }
@@ -174,7 +175,7 @@ abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
 
     abstract val default: Any?
 
-    abstract val deprecation:  DeprecationInfo?
+    abstract val deprecation: DeprecationInfo?
 
     override fun toString(): String {
         return name ?: ""
@@ -216,7 +217,7 @@ class MethodPropertyWrapper(psiMethod: PsiMethod, deprecationInfo: DeprecationIn
     override val deprecation: DeprecationInfo? = deprecationInfo
 }
 
-data class DeprecationInfo (
+data class DeprecationInfo(
     val level: DeprecationInfoLevel?,
     val replacement: String? = null,
     val reason: String? = null,
