@@ -33,7 +33,7 @@ import java.nio.file.Path
 import java.util.*
 
 @Service(Service.Level.PROJECT)
-@State(name = "SpringBootNativeSettings", storages = [Storage("SpringBootNativeSettings.xml")])
+@State(name = "SpringNativeSettings", storages = [Storage("explyt-spring-native-settings.xml")])
 class NativeSettings(project: Project) :
     AbstractExternalSystemSettings<NativeSettings, NativeProjectSettings, SettingsListener>(
         SettingsListener.TOPIC,
