@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.uast.*
 import java.awt.event.MouseEvent
 
+//disable after spring debugger
 class AttachSpringProjectLineMarkerContributor : LineMarkerProviderDescriptor() {
 
     override fun getName(): String? = null

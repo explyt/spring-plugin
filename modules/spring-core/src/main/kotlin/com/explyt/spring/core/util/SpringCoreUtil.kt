@@ -31,6 +31,7 @@ import com.explyt.spring.core.properties.SpringPropertySourceSearch
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.settings.SpringPropertyFolderState
 import com.explyt.util.ExplytAnnotationUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
@@ -85,6 +86,7 @@ import java.util.*
 object SpringCoreUtil {
 
     fun isConfigurationPropertyFile(psiFile: PsiFile): Boolean {
+        if (isUserPropertyFolder(psiFile)) return true
         val module = ModuleUtilCore.findModuleForPsiElement(psiFile) ?: return false
         if (!isSpringProject(module)) {
             return false
@@ -135,6 +137,11 @@ object SpringCoreUtil {
                 return@any targetFile == propertiesVf
             }
         }
+    }
+
+    private fun isUserPropertyFolder(psiFile: PsiFile): Boolean {
+        val virtualFile = psiFile.virtualFile?.parent ?: return false
+        return SpringPropertyFolderState.isUserPropertyFolder(psiFile.project, virtualFile)
     }
 
     fun isAdditionalConfigFile(psiFile: PsiFile): Boolean {
