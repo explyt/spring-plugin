@@ -31,10 +31,13 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocToken
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.childrenOfType
 
 
-class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMetadataConfigurationPropertiesLoader(project) {
+class ProjectConfigurationPropertiesLoader(project: Project) :
+    AbstractSpringMetadataConfigurationPropertiesLoader(project) {
 
     override fun loadProperties(module: Module): List<ConfigurationProperty> = runReadNonBlocking {
         val projectProperties = loadPropertiesFromConfiguration(module)
@@ -73,30 +76,53 @@ class ProjectConfigurationPropertiesLoader(project: Project) : AbstractSpringMet
             .firstOrNull()
     }
 
-    private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> = runReadNonBlocking {
-        val result = hashMapOf<String, ConfigurationProperty>()
+    private fun loadPropertiesFromConfiguration(module: Module): HashMap<String, ConfigurationProperty> =
+        runReadNonBlocking {
+            val result = hashMapOf<String, ConfigurationProperty>()
 
-        val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(module)
+            val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(module)
 
-        for (annotatedElement in annotatedElements) {
-            val prefix = ProjectConfigurationPropertiesUtil
-                .extractConfigurationPropertyPrefix(module, annotatedElement) ?: continue
-            val configurationPropertiesType = when (annotatedElement) {
-                is PsiClass -> annotatedElement
-                is PsiMethod -> annotatedElement.returnPsiClass
-                else -> null
-            } ?: continue
+            for (annotatedElement in annotatedElements) {
+                result.putAll(
+                    loadPropertiesFromConfigurationFileCache(module, annotatedElement)
+                )
+            }
 
-            PropertyUtil.collectConfigurationProperty(
-                module,
-                configurationPropertiesType,
-                configurationPropertiesType,
-                prefix,
-                result
-            )
+            result
         }
 
-        result
+    private fun loadPropertiesFromConfigurationFileCache(
+        module: Module,
+        annotatedElement: PsiModifierListOwner,
+    ): Map<String, ConfigurationProperty> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(annotatedElement) {
+            CachedValueProvider.Result(
+                loadPropertiesFromConfigurationFile(module, annotatedElement), annotatedElement
+            )
+        }
+    }
+
+    private fun loadPropertiesFromConfigurationFile(
+        module: Module,
+        annotatedElement: PsiModifierListOwner,
+    ): Map<String, ConfigurationProperty> {
+        val result = hashMapOf<String, ConfigurationProperty>()
+        val prefix = ProjectConfigurationPropertiesUtil
+            .extractConfigurationPropertyPrefix(module, annotatedElement) ?: return emptyMap()
+        val configurationPropertiesType = when (annotatedElement) {
+            is PsiClass -> annotatedElement
+            is PsiMethod -> annotatedElement.returnPsiClass
+            else -> null
+        } ?: return emptyMap()
+
+        PropertyUtil.collectConfigurationProperty(
+            module,
+            configurationPropertiesType,
+            configurationPropertiesType,
+            prefix,
+            result
+        )
+        return result
     }
 
     private fun loadPropertiesFromMetadata(module: Module): HashMap<String, ConfigurationProperty> {
@@ -149,7 +175,7 @@ abstract class PropertyWrapper<T : PsiMember>(val psiMember: T) {
 
     abstract val default: Any?
 
-    abstract val deprecation:  DeprecationInfo?
+    abstract val deprecation: DeprecationInfo?
 
     override fun toString(): String {
         return name ?: ""
@@ -191,7 +217,7 @@ class MethodPropertyWrapper(psiMethod: PsiMethod, deprecationInfo: DeprecationIn
     override val deprecation: DeprecationInfo? = deprecationInfo
 }
 
-data class DeprecationInfo (
+data class DeprecationInfo(
     val level: DeprecationInfoLevel?,
     val replacement: String? = null,
     val reason: String? = null,
