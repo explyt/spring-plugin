@@ -40,11 +40,9 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
-import com.intellij.codeInsight.navigation.LOG
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.codeInsight.navigation.fileStatusAttributes
 import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
-import com.intellij.diagnostic.PluginException
 import com.intellij.ide.util.ModuleRendererFactory
 import com.intellij.ide.util.PlatformModuleRendererFactory
 import com.intellij.lang.properties.IProperty
@@ -58,7 +56,6 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
 import com.intellij.platform.backend.presentation.TargetPresentation
-import com.intellij.pom.PomTargetPsiElement
 import com.intellij.psi.*
 import com.intellij.util.TextWithIcon
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
@@ -382,10 +379,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val presentableText: String = itemPresentation?.presentableText
                     ?: (element as? PsiNamedElement)?.name
                     ?: element.text
-                    ?: run {
-                        presentationError(element)
-                        element.toString()
-                    }
+                    ?: run { element.toString() }
 
                 val moduleTextWithIcon = getModuleTextWithIcon(element)
                 val containerText = itemPresentation?.getContainerText() ?: getOptionContainerText(file, element)
@@ -409,12 +403,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private fun getElementPresentationName(it: UMethod, file: VirtualFile?): String {
         val className = it.javaPsi.containingClass?.name ?: file?.name
         return if (className == null) it.name else (className + "#" + it.name)
-    }
-
-    private fun presentationError(element: PsiElement) {
-        val instance = (element as? PomTargetPsiElement)?.target ?: element
-        val clazz = instance.javaClass
-        LOG.error(PluginException.createByClass("${clazz.name} cannot be presented", null, clazz))
     }
 
     private fun ItemPresentation.getContainerText(): String? {

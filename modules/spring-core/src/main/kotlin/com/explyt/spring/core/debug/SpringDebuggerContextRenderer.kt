@@ -158,10 +158,10 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
 
     private fun getExplytContextInstance(
         debugProcess: DebugProcessImpl,
-        evaluationContext: EvaluationContextImpl
+        evaluationContext: EvaluationContextImpl,
     ): ClassType? = try {
         debugProcess.findLoadedClass(
-            evaluationContext,
+            evaluationContext.suspendContext,
             "com.explyt.spring.boot.bean.reader.InternalHolderContext",
             evaluationContext.classLoader
         )
@@ -176,7 +176,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         return try {
             val txManager = "org.springframework.transaction.support.TransactionSynchronizationManager"
             val txReferenceType = debugProcess.findLoadedClass(
-                evaluationContext, txManager, evaluationContext.classLoader
+                evaluationContext.suspendContext, txManager, evaluationContext.classLoader
             ) as? ClassType ?: return null
             val isActive = (DebuggerUtilsImpl.invokeClassMethod(
                 evaluationContext,
@@ -228,7 +228,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         return try {
             val txManager = "org.springframework.transaction.interceptor.TransactionAspectSupport"
             val txReferenceType = debugProcess.findLoadedClass(
-                evaluationContext, txManager, evaluationContext.classLoader
+                evaluationContext.suspendContext, txManager, evaluationContext.classLoader
             ) as? ClassType ?: return null
 
             return evaluationContext.computeAndKeep {
