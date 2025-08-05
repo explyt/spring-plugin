@@ -122,6 +122,84 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytKotlinLightTestCase() {
         injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
     }
 
+
+    fun testSqlVarInjection() {
+        @Language("kotlin") val code = """  
+            import org.springframework.jdbc.core.RowCountCallbackHandler
+            import org.springframework.jdbc.core.simple.JdbcClient
+            import org.springframework.stereotype.Component
+            
+            @Component
+            class TestService(val jdbcClient: JdbcClient) {
+                fun testQuery() {
+                    val countCallbackHandler = RowCountCallbackHandler()
+                    val sql = "SELECT COUNT(*) FROM EMPLOYEE<caret> WHERE FIRST_NAME = ?"
+                    jdbcClient.sql(sql)
+                        .param("James")
+                        .query(countCallbackHandler)
+                    countCallbackHandler.getRowCount()
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.kt", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
+
+    fun testSqlFieldInjection() {
+        @Language("kotlin") val code = """  
+            import org.springframework.jdbc.core.RowCountCallbackHandler
+            import org.springframework.jdbc.core.simple.JdbcClient
+            import org.springframework.stereotype.Component
+
+            @Component
+            class TestService(val jdbcClient: JdbcClient) {
+                val sql = "SELECT COUNT(*) FROM EMPLOYEE<caret> WHERE FIRST_NAME = ?"
+
+                fun testQuery() {
+                    val countCallbackHandler = RowCountCallbackHandler()
+                    jdbcClient.sql(sql)
+                        .param("James")
+                        .query(countCallbackHandler)
+                    countCallbackHandler.getRowCount()
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.kt", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
+    fun testSqlConstFieldInjection() {
+        @Language("kotlin") val code = """  
+            import org.springframework.jdbc.core.RowCountCallbackHandler
+            import org.springframework.jdbc.core.simple.JdbcClient
+            import org.springframework.stereotype.Component
+
+            const val SOME_SQL = "SELECT COUNT(*) FROM EMPLOYEE<caret> WHERE FIRST_NAME = ?"
+
+            @Component
+            class TestService(val jdbcClient: JdbcClient) {
+
+                fun testQuery() {
+                    val countCallbackHandler = RowCountCallbackHandler()
+                    jdbcClient.sql(SOME_SQL)
+                        .param("James")
+                        .query(countCallbackHandler)
+                    countCallbackHandler.getRowCount()
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.kt", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
+
     fun testJdbcTemplateExecuteInjection() {
         @Language("kotlin") val code = """  
             import org.springframework.jdbc.core.JdbcTemplate
