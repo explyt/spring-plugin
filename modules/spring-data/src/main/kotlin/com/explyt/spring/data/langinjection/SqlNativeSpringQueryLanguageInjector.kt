@@ -61,13 +61,8 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
         }
 
         // Case 2: string literal is receiver of a call expression (e.g., .trimIndent()),
-        val variable = parent?.uastParent as? UVariable
-        if (variable != null) {
-            if (variable.name?.contains("sql", ignoreCase = true) ?: false && variable.uastInitializer == parent) {
-                return true
-            }
-        }
-        return false
+        val variable = parent?.uastParent as? UVariable ?: return false
+        return variable.name?.contains("sql", ignoreCase = true) ?: false && variable.uastInitializer == parent
     }
 
     private fun isJdbcTemplateLike(uElement: UInjectionHost): Boolean {
