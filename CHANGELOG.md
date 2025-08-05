@@ -4,15 +4,38 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+- feat: Spring Debugger
+- feat: Mark/unmark folder as Spring Configuration Root 
+- fix: Invalid references when there are comment and placeholder arguments (#47)
+- fix: Only first object referenced without warning in properties for fields with the same type in @ConfigurationProperties
+- fix: Various bug fixes
+
+### Spring Web / OpenApi
+- feat: Support latest OpenApi in swagger-ui (#50)
+
+### Spring Data
+- feat: Mark some strings as SQL (#54)
+
+### Other
+- fix: Error reporting issues
+- fix: Invalid injection host exception (#51)
+- chore: support 252
+
+## [251.22.6] - 2025-06-09
+
 ### Quarkus
 - feat: Detect Quarkus endpoints in the Endpoint panel
 - fix: Various bug fixes
+
+### Spring Core/Boot
+- fix: Minor fixes
 
 ### Other
 - feat: Add Spring tool for the Explyt AI platform
 - fix: GlitchTip error reporting
 
-## [251.1.15986533443] - 2025-07-01
+## 251.1.15986533443 - 2025-07-01
 
 ### Quarkus
 - Feature: Support Quarkus DI (#34)
