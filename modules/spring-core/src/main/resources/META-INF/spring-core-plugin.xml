@@ -734,12 +734,12 @@
             <reference ref="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
             <reference ref="Explyt.Toolbar.SpringDebugEnabledAction"/>
             <separator/>
-            <add-to-group group-id="ExternalSystemView.ActionsToolbar.CenterPanel" anchor="last"/>
+            <add-to-group group-id="ExternalSystemView.ActionsToolbar.OtherActionsPanel" anchor="last"/>
         </group>
         <group id="SpringBootExplyt.View.ActionsToolbar.LeftPanel">
             <reference ref="SpringBootExplyt.ExternalSystem.AttachProject"/>
             <reference ref="SpringBootExplyt.ExternalSystem.DetachAllProjects"/>
-            <add-to-group group-id="ExternalSystemView.ActionsToolbar.LeftPanel" anchor="after"
+            <add-to-group group-id="ExternalSystemView.ActionsToolbar.SyncPanel" anchor="after"
                           relative-to-action="ExternalSystem.RefreshAllProjects"/>
         </group>
         <action id="SpringBootExplyt.ExternalSystem.Toolbar.AttachProject"

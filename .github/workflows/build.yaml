@@ -7,6 +7,10 @@ env:
   BRANCH_NAME: $GITHUB_REF_NAME
   BUILD_NUMBER: $GITHUB_RUN_ID
 
+permissions:
+  checks: write
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,6 +30,8 @@ jobs:
         uses: mikepenz/action-junit-report@v5
         if: success() || failure() # always run even if the previous step fails
         with:
+          verbose_summary: true
+          comment: true
           report_paths: 'modules/**/build/test-results/test/TEST-*.xml'
 
 

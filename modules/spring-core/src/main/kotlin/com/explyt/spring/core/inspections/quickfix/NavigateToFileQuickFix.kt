@@ -24,7 +24,6 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.find.FindManager
 import com.intellij.find.FindModel
-import com.intellij.find.FindModel.initStringToFind
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.colors.EditorColors.SEARCH_RESULT_ATTRIBUTES
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -45,7 +44,7 @@ class NavigateToFileQuickFix(val file: VirtualFile, val search: String? = null) 
                 .openTextEditor(OpenFileDescriptor(project, file), true) ?: return@invokeLater
             if (search == null) return@invokeLater
 
-            val findModel = FindModel().apply { initStringToFind(this, search) }
+            val findModel = FindModel().apply { FindModel.initStringToFind(this, search) }
             val findResult = FindManager.getInstance(project)
                 .findString(editor.document.charsSequence, 0, findModel, file)
             val highlightManager = HighlightManager.getInstance(project)
