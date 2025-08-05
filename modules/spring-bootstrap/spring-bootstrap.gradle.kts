@@ -122,7 +122,7 @@ configurations {
 
         resolutionStrategy.eachDependency {
             if (requested.group == "org.jetbrains.kotlinx" && requested.name.startsWith("kotlinx-coroutines")) {
-                useVersion("1.8.0")
+                useVersion("1.10.1")
                 because("resolve kotlinx-coroutines version conflicts in favor of local version catalog")
             }
 
