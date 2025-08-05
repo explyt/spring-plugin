@@ -25,18 +25,18 @@ import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.util.NlsSafe
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.uast.*
+import org.jetbrains.uast.expressions.UInjectionHost
 
 
 class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
     override fun isValidPlace(uElement: UElement): Boolean {
         return isNativeQuery(uElement) || isJdbcTemplateLike(uElement)
+                || isStringDefinedAsSqlVariable(uElement)
     }
 
     private fun isNativeQuery(uElement: UElement): Boolean {
@@ -47,6 +47,24 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
         return parentAnnotation
             .findAttributeValue("nativeQuery")
             ?.evaluate() == true
+    }
+
+    private fun String.startsOrEndsWith(match: String, ignoreCase: Boolean): Boolean =
+        startsWith(match, ignoreCase) || endsWith(match, ignoreCase)
+
+    private fun String.startsOrEndsWithSql(): Boolean =
+        startsOrEndsWith("sql", ignoreCase = true)
+
+    private fun isStringDefinedAsSqlVariable(uElement: UElement): Boolean {
+        val parent = uElement.uastParent
+        // Case 1: direct string initializer
+        if (parent is UVariable && parent.name?.startsOrEndsWithSql() ?: false && parent.uastInitializer == uElement) {
+            return true
+        }
+
+        // Case 2: string literal is receiver of a call expression (e.g., .trimIndent()),
+        val variable = parent?.uastParent as? UVariable ?: return false
+        return variable.name?.startsOrEndsWithSql() ?: false && variable.uastInitializer == parent
     }
 
     private fun isJdbcTemplateLike(uElement: UElement): Boolean {
