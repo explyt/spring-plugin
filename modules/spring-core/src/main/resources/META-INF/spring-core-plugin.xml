@@ -661,8 +661,8 @@
                      description="Enable statistic in debug mode"/>
         <registryKey key="explyt.statistic.interval" defaultValue="3600"
                      description="Update statistic interval seconds"/>
-        <registryKey key="explyt.spring.native.javaagent" defaultValue="true"
-                     description="Use -javaagent to get bean info"/>
+        <registryKey key="explyt.spring.agent.path" defaultValue=""
+                     description="Custom path for agent jar"/>
         <registryKey key="EXPLYTSPRINGBOOT.system.in.process" defaultValue="true"
                      description="Whether IDEA should use 'in-process' mode for interaction with plugin api"/>
         <intentionAction>
@@ -692,13 +692,14 @@
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationPropertiesAnnotator"/>
 
         <colorSettingsPage implementation="com.explyt.spring.core.color.ExplytPropertyColorSettingsPage"/>
-        <codeInsight.lineMarkerProvider language="UAST"
-                                        implementationClass="com.explyt.spring.core.externalsystem.action.AttachSpringProjectLineMarkerContributor"/>
 
         <renamePsiElementProcessor
                 implementation="com.explyt.spring.core.rename.SpringValueRenameProcessor"/>
         <renamePsiElementProcessor
                 implementation="com.explyt.spring.core.rename.ConfigurationPropertyPsiElementProcessor"/>
+
+        <debugger.extraDebugNodesProvider implementation="com.explyt.spring.core.debug.SpringDebuggerContextRenderer"/>
+        <runConfigurationExtension implementation="com.explyt.spring.core.debug.SpringDebuggerRunConfigurationExtension" order="last"/>
     </extensions>
 
     <extensions defaultExtensionNs="JavaScript.JsonSchema">
@@ -709,6 +710,8 @@
         <action id="NavigateToSpringBean" class="com.explyt.spring.core.externalsystem.action.BeanNavigationAction"/>
         <action id="Explyt.ExternalView.ProfileChanged"
                 class="com.explyt.spring.core.externalsystem.action.ChangeProfileStateAction"/>
+        <action id="Explyt.ExternalView.EnableDiChanged"
+                class="com.explyt.spring.core.externalsystem.action.ChangeEnabledDiAction"/>
         <action id="SpringBootExplyt.ExternalSystem.AttachProject"
                 class="com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction"/>
         <action id="SpringBootExplyt.ExternalSystem.DetachAllProjects"
@@ -721,19 +724,21 @@
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.DependencyTreeGroup"/>
             <add-to-group group-id="ExternalSystem.DependencyAnalyzer.UsagesTreeGroup"/>
         </action>
+        <action id="Explyt.Toolbar.SpringDebugEnabledAction" class="com.explyt.spring.core.externalsystem.action.SpringDebugEnabledAction"/>
         <!--<action id="SpringBootExplyt.ActiveExternalProjectAction"
                 class="com.explyt.spring.core.externalsystem.action.ActiveExternalProjectAction">
             <add-to-group group-id="ExternalSystemView.BaseProjectMenu"/>
         </action>-->
         <group id="SpringBootExplyt.View.ActionsToolbar.CenterPanel">
             <separator/>
-            <reference id="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
+            <reference ref="SpringBootExplyt.ToolbarDependencyAnalyzer"/>
+            <reference ref="Explyt.Toolbar.SpringDebugEnabledAction"/>
             <separator/>
             <add-to-group group-id="ExternalSystemView.ActionsToolbar.CenterPanel" anchor="last"/>
         </group>
         <group id="SpringBootExplyt.View.ActionsToolbar.LeftPanel">
-            <reference id="SpringBootExplyt.ExternalSystem.AttachProject"/>
-            <reference id="SpringBootExplyt.ExternalSystem.DetachAllProjects"/>
+            <reference ref="SpringBootExplyt.ExternalSystem.AttachProject"/>
+            <reference ref="SpringBootExplyt.ExternalSystem.DetachAllProjects"/>
             <add-to-group group-id="ExternalSystemView.ActionsToolbar.LeftPanel" anchor="after"
                           relative-to-action="ExternalSystem.RefreshAllProjects"/>
         </group>
@@ -747,6 +752,11 @@
         <action id="Explyt.UastModelTrackerInvalidateAction"
                 class="com.explyt.spring.core.action.UastModelTrackerInvalidateAction">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="UML.Group"/>
+        </action>
+
+        <action id="Explyt.SpringPropertyFolderAction"
+                class="com.explyt.spring.core.settings.SpringPropertyFolderAction">
+            <add-to-group group-id="MarkRootGroup" anchor="last" />
         </action>
 
         <action id="Explyt.PostConstructGenerateAction"

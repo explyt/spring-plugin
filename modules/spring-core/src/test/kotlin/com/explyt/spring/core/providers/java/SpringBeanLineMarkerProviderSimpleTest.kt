@@ -251,4 +251,22 @@ class SpringBeanLineMarkerProviderSimpleTest : ExplytJavaLightTestCase() {
 
         TestCase.assertTrue(gutterTargetString.flatMap { it }.all { it == "foo()" })
     }
+
+    fun testNoLineMarkerOnConstructorParam() {
+        val person = """                
+                class Person {
+                    private String name;
+                    public Person(String name) {
+                        this.name = name;
+                    }
+                }
+            """.trimIndent()
+
+        myFixture.configureByText("Person.java", person)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.SpringBeanDependencies }
+        assertTrue(allBeanGutters.isEmpty())
+    }
 }

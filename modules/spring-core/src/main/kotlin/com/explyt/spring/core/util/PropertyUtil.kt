@@ -320,6 +320,10 @@ object PropertyUtil {
         val result = mutableListOf<T>()
         ranges.forEach {
             val rangeText = it.substring(from)
+            // Check if a placeholder is within comment
+            if (from.lastIndexOf(SpringProperties.PROPERTY_COMMENT).let { it >= 0 && it > from.lastIndexOf("\n") }) {
+                return@forEach
+            }
             val colonIndex = rangeText.indexOf(SpringProperties.COLON)
 
             val range = if (colonIndex != -1) TextRange(it.startOffset, it.startOffset + colonIndex) else it
@@ -385,10 +389,14 @@ object PropertyUtil {
         targetClass: PsiClass,
         prefix: String,
         result: MutableMap<String, ConfigurationProperty>,
-        visitedClasses: MutableSet<String> = mutableSetOf()
+        visitedClasses: MutableSet<String> = mutableSetOf(),
+        depth: Int = 0
     ) {
+        //check recursion depth
+        if (depth > 10) return
+
         val qualifiedNameClass = targetClass.qualifiedName ?: return
-        if (!visitedClasses.add(qualifiedNameClass)) return
+        if (!visitedClasses.add("$prefix:$qualifiedNameClass")) return
 
         val nestedFields = getNestedPropertyWrappers(targetClass)
         val finalFields = getFieldPropertyWrappers(targetClass)
@@ -396,14 +404,15 @@ object PropertyUtil {
 
         for (it in nestedFields) {
             val propertyTypeClass = it.psiType.resolvedPsiClass
-            if (propertyTypeClass != null) {
+            if (propertyTypeClass != null && propertyTypeClass.qualifiedName != qualifiedNameClass) {
                 collectConfigurationProperty(
                     module,
                     ownerConfigurationClass,
                     propertyTypeClass,
                     "$prefix.${it.name}",
                     result,
-                    visitedClasses
+                    visitedClasses,
+                    depth + 1
                 )
             }
         }
@@ -418,9 +427,10 @@ object PropertyUtil {
                 val propertyTypeClass = psiType.resolve()
                 val javaFile = propertyTypeClass?.containingFile as? PsiJavaFile ?: continue
 
-                if (javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_LANG &&
-                    javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_TIME &&
-                    javaFile.packageName != JavaCoreClasses.PACKAGE_KOTLIN
+                if (javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_LANG
+                    && javaFile.packageName != JavaCoreClasses.PACKAGE_JAVA_TIME
+                    && javaFile.packageName != JavaCoreClasses.PACKAGE_KOTLIN
+                    && propertyTypeClass.qualifiedName != qualifiedNameClass
                 ) {
                     collectConfigurationProperty(
                         module,
@@ -428,7 +438,8 @@ object PropertyUtil {
                         propertyTypeClass,
                         name,
                         result,
-                        visitedClasses
+                        visitedClasses,
+                        depth + 1
                     )
                 }
             }

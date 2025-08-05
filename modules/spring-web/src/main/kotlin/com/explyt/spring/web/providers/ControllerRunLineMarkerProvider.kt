@@ -39,9 +39,9 @@ class ControllerRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
-        val isRequestMapping = psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)
+        val isController = psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)
         val isFeignClient = psiClass.isMetaAnnotatedBy(SpringWebClasses.FEIGN_CLIENT)
-        if (!isRequestMapping && !isFeignClient) return null
+        if (!isController && !isFeignClient) return null
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
         val prefixes = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {

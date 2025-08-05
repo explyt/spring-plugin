@@ -23,10 +23,15 @@ import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
+import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
+import com.explyt.spring.core.externalsystem.utils.Constants
+import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.language.injection.ConfigurationPropertiesInjector
 import com.explyt.spring.core.properties.SpringPropertySourceSearch
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.settings.SpringPropertyFolderState
 import com.explyt.util.ExplytAnnotationUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
@@ -59,6 +64,7 @@ import com.intellij.json.psi.JsonFile
 import com.intellij.lang.Language
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.lang.properties.psi.PropertiesFile
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
@@ -71,6 +77,7 @@ import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.util.PsiUtil
+import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.toUElement
@@ -79,6 +86,7 @@ import java.util.*
 object SpringCoreUtil {
 
     fun isConfigurationPropertyFile(psiFile: PsiFile): Boolean {
+        if (isUserPropertyFolder(psiFile)) return true
         val module = ModuleUtilCore.findModuleForPsiElement(psiFile) ?: return false
         if (!isSpringProject(module)) {
             return false
@@ -129,6 +137,11 @@ object SpringCoreUtil {
                 return@any targetFile == propertiesVf
             }
         }
+    }
+
+    private fun isUserPropertyFolder(psiFile: PsiFile): Boolean {
+        val virtualFile = psiFile.virtualFile?.parent ?: return false
+        return SpringPropertyFolderState.isUserPropertyFolder(psiFile.project, virtualFile)
     }
 
     fun isAdditionalConfigFile(psiFile: PsiFile): Boolean {
@@ -701,6 +714,21 @@ object SpringCoreUtil {
             if (!it.isAssignableFrom(otherPsiType.parameters[idx])) return false
         }
         return true
+    }
+
+    fun isExplytDebug(project: Project): Boolean {
+        if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return false
+        val debugSession = XDebuggerManager.getInstance(project).currentSession
+        if (debugSession != null) {
+            val debugProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
+                .getLinkedProjectSettings(Constants.DEBUG_SESSION_NAME) as? NativeProjectSettings
+            val sessionName = debugSession.sessionName
+            return debugProjectSettings != null
+                    && debugProjectSettings.runConfigurationId != null
+                    && debugSession.sessionName.isNotBlank()
+                    && debugProjectSettings.runConfigurationId!!.contains(sessionName)
+        }
+        return false
     }
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"

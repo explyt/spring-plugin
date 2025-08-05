@@ -25,6 +25,7 @@ class NativeExecutionSettings(val project: Project) : ExternalSystemExecutionSet
     var runConfigurationName: String? = null
     var qualifiedMainClassName: String? = null
     var messageMappingExist: Boolean = false
+    var beanSearch: Boolean = false
     var runConfigurationType = RunConfigurationType.EXPLYT
 }
 

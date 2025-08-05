@@ -21,6 +21,7 @@ import com.explyt.jpa.ql.JpqlLanguage
 import com.intellij.lang.Language
 import com.intellij.lang.injection.MultiHostInjector
 import com.intellij.lang.injection.MultiHostRegistrar
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.injected.changesHandler.contentRange
 import org.jetbrains.uast.*
@@ -28,6 +29,8 @@ import org.jetbrains.uast.expressions.UInjectionHost
 import org.jetbrains.uast.expressions.UStringConcatenationsFacade
 
 abstract class JpqlInjectorBase() : MultiHostInjector {
+    private val log = logger<JpqlInjectorBase>()
+
     protected abstract fun isValidPlace(uElement: UElement): Boolean
 
     override fun getLanguagesToInject(registrar: MultiHostRegistrar, context: PsiElement) {
@@ -47,18 +50,42 @@ abstract class JpqlInjectorBase() : MultiHostInjector {
         val flattenExpression = uElement !is UInjectionHost
         val concatenationsFacade =
             UStringConcatenationsFacade.createFromUExpression(uElement, flattenExpression) ?: return
-        val hosts = concatenationsFacade.psiLanguageInjectionHosts.toList()
-        if (hosts.isEmpty()) {
+        val hosts = concatenationsFacade.psiLanguageInjectionHosts
+            .distinct()
+            .filter { it.isValid && it.isValidHost }
+            .filter { host ->
+                try {
+                    val range = host.contentRange.shiftLeft(host.textOffset)
+                    range.startOffset >= 0 && range.endOffset >= range.startOffset
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        if (hosts.none()) {
             return
         }
         registrar.startInjecting(language)
         hosts.forEach { host ->
-            registrar.addPlace(
-                null,
-                null,
-                host,
-                host.contentRange.shiftLeft(host.textOffset)
-            )
+            try {
+                if (!host.isValid) {
+                    log.warn("[JpqlInjectorBase] Skipping invalid host: $host")
+                    return@forEach
+                }
+                val range = host.contentRange.shiftLeft(host.textOffset)
+                val hostRange = host.textRange
+                if (range.startOffset < 0 || range.endOffset > hostRange.length || range.endOffset < range.startOffset) {
+                    log.warn("[JpqlInjectorBase] Skipping host with invalid range: $host, range: $range, hostRange: $hostRange")
+                    return@forEach
+                }
+                registrar.addPlace(
+                    null,
+                    null,
+                    host,
+                    range
+                )
+            } catch (e: Exception) {
+                log.error("[JpqlInjectorBase] Exception in addPlace", e)
+            }
         }
         registrar.doneInjecting()
     }
