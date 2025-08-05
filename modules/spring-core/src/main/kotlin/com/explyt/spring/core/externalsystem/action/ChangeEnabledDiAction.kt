@@ -27,7 +27,7 @@ import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiManager
-import org.jetbrains.kotlin.idea.base.externalSystem.find
+import org.jetbrains.kotlin.idea.base.externalSystem.findAll
 
 class ChangeEnabledDiAction : ExternalSystemNodeAction<BeanSearch>(BeanSearch::class.java) {
 
@@ -40,7 +40,7 @@ class ChangeEnabledDiAction : ExternalSystemNodeAction<BeanSearch>(BeanSearch::c
         externalData.enabled = !externalData.enabled
         val beanSearch = ProjectDataManager.getInstance()
             .getExternalProjectData(project, projectSystemId, externalData.projectPath)
-            ?.externalProjectStructure?.find(BeanSearch.KEY)?.data
+            ?.externalProjectStructure?.findAll(BeanSearch.KEY)?.firstOrNull()?.data
         beanSearch?.let { it.enabled = externalData.enabled }
 
         ModificationTrackerManager.getInstance(project).invalidateAll()

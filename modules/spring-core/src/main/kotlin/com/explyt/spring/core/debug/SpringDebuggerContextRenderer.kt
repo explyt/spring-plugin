@@ -121,8 +121,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                     evaluationContext,
                     explytContextClass,
                     "getContext",
-                    null,
-                    emptyList()
+                    null
                 ) as? ObjectReference
             }
         } catch (_: Exception) {
@@ -135,7 +134,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
     ): String? {
         return try {
             (DebuggerUtilsImpl.invokeClassMethod(
-                evaluationContext, explytContextClass, "getRawBeanData", null, emptyList()
+                evaluationContext, explytContextClass, "getRawBeanData", null
             ) as? StringReference)?.value()
         } catch (_: Exception) {
             null
@@ -148,7 +147,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         return try {
             (evaluationContext.computeAndKeep {
                 DebuggerUtilsImpl.invokeClassMethod(
-                    evaluationContext, explytContextClass, "getConfigurationId", null, emptyList()
+                    evaluationContext, explytContextClass, "getConfigurationId", null
                 ) as? StringReference
             })?.value()
         } catch (_: Exception) {
@@ -182,24 +181,21 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 evaluationContext,
                 txReferenceType,
                 "isActualTransactionActive",
-                null,
-                emptyList()
+                null
             ) as? BooleanValue)?.value() ?: false
             if (!isActive) return null
             val isReadOnly = (DebuggerUtilsImpl.invokeClassMethod(
                 evaluationContext,
                 txReferenceType,
                 "isCurrentTransactionReadOnly",
-                null,
-                emptyList()
+                null
             ) as? BooleanValue)?.value() ?: false
 
             val level = (DebuggerUtilsImpl.invokeClassMethod(
                 evaluationContext,
                 txReferenceType,
                 "getCurrentTransactionIsolationLevel",
-                null,
-                emptyList()
+                null
             ) as? ObjectReference)?.let { mapToLevelString(it) } ?: "DEFAULT"
 
             "Isolation=$level, ReadOnly=$isReadOnly"
@@ -236,8 +232,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                     evaluationContext,
                     txReferenceType,
                     "currentTransactionStatus",
-                    null,
-                    emptyList()
+                    null
                 ) as? ObjectReference
             }
         } catch (_: Exception) {
