@@ -185,7 +185,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             .findActiveBeanDeclarations(
                 module,
                 element.name ?: "",
-                element.language,
+                element.getLanguage(),
                 psiType,
                 element.getQualifierAnnotation()
             )

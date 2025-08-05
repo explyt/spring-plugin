@@ -697,7 +697,7 @@
         <renamePsiElementProcessor
                 implementation="com.explyt.spring.core.rename.ConfigurationPropertyPsiElementProcessor"/>
 
-        <debugger.extraDebugNodesProvider implementation="com.explyt.spring.core.debug.SpringDebuggerContextRenderer"/>
+
         <runConfigurationExtension implementation="com.explyt.spring.core.debug.SpringDebuggerRunConfigurationExtension" order="last"/>
     </extensions>
 

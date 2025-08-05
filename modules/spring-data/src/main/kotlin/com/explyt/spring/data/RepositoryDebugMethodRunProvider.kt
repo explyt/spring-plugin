@@ -20,7 +20,7 @@ package com.explyt.spring.data
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
-import com.explyt.spring.core.util.SpringCoreUtil
+import com.explyt.spring.data.RepositoryDebugMethodRunProvider.Companion.isExplytDebug
 import com.explyt.spring.data.util.SpringDataUtil
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
@@ -31,6 +31,7 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.xdebugger.XDebuggerManager
@@ -49,7 +50,7 @@ class RepositoryDebugMethodRunProvider : RunLineMarkerContributor() {
 
         val uMethod = getUParentForIdentifier(element) as? UMethod ?: return null
         if (!SpringDataUtil.isSpringDataProject(element.project)) return null
-        if (!SpringCoreUtil.isExplytDebug(element.project)) return null
+        if (!isExplytDebug(element.project)) return null
         val uClass = uMethod.getContainingUClass().takeIf { it?.isInterface == true } ?: return null
         val qualifiedName = uClass.qualifiedName ?: return null
         if (!InheritanceUtil.isInheritor(uClass.javaPsi, SpringDataClasses.REPOSITORY)) return null
@@ -61,6 +62,13 @@ class RepositoryDebugMethodRunProvider : RunLineMarkerContributor() {
             { "Explyt: Evaluate in Debug" }
         )
     }
+
+    companion object {
+        fun isExplytDebug(project: Project): Boolean {
+            if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return false
+            return XDebuggerManager.getInstance(project).currentSession != null
+        }
+    }
 }
 
 private class EvaluateInDebugAction(val qualifiedName: String, val methodName: String, val language: Language)
@@ -71,7 +79,7 @@ private class EvaluateInDebugAction(val qualifiedName: String, val methodName: S
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        if (!SpringCoreUtil.isExplytDebug(project)) return
+        if (!isExplytDebug(project)) return
         val currentSession = XDebuggerManager.getInstance(project).currentSession
         if (currentSession?.currentStackFrame == null) {
             Notification(
