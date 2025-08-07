@@ -80,6 +80,8 @@ dependencies {
         bundledPlugins(intellijPlugins)
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
+
+        plugin("com.explyt.test", "4.0.4-IJ-251")
     }
     testImplementation(project(":test-framework"))
     testImplementation("junit:junit:4.13.2")
