@@ -53,7 +53,7 @@ import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLMapping
 
-private const val MAX_FILE_SIZE_BYTES = 1024 * 1024
+private const val MAX_FILE_SIZE_BYTES = 1024 * 1024 //1mb
 
 object EndpointUsageSearcher {
 
