@@ -8,6 +8,7 @@
     <depends>com.intellij.modules.json</depends>
     <depends optional="true" config-file="spring-core-sh.xml">org.jetbrains.plugins.terminal</depends>
     <depends optional="true" config-file="spring-core-sh.xml">com.jetbrains.sh</depends>
+    <depends optional="true" config-file="spring-test-plugin.xml">com.explyt.test</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.core.configurationPropertiesLoader" dynamic="true"
