@@ -22,6 +22,45 @@
     </extensions>
 
     <actions>
+        <group id="ExternalCallMenuGroup"
+               text="Explyt AI: Refactor Actions"
+               icon="/icons/chatToolwindowIcon.svg"
+               popup="true"
+               description="Refactor actions">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
 
+            <action id="Explyt.Spring.ConvertPropertiesToYamlAction"
+                    class="com.explyt.spring.ai.action.ConvertPropertiesToYamlAction"/>
+
+            <action id="Explyt.Spring.ConvertYamlToPropertiesAction"
+                    class="com.explyt.spring.ai.action.ConvertYamlToPropertiesAction"/>
+
+            <action id="Explyt.Spring.ConvertDtoToEntityAction"
+                    class="com.explyt.spring.ai.action.ConvertDtoToEntityAction"/>
+
+            <action id="Explyt.Spring.ConvertEntityToDtoAction"
+                    class="com.explyt.spring.ai.action.ConvertEntityToDtoAction"/>
+
+            <!--<action id="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
+                    class="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
+                    text="Convert Openapi File to Spring Controller"
+                    description="Convert openapi file to spring controller"/>
+
+            <action id="com.explyt.plugin.call.action.ConvertControllerToOpenapiAction"
+                    class="com.explyt.plugin.call.action.ConvertControllerToOpenapiAction"
+                    text="Convert Spring Controller to Openapi File"
+                    description="Convert spring controller to openapi file"/>
+
+            <action id="com.explyt.plugin.call.action.ConvertEntityToDtoAction"
+                    class="com.explyt.plugin.call.action.ConvertEntityToDtoAction"
+                    text="Convert Entity to Dto"
+                    description="Convert JPA entity to dto class"/>
+
+            <action id="com.explyt.plugin.call.action.ConvertDtoToEntityAction"
+                    class="com.explyt.plugin.call.action.ConvertDtoToEntityAction"
+                    text="Convert Dto to Entity"
+                    description="Convert dto class to JPA entity"/>-->
+        </group>
     </actions>
 </idea-plugin>
