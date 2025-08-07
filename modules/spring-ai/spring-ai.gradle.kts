@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -23,39 +23,25 @@ plugins {
     kotlin("jvm")
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-}
+evaluationDependsOn(":spring-core")
 
-val intellijPlugins = listOf(
-    "com.intellij.java",
-    "com.intellij.properties",
-    "org.intellij.intelliLang",
-    "org.jetbrains.plugins.yaml",
-    "org.jetbrains.kotlin",
-    "org.jetbrains.plugins.terminal",
-    "com.jetbrains.sh",
-    "com.intellij.modules.json"
-)
+val intellijPlugins = listOf<String>()
 
 ext {
     set("intellijPlugins", intellijPlugins)
 }
 
-evaluationDependsOn(":base")
+val springCoreProject = project(":spring-core")
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+}
 
 intellijPlatform {
     buildSearchableOptions = false
     instrumentCode = false
 }
 
-sourceSets {
-    main {
-        java {
-            srcDirs("src/main/gen")
-        }
-    }
-}
 
 tasks {
     runIde { enabled = false }
@@ -63,23 +49,20 @@ tasks {
     verifyPlugin { enabled = false }
 }
 
-val baseProject = project(":base")
-
 val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {
-    api(baseProject)
-    implementation("com.cronutils:cron-utils:9.2.1")
-    implementation("javax.validation:validation-api:2.0.1.Final")
-    implementation(fileTree("libs") { include("*.jar") })
+    implementation(springCoreProject)
 
     intellijPlatform {
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
         jetbrainsRuntime()
-        bundledPlugins(intellijPlugins)
+        bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
+
+        plugin("com.explyt.test", "4.0.4-IJ-251")
     }
     testImplementation(project(":test-framework"))
     testImplementation("junit:junit:4.13.2")
