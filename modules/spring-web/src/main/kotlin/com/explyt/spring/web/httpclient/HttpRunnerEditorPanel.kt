@@ -69,7 +69,6 @@ class HttpRunnerEditorPanel(fileEditor: FileEditor, val project: Project) :
         val toolbar = ActionManager.getInstance().createActionToolbar("Explyt.HttpRunnerEditorToolbar", httpGroup, true)
         toolbar.targetComponent = this
         add(toolbar.component, BorderLayout.WEST)
-
         val panel = panel {
             row {
                 panel {
@@ -100,7 +99,16 @@ class HttpRunnerEditorPanel(fileEditor: FileEditor, val project: Project) :
             }
         }
 
+        val postmanAction = ActionManager.getInstance().getAction("Explyt.Spring.ConvertPostmanToHttpAction")
+        val curlAction = ActionManager.getInstance().getAction("Explyt.Spring.ConvertCurlToHttpAction")
+        val panelAiAction = panel {
+            row {
+                button("Import from Postman", postmanAction).visible(postmanAction != null)
+                button("From Curl", curlAction).visible(curlAction != null)
+            }
+        }
         myLinksPanel.add(panel)
+        myLinksPanel.add(panelAiAction)
         add(myLinksPanel, BorderLayout.CENTER)
     }
 

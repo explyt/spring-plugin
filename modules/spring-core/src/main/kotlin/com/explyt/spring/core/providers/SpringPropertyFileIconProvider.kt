@@ -18,6 +18,7 @@
 package com.explyt.spring.core.providers
 
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.settings.SpringPropertyFolderState
 import com.explyt.spring.core.util.SpringCoreUtil.SPRING_BOOT_MAVEN
 import com.intellij.ide.IconProvider
 import com.intellij.java.library.JavaLibraryUtil
@@ -38,6 +39,9 @@ class SpringPropertyFileIconProvider : IconProvider() {
     }
 
     private fun getIconForFile(psiFile: PsiFile, fileName: String): Icon? {
+        if (SpringPropertyFolderState.isUserPropertyFolder(psiFile)) {
+            return SpringIcons.SpringSetting
+        }
         if (fileName.startsWith("application-") || fileName.startsWith("application.")) {
             val module = ModuleUtilCore.findModuleForFile(psiFile) ?: return null
             if (!module.isDisposed && JavaLibraryUtil.hasLibraryJar(module, SPRING_BOOT_MAVEN)) {
