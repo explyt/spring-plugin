@@ -24,6 +24,7 @@ plugins {
 }
 
 evaluationDependsOn(":spring-core")
+evaluationDependsOn(":spring-web")
 
 val intellijPlugins = listOf<String>()
 
@@ -32,6 +33,7 @@ ext {
 }
 
 val springCoreProject = project(":spring-core")
+val springWebProject = project(":spring-web")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -54,6 +56,7 @@ val defaultIdeaVersion: String by rootProject
 
 dependencies {
     implementation(springCoreProject)
+    implementation(springWebProject)
 
     intellijPlatform {
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)

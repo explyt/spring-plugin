@@ -18,13 +18,15 @@
 <idea-plugin>
     <depends optional="true" config-file="spring-test-plugin.xml">com.explyt.test</depends>
     <extensions defaultExtensionNs="com.intellij">
-
+        <codeInsight.lineMarkerProvider
+                language="UAST"
+                implementationClass="com.explyt.spring.ai.provider.SpringBootAppLineMarkerProvider"/>
     </extensions>
 
     <actions>
         <group id="ExternalCallMenuGroup"
                text="Explyt AI: Refactor Actions"
-               icon="/icons/chatToolwindowIcon.svg"
+               icon="/com/explyt/ai/icons/assistantResponseIcon.svg"
                popup="true"
                description="Refactor actions">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
@@ -41,6 +43,12 @@
 
             <action id="Explyt.Spring.ConvertEntityToDtoAction"
                     class="com.explyt.spring.ai.action.ConvertEntityToDtoAction"/>
+
+            <action id="Explyt.Spring.ConvertControllerToOpenapiAction"
+                    class="com.explyt.spring.ai.action.ConvertControllerToOpenapiAction"/>
+
+            <action id="Explyt.Spring.ConvertOpenapiToControllerAction"
+                    class="com.explyt.spring.ai.action.ConvertOpenapiToControllerAction"/>
 
             <!--<action id="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
                     class="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
