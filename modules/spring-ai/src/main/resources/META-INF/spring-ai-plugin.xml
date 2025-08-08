@@ -50,6 +50,12 @@
             <action id="Explyt.Spring.ConvertOpenapiToControllerAction"
                     class="com.explyt.spring.ai.action.ConvertOpenapiToControllerAction"/>
 
+            <action id="Explyt.Spring.ConvertCurlToHttpAction"
+                    class="com.explyt.spring.ai.action.ConvertCurlToHttpAction"/>
+
+            <action id="Explyt.Spring.ConvertPostmanToHttpAction"
+                    class="com.explyt.spring.ai.action.ConvertPostmanToHttpAction"/>
+
             <!--<action id="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
                     class="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
                     text="Convert Openapi File to Spring Controller"
