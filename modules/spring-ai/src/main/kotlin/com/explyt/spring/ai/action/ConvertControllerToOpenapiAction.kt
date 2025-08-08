@@ -17,7 +17,9 @@
 
 package com.explyt.spring.ai.action
 
-import com.explyt.spring.ai.SpringAiBundle
+import com.explyt.spring.ai.SpringAiBundle.message
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -28,66 +30,57 @@ import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElement
 
-private val JPA_ANNOTATIONS = listOf("javax.persistence.Entity", "jakarta.persistence.Entity")
-
-class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.dto.to.jpa")) {
+class ConvertControllerToOpenapiAction : AnAction(message("explyt.spring.ai.action.controller.to.openapi")) {
     override fun update(e: AnActionEvent) {
         val project: Project = e.project ?: return
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
 
-        val uClasses = virtualFiles
+        val enabled = virtualFiles
             ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes } ?: emptyList()
-
-        val enabled = uClasses.isNotEmpty() && uClasses.none { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) }
+            ?.flatMap { it.classes }
+            ?.any { it.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER) } ?: false
 
         e.presentation.isEnabledAndVisible = enabled
     }
 
-    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
 
-        val dtoPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes }
-            ?.filter { !it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
+        val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
+        val controllerPsiClasses = virtualFiles
+            .mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
+            .flatMap { it.classes }
+            .filter { it.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER) }
+            .takeIf { it.isNotEmpty() } ?: return
 
-        val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
+        val controllerNames = controllerPsiClasses.map { it.javaPsi.name }
 
-        val prompt = SpringAiBundle.message("action.prompt.convert.dto", dtoNames)
-        //service.sendPromptWithClasses(prompt, dtoPsiClasses)
+        val prompt = message("action.prompt.convert.controller", controllerNames)
+        //service.sendPromptWithClasses(prompt, controllerPsiClasses)
     }
 }
 
-class ConvertEntityToDtoAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.jpa.to.dto")) {
+class ConvertOpenapiToControllerAction : AnAction(message("explyt.spring.ai.action.openapi.to.controller")) {
     override fun update(e: AnActionEvent) {
         val project: Project = e.project ?: return
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
 
-        val uClasses = virtualFiles
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes } ?: emptyList()
-
-        val enabled = uClasses.isNotEmpty() && uClasses.any { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) }
-
+        val enabled = virtualFiles?.any { OpenApiUtils.isOpenApiFile(project, it) } ?: false
         e.presentation.isEnabledAndVisible = enabled
     }
 
-    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
+        val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
+        val openApiFiles = virtualFiles.filter { OpenApiUtils.isOpenApiFile(project, it) }
+        val fileNames = openApiFiles.joinToString(", ") { it.name }
 
-        val dtoPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes }
-            ?.filter { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
-
-        val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
-
-        val prompt = SpringAiBundle.message("action.prompt.convert.entity", dtoNames)
-        //service.sendPromptWithClasses(prompt, dtoPsiClasses)
+        val prompt = message("action.prompt.convert.openapi", fileNames)
+        //service.sendPromptWithFiles(prompt, openApiFiles)
     }
+
 }
