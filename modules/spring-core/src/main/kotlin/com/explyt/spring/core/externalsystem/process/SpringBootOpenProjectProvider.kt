@@ -77,7 +77,6 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
     }
 
     fun attachDebugProject(project: Project, rawBeanData: String, runConfigurationId: String) {
-        ExternalProjectsManagerImpl.getInstance(project).setStoreExternally(true)
         val canonicalPath = Constants.DEBUG_SESSION_NAME
         ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).unlinkExternalProject(canonicalPath)
 
