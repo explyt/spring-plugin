@@ -19,6 +19,8 @@ package com.explyt.spring.ai.provider
 
 import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
+import com.explyt.spring.ai.action.ConvertControllerToOpenapiAction
+import com.explyt.spring.core.SpringCoreClasses.CONTROLLER
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.intellij.codeInsight.daemon.LineMarkerInfo
@@ -31,21 +33,34 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.editor.markup.MarkupEditorFilter
 import com.intellij.openapi.editor.markup.MarkupEditorFilterFactory
 import com.intellij.psi.PsiElement
+import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.getUParentForIdentifier
 import javax.swing.Icon
 
 
-class SpringBootAppLineMarkerProvider : LineMarkerProvider {
+class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         val uElement = getUParentForIdentifier(element) as? UClass ?: return null
-        val springAppAnnotation = uElement.uAnnotations
-            .firstOrNull { it.javaPsi?.isMetaAnnotatedByOrSelf(SPRING_BOOT_APPLICATION) == true } ?: return null
-        val sourcePsi = springAppAnnotation.uastAnchor?.sourcePsi ?: return null
+        val springAnnotation = findUAnnotation(uElement) ?: return null
+        val sourcePsi = springAnnotation.uastAnchor?.sourcePsi ?: return null
         val actionGroup = DefaultActionGroup()
-        actionGroup.add(GenerateKafkaConfigAction())
-        actionGroup.add(GenerateSecurityConfigAction())
+        val aiAnnotationType = aiAnnotateType(springAnnotation)
+        when (aiAnnotationType) {
+            AiAnnotateType.SPRING_BOOT -> {
+                actionGroup.add(GenerateKafkaConfigAction())
+                actionGroup.add(GenerateSecurityConfigAction())
+            }
+
+            AiAnnotateType.CONTROLLER -> {
+                actionGroup.add(ConvertControllerToOpenapiAction())
+            }
+
+            else -> {
+                return null
+            }
+        }
 
         return SpringMarkerInfo(
             sourcePsi,
@@ -53,6 +68,34 @@ class SpringBootAppLineMarkerProvider : LineMarkerProvider {
             { message("explyt.spring.ai.actions") },
             actionGroup
         )
+    }
+
+    private fun aiAnnotateType(springAnnotation: UAnnotation): AiAnnotateType? {
+        return when {
+            springAnnotation.javaPsi?.isMetaAnnotatedByOrSelf(SPRING_BOOT_APPLICATION) == true -> {
+                AiAnnotateType.SPRING_BOOT
+            }
+
+            springAnnotation.javaPsi?.isMetaAnnotatedByOrSelf(CONTROLLER) == true -> {
+                AiAnnotateType.CONTROLLER
+            }
+
+            else -> {
+                null
+            }
+        }
+    }
+
+    private fun findUAnnotation(uElement: UClass): UAnnotation? {
+        return uElement.uAnnotations
+            .firstOrNull {
+                it.javaPsi?.isMetaAnnotatedByOrSelf(SPRING_BOOT_APPLICATION) == true
+                        || it.javaPsi?.isMetaAnnotatedByOrSelf(CONTROLLER) == true
+            }
+    }
+
+    private enum class AiAnnotateType {
+        SPRING_BOOT, CONTROLLER
     }
 }
 
