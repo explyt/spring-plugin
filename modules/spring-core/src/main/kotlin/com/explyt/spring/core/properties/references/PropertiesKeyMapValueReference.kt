@@ -46,9 +46,7 @@ class PropertiesKeyMapValueReference(
 
     private fun handleMapProperty(project: Project): Array<ResolveResult> {
         if (baseMapRef) {
-            val type = property.sourceType ?: return emptyArray()
-            val source = PropertyUtil.findSourceMember(property.name, type, project) ?: return emptyArray()
-            return PropertyUtil.resolveResults(source)
+            return baseMapResolve(project)
         }
         if (enumMapKeyRef) {
             val enumPsiClass = getKeyPsiClass(property.type, project) ?: return emptyArray()
@@ -58,16 +56,26 @@ class PropertiesKeyMapValueReference(
                 ?.javaPsi as? PsiMember ?: return emptyArray()
             return PropertyUtil.resolveResults(psiMember)
         }
-         
-        var propertyMapValue = PropertyUtil.getKeyValuePair(propertyKey, property).second
+
+        val propertyMapValue = PropertyUtil.getKeyValuePair(propertyKey, property).second
         if (propertyMapValue.isEmpty()) return emptyArray()
 
         val valueType = PropertyUtil.getValueClassNameInMap(property.type) ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
-        return PropertyUtil.getMethodsTypeByMap(module, valueType, propertyMapValue)
+        val methodsTypeByMap = PropertyUtil.getMethodsTypeByMap(module, valueType, propertyMapValue)
+        if (methodsTypeByMap.isEmpty()) {
+            return baseMapResolve(project)
+        }
+        return methodsTypeByMap
             .firstOrNull { PropertyUtil.isNameSetMethod(it.name, propertyMapValue) }
             ?.let { PropertyUtil.resolveResults(it) }
             ?: emptyArray()
+    }
+
+    private fun baseMapResolve(project: Project): Array<ResolveResult> {
+        val type = property.sourceType ?: return emptyArray()
+        val source = PropertyUtil.findSourceMember(property.name, type, project) ?: return emptyArray()
+        return PropertyUtil.resolveResults(source)
     }
 }
