@@ -86,7 +86,7 @@ import java.util.*
 object SpringCoreUtil {
 
     fun isConfigurationPropertyFile(psiFile: PsiFile): Boolean {
-        if (isUserPropertyFolder(psiFile)) return true
+        if (SpringPropertyFolderState.isUserPropertyFolder(psiFile)) return true
         val module = ModuleUtilCore.findModuleForPsiElement(psiFile) ?: return false
         if (!isSpringProject(module)) {
             return false
@@ -137,11 +137,6 @@ object SpringCoreUtil {
                 return@any targetFile == propertiesVf
             }
         }
-    }
-
-    private fun isUserPropertyFolder(psiFile: PsiFile): Boolean {
-        val virtualFile = psiFile.virtualFile?.parent ?: return false
-        return SpringPropertyFolderState.isUserPropertyFolder(psiFile.project, virtualFile)
     }
 
     fun isAdditionalConfigFile(psiFile: PsiFile): Boolean {
