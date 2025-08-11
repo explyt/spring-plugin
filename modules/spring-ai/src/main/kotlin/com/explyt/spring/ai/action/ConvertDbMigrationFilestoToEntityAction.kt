@@ -22,26 +22,21 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.isFile
 import com.intellij.openapi.vfs.readText
 
 class ConvertDbMigrationFilestoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.db.to.jpa")) {
     override fun update(e: AnActionEvent) {
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
+        if (virtualFiles.size > 3) return
         val files = getDbMigrationFiles(virtualFiles)
-        if (files.size > 10) return
-
-        val enabled = files.isNotEmpty()
-
-        e.presentation.isEnabledAndVisible = enabled
+        e.presentation.isEnabledAndVisible = files.isNotEmpty()
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun actionPerformed(e: AnActionEvent) {
-        val project: Project = e.project ?: return
-
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
         val files = getDbMigrationFiles(virtualFiles)
 
@@ -52,12 +47,13 @@ class ConvertDbMigrationFilestoToEntityAction : AnAction(SpringAiBundle.message(
     }
 
     private fun getDbMigrationFiles(virtualFiles: Array<out VirtualFile>): List<VirtualFile> {
-        val files = virtualFiles
+        val files = virtualFiles.asSequence()
+            .filter { it.isFile }
             .filter { it.length < 1024 * 1024 } //1mb
             .filter {
                 it.name.endsWith(".sql") || it.name.endsWith(".xml")
                         || it.name.endsWith(".yaml") || it.name.endsWith(".yml") || it.name.endsWith(".json")
             }
-        return files.filter { it.readText().contains("table") }
+        return files.filter { it.readText().contains("table") }.toList()
     }
 }
