@@ -21,6 +21,7 @@ import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
 import com.explyt.spring.web.editor.openapi.OpenApiUIEditor
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.model.OpenApiSpecificationType
+import com.explyt.spring.web.providers.EndpointRunLineMarkerProvider
 import com.explyt.spring.web.service.OpenApiLocalSpecifications
 import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
 import com.explyt.util.CacheKeyStore
@@ -128,7 +129,10 @@ class OpenApiFileUtil {
 
         val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(fileType)
         val serversToAdd = servers.ifEmpty { listOf(DEFAULT_SERVER) }
-        for (server in serversToAdd) {
+        val servers = endpointInfos.firstOrNull()
+            ?.let { EndpointRunLineMarkerProvider.applyServerPortSettings(it.psiElement) } ?: emptyList()
+        val allServers = (serversToAdd + servers).toSet()
+        for (server in allServers) {
             openapiBuilder.addServer(server)
         }
         for (info in endpointInfos) {

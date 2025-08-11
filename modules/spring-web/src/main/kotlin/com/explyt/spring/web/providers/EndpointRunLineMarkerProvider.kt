@@ -62,10 +62,10 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         val apiPart = if (serverPart.length == fullPath.length) "/" else fullPath.substring(serverPart.length)
 
         val endpointInfo = getEndpointInfo(uMethod, apiPart) ?: return null
-        val servers = applyServerPortSettings(psiElement, server)
+
         return Info(
             AllIcons.RunConfigurations.TestState.Run,
-            arrayOf(RunInSwaggerAction(listOf(endpointInfo), servers)),
+            arrayOf(RunInSwaggerAction(listOf(endpointInfo), listOf(server))),
             { SpringWebBundle.message("explyt.web.run.linemarker.swagger.title") }
         )
     }
@@ -89,27 +89,6 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             path = if (path.startsWith('/')) path.substring(1) else path
         }
         return path
-    }
-
-    private fun applyServerPortSettings(psiElement: PsiElement, server: String): List<String> {
-        if (server != DEFAULT_SERVER) return listOf(server)
-        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return listOf(DEFAULT_SERVER)
-
-        val ports = (DefinedConfigurationPropertiesSearch.getInstance(psiElement.project)
-            .findProperties(module, "server.port").asSequence()
-            .mapNotNull { it.value } + listOf("8080"))
-            .map {
-                if (it.contains("{")) {
-                    it.substringAfter("{").substringBefore("}").substringAfter(":")
-                } else {
-                    it
-                }
-            }
-            .map { DEFAULT_SERVER_HOST + it }
-            .distinct()
-            .toList()
-            .takeIf { it.isNotEmpty() } ?: listOf(DEFAULT_SERVER)
-        return ports
     }
 
     private fun getEndpointInfo(uMethod: UMethod, apiPath: String): EndpointInfo? {
@@ -154,4 +133,31 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         )
     }
 
+    companion object {
+        fun applyServerPortSettings(psiElement: PsiElement): List<String> {
+            return applyServerPortSettings(psiElement, DEFAULT_SERVER)
+        }
+
+        private fun applyServerPortSettings(psiElement: PsiElement, server: String): List<String> {
+            if (server != DEFAULT_SERVER) return listOf(server)
+            val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return listOf(DEFAULT_SERVER)
+
+            val ports = (DefinedConfigurationPropertiesSearch.getInstance(psiElement.project)
+                .findProperties(module, "server.port").asSequence()
+                .mapNotNull { it.value } + listOf("8080"))
+                .map {
+                    if (it.contains("{")) {
+                        it.substringAfter("{").substringBefore("}").substringAfter(":")
+                    } else {
+                        it
+                    }
+                }
+                .map { DEFAULT_SERVER_HOST + it }
+                .distinct()
+                .toList()
+                .takeIf { it.isNotEmpty() } ?: listOf(DEFAULT_SERVER)
+            return ports
+        }
+
+    }
 }
