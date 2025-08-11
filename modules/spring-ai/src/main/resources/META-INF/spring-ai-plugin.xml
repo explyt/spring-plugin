@@ -64,7 +64,7 @@
                     class="com.explyt.spring.ai.action.ConvertPostmanToHttpAction"/>
 
             <action id="Explyt.Spring.ConvertDbMigrationFilestoToEntityAction"
-                    class="com.explyt.spring.ai.action.ConvertDbMigrationFilestoToEntityAction"/>
+                    class="com.explyt.spring.ai.action.ConvertDbMigrationFilesToToEntityAction"/>
 
             <!--<action id="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
                     class="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"

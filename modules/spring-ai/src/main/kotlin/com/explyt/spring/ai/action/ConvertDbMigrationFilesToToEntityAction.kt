@@ -26,10 +26,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.isFile
 import com.intellij.openapi.vfs.readText
 
-class ConvertDbMigrationFilestoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.db.to.jpa")) {
+class ConvertDbMigrationFilesToToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.db.to.jpa")) {
     override fun update(e: AnActionEvent) {
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
-        if (virtualFiles.size > 3) return
+        if (virtualFiles.size > 1) return
         val files = getDbMigrationFiles(virtualFiles)
         e.presentation.isEnabledAndVisible = files.isNotEmpty()
     }
@@ -54,6 +54,6 @@ class ConvertDbMigrationFilestoToEntityAction : AnAction(SpringAiBundle.message(
                 it.name.endsWith(".sql") || it.name.endsWith(".xml")
                         || it.name.endsWith(".yaml") || it.name.endsWith(".yml") || it.name.endsWith(".json")
             }
-        return files.filter { it.readText().contains("table") }.toList()
+        return files.filter { it.readText().contains("table", true) }.toList()
     }
 }
