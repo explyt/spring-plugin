@@ -21,7 +21,6 @@ import com.intellij.codeInsight.AnnotationTargetUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.ExternalAnnotationsManager
 import com.intellij.codeInsight.ExternalAnnotationsManager.AnnotationPlace.*
-import com.intellij.codeInsight.daemon.impl.analysis.AnnotationsHighlightUtil
 import com.intellij.codeInsight.intention.FileModifier
 import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction
@@ -35,10 +34,12 @@ import com.intellij.openapi.command.undo.UndoUtil
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.pom.java.JavaFeature
 import com.intellij.psi.*
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import com.intellij.psi.impl.light.LightElement
 import com.intellij.psi.util.JavaElementKind
+import com.intellij.psi.util.JavaPsiAnnotationUtil
 import com.intellij.psi.util.PsiFormatUtil
 import com.intellij.psi.util.PsiUtil
 import com.intellij.util.ArrayUtil
@@ -122,7 +123,7 @@ class RewriteAnnotationQuickFix(
                 val lambda = modifierListOwner.getParent().parent as? PsiLambdaExpression ?: return false
 
                 // Lambda parameter without type cannot be annotated. Check if we can specify types
-                if (PsiUtil.isLanguageLevel11OrHigher(modifierListOwner)) return true
+                if (PsiUtil.isAvailable(JavaFeature.VAR_LAMBDA_PARAMETER, modifierListOwner)) return true
                 return LambdaUtil.createLambdaParameterListWithFormalTypes(
                     lambda.functionalInterfaceType, lambda, false
                 ) != null
@@ -233,7 +234,8 @@ class RewriteAnnotationQuickFix(
             if (BaseIntentionAction.canModify(modifierListOwner)) {
                 val aClass = JavaPsiFacade.getInstance(project).findClass(annotation, modifierListOwner.resolveScope)
                 if (aClass != null) {
-                    if (AnnotationsHighlightUtil.getRetentionPolicy(aClass) == RetentionPolicy.RUNTIME) {
+                    val retentionPolicy = JavaPsiAnnotationUtil.getRetentionPolicy(aClass)
+                    if (retentionPolicy == RetentionPolicy.RUNTIME) {
                         return IN_CODE
                     }
                     if (CommonClassNames.DEFAULT_PACKAGE != StringUtil.getPackageName(annotation)) {
@@ -289,7 +291,7 @@ class RewriteAnnotationQuickFix(
                     val parameters = list.parameters
                     val index = ArrayUtil.indexOf(parameters, parameter)
                     var newList: PsiParameterList?
-                    if (PsiUtil.isLanguageLevel11OrHigher(list)) {
+                    if (PsiUtil.isAvailable(JavaFeature.VAR_LAMBDA_PARAMETER, list)) {
                         val newListText =
                             StreamEx.of(*parameters).map { p: PsiParameter -> PsiKeyword.VAR + " " + p.name }
                                 .joining(",", "(", ")")

@@ -24,7 +24,7 @@ import com.explyt.spring.core.SpringCoreClasses.ENTITY
 import com.explyt.spring.core.SpringCoreClasses.ENTITY_X
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringEntityPackageScanService
-import com.intellij.codeInsight.intention.AddAnnotationFix
+import com.intellij.codeInsight.intention.AddAnnotationModCommandAction
 import com.intellij.codeInspection.*
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.module.ModuleUtilCore
@@ -88,7 +88,8 @@ class SpringEntityScanInspection : SpringBaseUastLocalInspectionTool() {
                 val createAnnotationFromText = JavaPsiFacade.getInstance(project).elementFactory
                     .createAnnotationFromText("@${SpringCoreClasses.ENTITY_SCAN}(value=\"$packageName\")", null)
                 val attributes = createAnnotationFromText.parameterList.attributes
-                listOf(AddAnnotationFix(SpringCoreClasses.ENTITY_SCAN, psiClass, attributes))
+                val fixAction = AddAnnotationModCommandAction(SpringCoreClasses.ENTITY_SCAN, psiClass, attributes)
+                LocalQuickFix.from(fixAction)?.let { listOf(it) } ?: return emptyList()
             }
 
             else -> {

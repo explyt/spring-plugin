@@ -24,8 +24,9 @@ import com.explyt.spring.core.service.AliasUtils
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.toSourcePsi
-import com.intellij.codeInsight.intention.AddAnnotationFix
+import com.intellij.codeInsight.intention.AddAnnotationModCommandAction
 import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiClass
@@ -58,6 +59,8 @@ class SpringAliasNotMetaAnnotatedInspection : SpringBaseUastLocalInspectionTool(
 
         val annotationMemberValue = aliasAnnotation.findAttributeValue("annotation")
             .toSourcePsi() ?: return null
+
+        val quickFix = LocalQuickFix.from(AddAnnotationModCommandAction(aliasedClassQn, parentClass)) ?: return null
         return arrayOf(
             manager.createProblemDescriptor(
                 annotationMemberValue,
@@ -65,7 +68,7 @@ class SpringAliasNotMetaAnnotatedInspection : SpringBaseUastLocalInspectionTool(
                 SpringCoreBundle.message("explyt.spring.inspection.alias.annotation"),
                 ProblemHighlightType.GENERIC_ERROR,
                 isOnTheFly,
-                AddAnnotationFix(aliasedClassQn, parentClass)
+                quickFix
             )
         )
     }

@@ -668,7 +668,7 @@ class SpringSearchService(private val project: Project) {
         return isComponentCandidate(uClass.javaPsi) || getAllActiveBeans(module).contains(uClass.javaPsi)
     }
 
-    @Deprecated("1 usages")
+    //@Deprecated("1 usages")
     fun getBeanMethods(uClass: UClass?): MethodsInfoHolder {
         uClass ?: return MethodsInfoHolder(emptySet())
         return CachedValuesManager.getManager(project).getCachedValue(uClass) {

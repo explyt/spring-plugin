@@ -72,7 +72,7 @@ class StatisticService {
             try {
                 writeStateToFile(localDate)
             } finally {
-                FileUtil.delete(lockFilePath)
+                FileUtil.delete(lockFilePath.toFile())
             }
         } catch (e: Exception) {
             logger.warn(e)
@@ -222,7 +222,7 @@ class StatisticService {
             try {
                 val lastModifiedInstant = Files.getLastModifiedTime(lockFilePath).toInstant()
                 if (OffsetDateTime.now().minusMinutes(10).toInstant() > lastModifiedInstant) {
-                    FileUtil.delete(lockFilePath)
+                    FileUtil.delete(lockFilePath.toFile())
                 }
             } catch (_: Exception) {
             }
