@@ -25,17 +25,13 @@ import com.intellij.codeInspection.isInheritorOf
 import com.intellij.lang.ASTNode
 import com.intellij.lang.folding.FoldingBuilderEx
 import com.intellij.lang.folding.FoldingDescriptor
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.FoldingGroup
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
-import org.jetbrains.uast.UCallExpression
-import org.jetbrains.uast.ULiteralExpression
-import org.jetbrains.uast.sourcePsiElement
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
 
@@ -52,7 +48,7 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
 
         val visitor = object : AbstractUastVisitor() {
             override fun visitLiteralExpression(node: ULiteralExpression): Boolean {
-                val callExpression = node.uastParent as? UCallExpression ?: return false
+                val callExpression = getUCallExpression(node) ?: return false
                 if (callExpression.methodIdentifier?.name !in propertyMethodNames) return false
                 if (callExpression.receiverType?.isInheritorOf(PROPERTY_RESOLVER)
                     != true
@@ -75,6 +71,12 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
                 }
                 return super.visitLiteralExpression(node)
             }
+
+            private fun getUCallExpression(node: ULiteralExpression): UCallExpression? {
+                val expression = node.uastParent as? UCallExpression
+                    ?: (node.uastParent as? UPolyadicExpression)?.uastParent as? UCallExpression
+                return expression
+            }
         }
         try {
             uRoot.accept(visitor)
@@ -88,12 +90,8 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
         if (!SpringCoreUtil.isSpringProject(node.psi.project)) return null
         val key = ElementManipulators.getValueText(node.psi)
         if (key.isBlank()) return null
-        val propertyValue = ReadAction.computeCancellable<DefinedConfigurationProperty, Throwable> {
-            val module = ModuleUtilCore.findModuleForPsiElement(node.psi) ?: return@computeCancellable null
-            getPropertyInfo(module, key) ?: return@computeCancellable null
-        }
-
-        return propertyValue?.value
+        val module = ModuleUtilCore.findModuleForPsiElement(node.psi) ?: return null
+        return getPropertyInfo(module, key)?.value
     }
 
     private fun getPropertyInfo(
