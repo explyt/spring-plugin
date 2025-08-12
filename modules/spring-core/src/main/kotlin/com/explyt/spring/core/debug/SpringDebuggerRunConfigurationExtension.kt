@@ -42,6 +42,8 @@ import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.Path
 
 
@@ -62,6 +64,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         if (configuration is ExternalSystemRunConfiguration) {
             configuration.settings.env.put(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
             configuration.settings.env.put(JAVA_TOOL_OPTIONS, "-javaagent:\"$javaAgentPath\"")
+            scheduleCleanupExternalSystemEnvData(configuration)
         } else {
             javaParameters.vmParametersList.add("-javaagent:$javaAgentPath")
             javaParameters.vmParametersList.addProperty(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
@@ -121,6 +124,17 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
             DependencyScope.PROVIDED
         )
     }
+}
+
+private fun scheduleCleanupExternalSystemEnvData(configuration: ExternalSystemRunConfiguration) {
+    AppExecutorUtil.getAppScheduledExecutorService().schedule(
+        {
+            ApplicationManager.getApplication().invokeLater {
+                configuration.settings.env.remove(DEBUG_PROGRAM_PARAM)
+                configuration.settings.env.remove(JAVA_TOOL_OPTIONS)
+            }
+        }, 5, TimeUnit.SECONDS
+    )
 }
 
 private data class ModuleHolder(val mainModule: Module, val testModule: Module? = null)
