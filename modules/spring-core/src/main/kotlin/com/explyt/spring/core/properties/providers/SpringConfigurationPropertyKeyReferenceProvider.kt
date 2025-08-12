@@ -166,6 +166,16 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                     )
                 )
             }
+        } else if (foundProperty.propertyType == PropertyType.MAP && keyValuePair.first.isNotEmpty()) {
+            ModuleUtilCore.findModuleForPsiElement(element)?.let {
+                refList.add(
+                    PropertiesKeyMapValueReference(
+                        element, propertyKey, foundProperty,
+                        TextRange.from(mapPrefixRange.length + 1, keyValuePair.first.length),
+                        baseMapRef = true
+                    )
+                )
+            }
         }
         if (keyValuePair.second.isEmpty()) {
             return (listOf(

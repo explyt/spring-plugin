@@ -124,7 +124,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .align(AlignX.FILL)
                         .applyToComponent { toolTipText = message("explyt.spring.settings.javaagent.tooltip") }
                         .bindSelected(isJavaAgentModeBind)
-                        .comment("<html><a href=\"$articleUrl\">Article one</a> and <a href=\"$articleJavaagentUrl\">article two</a> about this</html>")
+                        .comment("<a href=\"$articleUrl\">Article one</a> and <a href=\"$articleJavaagentUrl\">article two</a> about this")
                         .resizableColumn()
                 }
 
