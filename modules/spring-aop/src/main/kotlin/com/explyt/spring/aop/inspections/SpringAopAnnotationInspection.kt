@@ -22,7 +22,7 @@ import com.explyt.spring.aop.SpringAopBundle
 import com.explyt.spring.aop.SpringAopClasses
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.SpringSearchService
-import com.intellij.codeInsight.intention.AddAnnotationFix
+import com.intellij.codeInsight.intention.AddAnnotationModCommandAction
 import com.intellij.codeInsight.intention.impl.invokeAsAction
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
@@ -89,7 +89,8 @@ class SpringAopAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         if (uClass.lang === KotlinLanguage.INSTANCE) {
             return arrayOf(AddClassAnnotationKotlinFix(annotationFqName))
         } else {
-            return arrayOf(AddAnnotationFix(annotationFqName, uClass.javaPsi))
+            val action = AddAnnotationModCommandAction(annotationFqName, uClass.javaPsi)
+            return LocalQuickFix.from(action)?.let { arrayOf(it) } ?: return emptyArray()
         }
     }
 }

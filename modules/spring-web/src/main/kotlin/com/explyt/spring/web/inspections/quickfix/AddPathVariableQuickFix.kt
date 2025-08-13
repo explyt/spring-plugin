@@ -22,7 +22,7 @@ import com.explyt.spring.core.statistic.StatisticActionId.QUICK_FIX_REQUEST_MAPP
 import com.explyt.spring.core.statistic.StatisticUtil.registerActionUsage
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
-import com.intellij.codeInsight.intention.AddAnnotationFix
+import com.intellij.codeInsight.intention.AddAnnotationModCommandAction
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -61,8 +61,8 @@ class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: Stri
         val stringType = PsiType.getJavaLangString(psiManager, GlobalSearchScope.projectScope(project))
         val newArgument = elementFactory.createParameter(methodName, stringType)
 
-        AddAnnotationFix(SpringWebClasses.PATH_VARIABLE, newArgument)
-            .invoke(project, editor, file)
+        val action = AddAnnotationModCommandAction(SpringWebClasses.PATH_VARIABLE, newArgument)
+        action.asIntention().invoke(project, editor, file)
 
         psiMethod.parameterList.add(newArgument)
     }

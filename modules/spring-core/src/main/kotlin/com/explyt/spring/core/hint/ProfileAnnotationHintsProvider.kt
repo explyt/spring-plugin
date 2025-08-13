@@ -69,7 +69,7 @@ class ProfileAnnotationHintsProvider : InlayHintsProvider {
             val result = ProfilesService.getInstance(sourcePsi.project).compute(profileExpression)
 
             sink.addPresentation(
-                InlineInlayPosition(sourcePsi.endOffset, true), hasBackground = true
+                InlineInlayPosition(sourcePsi.endOffset, true), hintFormat = HintFormat.default
             ) {
                 text(": $result")
             }

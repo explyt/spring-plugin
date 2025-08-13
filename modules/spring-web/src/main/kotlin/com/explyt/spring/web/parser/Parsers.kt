@@ -26,14 +26,14 @@ import java.util.*
 object UrlParser {
     fun parse(urlString: String): HttpMethod {
         val url = Url(urlString)
-        val lastPath = url.pathSegments.takeIf { it.isNotEmpty() }?.last()?.takeIf { it.isNotEmpty() } ?: "method"
+        val lastPath = url.segments.takeIf { it.isNotEmpty() }?.last()?.takeIf { it.isNotEmpty() } ?: "method"
         val methodName = lastPath.replace("{", "").replace("}", "").replace("-", "").replace("_", "")
         val javaIdentifier = StringUtil.decapitalize(StringUtil.sanitizeJavaIdentifier(methodName))
         return HttpMethod(javaIdentifier, urlString, getHttpParams(url))
     }
 
     private fun getHttpParams(url: Url): List<HttpParam> {
-        return url.pathSegments
+        return url.segments
             .filter { it.startsWith("{") && it.endsWith("}") }
             .map { HttpParam(HttpParamType.PATH, it.replace("{", "").replace("}", ""), null) } +
                 url.parameters.toMap().map { HttpParam(HttpParamType.QUERY, it.key, it.value.joinToString(",")) }

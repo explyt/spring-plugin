@@ -27,6 +27,7 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.progress.impl.BackgroundableProcessIndicator
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.util.io.NioFiles
 import com.intellij.util.io.HttpRequests
 import com.intellij.util.io.ZipUtil
 import java.io.IOException
@@ -72,7 +73,7 @@ object ZipDownloader {
     private fun unzip(zipPath: Path): Path? {
         val extractDirectory = zipPath.parent.resolve("extracted")
         try {
-            FileUtil.deleteRecursively(extractDirectory)
+            NioFiles.deleteRecursively(extractDirectory)
         } catch (_: Exception) {
         }
         try {
@@ -92,7 +93,7 @@ object ZipDownloader {
             }
             notification?.notify(ProjectUtil.getActiveProject())
         } finally {
-            FileUtil.delete(zipPath)
+            FileUtil.delete(zipPath.toFile())
         }
         return null
     }
