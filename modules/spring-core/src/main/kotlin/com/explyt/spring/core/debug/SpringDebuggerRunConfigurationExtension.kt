@@ -34,6 +34,7 @@ import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -62,12 +63,10 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
 
         val javaAgentPath = NativeBootUtils.getAgentPath()
         if (configuration is ExternalSystemRunConfiguration) {
-            configuration.settings.env.put(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
-            configuration.settings.env.put(JAVA_TOOL_OPTIONS, "-javaagent:\"$javaAgentPath\"")
+            setEnvExplytAgentVariables(configuration, javaAgentPath)
             scheduleCleanupExternalSystemEnvData(configuration)
         } else {
-            javaParameters.vmParametersList.add("-javaagent:$javaAgentPath")
-            javaParameters.vmParametersList.addProperty(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
+            setExplytAgentVMParams<T>(javaParameters, javaAgentPath, configuration)
         }
 
         ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(module) }
@@ -123,6 +122,32 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
             librariesUrls, emptyList(),
             DependencyScope.PROVIDED
         )
+    }
+}
+
+private val logger = logger<RunConfigurationExtension>()
+
+private fun setEnvExplytAgentVariables(configuration: ExternalSystemRunConfiguration, javaAgentPath: String) {
+    try {
+        val envMap = HashMap(configuration.settings.env)
+        envMap.put(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
+        envMap.put(JAVA_TOOL_OPTIONS, "-javaagent:\"$javaAgentPath\"")
+        configuration.settings.env = envMap
+    } catch (e: Exception) {
+        logger.warn("error on set env", e)
+    }
+}
+
+private fun <T : RunConfigurationBase<*>?> setExplytAgentVMParams(
+    javaParameters: JavaParameters,
+    javaAgentPath: String,
+    configuration: T & Any
+) {
+    try {
+        javaParameters.vmParametersList.add("-javaagent:$javaAgentPath")
+        javaParameters.vmParametersList.addProperty(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
+    } catch (e: Exception) {
+        logger.warn("error on set vm params", e)
     }
 }
 
