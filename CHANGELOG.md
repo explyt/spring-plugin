@@ -5,6 +5,28 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+- Add an icon to the "Mark directory as Spring Configuration Root" action
+- fix: Maps with string key/value in properties wasn't resolved
+- fix: settings ref for agent mode #59
+- fix: various EDT issues
+
+### Spring Web / OpenApi
+- fix: Use the correct server port
+
+### HttpClient
+- feat: HTTP completion in .http files
+
+### Spring Debugger
+- feat: revert gradle configuration after debug
+- fix: remove setStoreExternally for debugger
+- fix: Debugger run configuration - empty map is immutable
+
+### Other
+- fix: 252 only! remove same warnings (#61)
+
+## [252.23.8] - 2025-08-05
+
+### Spring Core/Boot
 - feat: Spring Debugger
 - feat: Mark/unmark folder as Spring Configuration Root 
 - fix: Invalid references when there are comment and placeholder arguments (#47)
@@ -22,7 +44,7 @@
 - fix: Invalid injection host exception (#51)
 - chore: support 252
 
-## [251.22.6] - 2025-06-09
+## 251.22.6 - 2025-06-09
 
 ### Quarkus
 - feat: Detect Quarkus endpoints in the Endpoint panel
