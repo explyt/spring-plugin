@@ -57,6 +57,10 @@
                                 order="first"
                                 implementationClass="com.explyt.spring.web.references.contributors.OpenApiJsonRefCompletionContributor"/>
 
+        <completion.contributor language="HTTP-EXPLYT"
+                                order="first"
+                                implementationClass="com.explyt.spring.web.httpclient.HttpClientCompletionContributor"/>
+
         <localInspection language="UAST"
                          shortName="SpringOmittedPathVariableParameterInspection"
                          groupBundle="messages.SpringWebBundle"
