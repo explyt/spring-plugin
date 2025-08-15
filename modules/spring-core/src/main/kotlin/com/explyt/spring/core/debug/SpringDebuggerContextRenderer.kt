@@ -38,6 +38,8 @@ import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicReference
 
 
+private const val INTERNAL_HOLDER_CLASS = "com.explyt.spring.boot.bean.reader.InternalHolderContext"
+
 class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
 
     override fun addExtraNodes(evaluationContext: EvaluationContext, children: XValueChildrenList) {
@@ -160,11 +162,10 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         debugProcess: DebugProcessImpl,
         evaluationContext: EvaluationContextImpl,
     ): ClassType? = try {
-        debugProcess.findLoadedClass(
-            evaluationContext.suspendContext,
-            "com.explyt.spring.boot.bean.reader.InternalHolderContext",
-            evaluationContext.classLoader
-        )
+        val classLoader = evaluationContext.classLoader
+        val suspendContext = evaluationContext.suspendContext
+        debugProcess.findLoadedClass(suspendContext, INTERNAL_HOLDER_CLASS, classLoader)
+            ?: debugProcess.loadClass(evaluationContext, INTERNAL_HOLDER_CLASS, classLoader)
     } catch (_: EvaluateException) {
         null
     } as? ClassType
