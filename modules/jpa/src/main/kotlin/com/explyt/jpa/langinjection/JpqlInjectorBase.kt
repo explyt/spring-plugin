@@ -22,6 +22,7 @@ import com.intellij.lang.Language
 import com.intellij.lang.injection.MultiHostInjector
 import com.intellij.lang.injection.MultiHostRegistrar
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.source.tree.injected.changesHandler.contentRange
 import org.jetbrains.uast.*
@@ -83,6 +84,8 @@ abstract class JpqlInjectorBase() : MultiHostInjector {
                     host,
                     range
                 )
+            } catch (e: ProcessCanceledException) {
+                throw e
             } catch (e: Exception) {
                 log.error("[JpqlInjectorBase] Exception in addPlace", e)
             }
