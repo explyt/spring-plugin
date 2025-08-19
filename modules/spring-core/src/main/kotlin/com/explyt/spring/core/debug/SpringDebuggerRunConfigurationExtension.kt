@@ -93,6 +93,15 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         val file = VfsUtil.findFile(Path(externalProjectPath), false) ?: return null
         val module = ModuleUtilCore.findModuleForFile(file, configuration.project) ?: return null
         val modules = ModuleManager.getInstance(configuration.project).modules
+        val moduleFromTaskName = configuration.settings.taskNames.firstOrNull { it.startsWith(":") }
+            ?.substringAfter(":")
+            ?.replace(":", ".")
+        if (moduleFromTaskName != null) {
+            val moduleFromTask = modules.firstOrNull { it.name.endsWith(moduleFromTaskName) }
+            if (moduleFromTask != null) {
+                return ModuleHolder(moduleFromTask)
+            }
+        }
         val subModules = modules.filter { it.name.startsWith(module.name + ".") }
             .takeIf { it.isNotEmpty() } ?: return ModuleHolder(module)
         val mainModule = subModules.find { it.name == module.name + ".main" } ?: return ModuleHolder(module)
