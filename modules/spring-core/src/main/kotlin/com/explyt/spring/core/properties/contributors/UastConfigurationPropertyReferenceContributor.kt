@@ -63,6 +63,6 @@ class UastConfigurationPropertyReferenceContributor : PsiReferenceContributor() 
     }
 
     companion object {
-        val VALUE_SCHEDULED = listOf("cron", "initialDelayString", "fixedDelayString", "fixedRateString")
+        val VALUE_SCHEDULED = listOf("cron", "initialDelayString", "fixedDelayString", "fixedRateString", "zone")
     }
 }
