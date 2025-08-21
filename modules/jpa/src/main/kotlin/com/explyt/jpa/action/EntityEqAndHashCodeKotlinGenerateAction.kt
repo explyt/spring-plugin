@@ -19,42 +19,39 @@ package com.explyt.jpa.action
 
 import com.explyt.jpa.JpaBundle
 import com.explyt.jpa.service.JpaService
-import com.explyt.util.ExplytPsiUtil.isNonPrivate
-import com.explyt.util.JavaMethodGenerateUtils
+import com.explyt.util.KotlinMethodGenerateUtils
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.generation.actions.BaseGenerateAction
 import com.intellij.codeInsight.template.Template
 import com.intellij.codeInsight.template.TemplateManager
-import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import org.intellij.lang.annotations.Language
+import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.toUElement
 
-class EntityEqAndHashCodeJavaGenerateAction : BaseGenerateAction(EqAndHashCodeMethodHandler()) {
+class EntityEqAndHashCodeKotlinGenerateAction : BaseGenerateAction(EqAndHashCodeMethodKotlinHandler()) {
     init {
         getTemplatePresentation().text = JpaBundle.message("explyt.jpa.action.eq.hashcode.title")
     }
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
-        return file.isWritable && super.isValidForFile(project, editor, file)
-                && file.fileType == JavaFileType.INSTANCE
-                && JpaService.getInstance(project).isJpaEntity(file)
-    }
-
-    fun getNearTargetClass(editor: Editor?, file: PsiFile?): PsiClass? {
-        return super.getTargetClass(editor, file)
+        return file.fileType == KotlinFileType.INSTANCE
+                && KotlinMethodGenerateUtils.isValidForFile(project, editor, file)
+        { JpaService.getInstance(project).isJpaEntity(file) }
     }
 }
 
-private class EqAndHashCodeMethodHandler() : CodeInsightActionHandler {
+private class EqAndHashCodeMethodKotlinHandler() : CodeInsightActionHandler {
     override fun invoke(project: Project, editor: Editor, file: PsiFile) {
-        val targetClass = EntityEqAndHashCodeJavaGenerateAction().getNearTargetClass(editor, file) ?: return
+        val module = ModuleUtil.findModuleForPsiElement(file) ?: return
+        val targetClass = KotlinMethodGenerateUtils.getTargetClass(editor, file) ?: return
 
         runWriteAction {
             val uClass = targetClass.toUElement() as? UClass ?: return@runWriteAction
@@ -63,29 +60,27 @@ private class EqAndHashCodeMethodHandler() : CodeInsightActionHandler {
             PsiDocumentManager.getInstance(file.project).commitDocument(document)
 
 
-            val offsetToInsert = JavaMethodGenerateUtils.findOffsetToInsertMethod(editor, file, targetClass)
-            val template = getTemplate(uClass) ?: return@runWriteAction
+            val offsetToInsert = KotlinMethodGenerateUtils.findOffsetToInsertMethod(editor, file, targetClass)
+            val template = getTemplate(module, uClass) ?: return@runWriteAction
 
             editor.caretModel.moveToOffset(offsetToInsert)
 
-            JavaMethodGenerateUtils.startTemplate(project, editor, template)
+            KotlinMethodGenerateUtils.startTemplate(project, editor, template)
         }
     }
 
-    private fun getTemplate(uClass: UClass): Template? {
+    private fun getTemplate(module: Module, uClass: UClass): Template? {
         val targetClass = uClass.javaPsi
-        val template = TemplateManager.getInstance(targetClass.project).createTemplate("", "")
+        val template = TemplateManager.getInstance(module.project).createTemplate("", "")
         val idExpression = getIdExpression(uClass) ?: return null
-        @Language("java") val eqAndHashCodeTemplate = """
-            @Override
-    public final boolean equals(Object o) {
-        if (!(o instanceof ${targetClass.name} that)) return false;
-        return $idExpression != null && $idExpression.equals(that.$idExpression);
+        @Language("kotlin") val eqAndHashCodeTemplate = """
+                override fun equals(o: Any?): Boolean {
+        if (o !is ${targetClass.name}) return false
+        return $idExpression != null && $idExpression == o.$idExpression
     }
 
-    @Override
-    public final int hashCode() {
-        return ${targetClass.name}.class.hashCode();
+    override fun hashCode(): Int {
+        return ${targetClass.name}::class.java.hashCode()
     }
         """.trimIndent()
         template.addTextSegment(eqAndHashCodeTemplate)
@@ -96,16 +91,8 @@ private class EqAndHashCodeMethodHandler() : CodeInsightActionHandler {
     }
 
     private fun getIdExpression(uClass: UClass): String? {
-        val psiClass = uClass.javaPsi
-        val methodIdExpression = psiClass.allMethods
-            .filter { it.name.startsWith("get") }
+        return uClass.javaPsi.allFields
             .firstOrNull { it.annotations.any { annotation -> annotation.qualifiedName?.endsWith(".Id") == true } }
-            ?.let { it.name + "()" }
-        if (methodIdExpression != null) return methodIdExpression
-        val idField = psiClass.allFields
-            .firstOrNull { it.annotations.any { annotation -> annotation.qualifiedName?.endsWith(".Id") == true } }
-            ?: return null
-        if (idField.isNonPrivate) return idField.name
-        return psiClass.allMethods.firstOrNull { it.name.equals("get${idField.name}", true) }?.let { it.name + "()" }
+            ?.name
     }
 }

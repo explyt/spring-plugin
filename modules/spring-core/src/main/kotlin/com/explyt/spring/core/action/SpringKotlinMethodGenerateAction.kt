@@ -24,13 +24,12 @@ import com.explyt.spring.core.statistic.StatisticActionId.GENERATE_POST_CONSTRUC
 import com.explyt.spring.core.statistic.StatisticActionId.GENERATE_PRE_DESTROY
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.explyt.util.KotlinMethodGenerateUtils
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.generation.actions.BaseGenerateAction
 import com.intellij.codeInsight.template.Template
-import com.intellij.codeInsight.template.TemplateEditingAdapter
 import com.intellij.codeInsight.template.TemplateManager
 import com.intellij.codeInsight.template.impl.ConstantNode
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.Module
@@ -39,17 +38,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
-import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.psi.util.startOffset
-import org.jetbrains.kotlin.idea.base.projectStructure.RootKindFilter
-import org.jetbrains.kotlin.idea.base.projectStructure.RootKindMatcher
-import org.jetbrains.kotlin.idea.createFromUsage.setupEditorSelection
-import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtFunction
-import org.jetbrains.kotlin.psi.KtVariableDeclaration
-import org.jetbrains.kotlin.psi.psiUtil.endOffset
-import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 
 class PostConstructKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandler()) {
     init {
@@ -58,6 +46,7 @@ class PostConstructKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandl
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
         return KotlinMethodGenerateUtils.isValidForFile(project, editor, file)
+        { SpringCoreUtil.isSpringProject(project) }
     }
 }
 
@@ -68,6 +57,7 @@ class PreDestroyKotlinGenerateAction : BaseGenerateAction(GenerateMethodHandler(
 
     override fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
         return KotlinMethodGenerateUtils.isValidForFile(project, editor, file)
+        { SpringCoreUtil.isSpringProject(project) }
     }
 }
 
@@ -116,70 +106,5 @@ private class GenerateMethodHandler(val postConstruct: Boolean = true) : CodeIns
             if (searchForLibraryClass(module, SpringCoreClasses.PRE_DESTROY_J) != null)
                 SpringCoreClasses.PRE_DESTROY_J else SpringCoreClasses.PRE_DESTROY_X
         }
-    }
-}
-
-object KotlinMethodGenerateUtils {
-    fun isValidForFile(project: Project, editor: Editor, file: PsiFile): Boolean {
-        if (!file.isWritable || file !is KtFile || file.isCompiled) return false
-
-        val targetClass = getTargetClass(editor, file) ?: return false
-        if (!targetClass.isValid) return false
-        val filter = RootKindFilter.projectSources.copy(includeScriptsOutsideSourceRoots = true)
-        return RootKindMatcher.matches(targetClass, filter) && SpringCoreUtil.isSpringProject(project)
-    }
-
-    fun getTargetClass(editor: Editor, file: PsiFile): KtClassOrObject? {
-        val elementAtCaret = file.findElementAt(editor.caretModel.offset) ?: return null
-        return elementAtCaret.parentsWithSelf.filterIsInstance<KtClassOrObject>().firstOrNull { !it.isLocal }
-    }
-
-    fun findOffsetToInsertMethod(editor: Editor, file: PsiFile, targetClass: KtClassOrObject?): Int {
-        var result = editor.caretModel.offset
-        val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(file, result - 1, KtFunction::class.java, false)
-        if (psiMethod != null) {
-            return psiMethod.startOffset
-        }
-        val psiField =
-            PsiTreeUtil.findElementOfClassAtOffset(file, result - 1, KtVariableDeclaration::class.java, false)
-        if (psiField != null) {
-            return psiField.endOffset + 1
-        }
-
-        var classAtCursor = PsiTreeUtil.getParentOfType(file.findElementAt(result), KtClassOrObject::class.java, false)
-        if (classAtCursor == targetClass) {
-            return result
-        }
-
-        while (classAtCursor != null && classAtCursor.parent !is PsiFile) {
-            result = classAtCursor.textRange.endOffset
-            classAtCursor = PsiTreeUtil.getParentOfType(classAtCursor, KtClassOrObject::class.java)
-        }
-
-        return result
-    }
-
-    fun startTemplate(project: Project, editor: Editor, template: Template) {
-        val adapter = object : TemplateEditingAdapter() {
-            override fun templateFinished(template: Template, brokenOff: Boolean) {
-                ApplicationManager.getApplication().runWriteAction {
-                    PsiDocumentManager.getInstance(project).commitDocument(editor.document)
-                    PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
-                        ?.let { findPsiMethod(it, editor) }
-                        ?.let { setupEditorSelection(editor, it) }
-                }
-            }
-        }
-        TemplateManager.getInstance(project).startTemplate(editor, template, adapter)
-    }
-
-    private fun findPsiMethod(it: PsiFile, editor: Editor): KtFunction? {
-        for (i in 2..20) {
-            val psiMethod = PsiTreeUtil.findElementOfClassAtOffset(
-                it, editor.caretModel.offset - i, KtFunction::class.java, false
-            )
-            if (psiMethod != null) return psiMethod
-        }
-        return null
     }
 }
