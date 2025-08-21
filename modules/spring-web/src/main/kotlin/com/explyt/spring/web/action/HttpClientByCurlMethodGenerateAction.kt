@@ -19,7 +19,6 @@ package com.explyt.spring.web.action
 
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.action.JavaCoreMethodGenerateUtils
-import com.explyt.spring.core.action.KotlinMethodGenerateUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
@@ -29,6 +28,7 @@ import com.explyt.spring.web.parser.HttpMethod
 import com.explyt.spring.web.parser.HttpParamType
 import com.explyt.spring.web.parser.UrlParser
 import com.explyt.util.JavaMethodGenerateUtils
+import com.explyt.util.KotlinMethodGenerateUtils
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.generation.actions.BaseGenerateAction
 import com.intellij.codeInsight.template.Template
