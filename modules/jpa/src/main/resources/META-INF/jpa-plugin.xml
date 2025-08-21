@@ -60,6 +60,9 @@
     </extensions>
 
     <actions>
-
+        <action id="Explyt.EntityEqAndHashCodeJavaGenerateAction"
+                class="com.explyt.jpa.action.EntityEqAndHashCodeJavaGenerateAction">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

@@ -18,7 +18,7 @@
 package com.explyt.spring.web.action
 
 import com.explyt.base.LibraryClassCache
-import com.explyt.spring.core.action.JavaMethodGenerateUtils
+import com.explyt.spring.core.action.JavaCoreMethodGenerateUtils
 import com.explyt.spring.core.action.KotlinMethodGenerateUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
@@ -28,6 +28,7 @@ import com.explyt.spring.web.parser.CurlParser
 import com.explyt.spring.web.parser.HttpMethod
 import com.explyt.spring.web.parser.HttpParamType
 import com.explyt.spring.web.parser.UrlParser
+import com.explyt.util.JavaMethodGenerateUtils
 import com.intellij.codeInsight.CodeInsightActionHandler
 import com.intellij.codeInsight.generation.actions.BaseGenerateAction
 import com.intellij.codeInsight.template.Template
@@ -84,7 +85,8 @@ private class HttpClientMethodHandler : CodeInsightActionHandler {
 
             if (file.language == JavaLanguage.INSTANCE) {
                 runWriteAction {
-                    val targetClass = JavaMethodGenerateUtils.getNearTargetClass(editor, file) ?: return@runWriteAction
+                    val targetClass =
+                        JavaCoreMethodGenerateUtils.getNearTargetClass(editor, file) ?: return@runWriteAction
                     val documentManager = PsiDocumentManager.getInstance(project)
                     val document = documentManager.getDocument(file) ?: return@runWriteAction
                     PsiDocumentManager.getInstance(file.project).commitDocument(document)
