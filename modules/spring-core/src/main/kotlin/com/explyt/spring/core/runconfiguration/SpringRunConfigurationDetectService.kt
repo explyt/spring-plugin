@@ -24,21 +24,29 @@ import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
+import com.intellij.ide.BrowserUtil
+import com.intellij.ide.plugins.PluginManager
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.DumbService.DumbModeListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.openapi.updateSettings.impl.UpdateSettings
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
@@ -46,6 +54,7 @@ import com.intellij.psi.util.PsiMethodUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElementOfType
+import java.time.Instant
 import java.util.concurrent.Callable
 
 @Service(Service.Level.PROJECT)
@@ -188,6 +197,52 @@ class SpringRunConfigurationDetectService(
                 })
 
             detectService.runDetection()
+            checkAiPlugin(project)
+        }
+
+        private fun checkAiPlugin(project: Project) {
+            val settingsState = SpringToolRunConfigurationsSettingsState.getInstance()
+            val instance = PluginManager.getInstance()
+            val enabledPlugin = instance.findEnabledPlugin(PluginId.getId("com.explyt.test"))
+            if (enabledPlugin != null && StringUtil.compareVersionNumbers(enabledPlugin.version, "4.1.0") >= 0) return
+            if (Instant.now().epochSecond < settingsState.aiSuggestInstantSecond) return
+            disableAiSuggestion(3600 * 24) //disable for next day
+            Notification(
+                "com.explyt.spring.notification",
+                "Suggested plugin: Explyt AI available.<br>",
+                NotificationType.INFORMATION
+            ).addAction(NotificationAction.create("About it") {
+                BrowserUtil.browse("https://explyt.ai/en/download")
+            }).addAction(NotificationAction.create("Install plugin") {
+                val explytRepositoryExist = UpdateSettings.getInstance()
+                    .storedPluginHosts.any { it.contains("explyt", true) }
+                val pluginConfigurable = explytRepositoryExist.takeIf { it }?.let {
+                    Configurable.APPLICATION_CONFIGURABLE.extensionList.find { it.id == "preferences.pluginManager" }
+                        ?.createConfigurable()
+                }
+                if (pluginConfigurable != null) {
+                    ShowSettingsUtil.getInstance().editConfigurable(
+                        project,
+                        pluginConfigurable
+                    ) {
+                        val javaClass = pluginConfigurable.javaClass
+                        val method = javaClass.methods.first { it.name == "openMarketplaceTab" }
+                        method.invoke(pluginConfigurable, "Explyt")
+                    }
+                } else {
+                    BrowserUtil.browse("https://explyt.ai/en/download")
+                }
+            }).addAction(NotificationAction.createSimpleExpiring("Dont suggest again") {
+                disableAiSuggestion(3600 * 24 * 120) //disable for next 120 days
+            }).notify(null)
+        }
+
+        private fun disableAiSuggestion(nextSuggestionTime: Int) {
+            ApplicationManager.getApplication().invokeLaterOnWriteThread {
+                val settingsState = SpringToolRunConfigurationsSettingsState.getInstance()
+                val nextInstant = Instant.now().plusSeconds(nextSuggestionTime.toLong())
+                settingsState.aiSuggestInstantSecond = nextInstant.epochSecond
+            }
         }
     }
 
