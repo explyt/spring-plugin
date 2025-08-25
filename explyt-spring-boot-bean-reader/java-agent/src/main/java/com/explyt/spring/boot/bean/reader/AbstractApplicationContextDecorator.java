@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.MethodMetadata;
@@ -68,10 +69,94 @@ public class AbstractApplicationContextDecorator {
             contextField = aClassContext.getDeclaredField("context");
             contextField.set(null, this);
 
-            System.out.println("Explyt Spring Debug attached");
+            explytPrintDebugInfo(contextField);
         } catch (Exception e) {
             throw new RuntimeException("no context class", e);
         }
+    }
+
+    @AddMethod
+    private void explytPrintDebugInfo(Field contextField) {
+        AbstractApplicationContext explytContext = getExplytContext(contextField);
+        if (explytContext == null) return;
+        String webUrl = "";
+        try {
+            boolean isWeb = false;
+            for (String it : explytContext.getBeanDefinitionNames()) {
+                if (it.toLowerCase().contains("servlet") || it.toLowerCase().contains("webflux")) {
+                    isWeb = true;
+                    break;
+                }
+            }
+            if (!isWeb) {
+                System.out.println("Explyt Spring Debug attached");
+                return;
+            }
+
+            boolean isSwagger = false;
+            for (String it : explytContext.getBeanDefinitionNames()) {
+                if (it.toLowerCase().contains("swagger")) {
+                    isSwagger = true;
+                    break;
+                }
+            }
+
+            String serverPort = getExplytPropertyFromEnv(explytContext, "server.port");
+            serverPort = serverPort != null ? serverPort : "8080";
+            String contextPath = getExplytPropertyFromEnv(explytContext, "server.servlet.context-path");
+            String swaggerPath = getExplytPropertyFromEnv(explytContext, "springdoc.swagger-ui.path");
+            swaggerPath = swaggerPath != null ? swaggerPath
+                    : getExplytPropertyFromEnv(explytContext, "springfox.documentation.swagger-ui.base-url");
+            swaggerPath = swaggerPath != null ? swaggerPath : "swagger-ui.html";
+
+            contextPath = getExplytTrimUrl(contextPath);
+            swaggerPath = getExplytTrimUrl(swaggerPath);
+            StringBuilder home = new StringBuilder("http://localhost:" + serverPort + "/");
+            if (contextPath != null && !contextPath.isEmpty()) {
+                home.append(contextPath).append("/");
+            }
+
+            if (isSwagger && swaggerPath != null && !swaggerPath.isEmpty()) {
+                home.append(swaggerPath);
+            }
+            webUrl = home.toString();
+        } catch (Exception ignore) {
+        }
+        System.out.println("Explyt Spring Debug attached " + webUrl);
+    }
+
+    @AddMethod
+    private AbstractApplicationContext getExplytContext(Field contextField) {
+        try {
+            return (AbstractApplicationContext) contextField.get(null);
+        } catch (Exception ignore) {
+        }
+        return null;
+    }
+
+    @AddMethod
+    private String getExplytPropertyFromEnv(AbstractApplicationContext explytContext, String propName) {
+        try {
+            return explytContext.getEnvironment().getProperty(propName);
+        } catch (Exception ignore) {
+        }
+        return null;
+    }
+
+    @AddMethod
+    private String getExplytTrimUrl(String urlPath) {
+        try {
+            if (urlPath == null || urlPath.isEmpty()) return urlPath;
+            if (urlPath.startsWith("/")) {
+                urlPath = urlPath.substring(1);
+            }
+            if (urlPath.endsWith("/") && urlPath.length() > 1) {
+                urlPath = urlPath.substring(0, urlPath.length() - 1);
+            }
+            return urlPath;
+        } catch (Exception ignore) {
+        }
+        return urlPath;
     }
 
     protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
