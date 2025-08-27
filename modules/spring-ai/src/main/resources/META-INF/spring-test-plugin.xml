@@ -16,9 +16,21 @@
   -->
 
 <idea-plugin>
+    <extensions defaultExtensionNs="com.explyt.spring.web">
+        <additionalHttpPanelLoader implementation="com.explyt.spring.ai.provider.HttpAiActionPanelLoader"/>
+    </extensions>
     <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.lineMarkerProvider
+                language="UAST"
+                implementationClass="com.explyt.spring.ai.provider.SpringAiActionsLineMarkerProvider"/>
+
+        <codeInsight.lineMarkerProvider
+                language="yaml"
+                implementationClass="com.explyt.spring.ai.provider.YamlOpenApiActionsLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider
+                language="JSON"
+                implementationClass="com.explyt.spring.ai.provider.JsonOpenApiActionsLineMarkerProvider"/>
     </extensions>
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
-
     </extensions>
 </idea-plugin>

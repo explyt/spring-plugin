@@ -99,16 +99,10 @@ class HttpRunnerEditorPanel(fileEditor: FileEditor, val project: Project) :
             }
         }
 
-        val postmanAction = ActionManager.getInstance().getAction("Explyt.Spring.ConvertPostmanToHttpAction")
-        val curlAction = ActionManager.getInstance().getAction("Explyt.Spring.ConvertCurlToHttpAction")
-        val panelAiAction = panel {
-            row {
-                button("Import from Postman", postmanAction).visible(postmanAction != null)
-                button("From Curl", curlAction).visible(curlAction != null)
-            }
-        }
         myLinksPanel.add(panel)
-        myLinksPanel.add(panelAiAction)
+        AdditionalHttpPanelLoader.EP_NAME.getExtensions(project).forEach {
+            myLinksPanel.add(it.getPanel())
+        }
         add(myLinksPanel, BorderLayout.CENTER)
     }
 
