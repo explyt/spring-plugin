@@ -17,7 +17,9 @@
 
 package com.explyt.spring.ai.action
 
+import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle
+import com.explyt.spring.core.util.ActionUtil
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -29,8 +31,11 @@ import org.jetbrains.yaml.YAMLFileType
 class ConvertPropertiesToYamlAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.prop.to.yaml")) {
     override fun update(e: AnActionEvent) {
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-
-        val enabled = virtualFiles?.any { it.fileType == PropertiesFileType.INSTANCE } ?: false
+        if (virtualFiles == null || virtualFiles.size > 1) {
+            ActionUtil.isEnabledAndVisible(e, false)
+            return
+        }
+        val enabled = virtualFiles.any { it.fileType == PropertiesFileType.INSTANCE }
         e.presentation.isEnabledAndVisible = enabled
     }
 
@@ -45,18 +50,18 @@ class ConvertPropertiesToYamlAction : AnAction(SpringAiBundle.message("explyt.sp
         val fileNames = propertiesFiles.joinToString(", ") { it.name }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.properties", fileNames)
-
-        //ExternalCallService.getInstance(project).sendPromptWithFiles(prompt, propertiesFiles)
+        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, propertiesFiles)
     }
 }
 
 class ConvertYamlToPropertiesAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.yaml.to.prop")) {
     override fun update(e: AnActionEvent) {
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-
-        val enabled = virtualFiles?.any {
-            it.fileType in YAML_TYPES
-        } == true
+        if (virtualFiles == null || virtualFiles.size > 1) {
+            ActionUtil.isEnabledAndVisible(e, false)
+            return
+        }
+        val enabled = virtualFiles.any { it.fileType in YAML_TYPES }
         e.presentation.isEnabledAndVisible = enabled
     }
 
@@ -71,8 +76,7 @@ class ConvertYamlToPropertiesAction : AnAction(SpringAiBundle.message("explyt.sp
         val fileNames = yamlFiles.joinToString(", ") { it.name }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.yaml", fileNames)
-
-        //ExternalCallService.getInstance(project)            .sendPromptWithFiles(prompt, yamlFiles)
+        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, yamlFiles)
     }
 
     companion object {

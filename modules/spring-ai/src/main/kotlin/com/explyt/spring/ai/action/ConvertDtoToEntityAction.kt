@@ -17,6 +17,7 @@
 
 package com.explyt.spring.ai.action
 
+import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -55,9 +56,10 @@ class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.
             ?.filter { !it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
 
         val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
+        val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.dto", dtoNames)
-        //service.sendPromptWithClasses(prompt, dtoPsiClasses)
+        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, virtualFiles)
     }
 }
 
@@ -86,8 +88,9 @@ class ConvertEntityToDtoAction : AnAction(SpringAiBundle.message("explyt.spring.
             ?.filter { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
 
         val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
+        val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.entity", dtoNames)
-        //service.sendPromptWithClasses(prompt, dtoPsiClasses)
+        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, virtualFiles)
     }
 }

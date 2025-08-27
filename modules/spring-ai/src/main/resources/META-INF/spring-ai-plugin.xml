@@ -63,28 +63,8 @@
             <action id="Explyt.Spring.ConvertPostmanToHttpAction"
                     class="com.explyt.spring.ai.action.ConvertPostmanToHttpAction"/>
 
-            <action id="Explyt.Spring.ConvertDbMigrationFilestoToEntityAction"
+            <action id="Explyt.Spring.ConvertDbMigrationFilesToToEntityAction"
                     class="com.explyt.spring.ai.action.ConvertDbMigrationFilesToToEntityAction"/>
-
-            <!--<action id="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
-                    class="com.explyt.plugin.call.action.ConvertOpenapiToControllerAction"
-                    text="Convert Openapi File to Spring Controller"
-                    description="Convert openapi file to spring controller"/>
-
-            <action id="com.explyt.plugin.call.action.ConvertControllerToOpenapiAction"
-                    class="com.explyt.plugin.call.action.ConvertControllerToOpenapiAction"
-                    text="Convert Spring Controller to Openapi File"
-                    description="Convert spring controller to openapi file"/>
-
-            <action id="com.explyt.plugin.call.action.ConvertEntityToDtoAction"
-                    class="com.explyt.plugin.call.action.ConvertEntityToDtoAction"
-                    text="Convert Entity to Dto"
-                    description="Convert JPA entity to dto class"/>
-
-            <action id="com.explyt.plugin.call.action.ConvertDtoToEntityAction"
-                    class="com.explyt.plugin.call.action.ConvertDtoToEntityAction"
-                    text="Convert Dto to Entity"
-                    description="Convert dto class to JPA entity"/>-->
         </group>
     </actions>
 </idea-plugin>
