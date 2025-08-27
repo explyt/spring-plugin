@@ -17,8 +17,8 @@
 
 package com.explyt.spring.ai.action
 
-import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle
+import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.core.util.ActionUtil
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -55,7 +55,7 @@ class ConvertDbMigrationFilesToToEntityAction : AnAction(SpringAiBundle.message(
         val entity = if (isJakarta) JAKARTA_ENTITY else JPA_ENTITY
         val prompt =
             "Convert DB migration - liquibase/flyway to the $entity. From file - '${file.name}'. Create new classes. Save result files to the corresponding directory."
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, files)
+        AiPluginService.getInstance(project).performPrompt(prompt, files)
     }
 
     private fun getDbMigrationFiles(virtualFiles: Array<out VirtualFile>): List<VirtualFile> {

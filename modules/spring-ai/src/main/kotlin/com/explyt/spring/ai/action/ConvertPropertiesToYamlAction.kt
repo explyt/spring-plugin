@@ -17,8 +17,8 @@
 
 package com.explyt.spring.ai.action
 
-import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle
+import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.core.util.ActionUtil
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -50,7 +50,7 @@ class ConvertPropertiesToYamlAction : AnAction(SpringAiBundle.message("explyt.sp
         val fileNames = propertiesFiles.joinToString(", ") { it.name }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.properties", fileNames)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, propertiesFiles)
+        AiPluginService.getInstance(project).performPrompt(prompt, propertiesFiles)
     }
 }
 
@@ -76,7 +76,7 @@ class ConvertYamlToPropertiesAction : AnAction(SpringAiBundle.message("explyt.sp
         val fileNames = yamlFiles.joinToString(", ") { it.name }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.yaml", fileNames)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, yamlFiles)
+        AiPluginService.getInstance(project).performPrompt(prompt, yamlFiles)
     }
 
     companion object {

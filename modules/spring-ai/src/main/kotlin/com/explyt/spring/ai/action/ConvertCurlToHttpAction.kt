@@ -17,8 +17,8 @@
 
 package com.explyt.spring.ai.action
 
-import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle.message
+import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.core.util.ActionUtil
 import com.explyt.spring.web.language.http.HttpFileType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -52,17 +52,12 @@ class ConvertCurlToHttpAction : AnAction(message("explyt.spring.ai.action.curl.t
         val curl = askUser(project) ?: return
 
         val prompt = message("action.prompt.convert.curl", curl, fileName)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, listOf(virtualFile))
+        AiPluginService.getInstance(project).performPrompt(prompt, virtualFile)
     }
 
     private fun askUser(project: Project): String? {
         return Messages.showMultilineInputDialog(
-            project,
-            message("action.prompt.convert.curl.dialog.message"),
-            "",
-            null,
-            null,
-            null
+            project, "Curl:", "", null, null, null
         )
     }
 }
@@ -87,7 +82,7 @@ class ConvertPostmanToHttpAction : AnAction(message("explyt.spring.ai.action.pos
 
         val postmanFile = askUser(project, virtualFile) ?: return
         val prompt = message("action.prompt.convert.postman", fileName)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, listOf(postmanFile))
+        AiPluginService.getInstance(project).performPrompt(prompt, postmanFile)
     }
 
     private fun askUser(project: Project, virtualFile: VirtualFile): VirtualFile? {

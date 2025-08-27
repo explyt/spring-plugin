@@ -17,10 +17,10 @@
 
 package com.explyt.spring.ai.provider
 
-import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
 import com.explyt.spring.ai.action.ConvertControllerToOpenapiAction
+import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.core.SpringCoreClasses.CONTROLLER
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
@@ -104,7 +104,7 @@ private class GenerateKafkaConfigAction : AnAction(message("explyt.spring.ai.act
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
         val prompt = "Generate Spring Kafka configuration. Add spring-kafka dependency if needed"
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, emptyList())
+        AiPluginService.getInstance(project).performPrompt(prompt, emptyList())
     }
 }
 
@@ -115,7 +115,7 @@ private class GenerateSecurityConfigAction : AnAction(message("explyt.spring.ai.
             Generate Spring Security configuration. Add spring-security dependency if needed.
             Ask me what authentication i want: BasicAuthentication, DaoAuthentication, JwtAuthentication, OAuth2Authentication, LdapAuthentication ?
         """.trimIndent()
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, emptyList())
+        AiPluginService.getInstance(project).performPrompt(prompt, emptyList())
     }
 }
 

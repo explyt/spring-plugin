@@ -22,6 +22,6 @@ import com.intellij.openapi.startup.ProjectActivity
 
 class AiStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
-        CheckAiPluginService().checkAiPlugin(project)
+        AiPluginService.getInstance(project).checkAiPlugin(project)
     }
 }

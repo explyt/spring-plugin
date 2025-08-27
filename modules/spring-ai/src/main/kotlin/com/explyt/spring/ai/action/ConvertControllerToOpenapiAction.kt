@@ -17,8 +17,8 @@
 
 package com.explyt.spring.ai.action
 
-import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle.message
+import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.util.ActionUtil
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
@@ -63,7 +63,7 @@ class ConvertControllerToOpenapiAction : AnAction(message("explyt.spring.ai.acti
         val controllerNames = controllerPsiClasses.map { it.javaPsi.name }
 
         val prompt = message("action.prompt.convert.controller", controllerNames)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, virtualFiles.toList())
+        AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles.toList())
     }
 }
 
@@ -88,7 +88,7 @@ class ConvertOpenapiToControllerAction : AnAction(message("explyt.spring.ai.acti
         val fileNames = openApiFiles.joinToString(", ") { it.name }
 
         val prompt = message("action.prompt.convert.openapi", fileNames)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, openApiFiles.toList())
+        AiPluginService.getInstance(project).performPrompt(prompt, openApiFiles.toList())
     }
 
 }

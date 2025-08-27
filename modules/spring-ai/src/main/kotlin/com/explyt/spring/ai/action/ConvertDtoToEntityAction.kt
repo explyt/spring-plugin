@@ -17,8 +17,8 @@
 
 package com.explyt.spring.ai.action
 
-import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle
+import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -59,7 +59,7 @@ class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.
         val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.dto", dtoNames)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, virtualFiles)
+        AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
     }
 }
 
@@ -91,6 +91,6 @@ class ConvertEntityToDtoAction : AnAction(SpringAiBundle.message("explyt.spring.
         val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.entity", dtoNames)
-        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, virtualFiles)
+        AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
     }
 }
