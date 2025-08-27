@@ -17,6 +17,7 @@
 
 package com.explyt.spring.ai.provider
 
+import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
 import com.explyt.spring.ai.action.ConvertControllerToOpenapiAction
@@ -102,7 +103,8 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
 private class GenerateKafkaConfigAction : AnAction(message("explyt.spring.ai.action.kafka.conf")) {
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
-        //ExternalCallService.getInstance(project).sendPromptWithFiles("Generate Spring Kafka configuration", emptyList())
+        val prompt = "Generate Spring Kafka configuration. Add spring-kafka dependency if needed"
+        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, emptyList())
     }
 }
 
@@ -110,10 +112,10 @@ private class GenerateSecurityConfigAction : AnAction(message("explyt.spring.ai.
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
         val prompt = """
-            Generate Spring Security configuration.
+            Generate Spring Security configuration. Add spring-security dependency if needed.
             Ask me what authentication i want: BasicAuthentication, DaoAuthentication, JwtAuthentication, OAuth2Authentication, LdapAuthentication ?
         """.trimIndent()
-        //ExternalCallService.getInstance(project).sendPromptWithFiles(prompt, emptyList())
+        AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, emptyList())
     }
 }
 
