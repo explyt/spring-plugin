@@ -38,6 +38,8 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
 import java.time.Instant
 
+private const val GITHUB_WIKI_URL = "https://github.com/explyt/spring-plugin/wiki/Explyt-AI-Actions"
+
 @Service(Service.Level.PROJECT)
 class AiPluginService(private val project: Project) {
 
@@ -55,7 +57,7 @@ class AiPluginService(private val project: Project) {
                 "Install or update Explyt AI plugin.<br> Version 4.1.1 or higher required.",
                 NotificationType.INFORMATION
             ).addAction(NotificationAction.create(SpringAiBundle.message("explyt.spring.ai.suggest.about")) {
-                BrowserUtil.browse("https://explyt.ai/en/download")
+                BrowserUtil.browse(GITHUB_WIKI_URL)
             }).addAction(NotificationAction.create(SpringAiBundle.message("explyt.spring.ai.suggest.install")) {
                 installPlugin(project)
             }).notify(null)
@@ -74,7 +76,7 @@ class AiPluginService(private val project: Project) {
             "Suggested plugin: Explyt AI available.<br>",
             NotificationType.INFORMATION
         ).addAction(NotificationAction.create(SpringAiBundle.message("explyt.spring.ai.suggest.about")) {
-            BrowserUtil.browse("https://explyt.ai/en/download")
+            BrowserUtil.browse(GITHUB_WIKI_URL)
         }).addAction(NotificationAction.create(SpringAiBundle.message("explyt.spring.ai.suggest.install")) {
             installPlugin(project)
         }).addAction(NotificationAction.createSimpleExpiring("Dont suggest again") {

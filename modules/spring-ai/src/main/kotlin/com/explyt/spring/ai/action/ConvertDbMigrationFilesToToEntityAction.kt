@@ -20,10 +20,12 @@ package com.explyt.spring.ai.action
 import com.explyt.spring.ai.SpringAiBundle
 import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.core.util.ActionUtil
+import com.explyt.util.ModuleUtil
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.isFile
 import com.intellij.openapi.vfs.readText
@@ -53,8 +55,11 @@ class ConvertDbMigrationFilesToToEntityAction : AnAction(SpringAiBundle.message(
         val file = files.firstOrNull() ?: return
         val isJakarta = JavaPsiFacade.getInstance(project).findClass(JAKARTA_ENTITY, project.allScope()) != null
         val entity = if (isJakarta) JAKARTA_ENTITY else JPA_ENTITY
+        val language = ModuleUtilCore.findModuleForFile(file, project)
+            ?.let { if (ModuleUtil.isKotlinModule(it)) "Kotlin" else "Java" } ?: "Java"
         val prompt =
-            "Convert DB migration - liquibase/flyway to the $entity. From file - '${file.name}'. Create new classes. Save result files to the corresponding directory."
+            "Convert DB migration - liquibase/flyway to the $entity. From file - '${file.name}'. Create new classes. " +
+                    "Save result files to the corresponding directory. $language language."
         AiPluginService.getInstance(project).performPrompt(prompt, files)
     }
 
