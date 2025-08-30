@@ -38,6 +38,7 @@ val allCompileProjects = listOf(
     "spring-aop",
     "jpa",
     "quarkus-core",
+    "spring-ai",
 )
 
 allCompileProjects.forEach {

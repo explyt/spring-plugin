@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.CustomPluginRepositoryType
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 
 rootProject.name = "explyt-spring"
@@ -30,6 +31,7 @@ dependencyResolutionManagement {
             defaultRepositories()
             jetbrainsRuntime()
             localPlatformArtifacts()
+            customPluginRepository("https://repository.explyt.dev/", CustomPluginRepositoryType.SIMPLE)
         }
 
     }
@@ -50,6 +52,7 @@ includeProject("jpa")
 includeProject("spring-gradle")
 includeProject("spring-bootstrap")
 includeProject("quarkus-core")
+includeProject("spring-ai")
 
 fun includeProject(name: String, path: String = "modules/$name") {
     include(":$name")
