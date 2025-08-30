@@ -19,6 +19,8 @@ package com.explyt.spring.ai.action
 
 import com.explyt.spring.ai.SpringAiBundle
 import com.explyt.spring.ai.service.AiPluginService
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.util.ActionUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -26,21 +28,26 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
+import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElement
 
 private val JPA_ANNOTATIONS = listOf("javax.persistence.Entity", "jakarta.persistence.Entity")
+private const val MAX_FILES = 30
 
 class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.dto.to.jpa")) {
     override fun update(e: AnActionEvent) {
         val project: Project = e.project ?: return
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-
+        if (virtualFiles == null || virtualFiles.size > MAX_FILES) {
+            ActionUtil.isEnabledAndVisible(e, false)
+            return
+        }
         val uClasses = virtualFiles
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes } ?: emptyList()
+            .mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
+            .flatMap { it.classes }
 
-        val enabled = uClasses.isNotEmpty() && uClasses.none { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) }
+        val enabled = uClasses.isNotEmpty() && uClasses.none { isPotentialSpringClass(it) }
 
         e.presentation.isEnabledAndVisible = enabled
     }
@@ -53,7 +60,7 @@ class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.
         val dtoPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
             ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
             ?.flatMap { it.classes }
-            ?.filter { !it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
+            ?.filter { !isPotentialSpringClass(it) } ?: return
 
         val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
         val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
@@ -61,16 +68,26 @@ class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.
         val prompt = SpringAiBundle.message("action.prompt.convert.dto", dtoNames)
         AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
     }
+
+    private fun isPotentialSpringClass(uClass: UClass): Boolean {
+        if (uClass.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS)) return true
+        if (uClass.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) return true
+        return uClass.uAnnotations.any { it.qualifiedName?.contains("spring", true) == true }
+    }
 }
 
 class ConvertEntityToDtoAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.jpa.to.dto")) {
     override fun update(e: AnActionEvent) {
         val project: Project = e.project ?: return
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
+        if (virtualFiles == null || virtualFiles.size > MAX_FILES) {
+            ActionUtil.isEnabledAndVisible(e, false)
+            return
+        }
 
         val uClasses = virtualFiles
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes } ?: emptyList()
+            .mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
+            .flatMap { it.classes }
 
         val enabled = uClasses.isNotEmpty() && uClasses.any { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) }
 

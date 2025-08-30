@@ -23,7 +23,7 @@
     </extensions>
     <actions>
         <group id="ExternalCallMenuGroup"
-               text="Explyt AI: Refactor Actions"
+               text="Explyt Spring AI Actions"
                icon="/com/explyt/ai/icons/assistantResponseIcon.svg"
                popup="true"
                description="Refactor actions">
