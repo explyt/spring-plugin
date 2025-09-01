@@ -158,6 +158,12 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    fun getAllActiveBeans(): Set<PsiBean> {
+        return project.modules
+            .filter { SpringCoreUtil.isSpringModule(it) }
+            .flatMapTo(mutableSetOf()) { searchAllBeanLight(it) }
+    }
+
     private fun getAllBeansClasses(module: Module): FoundBeans {
         synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {

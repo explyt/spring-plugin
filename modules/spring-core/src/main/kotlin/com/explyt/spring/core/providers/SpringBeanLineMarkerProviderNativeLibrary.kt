@@ -25,6 +25,7 @@ import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.i
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isAutowiredMethodExpression
 import com.explyt.spring.core.service.NativeSearchService
 import com.explyt.spring.core.service.PsiBean
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
@@ -43,6 +44,7 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.*
 import org.jetbrains.uast.*
+import java.util.function.Supplier
 
 class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider() {
 
@@ -51,13 +53,22 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val uClass = getUParentForIdentifier(element) as? UClass ?: return
-
         val psiClass = uClass.javaPsi
         if (!isSpringBeanCandidateClass(psiClass)) return
-        val libraryBeans = NativeSearchService.getInstance(element.project).getAllProjectNodesLibraryBeans()
+        val isComponentCandidate = isComponentCandidate(psiClass)
+        val project = element.project
+        val libraryBeans = NativeSearchService.getInstance(project).getAllProjectNodesLibraryBeans()
+        if (libraryBeans.isEmpty()) {
+            val beanSupplier = { SpringSearchService.getInstance(project).getAllActiveBeans().toList() }
+            if (isComponentCandidate) {
+                addContextBean(uClass, false, result, beanSupplier)
+            }
+            processMethods(uClass, result, beanSupplier)
+            processFields(uClass, result, beanSupplier)
+            return
+        }
         val targetQualifiedName = psiClass.qualifiedName
         val contextBean = libraryBeans.find { isContextClass(it, targetQualifiedName) }
-        val isComponentCandidate = isComponentCandidate(psiClass)
 
         if (contextBean?.psiMember is PsiMethod) {
             addMethodBeanDeclaration(uClass, contextBean, result)
@@ -65,9 +76,9 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
 
         if (contextBean == null && !isComponentCandidate) return
 
-        addContextBean(uClass, libraryBeans, contextBean == null && isComponentCandidate, result)
-        processMethods(uClass, libraryBeans, result)
-        processFields(uClass, libraryBeans, result)
+        addContextBean(uClass, contextBean == null, result) { libraryBeans }
+        processMethodsNative(uClass, result) { libraryBeans }
+        processFields(uClass, result) { libraryBeans }
     }
 
     private fun isContextClass(it: PsiBean, targetQualifiedName: String?): Boolean {
@@ -80,10 +91,9 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
 
     private fun processFields(
         uClass: UClass,
-        libraryBeans: List<PsiBean>,
-        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+        supplier: Supplier<List<PsiBean>>
     ) {
-
         val fields = uClass.fields.takeIf { it.isNotEmpty() } ?: return
         for (uField in fields) {
             val psiField = uField.javaPsi as? PsiField ?: continue
@@ -92,7 +102,7 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
             val sourcePsi = uField.uastAnchor?.sourcePsi ?: continue
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, libraryBeans) })
+                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uField, supplier.get()) })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
@@ -100,18 +110,19 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         }
     }
 
-    private fun processMethods(
+    private fun processMethodsNative(
         uClass: UClass,
-        libraryBeans: List<PsiBean>,
-        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+        beanSupplier: Supplier<List<PsiBean>>
     ) {
+        val libraryBeans = beanSupplier.get()
         val beanMethodNames = libraryBeans.asSequence()
             .filter { it.psiMember is PsiMethod && it.psiMember.containingClass?.qualifiedName == uClass.qualifiedName }
             .mapToSet { (it.psiMember as PsiMethod).name }
         for (method in uClass.methods) {
             val psiElement = method.uastAnchor?.sourcePsi ?: continue
             if (method.isConstructor || isAutowiredMethodExpression(method.javaPsi)) {
-                checkMethodParameters(method, libraryBeans, result)
+                checkMethodParameters(method, result, beanSupplier)
                 if (beanMethodNames.isEmpty()) return
                 continue
             }
@@ -126,15 +137,45 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
                     .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
                     .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
                 result.add(builder.createLineMarkerInfo(psiElement))
-                checkMethodParameters(method, libraryBeans, result)
+                checkMethodParameters(method, result, beanSupplier)
             }
         }
     }
 
+    private fun processMethods(
+        uClass: UClass,
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+        beanSupplier: Supplier<List<PsiBean>>
+    ) {
+
+        for (method in uClass.methods) {
+            val psiElement = method.uastAnchor?.sourcePsi ?: continue
+            if (method.isConstructor || isAutowiredMethodExpression(method.javaPsi)) {
+                checkMethodParameters(method, result, beanSupplier)
+                continue
+            }
+
+            if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) continue
+
+            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy {
+                    findFieldsAndMethodsWithAutowired(null, method, beanSupplier.get())
+                })
+                .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
+                .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
+                .setTargetRenderer { SpringBeanLineMarkerProvider().getTargetRender() }
+            result.add(builder.createLineMarkerInfo(psiElement))
+            checkMethodParameters(method, result, beanSupplier)
+        }
+    }
+
+
     private fun checkMethodParameters(
         method: UMethod,
-        libraryBeans: List<PsiBean>,
-        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+        beanSupplier: Supplier<List<PsiBean>>
     ) {
         val uastParameters = method.uastParameters.takeIf { it.isNotEmpty() } ?: return
 
@@ -142,7 +183,7 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
             val sourcePsi = uParameter.uastAnchor?.sourcePsi ?: continue
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, libraryBeans) })
+                .setTargets(NotNullLazyValue.lazy { getBeanDeclarations(uParameter, beanSupplier.get()) })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
@@ -152,9 +193,9 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
 
     private fun addContextBean(
         uClass: UClass,
-        libraryBeans: List<PsiBean>,
         isComponentCandidate: Boolean,
-        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+        beanSupplier: Supplier<List<PsiBean>>
     ) {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
         val icon = if (isComponentCandidate) SpringIcons.springBeanInactive else SpringIcons.SpringBean
@@ -163,7 +204,7 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
             SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate")
         val builder = NavigationGutterIconBuilder.create(icon)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(uClass, null, libraryBeans) })
+            .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(uClass, null, beanSupplier.get()) })
             .setTooltipText(text)
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
             .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title"))
