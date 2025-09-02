@@ -38,7 +38,7 @@ import java.awt.Component
 class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter() {
 
     val sentryClient: SentryClient = GlitchtipSentryClientFactory().createClient(
-        "https://7e30ca42b0df43d3b31837cdb77b38f9@get.explyt.dev/glitchtip/11916"
+        "https://7e30ca42b0df43d3b31837cdb77b38f9@dev.explyt.ai/glitchtip/11916"
     )
 
     init {
