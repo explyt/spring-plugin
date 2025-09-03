@@ -80,6 +80,6 @@ class ConvertYamlToPropertiesAction : AnAction(SpringAiBundle.message("explyt.sp
     }
 
     companion object {
-        private val YAML_TYPES = setOf(YAMLFileType.YML, YAMLFileType.DEFAULT_EXTENSION)
+        private val YAML_TYPES = setOf(YAMLFileType.YML)
     }
 }
