@@ -35,7 +35,7 @@ import org.jetbrains.kotlin.idea.base.util.allScope
 const val JPA_ENTITY = "javax.persistence.Entity"
 const val JAKARTA_ENTITY = "jakarta.persistence.Entity"
 
-class ConvertDbMigrationFilesToToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.db.to.jpa")) {
+class ConvertDbMigrationFilesToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.db.to.jpa")) {
     override fun update(e: AnActionEvent) {
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
         if (virtualFiles == null || virtualFiles.size > 1) {

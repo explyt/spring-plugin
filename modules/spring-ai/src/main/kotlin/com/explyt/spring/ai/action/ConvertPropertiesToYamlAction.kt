@@ -61,8 +61,7 @@ class ConvertYamlToPropertiesAction : AnAction(SpringAiBundle.message("explyt.sp
             ActionUtil.isEnabledAndVisible(e, false)
             return
         }
-        val enabled = virtualFiles.any { it.fileType in YAML_TYPES }
-        e.presentation.isEnabledAndVisible = enabled
+        e.presentation.isEnabledAndVisible = virtualFiles.any { it.fileType == YAMLFileType.YML }
     }
 
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
@@ -70,16 +69,10 @@ class ConvertYamlToPropertiesAction : AnAction(SpringAiBundle.message("explyt.sp
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
-        val yamlFiles = virtualFiles.filter {
-            it.fileType in YAML_TYPES
-        }
+        val yamlFiles = virtualFiles.filter { it.fileType == YAMLFileType.YML }
         val fileNames = yamlFiles.joinToString(", ") { it.name }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.yaml", fileNames)
         AiPluginService.getInstance(project).performPrompt(prompt, yamlFiles)
-    }
-
-    companion object {
-        private val YAML_TYPES = setOf(YAMLFileType.YML)
     }
 }
