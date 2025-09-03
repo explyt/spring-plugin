@@ -1,4 +1,3 @@
-import org.jetbrains.intellij.platform.gradle.CustomPluginRepositoryType
 import org.jetbrains.intellij.platform.gradle.extensions.intellijPlatform
 
 rootProject.name = "explyt-spring"
@@ -31,7 +30,6 @@ dependencyResolutionManagement {
             defaultRepositories()
             jetbrainsRuntime()
             localPlatformArtifacts()
-            customPluginRepository("https://repository.explyt.dev/", CustomPluginRepositoryType.SIMPLE)
         }
 
     }
