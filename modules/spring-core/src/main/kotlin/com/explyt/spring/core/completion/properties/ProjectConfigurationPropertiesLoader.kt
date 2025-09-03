@@ -28,6 +28,7 @@ import com.explyt.util.ExplytPsiUtil.returnPsiClass
 import com.explyt.util.runReadNonBlocking
 import com.intellij.json.psi.JsonFile
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.javadoc.PsiDocToken
@@ -97,15 +98,15 @@ class ProjectConfigurationPropertiesLoader(project: Project) :
     ): Map<String, ConfigurationProperty> {
         return CachedValuesManager.getManager(module.project).getCachedValue(annotatedElement) {
             CachedValueProvider.Result(
-                loadPropertiesFromConfigurationFile(module, annotatedElement), annotatedElement
+                loadPropertiesFromConfigurationFile(annotatedElement), annotatedElement
             )
         }
     }
 
     private fun loadPropertiesFromConfigurationFile(
-        module: Module,
-        annotatedElement: PsiModifierListOwner,
+        annotatedElement: PsiModifierListOwner
     ): Map<String, ConfigurationProperty> {
+        val module = ModuleUtilCore.findModuleForPsiElement(annotatedElement) ?: return emptyMap()
         val result = hashMapOf<String, ConfigurationProperty>()
         val prefix = ProjectConfigurationPropertiesUtil
             .extractConfigurationPropertyPrefix(module, annotatedElement) ?: return emptyMap()
