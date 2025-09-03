@@ -33,7 +33,6 @@ import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.updateSettings.impl.UpdateSettings
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
 import java.time.Instant
@@ -85,12 +84,9 @@ class AiPluginService(private val project: Project) {
     }
 
     private fun installPlugin(project: Project) {
-        val explytRepositoryExist = UpdateSettings.getInstance()
-            .storedPluginHosts.any { it.contains("explyt", true) }
-        val pluginConfigurable = explytRepositoryExist.takeIf { it }?.let {
-            Configurable.APPLICATION_CONFIGURABLE.extensionList.find { it.id == "preferences.pluginManager" }
-                ?.createConfigurable()
-        }
+        val pluginConfigurable = Configurable.APPLICATION_CONFIGURABLE.extensionList
+            .find { it.id == "preferences.pluginManager" }?.createConfigurable()
+
         if (pluginConfigurable != null) {
             ShowSettingsUtil.getInstance().editConfigurable(
                 project,
