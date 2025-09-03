@@ -79,7 +79,7 @@ class AiPluginService(private val project: Project) {
             BrowserUtil.browse(GITHUB_WIKI_URL)
         }).addAction(NotificationAction.create(SpringAiBundle.message("explyt.spring.ai.suggest.install")) {
             installPlugin(project)
-        }).addAction(NotificationAction.createSimpleExpiring("Dont suggest again") {
+        }).addAction(NotificationAction.createSimpleExpiring("Don't suggest again") {
             disableAiSuggestion(3600 * 24 * 120) //disable for next 120 days
         }).notify(null)
     }

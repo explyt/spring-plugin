@@ -49,7 +49,7 @@ class ConvertCurlToHttpAction : AnAction(message("explyt.spring.ai.action.curl.t
         val virtualFile = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
         val fileName = virtualFile.name
 
-        val curl = askUser(project) ?: return
+        val curl = askUser(project)?.trim() ?: return
 
         val prompt = message("action.prompt.convert.curl", curl, fileName)
         AiPluginService.getInstance(project).performPrompt(prompt, virtualFile)
