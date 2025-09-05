@@ -50,7 +50,6 @@ includeProject("jpa")
 includeProject("spring-gradle")
 includeProject("spring-bootstrap")
 includeProject("quarkus-core")
-includeProject("spring-ai")
 
 fun includeProject(name: String, path: String = "modules/$name") {
     include(":$name")

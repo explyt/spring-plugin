@@ -40,6 +40,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.util.CacheKeyStore
 import com.explyt.util.ExplytAnnotationUtil.getLongValue
+import com.explyt.util.ExplytKotlinUtil.mapToSet
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isGeneric
@@ -157,12 +158,6 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getAllActiveBeans(): Set<PsiBean> {
-        return project.modules
-            .filter { SpringCoreUtil.isSpringModule(it) }
-            .flatMapTo(mutableSetOf()) { searchAllBeanLight(it) }
-    }
-
     private fun getAllBeansClasses(module: Module): FoundBeans {
         synchronized(getMutexString(MutexType.CONDITIONAL_ON, module)) {
             return cachedValuesManager.getCachedValue(module) {
@@ -270,10 +265,10 @@ class SpringSearchService(private val project: Project) {
                     val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
                     val moduleLibraryBeans = searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module)
                     val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
-
+                    val configurationProperties = searchConfigurationPropertiesBean(module, scope)
 
                     CachedValueProvider.Result(
-                        moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans,
+                        moduleWithDependenciesBeans + moduleLibraryBeans + importedPsiBeans + configurationProperties,
                         ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                     )
                 }
@@ -425,6 +420,14 @@ class SpringSearchService(private val project: Project) {
             .filter { isActive(it) }
             .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
             .toSet()
+    }
+
+    private fun searchConfigurationPropertiesBean(module: Module, scope: SearchScope): Set<PsiBean> {
+        val configurationPropertiesClass = LibraryClassCache
+            .searchForLibraryClass(module, SpringCoreClasses.CONFIGURATION_PROPERTIES) ?: return emptySet()
+        return AnnotatedElementsSearch.searchPsiClasses(configurationPropertiesClass, scope).asSequence()
+            .filter { isActive(it) }
+            .mapToSet { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
     }
 
     private fun searchBeanPsiClassesByComponentAnnotationLibraryScopeCached(module: Module): Set<PsiBean> {
@@ -735,8 +738,9 @@ class SpringSearchService(private val project: Project) {
         val extraComponents = getExtraComponents(module, modulePackagesHolder)
         val moduleWithDependenciesBeans = allModuleWithDependenciesBeans + extraComponents
         val importedPsiBeans = getImportedBeans(modulePackagesHolder, module)
+        val configurationProperties = searchConfigurationPropertiesBean(module, scope)
 
-        val psiBeans = moduleWithDependenciesBeans + importedPsiBeans
+        val psiBeans = moduleWithDependenciesBeans + importedPsiBeans + configurationProperties
         val methodsPsiBeans = searchComponentPsiClassesByBeanMethods(psiBeans)
 
         return psiBeans + methodsPsiBeans
@@ -825,8 +829,6 @@ object SpringSearchUtils {
                         MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.COMPONENT, false)
                             .toMutableSet()
                     annotations += LibraryClassCache.searchForLibraryClasses(module, JavaEeClasses.RESOURCE.allFqns)
-                    annotations += MetaAnnotationUtil
-                        .getAnnotationTypesWithChildren(module, SpringCoreClasses.CONFIGURATION_PROPERTIES, false)
                     return@run annotations
                 }.toSet(),
                 ModificationTrackerManager.getInstance(project).getUastAnnotationAndLibraryTracker()

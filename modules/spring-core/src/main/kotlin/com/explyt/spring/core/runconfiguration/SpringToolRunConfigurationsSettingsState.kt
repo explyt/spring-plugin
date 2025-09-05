@@ -19,7 +19,6 @@ package com.explyt.spring.core.runconfiguration
 
 import com.intellij.openapi.components.*
 import com.intellij.util.xmlb.annotations.Property
-import java.time.Instant
 
 @Service(Service.Level.APP)
 @State(
@@ -55,9 +54,6 @@ class SpringToolRunConfigurationsSettingsState :
 
     @get:Property(surroundWithTag = true)
     var httpCliPath by string("")
-
-    @get:Property(surroundWithTag = true)
-    var aiSuggestInstantSecond by property(Instant.MIN.epochSecond)
 
     override fun getState(): SpringToolRunConfigurationsSettingsState = this
 

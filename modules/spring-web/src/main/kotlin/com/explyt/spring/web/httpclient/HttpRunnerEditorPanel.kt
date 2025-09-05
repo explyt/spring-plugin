@@ -69,6 +69,7 @@ class HttpRunnerEditorPanel(fileEditor: FileEditor, val project: Project) :
         val toolbar = ActionManager.getInstance().createActionToolbar("Explyt.HttpRunnerEditorToolbar", httpGroup, true)
         toolbar.targetComponent = this
         add(toolbar.component, BorderLayout.WEST)
+
         val panel = panel {
             row {
                 panel {
@@ -100,9 +101,6 @@ class HttpRunnerEditorPanel(fileEditor: FileEditor, val project: Project) :
         }
 
         myLinksPanel.add(panel)
-        AdditionalHttpPanelLoader.EP_NAME.getExtensions(project).forEach {
-            myLinksPanel.add(it.getPanel())
-        }
         add(myLinksPanel, BorderLayout.CENTER)
     }
 

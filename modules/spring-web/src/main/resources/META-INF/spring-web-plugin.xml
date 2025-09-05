@@ -6,9 +6,6 @@
         <extensionPoint qualifiedName="com.explyt.spring.web.springWebEndpointsLoader" dynamic="true"
                         interface="com.explyt.spring.web.loader.SpringWebEndpointsLoader"
                         area="IDEA_PROJECT"/>
-        <extensionPoint qualifiedName="com.explyt.spring.web.additionalHttpPanelLoader" dynamic="true"
-                        interface="com.explyt.spring.web.httpclient.AdditionalHttpPanelLoader"
-                        area="IDEA_PROJECT"/>
     </extensionPoints>
 
 

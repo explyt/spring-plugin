@@ -25,18 +25,9 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiField
-import com.intellij.psi.PsiFile
-import org.jetbrains.uast.UFile
-import org.jetbrains.uast.toUElement
 
 @Service(Service.Level.PROJECT)
 class JpaService {
-
-    fun isJpaEntity(psiFile: PsiFile): Boolean {
-        val uFile = psiFile.toUElement() as? UFile ?: return false
-        return uFile.classes.any { isJpaEntity(it.javaPsi) }
-    }
-
     fun isJpaEntity(psiClass: PsiClass): Boolean {
         val jpaAnnotations = listOf(
             JpaClasses.entity,
