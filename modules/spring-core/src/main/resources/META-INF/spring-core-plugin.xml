@@ -46,6 +46,8 @@
                 implementation="com.explyt.spring.core.service.beans.discoverer.SpringCoreAdditionalBeansDiscoverer"/>
         <additionalBeansDiscoverer
                 implementation="com.explyt.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.core.service.beans.discoverer.SpringBeanRegistrarAdditionalBeansDiscoverer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">

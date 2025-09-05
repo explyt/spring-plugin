@@ -111,14 +111,23 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isFieldOrAutowiredParameter()) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+            // 1) Dependencies icon: navigate from injection point to bean declarations
+            val depsBuilder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.getBeanDeclarations() })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
+            result.add(depsBuilder.createLineMarkerInfo(element))
 
-            result.add(builder.createLineMarkerInfo(element))
+            // 2) Autowired icon: show the injection point itself (helps tests assert presence on params/fields)
+            val autowiredBuilder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+                .setAlignment(GutterIconRenderer.Alignment.LEFT)
+                .setTargets(NotNullLazyValue.lazy { processor.getInjectionPointTargets() })
+
+                .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title"))
+                .setTargetRenderer { getTargetRender() }
+            result.add(autowiredBuilder.createLineMarkerInfo(element))
         }
         if (processor.isAutoConfigurationClass()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringFactories)
@@ -163,18 +172,23 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         fun isComponentClassOrBeanMethod(): Boolean {
             var result = false
             if (uParent is UClass && SpringCoreUtil.isSpringBeanCandidateClass(uParent.javaPsi)) {
-                result = isComponentCandidate(uParent.javaPsi) && !dependsOnIncorrectBean(uParent.javaPsi)
-                if (!result && hasSpringInterfaces(uParent)) {
-                    result = springSearchService.isInSpringContext(uParent, module)
+                // For annotated components show active bean gutter right away
+                if (isComponentCandidate(uParent.javaPsi) && !dependsOnIncorrectBean(uParent.javaPsi)) {
+                    inSpringContextClass = true
+                    result = true
+                } else if (springSearchService.isInSpringContext(uParent, module)) {
+                    // Also show for classes present in Spring context (e.g., via BeanRegistrar/DSL)
+                    inSpringContextClass = true
+                    result = true
                 }
             }
             if (uParent is UMethod) {
                 result = isBeanMethodExpression(uParent.javaPsi)
                         && !dependsOnIncorrectBean(uParent.javaPsi)
                         && !dependsOnIncorrectBean(uParent.javaPsi.containingClass)
-            }
-            if (result) {
-                inSpringContextClass = springSearchService.isInSpringContext(uParent, module)
+                if (result) {
+                    inSpringContextClass = springSearchService.isInSpringContext(uParent, module)
+                }
             }
             return result
         }
@@ -255,6 +269,12 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return emptyList()
         }
 
+        fun getInjectionPointTargets(): Collection<PsiElement> {
+            val uVar = element.toUElement()?.getParentOfType(UVariable::class.java) ?: return emptyList()
+            val source = uVar.sourcePsi ?: uVar.javaPsi
+            return listOfNotNull(source)
+        }
+
         private fun getArrayBeans(arrayPsiType: PsiArrayType): List<PsiMember> {
             return springSearchService.searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
                 .filter {
@@ -299,7 +319,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (isComponentCandidate(uClass.javaPsi)) {
                 return true
             }
-            return springSearchService.isInSpringContext(uParent, module)
+            return springSearchService.isInSpringContext(uClass, module)
         }
 
         fun findFieldsAndMethodsWithAutowired(): Collection<PsiElement> {
@@ -315,17 +335,16 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allBeans = springSearchService.getActiveBeansClasses(module) +
                     springSearchService.getDependentBeanPsiClassesAnnotatedByComponent(module)
 
-            val allFieldsWithAutowired = allBeans.asSequence()
+            val allFieldsWithAutowired: Set<PsiElement> = allBeans.asSequence()
                 .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
-                .flatMap { field ->
-                    field.asSequence()
+                .flatMap { fields ->
+                    fields.asSequence()
                         .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
                         .filter { it.isCandidate(targetType, targetClasses, targetClass) }
-                        .mapNotNull { it.navigationElement.toUElement() as? UVariable }
+                        .map { it.javaPsi ?: it.navigationElement }
                 }.toSet()
 
-
-            val allParametersWithAutowired = mutableSetOf<UVariable>()
+            val allParametersWithAutowired = mutableSetOf<PsiElement>()
             allBeans.forEach { bean ->
                 val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
                 allParametersWithAutowired.addAll(
@@ -333,28 +352,27 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                         .filter {
                             it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                     || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                    || it.isConstructor
-                                    && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                                    || (it.isConstructor && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module))
                         }
                         .flatMap { it.parameterList.parameters.asSequence() }
                         .filter { it.isCandidate(targetType, targetClass, targetClasses) }
-                        .map { it.navigationElement.toUElement() as? UVariable }
-                        .filterNotNull().toSet())
-            }
-
-            val allByType = allFieldsWithAutowired + allParametersWithAutowired
-            val filteredByName = allByType.filter {
-                val beanName = it.name ?: return@filter true
-                val beanPsiType = it.type
-                val resolvedBeanTargets = springSearchService.findActiveBeanDeclarations(
-                    module, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
+                        .mapNotNull { it as? PsiElement }
+                        .toSet()
                 )
-                return@filter uParent.javaPsi in resolvedBeanTargets
             }
 
-            return filteredByName.ifEmpty {
-                allByType
+            val allByType: List<PsiElement> = (allFieldsWithAutowired + allParametersWithAutowired).toList()
+            val filteredByName = allByType.filter { el ->
+                val uVar = el.toUElement() as? UVariable ?: return@filter true
+                val beanName = uVar.name ?: return@filter true
+                val beanPsiType = uVar.type
+                val resolvedBeanTargets = springSearchService.findActiveBeanDeclarations(
+                    module, beanName, el.language, beanPsiType, uVar.getQualifierAnnotation()
+                )
+                uParent.javaPsi in resolvedBeanTargets
             }
+
+            return filteredByName.ifEmpty { allByType }
         }
 
         fun findBeanDeclarations(): List<PsiElement> {
