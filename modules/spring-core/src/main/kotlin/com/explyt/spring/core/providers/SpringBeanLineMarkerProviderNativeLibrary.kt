@@ -244,7 +244,9 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
             JavaEeClasses.INJECT.allFqns + JavaEeClasses.RESOURCE.allFqns + SpringCoreClasses.AUTOWIRED
 
         val nativeSearchService = NativeSearchService.getInstance(project)
-        val allBeans = libraryBeans + nativeSearchService.getProjectBeans()
+        val projectBeans = nativeSearchService.getProjectBeans()
+        val allBeans = if (projectBeans.isNotEmpty()) libraryBeans + projectBeans
+        else SpringSearchService.getInstance(project).getAllActiveBeans()
 
         val allFieldsWithAutowired = allBeans.asSequence()
             .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
