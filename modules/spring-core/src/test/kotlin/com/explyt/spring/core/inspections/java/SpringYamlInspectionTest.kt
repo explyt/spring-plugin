@@ -20,7 +20,6 @@ package com.explyt.spring.core.inspections.java
 import com.explyt.spring.core.inspections.SpringYamlInspection
 import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
-import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringYamlInspectionTest : ExplytInspectionJavaTestCase() {
@@ -47,35 +46,13 @@ foo:
         myFixture.testHighlighting("application.yaml")
     }
 
-    fun testKebabCaseProperties() {
+    fun testNoDuplicateProperties() {
         myFixture.configureByText(
             "application.yaml",
             """
 foo:
-    <warning descr="Should be kebab-case">barBaz</warning>: some1
-    <warning descr="Should be kebab-case">bar-Baz1</warning>: some1
-            """.trimIndent()
-        )
-        myFixture.testHighlighting("application.yaml")
-    }
-
-    fun testFileDefinitionProperties() {
-        @Language("java") val configurationProperty = """
-            @org.springframework.context.annotation.Configuration
-            @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.prop")
-            public class ConfigProperties {               
-                private String test;                           
-                public void setTest(String test) { this.test = test}
-                public String getTest() { return this.test}
-            } 
-        """.trimIndent()
-        myFixture.addClass(configurationProperty)
-        myFixture.configureByText(
-            "application.yaml",
-            """
-explyt.prop:
-    test: some1
-    <warning descr="Cannot resolve key property 'explyt.prop.field'">field</warning>: some1
+    <warning descr="Cannot resolve key property 'foo.barBaz'"><warning descr="Should be kebab-case">barBaz</warning></warning>: some1
+    <warning descr="Cannot resolve key property 'foo.bar-Baz1'"><warning descr="Should be kebab-case">bar-Baz1</warning></warning>: some1
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")

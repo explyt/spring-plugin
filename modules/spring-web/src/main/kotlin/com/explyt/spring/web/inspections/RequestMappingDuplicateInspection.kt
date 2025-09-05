@@ -99,21 +99,7 @@ class RequestMappingDuplicateInspection : SpringBaseUastLocalInspectionTool() {
     ): List<DuplicateUrlInfo> {
         val urlString = AnnotationUtil.getStringAttributeValue(psiValue) ?: return emptyList()
         val httpMethods = requestMappingMah.getHttpMethods(psiMethod)
-        return httpMethods.mapNotNull { getDuplicateUrlInfo(urlString, it, psiMethod, psiValue) }
-    }
-
-    private fun getDuplicateUrlInfo(
-        urlString: String,
-        string: String,
-        psiMethod: PsiMethod,
-        psiValue: PsiAnnotationMemberValue
-    ): DuplicateUrlInfo? {
-        val url = try {
-            Url(urlString)
-        } catch (_: Exception) {
-            return null
-        }
-        return DuplicateUrlInfo(url, string, psiMethod, psiValue)
+        return httpMethods.map { DuplicateUrlInfo(Url(urlString), it, psiMethod, psiValue) }
     }
 
     private fun MetaAnnotationsHolder.getHttpMethods(

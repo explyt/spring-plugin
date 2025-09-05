@@ -60,9 +60,6 @@ class ConditionalOnMissingBeanStrategy(module: Module) : ExclusionStrategy {
             .any { classesQn.contains(it.psiClass.qualifiedName) }
     }
 
-    private fun isNotSame(bean: PsiBean, dependant: PsiMember): Boolean {
-        if (bean.psiMember == dependant) return false
-        return bean.psiMember.containingClass != dependant
-    }
+    private fun isNotSame(bean: PsiBean, dependant: PsiMember) = bean.psiMember != dependant
 
 }

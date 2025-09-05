@@ -19,7 +19,6 @@ package com.explyt.spring.boot.bean.reader;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.support.AbstractApplicationContext;
-import org.springframework.core.env.ConfigurableEnvironment;
 import tech.ytsaurus.spyt.patch.annotations.AddClass;
 
 import java.lang.reflect.Method;
@@ -38,14 +37,6 @@ public class InternalHolderContext {
 
     public static AbstractApplicationContext getContext() {
         return context;
-    }
-
-    public static ConfigurableEnvironment getEnvironment() {
-        return context.getEnvironment();
-    }
-
-    public static ConfigurableListableBeanFactory getBeanFactory() {
-        return context.getBeanFactory();
     }
 
     public static String getRawBeanData() {

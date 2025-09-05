@@ -148,11 +148,6 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 && getListKeys(fileProperty, properties).isEmpty()
                 && placeholders.none { PropertyUtil.isSameProperty(key, it) }
             ) {
-                val baseKeyPrefix = key.substringBefore(".")
-                if (properties.none { it.name.startsWith(baseKeyPrefix) }) {
-                    //this means that the property is defined directly in the file
-                    continue
-                }
                 val psiReferences = SpringSearchUtils.getAllReferencesToElement(elementFileProperty)
                 if (psiReferences.isEmpty()) {
                     problems += manager.createProblemDescriptor(

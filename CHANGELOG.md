@@ -4,27 +4,6 @@
 
 ## [Unreleased]
 
-### Spring AI 
-- feat: Explyt AI integration
-
-### Spring Core/Boot
-- feat: library beans DI support
-- feat: Scheduled cron's zone attribute support 
-- fix: Property definition inspection 
-- fix: property cache (#74)
-- fix: ConditionalOnMissingBeanStrategy - method from the same class (#76)
-
-### Spring Data
-- JPA generate equals & hashCode methods
-
-### Spring Web / OpenApi
-- fix: Spring web parse url
-
-### Spring Debugger
-- Improve spring debugger node
-
-## [252.24.11] - 2025-08-05
-
 ### Spring Core/Boot
 - Add an icon to the "Mark directory as Spring Configuration Root" action
 - fix: Maps with string key/value in properties wasn't resolved
@@ -45,7 +24,7 @@
 ### Other
 - fix: 252 only! remove same warnings (#61)
 
-## 252.23.8 - 2025-08-05
+## [252.23.8] - 2025-08-05
 
 ### Spring Core/Boot
 - feat: Spring Debugger
