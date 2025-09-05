@@ -45,6 +45,7 @@
 - **Spring Boot & Web Support**: Enhanced tools for Spring Boot, MVC, WebFlux, and more.
 - **Kotlin-Friendly**: Full support for Kotlin Spring applications.
 - **Lightweight & Fast**: Runs a lightweight version of your app for accurate insights without slowing down your IDE.
+- **Quarkus Support**: support Java EE annotations and more for Quarkus specific.
 
 ### Our Innovative Approach
 
