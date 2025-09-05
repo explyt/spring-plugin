@@ -77,6 +77,18 @@ class SpringSearchServiceTest : ExplytJavaLightTestCase() {
         TestCase.assertTrue(beanNames.contains("com.outer3.Outer3"))
     }
 
+    fun testBeanRegistrarJava() {
+        val vf = myFixture.copyDirectoryToProject("service/beanRegistrarJava", "")
+        val module = vf.getModule(project)
+        TestCase.assertNotNull(module)
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module!!)
+        val names = beans.filter { it.psiClass.qualifiedName?.startsWith("com.app") == true }
+            .mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
+        TestCase.assertTrue(names.contains("com.app.Foo"))
+        TestCase.assertTrue(names.contains("com.app.Bar"))
+        TestCase.assertTrue(names.contains("com.app.Baz"))
+    }
+
     fun testComponentMissingBeanSearch() {
         val virtualFile = myFixture.copyDirectoryToProject("service/conditionalOnMissingBean", "")
         val module = virtualFile.getModule(project)
