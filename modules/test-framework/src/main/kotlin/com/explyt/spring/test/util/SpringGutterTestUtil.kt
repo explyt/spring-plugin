@@ -19,6 +19,7 @@ package com.explyt.spring.test.util
 
 import com.intellij.codeInsight.daemon.GutterMark
 import com.intellij.codeInsight.daemon.LineMarkerInfo
+import com.intellij.codeInsight.daemon.MergeableLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.navigation.NavigationGutterIconRenderer
 import com.intellij.psi.PsiElement
@@ -52,18 +53,35 @@ object SpringGutterTestUtil {
         lineMarkerInfo: LineMarkerInfo<out PsiElement>,
         targetNamer: Function<PsiElement, String>
     ): List<String> {
+        // Simple case: renderer with direct target elements
         val navigationHandler = lineMarkerInfo.navigationHandler
-
         if (navigationHandler is NavigationGutterIconRenderer) {
             val targetElements = navigationHandler.targetElements
             return ContainerUtil.map(targetElements, targetNamer)
         }
 
-        // custom GutterIconNavigationHandler: fallback to related items
-        if (lineMarkerInfo is RelatedItemLineMarkerInfo) {
-            val gotoItems =
-                ArrayList(lineMarkerInfo.createGotoRelatedItems()).sortedBy { item -> item.customContainerName }
+        // Related item fallback
+        if (lineMarkerInfo is RelatedItemLineMarkerInfo<*>) {
+            val gotoItems = ArrayList(lineMarkerInfo.createGotoRelatedItems())
+                .sortedBy { item -> item.customContainerName }
             return gotoItems.mapNotNull { it.element }.map { targetNamer.`fun`(it) }
+        }
+
+        // Merged gutters: unwrap nested markers using public API
+        val merged: List<MergeableLineMarkerInfo<*>> = MergeableLineMarkerInfo.getMergedMarkers(lineMarkerInfo)
+        if (merged.isNotEmpty()) {
+            val results = mutableListOf<String>()
+            merged.forEach { info ->
+                val renderer = info.createGutterRenderer()
+                if (renderer is NavigationGutterIconRenderer) {
+                    results += ContainerUtil.map(renderer.targetElements, targetNamer)
+                } else if (info is RelatedItemLineMarkerInfo<*>) {
+                    val gotoItems = ArrayList(info.createGotoRelatedItems())
+                        .sortedBy { item -> item.customContainerName }
+                    results += gotoItems.mapNotNull { it.element }.map { targetNamer.`fun`(it) }
+                }
+            }
+            return results
         }
         return emptyList()
     }
