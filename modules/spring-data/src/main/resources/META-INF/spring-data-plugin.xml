@@ -61,6 +61,11 @@
                            displayType="BALLOON"
                            bundle="messages.SpringDataBundle"
                            key="explyt.spring.data.notifications"/>
+
+        <psi.referenceContributor
+                implementation="com.explyt.spring.data.providers.JdbcClientReferenceContributor"
+                language="UAST"/>
+
     </extensions>
 
     <extensions defaultExtensionNs="com.explyt">
