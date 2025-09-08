@@ -76,6 +76,7 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ClassInheritorsSearch
+import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.PsiUtil
 import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -648,6 +649,21 @@ object SpringCoreUtil {
     }
 
 
+    fun Collection<PsiBean>.filterByExactMatchRegistrar(sourcePsiType: PsiType): Sequence<PsiMethod> {
+        val isSourcePsiTypeHasParameters = sourcePsiType.psiClassType?.let { it.parameterCount > 0 } == true
+        val isSourcePsiTypeHasSingleUnboundedWildcardType = sourcePsiType.psiClassType?.let {
+            it.parameterCount == 1 && !it.parameters[0].isBounded()
+        } == true
+
+        val resolvedSourcePsiClass = sourcePsiType.resolvedPsiClass
+        return this.asSequence().filter {
+            InheritanceUtil.isInheritorOrSelf(it.psiClass, resolvedSourcePsiClass, false)
+                    || (!isSourcePsiTypeHasParameters || isSourcePsiTypeHasSingleUnboundedWildcardType)
+                    && resolvedSourcePsiClass != null && it.psiClass == resolvedSourcePsiClass
+        }.mapNotNull { it.psiMember as? PsiMethod }
+    }
+
+
     fun PsiType.isExactMatch(sourcePsiType: PsiType): Boolean {
         val isSourcePsiTypeHasParameters = sourcePsiType.psiClassType?.let { it.parameterCount > 0 } == true
         val isSourcePsiTypeHasSingleUnboundedWildcardType = sourcePsiType.psiClassType?.let {
@@ -669,6 +685,13 @@ object SpringCoreUtil {
         // Example: @Bean E dBean() { return new D(); }
         // val filterByInheritedTypes = this.filterByInheritedTypes(sourcePsiType, beanPsiType)
         return inheritedPsiMethods // + filterByInheritedTypes
+    }
+
+    fun Collection<PsiBean>.filterByBeanPsiTypeRegistrar(beanPsiType: PsiType): Sequence<PsiMethod> {
+        val qualifiedName = beanPsiType.resolveBeanPsiClass?.qualifiedName ?: return emptySequence()
+        return this.asSequence().filter {
+            InheritanceUtil.isInheritor(it.psiClass, qualifiedName)
+        }.mapNotNull { it.psiMember as? PsiMethod }
     }
 
     fun PsiType.isEqualOrInheritorType(beanPsiType: PsiType): Boolean {
