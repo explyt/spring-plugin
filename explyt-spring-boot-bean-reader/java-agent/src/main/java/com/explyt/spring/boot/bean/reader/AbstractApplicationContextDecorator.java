@@ -17,6 +17,7 @@
 
 package com.explyt.spring.boot.bean.reader;
 
+import org.springframework.beans.BeanMetadataAttributeAccessor;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -119,6 +120,11 @@ public class AbstractApplicationContextDecorator {
                 className = methodMetadata.getDeclaringClassName();
                 methodName = methodMetadata.getMethodName();
                 methodType = methodMetadata.getReturnTypeName();
+            } else if (explytGetBeanRegistrarClassName(definition) != null) {
+                String beanRegistrarClassName = explytGetBeanRegistrarClassName(definition);
+                className = beanRegistrarClassName;
+                methodName = "register";
+                methodType = beanClassName;
             } else if (definition instanceof RootBeanDefinition) {
                 String springDataType = explytGetSpringDataType((RootBeanDefinition) definition);
                 if (springDataType != null) {
@@ -170,6 +176,23 @@ public class AbstractApplicationContextDecorator {
                 if (baseDataRepoFactoryClass.isAssignableFrom(targetType)) {
                     ResolvableType generic = resolvableType.getGeneric(0);
                     return generic.toClass().getName();
+                }
+            }
+            return null;
+        } catch (Throwable ignore) {
+            return null;
+        }
+    }
+
+
+    @AddMethod
+    private String explytGetBeanRegistrarClassName(BeanDefinition definition) {
+        try {
+            if (definition instanceof BeanMetadataAttributeAccessor
+                    && definition.getClass().getName().contains("BeanRegistrarBeanDefinition")) {
+                Object source = definition.getSource();
+                if (source instanceof Class<?>) {
+                    return ((Class<?>) source).getName();
                 }
             }
             return null;

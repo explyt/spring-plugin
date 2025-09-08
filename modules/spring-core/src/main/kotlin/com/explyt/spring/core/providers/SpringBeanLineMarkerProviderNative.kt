@@ -26,21 +26,14 @@ import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.i
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isAutowiredMethodExpression
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider.Companion.isLombokAnnotatedClassFieldExpression
 import com.explyt.spring.core.service.NativeSearchService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
-import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.canResolveBeanClass
-import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
-import com.explyt.spring.core.util.SpringCoreUtil.filterByInheritedTypes
 import com.explyt.spring.core.util.SpringCoreUtil.getArrayType
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
-import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.spring.core.util.SpringCoreUtil.isComponentCandidate
-import com.explyt.util.ExplytPsiUtil.allSupers
-import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
@@ -71,7 +64,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
                 addComponentCandidateBean(uElement, module, result)
             } else {
                 if (isMethodBean(uElement, inContextBean, componentCandidate)) {
-                    addMethodBeanDeclaration(uElement, module, result)
+                    addMethodBeanDeclaration(uElement, result)
                 }
                 if (inContextBean) {
                     addContextBean(uElement, module, result)
@@ -151,7 +144,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         if (method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN) && isMethodBean(module, method)) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(null, method, module) })
+                .setTargets(NotNullLazyValue.lazy {
+                    SpringSearchServiceFacade.getInstance(module.project)
+                        .findFieldsAndMethodsWithAutowired(null, method, module, true)
+                })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
                 .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
@@ -191,7 +187,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(uClass, null, module) })
+            .setTargets(NotNullLazyValue.lazy {
+                SpringSearchServiceFacade.getInstance(module.project)
+                    .findFieldsAndMethodsWithAutowired(uClass, null, module, true)
+            })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
             .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title"))
@@ -201,7 +200,6 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
 
     private fun addMethodBeanDeclaration(
         uClass: UClass,
-        module: Module,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
@@ -222,7 +220,10 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(SpringIcons.springBeanInactive)
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
-            .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(uClass, null, module) })
+            .setTargets(NotNullLazyValue.lazy {
+                SpringSearchServiceFacade.getInstance(module.project)
+                    .findFieldsAndMethodsWithAutowired(uClass, null, module, true)
+            })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate.innactive"))
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.autowired.candidate"))
             .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.autowired.candidate"))
@@ -259,103 +260,12 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             .map { (it.key ?: "") + (it.value ?: "") to it }
     }
 
-    private fun findFieldsAndMethodsWithAutowired(
-        uClass: UClass?, uMethod: UMethod?, module: Module
-    ): Collection<PsiElement> {
-        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
-        val isArrayType = uMethod?.returnType is PsiArrayType
-        val uElement = getUElement(uClass, uMethod)
-        val targetType = if (uElement is UMethod) uElement.returnType else null
-        val project = module.project
-
-        val targetClass = SpringSearchUtils.getBeanClass(uElement, isArrayType) ?: return emptyList()
-        val targetClasses = targetClass.allSupers()
-
-        val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
-        val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
-
-        val nativeSearchService = NativeSearchService.getInstance(project)
-        val allBeans = nativeSearchService.getAllActiveBeans()
-
-        val allFieldsWithAutowired = allBeans.asSequence()
-            .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
-            .flatMap { field ->
-                field.asSequence()
-                    .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
-                    .filter { it.isCandidate(targetType, targetClasses, targetClass) }
-                    .mapNotNull { it.navigationElement.toUElement() as? UVariable }
-            }.toSet()
-
-
-        val allParametersWithAutowired = mutableSetOf<UVariable>()
-        allBeans.forEach { bean ->
-            val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
-            allParametersWithAutowired.addAll(
-                methods.asSequence()
-                    .filter {
-                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
-                                || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor
-                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
-                    }
-                    .flatMap { it.parameterList.parameters.asSequence() }
-                    .filter { it.isCandidate(targetType, targetClass, targetClasses) }
-                    .map { it.navigationElement.toUElement() as? UVariable }
-                    .filterNotNull().toSet())
-        }
-
-        val allByType = allFieldsWithAutowired + allParametersWithAutowired
-        val filteredByName = allByType.filter {
-            val beanName = it.name ?: return@filter true
-            val beanPsiType = it.type
-            val allActiveBeans = nativeSearchService.getAllActiveBeans()
-            val resolvedBeanTargets = nativeSearchService.findActiveBeanDeclarations(
-                allActiveBeans, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
-            )
-            return@filter uElement.javaPsi in resolvedBeanTargets
-        }
-
-        return filteredByName.ifEmpty {
-            allByType
-        }
-    }
-
-    private fun getUElement(uClass: UClass?, uMethod: UMethod?): UElement {
-        return uClass ?: uMethod ?: throw RuntimeException("No uElement")
-    }
-
     private fun findBeanDeclarations(uClass: UClass): List<PsiElement> {
         val targetClass = SpringSearchUtils.getBeanClass(uClass) ?: return emptyList()
         return NativeSearchService.getInstance(uClass.javaPsi.project).getAllActiveBeans().asSequence()
             .filter { it.psiClass == targetClass && it.psiClass != it.psiMember }
             .map { it.psiMember }
             .toList()
-    }
-
-    private fun checkParam(psiVariable: PsiVariable): Boolean {
-        val nativeSearchService = NativeSearchService.getInstance(psiVariable.project)
-        val allBeansClassesWithAncestors = emptySet<PsiClass>()//nativeSearchService.getAllBeansClassesWithAncestors()
-        if (psiVariable.type.canResolveBeanClass(allBeansClassesWithAncestors, psiVariable.language)) {
-            return true
-        }
-        val componentBeanPsiMethods = nativeSearchService.getBeanPsiMethods()
-        val hasExactType = componentBeanPsiMethods.filterByExactMatch(psiVariable.type).any()
-        if (hasExactType) {
-            return true
-        }
-        val arrayPsiType = psiVariable.type.getArrayType()
-        if (arrayPsiType != null) {
-            return nativeSearchService.searchArrayPsiClassesByBeanMethods().asSequence()
-                .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
-                .any { arrayPsiType.isAssignableFrom(it) }
-        }
-        val beanPsiType = psiVariable.type.beanPsiType
-        val foundInheritedTypes = if (beanPsiType != null) {
-            componentBeanPsiMethods.filterByBeanPsiType(beanPsiType).any()
-        } else {
-            componentBeanPsiMethods.filterByInheritedTypes(psiVariable.type, null).any()
-        }
-        return foundInheritedTypes
     }
 
     private fun getBeanDeclarations(uVariable: UVariable, module: Module): Collection<PsiElement> {

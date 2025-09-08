@@ -168,7 +168,9 @@ class PackageScanService(private val project: Project) {
             .filter { holderScans.contains(it) }
             .flatMapTo(mutableSetOf()) { getPackagesScans(it, holderScan) }
 
-        return ModuleRootData(module.name, packages + packagesScans)
+        val allPackages = packages + packagesScans
+        if (allPackages.isEmpty()) return null
+        return ModuleRootData(module.name, allPackages)
     }
 
     private fun getImportClasses(psiClass: PsiClass): Set<PsiClass> {

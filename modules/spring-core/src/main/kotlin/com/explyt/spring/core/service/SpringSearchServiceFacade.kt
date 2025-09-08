@@ -17,10 +17,17 @@
 
 package com.explyt.spring.core.service
 
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.NativeSearchService.Companion.getLoadedProjects
 import com.explyt.spring.core.service.NativeSearchService.Companion.isActiveDiPredicate
+import com.explyt.spring.core.statistic.StatisticActionId
+import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
+import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
+import com.explyt.util.ExplytPsiUtil.allSupers
+import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
 import com.intellij.lang.Language
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -31,6 +38,7 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import org.jetbrains.uast.*
 
 @Service(Service.Level.PROJECT)
 class SpringSearchServiceFacade(private val project: Project) {
@@ -42,8 +50,8 @@ class SpringSearchServiceFacade(private val project: Project) {
     }
 
 
-    fun getAllActiveBeans(module: Module): Set<PsiBean> {
-        return if (isExternalProjectExist(project)) {
+    fun getAllActiveBeans(module: Module, isNative: Boolean = false): Set<PsiBean> {
+        return if (isNative || isExternalProjectExist(project)) {
             nativeSearchService.getAllActiveBeans()
         } else {
             springSearchService.getActiveBeansClasses(module)
@@ -102,6 +110,65 @@ class SpringSearchServiceFacade(private val project: Project) {
             nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             springSearchService.findActiveBeanDeclarations(module, byBeanName, language, byBeanPsiType, qualifier)
+        }
+    }
+
+    fun findFieldsAndMethodsWithAutowired(
+        uClass: UClass?, uMethod: UMethod?, module: Module, isNative: Boolean = false
+    ): Collection<PsiElement> {
+        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
+        val isArrayType = uMethod?.returnType is PsiArrayType
+        val uElement = uClass ?: uMethod ?: throw RuntimeException("No uElement")
+        val targetType = if (uElement is UMethod) uElement.returnType else null
+
+        val targetClass = SpringSearchUtils.getBeanClass(uElement, isArrayType) ?: return emptyList()
+        val targetClasses = targetClass.allSupers()
+
+        val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
+        val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
+
+        val allBeans = getAllActiveBeans(module, isNative)
+
+        val allFieldsWithAutowired = allBeans.asSequence()
+            .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+            .flatMap { field ->
+                field.asSequence()
+                    .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
+                    .filter { it.isCandidate(targetType, targetClasses, targetClass) }
+                    .mapNotNull { it.navigationElement.toUElement() as? UVariable }
+            }.toSet()
+
+
+        val allParametersWithAutowired = mutableSetOf<UVariable>()
+        allBeans.forEach { bean ->
+            val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+            allParametersWithAutowired.addAll(
+                methods.asSequence()
+                    .filter {
+                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                                || it.isAnnotatedBy(SpringCoreClasses.BEAN)
+                                || it.isConstructor
+                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
+                    }
+                    .flatMap { it.parameterList.parameters.asSequence() }
+                    .filter { it.isCandidate(targetType, targetClass, targetClasses) }
+                    .map { it.navigationElement.toUElement() as? UVariable }
+                    .filterNotNull().toSet())
+        }
+
+        val allByType = allFieldsWithAutowired + allParametersWithAutowired
+        val filteredByName = allByType.filter {
+            val beanName = it.name ?: return@filter true
+            val beanPsiType = it.type
+            val allActiveBeans = nativeSearchService.getAllActiveBeans()
+            val resolvedBeanTargets = nativeSearchService.findActiveBeanDeclarations(
+                allActiveBeans, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
+            )
+            return@filter uElement.javaPsi in resolvedBeanTargets
+        }
+
+        return filteredByName.ifEmpty {
+            allByType
         }
     }
 

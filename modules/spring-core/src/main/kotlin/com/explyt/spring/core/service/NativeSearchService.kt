@@ -29,7 +29,9 @@ import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiTypeKotlin
 import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
+import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiTypeRegistrar
 import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
+import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatchRegistrar
 import com.explyt.spring.core.util.SpringCoreUtil.filterByQualifier
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.matchesWildcardType
@@ -42,6 +44,7 @@ import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isGeneric
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.ExplytPsiUtil.isRegistrar
 import com.explyt.util.ExplytPsiUtil.resolvedDeepPsiClass
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.lang.Language
@@ -230,7 +233,9 @@ class NativeSearchService(private val project: Project) {
     private fun methodMapToPsiBean(bean: SpringBeanData): PsiBean? {
         val psiClass = NativeBootUtils.getPsiClassLocation(project, bean) ?: return null
         val methodsByName = psiClass.findMethodsByName(bean.methodName, false)
-        val method: PsiMethod? = if (methodsByName.size == 1) {
+        val method: PsiMethod? = if (methodsByName.isEmpty() && bean.methodName == "register") {
+            psiClass.methods.firstOrNull { it.isRegistrar() }
+        } else if (methodsByName.size == 1) {
             methodsByName[0]
         } else {
             val psiMethod = methodsByName.find { it.resolveBeanName.contains(bean.beanName) }
@@ -239,6 +244,11 @@ class NativeSearchService(private val project: Project) {
                 return null
             }
             psiMethod
+        }
+        if (bean.methodType != null && method != null && method.isRegistrar()) {
+            val registrarPsiBeanClass = NativeBootUtils
+                .getPsiClassLocation(psiClass.project, bean.methodType) ?: return null
+            return PsiBean(bean.beanName, registrarPsiBeanClass, method.getQualifierAnnotation(), method)
         }
         return method?.let { toMethodPsiBean(method, bean.beanName) }
     }
@@ -323,10 +333,14 @@ class NativeSearchService(private val project: Project) {
         beanNameFromQualifier: String?
     ): List<PsiBean> {
         val methodsPsiBeans = allPsiBeans.mapNotNullTo(mutableSetOf()) { it.psiMember as? PsiMethod }
+        val registrarPsiBeans = allPsiBeans.filter { it.psiMember.isRegistrar() }
         val byExactMatch = methodsPsiBeans.filterByExactMatch(sourcePsiType).toSet()
-        var byTypeBeanMethods = byExactMatch
-        if (atomicIsMultipleBean.get() || byExactMatch.isEmpty()) {
-            byTypeBeanMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType).toSet()
+        val byExactMatchRegistrar = registrarPsiBeans.filterByExactMatchRegistrar(sourcePsiType).toSet()
+        var byTypeBeanMethods = byExactMatch + byExactMatchRegistrar
+        if (atomicIsMultipleBean.get() || byTypeBeanMethods.isEmpty()) {
+            val psiMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType).toSet()
+            val psiMethodsRegistrar = registrarPsiBeans.filterByBeanPsiTypeRegistrar(beanPsiType).toSet()
+            byTypeBeanMethods = psiMethods + psiMethodsRegistrar
         }
 
         val byTypeComponents = getPsiClassesByComponents(
