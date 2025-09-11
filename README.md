@@ -21,7 +21,7 @@
 - [Features](#features)
     - [Key Features](#key-features)
     - [Our Innovative Approach](#our-innovative-approach)
-    - [New Feature: Built-in HTTP Client Using Swagger UI](#new-feature-built-in-http-client-using-swagger-ui)
+    - [Built-in HTTP Client Using Swagger UI](#built-in-http-client-using-swagger-ui)
     - [Spring Core and Boot Enhancements](#spring-core-and-boot-enhancements)
     - [Spring Web Enhancements](#spring-web-enhancements)
     - [Spring Debugger](#spring-debugger)
@@ -55,13 +55,17 @@
 
 **Explyt Spring Plugin** uses a unique method to understand your Spring application thoroughly. Instead of analyzing only the source code, our plugin runs a lightweight version of your application to get accurate information about your Spring beans. This means:
 
+Note: Behind the scenes, we use a javaagent and declarative bytecode patching to hook into Spring’s startup and extract bean metadata early, without fully starting the app. Read more:
+- [Stop playing catch-up with Spring — Explyt Spring plugin for IDEA Community (EN)](https://medium.com/@explytspring/stop-playing-catch-up-with-spring-introducing-the-explyt-spring-plugin-for-idea-community-0be380b36a75)
+- [Patching Spring bytecode to enhance application context recognition (EN)](https://medium.com/@explytspring/explyt-spring-plugin-patching-spring-bytecode-to-enhance-application-context-recognition-0817fb52b056)
+
 - **Accurate Bean Detection**: We can detect beans that are conditionally loaded or defined through complex configurations.
 - **Better Inspections**: By having real bean data, we reduce false warnings and provide more precise code inspections.
 - **Improved Navigation and Completion**: Navigate to beans and get code completion suggestions based on actual bean definitions.
 
 This approach ensures that even if your application uses advanced Spring features like `@Conditional`, complex `@ComponentScan` configurations, or custom conditions, the plugin understands them correctly.
 
-### New Feature: Built-in HTTP Client Using Swagger UI
+### Built-in HTTP Client Using Swagger UI
 
 We are excited to introduce our **built-in HTTP client** for IntelliJ IDEA Community Edition,
 integrated directly into the Explyt Spring Plugin.
@@ -172,6 +176,11 @@ If you see issues or edge cases, please open an issue in GitHub.
     - Visual markers for beans, configurations, and `@Scheduled` methods.
     - Easily navigate between bean definitions and their usages.
 
+- **Other Enhancements**:
+    - XML configuration support when using native context mode (no extra setup required).
+    - SPI bean navigation and line markers for SPI-produced beans.
+    - Search Everywhere integration: quickly find beans by name.
+
 ### Spring Web Enhancements
 
 - **Endpoints Tool Window**: Access all your Spring MVC and WebFlux endpoints in one place. View, navigate, and analyze your controllers and router functions.
@@ -229,11 +238,19 @@ Click the **▶️ Run icon** next to the request to execute it.
 
 To switch runners, go to **Settings > Tools > Explyt Spring** and select your preferred tool.
 
+#### HTTP Client Options
+- Swagger UI integration using Spring annotations (Run icon on endpoints) – details: [HTTP client via annotations and Swagger UI](https://habr.com/ru/companies/explyt/articles/874236/)
+- Execute `.http`/`.rest` files via HttpYac or JetBrains HttpClient – details: [HTTP client via HttpYac and JetBrains HttpClient](https://habr.com/ru/companies/explyt/articles/884280/)
+
 ### Spring Debugger
 
 - Debug Spring applications with the Explyt Spring Debugger run configuration.
 - Automatically patches build/run to attach a lightweight javaagent and reverts Gradle configuration after debug.
-- Dedicated nodes and improved presentation in the debugger tree for Spring beans.
+- Dedicated nodes and improved presentation in the debugger tree for Spring beans, including Explyt: Spring Context and Active Transaction variables.
+- Evaluate Spring context directly in the debugger via `Explyt.context` and helpers (`getBeanFactory()`, `getEnvironment()`); call any bean methods at breakpoints.
+- Inline run markers on Spring Data repository methods during debug to auto‑populate Evaluate Expression and run queries.
+- Inactive beans are visually indicated during debug to highlight context membership.
+- [Learn more about Explyt Spring Debugger](https://habr.com/ru/companies/explyt/articles/933158/)
 
 ### Spring Data Support
 
@@ -255,7 +272,10 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 
 ### Spring AI
 
-- Optional integration with Explyt AI platform to assist with Spring tasks inside the IDE.
+- Optional integration with the Explyt AI platform to assist with Spring tasks inside the IDE.
+- The AI agent can read/modify project files, explore code, run non-destructive terminal commands, and analyze compilation errors.
+- Works with OpenAI‑compatible providers and can be configured to use local or cloud models.
+- [Read more about Explyt AI and integrated agents](https://habr.com/ru/companies/explyt/articles/936992/).
 
 ### Additional Inspections and Features
 
@@ -393,9 +413,13 @@ For additional details, go to [Installation Guide](https://github.com/explyt/spr
 
 For a detailed overview of the plugin's features and how it can improve your development experience, check out our articles:
 
-- **[Enhancing Spring Development in IntelliJ IDEA Community Edition with Explyt Spring Plugin](https://habr.com/ru/companies/explyt/articles/854304/)**
-- **[Our Version of the HTTP Client for IntelliJ IDEA Community Edition](https://habr.com/ru/companies/explyt/articles/874236/)**
-- **[Explyt Spring Plugin: Quarkus Support](https://habr.com/ru/companies/explyt/articles/926484/)**
+- **[Stop playing catch-up with Spring — Explyt Spring plugin for IDEA Community (EN)](https://medium.com/@explytspring/stop-playing-catch-up-with-spring-introducing-the-explyt-spring-plugin-for-idea-community-0be380b36a75)** — background and approach to using native Spring logic for accurate context.
+- **[Patching Spring bytecode to enhance application context recognition (EN)](https://medium.com/@explytspring/explyt-spring-plugin-patching-spring-bytecode-to-enhance-application-context-recognition-0817fb52b056)** — deep dive into our javaagent and declarative bytecode patching.
+- **[Explyt Spring Plugin — our take on the HTTP client for IntelliJ IDEA (RU)](https://habr.com/ru/companies/explyt/articles/874236/)**
+- **[Explyt Spring plugin: *.http files support in IntelliJ IDEA Community (RU)](https://habr.com/ru/companies/explyt/articles/884280/)**
+- **[Explyt Spring Debugger (RU)](https://habr.com/ru/companies/explyt/articles/933158/)**
+- **[Explyt Spring Plugin: Quarkus support (RU)](https://habr.com/ru/companies/explyt/articles/926484/)**
+- **[Explyt AI Platform and integrated agents (RU)](https://habr.com/ru/companies/explyt/articles/936992/)**
 
   *(Note: The articles are in Russian.)*
 
