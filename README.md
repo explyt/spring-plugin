@@ -1,5 +1,5 @@
 # Explyt Spring Plugin for IntelliJ IDEA Community Edition
-![example workflow](https://github.com/explyt/spring-plugin/actions/workflows/build.yaml/badge.svg)
+![Workflow status](https://github.com/explyt/spring-plugin/actions/workflows/build.yaml/badge.svg?branch=)
 ![GitHub Release](https://img.shields.io/github/v/release/explyt/spring-plugin)
 [![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring%20EN-252850?style=plastic&logo=telegram)](https://t.me/explytspring_en)
 [![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring%20RU-252850?style=plastic&logo=telegram)](https://t.me/explytspring)
@@ -24,8 +24,12 @@
     - [New Feature: Built-in HTTP Client Using Swagger UI](#new-feature-built-in-http-client-using-swagger-ui)
     - [Spring Core and Boot Enhancements](#spring-core-and-boot-enhancements)
     - [Spring Web Enhancements](#spring-web-enhancements)
+    - [Spring Debugger](#spring-debugger)
+    - [Quarkus Support](#quarkus-support)
     - [Spring Data Support](#spring-data-support)
     - [Spring AOP Enhancements](#spring-aop-enhancements)
+    - [Spring Initializr](#spring-initializr)
+    - [Spring AI](#spring-ai)
     - [Additional Inspections and Features](#additional-inspections-and-features)
 - [Installation](#installation)
     - [Installing Explyt Spring Plugin from Custom Repository](#installing-explyt-spring-plugin-from-custom-repository)
@@ -45,7 +49,7 @@
 - **Spring Boot & Web Support**: Enhanced tools for Spring Boot, MVC, WebFlux, and more.
 - **Kotlin-Friendly**: Full support for Kotlin Spring applications.
 - **Lightweight & Fast**: Runs a lightweight version of your app for accurate insights without slowing down your IDE.
-- **Quarkus Support**: support Java EE annotations and more for Quarkus specific.
+- **Quarkus Support**: CDI/DI navigation and inspections, JAX-RS web endpoints, AOP (interceptors/decorators), Endpoints tool window, and a Swagger UI–based HTTP client.
 
 ### Our Innovative Approach
 
@@ -124,6 +128,22 @@ This feature allows you to test and interact with HTTP APIs seamlessly within yo
 2. **`.http`/`.rest` File Execution** (ideal for users familiar with IntelliJ HTTP Client or HttpYac).
 
 Choose the method that best fits your workflow!
+
+### Quarkus Support
+
+Explyt Spring Plugin now brings first-class Quarkus support to IntelliJ IDEA Community Edition out of the box.
+
+- Dependency Injection (CDI):
+  - Detect and navigate injections via @Inject, qualifiers, scopes.
+  - Supports producers (@Produces) on fields and methods with navigation both ways.
+- AOP:
+  - Interceptors and decorators with gutter markers and navigation to/from advised targets.
+- Web (JAX-RS):
+  - Endpoints tool window for REST resources, navigation to handlers, duplicate-path checks.
+  - Swagger UI–based HTTP client for methods with absolute Path URLs; OpenAPI generation and execution inside the IDE.
+- Works by static code analysis, so most features are available just by opening a Quarkus project—no app run required.
+
+If you see issues or edge cases, please open an issue in GitHub.
 
 ### Spring Core and Boot Enhancements
 
@@ -209,6 +229,12 @@ Click the **▶️ Run icon** next to the request to execute it.
 
 To switch runners, go to **Settings > Tools > Explyt Spring** and select your preferred tool.
 
+### Spring Debugger
+
+- Debug Spring applications with the Explyt Spring Debugger run configuration.
+- Automatically patches build/run to attach a lightweight javaagent and reverts Gradle configuration after debug.
+- Dedicated nodes and improved presentation in the debugger tree for Spring beans.
+
 ### Spring Data Support
 
 - **Repository Method Name Validation**: Ensures your repository methods follow naming conventions and match actual entity properties.
@@ -221,6 +247,15 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 
 - **AOP Method Call Inspection**: Warns when methods with annotations like `@Transactional` or `@Async` are called from within the same class.
 - **Line Markers**: Visual markers for aspects, pointcuts, and advice methods, making navigation easier.
+
+### Spring Initializr
+
+- Create new Spring projects directly from the IDE with enhanced error reporting and compatibility fixes.
+- Works in Community Edition; supports Kotlin and Java templates.
+
+### Spring AI
+
+- Optional integration with Explyt AI platform to assist with Spring tasks inside the IDE.
 
 ### Additional Inspections and Features
 
@@ -360,6 +395,7 @@ For a detailed overview of the plugin's features and how it can improve your dev
 
 - **[Enhancing Spring Development in IntelliJ IDEA Community Edition with Explyt Spring Plugin](https://habr.com/ru/companies/explyt/articles/854304/)**
 - **[Our Version of the HTTP Client for IntelliJ IDEA Community Edition](https://habr.com/ru/companies/explyt/articles/874236/)**
+- **[Explyt Spring Plugin: Quarkus Support](https://habr.com/ru/companies/explyt/articles/926484/)**
 
   *(Note: The articles are in Russian.)*
 
@@ -368,11 +404,13 @@ The articles include explanations, screenshots, and examples showing how the Exp
 ## Integrations
 
 - Lombok support for Java projects
-- Support for Jakarta and Javax annotations from JSR-330 standard
-- JAX-RS annotations
-- Retrofit annotations 
-- IntelliJ IDEA Ultimate
-  - To use Explyt Spring Plugin with IntelliJ IDEA Ultimate, you have to disable the built-in Spring plugin to avoid conflicts.
+- JSR-330 annotations (jakarta.inject / javax.inject)
+- JAX-RS annotations (jakarta.ws.rs / javax.ws.rs)
+- Retrofit and OpenFeign annotations
+- JPA/JPQL support (query language inspections and highlighting)
+- Spring Security, Spring Cloud, Spring Integration, Spring Messaging modules
+- Quarkus support: CDI, JAX-RS, interceptors, decorators, Endpoints tool window, Swagger UI–based HTTP client
+- IntelliJ IDEA Ultimate: if you use Ultimate, disable the built‑in Spring plugin to avoid conflicts.
 
 ## Contributing
 
