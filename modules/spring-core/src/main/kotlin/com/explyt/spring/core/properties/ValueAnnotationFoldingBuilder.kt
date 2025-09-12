@@ -23,6 +23,7 @@ import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
 import com.explyt.spring.core.inspections.CRON_PARSER
 import com.explyt.spring.core.inspections.SpringScheduledInspection
 import com.explyt.spring.core.util.PropertyUtil
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.lang.ASTNode
 import com.intellij.lang.folding.FoldingBuilderEx
 import com.intellij.lang.folding.FoldingDescriptor
@@ -33,9 +34,9 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiLiteralExpression
-import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.psi.util.PsiLiteralUtil
 import org.jetbrains.uast.*
+import org.jetbrains.uast.visitor.AbstractUastVisitor
 import java.util.*
 
 
@@ -45,15 +46,14 @@ class ValueAnnotationFoldingBuilder : FoldingBuilderEx() {
 
     override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> {
         val module = ModuleUtilCore.findModuleForPsiElement(root) ?: return emptyArray()
+        if (!SpringCoreUtil.isSpringModule(module)) return emptyArray()
         val descriptors = mutableListOf<FoldingDescriptor>()
+        val uRoot = root.toUElement() ?: return emptyArray()
 
-        root.accept(object : PsiRecursiveElementVisitor() {
-            override fun visitElement(element: PsiElement) {
-                val uElement = element.toUElement()
-                if (uElement is UExpression) {
-                    processUElement(uElement, module, descriptors)
-                }
-                super.visitElement(element)
+        uRoot.accept(object : AbstractUastVisitor() {
+            override fun visitExpression(node: UExpression): Boolean {
+                processUElement(node, module, descriptors)
+                return super.visitExpression(node)
             }
         })
         return descriptors.toTypedArray()
