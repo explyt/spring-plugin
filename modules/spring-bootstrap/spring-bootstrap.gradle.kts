@@ -148,6 +148,7 @@ dependencies {
     }
     testImplementation(testFramework)
     testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.10.2")
 
     @Suppress("UNCHECKED_CAST")
     intellijPlatform {
