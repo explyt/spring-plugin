@@ -29,6 +29,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.FoldingGroup
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import org.jetbrains.uast.*
@@ -39,8 +40,8 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
     private val propertyMethodNames = setOf("getProperty", "containsProperty", "getRequiredProperty")
 
     override fun buildFoldRegions(root: PsiElement, document: Document, quick: Boolean): Array<FoldingDescriptor> {
-        if (!SpringCoreUtil.isSpringProject(root.project)) return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(root) ?: return emptyArray()
+        if (!SpringCoreUtil.isSpringModule(module)) return emptyArray()
 
         val group = FoldingGroup.newGroup("PropertyValue")
         val descriptors = mutableListOf<FoldingDescriptor>()
@@ -80,6 +81,8 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
         }
         try {
             uRoot.accept(visitor)
+        } catch (e: ProcessCanceledException) {
+            throw e
         } catch (_: Exception) {
         }
 
