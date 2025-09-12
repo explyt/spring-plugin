@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
@@ -19,7 +21,7 @@ plugins {
     kotlin("jvm") apply false
 }
 
-tasks.register("runIde") {
+tasks.register<DefaultTask>("runIde") {
     doFirst {
         throw GradleException("Use project specific runIde command, i.e. :spring-bootstrap:runIde")
     }
@@ -49,5 +51,16 @@ subprojects {
             languageVersion = java.toolchain.languageVersion
         }
         sourceCompatibility = java.toolchain.languageVersion.get().toString()
+    }
+
+    // IntelliJ Platform tests share an IDEA sandbox and index; do not run test forks in parallel
+    tasks.withType<Test>().configureEach {
+        useJUnitPlatform()
+        maxParallelForks = 1
+        maxHeapSize = "1024m"
+        forkEvery = 0L
+
+        // Disable JUnit parallel execution to avoid indexing/sandbox races
+        systemProperty("junit.jupiter.execution.parallel.enabled", "false")
     }
 }
