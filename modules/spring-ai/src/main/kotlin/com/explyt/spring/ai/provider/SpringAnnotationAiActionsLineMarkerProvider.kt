@@ -21,7 +21,6 @@ import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
 import com.explyt.spring.ai.action.ConvertControllerToOpenapiAction
 import com.explyt.spring.ai.service.AiPluginService
-import com.explyt.spring.ai.service.AiUtils
 import com.explyt.spring.core.SpringCoreClasses.CONTROLLER
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
@@ -51,8 +50,8 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
         val aiAnnotationType = aiAnnotateType(springAnnotation)
         when (aiAnnotationType) {
             AiAnnotateType.SPRING_BOOT -> {
-                actionGroup.add(GenerateKafkaConfigAction(sourcePsi))
-                actionGroup.add(GenerateSecurityConfigAction(sourcePsi))
+                actionGroup.add(GenerateKafkaConfigAction())
+                actionGroup.add(GenerateSecurityConfigAction())
             }
 
             AiAnnotateType.CONTROLLER -> {
@@ -101,23 +100,19 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
     }
 }
 
-private class GenerateKafkaConfigAction(val sourcePsi: PsiElement) :
-    AnAction(message("explyt.spring.ai.action.kafka.conf")) {
+private class GenerateKafkaConfigAction : AnAction(message("explyt.spring.ai.action.kafka.conf")) {
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
-        val languageSentence = AiUtils.getLanguageSentence(sourcePsi)
-        val prompt = "Generate Spring Kafka configuration. Add spring-kafka dependency if needed. $languageSentence"
+        val prompt = "Generate Spring Kafka configuration. Add spring-kafka dependency if needed"
         AiPluginService.getInstance(project).performPrompt(prompt, emptyList())
     }
 }
 
-private class GenerateSecurityConfigAction(val sourcePsi: PsiElement) :
-    AnAction(message("explyt.spring.ai.action.security.conf")) {
+private class GenerateSecurityConfigAction : AnAction(message("explyt.spring.ai.action.security.conf")) {
     override fun actionPerformed(event: AnActionEvent) {
         val project = event.project ?: return
-        val languageSentence = AiUtils.getLanguageSentence(sourcePsi)
         val prompt = """
-            Generate Spring Security configuration. Add spring-security dependency if needed. $languageSentence 
+            Generate Spring Security configuration. Add spring-security dependency if needed.
             Ask me what authentication i want: BasicAuthentication, DaoAuthentication, JwtAuthentication, OAuth2Authentication, LdapAuthentication ?
         """.trimIndent()
         AiPluginService.getInstance(project).performPrompt(prompt, emptyList())
