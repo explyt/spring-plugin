@@ -46,6 +46,8 @@
                 implementation="com.explyt.spring.core.service.beans.discoverer.SpringCoreAdditionalBeansDiscoverer"/>
         <additionalBeansDiscoverer
                 implementation="com.explyt.spring.core.service.beans.discoverer.SpringBootAdditionalBeansDiscoverer"/>
+        <additionalBeansDiscoverer
+                implementation="com.explyt.spring.core.service.beans.discoverer.SpringBeanRegistrarAdditionalBeansDiscoverer"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
@@ -582,6 +584,8 @@
                                         implementationClass="com.explyt.spring.core.providers.GetBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.core.providers.spi.SpiBeanLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.core.providers.SpringRegistrarBeanLineMarkerProvider"/>
 
         <codeInsight.implicitSubclassProvider
                 implementation="com.explyt.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>

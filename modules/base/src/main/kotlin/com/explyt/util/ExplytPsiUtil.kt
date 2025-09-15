@@ -282,6 +282,13 @@ object ExplytPsiUtil {
         return ktNamedFunction.modifierList?.getModifier(ktModifierKeywordToken) != null
     }
 
+    fun PsiMember?.isRegistrar(): Boolean {
+        val psiMethod = this as? PsiMethod ?: return false
+        if (psiMethod.name == "register" && psiMethod.returnType?.canonicalText == "void") return true
+        return psiMethod.isPublic && (psiMethod.toString().contains("BeanRegistrarDsl")
+                || psiMethod.parent?.toString()?.contains("BeanRegistrarDsl") == true)
+    }
+
     fun navigate(psiElement: PsiElement?) {
         val navigatable = psiElement as? Navigatable ?: return
 
