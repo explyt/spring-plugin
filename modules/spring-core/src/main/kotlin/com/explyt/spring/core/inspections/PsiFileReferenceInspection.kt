@@ -56,9 +56,9 @@ private class PsiFileReferenceVisitor(
 
     override fun visitQualifiedReferenceExpression(node: UQualifiedReferenceExpression): Boolean {
         if (node.lang == KotlinLanguage.INSTANCE) return true
-        val callerException = (node.selector as? UCallExpression) ?: return true
-        checkCallExpression(callerException)
-        checkConstructorCallExpression(callerException)
+        val uCallExpression = (node.selector as? UCallExpression) ?: return true
+        checkCallExpression(uCallExpression)
+        checkConstructorCallExpression(uCallExpression)
         return true
     }
 
