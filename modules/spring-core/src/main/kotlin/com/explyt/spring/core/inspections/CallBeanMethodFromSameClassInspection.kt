@@ -44,11 +44,11 @@ private class CallExpressionVisitor(private val holder: ProblemsHolder) : Abstra
     }
 
     private fun checkCallExpression(node: UCallExpression) {
+        if (node.kind != UastCallKind.METHOD_CALL) return
         val containingUClass = node.getContainingUClass() ?: return
         val sourcePsi = node.sourcePsi ?: return
         val methodsInfo = SpringSearchService.getInstance(sourcePsi.project).getBeanMethods(containingUClass)
         if (node.receiver != null && node.receiver !is UThisExpression) return //check method qualifier
-        if (node.kind != UastCallKind.METHOD_CALL) return
         if (!methodsInfo.beanPublicAnnotatedMethodNames.contains(node.methodName)) return
         val psiMethod = node.resolve() ?: return
         if (!methodsInfo.beanPublicAnnotatedMethods.contains(psiMethod)) return
