@@ -127,7 +127,9 @@ private class UastReferenceVisitor(
                     val argumentForParameter = it.getArgumentForParameter(0) ?: return@forEach
                     val sourcePsi = argumentForParameter.sourcePsi ?: return@forEach
                     val paramName = argumentForParameter.evaluateString() ?: return@forEach
-                    if (!clientCallData.sqlString.contains(":$paramName")) {
+                    if (!clientCallData.sqlString.contains(":$paramName ")
+                        && !clientCallData.sqlString.endsWith(":$paramName")
+                    ) {
                         val message = SpringDataBundle
                             .message("explyt.spring.jdbc.client.inspection.param.not.found", paramName)
                         holder.registerProblem(sourcePsi, message, ProblemHighlightType.WARNING)
