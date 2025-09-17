@@ -33,6 +33,7 @@ object SpringDataClasses {
     const val JDBC_TEMPLATE = "org.springframework.jdbc.core.JdbcTemplate"
     const val JDBC_TEMPLATE_NAMED_PARAMETER = "org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate"
     const val JDBC_CLIENT = "org.springframework.jdbc.core.simple.JdbcClient"
+    const val JDBC_CLIENT_STATEMENT = "org.springframework.jdbc.core.simple.JdbcClient.StatementSpec"
 
     const val DOMAIN_PACKAGE_PREFIX = "org.springframework.data.domain."
 }
