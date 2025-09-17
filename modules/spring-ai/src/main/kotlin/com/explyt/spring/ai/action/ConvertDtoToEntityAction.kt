@@ -19,6 +19,7 @@ package com.explyt.spring.ai.action
 
 import com.explyt.spring.ai.SpringAiBundle
 import com.explyt.spring.ai.service.AiPluginService
+import com.explyt.spring.ai.service.AiUtils
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.util.ActionUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -64,8 +65,9 @@ class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.
 
         val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
         val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
+        val jpaEntitySentence = AiUtils.getJpaEntitySentence(project)
 
-        val prompt = SpringAiBundle.message("action.prompt.convert.dto", dtoNames)
+        val prompt = SpringAiBundle.message("action.prompt.convert.dto", jpaEntitySentence, dtoNames)
         AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
     }
 
