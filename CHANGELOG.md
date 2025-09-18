@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Spring Core/Boot
+- feat: Support Spring 7: Bean Registrar
+
+### Spring AI
+- fix: ai prompts
+
+### Spring Data
+- feat: JDBC client params navigation & inspections
+
+## [252.25.15] - 2025-09-05
+
 ### Spring AI 
 - feat: Explyt AI integration
 
@@ -23,7 +34,7 @@
 ### Spring Debugger
 - Improve spring debugger node
 
-## [252.24.11] - 2025-08-05
+## 252.24.11 - 2025-08-15
 
 ### Spring Core/Boot
 - Add an icon to the "Mark directory as Spring Configuration Root" action
