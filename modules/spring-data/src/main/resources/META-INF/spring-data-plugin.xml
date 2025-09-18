@@ -57,10 +57,27 @@
                          level="WARNING"
                          implementationClass="com.explyt.spring.data.inspection.SpringDataEnableInspection"/>
 
+        <localInspection language="UAST"
+                         shortName="SpringJdbcClientParamInspection"
+                         groupBundle="messages.SpringDataBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.data.notifications"
+                         bundle="messages.SpringDataBundle"
+                         key="explyt.spring.jdbc.client.inspection.title"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.data.inspection.SpringJdbcClientParamInspection"/>
+
+
         <notificationGroup id="com.explyt.spring.notification.data"
                            displayType="BALLOON"
                            bundle="messages.SpringDataBundle"
                            key="explyt.spring.data.notifications"/>
+
+        <psi.referenceContributor
+                implementation="com.explyt.spring.data.providers.JdbcClientReferenceContributor"
+                language="UAST"/>
+
     </extensions>
 
     <extensions defaultExtensionNs="com.explyt">

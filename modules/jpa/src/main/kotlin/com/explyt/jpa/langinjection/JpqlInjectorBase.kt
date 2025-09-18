@@ -87,10 +87,15 @@ abstract class JpqlInjectorBase() : MultiHostInjector {
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (e: Exception) {
-                log.error("[JpqlInjectorBase] Exception in addPlace", e)
+                log.warn("[JpqlInjectorBase] Exception in addPlace", e)
             }
         }
-        registrar.doneInjecting()
+        try {
+            registrar.doneInjecting()
+        } catch (e: ProcessCanceledException) {
+            throw e
+        } catch (_: Exception) {
+        }
     }
 
     override fun elementsToInjectIn(): List<Class<out PsiElement>> {

@@ -30,7 +30,9 @@ import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiTypeKotlin
 import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
+import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiTypeRegistrar
 import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
+import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatchRegistrar
 import com.explyt.spring.core.util.SpringCoreUtil.filterByQualifier
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isComponentCandidate
@@ -46,6 +48,7 @@ import com.explyt.util.ExplytPsiUtil.isGeneric
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isNonStatic
 import com.explyt.util.ExplytPsiUtil.isPublic
+import com.explyt.util.ExplytPsiUtil.isRegistrar
 import com.explyt.util.ExplytPsiUtil.resolvedDeepPsiClass
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
@@ -489,13 +492,17 @@ class SpringSearchService(private val project: Project) {
         val beanPsiClass = sourcePsiType?.resolveBeanPsiClass
         var isMultipleBean = sourcePsiType?.possibleMultipleBean() ?: false
         val methodsPsiBeans = getComponentBeanPsiMethods(module)
+        val registrarPsiBeans = searchAllBeanLight(module).filter { it.psiMember.isRegistrar() }
         val beanNameFromQualifier = qualifier?.resolveBeanName()
 
         val resultByType: List<PsiMember> = if (sourcePsiType != null && beanPsiType != null) {
             val byExactMatch = methodsPsiBeans.filterByExactMatch(sourcePsiType).toSet()
-            var byTypeBeanMethods = byExactMatch
-            if (isMultipleBean || byExactMatch.isEmpty()) {
-                byTypeBeanMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType).toSet()
+            val byExactMatchRegistrar = registrarPsiBeans.filterByExactMatchRegistrar(sourcePsiType).toSet()
+            var byTypeBeanMethods = byExactMatch + byExactMatchRegistrar
+            if (isMultipleBean || byTypeBeanMethods.isEmpty()) {
+                val psiMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType).toSet()
+                val psiMethodsRegistrar = registrarPsiBeans.filterByBeanPsiTypeRegistrar(beanPsiType).toSet()
+                byTypeBeanMethods = psiMethods + psiMethodsRegistrar
             }
 
             val byTypeComponents = getStaticBeans(module).filter { it.psiClass == beanPsiClass }.map { it.psiClass } +
