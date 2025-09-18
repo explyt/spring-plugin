@@ -14,7 +14,7 @@
 
 ![Screen](https://raw.githubusercontent.com/explyt/spring-plugin/refs/heads/main/images/screen1.jpg)
 
-👉 Visit the [official Explyt website](https://explyt.com/spring/).
+👉 Visit the [official Explyt website](https://explyt.ai/docs/category/explyt-spring).
 
 ## Table of Contents
 
