@@ -20,6 +20,9 @@ package com.explyt.spring.ai.provider
 import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
 import com.explyt.spring.ai.action.ConvertControllerToOpenapiAction
+import com.explyt.spring.ai.action.ConvertEntityToDbScriptAction
+import com.explyt.spring.ai.action.ConvertEntityToDtoAction
+import com.explyt.spring.ai.action.JPA_ANNOTATIONS
 import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.ai.service.AiUtils
 import com.explyt.spring.core.SpringCoreClasses.CONTROLLER
@@ -59,6 +62,11 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
                 actionGroup.add(ConvertControllerToOpenapiAction())
             }
 
+            AiAnnotateType.ENTITY -> {
+                actionGroup.add(ConvertEntityToDtoAction())
+                actionGroup.add(ConvertEntityToDbScriptAction())
+            }
+
             else -> {
                 return null
             }
@@ -82,6 +90,10 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
                 AiAnnotateType.CONTROLLER
             }
 
+            JPA_ANNOTATIONS.any { springAnnotation.javaPsi?.isMetaAnnotatedByOrSelf(it) == true } -> {
+                AiAnnotateType.ENTITY
+            }
+
             else -> {
                 null
             }
@@ -93,11 +105,12 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
             .firstOrNull {
                 it.javaPsi?.isMetaAnnotatedByOrSelf(SPRING_BOOT_APPLICATION) == true
                         || it.javaPsi?.isMetaAnnotatedByOrSelf(CONTROLLER) == true
+                        || it.qualifiedName?.contains("Entity") == true
             }
     }
 
     private enum class AiAnnotateType {
-        SPRING_BOOT, CONTROLLER
+        SPRING_BOOT, CONTROLLER, ENTITY
     }
 }
 

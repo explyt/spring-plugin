@@ -33,7 +33,7 @@ import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElement
 
-private val JPA_ANNOTATIONS = listOf("javax.persistence.Entity", "jakarta.persistence.Entity")
+val JPA_ANNOTATIONS = listOf("javax.persistence.Entity", "jakarta.persistence.Entity")
 private const val MAX_FILES = 30
 
 class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.ai.action.dto.to.jpa")) {
@@ -101,15 +101,15 @@ class ConvertEntityToDtoAction : AnAction(SpringAiBundle.message("explyt.spring.
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
 
-        val dtoPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
+        val entityPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
             ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
             ?.flatMap { it.classes }
             ?.filter { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
 
-        val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
-        val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
+        val entityNames = entityPsiClasses.map { it.javaPsi.name }
+        val virtualFiles = entityPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
 
-        val prompt = SpringAiBundle.message("action.prompt.convert.entity", dtoNames)
+        val prompt = SpringAiBundle.message("action.prompt.convert.entity", entityNames)
         AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
     }
 }
