@@ -39,7 +39,7 @@ class ProfileAnnotationHintsProvider : InlayHintsProvider {
         return Collector(metaAnnotationsHolder)
     }
 
-    class Collector(private val metaAnnotationsHolder: MetaAnnotationsHolder) : SharedBypassCollector {
+    private class Collector(private val metaAnnotationsHolder: MetaAnnotationsHolder) : SharedBypassCollector {
 
         override fun collectFromElement(element: PsiElement, sink: InlayTreeSink) {
             val uAnnotation = (element.toUElement() as? UAnnotation) ?: return

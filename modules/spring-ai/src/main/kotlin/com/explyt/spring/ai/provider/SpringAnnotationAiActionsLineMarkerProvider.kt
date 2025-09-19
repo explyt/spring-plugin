@@ -17,6 +17,7 @@
 
 package com.explyt.spring.ai.provider
 
+import com.explyt.linemarker.SpringMarkerInfo
 import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
 import com.explyt.spring.ai.action.ConvertControllerToOpenapiAction
@@ -30,18 +31,13 @@ import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
-import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.editor.markup.GutterIconRenderer
-import com.intellij.openapi.editor.markup.MarkupEditorFilter
-import com.intellij.openapi.editor.markup.MarkupEditorFilterFactory
 import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.getUParentForIdentifier
-import javax.swing.Icon
 
 
 class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
@@ -135,30 +131,4 @@ private class GenerateSecurityConfigAction(val sourcePsi: PsiElement) :
         """.trimIndent()
         AiPluginService.getInstance(project).performPrompt(prompt, emptyList())
     }
-}
-
-class SpringMarkerInfo(
-    element: PsiElement,
-    icon: Icon,
-    tooltipProvider: (PsiElement) -> String,
-    private val myActionGroup: DefaultActionGroup,
-) : LineMarkerInfo<PsiElement>(
-    element,
-    element.textRange,
-    icon,
-    tooltipProvider,
-    { _, _ -> }, // to have `hand` cursor on hover
-    GutterIconRenderer.Alignment.LEFT,
-    { tooltipProvider(element) }
-) {
-
-    override fun createGutterRenderer(): LineMarkerGutterIconRenderer<PsiElement> =
-        object : LineMarkerGutterIconRenderer<PsiElement>(this) {
-            override fun getPopupMenuActions(): ActionGroup = myActionGroup
-
-            override fun getClickAction(): AnAction? = null
-        }
-
-    override fun getEditorFilter(): MarkupEditorFilter =
-        MarkupEditorFilterFactory.createIsNotDiffFilter()
 }
