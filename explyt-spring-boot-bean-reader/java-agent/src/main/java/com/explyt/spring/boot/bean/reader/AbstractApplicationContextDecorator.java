@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.MethodMetadata;
@@ -54,6 +55,21 @@ public class AbstractApplicationContextDecorator {
         throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
     }
 
+    protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
+    }
+
+    @DecoratedMethod
+    protected void finishRefresh() {
+        __finishRefresh();
+        String debugRunConfigurationId = getExplytSpringRunConfigurationId();
+        if (!debugRunConfigurationId.isEmpty()) {
+            explytPrintLocalhost();
+        }
+    }
+
+    protected void __finishRefresh() {
+    }
+
 
     @AddMethod
     private void setExplytContextForDebug(String debugRunConfigurationId) {
@@ -73,9 +89,6 @@ public class AbstractApplicationContextDecorator {
         } catch (Exception e) {
             throw new RuntimeException("no context class", e);
         }
-    }
-
-    protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
     }
 
     /**
@@ -225,5 +238,61 @@ public class AbstractApplicationContextDecorator {
         debugParam = debugParam != null ? debugParam : System.getProperty(DEBUG_PROGRAM_PARAM);
         return debugParam == null || debugParam.isEmpty() ? "" : debugParam;
     }
-}
 
+    @AddMethod
+    private void explytPrintLocalhost() {
+        try {
+            Class<?> aClass = Class.forName("com.explyt.spring.boot.bean.reader.InternalHolderContext");
+            Field contextField = aClass.getDeclaredField("context");
+            contextField.setAccessible(true);
+            AbstractApplicationContext context = (AbstractApplicationContext) contextField.get(null);
+            ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+            String[] beanDefinitionNames = beanFactory.getBeanDefinitionNames();
+            boolean isWeb = false;
+            boolean isSwagger = false;
+            for (String beanDefinitionName : beanDefinitionNames) {
+                String beanName = beanDefinitionName.toLowerCase();
+                if (!isWeb && (beanName.contains("servletweb") || beanName.contains("reactor"))) {
+                    isWeb = true;
+                }
+                if (!isSwagger && beanName.contains("swagger")) {
+                    isSwagger = true;
+                }
+            }
+            if (!isWeb) return;
+            String port = getExplytProperty(context, "server.port");
+            String contextPath = getExplytProperty(context, "server.servlet.context-path");
+            String swaggerPath = getExplytProperty(context, "springdoc.swagger-ui.path");
+            if (swaggerPath.isEmpty()) {
+                swaggerPath = getExplytProperty(context, "springfox.documentation.swagger-ui.base-url");
+            }
+            if (swaggerPath.isEmpty()) {
+                swaggerPath = "swagger-ui.html";
+            }
+            port = port.isEmpty() ? "8080" : port;
+            String springWebUrl = "http://localhost:" + port;
+            if (!contextPath.isEmpty()) {
+                springWebUrl += "/" + contextPath;
+            }
+            if (isSwagger) {
+                springWebUrl += "/" + swaggerPath;
+            }
+            System.out.println("Explyt Debugger: " + springWebUrl);
+        } catch (Throwable ignore) {
+        }
+    }
+
+    @AddMethod
+    private String getExplytProperty(AbstractApplicationContext context, String property) {
+        String result = context.getEnvironment().getProperty(property);
+        result = result != null ? result : "";
+        if (result.isEmpty()) return result;
+        if (result.startsWith("/")) {
+            result = result.substring(1);
+        }
+        if (!result.isEmpty() && result.endsWith("/")) {
+            result = result.substring(0, result.length() - 1);
+        }
+        return result;
+    }
+}
