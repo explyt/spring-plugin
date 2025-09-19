@@ -42,6 +42,9 @@
             <action id="Explyt.Spring.ConvertEntityToDtoAction"
                     class="com.explyt.spring.ai.action.ConvertEntityToDtoAction"/>
 
+            <action id="Explyt.Spring.ConvertEntityToDbScriptAction"
+                    class="com.explyt.spring.ai.action.ConvertEntityToDbScriptAction"/>
+
             <action id="Explyt.Spring.ConvertControllerToOpenapiAction"
                     class="com.explyt.spring.ai.action.ConvertControllerToOpenapiAction"/>
 
