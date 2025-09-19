@@ -78,16 +78,21 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
 
     fun attachDebugProject(project: Project, rawBeanData: String, runConfigurationId: String) {
         val canonicalPath = Constants.DEBUG_SESSION_NAME
-        ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).unlinkExternalProject(canonicalPath)
 
         val projectSettings = NativeProjectSettings()
         projectSettings.externalProjectPath = canonicalPath
         projectSettings.runConfigurationId = runConfigurationId
-        ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
+        val debugLinkedProject =
+            ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath)
+        if (debugLinkedProject == null) {
+            ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
+        }
 
         ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
             val importSpecBuilder = ImportSpecBuilder(project, SYSTEM_ID)
                 .projectResolverPolicy(DebugProjectResolverPolicy(rawBeanData))
+                .withActivateToolWindowOnStart(false)
+                .withActivateToolWindowOnFailure(false)
             ExternalSystemUtil.refreshProject(canonicalPath, importSpecBuilder)
         }
     }
