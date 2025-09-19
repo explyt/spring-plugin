@@ -259,6 +259,7 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 - **Language Injection**: Offers JPQL and SQL syntax support within repository query methods.
 - **Bean Recognition**: Detects Spring Data repositories as beans, helping with navigation and autowiring checks.
 - **Repository Method Autocomplete**: Offers autocompletion for new Repository methods using method naming conventions and entity properties.
+- **Generate equals/hashCode for JPA entities**: based on best practices (Code → Generate) per Vlad Mihalcea’s guidance.
 
 ### Spring AOP Enhancements
 
@@ -275,7 +276,17 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 - Optional integration with the Explyt AI platform to assist with Spring tasks inside the IDE.
 - The AI agent can read/modify project files, explore code, run non-destructive terminal commands, and analyze compilation errors.
 - Works with OpenAI‑compatible providers and can be configured to use local or cloud models.
-- [Read more about Explyt AI and integrated agents](https://habr.com/ru/companies/explyt/articles/936992/).
+- Requires IntelliJ Platform at least 2025.1 (251+) for AI integrations.
+- [Overview of Explyt AI and integrated agents](https://habr.com/ru/companies/explyt/articles/936992/).
+- New: AI-augmented Spring actions — details in our article [Neural Networks in Spring Development: Eliminating Routine, Not Intelligence (RU)](https://habr.com/ru/companies/explyt/articles/944266/)
+
+#### AI-augmented Spring actions (when Explyt AI plugin is also installed)
+- Convert DB schema to JPA Entity: Right-click Liquibase/Flyway/SQL file → Explyt Spring AI Actions → Convert Liquibase/Flyway File to Entity.
+- Entity ↔ DTO conversion: Right-click entity/DTO → Explyt AI Actions → Convert Entity to DTO (and reverse). Supports multiple files, field exclusions, and validation annotations.
+- Controller ↔ OpenAPI round-trip: Convert Spring RestController to OpenAPI, and generate controllers from OpenAPI for integrations.
+- Generate Spring configs: Boilerplate Kafka and Security configurations via AI for Spring Boot projects (intended as a starting point).
+- HTTP format conversions: Convert curl/Postman collections to RFC 7230 .http/.rest files supported by our HTTP client runners.
+- Properties ↔ YAML: Convert Spring configuration between properties and YAML formats.
 
 ### Additional Inspections and Features
 
@@ -420,6 +431,7 @@ For a detailed overview of the plugin's features and how it can improve your dev
 - **[Explyt Spring Debugger (RU)](https://habr.com/ru/companies/explyt/articles/933158/)**
 - **[Explyt Spring Plugin: Quarkus support (RU)](https://habr.com/ru/companies/explyt/articles/926484/)**
 - **[Explyt AI Platform and integrated agents (RU)](https://habr.com/ru/companies/explyt/articles/936992/)**
+- **[Neural Networks in Spring Development: Eliminating Routine, Not Intelligence (RU)](https://habr.com/ru/companies/explyt/articles/944266/)**
 
   *(Note: The articles are in Russian.)*
 

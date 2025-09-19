@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [252.26.18] - 2025-09-18
+
 ### Spring Core/Boot
 - feat: Support Spring 7: Bean Registrar
 
@@ -13,7 +15,7 @@
 ### Spring Data
 - feat: JDBC client params navigation & inspections
 
-## [252.25.15] - 2025-09-05
+## 252.25.15 - 2025-09-05
 
 ### Spring AI 
 - feat: Explyt AI integration
