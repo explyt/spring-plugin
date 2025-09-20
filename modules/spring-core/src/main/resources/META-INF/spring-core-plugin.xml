@@ -650,6 +650,26 @@
                 descriptionKey="explyt.editor.hints.annotation_profile"
                 providerId="explyt.profile_annotation"/>
 
+        <codeInsight.declarativeInlayProvider
+                bundle="messages.SpringCoreBundle"
+                group="ANNOTATIONS_GROUP"
+                implementationClass="com.explyt.spring.core.hint.PropertiesDebugValueHintsProvider"
+                isEnabledByDefault="true"
+                language="Properties"
+                nameKey="explyt.editor.hints.debug.property"
+                descriptionKey="explyt.editor.hints.debug.property"
+                providerId="explyt.PropertiesDebugValueHintsProvider"/>
+
+        <codeInsight.declarativeInlayProvider
+                bundle="messages.SpringCoreBundle"
+                group="ANNOTATIONS_GROUP"
+                implementationClass="com.explyt.spring.core.hint.YamlDebugValueHintsProvider"
+                isEnabledByDefault="true"
+                language="yaml"
+                nameKey="explyt.editor.hints.debug.property"
+                descriptionKey="explyt.editor.hints.debug.property"
+                providerId="explyt.YamlDebugValueHintsProvider"/>
+
         <referencesSearch implementation="com.explyt.spring.core.search.PropertyStringUsagesSearcher"/>
 
         <lang.inspectionSuppressor language="Properties"
