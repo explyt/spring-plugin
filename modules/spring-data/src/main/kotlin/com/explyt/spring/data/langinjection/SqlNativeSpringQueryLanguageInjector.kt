@@ -21,6 +21,7 @@ import com.explyt.jpa.langinjection.JpqlInjectorBase
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.data.SpringDataClasses
+import com.explyt.util.ExplytDbConstants
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
@@ -30,7 +31,6 @@ import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.*
-import org.jetbrains.uast.expressions.UInjectionHost
 
 
 class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
@@ -107,12 +107,6 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
         private const val SQLITE_SQL = "SQLITE-SQL"
         private const val ORACLE_SQL = "ORACLE-SQL"
 
-        private const val JDBC_POSTGRES = "org.postgresql:postgresql"
-        private const val JDBC_MYSQL = "mysql:mysql-connector-java"
-        private const val JDBC_SQLITE = "org.xerial:sqlite-jdbc"
-        private const val JDBC_ORACLE_8 = "com.oracle.jdbc:ojdbc8"
-        private const val JDBC_ORACLE_14 = "com.oracle.jdbc:ojdbc14"
-
         fun getSqlLanguage(sourcePsi: PsiElement?): Language? {
             val languageFromSettingsState = SpringToolRunConfigurationsSettingsState.getInstance().sqlLanguageId
                 .takeIf { it?.isNotEmpty() == true }
@@ -130,15 +124,15 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
 
         private fun getLanguage(module: Module): Language? {
             val isoSQL = Language.findLanguageByID(ISO_SQL) ?: return null
-            return (if (JavaLibraryUtil.hasLibraryJar(module, JDBC_POSTGRES)) {
+            return (if (JavaLibraryUtil.hasLibraryJar(module, ExplytDbConstants.JDBC_POSTGRES)) {
                 Language.findLanguageByID(POSTGRES_SQL)
-            } else if (JavaLibraryUtil.hasLibraryJar(module, JDBC_MYSQL)) {
+            } else if (JavaLibraryUtil.hasLibraryJar(module, ExplytDbConstants.JDBC_MYSQL)) {
                 Language.findLanguageByID(MYSQL_SQL)
-            } else if (JavaLibraryUtil.hasLibraryJar(module, JDBC_SQLITE)) {
+            } else if (JavaLibraryUtil.hasLibraryJar(module, ExplytDbConstants.JDBC_SQLITE)) {
                 Language.findLanguageByID(SQLITE_SQL)
-            } else if (JavaLibraryUtil.hasLibraryJar(module, JDBC_ORACLE_8)) {
+            } else if (JavaLibraryUtil.hasLibraryJar(module, ExplytDbConstants.JDBC_ORACLE_8)) {
                 Language.findLanguageByID(ORACLE_SQL)
-            } else if (JavaLibraryUtil.hasLibraryJar(module, JDBC_ORACLE_14)) {
+            } else if (JavaLibraryUtil.hasLibraryJar(module, ExplytDbConstants.JDBC_ORACLE_14)) {
                 Language.findLanguageByID(ORACLE_SQL)
             } else {
                 isoSQL
