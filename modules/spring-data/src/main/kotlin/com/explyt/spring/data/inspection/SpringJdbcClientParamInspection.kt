@@ -46,12 +46,12 @@ class SpringJdbcClientParamInspection : SpringBaseUastLocalInspectionTool() {
     }
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return UastVisitorAdapter(UastReferenceVisitor(holder, isOnTheFly), true)
+        return UastVisitorAdapter(UastReferenceVisitor(holder), true)
     }
 }
 
 private class UastReferenceVisitor(
-    private val holder: ProblemsHolder, private val isOnTheFly: Boolean
+    private val holder: ProblemsHolder
 ) : AbstractUastNonRecursiveVisitor() {
 
     override fun visitCallExpression(node: UCallExpression): Boolean {
@@ -90,7 +90,7 @@ private class UastReferenceVisitor(
             currentNode = currentNode.uastParent
             i++
         }
-        val clientCallData = JdbcClientCallData(sqlString, paramUCallExpressions, isCompletedExpression)
+        val clientCallData = JdbcClientCallData(sqlString.trim(), paramUCallExpressions, isCompletedExpression)
         analyzeJdbcClientCall(clientCallData, holder)
     }
 
