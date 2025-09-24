@@ -72,6 +72,7 @@ import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.InheritanceUtil
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.uast.UastModificationTracker
 import com.jetbrains.rd.util.getOrCreate
@@ -505,7 +506,11 @@ class SpringSearchService(private val project: Project) {
                 byTypeBeanMethods = psiMethods + psiMethodsRegistrar
             }
 
-            val byTypeComponents = getStaticBeans(module).filter { it.psiClass == beanPsiClass }.map { it.psiClass } +
+            val byTypeComponents = getStaticBeans(module)
+                .filter { bean ->
+                    bean.psiClass.qualifiedName?.let { InheritanceUtil.isInheritor(beanPsiClass, it) } == true
+                }
+                .map { it.psiClass } +
                     getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
 
             if (isMultipleBean && byExactMatch.isNotEmpty()
