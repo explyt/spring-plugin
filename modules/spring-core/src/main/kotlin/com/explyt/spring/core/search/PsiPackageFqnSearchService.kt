@@ -19,6 +19,7 @@ package com.explyt.spring.core.search
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiPackage
@@ -65,13 +66,18 @@ class PsiPackageFqnSearchService(private val project: Project) {
     }
 
     fun isPackageIn(antPattern: String, packagesFqn: Collection<String>): Boolean {
-        val regex = antPattern
-            .replace("?", "\\w")
-            .replace("**", "[\\w.]+")
-            .replace("*", "[^.]*")
-        val pattern = Pattern.compile(regex)
+        return try {
+            val regex = antPattern
+                .replace("?", "\\w")
+                .replace("**", "[\\w.]+")
+                .replace("*", "[^.]*")
+            val pattern = Pattern.compile(regex)
 
-        return packagesFqn.any { pattern.matcher(it).matches() }
+            packagesFqn.any { pattern.matcher(it).matches() }
+        } catch (e: Exception) {
+            logger.warn(antPattern, e)
+            false
+        }
     }
 
     private fun doGet(scope: GlobalSearchScope): Collection<String> {
@@ -101,6 +107,7 @@ class PsiPackageFqnSearchService(private val project: Project) {
 
     companion object {
         fun getInstance(project: Project): PsiPackageFqnSearchService = project.service()
+        private val logger = logger<PsiPackageFqnSearchService>()
     }
 
 }
