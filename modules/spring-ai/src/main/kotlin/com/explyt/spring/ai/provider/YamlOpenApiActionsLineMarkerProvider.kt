@@ -17,6 +17,7 @@
 
 package com.explyt.spring.ai.provider
 
+import com.explyt.linemarker.SpringMarkerInfo
 import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
 import com.explyt.spring.ai.action.ConvertOpenapiToControllerAction

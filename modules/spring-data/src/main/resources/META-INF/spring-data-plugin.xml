@@ -11,7 +11,7 @@
                                 implementationClass="com.explyt.spring.data.completion.SpringDataMethodCompletionContributor"
                                 order="before javaMemberName"/>
         <runLineMarkerContributor language="UAST"
-                                  implementationClass="com.explyt.spring.data.RepositoryDebugMethodRunProvider"/>
+                                  implementationClass="com.explyt.spring.data.RepositoryDebugMethodLineMarkerRunProvider"/>
 
         <localInspection language="UAST"
                          shortName="SpringDataMethodNameInspection"
