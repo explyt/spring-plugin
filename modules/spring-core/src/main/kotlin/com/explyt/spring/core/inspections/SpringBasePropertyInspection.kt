@@ -59,9 +59,7 @@ import java.text.DateFormat
 
 abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
 
-    private var fileProperties = listOf<DefinedConfigurationProperty>()
-    private var configurationProperties = listOf<ConfigurationProperty>()
-    private var hints = listOf<PropertyHint>()
+    // Avoid shared mutable state across files; keep per-file data in local variables
 
     protected abstract fun loadFileProperties(file: PsiFile): List<DefinedConfigurationProperty>
 
@@ -74,18 +72,18 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             return ProblemDescriptor.EMPTY_ARRAY
         }
 
-        fileProperties = loadFileProperties(file)
+        val fileProperties = loadFileProperties(file)
         if (fileProperties.isEmpty()) {
             return ProblemDescriptor.EMPTY_ARRAY
         }
 
         val module = ModuleUtilCore.findModuleForFile(file) ?: return ProblemDescriptor.EMPTY_ARRAY
-        hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllHints(module)
+        val hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllHints(module)
 
         val problems = mutableListOf<ProblemDescriptor>()
-        problems += checkKey(module, file, manager, isOnTheFly)
-        problems += checkValue(module, manager, isOnTheFly)
-        problems += checkDuplicateKeys(manager, file, isOnTheFly)
+        problems += checkKey(module, file, fileProperties, manager, isOnTheFly)
+        problems += checkValue(module, fileProperties, hints, manager, isOnTheFly)
+        problems += checkDuplicateKeys(fileProperties, manager, file, isOnTheFly)
         return problems.toTypedArray()
 
     }
@@ -93,23 +91,25 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     private fun checkKey(
         module: Module,
         file: PsiFile,
+        fileProperties: List<DefinedConfigurationProperty>,
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
-        configurationProperties =
+        val configurationProperties =
             SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
         if (configurationProperties.isEmpty()) {
             return mutableListOf()
         }
         val problems = mutableListOf<ProblemDescriptor>()
-        problems += getProblemKey(manager, file, isOnTheFly)
-        problems += getProblemPropertyDeprecated(manager, isOnTheFly)
+        problems += getProblemKey(manager, file, fileProperties, isOnTheFly)
+        problems += getProblemPropertyDeprecated(fileProperties, configurationProperties, manager, isOnTheFly)
         return problems
     }
 
     private fun getProblemKey(
         manager: InspectionManager,
         file: PsiFile,
+        fileProperties: List<DefinedConfigurationProperty>,
         isOnTheFly: Boolean,
     ): List<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
@@ -188,6 +188,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     ): ProblemDescriptor
 
     private fun getProblemPropertyDeprecated(
+        fileProperties: List<DefinedConfigurationProperty>,
+        configurationProperties: List<ConfigurationProperty>,
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
@@ -220,26 +222,30 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
 
     private fun checkValue(
         module: Module,
+        fileProperties: List<DefinedConfigurationProperty>,
+        hints: List<PropertyHint>,
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
-        problems += getProblemValues(manager, isOnTheFly)
-        problems += getProblemClassReference(module, manager, isOnTheFly)
-        problems += getProblemHandleAs(module, manager, isOnTheFly)
-        problems += getProblemBeanReferenceProperties(module, manager, isOnTheFly)
-        problems += getProblemPropertyType(module, manager, isOnTheFly)
-        problems += getProblemResource(manager, isOnTheFly)
+        problems += getProblemValues(fileProperties, hints, manager, isOnTheFly)
+        problems += getProblemClassReference(fileProperties, hints, module, manager, isOnTheFly)
+        problems += getProblemHandleAs(fileProperties, hints, module, manager, isOnTheFly)
+        problems += getProblemBeanReferenceProperties(fileProperties, hints, module, manager, isOnTheFly)
+        problems += getProblemPropertyType(fileProperties, module, manager, isOnTheFly)
+        problems += getProblemResource(fileProperties, hints, manager, isOnTheFly)
         return problems
     }
 
     private fun getProblemValues(
+        fileProperties: List<DefinedConfigurationProperty>,
+        hints: List<PropertyHint>,
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val findInFileProperties = fileProperties.filter { property ->
-            hints.asSequence()
+            hints
                 .any { hint ->
                     (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_KEYS == hint.name)
                             && hint.values.isNotEmpty()
@@ -284,6 +290,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     }
 
     private fun getProblemClassReference(
+        fileProperties: List<DefinedConfigurationProperty>,
+        hints: List<PropertyHint>,
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
@@ -354,6 +362,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     }
 
     private fun getProblemHandleAs(
+        fileProperties: List<DefinedConfigurationProperty>,
+        hints: List<PropertyHint>,
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
@@ -411,6 +421,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     }
 
     private fun getProblemBeanReferenceProperties(
+        fileProperties: List<DefinedConfigurationProperty>,
+        hints: List<PropertyHint>,
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
@@ -448,6 +460,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     }
 
     private fun getProblemPropertyType(
+        fileProperties: List<DefinedConfigurationProperty>,
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
@@ -486,6 +499,8 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     }
 
     private fun getProblemResource(
+        fileProperties: List<DefinedConfigurationProperty>,
+        hints: List<PropertyHint>,
         manager: InspectionManager,
         isOnTheFly: Boolean,
     ): MutableList<ProblemDescriptor> {
@@ -672,9 +687,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     }
 
     private fun checkDuplicateKeys(
+        fileProperties: List<DefinedConfigurationProperty>,
         manager: InspectionManager, file: PsiFile, isOnTheFly: Boolean
     ): List<ProblemDescriptor> {
-        val duplicateKeyMap = fileProperties.asSequence()
+        val duplicateKeyMap = fileProperties
             .groupBy { PropertyUtil.toCommonPropertyForm(it.key) }
             .filter { it.value.size > 1 }
             .takeIf { it.isNotEmpty() } ?: return emptyList()
