@@ -18,7 +18,6 @@
 package com.explyt.spring.core.hint
 
 import com.explyt.spring.core.SpringCoreBundle
-import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
 import com.explyt.spring.core.util.DebugUtil
@@ -28,6 +27,7 @@ import com.intellij.codeInsight.codeVision.settings.CodeVisionGroupSettingProvid
 import com.intellij.codeInsight.codeVision.ui.model.ClickableTextCodeVisionEntry
 import com.intellij.codeInsight.hints.InlayHintsUtils
 import com.intellij.debugger.engine.JavaValue
+import com.intellij.icons.AllIcons
 import com.intellij.lang.properties.PropertiesFileType
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.editor.Editor
@@ -131,7 +131,7 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
                                 ".filter(it -> it.containsProperty(\"$key\")).findFirst().orElse(null)"
                         DebugUtil.evaluate(project, textToEval)
                     },
-                    SpringIcons.Hint,
+                    AllIcons.Actions.StartDebugger,
                     runtimeValue, runtimeValue, emptyList()
                 )
                 lenses.add(adjustedRange to entry)

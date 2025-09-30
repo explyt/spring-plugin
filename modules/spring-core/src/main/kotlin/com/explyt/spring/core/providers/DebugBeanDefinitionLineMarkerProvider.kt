@@ -52,7 +52,7 @@ class DebugBeanDefinitionLineMarkerProvider : LineMarkerProvider {
             return SpringMarkerInfo(
                 sourcePsiElement,
                 AllIcons.Actions.StartDebugger,
-                { "Spring Debugger Actions" },
+                { "Explyt Spring Debugger Actions" },
                 actionGroup
             )
         }
