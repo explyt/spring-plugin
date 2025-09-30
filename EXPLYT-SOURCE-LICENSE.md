@@ -138,6 +138,6 @@ The failure of Licensor to enforce any right or provision of this Agreement will
 For inquiries, including requests for other licenses or permissions, please contact:
 
 **Explyt Ltd**  
-Email: sales@explyt.com  
+Email: sales@explyt.ai  
 Address: Office A, RAK DAO Business Centre, RAK BANK ROC Office, Ground Floor, Al Rifaa, Sheikh Mohammed Bin Zayed Road, Ras Al Khaimah, United Arab Emirates  
 Company License №07010386

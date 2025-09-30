@@ -1,16 +1,16 @@
-The [Explyt Spring Plugin](https://explyt.com/spring) enhances your IntelliJ IDEA Community experience, making Spring development in **Java**, **Kotlin**, and **Scala** more productive and enjoyable. It accelerates the development of Spring and Spring Boot applications by providing advanced tools for navigation, code generation, and configuration.
+The [Explyt Spring Plugin](https://explyt.ai/docs/category/explyt-spring) enhances your IntelliJ IDEA Community experience, making Spring development in **Java**, **Kotlin**, and **Scala** more productive and enjoyable. It accelerates the development of Spring and Spring Boot applications by providing advanced tools for navigation, code generation, and configuration.
 
 ![Screen](https://raw.githubusercontent.com/explyt/spring-plugin/refs/heads/main/images/screen1.jpg)
 
 ## Key Features
 
-- **Accelerate Spring Development:** Create Spring projects directly within the IDE using Spring Initializr and intuitive wizards.
-- **Comprehensive Bean Support:** Highlight dependencies and usages of Spring Core Beans throughout your code.
-- **Code Quality Inspections:** Over 50 inspections to detect errors, potential issues, and typos, helping you follow best practices.
-- **Smart Autocompletions and Navigation:** Includes URL navigation, JSON Path navigation, and OpenAPI/Swagger integrations.
-- **Advanced Configurations:** Provides templates for Spring AOP, security configurations, and more.
-- **Real-Time Application Insights:** Track active beans, controllers, and endpoints.
-- **Syntax Support:** Supports JPQL and OpenAPI.
+- **Accurate Bean Detection**: Understand your Spring application with real bean data, even for complex configurations.
+- **Built-in HTTP Client**: Test APIs using Swagger UI directly in your IDE.
+- **Advanced Inspections**: Detect and fix issues in Spring configurations, beans, and annotations.
+- **Spring Boot & Web Support**: Enhanced tools for Spring Boot, MVC, WebFlux, and more.
+- **Kotlin-Friendly**: Full support for Kotlin Spring applications.
+- **Lightweight & Fast**: Runs a lightweight version of your app for accurate insights without slowing down your IDE.
+- **Quarkus Support**: CDI/DI navigation and inspections, JAX-RS web endpoints, AOP (interceptors/decorators), Endpoints tool window, and a Swagger UI–based HTTP client.
 
 ## Supported Frameworks
 
@@ -19,8 +19,7 @@ The [Explyt Spring Plugin](https://explyt.com/spring) enhances your IntelliJ IDE
 - **Spring Data** (JPQL language injection, repository support)
 - **Spring Web** (Controllers, OpenAPI, MockMvc)
 - **Spring AOP** (Including AspectJ support)
-- **Spring Security** (Detects `UserDetailsService`, configuration support)
-- **Spring Integration** (`nullChannel`, `errorChannel`, `integrationFlowContext`)
+- **Http Client** (Supports httpyac and jetbrains HttpClient execute and highlighting)
 
 ## Usage Notes
 

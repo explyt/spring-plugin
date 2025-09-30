@@ -42,7 +42,7 @@ The end users who have the ability to access and concurrently utilize the Plugin
 An individual or legal entity agreeing to the terms of this EULA upon downloading, installing, or using the Plugin.
 
 ### Site
-The official online presence of Explyt Spring Plugin, which can be accessed via [https://explyt.com/].
+The official online presence of Explyt Spring Plugin, which can be accessed via [https://explyt.ai/].
 
 ## AGREEMENT COVERAGE
 This EULA delineates the terms and conditions under which the Plugin is made available to You via the Plugin Marketplace. By engaging with the Plugin, You enter into this binding agreement EULA with Developer.
@@ -58,7 +58,7 @@ Nothing in his EULA constitutes or may be construed as permission:
 - to modify, alter, or create derivative works from the Plugin;
 - to assert or imply that You are, or that Your use of the the Plugin is, connected with, or sponsored, endorsed, or granted official status by, the Developer or others designated to receive attribution hereunder.
   
-You may use the Plugin in your projects (embed it) as it is provided by the Developer under this EULA. However, if you wish to modify, enhance, or improve the Plugin in any way, you must contact Developer for appropriate permission at sales@explyt.com.
+You may use the Plugin in your projects (embed it) as it is provided by the Developer under this EULA. However, if you wish to modify, enhance, or improve the Plugin in any way, you must contact Developer for appropriate permission at sales@explyt.ai.
 
 ### Attribution Requirements
 You must give appropriate credit to the Developer and provide a link to this EULA. You may do so in any reasonable manner, but not in any way that suggests the Developer endorses you or your use.
