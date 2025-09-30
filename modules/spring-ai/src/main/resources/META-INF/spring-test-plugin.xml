@@ -23,7 +23,6 @@
         <codeInsight.lineMarkerProvider
                 language="UAST"
                 implementationClass="com.explyt.spring.ai.provider.SpringAiActionsLineMarkerProvider"/>
-
         <codeInsight.lineMarkerProvider
                 language="yaml"
                 implementationClass="com.explyt.spring.ai.provider.YamlOpenApiActionsLineMarkerProvider"/>

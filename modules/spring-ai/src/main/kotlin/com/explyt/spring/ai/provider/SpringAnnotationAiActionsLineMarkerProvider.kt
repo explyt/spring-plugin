@@ -17,9 +17,13 @@
 
 package com.explyt.spring.ai.provider
 
+import com.explyt.linemarker.SpringMarkerInfo
 import com.explyt.spring.ai.SpringAiBundle.message
 import com.explyt.spring.ai.SpringAiIcons
 import com.explyt.spring.ai.action.ConvertControllerToOpenapiAction
+import com.explyt.spring.ai.action.ConvertEntityToDbScriptAction
+import com.explyt.spring.ai.action.ConvertEntityToDtoAction
+import com.explyt.spring.ai.action.JPA_ANNOTATIONS
 import com.explyt.spring.ai.service.AiPluginService
 import com.explyt.spring.ai.service.AiUtils
 import com.explyt.spring.core.SpringCoreClasses.CONTROLLER
@@ -27,18 +31,13 @@ import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
-import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.editor.markup.GutterIconRenderer
-import com.intellij.openapi.editor.markup.MarkupEditorFilter
-import com.intellij.openapi.editor.markup.MarkupEditorFilterFactory
 import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.getUParentForIdentifier
-import javax.swing.Icon
 
 
 class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
@@ -57,6 +56,11 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
 
             AiAnnotateType.CONTROLLER -> {
                 actionGroup.add(ConvertControllerToOpenapiAction())
+            }
+
+            AiAnnotateType.ENTITY -> {
+                actionGroup.add(ConvertEntityToDtoAction())
+                actionGroup.add(ConvertEntityToDbScriptAction())
             }
 
             else -> {
@@ -82,6 +86,10 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
                 AiAnnotateType.CONTROLLER
             }
 
+            JPA_ANNOTATIONS.any { springAnnotation.javaPsi?.isMetaAnnotatedByOrSelf(it) == true } -> {
+                AiAnnotateType.ENTITY
+            }
+
             else -> {
                 null
             }
@@ -93,11 +101,12 @@ class SpringAiActionsLineMarkerProvider : LineMarkerProvider {
             .firstOrNull {
                 it.javaPsi?.isMetaAnnotatedByOrSelf(SPRING_BOOT_APPLICATION) == true
                         || it.javaPsi?.isMetaAnnotatedByOrSelf(CONTROLLER) == true
+                        || it.qualifiedName?.contains("Entity") == true
             }
     }
 
     private enum class AiAnnotateType {
-        SPRING_BOOT, CONTROLLER
+        SPRING_BOOT, CONTROLLER, ENTITY
     }
 }
 
@@ -122,30 +131,4 @@ private class GenerateSecurityConfigAction(val sourcePsi: PsiElement) :
         """.trimIndent()
         AiPluginService.getInstance(project).performPrompt(prompt, emptyList())
     }
-}
-
-class SpringMarkerInfo(
-    element: PsiElement,
-    icon: Icon,
-    tooltipProvider: (PsiElement) -> String,
-    private val myActionGroup: DefaultActionGroup,
-) : LineMarkerInfo<PsiElement>(
-    element,
-    element.textRange,
-    icon,
-    tooltipProvider,
-    { _, _ -> }, // to have `hand` cursor on hover
-    GutterIconRenderer.Alignment.LEFT,
-    { tooltipProvider(element) }
-) {
-
-    override fun createGutterRenderer(): LineMarkerGutterIconRenderer<PsiElement> =
-        object : LineMarkerGutterIconRenderer<PsiElement>(this) {
-            override fun getPopupMenuActions(): ActionGroup = myActionGroup
-
-            override fun getClickAction(): AnAction? = null
-        }
-
-    override fun getEditorFilter(): MarkupEditorFilter =
-        MarkupEditorFilterFactory.createIsNotDiffFilter()
 }

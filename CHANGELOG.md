@@ -5,6 +5,23 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+- fix: log pattern error & additional bean search
+- fix: Race error in case if several inspections were started at once
+
+### Spring AI
+- feat: AI add action Entity to DB Script
+
+### Spring Data
+- feat: JDBC client inspections (#68)
+
+### Spring Debugger
+- feat: Spring Debugger runtime property - code vision
+- feat: Spring Debugger show server Web URL in console
+- chore: Update debugger hint icon
+
+## [252.26.18] - 2025-09-18
+
+### Spring Core/Boot
 - feat: Support Spring 7: Bean Registrar
 
 ### Spring AI
@@ -13,7 +30,7 @@
 ### Spring Data
 - feat: JDBC client params navigation & inspections
 
-## [252.25.15] - 2025-09-05
+## 252.25.15 - 2025-09-05
 
 ### Spring AI 
 - feat: Explyt AI integration

@@ -25,7 +25,7 @@
     <name>Explyt Spring</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="info@explyt.com" url="https://explyt.com/spring/">Explyt</vendor>
+    <vendor email="support@explyt.ai" url="https://explyt.ai/docs/explyt-spring">Explyt</vendor>
     <category>JVM Frameworks</category>
 
     <incompatible-with>com.intellij.spring</incompatible-with>

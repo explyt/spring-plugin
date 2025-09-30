@@ -18,31 +18,24 @@
 package com.explyt.spring.data
 
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
-import com.explyt.spring.core.statistic.StatisticActionId
-import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.DebugUtil
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.data.util.SpringDataUtil
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
 import com.intellij.lang.Language
 import com.intellij.lang.java.JavaLanguage
-import com.intellij.notification.Notification
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.InheritanceUtil
-import com.intellij.xdebugger.XDebuggerManager
-import com.intellij.xdebugger.evaluation.EvaluationMode
-import com.intellij.xdebugger.impl.breakpoints.XExpressionImpl
-import com.intellij.xdebugger.impl.evaluate.XDebuggerEvaluationDialog
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.getUParentForIdentifier
 
-class RepositoryDebugMethodRunProvider : RunLineMarkerContributor() {
+class RepositoryDebugMethodLineMarkerRunProvider : RunLineMarkerContributor() {
 
     override fun getInfo(element: PsiElement): Info? {
         if (!SpringToolRunConfigurationsSettingsState.getInstance().isDebugMode) return null
@@ -71,24 +64,8 @@ private class EvaluateInDebugAction(val qualifiedName: String, val methodName: S
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        if (!SpringCoreUtil.isExplytDebug(project)) return
-        val currentSession = XDebuggerManager.getInstance(project).currentSession
-        if (currentSession?.currentStackFrame == null) {
-            Notification(
-                "com.explyt.spring.notification.data",
-                "No active stopped break point",
-                NotificationType.WARNING
-            ).notify(null)
-            return
-        }
-        val className = "$qualifiedName.class"// else "$qualifiedName::class.java"
-        val fromText = XExpressionImpl.fromText(
-            "explyt.Explyt.context.getBean($className).$methodName()", EvaluationMode.EXPRESSION)
-        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_DEBUG_DATA_METHOD_EVALUATE)
-
-        val debugSession = currentSession
-        val editorsProvider = debugSession.debugProcess.editorsProvider
-        XDebuggerEvaluationDialog(debugSession, editorsProvider, fromText, null, true).show()
+        val className = "$qualifiedName.class"
+        DebugUtil.evaluate(project, "explyt.Explyt.context.getBean($className).$methodName()")
     }
 
 }
