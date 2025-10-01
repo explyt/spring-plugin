@@ -46,9 +46,9 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import com.intellij.xdebugger.frame.XValue
 import com.sun.jdi.StringReference
-import fleet.multiplatform.shims.ConcurrentHashMap
 import org.jetbrains.yaml.YAMLFileType
 import java.lang.Integer.min
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
