@@ -21,8 +21,11 @@ import com.explyt.spring.boot.bean.reader.Constants.DEBUG_PROGRAM_PARAM
 import com.explyt.spring.core.externalsystem.utils.EXPLYT_AGENT_JAR
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils.getConfigurationId
+import com.explyt.spring.core.hint.PropertyDebugValueCodeVisionProvider
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.codeInsight.codeVision.CodeVisionHost
+import com.intellij.codeInsight.codeVision.CodeVisionHost.LensInvalidateSignal
 import com.intellij.debugger.impl.GenericDebuggerRunnerSettings
 import com.intellij.execution.JavaRunConfigurationBase
 import com.intellij.execution.RunConfigurationExtension
@@ -34,6 +37,7 @@ import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.module.Module
@@ -65,11 +69,20 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         if (configuration is ExternalSystemRunConfiguration) {
             setEnvExplytAgentVariables(configuration, javaAgentPath)
             scheduleCleanupExternalSystemEnvData(configuration)
+            invalidatePropertyCodeVision<T>(configuration)
         } else {
             setExplytAgentVMParams<T>(javaParameters, javaAgentPath, configuration)
+            invalidatePropertyCodeVision<T>(configuration)
         }
-
         ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(module) }
+    }
+
+    private fun <T : RunConfigurationBase<*>?> invalidatePropertyCodeVision(configuration: T & Any) {
+        ApplicationManager.getApplication().invokeLater {
+            configuration.project.service<CodeVisionHost>().invalidateProvider(
+                LensInvalidateSignal(null, listOf(PropertyDebugValueCodeVisionProvider.ID))
+            )
+        }
     }
 
     override fun isApplicableFor(configuration: RunConfigurationBase<*>): Boolean {

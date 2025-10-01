@@ -19,7 +19,6 @@ package com.explyt.spring.data
 
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.util.DebugUtil
-import com.explyt.spring.data.RepositoryDebugMethodRunProvider.Companion.isExplytDebug
 import com.explyt.spring.data.util.SpringDataUtil
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
@@ -31,6 +30,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getContainingUClass

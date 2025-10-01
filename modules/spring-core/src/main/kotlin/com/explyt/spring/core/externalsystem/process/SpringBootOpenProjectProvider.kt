@@ -90,8 +90,6 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
         ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
             val importSpecBuilder = ImportSpecBuilder(project, SYSTEM_ID)
                 .projectResolverPolicy(DebugProjectResolverPolicy(rawBeanData))
-                .withActivateToolWindowOnStart(false)
-                .withActivateToolWindowOnFailure(false)
             ExternalSystemUtil.refreshProject(canonicalPath, importSpecBuilder)
         }
     }
