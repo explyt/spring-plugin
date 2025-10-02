@@ -56,7 +56,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         val evaluationContextImpl = evaluationContext as? EvaluationContextImpl ?: return
         if (!debugProcess.isEvaluationPossible(suspendContext)) return
 
-        val explytContextClass = getExplytContextInstance(debugProcess, evaluationContext) ?: return
+        val explytContextClass = loadClass(debugProcess, evaluationContext, INTERNAL_HOLDER_CLASS) ?: return
         val springContext = getSpringObjectRef(evaluationContext, explytContextClass, "getContext") ?: return
         val transactionData = getTransactionManagerData(debugProcess, evaluationContext)
 
@@ -77,11 +77,12 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                     SpringIcons.SpringBoot, null, SpringCoreBundle.message("explyt.spring.debugger.root.node"), true
                 )
                 node.setFullValueEvaluator(object : JavaValue.JavaFullValueEvaluator(
-                    SpringCoreBundle.message("explyt.spring.debugger.show.dialog"),
-                    evaluationContext
+                    SpringCoreBundle.message("explyt.spring.debugger.show.dialog"), evaluationContext
                 ) {
                     override fun isShowValuePopup() = false
                     override fun evaluate(callback: XFullValueEvaluationCallback) {
+                        if (callback.isObsolete) return
+                        callback.evaluated("")
                         val debugSession = debugProcess.xdebugProcess?.session ?: return
                         val editorsProvider = debugProcess.xdebugProcess?.editorsProvider ?: return
                         val fromText = XExpressionImpl.fromText("explyt.Explyt.context", EvaluationMode.EXPRESSION)
@@ -199,13 +200,14 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         }
     }
 
-    private fun getExplytContextInstance(
+    private fun loadClass(
         debugProcess: DebugProcessImpl,
         evaluationContext: EvaluationContextImpl,
+        className: String
     ): ClassType? = try {
         val classLoader = evaluationContext.classLoader
-        debugProcess.findLoadedClass(evaluationContext, INTERNAL_HOLDER_CLASS, classLoader)
-            ?: debugProcess.loadClass(evaluationContext, INTERNAL_HOLDER_CLASS, classLoader)
+        debugProcess.findLoadedClass(evaluationContext, className, classLoader)
+            ?: debugProcess.loadClass(evaluationContext, className, classLoader)
     } catch (_: EvaluateException) {
         null
     } as? ClassType
@@ -215,10 +217,8 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         evaluationContext: EvaluationContextImpl
     ): String? {
         return try {
-            val txManager = "org.springframework.transaction.support.TransactionSynchronizationManager"
-            val txReferenceType = debugProcess.findLoadedClass(
-                evaluationContext, txManager, evaluationContext.classLoader
-            ) as? ClassType ?: return null
+            val txManagerClass = "org.springframework.transaction.support.TransactionSynchronizationManager"
+            val txReferenceType = loadClass(debugProcess, evaluationContext, txManagerClass) ?: return null
             val isActive = (DebuggerUtilsImpl.invokeClassMethod(
                 evaluationContext,
                 txReferenceType,
@@ -267,16 +267,14 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         evaluationContext: EvaluationContextImpl
     ): ObjectReference? {
         return try {
-            val txManager = "org.springframework.transaction.interceptor.TransactionAspectSupport"
-            val txReferenceType = debugProcess.findLoadedClass(
-                evaluationContext, txManager, evaluationContext.classLoader
-            ) as? ClassType ?: return null
+            val txAspectSupportClass = "org.springframework.transaction.interceptor.TransactionAspectSupport"
+            val txReferenceType = loadClass(debugProcess, evaluationContext, txAspectSupportClass) ?: return null
 
             return evaluationContext.computeAndKeep {
                 DebuggerUtilsImpl.invokeClassMethod(
                     evaluationContext,
                     txReferenceType,
-                    "currentTransactionStatus",
+                    "currentTransactionInfo",
                     null,
                     emptyList()
                 ) as? ObjectReference
