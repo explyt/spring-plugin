@@ -82,6 +82,8 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 ) {
                     override fun isShowValuePopup() = false
                     override fun evaluate(callback: XFullValueEvaluationCallback) {
+                        if (callback.isObsolete) return
+                        callback.evaluated("")
                         val debugSession = debugProcess.xdebugProcess?.session ?: return
                         val editorsProvider = debugProcess.xdebugProcess?.editorsProvider ?: return
                         val fromText = XExpressionImpl.fromText("explyt.Explyt.context", EvaluationMode.EXPRESSION)
