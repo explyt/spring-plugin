@@ -35,6 +35,7 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 
 class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
@@ -79,19 +80,24 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
     fun attachDebugProject(project: Project, rawBeanData: String, runConfigurationId: String) {
         val canonicalPath = Constants.DEBUG_SESSION_NAME
 
-        val projectSettings = NativeProjectSettings()
-        projectSettings.externalProjectPath = canonicalPath
-        projectSettings.runConfigurationId = runConfigurationId
-        val debugLinkedProject =
-            ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath)
-        if (debugLinkedProject == null) {
-            ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(projectSettings)
-        }
+        linkDebugProject(project, canonicalPath, runConfigurationId)
 
         ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
             val importSpecBuilder = ImportSpecBuilder(project, SYSTEM_ID)
                 .projectResolverPolicy(DebugProjectResolverPolicy(rawBeanData))
             ExternalSystemUtil.refreshProject(canonicalPath, importSpecBuilder)
+        }
+    }
+
+    @VisibleForTesting
+    fun linkDebugProject(project: Project, canonicalPath: String, runConfigurationId: String) {
+        val linkedProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
+            .getLinkedProjectSettings(canonicalPath) as? NativeProjectSettings
+        val debugProjectSettings = linkedProjectSettings ?: NativeProjectSettings()
+        debugProjectSettings.externalProjectPath = canonicalPath
+        debugProjectSettings.runConfigurationId = runConfigurationId
+        if (linkedProjectSettings == null) {
+            ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).linkProject(debugProjectSettings)
         }
     }
 
