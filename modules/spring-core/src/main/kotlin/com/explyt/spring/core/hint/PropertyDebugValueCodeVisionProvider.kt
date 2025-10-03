@@ -132,7 +132,7 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
                         DebugUtil.evaluate(project, textToEval)
                     },
                     AllIcons.Actions.StartDebugger,
-                    runtimeValue, runtimeValue, emptyList()
+                    runtimeValue, SpringCoreBundle.message("explyt.spring.debugger.property.inlay.hints"), emptyList()
                 )
                 lenses.add(adjustedRange to entry)
                 return false
@@ -181,5 +181,5 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
 class PropertyDebugValueCodeVisionGroupSettingProvider() : CodeVisionGroupSettingProvider {
     override val groupId: String = PropertyDebugValueCodeVisionProvider.ID
     override val description = "Show runtime Spring property values in Debug mode"
-    override val groupName = "Explyt Property Runtime Value"
+    override val groupName = SpringCoreBundle.message("explyt.spring.debugger.property.inlay.hints")
 }
