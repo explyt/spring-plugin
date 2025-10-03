@@ -740,11 +740,9 @@ object SpringCoreUtil {
         if (debugSession != null) {
             val debugProjectSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
                 .getLinkedProjectSettings(Constants.DEBUG_SESSION_NAME) as? NativeProjectSettings
-            val sessionName = debugSession.sessionName
             return debugProjectSettings != null
                     && debugProjectSettings.runConfigurationId != null
-                    && debugSession.sessionName.isNotBlank()
-                    && debugProjectSettings.runConfigurationId!!.contains(sessionName)
+                    && debugProjectSettings.runConfigurationId == debugSession.sessionName
         }
         return false
     }

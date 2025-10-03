@@ -17,10 +17,8 @@
 
 package com.explyt.spring.core.debug
 
-import com.explyt.spring.boot.bean.reader.Constants.DEBUG_PROGRAM_PARAM
 import com.explyt.spring.core.externalsystem.utils.EXPLYT_AGENT_JAR
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
-import com.explyt.spring.core.externalsystem.utils.NativeBootUtils.getConfigurationId
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.debugger.impl.GenericDebuggerRunnerSettings
@@ -66,7 +64,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
             setEnvExplytAgentVariables(configuration, javaAgentPath)
             scheduleCleanupExternalSystemEnvData(configuration)
         } else {
-            setExplytAgentVMParams<T>(javaParameters, javaAgentPath, configuration)
+            setExplytAgentVMParams<T>(javaParameters, javaAgentPath)
         }
 
         ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(module) }
@@ -139,8 +137,7 @@ private val logger = logger<RunConfigurationExtension>()
 private fun setEnvExplytAgentVariables(configuration: ExternalSystemRunConfiguration, javaAgentPath: String) {
     try {
         val envMap = HashMap(configuration.settings.env)
-        envMap.put(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
-        envMap.put(JAVA_TOOL_OPTIONS, "-javaagent:\"$javaAgentPath\"")
+        envMap[JAVA_TOOL_OPTIONS] = "-javaagent:\"$javaAgentPath\""
         configuration.settings.env = envMap
     } catch (e: Exception) {
         logger.warn("error on set env", e)
@@ -149,12 +146,10 @@ private fun setEnvExplytAgentVariables(configuration: ExternalSystemRunConfigura
 
 private fun <T : RunConfigurationBase<*>?> setExplytAgentVMParams(
     javaParameters: JavaParameters,
-    javaAgentPath: String,
-    configuration: T & Any
+    javaAgentPath: String
 ) {
     try {
         javaParameters.vmParametersList.add("-javaagent:$javaAgentPath")
-        javaParameters.vmParametersList.addProperty(DEBUG_PROGRAM_PARAM, getConfigurationId(configuration))
     } catch (e: Exception) {
         logger.warn("error on set vm params", e)
     }
@@ -164,7 +159,6 @@ private fun scheduleCleanupExternalSystemEnvData(configuration: ExternalSystemRu
     AppExecutorUtil.getAppScheduledExecutorService().schedule(
         {
             ApplicationManager.getApplication().invokeLater {
-                configuration.settings.env.remove(DEBUG_PROGRAM_PARAM)
                 configuration.settings.env.remove(JAVA_TOOL_OPTIONS)
             }
         }, 5, TimeUnit.SECONDS
