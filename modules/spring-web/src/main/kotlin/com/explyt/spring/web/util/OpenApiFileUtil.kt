@@ -17,6 +17,7 @@
 
 package com.explyt.spring.web.util
 
+import ai.grazie.utils.toLinkedSet
 import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
 import com.explyt.spring.web.editor.openapi.OpenApiUIEditor
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
@@ -131,7 +132,7 @@ class OpenApiFileUtil {
         val serversToAdd = servers.ifEmpty { listOf(DEFAULT_SERVER) }
         val servers = endpointInfos.firstOrNull()
             ?.let { EndpointRunLineMarkerProvider.applyServerPortSettings(it.psiElement) } ?: emptyList()
-        val allServers = (serversToAdd + servers).toSet()
+        val allServers = (servers + serversToAdd).toLinkedSet()
         for (server in allServers) {
             openapiBuilder.addServer(server)
         }
