@@ -18,12 +18,14 @@
 package com.explyt.spring.web.providers
 
 import com.explyt.spring.core.service.MetaAnnotationsHolder
+import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UClass
@@ -65,7 +67,9 @@ class ControllerRunLineMarkerProvider : RunLineMarkerContributor() {
             .filter { !isAbsolutePath(it.path) }
 
         return Info(
-            RunInSwaggerAction(endpointInfos, requestMappingServers + feignClientServers)
+            AllIcons.RunConfigurations.TestState.Run,
+            arrayOf(RunInSwaggerAction(endpointInfos, requestMappingServers + feignClientServers)),
+            { SpringWebBundle.message("explyt.web.run.linemarker.swagger.title") }
         )
     }
 
