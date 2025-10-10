@@ -21,10 +21,10 @@ plugins {
 
 @Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
-    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositoriesMode = RepositoriesMode.PREFER_SETTINGS
     repositories {
         mavenLocal()
-        mavenCentral()
+        maven { url = uri("https://repo1.maven.org/maven2/") }
 
         intellijPlatform {
             defaultRepositories()
