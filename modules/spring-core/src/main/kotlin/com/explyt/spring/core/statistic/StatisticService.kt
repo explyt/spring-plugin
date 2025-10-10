@@ -20,7 +20,6 @@ package com.explyt.spring.core.statistic
 import com.explyt.spring.core.runconfiguration.SpringRunConfigurationDetectService
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.intellij.ide.plugins.PluginManager
-import com.intellij.internal.statistic.DeviceIdManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
@@ -202,13 +201,8 @@ class StatisticService {
         return directory
     }
 
-    @Suppress("UnstableApiUsage")
     private fun getDeviceId(): String? {
-        try {
-            return DeviceIdManager.getOrGenerateId(object : DeviceIdManager.DeviceIdToken {}, "Explyt-Spring")
-        } catch (e: DeviceIdManager.InvalidDeviceIdTokenException) {
-            return null
-        }
+        return null
     }
 
     private fun pluginDescriptor(): PluginDescriptor? {
