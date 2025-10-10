@@ -29,12 +29,7 @@ import java.util.List;
 
 @AddClass
 public class InternalHolderContext {
-    public static String configurationId;
     private static AbstractApplicationContext context;
-
-    public static String getConfigurationId() {
-        return configurationId;
-    }
 
     public static AbstractApplicationContext getContext() {
         return context;

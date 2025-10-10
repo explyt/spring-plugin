@@ -20,7 +20,10 @@ package com.explyt.spring.core.debug
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction
+import com.explyt.spring.core.hint.PropertyDebugValueCodeVisionProvider
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.intellij.codeInsight.codeVision.CodeVisionHost
+import com.intellij.codeInsight.codeVision.CodeVisionHost.LensInvalidateSignal
 import com.intellij.debugger.DebuggerContext
 import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.debugger.engine.JavaValue
@@ -33,6 +36,7 @@ import com.intellij.debugger.ui.impl.watch.ValueDescriptorImpl
 import com.intellij.debugger.ui.tree.ExtraDebugNodesProvider
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.frame.*
@@ -59,6 +63,8 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         val explytContextClass = loadClass(debugProcess, evaluationContext, INTERNAL_HOLDER_CLASS) ?: return
         val springContext = getSpringObjectRef(evaluationContext, explytContextClass, "getContext") ?: return
         val transactionData = getTransactionManagerData(debugProcess, evaluationContext)
+
+        invalidateProperyCodeVisionHint(project)
 
         val debugContextDescriptor = DebugSpringContextDescriptor(project, springContext, "Context")
         val value = JavaValue.create(null, debugContextDescriptor, evaluationContextImpl, nodeManagerImpl, false)
@@ -123,6 +129,14 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         syncDebugBeanToolWindow(project, evaluationContext, debugProcess, explytContextClass)
     }
 
+    private fun invalidateProperyCodeVisionHint(project: Project) {
+        ApplicationManager.getApplication().invokeLater {
+            project.service<CodeVisionHost>().invalidateProvider(
+                LensInvalidateSignal(null, listOf(PropertyDebugValueCodeVisionProvider.ID))
+            )
+        }
+    }
+
     private fun syncDebugBeanToolWindow(
         project: Project,
         evaluationContext: EvaluationContextImpl,
@@ -131,10 +145,10 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
     ) {
         val applicationAddress = debugProcess.connection.applicationAddress?.takeIf { it.isNotEmpty() } ?: return
         if (!isNeedSync(applicationAddress)) return
-        val runConfigurationId = getRunConfigurationId(evaluationContext, explytContextClass) ?: return
         val rawBeanData = getRawBeanData(evaluationContext, explytContextClass)?.takeIf { it.isNotEmpty() } ?: return
         ApplicationManager.getApplication().runReadAction {
-            AttachSpringBootProjectAction.attachDebugProject(project, rawBeanData, runConfigurationId)
+            val sessionName = debugProcess.session.sessionName
+            AttachSpringBootProjectAction.attachDebugProject(project, rawBeanData, sessionName)
         }
     }
 
@@ -181,20 +195,6 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
             (DebuggerUtilsImpl.invokeClassMethod(
                 evaluationContext, explytContextClass, "getRawBeanData", null, emptyList()
             ) as? StringReference)?.value()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun getRunConfigurationId(
-        evaluationContext: EvaluationContextImpl, explytContextClass: ClassType
-    ): String? {
-        return try {
-            (evaluationContext.computeAndKeep {
-                DebuggerUtilsImpl.invokeClassMethod(
-                    evaluationContext, explytContextClass, "getConfigurationId", null, emptyList()
-                ) as? StringReference
-            })?.value()
         } catch (_: Exception) {
             null
         }
