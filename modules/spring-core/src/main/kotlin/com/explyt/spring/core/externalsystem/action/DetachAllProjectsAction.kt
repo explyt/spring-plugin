@@ -25,12 +25,10 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
-import com.intellij.openapi.externalSystem.model.ProjectKeys
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
-import com.intellij.openapi.externalSystem.service.project.manage.ProjectDataManagerImpl
 import com.intellij.openapi.externalSystem.settings.AbstractExternalSystemLocalSettings
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
@@ -69,56 +67,69 @@ class DetachAllProjectsAction : DumbAwareAction() {
         }
         ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, SYSTEM_ID)
     }
+}
 
-    companion object {
+private fun detachProject(
+    project: Project,
+    projectSystemId: ProjectSystemId,
+    projectData: ProjectData,
+) {
+    val externalProjectPath = projectData.linkedExternalProjectPath
 
-        fun detachProject(
-            project: Project,
-            projectSystemId: ProjectSystemId,
-            projectData: ProjectData,
-        ) {
-            val externalProjectPath = projectData.linkedExternalProjectPath
+    try {
+        val localSettings = ExternalSystemApiUtil
+            .getLocalSettings<AbstractExternalSystemLocalSettings<*>>(project, projectSystemId)
+        localSettings.forgetExternalProjects(setOf(externalProjectPath))
+    } catch (_: Exception) {
+    }
 
-            try {
-                val localSettings = ExternalSystemApiUtil
-                    .getLocalSettings<AbstractExternalSystemLocalSettings<*>>(project, projectSystemId)
-                localSettings.forgetExternalProjects(setOf(externalProjectPath))
-            } catch (ignore: Exception) {
-            }
+    try {
+        val settings = ExternalSystemApiUtil.getSettings(project, projectSystemId)
+        settings.unlinkExternalProject(externalProjectPath)
+    } catch (_: Exception) {
+    }
 
-            try {
-                val settings = ExternalSystemApiUtil.getSettings(project, projectSystemId)
-                settings.unlinkExternalProject(externalProjectPath)
-            } catch (ignore: Exception) {
-            }
+    try {
+        val externalProjectsManager = ExternalProjectsManagerImpl.getInstance(project)
+        externalProjectsManager.forgetExternalProjectData(projectSystemId, externalProjectPath)
+    } catch (_: Exception) {
+    }
 
-            try {
-                val externalProjectsManager = ExternalProjectsManagerImpl.getInstance(project)
-                externalProjectsManager.forgetExternalProjectData(projectSystemId, externalProjectPath)
-            } catch (ignore: Exception) {
-            }
-
-            val orphanModules = collectExternalSystemModules(project, projectSystemId, externalProjectPath)
-            if (orphanModules.isNotEmpty()) {
-                ProjectDataManagerImpl.getInstance().removeData(
-                    ProjectKeys.MODULE, orphanModules, emptyList(), projectData, project, false
-                )
-            }
-        }
-
-        private fun collectExternalSystemModules(
-            project: Project, externalSystemId: ProjectSystemId, externalProjectPath: String
-        ): List<Module> {
-            val result: MutableList<Module> = ArrayList()
-            for (module in ModuleManager.getInstance(project).modules) {
-                if (ExternalSystemApiUtil.isExternalSystemAwareModule(externalSystemId, module)) {
-                    val path = ExternalSystemApiUtil.getExternalRootProjectPath(module)
-                    if (externalProjectPath == path) {
-                        result.add(module)
-                    }
+    val orphanModules = collectExternalSystemModules(project, projectSystemId, externalProjectPath)
+    if (orphanModules.isNotEmpty()) {
+        val modelsProvider = ProjectDataManager.getInstance().createModifiableModelsProvider(project)
+        try {
+            val modifiableModuleModel = modelsProvider.modifiableModuleModel
+            for (module in orphanModules) {
+                // remove module from the project model
+                // ModifiableModuleModel API exposes disposeModule; use it to remove the module
+                try {
+                    modifiableModuleModel.disposeModule(module)
+                } catch (_: Throwable) {
+                    // ignore
                 }
             }
-            return result
+            modelsProvider.commit()
+        } catch (_: Exception) {
+            try {
+                modelsProvider.dispose()
+            } catch (_: Exception) {
+            }
         }
     }
+}
+
+private fun collectExternalSystemModules(
+    project: Project, externalSystemId: ProjectSystemId, externalProjectPath: String
+): List<Module> {
+    val result: MutableList<Module> = ArrayList()
+    for (module in ModuleManager.getInstance(project).modules) {
+        if (ExternalSystemApiUtil.isExternalSystemAwareModule(externalSystemId, module)) {
+            val path = ExternalSystemApiUtil.getExternalRootProjectPath(module)
+            if (externalProjectPath == path) {
+                result.add(module)
+            }
+        }
+    }
+    return result
 }
