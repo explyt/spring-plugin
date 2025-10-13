@@ -25,19 +25,9 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
-import com.intellij.openapi.externalSystem.model.ProjectKeys
-import com.intellij.openapi.externalSystem.model.ProjectSystemId
-import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
-import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
-import com.intellij.openapi.externalSystem.service.project.manage.ProjectDataManagerImpl
-import com.intellij.openapi.externalSystem.settings.AbstractExternalSystemLocalSettings
-import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
-import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbAwareAction
-import com.intellij.openapi.project.Project
 
 class DetachAllProjectsAction : DumbAwareAction() {
     init {
@@ -63,62 +53,16 @@ class DetachAllProjectsAction : DumbAwareAction() {
             .mapNotNull { it.externalProjectStructure }
         for (projectNode in projectsNode) {
             try {
-                detachProject(project, SYSTEM_ID, projectNode.data)
-            } catch (ignore: Exception) {
+                val projectData = projectNode.data
+                val method =
+                    Class.forName("com.intellij.openapi.externalSystem.action.DetachExternalProjectAction")
+                        .declaredMethods.first { it.name == "detachProject" }
+                method.invoke(null, project, projectData.owner, projectData, null)
+
+            } catch (_: Exception) {
             }
         }
         ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, SYSTEM_ID)
     }
-
-    companion object {
-
-        fun detachProject(
-            project: Project,
-            projectSystemId: ProjectSystemId,
-            projectData: ProjectData,
-        ) {
-            val externalProjectPath = projectData.linkedExternalProjectPath
-
-            try {
-                val localSettings = ExternalSystemApiUtil
-                    .getLocalSettings<AbstractExternalSystemLocalSettings<*>>(project, projectSystemId)
-                localSettings.forgetExternalProjects(setOf(externalProjectPath))
-            } catch (ignore: Exception) {
-            }
-
-            try {
-                val settings = ExternalSystemApiUtil.getSettings(project, projectSystemId)
-                settings.unlinkExternalProject(externalProjectPath)
-            } catch (ignore: Exception) {
-            }
-
-            try {
-                val externalProjectsManager = ExternalProjectsManagerImpl.getInstance(project)
-                externalProjectsManager.forgetExternalProjectData(projectSystemId, externalProjectPath)
-            } catch (ignore: Exception) {
-            }
-
-            val orphanModules = collectExternalSystemModules(project, projectSystemId, externalProjectPath)
-            if (orphanModules.isNotEmpty()) {
-                ProjectDataManagerImpl.getInstance().removeData(
-                    ProjectKeys.MODULE, orphanModules, emptyList(), projectData, project, false
-                )
-            }
-        }
-
-        private fun collectExternalSystemModules(
-            project: Project, externalSystemId: ProjectSystemId, externalProjectPath: String
-        ): List<Module> {
-            val result: MutableList<Module> = ArrayList()
-            for (module in ModuleManager.getInstance(project).modules) {
-                if (ExternalSystemApiUtil.isExternalSystemAwareModule(externalSystemId, module)) {
-                    val path = ExternalSystemApiUtil.getExternalRootProjectPath(module)
-                    if (externalProjectPath == path) {
-                        result.add(module)
-                    }
-                }
-            }
-            return result
-        }
-    }
+    return result
 }

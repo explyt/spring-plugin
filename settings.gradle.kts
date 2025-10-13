@@ -12,6 +12,12 @@ pluginManagement {
         id("org.jetbrains.intellij.platform.module") version gradleIntellijPluginVersion apply false
         id("org.jetbrains.intellij.platform.migration") version gradleIntellijPluginVersion apply false
     }
+
+    repositories {
+        mavenLocal()
+        maven { url = uri("https://repo1.maven.org/maven2/") }
+        gradlePluginPortal()
+    }
 }
 
 plugins {
@@ -21,10 +27,10 @@ plugins {
 
 @Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
-    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositoriesMode = RepositoriesMode.PREFER_SETTINGS
     repositories {
         mavenLocal()
-        mavenCentral()
+        maven { url = uri("https://repo1.maven.org/maven2/") }
 
         intellijPlatform {
             defaultRepositories()
