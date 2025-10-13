@@ -12,6 +12,12 @@ pluginManagement {
         id("org.jetbrains.intellij.platform.module") version gradleIntellijPluginVersion apply false
         id("org.jetbrains.intellij.platform.migration") version gradleIntellijPluginVersion apply false
     }
+
+    repositories {
+        mavenLocal()
+        maven { url = uri("https://repo1.maven.org/maven2/") }
+        gradlePluginPortal()
+    }
 }
 
 plugins {
