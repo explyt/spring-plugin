@@ -35,6 +35,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
 import java.time.Instant
+import kotlin.reflect.KCallable
+import kotlin.reflect.full.companionObject
+import kotlin.reflect.full.companionObjectInstance
+import kotlin.reflect.full.declaredMembers
 
 private const val GITHUB_WIKI_URL = "https://github.com/explyt/spring-plugin/wiki/Explyt-AI-Actions"
 
@@ -47,16 +51,13 @@ class AiPluginService(private val project: Project) {
 
     fun performPrompt(prompt: String, virtualFiles: List<VirtualFile>) {
         try {
-            try {
-                val apiClass = Class.forName("com.explyt.chat.api.v1.AgentChatApi")
-                val getInstance = apiClass.getMethod("getInstance", Project::class.java)
-                val apiInstance = getInstance.invoke(null, project)
-                val method = apiClass.getMethod("createNewChatAndSendRequest", String::class.java, List::class.java)
-                method.invoke(apiInstance, prompt, virtualFiles)
-            } catch (e: Throwable) {
-                // Rethrow to be handled by the outer catch so we keep the existing fallback notification
-                throw e
-            }
+            val klass = Class.forName("com.explyt.chat.api.v1.AgentChatApi").kotlin
+            val companionObject = klass.companionObject!!
+            val getInstanceMember = companionObject.declaredMembers.first { it.name == "getInstance" }
+            val instanceChat = getInstanceMember.call(klass.companionObjectInstance, project)!!
+            val newChatMember = instanceChat::class.declaredMembers.first { isNewChatMember(it) }
+            newChatMember.call(instanceChat, prompt, virtualFiles.toList(), true)
+            //AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, virtualFiles)
         } catch (e: Throwable) {
             logger.warn("Explyt - error run AI from Spring", e)
             Notification(
@@ -69,6 +70,14 @@ class AiPluginService(private val project: Project) {
                 installPlugin(project)
             }).notify(null)
         }
+    }
+
+    private fun isNewChatMember(callable: KCallable<*>): Boolean {
+        if (callable.name != "createNewChatAndSendRequest") return false
+        if (callable.parameters.size < 3) return false
+        if (callable.parameters[1].name != "prompt") return false
+        if (callable.parameters[2].name != "files") return false
+        return true
     }
 
     fun checkAiPlugin(project: Project) {
