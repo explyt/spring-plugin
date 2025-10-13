@@ -17,8 +17,8 @@
 
 package com.explyt.spring.ai.service
 
-import com.explyt.chat.api.v1.AgentChatApi
 import com.explyt.spring.ai.SpringAiBundle
+import com.explyt.spring.ai.service.AiPluginService.Companion.logger
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.intellij.ide.BrowserUtil
 import com.intellij.ide.plugins.PluginManager
@@ -28,7 +28,6 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ShowSettingsUtil
@@ -48,7 +47,16 @@ class AiPluginService(private val project: Project) {
 
     fun performPrompt(prompt: String, virtualFiles: List<VirtualFile>) {
         try {
-            AgentChatApi.getInstance(project).createNewChatAndSendRequest(prompt, virtualFiles)
+            try {
+                val apiClass = Class.forName("com.explyt.chat.api.v1.AgentChatApi")
+                val getInstance = apiClass.getMethod("getInstance", Project::class.java)
+                val apiInstance = getInstance.invoke(null, project)
+                val method = apiClass.getMethod("createNewChatAndSendRequest", String::class.java, List::class.java)
+                method.invoke(apiInstance, prompt, virtualFiles)
+            } catch (e: Throwable) {
+                // Rethrow to be handled by the outer catch so we keep the existing fallback notification
+                throw e
+            }
         } catch (e: Throwable) {
             logger.warn("Explyt - error run AI from Spring", e)
             Notification(
