@@ -64,4 +64,5 @@ class DetachAllProjectsAction : DumbAwareAction() {
         }
         ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, SYSTEM_ID)
     }
+    return result
 }
