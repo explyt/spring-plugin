@@ -23,5 +23,5 @@ public interface Constants {
     String EXPLYT_BEAN_INFO = "ExplytBeanInfo:";
     String EXPLYT_AOP_INFO = "ExplytBeanAopInfo:";
     String SPRING_EXPLYT_ERROR_MESSAGE = "I am Explyt Spring";
-    String DEBUG_PROGRAM_PARAM = "explyt.spring.debug.id";
+    String SKIP_INIT_PARAM = "explyt.spring.skip.init"; //skip init. only for get BeanDefinitions
 }
