@@ -426,6 +426,24 @@ main:
         TestCase.assertEquals(gutterTargetsStrings.filter { it == "\"main.mime-type\"" }.size, 1)
     }
 
+    fun testNoConstructorAutowiredGutter() {
+        myFixture.configureByText(
+            "MainPropertiesConfiguration.kt", """
+            import org.springframework.boot.context.properties.ConfigurationProperties
+            import org.springframework.context.annotation.Configuration
+
+            @ConfigurationProperties(prefix="configuration")
+            @Configuration            
+            data class ConfigProperties(
+                val testField: String = ""<caret>
+            )
+            """.trimIndent()
+        )
+        val gutterMarks = myFixture.findAllGutters()
+        val gutterMark = gutterMarks.filter { it.icon == SpringIcons.SpringBeanDependencies }
+        assertTrue(gutterMark.isEmpty())
+    }
+
     companion object {
         const val APPLICATION_PROPERTIES_FILE_NAME = "application.properties"
     }
