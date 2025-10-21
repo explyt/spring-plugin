@@ -383,11 +383,12 @@ nullif_expression::= NULLIF'('scalar_expression',' scalar_expression')'
 
 private reference_or_parameter ::= reference_expression | input_parameter_expression
 
-
-reference_expression ::= path_reference_expression | map_based_reference_expression | fully_qualified_constructor
-path_reference_expression ::= identifier {'.' identifier}* {
+asterisk ::= '*'
+reference_expression ::= path_reference_expression | map_based_reference_expression | fully_qualified_constructor | asterisk
+path_reference_expression ::= identifier {'.' (identifier | asterisk)}* {
     extends = reference_expression
 }
+
 fully_qualified_constructor ::= {identifier '.'}* identifier {
     extends = reference_expression
 }
