@@ -12,6 +12,31 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <fileType
+                name="SQL Explyt"
+                implementationClass="com.explyt.sql.SqlExplytFileType"
+                fieldName="INSTANCE"
+                language="SQL-EXPLYT"
+                extensions="esql"/>
+
+        <lang.parserDefinition
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.psi.SqlExplytParserDefinition"/>
+
+        <lang.syntaxHighlighterFactory
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.highlight.SqlSyntaxHighlighterFactory"/>
+
+        <completion.contributor
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.completion.SqlCompletionContributor"/>
+
+        <lang.braceMatcher
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.psi.SqlExplytBraceMatcher"/>
+        <highlightErrorFilter order="last"
+                              implementation="com.explyt.sql.highlight.SQLExplytErrorFilter"/>
+
+        <fileType
                 name="JPA QL"
                 implementationClass="com.explyt.jpa.ql.JpqlFileType"
                 fieldName="INSTANCE"
