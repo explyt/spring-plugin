@@ -28,8 +28,6 @@
     <vendor email="support@explyt.ai" url="https://explyt.ai/docs/explyt-spring">Explyt</vendor>
     <category>JVM Frameworks</category>
 
-    <incompatible-with>com.intellij.spring</incompatible-with>
-
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
 

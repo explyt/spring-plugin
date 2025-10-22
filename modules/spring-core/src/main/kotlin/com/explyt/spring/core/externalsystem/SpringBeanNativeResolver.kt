@@ -227,12 +227,17 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             } else {
                 runConfiguration.vmParameters += " $javaAgentParams"
             }
+            runConfiguration.envs[com.explyt.spring.boot.bean.reader.Constants.SKIP_INIT_PARAM] = "true"
         } else if (runConfiguration is KotlinRunConfiguration) {
             if (runConfiguration.vmParameters == null) {
                 runConfiguration.vmParameters = javaAgentParams
             } else {
                 runConfiguration.vmParameters += " $javaAgentParams"
             }
+            val envs = runConfiguration.envs
+            val envMutableMap = HashMap<String, String>(envs)
+            envMutableMap[com.explyt.spring.boot.bean.reader.Constants.SKIP_INIT_PARAM] = "true"
+            runConfiguration.envs = envMutableMap
         }
     }
 
