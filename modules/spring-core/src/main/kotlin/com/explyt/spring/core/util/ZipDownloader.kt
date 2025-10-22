@@ -22,8 +22,6 @@ import com.intellij.execution.wsl.WslPath
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.progress.impl.BackgroundableProcessIndicator
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
@@ -37,24 +35,15 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 
 object ZipDownloader {
-    fun download(message: String, urlString: String, targetPath: Path): Path? {
-        val taskInfo = object : Task.Backgroundable(null, message, true) {
-            override fun run(indicator: ProgressIndicator) {}
-        }
-
-        val indicator = BackgroundableProcessIndicator(taskInfo)
-        try {
-            return download(urlString, targetPath, indicator)
-        } finally {
-            indicator.finish(taskInfo)
-        }
+    fun download(urlString: String, targetPath: Path): Path? {
+        return downloadFile(urlString, targetPath)
     }
 
-    private fun download(
-        urlString: String, targetPath: Path, indicator: BackgroundableProcessIndicator
+    private fun downloadFile(
+        urlString: String, targetPath: Path, indicator: BackgroundableProcessIndicator? = null
     ): Path? {
         return try {
-            indicator.apply { text = "Downloading from: $urlString" }
+            indicator?.apply { text = "Downloading from: $urlString" }
             HttpRequests.request(urlString)
                 .forceHttps(false)
                 .connectTimeout(30_000)
