@@ -340,6 +340,10 @@ object PropertyUtil {
             .replace("_", "")
     }
 
+    fun toSystemEnvironmentForm(propertyName: String): String {
+        return toCommonPropertyForm(propertyName).uppercase().replace(".", "_")
+    }
+
     fun toBooleanAlias(property: String, type: String?): String {
         return if (type == JavaCoreClasses.BOOLEAN || type == PrimitiveTypes.BOOLEAN) {
             val result = property.substringBeforeLast(".")
