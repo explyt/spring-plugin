@@ -27,16 +27,21 @@ import com.explyt.spring.core.util.ZipDownloader
 import com.intellij.execution.RunManager
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.lang.Language
-import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.observable.properties.AtomicBooleanProperty
+import com.intellij.openapi.observable.properties.GraphProperty
 import com.intellij.openapi.observable.properties.PropertyGraph
+import com.intellij.openapi.observable.util.not
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.openapi.ui.emptyText
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.injection.Injectable
 import com.intellij.sh.run.ShConfigurationType
+import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
@@ -47,7 +52,6 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.intellij.plugins.intelliLang.inject.InjectedLanguage
 import java.nio.file.Path
-import java.util.concurrent.Callable
 import javax.swing.JComponent
 import javax.swing.JList
 import kotlin.io.path.Path
@@ -144,10 +148,17 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .applyToComponent { toolTipText = message("explyt.spring.settings.http.cli.path") }
                         .applyToComponent { emptyText.text = toolTipText }
                         .comment(message("explyt.spring.settings.http.cli.comment"))
-                    button(message("explyt.spring.settings.http.cli.download.button")) { download() }
+                    button(
+                        message("explyt.spring.settings.http.cli.download.button"),
+                        CliDownloadAction(downloadEnabled, httpCliPathBind)
+                    )
                         .applyToComponent { toolTipText = message("explyt.spring.settings.http.cli.path.tooltip") }
                         .enabledIf(downloadEnabled)
-                        .visibleIf(downloadShow)
+
+                    label("").align(AlignX.LEFT)
+                        //https://plugins.jetbrains.com/docs/intellij/loader.html#when-to-use
+                        .applyToComponent { icon = AnimatedIcon.Default() }
+                        .visibleIf(downloadEnabled.not())
                 }.visibleIf(shellScriptEnabledProperty)
             }
         }
@@ -263,26 +274,6 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         }
     }
 
-    private fun download() {
-        downloadEnabled.set(false)
-        ReadAction.nonBlocking(Callable {
-            ZipDownloader.download(
-                message("explyt.spring.settings.http.cli.path.tooltip"),
-                Registry.stringValue("explyt.http.cli.url"),
-                Path(PathManager.getTempPath(), "explyt.zip")
-            )
-        })
-            .finishOnUiThread(ModalityState.current()) {
-                downloadEnabled.set(true)
-                getResultPath(it)?.let { path -> httpCliPathBind.set(path.absolutePathString()) }
-            }
-            .submit(AppExecutorUtil.getAppExecutorService())
-    }
-
-    private fun getResultPath(resultDir: Path?): Path? {
-        return resultDir?.toFile()?.listFiles()?.first { it.isDirectory }?.toPath()
-    }
-
     companion object {
         const val ID = "com.explyt.spring.runConfigurations"
 
@@ -295,5 +286,35 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                 false
             }
         }
+    }
+}
+
+private class CliDownloadAction(
+    val downloadEnabled: AtomicBooleanProperty, val httpCliPathBind: GraphProperty<String>
+) : AnAction() {
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
+    override fun actionPerformed(e: AnActionEvent) {
+        downloadEnabled.set(false)
+        AppExecutorUtil.getAppExecutorService().submit {
+            val downloadPath = try {
+                ZipDownloader.download(
+                    Registry.stringValue("explyt.http.cli.url"),
+                    Path(PathManager.getTempPath(), "explyt.zip")
+                )
+            } finally {
+                downloadEnabled.set(true)
+            }
+
+            getResultPath(downloadPath)?.let { path ->
+                ApplicationManager.getApplication().invokeLater {
+                    httpCliPathBind.set(path.absolutePathString())
+                }
+            }
+        }
+    }
+
+    private fun getResultPath(resultDir: Path?): Path? {
+        return resultDir?.toFile()?.listFiles()?.first { it.isDirectory }?.toPath()
     }
 }
