@@ -17,10 +17,7 @@
 
 package com.explyt.spring.core.properties.contributors
 
-import com.explyt.spring.core.properties.providers.SpringConfigurationPropertiesValueReferenceProvider
-import com.explyt.spring.core.properties.providers.SpringConfigurationPropertiesValueResourceReferenceProvider
-import com.explyt.spring.core.properties.providers.SpringConfigurationPropertyKeyReferenceProvider
-import com.explyt.spring.core.properties.providers.SpringConfigurationYamlKeyLoggingLevelReferenceProvider
+import com.explyt.spring.core.properties.providers.*
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceRegistrar
@@ -37,6 +34,10 @@ class SpringYamlConfigurationPropertiesReferenceContributor : PsiReferenceContri
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(YAMLScalar::class.java),
             SpringConfigurationYamlKeyLoggingLevelReferenceProvider()
+        )
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(YAMLScalar::class.java),
+            DockerEnvVariableYamlReferenceProvider()
         )
 
         registrar.registerReferenceProvider(
