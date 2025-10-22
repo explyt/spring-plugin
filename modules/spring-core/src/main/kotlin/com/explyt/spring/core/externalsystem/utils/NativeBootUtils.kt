@@ -25,7 +25,6 @@ import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
-import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.wsl.WslPath
 import com.intellij.openapi.externalSystem.dependency.analyzer.DAArtifact
 import com.intellij.openapi.project.Project
@@ -123,9 +122,5 @@ object NativeBootUtils {
             return wslDistribution.getWslPath(winPath) ?: agentJarPath
         }
         return agentJarPath
-    }
-
-    fun getConfigurationId(configuration: RunConfigurationBase<*>): String {
-        return configuration.type.displayName + ":" + configuration.name
     }
 }
