@@ -8,11 +8,11 @@
   psiImplClassSuffix="Impl"
   psiPackage="com.explyt.sql.psi"
   psiImplPackage="com.explyt.sql.psi.impl"
-  psiImplUtilClass="com.explyt.sql.psi.impl.JpqlPsiImplUtil"
+  psiImplUtilClass="com.explyt.sql.psi.impl.SqlPsiImplUtil"
 
-  elementTypeHolderClass="com.explyt.sql.psi.JpqlTypes"
-  elementTypeClass="com.explyt.sql.psi.JpqlElementType"
-  tokenTypeClass="com.explyt.sql.psi.JpqlTokenType"
+  elementTypeHolderClass="com.explyt.sql.psi.SqlTypes"
+  elementTypeClass="com.explyt.sql.psi.SqlElementType"
+  tokenTypeClass="com.explyt.sql.psi.SqlTokenType"
 
   extends(".*expression")=expression
 //  consumeTokenMethod(".*_expression|expression")="consumeTokenFast"
