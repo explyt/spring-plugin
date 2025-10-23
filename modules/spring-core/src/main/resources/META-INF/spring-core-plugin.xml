@@ -705,6 +705,8 @@
 
         <annotator language="yaml"
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationYamlAnnotator"/>
+        <annotator language="yaml"
+                   implementationClass="com.explyt.spring.core.annotator.DockerComposeEnvVariableAnnotator"/>
         <annotator language="Properties"
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationPropertiesAnnotator"/>
 
