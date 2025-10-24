@@ -19,17 +19,14 @@ package com.explyt.spring.data.langinjection
 
 import com.explyt.jpa.langinjection.JpqlInjectorBase
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
-import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.data.SpringDataClasses
+import com.explyt.sql.SqlExplytLanguage
 import com.explyt.util.ExplytDbConstants
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.lang.Language
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
 import org.jetbrains.uast.*
 
 
@@ -96,8 +93,8 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
         return null
     }
 
-    override fun getSqlLanguage(sourcePsi: PsiElement?): Language? {
-        return SqlNativeSpringQueryLanguageInjector.getSqlLanguage(sourcePsi)
+    override fun getSqlLanguage(sourcePsi: PsiElement?): Language {
+        return getSqlLanguage()
     }
 
     companion object {
@@ -107,19 +104,12 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
         private const val SQLITE_SQL = "SQLITE-SQL"
         private const val ORACLE_SQL = "ORACLE-SQL"
 
-        fun getSqlLanguage(sourcePsi: PsiElement?): Language? {
+        fun getSqlLanguage(): Language {
             val languageFromSettingsState = SpringToolRunConfigurationsSettingsState.getInstance().sqlLanguageId
                 .takeIf { it?.isNotEmpty() == true }
                 ?.let { Language.findLanguageByID(it) }
             if (languageFromSettingsState != null) return languageFromSettingsState
-
-            val module = sourcePsi?.let { ModuleUtilCore.findModuleForPsiElement(sourcePsi) } ?: return null
-            return CachedValuesManager.getManager(module.project).getCachedValue(module) {
-                CachedValueProvider.Result(
-                    getLanguage(module),
-                    ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
-                )
-            }
+            return SqlExplytLanguage.INSTANCE
         }
 
         private fun getLanguage(module: Module): Language? {

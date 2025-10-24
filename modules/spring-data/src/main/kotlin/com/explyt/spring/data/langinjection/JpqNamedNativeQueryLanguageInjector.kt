@@ -38,7 +38,7 @@ class JpqNamedNativeQueryLanguageInjector : JpqlInjectorBase() {
         return uElement.isUastChildOf(queryAttribute)
     }
 
-    override fun getSqlLanguage(sourcePsi: PsiElement?): Language? {
-        return SqlNativeSpringQueryLanguageInjector.getSqlLanguage(sourcePsi)
+    override fun getSqlLanguage(sourcePsi: PsiElement?): Language {
+        return SqlNativeSpringQueryLanguageInjector.getSqlLanguage()
     }
 }

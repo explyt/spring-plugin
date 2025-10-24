@@ -21,6 +21,7 @@ import static com.explyt.sql.psi.SqlTypes.*;
 %function advance
 %type IElementType
 %unicode
+%ignorecase
 
 EOL=\R
 WHITE_SPACE=\s+

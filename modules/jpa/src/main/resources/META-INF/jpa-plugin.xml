@@ -22,6 +22,18 @@
                 language="SQL-EXPLYT"
                 implementationClass="com.explyt.sql.psi.SqlExplytParserDefinition"/>
 
+        <lang.syntaxHighlighterFactory
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.highlight.SqlSyntaxHighlighterFactory"/>
+
+        <completion.contributor
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.completion.SqlCompletionContributor"/>
+
+        <lang.braceMatcher
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.psi.SqlExplytBraceMatcher"/>
+
         <fileType
                 name="JPA QL"
                 implementationClass="com.explyt.jpa.ql.JpqlFileType"
