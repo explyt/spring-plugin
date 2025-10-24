@@ -8,7 +8,6 @@
   psiImplClassSuffix="Impl"
   psiPackage="com.explyt.sql.psi"
   psiImplPackage="com.explyt.sql.psi.impl"
-  psiImplUtilClass="com.explyt.sql.psi.impl.SqlPsiImplUtil"
 
   elementTypeHolderClass="com.explyt.sql.psi.SqlTypes"
   elementTypeClass="com.explyt.sql.psi.SqlElementType"
@@ -125,9 +124,7 @@ expression ::= conditional_group
     | function_invocation_expression
     | type_expression
     | reference_expression
-    | paren_expression {
-    methods = [getType]
-}
+    | paren_expression
 
 subquery_expression ::= '(' subquery ')'
 
@@ -278,9 +275,7 @@ private entity_or_value_expression ::= reference_expression
 exists_expression::= [NOT] EXISTS '('subquery')'
 all_or_any_expression ::= { ALL'(' | ANY'(' | SOME'('} subquery')'
 
-comparison_expression ::= expression comparison_operator expression {
-    methods=[getOperator]
-}
+comparison_expression ::= expression comparison_operator expression
 
 between_expression ::= expression [NOT] BETWEEN expression AND expression
 
@@ -392,9 +387,7 @@ map_based_reference_expression ::= KEY'('reference_expression')'
     methods = [getMapOperationType]
 }
 
-input_parameter_expression ::= named_input_parameter | numeric_input_parameter {
-    methods=[getReference]
-}
+input_parameter_expression ::= named_input_parameter | numeric_input_parameter
 
 // todo support keywords as a parameter or an identifier
 private identifier_like_keyword ::= VALUE
@@ -414,7 +407,6 @@ identifier ::= id | identifier_like_keyword
 
 boolean_literal ::= boolean {
     extends = expression
-    methods=[getValue]
 }
 
 numeric_literal ::= numeric {

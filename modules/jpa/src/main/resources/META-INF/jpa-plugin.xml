@@ -13,10 +13,14 @@
     <extensions defaultExtensionNs="com.intellij">
         <fileType
                 name="SQL Explyt"
-                implementationClass="com.explyt.sql.SqlFileType"
+                implementationClass="com.explyt.sql.SqlExplytFileType"
                 fieldName="INSTANCE"
                 language="SQL-EXPLYT"
                 extensions="esql"/>
+
+        <lang.parserDefinition
+                language="SQL-EXPLYT"
+                implementationClass="com.explyt.sql.psi.SqlExplytParserDefinition"/>
 
         <fileType
                 name="JPA QL"

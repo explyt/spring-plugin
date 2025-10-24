@@ -9,8 +9,4 @@ public interface SqlBooleanLiteral extends SqlExpression {
     @NotNull
     PsiElement getBoolean();
 
-    //WARNING: getValue(...) is skipped
-    //matching getValue(SqlBooleanLiteral, ...)
-    //methods are not found in SqlPsiImplUtil
-
 }

@@ -1,6 +1,7 @@
 // This is a generated file. Not intended for manual editing.
 package com.explyt.sql.psi.impl;
 
+import com.explyt.jpa.ql.psi.JpqlElementType;
 import com.explyt.sql.psi.SqlMapBasedReferenceExpression;
 import com.explyt.sql.psi.SqlReferenceExpression;
 import com.explyt.sql.psi.SqlVisitor;
@@ -29,6 +30,11 @@ public class SqlMapBasedReferenceExpressionImpl extends SqlReferenceExpressionIm
     @NotNull
     public SqlReferenceExpression getReferenceExpression() {
         return findNotNullChildByClass(SqlReferenceExpression.class);
+    }
+
+    @Override
+    public @NotNull JpqlElementType getMapOperationType() {
+        return SqlPsiImplUtil.getMapOperationType(this);
     }
 
 }

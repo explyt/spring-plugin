@@ -12,8 +12,4 @@ public interface SqlInputParameterExpression extends SqlExpression {
     @Nullable
     PsiElement getNumericInputParameter();
 
-    //WARNING: getReference(...) is skipped
-    //matching getReference(SqlInputParameterExpression, ...)
-    //methods are not found in SqlPsiImplUtil
-
 }

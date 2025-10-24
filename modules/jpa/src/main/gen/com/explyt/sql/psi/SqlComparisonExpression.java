@@ -10,8 +10,4 @@ public interface SqlComparisonExpression extends SqlExpression {
     @NotNull
     List<SqlExpression> getExpressionList();
 
-    //WARNING: getOperator(...) is skipped
-    //matching getOperator(SqlComparisonExpression, ...)
-    //methods are not found in SqlPsiImplUtil
-
 }
