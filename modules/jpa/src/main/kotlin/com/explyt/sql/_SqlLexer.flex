@@ -32,7 +32,7 @@ ID=[a-zA-Z_][a-zA-Z0-9_]*
 NUMERIC=[0-9]+(\.[0-9]+)*
 STRING='([^']|'')*'
 DATETIME=\{[ \t\n\x0B\f\r]*[dt]s?[ \t\n\x0B\f\r]+'([^']|'')*'[ \t\n\x0B\f\r]*\}
-NAMED_INPUT_PARAMETER=:[a-zA-Z_][a-zA-Z0-9_]*
+NAMED_INPUT_PARAMETER=\?|:[a-zA-Z_][a-zA-Z0-9_]*
 NUMERIC_INPUT_PARAMETER=\?[0-9]+
 
 %%
