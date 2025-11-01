@@ -19,6 +19,7 @@ package com.explyt.spring.web.editor.openapi
 
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
@@ -27,11 +28,15 @@ import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.util.Key
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.TimeUnit
 
 class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
     TextEditorWithPreview(textEditor, preview, "OpenAPI Preview Editor", DEFAULT_LAYOUT) {
 
     val document = textEditor.editor.document
+    val changeEventQueue = ArrayBlockingQueue<Int>(1)
 
     init {
         textEditor.putUserData(PARENT_EDITOR_KEY, this)
@@ -72,6 +77,28 @@ class OpenApiUIEditor(textEditor: TextEditor, preview: OpenApiCefBrowser) :
 
     private inner class OpenApiDocumentListener : DocumentListener {
         override fun documentChanged(event: DocumentEvent) {
+            addEvent(0)
+        }
+
+        private fun addEvent(retryCount: Int) {
+            val added = changeEventQueue.offer(retryCount)
+            if (!added) return
+            AppExecutorUtil.getAppScheduledExecutorService().schedule(
+                { processEvent() }, 1, TimeUnit.SECONDS
+            )
+        }
+
+        private fun processEvent() {
+            val retryCount = changeEventQueue.poll() ?: return
+            if (document.isInBulkUpdate) {
+                if (retryCount > 10) return
+                addEvent(retryCount + 1)
+            } else {
+                ApplicationManager.getApplication().invokeLater { reloadBrowserHtml() }
+            }
+        }
+
+        private fun reloadBrowserHtml() {
             runWriteAction {
                 FileDocumentManager.getInstance().saveDocument(document)
             }
