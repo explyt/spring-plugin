@@ -102,6 +102,11 @@
                                 id="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"
                                 implementationClass="com.explyt.spring.core.properties.contributors.ScheduledCronCompletionContributor"/>
 
+        <completion.contributor id="dockerComposeYamlContributor"
+                                language="yaml"
+                                order="after yamlContributor"
+                                implementationClass="com.explyt.spring.core.completion.doker.DockerEnvVariableYamlCompletionContributor"/>
+
         <psi.referenceContributor language="Properties"
                                   implementation="com.explyt.spring.core.properties.contributors.SpringConfigurationPropertiesReferenceContributor"/>
         <psi.referenceContributor language="Properties"
@@ -700,6 +705,8 @@
 
         <annotator language="yaml"
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationYamlAnnotator"/>
+        <annotator language="yaml"
+                   implementationClass="com.explyt.spring.core.annotator.DockerComposeEnvVariableAnnotator"/>
         <annotator language="Properties"
                    implementationClass="com.explyt.spring.core.annotator.SpringConfigurationPropertiesAnnotator"/>
 

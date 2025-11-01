@@ -5,6 +5,27 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+- fix: configuration properties field should not be autowired
+
+### Spring Initialzr
+- fix: download indicator exception
+
+### Spring Debugger
+- feat: Spring Remote Debugger
+
+### Docker 
+- feat: env variables completion in docker compose files
+
+### SQL
+- feat: introduce basic SQL DML support (no plugin required)
+
+### Other
+- chore: Update plugin name to Spring Explyt
+- fix: Remove internal API usages and access to FUS 
+
+## [252.27.26] - 2025-10-02
+
+### Spring Core/Boot
 - fix: log pattern error & additional bean search
 - fix: Race error in case if several inspections were started at once
 
@@ -19,7 +40,7 @@
 - feat: Spring Debugger show server Web URL in console
 - chore: Update debugger hint icon
 
-## [252.26.18] - 2025-09-18
+## 252.26.18 - 2025-09-18
 
 ### Spring Core/Boot
 - feat: Support Spring 7: Bean Registrar

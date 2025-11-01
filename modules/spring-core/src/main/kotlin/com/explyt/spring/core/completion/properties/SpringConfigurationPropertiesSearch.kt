@@ -18,12 +18,16 @@
 package com.explyt.spring.core.completion.properties
 
 import com.explyt.spring.core.SpringProperties.POSTFIX_KEYS
+import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.isSameProperty
 import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 
 @Service(Service.Level.PROJECT)
 class SpringConfigurationPropertiesSearch {
@@ -43,6 +47,15 @@ class SpringConfigurationPropertiesSearch {
     fun getAllProperties(module: Module): List<ConfigurationProperty> {
         return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
             .flatMap { it.loadProperties(module) }
+    }
+
+    fun getAllPropertiesSystemEnvironment(module: Module): List<String> {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                getAllProperties(module).map { PropertyUtil.toSystemEnvironmentForm(it.name) },
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+            )
+        }
     }
 
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {

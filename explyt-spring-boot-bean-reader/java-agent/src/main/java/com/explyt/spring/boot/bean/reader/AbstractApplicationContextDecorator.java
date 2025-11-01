@@ -46,13 +46,14 @@ public class AbstractApplicationContextDecorator {
     @DecoratedMethod
     protected void registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
         __registerBeanPostProcessors(beanFactory);
-        String debugRunConfigurationId = getExplytSpringRunConfigurationId();
-        if (!debugRunConfigurationId.isEmpty()) {
-            setExplytContextForDebug(debugRunConfigurationId);
-            return;
+
+        setExplytContextForDebug();
+
+        String skipInit = getExplytSpringPropertyValue(SKIP_INIT_PARAM);
+        if (!skipInit.isEmpty()) {
+            explytPrintBeans(beanFactory, null);
+            throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
         }
-        explytPrintBeans(beanFactory, null);
-        throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
     }
 
     protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
@@ -61,10 +62,7 @@ public class AbstractApplicationContextDecorator {
     @DecoratedMethod
     protected void finishRefresh() {
         __finishRefresh();
-        String debugRunConfigurationId = getExplytSpringRunConfigurationId();
-        if (!debugRunConfigurationId.isEmpty()) {
-            explytPrintLocalhost();
-        }
+        explytPrintLocalhost();
     }
 
     protected void __finishRefresh() {
@@ -72,14 +70,12 @@ public class AbstractApplicationContextDecorator {
 
 
     @AddMethod
-    private void setExplytContextForDebug(String debugRunConfigurationId) {
+    private void setExplytContextForDebug() {
         try {
             Class<?> aClass = Class.forName("com.explyt.spring.boot.bean.reader.InternalHolderContext");
             Field contextField = aClass.getDeclaredField("context");
             contextField.setAccessible(true);
             contextField.set(null, this);
-            Field configurationIdField = aClass.getDeclaredField("configurationId");
-            configurationIdField.set(null, debugRunConfigurationId);
 
             Class<?> aClassContext = Class.forName("explyt.Explyt");
             contextField = aClassContext.getDeclaredField("context");
@@ -233,10 +229,10 @@ public class AbstractApplicationContextDecorator {
     }
 
     @AddMethod
-    private String getExplytSpringRunConfigurationId() {
-        String debugParam = System.getenv(DEBUG_PROGRAM_PARAM);
-        debugParam = debugParam != null ? debugParam : System.getProperty(DEBUG_PROGRAM_PARAM);
-        return debugParam == null || debugParam.isEmpty() ? "" : debugParam;
+    private String getExplytSpringPropertyValue(String key) {
+        String paramValue = System.getenv(key);
+        paramValue = paramValue != null ? paramValue : System.getProperty(key);
+        return paramValue == null || paramValue.isEmpty() ? "" : paramValue;
     }
 
     @AddMethod

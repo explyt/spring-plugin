@@ -217,12 +217,13 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
             if (uParent is UParameter) {
                 val uMethod = (uParent.uastParent as? UMethod)?.takeIf { filterMethod(it) } ?: return false
-
+                val javaPsiClass = uMethod.getContainingUClass()?.javaPsi ?: return false
+                if (javaPsiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return false
                 val psiMethod = uMethod.javaPsi
                 return ((uMethod.isConstructor && isComponent(uMethod))
                         || isAutowiredMethodExpression(psiMethod)
                         || isBeanMethodExpression(psiMethod)
-                        ) && !dependsOnIncorrectBean(uMethod.getContainingUClass()?.javaPsi)
+                        ) && !dependsOnIncorrectBean(javaPsiClass)
             }
             return false
         }

@@ -1,8 +1,11 @@
 # Explyt Spring Plugin for IntelliJ IDEA Community Edition
 ![Workflow status](https://github.com/explyt/spring-plugin/actions/workflows/build.yaml/badge.svg?branch=)
 ![GitHub Release](https://img.shields.io/github/v/release/explyt/spring-plugin)
-[![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring%20EN-252850?style=plastic&logo=telegram)](https://t.me/explytspring_en)
-[![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring%20RU-252850?style=plastic&logo=telegram)](https://t.me/explytspring)
+[![Marketplace Version](https://img.shields.io/jetbrains/plugin/v/28675?label=Marketplace%20version)](https://plugins.jetbrains.com/plugin/28675-spring-explyt)
+[![Marketplace Downloads](https://img.shields.io/jetbrains/plugin/d/28675?label=Downloads)](https://plugins.jetbrains.com/plugin/28675-spring-explyt/versions)
+[![telegram_badge](https://img.shields.io/badge/Telegram-Explyt%20Spring-252850?style=plastic&logo=telegram)](https://t.me/explytspring)
+
+Available on JetBrains Marketplace: https://plugins.jetbrains.com/plugin/28675-spring-explyt
 
 **Explyt Spring Plugin** supercharges your IntelliJ IDEA Community Edition with advanced Spring Framework features—usually only available in the Ultimate Edition. Develop Spring applications faster and smarter with enhanced tools for beans, configurations, endpoints, and more.
 
@@ -317,8 +320,11 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 
 ## Installation
 
+### Option 1: JetBrains Marketplace (recommended)
+- Open IntelliJ IDEA → Settings → Plugins → Marketplace, search for "Spring Explyt" and click Install.
+- Or install from the web: https://plugins.jetbrains.com/plugin/28675-spring-explyt
 
-### Option 1: Install from Custom Repository
+### Option 2: Install from Custom Repository
 
 ![Add Repository](https://github.com/user-attachments/assets/1efb7ec4-12d0-4457-ac94-63fab39e1492)
 
@@ -329,13 +335,15 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 ![Install Plugin](https://github.com/user-attachments/assets/7cb36e50-2715-40f1-9f7c-d1fb1cfc87ce)
 5. Restart the IDE.
 
-### Option 2: Manual Installation
+### Option 3: Manual Installation
 > *(Note: In this case, you will not receive automatic updates.)*
 1. Download the plugin from the [Releases Page](https://github.com/explyt/spring-plugin/releases).
 2. Go to **Settings** > **Plugins** > ⚙️ > **Install Plugin from Disk**.
 3. Select the downloaded `.zip` file and restart the IDE.
 
 For additional details, go to [Installation Guide](https://github.com/explyt/spring-plugin/wiki/Installation-Guide).
+
+Useful links: [Changelog](./CHANGELOG.md) · [Plugin description](./PLUGIN-DESCRIPTION.md)
 
 ---
 

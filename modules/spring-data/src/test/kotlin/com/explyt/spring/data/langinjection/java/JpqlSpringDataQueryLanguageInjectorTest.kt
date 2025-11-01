@@ -20,6 +20,7 @@ package com.explyt.spring.data.langinjection.java
 import com.explyt.jpa.ql.JpqlLanguage
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.sql.SqlExplytLanguage
 import com.intellij.testFramework.TestDataPath
 import com.intellij.testFramework.fixtures.InjectionTestFixture
 
@@ -52,7 +53,7 @@ class JpqlSpringDataQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
 
         val injectionTestFixture = InjectionTestFixture(myFixture)
 
-        injectionTestFixture.assertInjectedLangAtCaret(null)
+        injectionTestFixture.assertInjectedLangAtCaret(SqlExplytLanguage.INSTANCE.id)
     }
 
     companion object {
