@@ -60,11 +60,14 @@ class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: Stri
 
         val stringType = PsiType.getJavaLangString(psiManager, GlobalSearchScope.projectScope(project))
         val newArgument = elementFactory.createParameter(methodName, stringType)
+        psiMethod.parameterList.add(newArgument)
 
-        val action = AddAnnotationModCommandAction(SpringWebClasses.PATH_VARIABLE, newArgument)
+        editor?.let { PsiDocumentManager.getInstance(project).doPostponedOperationsAndUnblockDocument(it.document) }
+
+        val psiParameter = psiMethod.parameterList.parameters.last()
+        val action = AddAnnotationModCommandAction(SpringWebClasses.PATH_VARIABLE, psiParameter)
         action.asIntention().invoke(project, editor, file)
 
-        psiMethod.parameterList.add(newArgument)
     }
 
 }
