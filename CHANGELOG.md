@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [252.28.37] - 2025-11-05
+
 ### Spring Core/Boot
 
 - fix: load beans by -javaagent on [Windows](https://github.com/explyt/spring-plugin/issues/125)
@@ -37,7 +39,7 @@
 - chore: Update plugin name to Spring Explyt
 - fix: Remove internal API usages and access to FUS 
 
-## [252.27.26] - 2025-10-02
+## 252.27.26 - 2025-10-02
 
 ### Spring Core/Boot
 - fix: log pattern error & additional bean search
