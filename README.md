@@ -32,6 +32,7 @@ Available on JetBrains Marketplace: https://plugins.jetbrains.com/plugin/28675-s
     - [Spring Data Support](#spring-data-support)
     - [Spring AOP Enhancements](#spring-aop-enhancements)
     - [Spring Initializr](#spring-initializr)
+    - [Docker Compose](#docker-compose)
     - [Spring AI](#spring-ai)
     - [Additional Inspections and Features](#additional-inspections-and-features)
 - [Installation](#installation)
@@ -173,7 +174,7 @@ If you see issues or edge cases, please open an issue in GitHub.
     - **Property Files**: Enhanced suggestions for properties, including relaxed binding and nested properties.
     - **Annotation Attributes**: Completion and navigation for package names in annotations like `@ComponentScan`.
     - **Bean Methods**: Navigate from bean usage to their definitions, even across different configuration classes.
-    - **Query Languages**: Supports JPQL and SQL queries with syntax highlighting and code assistance.
+    - **Query Languages**: JPQL plus basic SQL DML out of the box (no external plugin). Works in `JdbcTemplate`, `@Query(nativeQuery = true)`, `@NamedNativeQuery`, and inline strings; `JdbcClient` parameter inspections and navigation.
 
 - **Line Markers and Gutter Icons**:
     - Visual markers for beans, configurations, and `@Scheduled` methods.
@@ -247,6 +248,7 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 
 ### Spring Debugger
 
+- Remote Debugger: attach to a running JVM (started with JDWP) and the Explyt javaagent; full support for breakpoints, runtime PropertySource resolution, BeanDefinition view, transaction info, and auto Web URL detection. [Agent source](https://github.com/explyt/spring-plugin/blob/main/explyt-spring-boot-bean-reader/java-agent/src/main/java/com/explyt/spring/boot/bean/reader/InternalHolderContext.java) · [agent JAR](https://github.com/explyt/spring-plugin/blob/main/modules/spring-core/libs/explyt-java-agent-0.1.jar)
 - Debug Spring applications with the Explyt Spring Debugger run configuration.
 - Automatically patches build/run to attach a lightweight javaagent and reverts Gradle configuration after debug.
 - Dedicated nodes and improved presentation in the debugger tree for Spring beans, including Explyt: Spring Context and Active Transaction variables.
@@ -273,6 +275,11 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 
 - Create new Spring projects directly from the IDE with enhanced error reporting and compatibility fixes.
 - Works in Community Edition; supports Kotlin and Java templates.
+
+### Docker Compose
+
+- Completion for Spring properties and environment variables in docker-compose files.
+- Go to declaration for property keys to jump into application properties/yaml.
 
 ### Spring AI
 
@@ -432,16 +439,15 @@ Useful links: [Changelog](./CHANGELOG.md) · [Plugin description](./PLUGIN-DESCR
 
 For a detailed overview of the plugin's features and how it can improve your development experience, check out our articles:
 
-- **[Stop playing catch-up with Spring — Explyt Spring plugin for IDEA Community (EN)](https://medium.com/@explytspring/stop-playing-catch-up-with-spring-introducing-the-explyt-spring-plugin-for-idea-community-0be380b36a75)** — background and approach to using native Spring logic for accurate context.
-- **[Patching Spring bytecode to enhance application context recognition (EN)](https://medium.com/@explytspring/explyt-spring-plugin-patching-spring-bytecode-to-enhance-application-context-recognition-0817fb52b056)** — deep dive into our javaagent and declarative bytecode patching.
-- **[Explyt Spring Plugin — our take on the HTTP client for IntelliJ IDEA (RU)](https://habr.com/ru/companies/explyt/articles/874236/)**
-- **[Explyt Spring plugin: *.http files support in IntelliJ IDEA Community (RU)](https://habr.com/ru/companies/explyt/articles/884280/)**
-- **[Explyt Spring Debugger (RU)](https://habr.com/ru/companies/explyt/articles/933158/)**
-- **[Explyt Spring Plugin: Quarkus support (RU)](https://habr.com/ru/companies/explyt/articles/926484/)**
-- **[Explyt AI Platform and integrated agents (RU)](https://habr.com/ru/companies/explyt/articles/936992/)**
+- **[Explyt Spring Release: SQL, Docker-Compose, Debugger (RU)](https://habr.com/ru/companies/explyt/articles/962536/)** — overview SQL DML, Docker Compose completions, and Remote Debugger.
 - **[Neural Networks in Spring Development: Eliminating Routine, Not Intelligence (RU)](https://habr.com/ru/companies/explyt/articles/944266/)**
-
-  *(Note: The articles are in Russian.)*
+- **[Explyt AI Platform and integrated agents (RU)](https://habr.com/ru/companies/explyt/articles/936992/)**
+- **[Explyt Spring Plugin: Quarkus support (RU)](https://habr.com/ru/companies/explyt/articles/926484/)**
+- **[Explyt Spring Debugger (RU)](https://habr.com/ru/companies/explyt/articles/933158/)**
+- **[Explyt Spring plugin: *.http files support in IntelliJ IDEA Community (RU)](https://habr.com/ru/companies/explyt/articles/884280/)**
+- **[Explyt Spring Plugin — our take on the HTTP client for IntelliJ IDEA (RU)](https://habr.com/ru/companies/explyt/articles/874236/)**
+- **[Patching Spring bytecode to enhance application context recognition (EN)](https://medium.com/@explytspring/explyt-spring-plugin-patching-spring-bytecode-to-enhance-application-context-recognition-0817fb52b056)** — deep dive into our javaagent and declarative bytecode patching.
+- **[Stop playing catch-up with Spring — Explyt Spring plugin for IDEA Community (EN)](https://medium.com/@explytspring/stop-playing-catch-up-with-spring-introducing-the-explyt-spring-plugin-for-idea-community-0be380b36a75)** — background and approach to using native Spring logic for accurate context.
 
 The articles include explanations, screenshots, and examples showing how the Explyt Spring Plugin can boost your productivity.
 
