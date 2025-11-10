@@ -18,7 +18,6 @@
 package com.explyt.spring.web.inspections
 
 import com.explyt.base.LibraryClassCache
-import com.explyt.inspection.SpringBaseLocalInspectionTool
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
@@ -35,7 +34,7 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class WebClientMethodWrongTypeInspection : SpringBaseLocalInspectionTool() {
+class WebClientMethodWrongTypeInspection : SpringWebBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
         return super.isAvailableForFile(file) && LibraryClassCache.searchForLibraryClass(

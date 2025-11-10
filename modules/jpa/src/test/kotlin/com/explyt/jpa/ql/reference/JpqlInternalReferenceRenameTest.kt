@@ -43,8 +43,8 @@ class JpqlInternalReferenceRenameTest : ExplytJavaLightTestCase() {
     private fun doTest() {
         val name = getTestName(true)
         val vf = myFixture.copyFileToProject(
-            "$name.jpql",
-            "$name.jpql"
+            "$name.ejpql",
+            "$name.ejpql"
         )
         myFixture.configureFromExistingVirtualFile(vf)
 

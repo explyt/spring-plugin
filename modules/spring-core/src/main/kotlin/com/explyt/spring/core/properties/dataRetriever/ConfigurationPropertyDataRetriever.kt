@@ -17,7 +17,6 @@
 
 package com.explyt.spring.core.properties.dataRetriever
 
-import ai.grazie.utils.capitalize
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch

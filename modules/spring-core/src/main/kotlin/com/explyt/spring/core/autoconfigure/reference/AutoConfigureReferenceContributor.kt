@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.autoconfigure.reference
 
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringProperties.PROPERTY_VALUE_DELIMITERS
 import com.explyt.spring.core.autoconfigure.language.AutoConfigurationImportsFileType
 import com.explyt.spring.core.autoconfigure.language.FactoriesFileType
@@ -32,6 +33,8 @@ import com.intellij.util.ProcessingContext
 class AutoConfigureReferenceContributor : PsiReferenceContributor() {
 
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
+        if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
+
         val filePattern = PlatformPatterns.virtualFile().ofType(FactoriesFileType)
         val autoConfigureImportsFilePattern = PlatformPatterns.virtualFile().ofType(AutoConfigurationImportsFileType)
 

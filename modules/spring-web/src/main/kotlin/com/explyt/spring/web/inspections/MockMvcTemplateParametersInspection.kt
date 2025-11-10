@@ -18,6 +18,7 @@
 package com.explyt.spring.web.inspections
 
 import com.explyt.inspection.SpringBaseLocalInspectionTool
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.SpringWebUtil
@@ -26,6 +27,7 @@ import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiFile
 import com.intellij.uast.UastVisitorAdapter
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UQualifiedReferenceExpression
@@ -34,6 +36,10 @@ import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
 class MockMvcTemplateParametersInspection : SpringBaseLocalInspectionTool() {
+    override fun isAvailableForFile(file: PsiFile): Boolean {
+        return super.isAvailableForFile(file) && PluginIds.SPRING_WEB_JB.isNotEnabled()
+    }
+
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
         return UastVisitorAdapter(MockMvcRequestBuilderVisitor(holder, isOnTheFly), true)
     }

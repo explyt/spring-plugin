@@ -18,6 +18,7 @@
 package com.explyt.spring.web.inspections
 
 import com.explyt.inspection.SpringBaseLocalInspectionTool
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddYamlOpenApiElementQuickFix
@@ -38,6 +39,7 @@ class OpenApiYamlUnresolvedReferenceInspection : SpringBaseLocalInspectionTool()
         val yamlFile = file as? YAMLFile ?: return false
 
         return super.isAvailableForFile(file)
+                && PluginIds.SPRING_WEB_JB.isNotEnabled()
                 && SpringWebUtil.isSpringWebProject(file.project)
                 && OpenApiUtils.isOpenApi(yamlFile)
     }

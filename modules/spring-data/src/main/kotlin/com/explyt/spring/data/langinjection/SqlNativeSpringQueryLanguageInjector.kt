@@ -18,6 +18,7 @@
 package com.explyt.spring.data.langinjection
 
 import com.explyt.jpa.langinjection.JpqlInjectorBase
+import com.explyt.plugin.PluginSqlLanguage
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.data.SpringDataClasses
 import com.explyt.sql.SqlExplytLanguage
@@ -32,8 +33,10 @@ import org.jetbrains.uast.*
 
 class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
     override fun isValidPlace(uElement: UElement): Boolean {
-        return isNativeQuery(uElement) || isJdbcTemplateLike(uElement)
-                || isStringDefinedAsSqlVariable(uElement)
+        if (isNativeQuery(uElement) || isJdbcTemplateLike(uElement)) {
+            return !PluginSqlLanguage.SPRING_QL.isEnabled()
+        }
+        return isStringDefinedAsSqlVariable(uElement)
     }
 
     private fun isNativeQuery(uElement: UElement): Boolean {

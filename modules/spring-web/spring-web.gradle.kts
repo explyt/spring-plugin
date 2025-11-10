@@ -64,8 +64,9 @@ dependencies {
     implementation("com.networknt:json-schema-validator:1.5.2")
 
     intellijPlatform {
-        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
-        jetbrainsRuntime()
+        intellijIdea(defaultIdeaVersion) {
+            useInstaller = false
+        }
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
