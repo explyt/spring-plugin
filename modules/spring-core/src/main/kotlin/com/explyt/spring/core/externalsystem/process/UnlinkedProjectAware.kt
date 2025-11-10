@@ -26,13 +26,17 @@ import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.externalSystem.autolink.ExternalSystemProjectLinkListener
 import com.intellij.openapi.externalSystem.autolink.ExternalSystemUnlinkedProjectAware
 import com.intellij.openapi.externalSystem.settings.ExternalSystemSettingsListener
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.projectImport.ProjectOpenProcessor
 import com.intellij.psi.PsiManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 class UnlinkedProjectAware : ExternalSystemUnlinkedProjectAware {
@@ -66,6 +70,16 @@ class UnlinkedProjectAware : ExternalSystemUnlinkedProjectAware {
         val virtualFile = getVirtualFile(externalProjectPath)
         ProjectOpenProcessor.EXTENSION_POINT_NAME.findExtensionOrFail(SpringBootProjectOpenProcessor::class.java)
             .importProjectAfterwardsAsync(project, virtualFile)
+    }
+
+    override suspend fun unlinkProject(project: Project, externalProjectPath: String) {
+        val projectData = ExternalSystemApiUtil.findProjectNode(project, systemId, externalProjectPath)?.data ?: return
+        withContext(Dispatchers.EDT) {
+            val method =
+                Class.forName("com.intellij.openapi.externalSystem.action.DetachExternalProjectAction")
+                    .declaredMethods.first { it.name == "detachProject" }
+            method.invoke(null, project, projectData.owner, projectData, null)
+        }
     }
 }
 

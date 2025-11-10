@@ -58,7 +58,7 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
 
     override fun isAvailableFor(project: Project) = true//SpringCoreUtil.isExplytDebug(project)
 
-    override fun precomputeOnUiThread(editor: Editor) = editor.virtualFile
+    override fun precomputeOnUiThread(editor: Editor) = editor.virtualFile!!
 
     override fun computeCodeVision(editor: Editor, virtualFile: VirtualFile): CodeVisionState {
         val project = editor.project ?: return READY_EMPTY
