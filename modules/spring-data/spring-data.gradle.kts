@@ -59,8 +59,9 @@ dependencies {
     implementation(jpaProject)
 
     intellijPlatform {
-        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
-        jetbrainsRuntime()
+        intellijIdea(defaultIdeaVersion) {
+            useInstaller = false
+        }
         bundledPlugins(
             springCoreProject.ext["intellijPlugins"] as List<String>
             + jpaProject.ext["intellijPlugins"] as List<String>

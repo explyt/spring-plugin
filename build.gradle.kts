@@ -1,5 +1,4 @@
-import org.gradle.api.tasks.compile.JavaCompile
-import org.gradle.api.tasks.testing.Test
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
@@ -37,10 +36,11 @@ subprojects {
     java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
     tasks.withType<KotlinJvmCompile>().configureEach {
-        kotlinOptions {
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+        /*kotlinOptions {
             jvmTarget = java.toolchain.languageVersion.get().toString()
             freeCompilerArgs += listOf("-Xjvm-default=all-compatibility", "-Xjsr305=strict")
-        }
+        }*/
     }
 
     tasks.withType<JavaCompile>().configureEach {
