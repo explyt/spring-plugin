@@ -17,10 +17,12 @@
 
 package com.explyt.spring.web.httpclient
 
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationConfigurable
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.web.SpringWebBundle
+import com.intellij.ide.scratch.ScratchUtil
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
@@ -35,6 +37,7 @@ class HttpSuggestionPanelProvider : EditorNotificationProvider {
         project: Project, file: VirtualFile
     ): Function<in FileEditor, out JComponent?>? {
         return if (file.name.endsWith(".http") || file.name.endsWith(".rest")) {
+            if (ScratchUtil.isScratch(file) && PluginIds.HTTP_CLIENT_JB.isEnabled()) return null
             Function { fileEditor: FileEditor -> getSuggestionPanel(fileEditor) }
         } else null
     }

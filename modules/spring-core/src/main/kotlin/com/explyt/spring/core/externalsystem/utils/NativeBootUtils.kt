@@ -19,6 +19,7 @@ package com.explyt.spring.core.externalsystem.utils
 
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
+import com.explyt.spring.core.externalsystem.RunConfigurationExtractor
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
@@ -84,7 +85,8 @@ object NativeBootUtils {
             if (runConfiguration is SpringBootRunConfiguration) {
                 runConfiguration.mainClass?.containingFile?.virtualFile?.let { result += it }
             } else if (runConfiguration is KotlinRunConfiguration) {
-                runConfiguration.findMainClassFile()?.containingFile?.virtualFile?.let { result += it }
+                RunConfigurationExtractor.findKotlinMainClassFile(runConfiguration)
+                    ?.containingFile?.virtualFile?.let { result += it }
             }
         }
         return result

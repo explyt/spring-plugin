@@ -18,11 +18,14 @@
 package com.explyt.jpa.langinjection
 
 import com.explyt.jpa.JpaClasses
+import com.explyt.plugin.PluginSqlLanguage
 import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.*
 
 class JpqlEntityManagerLanguageInjector : JpqlInjectorBase() {
     override fun isValidPlace(uElement: UElement): Boolean {
+        if (PluginSqlLanguage.JPAQL.isEnabled()) return false
+
         val uCallExpression = uElement.getParentOfType<UCallExpression>() ?: return false
 
         val firstParameter = uCallExpression.valueArguments.getOrNull(0) ?: return false

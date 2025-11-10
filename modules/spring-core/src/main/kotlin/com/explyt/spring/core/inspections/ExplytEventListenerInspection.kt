@@ -32,7 +32,7 @@ import com.intellij.psi.PsiModifier
 import com.siyeh.ig.fixes.ChangeModifierFix
 import org.jetbrains.uast.UMethod
 
-class SpringEventListenerInspection : SpringBaseUastLocalInspectionTool() {
+class ExplytEventListenerInspection : SpringBaseUastLocalInspectionTool() {
     override fun checkMethod(
         uMethod: UMethod,
         manager: InspectionManager,

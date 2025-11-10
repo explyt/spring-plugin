@@ -19,7 +19,7 @@ package com.explyt.jpa.ql.psi
 
 import com.intellij.testFramework.ParsingTestCase
 
-class JpaParsingTest : ParsingTestCase("psi", "jpql", JpqlParserDefinition()) {
+class JpaParsingTest : ParsingTestCase("psi", "ejpql", JpqlParserDefinition()) {
     fun testSimpleSelect() = doTest(true)
 
     fun testUpdate() = doTest(true)

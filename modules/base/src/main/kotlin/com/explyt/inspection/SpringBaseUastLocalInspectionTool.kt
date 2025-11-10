@@ -18,6 +18,7 @@
 package com.explyt.inspection
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.plugin.PluginIds
 import com.explyt.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.psi.PsiFile
@@ -25,6 +26,9 @@ import com.intellij.psi.PsiFile
 abstract class SpringBaseUastLocalInspectionTool : AbstractBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return LibraryClassCache.searchForLibraryClass(file.project, CORE_ENVIRONMENT) != null
+        return PluginIds.SPRING_JB.isNotEnabled() && LibraryClassCache.searchForLibraryClass(
+            file.project,
+            CORE_ENVIRONMENT
+        ) != null
     }
 }
