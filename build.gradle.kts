@@ -36,11 +36,10 @@ subprojects {
     java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
     tasks.withType<KotlinJvmCompile>().configureEach {
-        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
-        /*kotlinOptions {
-            jvmTarget = java.toolchain.languageVersion.get().toString()
-            freeCompilerArgs += listOf("-Xjvm-default=all-compatibility", "-Xjsr305=strict")
-        }*/
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+            freeCompilerArgs.addAll("-Xjvm-default=all-compatibility", "-Xjsr305=strict")
+        }
     }
 
     tasks.withType<JavaCompile>().configureEach {
