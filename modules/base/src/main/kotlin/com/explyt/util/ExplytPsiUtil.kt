@@ -28,9 +28,12 @@ import com.intellij.psi.*
 import com.intellij.psi.util.PropertyUtilBase
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.lexer.KtModifierKeywordToken
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.toUElement
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
@@ -285,8 +288,12 @@ object ExplytPsiUtil {
     fun PsiMember?.isRegistrar(): Boolean {
         val psiMethod = this as? PsiMethod ?: return false
         if (psiMethod.name == "register" && psiMethod.returnType?.canonicalText == "void") return true
-        return psiMethod.isPublic && (psiMethod.toString().contains("BeanRegistrarDsl")
-                || psiMethod.parent?.toString()?.contains("BeanRegistrarDsl") == true)
+        if (psiMethod.language != KotlinLanguage.INSTANCE) return false
+        if (psiMethod.isPublic && psiMethod.name.contains("regist", true)) {
+            val uClass = psiMethod.toUElement()?.getParentOfType<UClass>() ?: return false
+            return uClass.uastSuperTypes.any { it.getQualifiedName()?.contains("BeanRegistrarDsl", true) == true }
+        }
+        return false
     }
 
     fun navigate(psiElement: PsiElement?) {
