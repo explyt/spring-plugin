@@ -36,12 +36,12 @@
         <highlightErrorFilter order="last"
                               implementation="com.explyt.sql.highlight.SQLExplytErrorFilter"/>
 
-        <fileType
-                name="JPA QL"
-                implementationClass="com.explyt.jpa.ql.JpqlFileType"
-                fieldName="INSTANCE"
-                language="JPQL-EXPLYT"
-                extensions="jpql"/>
+        <!-- <fileType
+                 name="JPA QL"
+                 implementationClass="com.explyt.jpa.ql.JpqlFileType"
+                 fieldName="INSTANCE"
+                 language="JPQL-EXPLYT"
+                 extensions="jpql"/>-->
 
         <lang.parserDefinition
                 language="JPQL-EXPLYT"
