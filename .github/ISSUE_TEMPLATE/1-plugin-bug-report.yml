@@ -61,7 +61,7 @@ body:
     attributes:
       label: Plugin version
       description: "Type plugin version here"
-      placeholder: "Example: 2024.233.1861"
+      placeholder: "252.28.37"
     validations:
       required: false
 
