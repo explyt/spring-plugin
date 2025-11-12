@@ -213,12 +213,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         fun isFieldOrAutowiredParameter(): Boolean {
             if (uParent is UField) {
+                if (!springSearchService.isBeanCacheable(uParent.getContainingUClass())) return false
                 val psiField = uParent.javaPsi.takeIf { it is PsiField }?.let { it as PsiField } ?: return false
                 return (isAutowiredFieldExpression(psiField) || isLombokAnnotatedClassFieldExpression(psiField))
                         && !dependsOnIncorrectBean(psiField.containingClass)
             }
 
             if (uParent is UParameter) {
+                if (!springSearchService.isBeanCacheable(uParent.getContainingUClass())) return false
                 val uMethod = (uParent.uastParent as? UMethod)?.takeIf { filterMethod(it) } ?: return false
                 val javaPsiClass = uMethod.getContainingUClass()?.javaPsi ?: return false
                 if (javaPsiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return false
