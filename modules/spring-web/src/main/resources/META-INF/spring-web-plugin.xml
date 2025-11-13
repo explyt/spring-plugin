@@ -284,9 +284,9 @@
         <annotator
                 language="HTTP-EXPLYT"
                 implementationClass="com.explyt.spring.web.language.http.HttpSyntaxHighlighterAnnotator"/>
-        <colorSettingsPage
-                implementation="com.explyt.spring.web.language.http.HttpColorSettingsPage"/>
+        <colorSettingsPage implementation="com.explyt.spring.web.language.http.HttpColorSettingsPage"/>
 
+        <multiHostInjector implementation="com.explyt.spring.web.langinjection.PathRegexpInjector"/>
     </extensions>
 
     <projectListeners>
