@@ -120,7 +120,8 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
                     } else {
                         TextRange(it.range.first, it.range.last + 1)
                     }
-                    NameWithRange(it.value, range)
+                    val pathParameterName = it.value.substringBefore(":")
+                    NameWithRange(pathParameterName, range)
                 }
             urlPathParams.add(RefInfo(memberValue, namesWithRanges))
         }
