@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.externalsystem.process
 
+import com.explyt.spring.core.externalsystem.action.DetachAllProjectsAction
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.setting.NativeSettings
 import com.explyt.spring.core.externalsystem.utils.Constants
@@ -75,10 +76,7 @@ class UnlinkedProjectAware : ExternalSystemUnlinkedProjectAware {
     override suspend fun unlinkProject(project: Project, externalProjectPath: String) {
         val projectData = ExternalSystemApiUtil.findProjectNode(project, systemId, externalProjectPath)?.data ?: return
         withContext(Dispatchers.EDT) {
-            val method =
-                Class.forName("com.intellij.openapi.externalSystem.action.DetachExternalProjectAction")
-                    .declaredMethods.first { it.name == "detachProject" }
-            method.invoke(null, project, projectData.owner, projectData, null)
+            DetachAllProjectsAction.detachProjectNode(projectData, project)
         }
     }
 }
