@@ -27,9 +27,13 @@ import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
+import com.intellij.psi.impl.source.tree.injected.changesHandler.contentRange
+import org.intellij.lang.regexp.RegExpLanguage
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UastFacade
 import org.jetbrains.uast.evaluateString
+import org.jetbrains.uast.expressions.UInjectionHost
+import org.jetbrains.uast.expressions.UStringConcatenationsFacade
 import org.jetbrains.uast.toUElementOfExpectedTypes
 
 class PathRegexpInjector : MultiHostInjector {
@@ -45,19 +49,51 @@ class PathRegexpInjector : MultiHostInjector {
             .getMetaAnnotations(module, REQUEST_MAPPING)
         val urlPaths = mahRequestMapping.getAnnotationMemberValues(uElement, setOf("value", "path"))
         for (memberValue in urlPaths) {
-            val urlPath = memberValue.evaluateString() ?: continue
-            val namesWithRanges = SpringWebUtil.NameInBracketsRx.findAll(urlPath)
+            val sourcePsi = memberValue.sourcePsi ?: continue
+            memberValue.evaluateString() ?: continue
+            val urlPath = memberValue.asSourceString()
+
+            val ranges = SpringWebUtil.NameInBracketsRx.findAll(urlPath)
                 .mapNotNull { it.groups["name"] }
+                .filter { it.value.contains(":") }
                 .mapTo(mutableListOf()) {
                     val range = if (sourcePsi.language == JavaLanguage.INSTANCE) {
                         TextRange(it.range.first + 1, it.range.last + 2)
                     } else {
                         TextRange(it.range.first, it.range.last + 1)
                     }
-                    val pathParameterName = it.value.substringBefore(":")
-                    (pathParameterName to range)
+                    val delimiterRegexp = it.value.indexOf(":")
+                    val regexpRange = TextRange(range.startOffset + delimiterRegexp + 1, range.endOffset)
+                    if (urlPath.startsWith("\"")) regexpRange.shiftLeft(1) else regexpRange
                 }
-            namesWithRanges.toString()
+            val flattenExpression = memberValue !is UInjectionHost
+            val concatenationsFacade =
+                UStringConcatenationsFacade.createFromUExpression(memberValue, flattenExpression) ?: return
+            val host = concatenationsFacade.psiLanguageInjectionHosts
+                .distinct()
+                .filter { it.isValid && it.isValidHost }
+                .filter { host ->
+                    try {
+                        val range = host.contentRange.shiftLeft(host.textOffset)
+                        range.startOffset >= 0 && range.endOffset >= range.startOffset
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
+                .firstOrNull() ?: return
+
+            ranges.toString()
+            registrar.startInjecting(RegExpLanguage.INSTANCE)
+            ranges.forEach {
+                registrar.addPlace(
+                    null,
+                    null,
+                    host,
+                    it
+                )
+            }
+            registrar.doneInjecting()
+            return
         }
     }
 
