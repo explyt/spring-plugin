@@ -33,7 +33,7 @@ import com.intellij.psi.search.GlobalSearchScope
 /**
  * This class provides a solution to inspection
  */
-class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: String) :
+class AddPathVariableQuickFix(psiMethod: PsiMethod, private val parameterName: String) :
     LocalQuickFixAndIntentionActionOnPsiElement(psiMethod) {
 
     override fun getFamilyName(): String =
@@ -59,7 +59,7 @@ class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: Stri
         val elementFactory = JavaPsiFacade.getInstance(project).elementFactory
 
         val stringType = PsiType.getJavaLangString(psiManager, GlobalSearchScope.projectScope(project))
-        val newArgument = elementFactory.createParameter(methodName, stringType)
+        val newArgument = elementFactory.createParameter(parameterName, stringType)
         psiMethod.parameterList.add(newArgument)
 
         editor?.let { PsiDocumentManager.getInstance(project).doPostponedOperationsAndUnblockDocument(it.document) }
