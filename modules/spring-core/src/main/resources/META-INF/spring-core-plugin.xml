@@ -173,7 +173,7 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
 
         <localInspection language="UAST"
-                         shortName="SpringEventListenerInspection"
+                         shortName="ExplytEventListenerInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.core"
@@ -181,7 +181,7 @@
                          key="explyt.spring.inspection.method.eventListener"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.explyt.spring.core.inspections.SpringEventListenerInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.ExplytEventListenerInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringComponentScanInspection"

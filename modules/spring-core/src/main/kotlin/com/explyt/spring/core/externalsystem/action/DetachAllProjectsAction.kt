@@ -60,6 +60,7 @@ class DetachAllProjectsAction : DumbAwareAction() {
     }
 
     companion object {
+        //test for check call UnlinkProjectAwareTest.unlinkProject
         fun detachProjectNode(projectData: ProjectData, project: Project) {
             try {
                 val method =
