@@ -51,6 +51,11 @@ class AddPathVariableQuickFix(psiMethod: PsiElement, private val parameterName: 
         startElement: PsiElement,
         endElement: PsiElement
     ) {
+        editor.registerActionUsage(
+            QUICK_FIX_REQUEST_MAPPING_ADD_PATH_VARIABLE,
+            PREVIEW_REQUEST_MAPPING_ADD_PATH_VARIABLE
+        )
+
         if (startElement is KtFunction) {
             val parameterText = "@${SpringWebClasses.PATH_VARIABLE} $parameterName: String"
             val parameter = KtPsiFactory(project).createParameter(parameterText)
@@ -59,11 +64,6 @@ class AddPathVariableQuickFix(psiMethod: PsiElement, private val parameterName: 
             return
         }
         val psiMethod = startElement as? PsiMethod ?: return
-
-        editor.registerActionUsage(
-            QUICK_FIX_REQUEST_MAPPING_ADD_PATH_VARIABLE,
-            PREVIEW_REQUEST_MAPPING_ADD_PATH_VARIABLE
-        )
 
         val psiManager = PsiManager.getInstance(project)
         val elementFactory = JavaPsiFacade.getInstance(project).elementFactory
