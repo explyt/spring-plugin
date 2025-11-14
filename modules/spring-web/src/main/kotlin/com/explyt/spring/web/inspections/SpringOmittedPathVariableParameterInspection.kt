@@ -27,7 +27,6 @@ import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.toSourcePsi
 import com.intellij.codeInspection.InspectionManager
-import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.ide.highlighter.JavaFileType
@@ -46,6 +45,7 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
         isOnTheFly: Boolean
     ): Array<ProblemDescriptor>? {
         val psiMethod = method.javaPsi
+        val sourcePsi = method.sourcePsi ?: return null
         if (!psiMethod.isMetaAnnotatedBy(REQUEST_MAPPING)) return null
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
@@ -77,23 +77,15 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
         if (pathVariableInfos.none { it.isMap }) {
             for (urlPathParam in urlPathParams) {
                 for (nameAndRange in urlPathParam.namesWithRanges) {
-                    if (pathVariableInfos.none {
-                            it.name == nameAndRange.name
-                        }
-                    ) {
+                    if (pathVariableInfos.none { it.name == nameAndRange.name }) {
                         val urlPathParamSourcePsi = urlPathParam.element.toSourcePsi() ?: continue
-                        val fixes = mutableListOf<LocalQuickFix>()
-                        if (urlPathParam.element.isInJavaFile()) {
-                            fixes.add(AddPathVariableQuickFix(psiMethod, nameAndRange.name))
-                        }
-
                         problems += manager.createProblemDescriptor(
                             urlPathParamSourcePsi,
                             nameAndRange.range,
                             SpringWebBundle.message("explyt.spring.web.inspection.pathVariable"),
                             ProblemHighlightType.WARNING,
                             isOnTheFly,
-                            *fixes.toTypedArray()
+                            AddPathVariableQuickFix(sourcePsi, nameAndRange.name)
                         )
                     }
                 }
