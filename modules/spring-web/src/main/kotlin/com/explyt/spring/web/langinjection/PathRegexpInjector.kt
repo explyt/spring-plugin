@@ -22,7 +22,6 @@ import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.lang.injection.MultiHostInjector
 import com.intellij.lang.injection.MultiHostRegistrar
-import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.JavaPsiFacade
@@ -49,7 +48,6 @@ class PathRegexpInjector : MultiHostInjector {
             .getMetaAnnotations(module, REQUEST_MAPPING)
         val urlPaths = mahRequestMapping.getAnnotationMemberValues(uElement, setOf("value", "path"))
         for (memberValue in urlPaths) {
-            val sourcePsi = memberValue.sourcePsi ?: continue
             memberValue.evaluateString() ?: continue
             val urlPath = memberValue.asSourceString()
 
@@ -57,15 +55,13 @@ class PathRegexpInjector : MultiHostInjector {
                 .mapNotNull { it.groups["name"] }
                 .filter { it.value.contains(":") }
                 .mapTo(mutableListOf()) {
-                    val range = if (sourcePsi.language == JavaLanguage.INSTANCE) {
-                        TextRange(it.range.first + 1, it.range.last + 2)
-                    } else {
-                        TextRange(it.range.first, it.range.last + 1)
-                    }
+                    val range = TextRange(it.range.first + 1, it.range.last + 2)
                     val delimiterRegexp = it.value.indexOf(":")
                     val regexpRange = TextRange(range.startOffset + delimiterRegexp + 1, range.endOffset)
                     if (urlPath.startsWith("\"")) regexpRange.shiftLeft(1) else regexpRange
                 }
+            if (ranges.isEmpty()) continue
+
             val flattenExpression = memberValue !is UInjectionHost
             val concatenationsFacade =
                 UStringConcatenationsFacade.createFromUExpression(memberValue, flattenExpression) ?: return
@@ -84,14 +80,7 @@ class PathRegexpInjector : MultiHostInjector {
 
             ranges.toString()
             registrar.startInjecting(RegExpLanguage.INSTANCE)
-            ranges.forEach {
-                registrar.addPlace(
-                    null,
-                    null,
-                    host,
-                    it
-                )
-            }
+            ranges.forEach { registrar.addPlace(null, null, host, it) }
             registrar.doneInjecting()
             return
         }
