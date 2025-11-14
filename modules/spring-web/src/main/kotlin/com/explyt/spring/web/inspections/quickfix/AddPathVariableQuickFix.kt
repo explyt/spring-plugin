@@ -28,12 +28,15 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
+import org.jetbrains.kotlin.psi.KtFunction
+import org.jetbrains.kotlin.psi.KtPsiFactory
 
 
 /**
  * This class provides a solution to inspection
  */
-class AddPathVariableQuickFix(psiMethod: PsiMethod, private val parameterName: String) :
+class AddPathVariableQuickFix(psiMethod: PsiElement, private val parameterName: String) :
     LocalQuickFixAndIntentionActionOnPsiElement(psiMethod) {
 
     override fun getFamilyName(): String =
@@ -48,6 +51,13 @@ class AddPathVariableQuickFix(psiMethod: PsiMethod, private val parameterName: S
         startElement: PsiElement,
         endElement: PsiElement
     ) {
+        if (startElement is KtFunction) {
+            val parameterText = "@${SpringWebClasses.PATH_VARIABLE} $parameterName: String"
+            val parameter = KtPsiFactory(project).createParameter(parameterText)
+            startElement.valueParameterList?.addParameter(parameter)
+            ShortenReferencesFacility.getInstance().shorten(startElement)
+            return
+        }
         val psiMethod = startElement as? PsiMethod ?: return
 
         editor.registerActionUsage(
