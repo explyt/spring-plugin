@@ -54,6 +54,7 @@ public class AbstractApplicationContextDecorator {
             explytPrintBeans(beanFactory, null);
             throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
         }
+        System.out.println("Explyt Spring Debug attached");
     }
 
     protected void __registerBeanPostProcessors(ConfigurableListableBeanFactory beanFactory) {
@@ -72,16 +73,13 @@ public class AbstractApplicationContextDecorator {
     @AddMethod
     private void setExplytContextForDebug() {
         try {
-            Class<?> aClass = Class.forName("com.explyt.spring.boot.bean.reader.InternalHolderContext");
-            Field contextField = aClass.getDeclaredField("context");
-            contextField.setAccessible(true);
-            contextField.set(null, this);
+            Class<?> internalCtx = Class.forName("com.explyt.spring.boot.bean.reader.InternalHolderContext");
+            Method addContextMethod = internalCtx.getDeclaredMethod("addContext", AbstractApplicationContext.class);
+            addContextMethod.invoke(null, this);
 
-            Class<?> aClassContext = Class.forName("explyt.Explyt");
-            contextField = aClassContext.getDeclaredField("context");
-            contextField.set(null, this);
-
-            System.out.println("Explyt Spring Debug attached");
+            Class<?> explytContext = Class.forName("explyt.Explyt");
+            addContextMethod = explytContext.getDeclaredMethod("addContext", AbstractApplicationContext.class);
+            addContextMethod.invoke(null, this);
         } catch (Exception e) {
             throw new RuntimeException("no context class", e);
         }
