@@ -32,6 +32,7 @@ import com.intellij.debugger.engine.evaluation.EvaluateException
 import com.intellij.debugger.engine.evaluation.EvaluationContext
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl
 import com.intellij.debugger.impl.DebuggerUtilsImpl
+import com.intellij.debugger.ui.impl.watch.NodeManagerImpl
 import com.intellij.debugger.ui.impl.watch.ValueDescriptorImpl
 import com.intellij.debugger.ui.tree.ExtraDebugNodesProvider
 import com.intellij.icons.AllIcons
@@ -49,6 +50,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val INTERNAL_HOLDER_CLASS = "com.explyt.spring.boot.bean.reader.InternalHolderContext"
 
+private const val springContextDataLabel = "Explyt Spring Context Data"
+
 class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
 
     override fun addExtraNodes(evaluationContext: EvaluationContext, children: XValueChildrenList) {
@@ -61,22 +64,70 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         if (!debugProcess.isEvaluationPossible(suspendContext)) return
 
         val explytContextClass = loadClass(debugProcess, evaluationContext, INTERNAL_HOLDER_CLASS) ?: return
-        val springContext = getSpringObjectRef(evaluationContext, explytContextClass, "getContext") ?: return
-        val transactionData = getTransactionManagerData(debugProcess, evaluationContext)
 
-        invalidateProperyCodeVisionHint(project)
+        invalidatePropertyCodeVisionHint(project)
 
+        addContextNode(evaluationContextImpl, nodeManagerImpl, explytContextClass, children, debugProcess)
+        addTransactionNode(debugProcess, evaluationContextImpl, nodeManagerImpl, children)
+
+        syncDebugBeanToolWindow(project, evaluationContext, debugProcess, explytContextClass)
+    }
+
+    private fun addContextNode(
+        evaluationContext: EvaluationContextImpl,
+        nodeManagerImpl: NodeManagerImpl,
+        explytContextClass: ClassType,
+        children: XValueChildrenList,
+        debugProcess: DebugProcessImpl
+    ) {
+        val project = evaluationContext.project
+        val springContexts = invokeClassMethod(evaluationContext, explytContextClass, "getContexts")
+        val contextsSizeRef = springContexts?.let { invokeObjectMethod(evaluationContext, it, "size") }
+        val contextsSize = (contextsSizeRef as? IntegerValue)?.value() ?: 0
+        if (contextsSize > 1) {
+            val debugContextDescriptor = DebugSpringContextDescriptor(project, springContexts!!, "Contexts")
+            val value = JavaValue.create(null, debugContextDescriptor, evaluationContext, nodeManagerImpl, false)
+            children.add(0, object : XNamedValue(springContextDataLabel) {
+                override fun canNavigateToSource(): Boolean = false
+                override fun computePresentation(node: XValueNode, place: XValuePlace) {
+                    node.setPresentation(
+                        SpringIcons.SpringBoot, null, SpringCoreBundle.message("explyt.spring.debugger.root.node"), true
+                    )
+                    node.setFullValueEvaluator(object : JavaValue.JavaFullValueEvaluator(
+                        SpringCoreBundle.message("explyt.spring.debugger.show.dialog"), evaluationContext
+                    ) {
+                        override fun isShowValuePopup() = false
+                        override fun evaluate(callback: XFullValueEvaluationCallback) {
+                            if (callback.isObsolete) return
+                            callback.evaluated("")
+                            val debugSession = debugProcess.xdebugProcess?.session ?: return
+                            val editorsProvider = debugProcess.xdebugProcess?.editorsProvider ?: return
+                            val fromText = XExpressionImpl.fromText("explyt.Explyt.contexts", EvaluationMode.EXPRESSION)
+                            ApplicationManager.getApplication().invokeLater {
+                                XDebuggerEvaluationDialog(debugSession, editorsProvider, fromText, null, true).show()
+                            }
+                        }
+                    })
+                }
+
+                override fun computeChildren(node: XCompositeNode) {
+                    node.addChildren(XValueChildrenList.singleton(value), true)
+                }
+            })
+            return
+        }
+        val springContext = invokeClassMethod(evaluationContext, explytContextClass, "getContext") ?: return
         val debugContextDescriptor = DebugSpringContextDescriptor(project, springContext, "Context")
-        val value = JavaValue.create(null, debugContextDescriptor, evaluationContextImpl, nodeManagerImpl, false)
-        val beanFactoryValue = getSpringObjectRef(evaluationContext, explytContextClass, "getBeanFactory")?.let {
+        val value = JavaValue.create(null, debugContextDescriptor, evaluationContext, nodeManagerImpl, false)
+        val beanFactoryValue = invokeClassMethod(evaluationContext, explytContextClass, "getBeanFactory")?.let {
             val valueDescriptor = DebugSpringContextDescriptor(project, it, "BeanFactory")
-            JavaValue.create(null, valueDescriptor, evaluationContextImpl, nodeManagerImpl, false)
+            JavaValue.create(null, valueDescriptor, evaluationContext, nodeManagerImpl, false)
         }
-        val environmentValue = getSpringObjectRef(evaluationContext, explytContextClass, "getEnvironment")?.let {
+        val environmentValue = invokeClassMethod(evaluationContext, explytContextClass, "getEnvironment")?.let {
             val valueDescriptor = DebugSpringContextDescriptor(project, it, "Environment")
-            JavaValue.create(null, valueDescriptor, evaluationContextImpl, nodeManagerImpl, false)
+            JavaValue.create(null, valueDescriptor, evaluationContext, nodeManagerImpl, false)
         }
-        children.add(0, object : XNamedValue("Explyt Spring Context Data") {
+        children.add(0, object : XNamedValue(springContextDataLabel) {
             override fun canNavigateToSource(): Boolean = false
             override fun computePresentation(node: XValueNode, place: XValuePlace) {
                 node.setPresentation(
@@ -106,10 +157,19 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 node.addChildren(XValueChildrenList.EMPTY, true)
             }
         })
+    }
+
+    private fun addTransactionNode(
+        debugProcess: DebugProcessImpl,
+        evaluationContext: EvaluationContextImpl,
+        nodeManagerImpl: NodeManagerImpl,
+        children: XValueChildrenList
+    ) {
+        val transactionData = getTransactionManagerData(debugProcess, evaluationContext)
         transactionData?.let {
-            val valueTxStatus = getTransactionStatus(debugProcess, evaluationContextImpl)?.let {
-                val descriptor = TransactionStatusDescriptor(project, it)
-                JavaValue.create(null, descriptor, evaluationContextImpl, nodeManagerImpl, false)
+            val valueTxStatus = getTransactionStatus(debugProcess, evaluationContext)?.let {
+                val descriptor = TransactionStatusDescriptor(evaluationContext.project, it)
+                JavaValue.create(null, descriptor, evaluationContext, nodeManagerImpl, false)
             }
 
             children.add(1, object : XNamedValue("Explyt: Active Transaction") {
@@ -125,11 +185,9 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 }
             })
         }
-
-        syncDebugBeanToolWindow(project, evaluationContext, debugProcess, explytContextClass)
     }
 
-    private fun invalidateProperyCodeVisionHint(project: Project) {
+    private fun invalidatePropertyCodeVisionHint(project: Project) {
         ApplicationManager.getApplication().invokeLater {
             project.service<CodeVisionHost>().invalidateProvider(
                 LensInvalidateSignal(null, listOf(PropertyDebugValueCodeVisionProvider.ID))
@@ -143,6 +201,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         debugProcess: DebugProcessImpl,
         explytContextClass: ClassType
     ) {
+        invalidatePropertyCodeVisionHint(project)
         val applicationAddress = debugProcess.connection.applicationAddress?.takeIf { it.isNotEmpty() } ?: return
         if (!isNeedSync(applicationAddress)) return
         val rawBeanData = getRawBeanData(evaluationContext, explytContextClass)?.takeIf { it.isNotEmpty() } ?: return
@@ -170,7 +229,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
         return false
     }
 
-    private fun getSpringObjectRef(
+    private fun invokeClassMethod(
         evaluationContext: EvaluationContextImpl, explytContextClass: ClassType, methodName: String
     ): ObjectReference? {
         return try {
@@ -182,6 +241,24 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                     null,
                     emptyList()
                 ) as? ObjectReference
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun invokeObjectMethod(
+        evaluationContext: EvaluationContextImpl, objectReference: ObjectReference, methodName: String
+    ): Value? {
+        return try {
+            evaluationContext.computeAndKeep {
+                DebuggerUtilsImpl.invokeObjectMethod(
+                    evaluationContext,
+                    objectReference,
+                    methodName,
+                    null,
+                    emptyList()
+                )
             }
         } catch (_: Exception) {
             null

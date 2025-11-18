@@ -35,6 +35,10 @@ public class InternalHolderContext {
         return context;
     }
 
+    public static Map<String, AbstractApplicationContext> getContexts() {
+        return contexts;
+    }
+
     public static ConfigurableEnvironment getEnvironment() {
         return context.getEnvironment();
     }

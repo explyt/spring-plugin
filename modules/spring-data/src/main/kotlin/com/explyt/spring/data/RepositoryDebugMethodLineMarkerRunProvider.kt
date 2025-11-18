@@ -65,7 +65,7 @@ private class EvaluateInDebugAction(val qualifiedName: String, val methodName: S
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val className = "$qualifiedName.class"
-        DebugUtil.evaluate(project, "explyt.Explyt.context.getBean($className).$methodName()")
+        DebugUtil.evaluate(project, "explyt.Explyt.getBean($className).$methodName()")
     }
 
 }
