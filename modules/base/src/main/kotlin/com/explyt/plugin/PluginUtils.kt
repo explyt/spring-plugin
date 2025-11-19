@@ -18,6 +18,7 @@
 package com.explyt.plugin
 
 import com.intellij.ide.plugins.PluginManager
+import com.intellij.lang.Language
 import com.intellij.openapi.extensions.PluginId
 
 
@@ -32,4 +33,14 @@ enum class PluginIds(val pluginId: String) {
     fun findEnabled() = PluginManager.getInstance().findEnabledPlugin(PluginId.getId(pluginId))
 
     fun isEnabled() = findEnabled() != null
+}
+
+enum class PluginSqlLanguage(val langId: String) {
+    SQL("SQL"),
+    JPAQL("JPAQL"),
+    HQL("HQL"),
+    SPRING_QL("SpringDataQL"),
+    ;
+
+    fun isEnabled() = Language.findLanguageByID(langId) != null
 }
