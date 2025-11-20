@@ -173,7 +173,7 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
 
         <localInspection language="UAST"
-                         shortName="SpringEventListenerInspection"
+                         shortName="ExplytEventListenerInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.core"
@@ -181,7 +181,7 @@
                          key="explyt.spring.inspection.method.eventListener"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.explyt.spring.core.inspections.SpringEventListenerInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.ExplytEventListenerInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringComponentScanInspection"
@@ -595,9 +595,9 @@
         <codeInsight.implicitSubclassProvider
                 implementation="com.explyt.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
-        <fileType name="spring.factories"
+        <!--<fileType name="spring.factories"
                   fieldName="INSTANCE"
-                  implementationClass="com.explyt.spring.core.autoconfigure.language.FactoriesFileType"/>
+                  implementationClass="com.explyt.spring.core.autoconfigure.language.FactoriesFileType"/>-->
         <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports"
                   fieldName="INSTANCE"
                   implementationClass="com.explyt.spring.core.autoconfigure.language.AutoConfigurationImportsFileType"/>

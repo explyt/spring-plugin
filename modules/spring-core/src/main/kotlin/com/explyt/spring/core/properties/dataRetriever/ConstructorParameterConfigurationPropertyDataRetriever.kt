@@ -17,7 +17,6 @@
 
 package com.explyt.spring.core.properties.dataRetriever
 
-import ai.grazie.utils.capitalize
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass

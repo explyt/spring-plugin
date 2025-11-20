@@ -47,6 +47,10 @@ class SpringBootOpenProjectProvider : AbstractOpenProjectProvider() {
     override fun linkToExistingProject(projectFile: VirtualFile, project: Project) =
         linkToExistingProject(projectFile, null, null, project)
 
+    override suspend fun linkProject(projectFile: VirtualFile, project: Project) {
+        linkToExistingProject(projectFile, null, null, project)
+    }
+
     fun linkToExistingProject(
         projectFile: VirtualFile, runConfiguration: RunConfiguration?, qualifiedMainClassName: String?, project: Project
     ) {

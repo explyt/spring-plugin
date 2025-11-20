@@ -13,35 +13,19 @@
  * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
  *
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
- *//*
+ */
 
+package com.explyt.spring.core.inspections.kotlin
 
-package com.explyt.spring.core.autoconfigure.inspection
-
-import com.explyt.spring.test.ExplytInspectionJavaTestCase
+import com.explyt.spring.core.inspections.ExplytEventListenerInspection
+import com.explyt.spring.test.ExplytInspectionKotlinTestCase
 import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
-class EnableAutoConfigureSpringFactoryInspectionTest : ExplytInspectionJavaTestCase() {
-    override val libraries: Array<TestLibrary> = arrayOf(
-        TestLibrary.springContext_6_0_7, TestLibrary.springBoot_3_1_1,
-        TestLibrary.springBootAutoConfigure_3_1_1
-    )
+class ExplytEventListenerInspectionTest : ExplytInspectionKotlinTestCase() {
 
-    @TestMetadata("propertyCreateFile")
-    fun testPropertyCreateFile() {
-        doTest(EnableAutoConfigureSpringFactoryInspection())
-    }
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
-    @TestMetadata("propertyMoveToFile")
-    fun testPropertyMoveToFile() {
-        doTest(EnableAutoConfigureSpringFactoryInspection())
-    }
-
-    @TestMetadata("propertyRemove")
-    fun testPropertyRemove() {
-        doTest(EnableAutoConfigureSpringFactoryInspection())
-    }
-
+    @TestMetadata("eventListener")
+    fun testEventListener() = doTest(ExplytEventListenerInspection())
 }
-*/

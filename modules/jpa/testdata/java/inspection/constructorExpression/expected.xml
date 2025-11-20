@@ -2,10 +2,10 @@
 <problems>
 
     <problem>
-        <file>test.jpql</file>
+        <file>test.ejpql</file>
         <line>5</line>
         <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.ejpql"/>
         <problem_class id="JpqlFullyQualifiedConstructor" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
         <description>Can not find class unknown.Entity</description>
         <highlighted_element>unknown.Entity</highlighted_element>
@@ -16,10 +16,10 @@
 
 
     <problem>
-        <file>test.jpql</file>
+        <file>test.ejpql</file>
         <line>7</line>
         <module>light_idea_test_case</module>
-        <entry_point TYPE="file" FQNAME="temp:///src/test.jpql"/>
+        <entry_point TYPE="file" FQNAME="temp:///src/test.ejpql"/>
         <problem_class id="JpqlFullyQualifiedConstructor" severity="WARNING" attribute_key="WARNING_ATTRIBUTES"/>
         <description>Constructor name must be fully qualified</description>
         <highlighted_element>ComOwner</highlighted_element>

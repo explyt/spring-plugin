@@ -15,17 +15,16 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.inspections.kotlin
+package com.explyt.spring.core.inspections.java
 
-import com.explyt.spring.core.inspections.SpringEventListenerInspection
-import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
-class SpringEventListenerInspectionTest : ExplytInspectionKotlinTestCase() {
+class ExplytEventListenerInspectionTest : ExplytInspectionJavaTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     @TestMetadata("eventListener")
-    fun testEventListener() = doTest(SpringEventListenerInspection())
+    fun testEventListener() = doTest(com.explyt.spring.core.inspections.ExplytEventListenerInspection())
 }

@@ -67,8 +67,8 @@ abstract class JpqlExternalReferenceNavigationTest : ExplytJavaLightTestCase() {
 
         val name = getTestName(true)
         var vf = myFixture.copyFileToProject(
-            "$name.jpql",
-            "$name.jpql"
+            "$name.ejpql",
+            "$name.ejpql"
         )
         myFixture.configureFromExistingVirtualFile(vf)
 

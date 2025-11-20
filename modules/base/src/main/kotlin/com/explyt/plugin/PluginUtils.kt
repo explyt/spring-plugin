@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,16 +15,32 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.inspections.java
+package com.explyt.plugin
 
-import com.explyt.spring.test.ExplytInspectionJavaTestCase
-import com.explyt.spring.test.TestLibrary
-import org.jetbrains.kotlin.test.TestMetadata
+import com.intellij.ide.plugins.PluginManager
+import com.intellij.lang.Language
+import com.intellij.openapi.extensions.PluginId
 
-class SpringEventListenerInspectionTest : ExplytInspectionJavaTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
+enum class PluginIds(val pluginId: String) {
+    EXPLYT("com.explyt.test"),
+    HTTP_CLIENT_JB("com.jetbrains.restClient"),
+    SPRING_JB("com.intellij.spring"),
+    SPRING_DEBUGGER_JB("com.intellij.spring.debugger"),
+    QUARKUS_JB("com.intellij.quarkus"),
+    ;
 
-    @TestMetadata("eventListener")
-    fun testEventListener() = doTest(com.explyt.spring.core.inspections.SpringEventListenerInspection())
+    fun findEnabled() = PluginManager.getInstance().findEnabledPlugin(PluginId.getId(pluginId))
+
+    fun isEnabled() = findEnabled() != null
+}
+
+enum class PluginSqlLanguage(val langId: String) {
+    SQL("SQL"),
+    JPAQL("JPAQL"),
+    HQL("HQL"),
+    SPRING_QL("SpringDataQL"),
+    ;
+
+    fun isEnabled() = Language.findLanguageByID(langId) != null
 }
