@@ -17,14 +17,11 @@
 
 package com.explyt.jpa.ql
 
-import com.explyt.plugin.PluginSqlLanguage
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.fileTypes.LanguageFileType
-import com.intellij.openapi.fileTypes.ex.FileTypeIdentifiableByVirtualFile
-import com.intellij.openapi.vfs.VirtualFile
 import javax.swing.Icon
 
-class JpqlFileType private constructor() : LanguageFileType(JpqlLanguage.INSTANCE), FileTypeIdentifiableByVirtualFile {
+class JpqlFileType private constructor() : LanguageFileType(JpqlLanguage.INSTANCE) {
     override fun getName(): String = "JPA QL Explyt"
 
     override fun getDescription(): String = "JPQL file Explyt"
@@ -33,10 +30,10 @@ class JpqlFileType private constructor() : LanguageFileType(JpqlLanguage.INSTANC
 
     override fun getIcon(): Icon = AllIcons.FileTypes.Text
 
-    override fun isMyFileType(file: VirtualFile): Boolean {
+    /*override fun isMyFileType(file: VirtualFile): Boolean {
         return if (PluginSqlLanguage.JPAQL.isEnabled())
             false else file.extension == defaultExtension
-    }
+    }*/
 
 
     companion object {

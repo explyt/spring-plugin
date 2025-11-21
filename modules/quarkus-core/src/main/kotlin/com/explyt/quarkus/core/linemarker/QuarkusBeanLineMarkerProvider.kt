@@ -51,7 +51,7 @@ class QuarkusBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         elements: List<PsiElement?>,
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
-        if (PluginIds.QUARKUS_JB.isEnabled()) return
+        if (PluginIds.CDI_JB.isEnabled()) return
 
         val element = elements.firstOrNull() ?: return
         if (!QuarkusUtil.isQuarkusModule(element)) return

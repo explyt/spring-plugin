@@ -40,7 +40,8 @@
                   name="JPA QL Explyt"
                   implementationClass="com.explyt.jpa.ql.JpqlFileType"
                   fieldName="INSTANCE"
-                  language="JPQL-EXPLYT"/>
+                  language="JPQL-EXPLYT"
+                  extensions="jpql"/>
 
         <lang.parserDefinition
                 language="JPQL-EXPLYT"

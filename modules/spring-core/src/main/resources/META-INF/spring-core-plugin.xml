@@ -594,9 +594,9 @@
         <codeInsight.implicitSubclassProvider
                 implementation="com.explyt.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
-        <!--<fileType name="spring.factories"
+        <fileType name="Spring.factories Explyt"
                   fieldName="INSTANCE"
-                  implementationClass="com.explyt.spring.core.autoconfigure.language.FactoriesFileType"/>-->
+                  implementationClass="com.explyt.spring.core.autoconfigure.language.FactoriesFileType"/>
         <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports"
                   fieldName="INSTANCE"
                   implementationClass="com.explyt.spring.core.autoconfigure.language.AutoConfigurationImportsFileType"/>

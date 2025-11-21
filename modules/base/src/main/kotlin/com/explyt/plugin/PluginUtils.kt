@@ -27,7 +27,8 @@ enum class PluginIds(val pluginId: String) {
     HTTP_CLIENT_JB("com.jetbrains.restClient"),
     SPRING_JB("com.intellij.spring"),
     SPRING_DEBUGGER_JB("com.intellij.spring.debugger"),
-    QUARKUS_JB("com.intellij.quarkus"),
+    CDI_JB("com.intellij.cdi"), //Jakarta EE - DI (QUARKUS SEXPLYT Conflict)
+    SPRING_BOOT_JB("com.intellij.spring.boot"),
     ;
 
     fun findEnabled() = PluginManager.getInstance().findEnabledPlugin(PluginId.getId(pluginId))

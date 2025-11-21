@@ -13,7 +13,7 @@
  * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
  *
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
- *//*
+ */
 
 
 package com.explyt.spring.core.providers.java
@@ -66,4 +66,4 @@ class AutoConfigurationLineMarkerProviderTest : ExplytJavaLightTestCase() {
         TestCase.assertEquals(listOf("MyAutoConfig"), gutterTargetsStrings)
     }
 
-}*/
+}
