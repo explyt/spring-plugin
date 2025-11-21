@@ -79,7 +79,14 @@ fun isDockerEnvCandidate(psiElement: PsiElement): Boolean {
     if (SpringCoreUtil.isConfigurationPropertyFile(psiFile)) return false
     val yamlScalar = psiElement as? YAMLScalar ?: psiElement.parent as? YAMLScalar ?: return false
 
-    val keyElement = yamlScalar.parentOfType<YAMLKeyValue>()?.key ?: return false
-    val text = keyElement.text ?: return false
-    return text.equals("environment", true)
+    val keyValueElement = yamlScalar.parentOfType<YAMLKeyValue>() ?: return false
+    val text = keyValueElement.key?.text ?: return false
+    //docker compose conf - 'environment:'
+    if (text.equals("environment", true)) return true
+    //k8s conf - 'env.name:'
+    if (text.equals("name", true)) {
+        val keyParent = keyValueElement.parentOfType<YAMLKeyValue>()?.key ?: return false
+        return keyParent.text == "env"
+    }
+    return false
 }

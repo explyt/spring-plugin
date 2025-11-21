@@ -49,13 +49,25 @@ class SpringConfigurationPropertiesSearch {
             .flatMap { it.loadProperties(module) }
     }
 
-    fun getAllPropertiesSystemEnvironment(module: Module): List<String> {
+    fun getAllPropertiesSystemEnvironment(module: Module): Collection<String> {
         return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result(
-                getAllProperties(module).map { PropertyUtil.toSystemEnvironmentForm(it.name) },
+                getEnvProperties(module),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
+    }
+
+    private fun getEnvProperties(module: Module): Collection<String> {
+        val propertiesByModule = getAllProperties(module).map { PropertyUtil.toSystemEnvironmentForm(it.name) }
+        val propertiesByApplicationFiles = DefinedConfigurationPropertiesSearch.getInstance(module.project)
+            .getAllDefinedConfigurationProperty()
+            .map { PropertyUtil.toSystemEnvironmentForm(it.key) }
+        val configurationPropertiesByProject = (ConfigurationPropertiesLoader.EP_NAME
+            .findExtension(ProjectConfigurationPropertiesLoader::class.java, module.project)
+            ?.loadAllPropertiesFromProject(module.project) ?: emptyList())
+            .map { PropertyUtil.toSystemEnvironmentForm(it.name) }
+        return (propertiesByModule + propertiesByApplicationFiles + configurationPropertiesByProject).toSet()
     }
 
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {
