@@ -19,6 +19,7 @@ package com.explyt.spring.core.service
 
 import com.explyt.spring.core.JavaCoreClasses
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringProperties
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
@@ -29,6 +30,8 @@ import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.toUElement
 
 class MetaAnnotationsHolder private constructor(
@@ -121,6 +124,43 @@ class MetaAnnotationsHolder private constructor(
         }
 
         return annotationMemberValues.toSet()
+    }
+
+    fun getAnnotationMemberValues(annotation: UAnnotation, targetMethods: Set<String>): Set<UExpression> {
+        val annotationMemberValues = mutableListOf<UExpression>()
+        val annotationsToProceed = mutableListOf(annotation)
+
+        while (annotationMemberValues.isEmpty() && annotationsToProceed.isNotEmpty()) {
+            val currentUAnnotation = annotationsToProceed.removeFirst()
+            val annotationFqn = currentUAnnotation.qualifiedName ?: return setOf()
+            val annotationInfo = annotationByFqn[annotationFqn] ?: continue
+
+            annotationsToProceed.addAll(
+                annotationInfo.annotationType.annotations.mapNotNull { it.toUElement() as? UAnnotation }
+            )
+
+            annotationMemberValues += currentUAnnotation.attributeValues.asSequence()
+                .filter {
+                    isAttributeRelatedWith(
+                        annotationFqn,
+                        it.name ?: SpringProperties.VALUE,
+                        rootFqn,
+                        targetMethods
+                    )
+                }
+                .flatMap { getValues(it.expression) }
+        }
+
+        return annotationMemberValues.toSet()
+    }
+
+    fun getValues(uExpression: UExpression?): List<UExpression> {
+        uExpression ?: return emptyList()
+        return if (uExpression is UCallExpression) {
+            uExpression.valueArguments
+        } else {
+            listOf(uExpression)
+        }
     }
 
     fun getRootClassQualified() = rootFqn

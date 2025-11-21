@@ -85,8 +85,7 @@ private class EvaluateBeanDefinitionAction(val qualifiedClassName: String) :
         val project: Project = e.project ?: return
         val psiClasses = NativeSearchService.getInstance(project).getAllActiveBeans()
         val beanName = psiClasses.firstOrNull { it.psiClass.qualifiedName == qualifiedClassName }?.name
-        val textToEval = "((org.springframework.context.support.GenericApplicationContext) explyt.Explyt.context)" +
-                ".getBeanDefinition(\"${beanName}\")"
+        val textToEval = "explyt.Explyt.getBeanDefinition(\"${beanName}\")"
         DebugUtil.evaluate(project, textToEval)
     }
 }
@@ -97,7 +96,7 @@ private class EvaluateBeanAction(val qualifiedClassName: String) : AnAction("Eva
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
-        val textToEval = "explyt.Explyt.context.getBean(${qualifiedClassName}.class)"
+        val textToEval = "explyt.Explyt.getBean(${qualifiedClassName}.class)"
         DebugUtil.evaluate(project, textToEval)
     }
 }

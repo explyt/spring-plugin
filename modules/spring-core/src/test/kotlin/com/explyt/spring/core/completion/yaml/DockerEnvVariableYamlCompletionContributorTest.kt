@@ -101,6 +101,46 @@ services:
         val lookupElements = myFixture.completeBasic()
         assertTrue(lookupElements.isNullOrEmpty())
     }
+
+    fun testSuccessfulCompletionK8S() {
+        @Language("yml") val ymlContent = """
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    metadata:
+      labels:
+        app: demo-db
+    spec:
+      containers:
+        - image: postgres:18.0
+          name: postgresql
+          env:
+            - name: po<caret>
+""".trimIndent()
+        myFixture.configureByText("docker-compose.yaml", ymlContent)
+
+        val lookupElements = myFixture.completeBasic()
+        assertNotNull(lookupElements)
+        assertTrue(lookupElements.isNotEmpty())
+        assertTrue(lookupElements.map { it.lookupString }.contains("SERVER_PORT"))
+    }
+
+    fun testNoEnvironmentCompletionK8S() {
+        @Language("yml") val ymlContent = """
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    metadata:
+      labels:
+        app: po<caret>     
+""".trimIndent()
+        myFixture.configureByText("docker-compose.yaml", ymlContent)
+
+        val lookupElements = myFixture.completeBasic()
+        assertTrue(lookupElements.isNullOrEmpty())
+    }
 }
 
 
