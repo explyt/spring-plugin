@@ -754,6 +754,13 @@ class SpringSearchService(private val project: Project) {
         return psiBeans + methodsPsiBeans
     }
 
+    fun isBeanCacheable(uClass: UClass?): Boolean {
+        uClass ?: return false
+        return CachedValuesManager.getManager(project).getCachedValue(uClass) {
+            CachedValueProvider.Result(isBean(uClass), uClass)
+        }
+    }
+
     companion object {
         fun getInstance(project: Project): SpringSearchService = project.service()
     }
