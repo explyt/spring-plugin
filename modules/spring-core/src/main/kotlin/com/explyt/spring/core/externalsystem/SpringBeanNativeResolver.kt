@@ -19,6 +19,7 @@ package com.explyt.spring.core.externalsystem
 
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.spring.boot.bean.reader.Constants.SPRING_BOOT_CLASS_NAME
 import com.explyt.spring.boot.bean.reader.SpringBootBeanEnhancerReaderStarter
 import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
 import com.explyt.spring.core.SpringCoreBundle
@@ -34,6 +35,8 @@ import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
+import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -211,7 +214,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val mainClass = ApplicationManager.getApplication()
             .runReadAction(Computable { NativeBootUtils.getMainClass(explytRunConfiguration) })
             ?: throw ExternalSystemException("No main class run configuration found")
-        explytRunConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
+        explytRunConfiguration.envs[SPRING_BOOT_CLASS_NAME] = ApplicationManager.getApplication()
             .runReadAction(Computable { mainClass.qualifiedName })
         explytRunConfiguration.mainClassName = getMainClassName(modules, id, listener)
         explytRunConfiguration.classpathModifications.add(getClasspathExplytModification())
@@ -221,6 +224,8 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.Constants::class.java)
         val javaAgentEscaping = ParametersListUtil.escape("-javaagent:${NativeBootUtils.getAgentPath()}")
         val javaAgentParams = "$javaAgentEscaping -Dpatcher.filter.agent.name=${Path(agentJarPath).name}"
+
+        val mainClassName = getApplicationMainClassName(runConfiguration)
         if (runConfiguration is ApplicationConfiguration) {
             if (runConfiguration.vmParameters == null) {
                 runConfiguration.vmParameters = javaAgentParams
@@ -228,6 +233,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
                 runConfiguration.vmParameters += " $javaAgentParams"
             }
             runConfiguration.envs[com.explyt.spring.boot.bean.reader.Constants.SKIP_INIT_PARAM] = "true"
+            mainClassName?.let { runConfiguration.envs[SPRING_BOOT_CLASS_NAME] = it }
         } else if (runConfiguration is KotlinRunConfiguration) {
             if (runConfiguration.vmParameters == null) {
                 runConfiguration.vmParameters = javaAgentParams
@@ -237,8 +243,15 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             val envs = runConfiguration.envs
             val envMutableMap = HashMap<String, String>(envs)
             envMutableMap[com.explyt.spring.boot.bean.reader.Constants.SKIP_INIT_PARAM] = "true"
+            mainClassName?.let { envMutableMap[SPRING_BOOT_CLASS_NAME] = it }
             runConfiguration.envs = envMutableMap
         }
+    }
+
+    private fun getApplicationMainClassName(runConfiguration: RunConfiguration): String? {
+        if (!SpringToolRunConfigurationsSettingsState.getInstance().useSpringBootClassNameForJavaAgentMode) return null
+        return ApplicationManager.getApplication()
+            .runReadAction(Computable { RunConfigurationUtil.getSpringBootClassName(runConfiguration) })
     }
 
     private fun getRunConfiguration(runConfigurationHolder: RunConfigurationHolder): RunConfiguration {

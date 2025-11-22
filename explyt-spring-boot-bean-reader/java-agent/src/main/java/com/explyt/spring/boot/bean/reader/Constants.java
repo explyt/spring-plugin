@@ -24,4 +24,5 @@ public interface Constants {
     String EXPLYT_AOP_INFO = "ExplytBeanAopInfo:";
     String SPRING_EXPLYT_ERROR_MESSAGE = "I am Explyt Spring";
     String SKIP_INIT_PARAM = "explyt.spring.skip.init"; //skip init. only for get BeanDefinitions
+    String SPRING_BOOT_CLASS_NAME = "explyt.spring.appClassName";
 }

@@ -62,7 +62,7 @@ class ExplytCapturingProcessAdapter(
     }
 
     fun getSpringContextInfo(): SpringContextInfo {
-        latch.await(1, TimeUnit.MINUTES)
+        latch.await(10, TimeUnit.SECONDS)
         return getSpringContextInfo(output.stdoutLines, gson)
     }
 
@@ -89,7 +89,7 @@ class ExplytCapturingProcessAdapter(
                     getAopInfo(jsonString, gson)?.let { aspectInfos.add(it) }
                 }
             }
-            return SpringContextInfo(beanInfos, aspectInfos)
+            return SpringContextInfo(beanInfos.distinctBy { it.beanName }, aspectInfos)
         }
 
         private fun getBeanInfo(it: String, gson: Gson) = try {
