@@ -62,7 +62,7 @@ class ExplytCapturingProcessAdapter(
     }
 
     fun getSpringContextInfo(): SpringContextInfo {
-        latch.await(1, TimeUnit.MINUTES)
+        latch.await(10, TimeUnit.SECONDS)
         return getSpringContextInfo(output.stdoutLines, gson)
     }
 

@@ -17,7 +17,9 @@
 
 package com.explyt.spring.core.runconfiguration
 
+import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.execution.CommonJavaRunConfigurationParameters
 import com.intellij.execution.JavaTestConfigurationBase
 import com.intellij.execution.RunnerAndConfigurationSettings
@@ -28,6 +30,8 @@ import com.intellij.psi.PsiClass
 import org.jetbrains.kotlin.asJava.classes.KtLightClassForFacade
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.uast.UFile
+import org.jetbrains.uast.toUElement
 
 
 object RunConfigurationUtil {
@@ -52,6 +56,23 @@ object RunConfigurationUtil {
 
             else -> emptyList()
         }
+    }
+
+    fun getSpringBootClassName(runConfiguration: RunConfiguration?): String? {
+        val classes = when (runConfiguration) {
+            is KotlinRunConfiguration -> {
+                runConfiguration.findMainClassFile()
+                runConfiguration.findMainClassFile()?.classes?.toList() ?: emptyList()
+            }
+
+            is ApplicationConfiguration -> {
+                val uFile = runConfiguration.mainClass?.containingFile?.toUElement() as? UFile
+                uFile?.classes?.map { it.javaPsi } ?: emptyList()
+            }
+
+            else -> emptyList()
+        }
+        return classes.find { it.isMetaAnnotatedBy(SPRING_BOOT_APPLICATION) }?.qualifiedName
     }
 
     fun getRunClassName(runConfiguration: RunConfiguration?): String? {

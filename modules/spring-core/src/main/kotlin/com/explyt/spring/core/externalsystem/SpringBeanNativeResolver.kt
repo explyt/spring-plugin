@@ -34,6 +34,7 @@ import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
+import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -83,6 +84,8 @@ import kotlin.io.path.Path
 import kotlin.io.path.name
 
 private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.config.ConfigData"
+
+private const val envSpringBootClassName = "explyt.spring.appClassName"
 
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
 
@@ -211,7 +214,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val mainClass = ApplicationManager.getApplication()
             .runReadAction(Computable { NativeBootUtils.getMainClass(explytRunConfiguration) })
             ?: throw ExternalSystemException("No main class run configuration found")
-        explytRunConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
+        explytRunConfiguration.envs[envSpringBootClassName] = ApplicationManager.getApplication()
             .runReadAction(Computable { mainClass.qualifiedName })
         explytRunConfiguration.mainClassName = getMainClassName(modules, id, listener)
         explytRunConfiguration.classpathModifications.add(getClasspathExplytModification())
@@ -221,6 +224,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val agentJarPath = PathUtil.getJarPathForClass(com.explyt.spring.boot.bean.reader.Constants::class.java)
         val javaAgentEscaping = ParametersListUtil.escape("-javaagent:${NativeBootUtils.getAgentPath()}")
         val javaAgentParams = "$javaAgentEscaping -Dpatcher.filter.agent.name=${Path(agentJarPath).name}"
+
+        val mainClassName = ApplicationManager.getApplication()
+            .runReadAction(Computable { RunConfigurationUtil.getSpringBootClassName(runConfiguration) })
         if (runConfiguration is ApplicationConfiguration) {
             if (runConfiguration.vmParameters == null) {
                 runConfiguration.vmParameters = javaAgentParams
@@ -228,6 +234,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
                 runConfiguration.vmParameters += " $javaAgentParams"
             }
             runConfiguration.envs[com.explyt.spring.boot.bean.reader.Constants.SKIP_INIT_PARAM] = "true"
+            mainClassName?.let { runConfiguration.envs[envSpringBootClassName] = it } //todo settings
         } else if (runConfiguration is KotlinRunConfiguration) {
             if (runConfiguration.vmParameters == null) {
                 runConfiguration.vmParameters = javaAgentParams
@@ -237,6 +244,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             val envs = runConfiguration.envs
             val envMutableMap = HashMap<String, String>(envs)
             envMutableMap[com.explyt.spring.boot.bean.reader.Constants.SKIP_INIT_PARAM] = "true"
+            mainClassName?.let { envMutableMap[envSpringBootClassName] = it }
             runConfiguration.envs = envMutableMap
         }
     }
