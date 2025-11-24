@@ -5,6 +5,22 @@
 ## [Unreleased]
 
 ### Spring Core/Boot
+
+- fix: load beans by -javaagent on [Windows](https://github.com/explyt/spring-plugin/issues/125)
+- feat: multi context [support](https://github.com/explyt/spring-plugin/issues/116)
+
+### Docker
+
+- fix: improve 'env' variables [completions](https://github.com/explyt/spring-plugin/issues/119)
+- feat: support 'env' completions in k8s.yml files
+
+### Spring Web
+
+- fix: [improve](https://github.com/explyt/spring-plugin/issues/115) @PathVariable support. Regexp & QuickFixes
+
+## [252.28.37] - 2025-11-05
+
+### Spring Core/Boot
 - fix: configuration properties field should not be autowired
 
 ### Spring Initialzr
@@ -23,7 +39,7 @@
 - chore: Update plugin name to Spring Explyt
 - fix: Remove internal API usages and access to FUS 
 
-## [252.27.26] - 2025-10-02
+## 252.27.26 - 2025-10-02
 
 ### Spring Core/Boot
 - fix: log pattern error & additional bean search

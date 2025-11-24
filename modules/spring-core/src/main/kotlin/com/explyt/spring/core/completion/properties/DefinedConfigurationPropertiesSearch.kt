@@ -64,6 +64,21 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
         }
     }
 
+    fun getAllDefinedConfigurationProperty(): List<DefinedConfigurationProperty> {
+        return searchPropertyFiles().asSequence()
+            .mapNotNull { mapToFilePropertySource(it) }
+            .flatMap { it.properties }
+            .toList()
+    }
+
+    private fun mapToFilePropertySource(it: PsiFile): FilePropertySource? {
+        return when (it) {
+            is PropertiesFile -> PropertiesPropertySource(it)
+            is YAMLFile -> YamlPropertySource(it)
+            else -> null
+        }
+    }
+
     fun findProperties(module: Module, key: String): List<DefinedConfigurationProperty> {
         return getAllProperties(module).filter { it.key == key }
     }

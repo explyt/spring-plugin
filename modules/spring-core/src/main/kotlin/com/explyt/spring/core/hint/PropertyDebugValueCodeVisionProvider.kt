@@ -155,7 +155,7 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
         runtimeValueMap: MutableMap<String, String>
     ) {
         currentSession.debugProcess.evaluator?.evaluate(
-            "explyt.Explyt.getEnvironment().getProperty(\"$propertyName\")",
+            "explyt.Explyt.getProperty(\"$propertyName\")",
             object : XDebuggerEvaluator.XEvaluationCallback {
                 override fun evaluated(result: XValue) {
                     countDownLatch.countDown()

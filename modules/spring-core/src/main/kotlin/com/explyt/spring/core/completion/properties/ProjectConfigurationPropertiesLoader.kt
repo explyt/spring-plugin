@@ -84,19 +84,29 @@ class ProjectConfigurationPropertiesLoader(project: Project) :
             val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(module)
 
             for (annotatedElement in annotatedElements) {
-                result.putAll(
-                    loadPropertiesFromConfigurationFileCache(module, annotatedElement)
-                )
+                result.putAll(loadPropertiesFromConfigurationFileCache(annotatedElement))
             }
 
             result
         }
 
+    override fun loadAllPropertiesFromProject(project: Project): Collection<ConfigurationProperty> =
+        runReadNonBlocking {
+            val result = hashMapOf<String, ConfigurationProperty>()
+
+            val annotatedElements = ProjectConfigurationPropertiesUtil.getAnnotatedElements(project)
+
+            for (annotatedElement in annotatedElements) {
+                result.putAll(loadPropertiesFromConfigurationFileCache(annotatedElement))
+            }
+
+            result.values
+        }
+
     private fun loadPropertiesFromConfigurationFileCache(
-        module: Module,
         annotatedElement: PsiModifierListOwner,
     ): Map<String, ConfigurationProperty> {
-        return CachedValuesManager.getManager(module.project).getCachedValue(annotatedElement) {
+        return CachedValuesManager.getManager(annotatedElement.project).getCachedValue(annotatedElement) {
             CachedValueProvider.Result(
                 loadPropertiesFromConfigurationFile(annotatedElement), annotatedElement
             )

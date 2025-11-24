@@ -41,6 +41,8 @@ interface ConfigurationPropertiesLoader {
 
     fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint?
 
+    fun loadAllPropertiesFromProject(project: Project): Collection<ConfigurationProperty> = emptyList()
+
     companion object {
         val EP_NAME = ProjectExtensionPointName<ConfigurationPropertiesLoader>(
             "com.explyt.spring.core.configurationPropertiesLoader"

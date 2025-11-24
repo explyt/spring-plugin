@@ -28,12 +28,15 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
+import org.jetbrains.kotlin.psi.KtFunction
+import org.jetbrains.kotlin.psi.KtPsiFactory
 
 
 /**
  * This class provides a solution to inspection
  */
-class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: String) :
+class AddPathVariableQuickFix(psiMethod: PsiElement, private val parameterName: String) :
     LocalQuickFixAndIntentionActionOnPsiElement(psiMethod) {
 
     override fun getFamilyName(): String =
@@ -48,23 +51,33 @@ class AddPathVariableQuickFix(psiMethod: PsiMethod, private val methodName: Stri
         startElement: PsiElement,
         endElement: PsiElement
     ) {
-        val psiMethod = startElement as? PsiMethod ?: return
-
         editor.registerActionUsage(
             QUICK_FIX_REQUEST_MAPPING_ADD_PATH_VARIABLE,
             PREVIEW_REQUEST_MAPPING_ADD_PATH_VARIABLE
         )
 
+        if (startElement is KtFunction) {
+            val parameterText = "@${SpringWebClasses.PATH_VARIABLE} $parameterName: String"
+            val parameter = KtPsiFactory(project).createParameter(parameterText)
+            startElement.valueParameterList?.addParameter(parameter)
+            ShortenReferencesFacility.getInstance().shorten(startElement)
+            return
+        }
+        val psiMethod = startElement as? PsiMethod ?: return
+
         val psiManager = PsiManager.getInstance(project)
         val elementFactory = JavaPsiFacade.getInstance(project).elementFactory
 
         val stringType = PsiType.getJavaLangString(psiManager, GlobalSearchScope.projectScope(project))
-        val newArgument = elementFactory.createParameter(methodName, stringType)
+        val newArgument = elementFactory.createParameter(parameterName, stringType)
+        psiMethod.parameterList.add(newArgument)
 
-        val action = AddAnnotationModCommandAction(SpringWebClasses.PATH_VARIABLE, newArgument)
+        editor?.let { PsiDocumentManager.getInstance(project).doPostponedOperationsAndUnblockDocument(it.document) }
+
+        val psiParameter = psiMethod.parameterList.parameters.last()
+        val action = AddAnnotationModCommandAction(SpringWebClasses.PATH_VARIABLE, psiParameter)
         action.asIntention().invoke(project, editor, file)
 
-        psiMethod.parameterList.add(newArgument)
     }
 
 }
