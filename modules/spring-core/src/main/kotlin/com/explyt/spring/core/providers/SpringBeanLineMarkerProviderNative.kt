@@ -104,6 +104,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val psiField = uField.javaPsi as? PsiField ?: return
+        if (psiField.containingClass?.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES) == true) return
         if (!isAutowiredFieldExpression(psiField) && !isLombokAnnotatedClassFieldExpression(psiField)) return
 
         val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
@@ -136,6 +137,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val psiElement = method.uastAnchor?.sourcePsi ?: return
+        if (method.javaPsi.containingClass?.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES) == true) return
         if (method.isConstructor || isAutowiredMethodExpression(method.javaPsi)) {
             checkMethodParameters(method, module, result)
             return
