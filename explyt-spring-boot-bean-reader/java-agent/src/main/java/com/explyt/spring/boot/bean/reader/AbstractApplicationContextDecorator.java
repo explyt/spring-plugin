@@ -50,9 +50,12 @@ public class AbstractApplicationContextDecorator {
         setExplytContextForDebug();
 
         String skipInit = getExplytSpringPropertyValue(SKIP_INIT_PARAM);
+        String bootAppName = getExplytSpringPropertyValue(SPRING_BOOT_CLASS_NAME);
         if (!skipInit.isEmpty()) {
             explytPrintBeans(beanFactory, null);
-            throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
+            if (bootAppName.isEmpty() || isBootMainContext(beanFactory, bootAppName)) {
+                throw new RuntimeException(SPRING_EXPLYT_ERROR_MESSAGE);
+            }
         }
         System.out.println("Explyt Spring Debug attached");
     }
@@ -158,6 +161,24 @@ public class AbstractApplicationContextDecorator {
         explytPrintAopData(beanFactory, beanTypeByNameMap, result);
         System.out.println(EXPLYT_BEAN_INFO_END);
         return result;
+    }
+
+    @AddMethod
+    public boolean isBootMainContext(ConfigurableListableBeanFactory beanFactory, String mainClassName) {
+        System.out.println("Spring Boot Main Class Name: " + mainClassName);
+        String[] definitionNames = beanFactory.getBeanDefinitionNames();
+        for (String beanName : definitionNames) {
+            BeanDefinition definition = beanFactory.getBeanDefinition(beanName);
+            String beanClassName = definition.getBeanClassName();
+            if (beanClassName == null) continue;
+            if (definition instanceof AnnotatedBeanDefinition) {
+                AnnotationMetadata metadata = ((AnnotatedBeanDefinition) definition).getMetadata();
+                if (metadata != null && mainClassName.equals(metadata.getClassName())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @AddMethod

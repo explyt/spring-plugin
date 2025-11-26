@@ -59,6 +59,9 @@ class SpringToolRunConfigurationsSettingsState :
     @get:Property(surroundWithTag = true)
     var aiSuggestInstantSecond by property(Instant.MIN.epochSecond)
 
+    @get:Property(surroundWithTag = true)
+    var useSpringBootClassNameForJavaAgentMode by property(true)
+
     override fun getState(): SpringToolRunConfigurationsSettingsState = this
 
     override fun loadState(state: SpringToolRunConfigurationsSettingsState) {

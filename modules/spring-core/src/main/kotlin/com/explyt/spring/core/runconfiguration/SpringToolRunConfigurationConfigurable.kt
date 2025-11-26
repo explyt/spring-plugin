@@ -73,11 +73,11 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     private val isShowFloatingRefreshActionBind = propertyGraph.property(false)
     private val isDebugModeBind = propertyGraph.property(false)
     private val isJavaAgentModeBind = propertyGraph.property(false)
+    private val useClassNameForJavaAgentModeBind = propertyGraph.property(true)
     private val httpCliPathBind = propertyGraph.property("")
     private val sqlLanguageIdModel = CollectionComboBoxModel(getAvailableLanguages())
     private val shellScriptEnabledProperty: AtomicBooleanProperty = AtomicBooleanProperty(shellScriptEnabled())
     private val downloadEnabled: AtomicBooleanProperty = AtomicBooleanProperty(true)
-    private val downloadShow: AtomicBooleanProperty = AtomicBooleanProperty(settingsState.httpCliPath.isNullOrEmpty())
 
     override fun getId(): String = ID
 
@@ -132,6 +132,13 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .resizableColumn()
                 }
 
+                row {
+                    checkBox(message("explyt.spring.settings.javaagent.springboot.label"))
+                        .align(AlignX.FILL)
+                        .bindSelected(useClassNameForJavaAgentModeBind)
+                        .resizableColumn()
+                }
+
                 row(message("explyt.spring.settings.sql.language.id.label")) {
                     comboBox(sqlLanguageIdModel, getLanguageCellRenderer())
                         .resizableColumn()
@@ -171,6 +178,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         isShowFloatingRefreshActionBind.set(settingsState.isShowFloatingRefreshAction)
         isDebugModeBind.set(settingsState.isDebugMode)
         isJavaAgentModeBind.set(settingsState.isJavaAgentMode)
+        useClassNameForJavaAgentModeBind.set(settingsState.useSpringBootClassNameForJavaAgentMode)
         sqlLanguageIdModel.selectedItem = getCurrentLanguageId()
         httpCliPathBind.set(settingsState.httpCliPath ?: "")
     }
@@ -182,6 +190,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         if (settingsState.isShowFloatingRefreshAction != isShowFloatingRefreshActionBind.get()) return true
         if (settingsState.isDebugMode != isDebugModeBind.get()) return true
         if (settingsState.isJavaAgentMode != isJavaAgentModeBind.get()) return true
+        if (settingsState.useSpringBootClassNameForJavaAgentMode != useClassNameForJavaAgentModeBind.get()) return true
         if ((settingsState.sqlLanguageId ?: "") != (sqlLanguageIdModel.selected?.id ?: "")) return true
         if ((settingsState.httpCliPath ?: "") != (httpCliPathBind.get())) return true
         return false
@@ -195,6 +204,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         settingsState.isShowFloatingRefreshAction = isShowFloatingRefreshActionBind.get()
         settingsState.isDebugMode = isDebugModeBind.get()
         settingsState.isJavaAgentMode = isJavaAgentModeBind.get()
+        settingsState.useSpringBootClassNameForJavaAgentMode = useClassNameForJavaAgentModeBind.get()
         settingsState.sqlLanguageId = sqlLanguageIdModel.selected?.id
         settingsState.httpCliPath = httpCliPathBind.get()
 
