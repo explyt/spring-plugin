@@ -80,4 +80,26 @@ explyt.prop:
         )
         myFixture.testHighlighting("application.yaml")
     }
+
+    fun testFileDefinitionPropertiesSubstring() {
+        @Language("java") val configurationProperty = """
+            @org.springframework.context.annotation.Configuration
+            @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt-prop")
+            public class ConfigProperties {               
+                private String test;                           
+                public void setTest(String test) { this.test = test}
+                public String getTest() { return this.test}
+            } 
+        """.trimIndent()
+        myFixture.addClass(configurationProperty)
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.prop:
+    test: some1
+explyt: some2
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
 }
