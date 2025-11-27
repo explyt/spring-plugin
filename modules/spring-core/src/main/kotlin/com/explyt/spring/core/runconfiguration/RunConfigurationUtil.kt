@@ -18,6 +18,7 @@
 package com.explyt.spring.core.runconfiguration
 
 import com.explyt.spring.core.SpringProperties.SPRING_PROFILES_ACTIVE
+import com.explyt.spring.core.externalsystem.RunConfigurationExtractor
 import com.intellij.execution.CommonJavaRunConfigurationParameters
 import com.intellij.execution.JavaTestConfigurationBase
 import com.intellij.execution.RunnerAndConfigurationSettings
@@ -35,8 +36,7 @@ object RunConfigurationUtil {
     fun getRunPsiClass(runConfiguration: RunConfiguration?): List<PsiClass> {
         return when (runConfiguration) {
             is KotlinRunConfiguration -> {
-                runConfiguration.findMainClassFile()
-                runConfiguration.findMainClassFile()?.classes?.toList() ?: emptyList()
+                RunConfigurationExtractor.findKotlinMainClassFile(runConfiguration)?.classes?.toList() ?: emptyList()
             }
 
             is ApplicationConfiguration -> {

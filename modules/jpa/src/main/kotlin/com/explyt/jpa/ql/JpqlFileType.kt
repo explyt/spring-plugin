@@ -22,11 +22,11 @@ import com.intellij.openapi.fileTypes.LanguageFileType
 import javax.swing.Icon
 
 class JpqlFileType private constructor() : LanguageFileType(JpqlLanguage.INSTANCE) {
-    override fun getName(): String = "JPA QL"
+    override fun getName(): String = "JPA QL Explyt"
 
-    override fun getDescription(): String = "JPQL file"
+    override fun getDescription(): String = "JPQL file Explyt"
 
-    override fun getDefaultExtension(): String = "jpql"
+    override fun getDefaultExtension(): String = "ejpql"
 
     override fun getIcon(): Icon = AllIcons.FileTypes.Text
 

@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.runconfiguration
 
+//import org.intellij.plugins.intelliLang.inject.InjectedLanguage
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
 import com.explyt.spring.core.externalsystem.utils.Constants
@@ -27,6 +28,7 @@ import com.explyt.spring.core.util.ZipDownloader
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.ide.plugins.PluginManager
 import com.intellij.lang.Language
+import com.intellij.lang.LanguageUtil
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -50,7 +52,6 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.concurrency.AppExecutorUtil
-import org.intellij.plugins.intelliLang.inject.InjectedLanguage
 import java.nio.file.Path
 import javax.swing.JComponent
 import javax.swing.JList
@@ -209,7 +210,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     }
 
     private fun getAvailableLanguages(): List<Injectable?> {
-        val languages = InjectedLanguage.getAvailableLanguages()
+        val languages = Language.getRegisteredLanguages().filter { LanguageUtil.isInjectableLanguage(it) }
         val list: MutableList<Injectable> = ArrayList()
         for (language in languages) {
             if (skipLanguage(language)) continue

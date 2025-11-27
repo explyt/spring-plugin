@@ -68,8 +68,8 @@ abstract class JpqlExternalReferenceNavigationTest : ExplytKotlinLightTestCase()
 
         val name = getTestName(true)
         val vf = myFixture.copyFileToProject(
-            "$name.jpql",
-            "$name.jpql"
+            "$name.ejpql",
+            "$name.ejpql"
         )
         myFixture.configureFromExistingVirtualFile(vf)
 

@@ -17,15 +17,15 @@
 
 package com.explyt.spring.core.inspections.kotlin
 
-import com.explyt.spring.core.inspections.SpringEventListenerInspection
+import com.explyt.spring.core.inspections.ExplytEventListenerInspection
 import com.explyt.spring.test.ExplytInspectionKotlinTestCase
 import com.explyt.spring.test.TestLibrary
 import org.jetbrains.kotlin.test.TestMetadata
 
-class SpringEventListenerInspectionTest : ExplytInspectionKotlinTestCase() {
+class ExplytEventListenerInspectionTest : ExplytInspectionKotlinTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
     @TestMetadata("eventListener")
-    fun testEventListener() = doTest(SpringEventListenerInspection())
+    fun testEventListener() = doTest(ExplytEventListenerInspection())
 }

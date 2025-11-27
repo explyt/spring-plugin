@@ -34,7 +34,7 @@ abstract class JpaEntityUsageSearchTest : ExplytJavaLightTestCase() {
     }
 
     fun testFindUsageByImplicitName() {
-        myFixture.configureByText("query.jpql", "SELECT e FROM MyEnt<caret>ity e")
+        myFixture.configureByText("query.ejpql", "SELECT e FROM MyEnt<caret>ity e")
         val targetElement = myFixture.elementAtCaret
 
         myFixture.configureByText(
@@ -55,7 +55,7 @@ abstract class JpaEntityUsageSearchTest : ExplytJavaLightTestCase() {
     }
 
     fun testFindUsageByExplicitName() {
-        myFixture.configureByText("query.jpql", "SELECT e FROM Name<caret>Override e")
+        myFixture.configureByText("query.ejpql", "SELECT e FROM Name<caret>Override e")
         val targetElement = myFixture.elementAtCaret
 
         myFixture.configureByText(

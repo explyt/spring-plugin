@@ -17,6 +17,7 @@
 
 package com.explyt.quarkus.core.linemarker
 
+import com.explyt.plugin.PluginIds
 import com.explyt.quarkus.core.QuarkusCoreBundle.message
 import com.explyt.quarkus.core.QuarkusCoreClasses
 import com.explyt.quarkus.core.QuarkusCoreIcons
@@ -45,6 +46,8 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         elements: List<PsiElement?>,
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
+        if (PluginIds.CDI_JB.isEnabled()) return
+
         val element = elements.firstOrNull() ?: return
         if (!QuarkusUtil.isQuarkusProject(element)) return
 
