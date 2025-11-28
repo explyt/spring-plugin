@@ -28,6 +28,10 @@
                 implementation="com.explyt.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebFeignClientLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.MessageBrokerEndpointLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringBootEndpointLoader"/>
 
     </extensions>
 
