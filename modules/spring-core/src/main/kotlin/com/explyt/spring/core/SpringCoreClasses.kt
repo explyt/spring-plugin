@@ -139,6 +139,7 @@ object SpringCoreClasses {
     const val LOAD_BALANCED = "org.springframework.cloud.client.loadbalancer.LoadBalanced"
 
     const val MESSAGE_MAPPING = "org.springframework.messaging.handler.annotation.MessageMapping"
+    const val MESSAGE_MAPPING_EE = "org.eclipse.microprofile.reactive.messaging.Incoming"
 
     const val MOCK_BEAN = "org.springframework.boot.test.mock.mockito.MockBean"
     const val SPY_BEAN = "org.springframework.boot.test.mock.mockito.SpyBean"

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -17,15 +17,6 @@
 
 package com.explyt.spring.web.view.nodes
 
-import com.explyt.spring.web.view.EndpointViewByType
-import com.intellij.ui.treeStructure.CachingSimpleNode
-import com.intellij.ui.treeStructure.SimpleNode
-
-class RootEndpointNode(val list: List<EndpointViewByType>) : CachingSimpleNode(null) {
-
-    override fun getName() = "root node"
-
-    override fun buildChildren(): Array<SimpleNode> {
-        return list.map { EndpointTypeNode(it.type, it.list, this) }.toTypedArray()
-    }
+interface EndpointNavigable {
+    fun navigate()
 }
