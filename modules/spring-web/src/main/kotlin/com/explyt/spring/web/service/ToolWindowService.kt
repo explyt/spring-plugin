@@ -18,6 +18,7 @@
 package com.explyt.spring.web.service
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.web.util.SpringWebUtil.isEeWebProject
 import com.explyt.spring.web.util.SpringWebUtil.isSpringWebProject
 import com.intellij.ide.impl.ProjectUtil
@@ -50,7 +51,9 @@ class ToolWindowService(private val project: Project) {
     }
 
     fun changeToolWindow(toolWindowId: String) {
-        ReadAction.nonBlocking(Callable { isSpringWebProject(project) || isEeWebProject(project)})
+        ReadAction.nonBlocking(Callable {
+            isSpringWebProject(project) || isEeWebProject(project) || SpringCoreUtil.isSpringBootProject(project)
+        })
             .inSmartMode(project)
             .finishOnUiThread(ModalityState.nonModal()) { isVisible ->
                 updateToolWindowVisibility(toolWindowId, isVisible)
