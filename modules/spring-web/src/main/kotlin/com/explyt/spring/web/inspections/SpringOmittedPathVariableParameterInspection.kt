@@ -107,12 +107,14 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
             val urlPath = memberValue.asSourceString()
             val namesWithRanges = SpringWebUtil.NameInBracketsRx.findAll(urlPath)
                 .mapNotNull { it.groups["name"] }
-                .mapTo(mutableListOf()) {
+                .mapNotNull {
+                    if (urlPath.contains("\${" + it.value)) return@mapNotNull null
                     val pathParameterName = it.value.substringBefore(":")
                     val rangeStart = it.range.first
                     val range = TextRange(rangeStart, rangeStart + pathParameterName.length)
                     NameWithRange(pathParameterName, range)
                 }
+                .toList()
             urlPathParams.add(RefInfo(sourcePsi, namesWithRanges))
         }
         return urlPathParams
