@@ -6,8 +6,12 @@
 
 ### Spring Core/Boot
 
-- fix: load beans by -javaagent on [Windows](https://github.com/explyt/spring-plugin/issues/125)
 - feat: multi context [support](https://github.com/explyt/spring-plugin/issues/116)
+- feat: improve Explyt Endpoints Tool Window. Message brokers & Spring Boot roots
+- fix: load beans by -javaagent on [Windows](https://github.com/explyt/spring-plugin/issues/125)
+- fix: Kotlin template string inspection [PathVariable](https://github.com/explyt/spring-plugin/issues/142)
+- fix: k2 mode & kotlin plugin [required](https://github.com/explyt/spring-plugin/issues/137)
+- fix: property redundant inspection and [gutter](https://github.com/explyt/spring-plugin/issues/114)
 
 ### Docker
 
