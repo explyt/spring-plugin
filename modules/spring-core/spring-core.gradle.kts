@@ -30,7 +30,7 @@ java {
 val intellijPlugins = listOf(
     "com.intellij.java",
     "com.intellij.properties",
-    "org.intellij.intelliLang",
+    //"org.intellij.intelliLang",
     "org.jetbrains.plugins.yaml",
     "org.jetbrains.kotlin",
     "org.jetbrains.plugins.terminal",
@@ -79,8 +79,9 @@ dependencies {
     implementation(fileTree("libs") { include("*.jar") })
 
     intellijPlatform {
-        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
-        jetbrainsRuntime()
+        intellijIdea(defaultIdeaVersion) {
+            useInstaller = false
+        }
         bundledPlugins(intellijPlugins)
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)

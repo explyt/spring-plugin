@@ -34,7 +34,7 @@ abstract class JpaEntityAttributeUsageSearchTest : ExplytJavaLightTestCase() {
     }
 
     fun testFindUsage() {
-        myFixture.configureByText("query.jpql", "SELECT e.na<caret>me FROM MyEntity e")
+        myFixture.configureByText("query.ejpql", "SELECT e.na<caret>me FROM MyEntity e")
         val targetElement = myFixture.elementAtCaret
 
         myFixture.configureByText(

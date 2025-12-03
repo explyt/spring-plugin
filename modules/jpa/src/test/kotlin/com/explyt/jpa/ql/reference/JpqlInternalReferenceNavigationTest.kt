@@ -43,8 +43,8 @@ class JpqlInternalReferenceNavigationTest : ExplytJavaLightTestCase() {
     private fun doTest() {
         val name = getTestName(true)
         var vf = myFixture.copyFileToProject(
-            "$name/from.jpql",
-            "from.jpql"
+            "$name/from.ejpql",
+            "from.ejpql"
         )
         myFixture.configureFromExistingVirtualFile(vf)
 
@@ -56,8 +56,8 @@ class JpqlInternalReferenceNavigationTest : ExplytJavaLightTestCase() {
         val resolvedTo = reference.resolve() ?: reference.element
 
         vf = myFixture.copyFileToProject(
-            "$name/to.jpql",
-            "to.jpql"
+            "$name/to.ejpql",
+            "to.ejpql"
         )
         myFixture.configureFromExistingVirtualFile(vf)
 

@@ -15,6 +15,7 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
+
 package com.explyt.spring.core.autoconfigure.inspection
 
 import com.explyt.spring.test.ExplytInspectionJavaTestCase
@@ -41,5 +42,4 @@ class EnableAutoConfigureSpringFactoryInspectionTest : ExplytInspectionJavaTestC
     fun testPropertyRemove() {
         doTest(EnableAutoConfigureSpringFactoryInspection())
     }
-
 }

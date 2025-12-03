@@ -17,7 +17,6 @@
 
 package com.explyt.spring.web.inspections
 
-import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
@@ -37,7 +36,7 @@ import com.intellij.psi.PsiElement
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.evaluateString
 
-class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspectionTool() {
+class SpringOmittedPathVariableParameterInspection : SpringWebBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,

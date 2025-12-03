@@ -17,10 +17,10 @@
 
 package com.explyt.spring.ai.service
 
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.ai.SpringAiBundle
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.intellij.ide.BrowserUtil
-import com.intellij.ide.plugins.PluginManager
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType
@@ -28,7 +28,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
@@ -82,8 +81,7 @@ class AiPluginService(private val project: Project) {
 
     fun checkAiPlugin(project: Project) {
         val settingsState = SpringToolRunConfigurationsSettingsState.getInstance()
-        val instance = PluginManager.getInstance()
-        val enabledPlugin = instance.findEnabledPlugin(PluginId.getId("com.explyt.test"))
+        val enabledPlugin = PluginIds.EXPLYT.findEnabled()
         if (enabledPlugin != null && StringUtil.compareVersionNumbers(enabledPlugin.version, "4.1.0") >= 0) return
         if (Instant.now().epochSecond < settingsState.aiSuggestInstantSecond) return
         disableAiSuggestion(3600 * 24) //disable for next day

@@ -55,8 +55,9 @@ dependencies {
         exclude(group = "com.fasterxml.jackson.core", module = "jackson-core")
     }
     intellijPlatform {
-        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
-        jetbrainsRuntime()
+        intellijIdea(defaultIdeaVersion) {
+            useInstaller = false
+        }
         bundledPlugins(intellijPlugins)
     }
 }

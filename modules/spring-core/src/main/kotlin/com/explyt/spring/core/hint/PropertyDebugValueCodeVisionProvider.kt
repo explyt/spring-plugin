@@ -21,6 +21,7 @@ import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
 import com.explyt.spring.core.util.DebugUtil
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInsight.codeVision.*
 import com.intellij.codeInsight.codeVision.CodeVisionState.Companion.READY_EMPTY
 import com.intellij.codeInsight.codeVision.settings.CodeVisionGroupSettingProvider
@@ -56,13 +57,14 @@ private val PROPERTY_FILE_TYPES = setOf(PropertiesFileType.INSTANCE, YAMLFileTyp
 
 class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
 
-    override fun isAvailableFor(project: Project) = true//SpringCoreUtil.isExplytDebug(project)
+    override fun isAvailableFor(project: Project) = true
 
-    override fun precomputeOnUiThread(editor: Editor) = editor.virtualFile
+    override fun precomputeOnUiThread(editor: Editor) = editor.virtualFile!!
 
     override fun computeCodeVision(editor: Editor, virtualFile: VirtualFile): CodeVisionState {
         val project = editor.project ?: return READY_EMPTY
         if (virtualFile.fileType !in PROPERTY_FILE_TYPES) return READY_EMPTY
+        if (!SpringCoreUtil.isExplytDebug(project)) return READY_EMPTY
         val currentSession = XDebuggerManager.getInstance(project).currentSession ?: return READY_EMPTY
         val xSourcePosition = currentSession.currentStackFrame?.sourcePosition ?: return READY_EMPTY
         val propertiesValueByKey = runReadAction {

@@ -1,7 +1,6 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <depends>com.intellij.modules.lang</depends>
-    <depends>org.intellij.intelliLang</depends>
     <depends>com.intellij.java</depends>
     <depends>com.intellij.properties</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
@@ -173,7 +172,7 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
 
         <localInspection language="UAST"
-                         shortName="SpringEventListenerInspection"
+                         shortName="ExplytEventListenerInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.core"
@@ -181,7 +180,7 @@
                          key="explyt.spring.inspection.method.eventListener"
                          enabledByDefault="true"
                          level="WARNING"
-                         implementationClass="com.explyt.spring.core.inspections.SpringEventListenerInspection"/>
+                         implementationClass="com.explyt.spring.core.inspections.ExplytEventListenerInspection"/>
 
         <localInspection language="UAST"
                          shortName="SpringComponentScanInspection"
@@ -597,7 +596,7 @@
         <codeInsight.implicitSubclassProvider
                 implementation="com.explyt.spring.core.providers.FinalDeclarationImplicitSubclassProvider"/>
 
-        <fileType name="spring.factories"
+        <fileType name="Spring.factories Explyt"
                   fieldName="INSTANCE"
                   implementationClass="com.explyt.spring.core.autoconfigure.language.FactoriesFileType"/>
         <fileType name="org.springframework.boot.autoconfigure.AutoConfiguration.imports"

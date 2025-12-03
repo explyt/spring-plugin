@@ -25,9 +25,11 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
+import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.project.Project
 
 class DetachAllProjectsAction : DumbAwareAction() {
     init {
@@ -52,8 +54,15 @@ class DetachAllProjectsAction : DumbAwareAction() {
         val projectsNode = ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
             .mapNotNull { it.externalProjectStructure }
         for (projectNode in projectsNode) {
+            detachProjectNode(projectNode.data, project)
+        }
+        ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, SYSTEM_ID)
+    }
+
+    companion object {
+        //test for check call UnlinkProjectAwareTest.unlinkProject
+        fun detachProjectNode(projectData: ProjectData, project: Project) {
             try {
-                val projectData = projectNode.data
                 val method =
                     Class.forName("com.intellij.openapi.externalSystem.action.DetachExternalProjectAction")
                         .declaredMethods.first { it.name == "detachProject" }
@@ -62,6 +71,5 @@ class DetachAllProjectsAction : DumbAwareAction() {
             } catch (_: Exception) {
             }
         }
-        ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, SYSTEM_ID)
     }
 }

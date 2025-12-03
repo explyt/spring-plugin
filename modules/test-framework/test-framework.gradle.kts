@@ -53,8 +53,9 @@ dependencies {
     // see: https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase?_gl=1*1fobdb8*_gcl_au*MTkwNDUxNDc4LjE3MTY5MDU0Mzc.*_ga*MTc1Njc0NzE4NS4xNzA4NDE0OTQ5*_ga_9J976DJZ68*MTcyMzcxOTM5Mi45OC4xLjE3MjM3MjIzNjEuNTkuMC4w
     implementation("junit:junit:4.13.2")
     intellijPlatform {
-        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
-        jetbrainsRuntime()
+        intellijIdea(defaultIdeaVersion) {
+            useInstaller = false
+        }
         bundledPlugins(intellijPlugins)
         testFramework(TestFrameworkType.Platform, configurationName = Constants.Configurations.INTELLIJ_PLATFORM_DEPENDENCIES)
         testFramework(TestFrameworkType.Plugin.Java, configurationName = Constants.Configurations.INTELLIJ_PLATFORM_DEPENDENCIES)

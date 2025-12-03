@@ -160,8 +160,9 @@ dependencies {
         }
         bundledPlugins(pluginDependencies.toList())
 
-        create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
-        jetbrainsRuntime()
+        intellijIdea(defaultIdeaVersion) {
+            useInstaller = false
+        }
     }
 }
 

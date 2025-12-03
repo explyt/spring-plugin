@@ -17,6 +17,7 @@
 
 package com.explyt.spring.core.providers
 
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.*
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
@@ -67,10 +68,12 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     ) {
         val module = getModule(elements)
         if (module == null) {
+            if (PluginIds.SPRING_JB.isEnabled()) return
             SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
         } else if (isExternalProjectExist(elements)) {
             SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
         } else {
+            if (PluginIds.SPRING_JB.isEnabled()) return
             super.collectSlowLineMarkers(elements, result)
         }
     }
