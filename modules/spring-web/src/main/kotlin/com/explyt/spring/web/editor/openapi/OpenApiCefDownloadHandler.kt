@@ -37,14 +37,17 @@ class OpenApiCefDownloadHandler : CefDownloadHandlerAdapter() {
         downloadItem: CefDownloadItem?,
         suggestedName: String?,
         callback: CefBeforeDownloadCallback?
-    ) {
-        callback ?: return
+    ): Boolean {
+        callback ?: return false
         if (Registry.`is`("explyt.openapi.download.silent.mode")) {
             callback.Continue("", false)
+            return false
         } else if (SystemInfo.isMac || SystemInfo.isWindows) {
             callback.Continue("", true)
+            return true
         } else {
             callback.Continue("", false)
+            return false
         }
     }
 

@@ -17,7 +17,6 @@
 
 package com.explyt.spring.web.inspections
 
-import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
@@ -28,7 +27,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiTypes
 import org.jetbrains.uast.UMethod
 
-class SpringInitBinderNonVoidInspection : SpringBaseUastLocalInspectionTool() {
+class SpringInitBinderNonVoidInspection : SpringWebBaseUastLocalInspectionTool() {
 
     override fun checkMethod(
         method: UMethod,

@@ -26,8 +26,10 @@ import com.intellij.execution.RunManager
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VfsUtil
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElement
@@ -84,7 +86,7 @@ object RunConfigurationExtractor {
     }
 
     private fun getKotlinUClass(kotlinRunConfiguration: KotlinRunConfiguration): UClass? {
-        val mainClassFile = kotlinRunConfiguration.findMainClassFile() ?: return null
+        val mainClassFile = findKotlinMainClassFile(kotlinRunConfiguration) ?: return null
         val runClassQualifiedName = kotlinRunConfiguration.runClass ?: return null
         val uFile = mainClassFile.toUElement() as? UFile ?: return null
         return uFile.classes
@@ -150,6 +152,12 @@ object RunConfigurationExtractor {
         runConfiguration.alternativeJrePath = configuration.alternativeJrePath
         runConfiguration.classpathModifications = configuration.classpathModifications
         return runConfiguration
+    }
+
+    fun findKotlinMainClassFile(kotlinRunConfiguration: KotlinRunConfiguration): KtFile? {
+        val module = kotlinRunConfiguration.configurationModule?.module ?: return null
+        val mainClassName = kotlinRunConfiguration.mainClassName?.takeIf { !StringUtil.isEmpty(it) } ?: return null
+        return org.jetbrains.kotlin.idea.run.findMainClassFile(module, mainClassName)
     }
 }
 

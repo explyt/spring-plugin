@@ -6,6 +6,19 @@
 
 ### Spring Core/Boot
 
+- feat: improve Explyt Endpoints Tool Window. Message brokers & Spring Boot roots
+- fix: Kotlin template string inspection [PathVariable](https://github.com/explyt/spring-plugin/issues/142)
+- fix: k2 mode & kotlin plugin [required](https://github.com/explyt/spring-plugin/issues/137)
+- fix: property redundant inspection and [gutter](https://github.com/explyt/spring-plugin/issues/114)
+
+### Other
+
+- Support 253
+
+## [252.29.43] - 2025-11-24
+
+### Spring Core/Boot
+
 - fix: load beans by -javaagent on [Windows](https://github.com/explyt/spring-plugin/issues/125)
 - feat: multi context [support](https://github.com/explyt/spring-plugin/issues/116)
 
@@ -18,7 +31,7 @@
 
 - fix: [improve](https://github.com/explyt/spring-plugin/issues/115) @PathVariable support. Regexp & QuickFixes
 
-## [252.28.37] - 2025-11-05
+## 252.28.37 - 2025-11-05
 
 ### Spring Core/Boot
 - fix: configuration properties field should not be autowired

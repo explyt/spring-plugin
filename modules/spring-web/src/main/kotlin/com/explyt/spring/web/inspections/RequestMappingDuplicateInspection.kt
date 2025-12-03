@@ -17,7 +17,6 @@
 
 package com.explyt.spring.web.inspections
 
-import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
@@ -38,7 +37,7 @@ import org.jetbrains.kotlin.build.joinToReadableString
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class RequestMappingDuplicateInspection : SpringBaseUastLocalInspectionTool() {
+class RequestMappingDuplicateInspection : SpringWebBaseUastLocalInspectionTool() {
 
     override fun checkClass(
         aClass: UClass, manager: InspectionManager, isOnTheFly: Boolean

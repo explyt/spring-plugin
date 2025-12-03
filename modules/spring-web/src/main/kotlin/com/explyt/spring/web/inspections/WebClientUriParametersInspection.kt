@@ -18,7 +18,6 @@
 package com.explyt.spring.web.inspections
 
 import com.explyt.base.LibraryClassCache
-import com.explyt.inspection.SpringBaseLocalInspectionTool
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.SpringWebUtil
@@ -35,7 +34,7 @@ import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
 
-class WebClientUriParametersInspection : SpringBaseLocalInspectionTool() {
+class WebClientUriParametersInspection : SpringWebBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
         return super.isAvailableForFile(file) && LibraryClassCache.searchForLibraryClass(

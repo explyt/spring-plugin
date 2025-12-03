@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -15,17 +15,20 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.core.inspections.kotlin
+package com.explyt.spring.web.inspections
 
-import com.explyt.spring.core.inspections.SpringEventListenerInspection
-import com.explyt.spring.test.ExplytInspectionKotlinTestCase
-import com.explyt.spring.test.TestLibrary
-import org.jetbrains.kotlin.test.TestMetadata
+import com.explyt.base.LibraryClassCache
+import com.explyt.inspection.SpringBaseUastLocalInspectionTool
+import com.explyt.plugin.PluginIds
+import com.explyt.spring.web.SpringWebClasses
+import com.intellij.psi.PsiFile
 
-class SpringEventListenerInspectionTest : ExplytInspectionKotlinTestCase() {
+abstract class SpringWebBaseUastLocalInspectionTool : SpringBaseUastLocalInspectionTool() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
-
-    @TestMetadata("eventListener")
-    fun testEventListener() = doTest(SpringEventListenerInspection())
+    override fun isAvailableForFile(file: PsiFile): Boolean {
+        return PluginIds.SPRING_WEB_JB.isNotEnabled() && LibraryClassCache.searchForLibraryClass(
+            file.project,
+            SpringWebClasses.WEB_INITIALIZER
+        ) != null
+    }
 }

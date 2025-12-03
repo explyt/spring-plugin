@@ -15,25 +15,17 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package com.explyt.spring.data.langinjection
+package com.explyt.spring.core.inspections.kotlin
 
-import com.explyt.jpa.langinjection.JpqlInjectorBase
-import com.explyt.plugin.PluginSqlLanguage
-import com.explyt.spring.data.SpringDataClasses
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UElement
-import org.jetbrains.uast.getParentOfType
+import com.explyt.spring.core.inspections.ExplytEventListenerInspection
+import com.explyt.spring.test.ExplytInspectionKotlinTestCase
+import com.explyt.spring.test.TestLibrary
+import org.jetbrains.kotlin.test.TestMetadata
 
-class JpqlSpringDataQueryLanguageInjector : JpqlInjectorBase() {
-    override fun isValidPlace(uElement: UElement): Boolean {
-        if (PluginSqlLanguage.SPRING_QL.isEnabled()) return false
+class ExplytEventListenerInspectionTest : ExplytInspectionKotlinTestCase() {
 
-        val parentAnnotation = uElement.getParentOfType<UAnnotation>()
-            ?.takeIf { it.qualifiedName == SpringDataClasses.QUERY }
-            ?: return false
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
 
-        return parentAnnotation
-            .findAttributeValue("nativeQuery")
-            ?.evaluate() != true
-    }
+    @TestMetadata("eventListener")
+    fun testEventListener() = doTest(ExplytEventListenerInspection())
 }
