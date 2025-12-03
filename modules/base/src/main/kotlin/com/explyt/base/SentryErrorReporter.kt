@@ -58,8 +58,10 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
     override fun getReportActionText(): String = BaseBundle.message("explyt.base.report.action")
 
     override fun getReporterAccount(): String? {
-        return System.getProperties().getProperty("user.name", "anonymous")
+        return getReporterAccountInternal()
     }
+
+    private fun getReporterAccountInternal(): String? = System.getProperties().getProperty("user.name", "anonymous")
 
     override fun submit(events: Array<out IdeaLoggingEvent>, additionalInfo: String?, parentComponent: Component, consumer: Consumer<in SubmittedReportInfo>): Boolean {
         val context = DataManager.getInstance().getDataContext(parentComponent)
@@ -72,7 +74,7 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
                         .withMessage(ideaEvent.throwable.message)
                         .withLevel(Event.Level.ERROR)
                         .withSentryInterface(ExceptionInterface(ideaEvent.throwable))
-                        .withExtra("user.name", reporterAccount)
+                        .withExtra("user.name", getReporterAccountInternal())
                         .withExtra("last_action", IdeaLogger.ourLastActionId)
                         .withExtra("event.stacktrace", ideaEvent.throwableText)
 
