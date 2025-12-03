@@ -39,6 +39,7 @@ import com.intellij.openapi.util.NlsContexts
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.xdebugger.XDebugSession
@@ -143,6 +144,7 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
         return CodeVisionState.Ready(lenses)
     }
 
+    override fun getPlaceholderCollector(editor: Editor, psiFile: PsiFile?): GenericPlaceholderCollector? = null
     override val name = SpringCoreBundle.message("explyt.spring.debugger.property.inlay.hints")
     override val relativeOrderings: List<CodeVisionRelativeOrdering> = emptyList()
     override val defaultAnchor = CodeVisionAnchorKind.Default
