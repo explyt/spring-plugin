@@ -26,11 +26,9 @@ import com.intellij.psi.PsiFile
 abstract class SpringBaseUastLocalInspectionTool : AbstractBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        //spring data is ultimate plugin. it is mean that inspection not available in Paid version,
+        //spring boot is ultimate plugin. it is mean that inspection not available in Paid version,
         // because it already has spring bundle plugin
-        return PluginIds.SPRING_DATA_JB.isNotEnabled() && LibraryClassCache.searchForLibraryClass(
-            file.project,
-            CORE_ENVIRONMENT
-        ) != null
+        return PluginIds.SPRING_BOOT_JB.isNotEnabled()
+                && LibraryClassCache.searchForLibraryClass(file.project, CORE_ENVIRONMENT) != null
     }
 }
