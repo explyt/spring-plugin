@@ -21,10 +21,7 @@ import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.web.util.SpringWebUtil.isEeWebProject
 import com.explyt.spring.web.util.SpringWebUtil.isSpringWebProject
-import com.intellij.ide.impl.ProjectUtil
 import com.intellij.ide.util.PropertiesComponent
-import com.intellij.notification.Notification
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
@@ -71,19 +68,7 @@ class ToolWindowService(private val project: Project) {
     private fun handleToolWindowNotification(toolWindowId: String, shouldShow: Boolean) {
         val notificationExists = getToolWindowNotification(toolWindowId)
         if (!notificationExists && shouldShow) {
-            showToolWindowNotification(toolWindowId)
             setToolWindowNotificationIsShow(toolWindowId)
-        }
-    }
-
-    private fun showToolWindowNotification(toolWindowId: String) {
-        if (toolWindowId == SpringCoreBundle.message("explyt.toolwindow.endpoints.title")) {
-            Notification(
-                "com.explyt.spring.notification",
-                SpringCoreBundle.message("explyt.toolwindow.endpoints.title"),
-                SpringCoreBundle.message("explyt.toolwindow.endpoints.notification.message"),
-                NotificationType.INFORMATION
-            ).notify(ProjectUtil.getActiveProject())
         }
     }
 
