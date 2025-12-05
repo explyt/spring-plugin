@@ -11,6 +11,14 @@
 - fix: k2 mode & kotlin plugin [required](https://github.com/explyt/spring-plugin/issues/137)
 - fix: property redundant inspection and [gutter](https://github.com/explyt/spring-plugin/issues/114)
 
+### Spring Data
+
+- feat: Support navigation Spring Data AOT in Spring Boot 4
+
+### Spring Debugger
+
+- fix: Stable Debug run configuration (#127)
+
 ### Other
 
 - Support 253
