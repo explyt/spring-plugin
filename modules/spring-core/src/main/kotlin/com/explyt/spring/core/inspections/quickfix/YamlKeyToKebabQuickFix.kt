@@ -61,10 +61,10 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
             PREVIEW_YAML_SWITCH_KEY_TO_KEBAB_CASE
         )
 
-        WriteCommandAction.runWriteCommandAction(project, "Replace key", null, {
+        WriteCommandAction.runWriteCommandAction(project, "Replace Key", null, {
             if (editor != null) {
                 var current: YAMLKeyValueImpl? = startElement
-
+                var isRenamed = false
                 while (current != null) {
                     val key = current.key
                     if (key != null) {
@@ -73,16 +73,19 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
                         val end = startOffset + textToUpdate.length
                         val newKey = toKebabCase(textToUpdate)
 
-                        if (key.text == newKey) return@runWriteCommandAction
-                        editor.caretModel.moveToOffset(startOffset)
-                        editor.selectionModel.setSelection(startOffset, end)
-                        EditorModificationUtil.insertStringAtCaret(editor, newKey)
-
-                        val fullName = YAMLUtil.getConfigFullName(current)
-                        renameUsages(current, toKebabCase(fullName))
-                        RenameUtil.renameSameProperty(project, startElement, fullName, toKebabCase(fullName))
+                        if (key.text != newKey) {
+                            isRenamed = true
+                            editor.caretModel.moveToOffset(startOffset)
+                            editor.selectionModel.setSelection(startOffset, end)
+                            EditorModificationUtil.insertStringAtCaret(editor, newKey)
+                        }
                     }
                     current = current.parent?.parent as? YAMLKeyValueImpl
+                }
+                if (isRenamed) {
+                    val fullName = YAMLUtil.getConfigFullName(startElement)
+                    renameUsages(startElement, toKebabCase(fullName))
+                    RenameUtil.renameSameProperty(project, startElement, fullName, toKebabCase(fullName))
                 }
             }
         }, containingFile)

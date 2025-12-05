@@ -271,7 +271,8 @@ object PropertyUtil {
         }
         if (this is YAMLKeyValue) {
             val yamlKey = YAMLUtil.getConfigFullName(this)
-            if (yamlKey.substringAfterLast(DOT) == this.key?.text) {
+            val thisKeyText = this.key?.text ?: return null
+            if (yamlKey.endsWith(thisKeyText)) {
                 return this.key
             }
         }
