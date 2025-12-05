@@ -17,6 +17,7 @@
 
 package com.explyt.spring.data
 
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.data.SpringDataClasses.DATA_COMMON_MAVEN
 import com.explyt.spring.data.util.SpringDataUtil
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
@@ -49,7 +50,7 @@ private const val SEARCH_AOT = "Explyt: Search AOT Implementation"
 class RepositoryAotMethodLineMarkerRunProvider : RunLineMarkerContributor() {
 
     override fun getInfo(element: PsiElement): Info? {
-        //if (PluginIds.SPRING_DATA_JB.isEnabled()) return null
+        if (PluginIds.SPRING_DATA_JB.isEnabled()) return null
         val uMethod = getUParentForIdentifier(element) as? UMethod ?: return null
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return null
         if (!InheritanceUtil.isInheritor(uMethod.javaPsi.containingClass, SpringDataClasses.REPOSITORY)) return null
