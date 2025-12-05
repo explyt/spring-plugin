@@ -12,6 +12,8 @@
                                 order="before javaMemberName"/>
         <runLineMarkerContributor language="UAST"
                                   implementationClass="com.explyt.spring.data.RepositoryDebugMethodLineMarkerRunProvider"/>
+        <runLineMarkerContributor language="UAST"
+                                  implementationClass="com.explyt.spring.data.RepositoryAotMethodLineMarkerRunProvider"/>
 
         <localInspection language="UAST"
                          shortName="SpringDataMethodNameInspection"
