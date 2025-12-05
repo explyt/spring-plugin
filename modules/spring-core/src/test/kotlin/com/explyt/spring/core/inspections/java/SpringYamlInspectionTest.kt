@@ -102,4 +102,78 @@ explyt: some2
         )
         myFixture.testHighlighting("application.yaml")
     }
+
+    fun testComplexKebabCaseProperties() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+foo:
+    <warning descr="Should be kebab-case">barbaz.testProp</warning>: some1    
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    fun testKebabCaseQuickFix() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+fooFoo:
+  bar:
+    baz: 5   
+            """.trimIndent()
+        )
+        val quickFix = myFixture.getAllQuickFixes().firstOrNull()
+        assertNotNull(quickFix)
+        myFixture.launchAction(quickFix!!)
+        myFixture.checkResult(
+            """
+foo-foo:
+  bar:
+    baz: 5 
+        """.trimIndent(), true
+        )
+    }
+
+    fun testKebabCaseQuickFixMiddle() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+foo:
+  barFoo:
+    baz: 5   
+            """.trimIndent()
+        )
+        val quickFix = myFixture.getAllQuickFixes().firstOrNull()
+        assertNotNull(quickFix)
+        myFixture.launchAction(quickFix!!)
+        myFixture.checkResult(
+            """
+foo:
+  bar-foo:
+    baz: 5 
+        """.trimIndent(), true
+        )
+    }
+
+    fun testKebabCaseQuickFixEnd() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+foo:
+  bar:
+    bazFoo: 5   
+            """.trimIndent()
+        )
+        val quickFix = myFixture.getAllQuickFixes().firstOrNull()
+        assertNotNull(quickFix)
+        myFixture.launchAction(quickFix!!)
+        myFixture.checkResult(
+            """
+foo:
+  bar:
+    baz-foo: 5 
+        """.trimIndent(), true
+        )
+    }
 }
