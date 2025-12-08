@@ -13,7 +13,8 @@
  * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
  *
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
- */
+ *//*
+
 
 package com.explyt.spring.core.hint
 
@@ -144,7 +145,6 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
         return CodeVisionState.Ready(lenses)
     }
 
-    override fun getPlaceholderCollector(editor: Editor, psiFile: PsiFile?) = null
     override val name = SpringCoreBundle.message("explyt.spring.debugger.property.inlay.hints")
     override val relativeOrderings: List<CodeVisionRelativeOrdering> = emptyList()
     override val defaultAnchor = CodeVisionAnchorKind.Default
@@ -186,4 +186,4 @@ class PropertyDebugValueCodeVisionGroupSettingProvider() : CodeVisionGroupSettin
     override val groupId: String = PropertyDebugValueCodeVisionProvider.ID
     override val description = "Show runtime Spring property values in Debug mode"
     override val groupName = SpringCoreBundle.message("explyt.spring.debugger.property.inlay.hints")
-}
+}*/

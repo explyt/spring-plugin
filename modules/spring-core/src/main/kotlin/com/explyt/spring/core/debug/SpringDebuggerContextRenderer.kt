@@ -20,10 +20,7 @@ package com.explyt.spring.core.debug
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.externalsystem.action.AttachSpringBootProjectAction
-import com.explyt.spring.core.hint.PropertyDebugValueCodeVisionProvider
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
-import com.intellij.codeInsight.codeVision.CodeVisionHost
-import com.intellij.codeInsight.codeVision.CodeVisionHost.LensInvalidateSignal
 import com.intellij.debugger.DebuggerContext
 import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.debugger.engine.JavaValue
@@ -37,7 +34,6 @@ import com.intellij.debugger.ui.impl.watch.ValueDescriptorImpl
 import com.intellij.debugger.ui.tree.ExtraDebugNodesProvider
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.frame.*
@@ -188,11 +184,11 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
     }
 
     private fun invalidatePropertyCodeVisionHint(project: Project) {
-        ApplicationManager.getApplication().invokeLater {
+        /*ApplicationManager.getApplication().invokeLater {
             project.service<CodeVisionHost>().invalidateProvider(
                 LensInvalidateSignal(null, listOf(PropertyDebugValueCodeVisionProvider.ID))
             )
-        }
+        }*/
     }
 
     private fun syncDebugBeanToolWindow(
