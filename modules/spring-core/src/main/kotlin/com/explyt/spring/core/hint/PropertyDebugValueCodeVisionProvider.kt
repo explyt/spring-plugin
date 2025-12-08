@@ -144,7 +144,7 @@ class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
         return CodeVisionState.Ready(lenses)
     }
 
-    override fun getPlaceholderCollector(editor: Editor, psiFile: PsiFile?): GenericPlaceholderCollector? = null
+    override fun getPlaceholderCollector(editor: Editor, psiFile: PsiFile?) = null
     override val name = SpringCoreBundle.message("explyt.spring.debugger.property.inlay.hints")
     override val relativeOrderings: List<CodeVisionRelativeOrdering> = emptyList()
     override val defaultAnchor = CodeVisionAnchorKind.Default
