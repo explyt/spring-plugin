@@ -18,9 +18,13 @@
 package com.explyt.spring.core.externalsystem.process
 
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
+import com.explyt.spring.core.hint.PropertyDebugValueCodeVisionProvider
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.intellij.codeInsight.codeVision.CodeVisionHost
+import com.intellij.codeInsight.codeVision.CodeVisionHost.LensInvalidateSignal
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.IdeModelsProvider
@@ -44,9 +48,9 @@ class CacheTrackerDataService : AbstractProjectDataService<SpringBeanData, Void>
             ModificationTrackerManager.getInstance(project).invalidateAll()
             PsiManager.getInstance(project).dropPsiCaches()
             DaemonCodeAnalyzer.getInstance(project).restart()
-            /*project.service<CodeVisionHost>().invalidateProvider(
+            project.service<CodeVisionHost>().invalidateProvider(
                 LensInvalidateSignal(null, listOf(PropertyDebugValueCodeVisionProvider.ID))
-            )*/
+            )
         }
     }
 }
