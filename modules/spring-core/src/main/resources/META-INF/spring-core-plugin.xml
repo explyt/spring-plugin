@@ -656,8 +656,8 @@
                 descriptionKey="explyt.editor.hints.annotation_profile"
                 providerId="explyt.profile_annotation"/>
 
-        <!--<codeInsight.codeVisionProvider
-                implementation="com.explyt.spring.core.hint.PropertyDebugValueCodeVisionProvider"/>-->
+        <codeInsight.codeVisionProvider
+                implementation="com.explyt.spring.core.hint.PropertyDebugValueCodeVisionProvider"/>
         <config.codeVisionGroupSettingProvider
                 implementation="com.explyt.spring.core.hint.PropertyDebugValueCodeVisionGroupSettingProvider"/>
         <codeInsight.lineMarkerProvider

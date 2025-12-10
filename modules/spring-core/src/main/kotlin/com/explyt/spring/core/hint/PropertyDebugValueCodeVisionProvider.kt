@@ -13,8 +13,7 @@
  * You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
  *
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
- *//*
-
+ */
 
 package com.explyt.spring.core.hint
 
@@ -40,7 +39,6 @@ import com.intellij.openapi.util.NlsContexts
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiRecursiveElementVisitor
 import com.intellij.xdebugger.XDebugSession
@@ -186,4 +184,4 @@ class PropertyDebugValueCodeVisionGroupSettingProvider() : CodeVisionGroupSettin
     override val groupId: String = PropertyDebugValueCodeVisionProvider.ID
     override val description = "Show runtime Spring property values in Debug mode"
     override val groupName = SpringCoreBundle.message("explyt.spring.debugger.property.inlay.hints")
-}*/
+}
