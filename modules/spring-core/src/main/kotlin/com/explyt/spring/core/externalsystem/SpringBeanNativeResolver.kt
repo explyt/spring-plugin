@@ -24,6 +24,7 @@ import com.explyt.spring.boot.bean.reader.SpringBootBeanReaderStarter
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.externalsystem.model.*
+import com.explyt.spring.core.externalsystem.model.SpringBeanType.*
 import com.explyt.spring.core.externalsystem.process.AspectInfo
 import com.explyt.spring.core.externalsystem.process.BeanInfo
 import com.explyt.spring.core.externalsystem.process.ExplytCapturingProcessAdapter
@@ -383,6 +384,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         settings: NativeExecutionSettings,
         listener: ExternalSystemTaskNotificationListener
     ): SpringBeanData? {
+        settings.aspectExist = ApplicationManager.getApplication().runReadAction(Computable {
+            LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.ASPECT) != null
+        })
         return ApplicationManager.getApplication()
             .runReadAction(Computable { toSpringBeanData(bean, id, settings, listener) })
     }
@@ -401,14 +405,22 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
 
         val springBeanData = springBeanData(bean, psiClassLocation, fileIndex, getBeanType(psiClassLocation, bean))
+        val beanType = springBeanData.type
         if (settings.messageMappingExist && springBeanData.projectBean
-            && (springBeanData.type == SpringBeanType.SERVICE || springBeanData.type == SpringBeanType.COMPONENT)
+            && (beanType == SERVICE || beanType == COMPONENT)
         ) {
             val isMessageMapping = psiClassLocation.methods.asSequence()
                 .filter { it.isPublic }
                 .any { it.isMetaAnnotatedBy(SpringCoreClasses.MESSAGE_MAPPING) }
             if (isMessageMapping) {
-                return springBeanData(bean, psiClassLocation, fileIndex, SpringBeanType.MESSAGE_MAPPING)
+                return springBeanData(bean, psiClassLocation, fileIndex, MESSAGE_MAPPING)
+            }
+        }
+        if (settings.aspectExist && springBeanData.projectBean
+            && (beanType == SERVICE || beanType == COMPONENT || beanType == CONFIGURATION)
+        ) {
+            if (psiClassLocation.isMetaAnnotatedBy(SpringCoreClasses.ASPECT)) {
+                return springBeanData(bean, psiClassLocation, fileIndex, ASPECT)
             }
         }
         return springBeanData
@@ -485,28 +497,28 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
     private fun getBeanType(psiClass: PsiClass, bean: BeanInfo): SpringBeanType {
         return if (bean.methodName != null) {
-            SpringBeanType.METHOD
+            METHOD
         } else if (isMetaAnnotated(psiClass, SpringCoreClasses.SPRING_BOOT_APPLICATION)) {
-            SpringBeanType.APPLICATION
+            APPLICATION
         } else if (isMetaAnnotated(psiClass, SpringCoreClasses.CONTROLLER)) {
-            SpringBeanType.CONTROLLER
+            CONTROLLER
         } else if (isAnnotated(psiClass, SpringCoreClasses.SERVICE)) {
-            SpringBeanType.SERVICE
+            SERVICE
         } else if (isAnnotated(psiClass, SpringCoreClasses.COMPONENT)) {
-            SpringBeanType.COMPONENT
+            COMPONENT
         } else if (isAnnotated(psiClass, SpringCoreClasses.BOOT_AUTO_CONFIGURATION)) {
-            SpringBeanType.AUTO_CONFIGURATION
+            AUTO_CONFIGURATION
         } else if (isAnnotated(psiClass, SpringCoreClasses.CONFIGURATION_PROPERTIES)) {
-            SpringBeanType.CONFIGURATION_PROPERTIES
+            CONFIGURATION_PROPERTIES
         } else if (isAnnotated(psiClass, SpringCoreClasses.CONFIGURATION)) {
-            SpringBeanType.CONFIGURATION
+            CONFIGURATION
         } else if (isAnnotated(psiClass, SpringCoreClasses.REPOSITORY)
             || InheritanceUtil.isInheritor(psiClass, "org.springframework.data.repository.Repository")
             || isAnnotated(psiClass, "org.springframework.data.repository.RepositoryDefinition")
         ) {
-            SpringBeanType.REPOSITORY
+            REPOSITORY
         } else {
-            SpringBeanType.OTHER
+            OTHER
         }
     }
 

@@ -17,15 +17,27 @@
 
 package com.explyt.spring.web.view.nodes
 
-import com.explyt.spring.web.view.EndpointViewByType
+import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.web.view.EndpointElementViewData
+import com.intellij.pom.Navigatable
 import com.intellij.ui.treeStructure.CachingSimpleNode
 import com.intellij.ui.treeStructure.SimpleNode
 
-class RootEndpointNode(val list: List<EndpointViewByType>) : CachingSimpleNode(null) {
 
-    override fun getName() = "root node"
+class SpringBootClassNode(
+    private val classOrFileName: String,
+    val viewData: EndpointElementViewData?,
+    rootNode: EndpointTypeNode
+) : CachingSimpleNode(rootNode), EndpointNavigable {
+    init {
+        presentation.setIcon(SpringIcons.SpringBoot)
+    }
 
-    override fun buildChildren(): Array<SimpleNode> {
-        return list.map { EndpointTypeNode(it.type, it.list, this) }.toTypedArray()
+    override fun getName() = classOrFileName
+
+    override fun buildChildren() = emptyArray<SimpleNode>()
+
+    override fun navigate() {
+        (viewData?.psiPointer?.element?.navigationElement as? Navigatable)?.navigate(true)
     }
 }

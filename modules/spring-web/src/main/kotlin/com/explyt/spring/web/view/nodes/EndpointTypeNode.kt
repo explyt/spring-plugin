@@ -23,7 +23,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.ui.treeStructure.CachingSimpleNode
 import com.intellij.ui.treeStructure.SimpleNode
 
-class WebTypeNode(
+class EndpointTypeNode(
     private val type: EndpointType,
     private val elements: List<EndpointViewWithContainerName>,
     rootNode: RootEndpointNode
@@ -36,6 +36,10 @@ class WebTypeNode(
     override fun getName() = type.readable
 
     override fun buildChildren(): Array<SimpleNode> {
-        return elements.map { WebFileNode(type, it.classOrFileName, it.list, this) }.toTypedArray()
+        return if (type == EndpointType.SPRING_BOOT) {
+            elements.map { SpringBootClassNode(it.classOrFileName, it.list.firstOrNull(), this) }
+        } else {
+            elements.map { EndpointFileNode(type, it.classOrFileName, it.list, this) }
+        }.toTypedArray()
     }
 }

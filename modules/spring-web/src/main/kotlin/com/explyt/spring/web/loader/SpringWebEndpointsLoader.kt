@@ -34,6 +34,7 @@ interface SpringWebEndpointsLoader {
     fun getType(): EndpointType
 
     fun getEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
+        if (!getType().isWeb) return emptyList()
         val searchUrl = SpringWebUtil.simplifyUrl(urlPath)
 
         return searchEndpoints(module)
@@ -79,11 +80,13 @@ sealed class EndpointData {
 
 data class EndpointFileData(val psiFile: PsiFile, val endpoints: List<EndpointData>)
 
-enum class EndpointType(val readable: String) {
-    SPRING_MVC("Spring MVC"),
-    SPRING_HTTP_EXCHANGE("HttpExchange"),
-    SPRING_JAX_RS("JAX-RS"),
-    SPRING_WEBFLUX("WebFlux"),
-    OPENAPI("OpenAPI"),
-    SPRING_OPEN_FEIGN("OpenFeign")
+enum class EndpointType(val readable: String, val isWeb: Boolean) {
+    SPRING_BOOT("Spring Boot", false),
+    SPRING_MVC("Spring MVC", true),
+    SPRING_HTTP_EXCHANGE("HttpExchange", true),
+    SPRING_JAX_RS("JAX-RS", true),
+    SPRING_WEBFLUX("WebFlux", true),
+    OPENAPI("OpenAPI", false),
+    SPRING_OPEN_FEIGN("OpenFeign", true),
+    MESSAGE_BROKER("Message Broker", false),
 }
