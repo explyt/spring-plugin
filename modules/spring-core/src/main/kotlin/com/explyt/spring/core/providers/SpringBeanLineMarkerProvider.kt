@@ -120,6 +120,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
             result.add(builder.createLineMarkerInfo(element))
         }
+        //todo to separate lineMarkerProvider
         if (processor.isAutoConfigurationClass()) {
             val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringFactories)
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)

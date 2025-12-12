@@ -794,6 +794,13 @@
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
 
+        <action id="Explyt.Properties2YamlAction" class="com.explyt.spring.core.action.Properties2YamlAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="Explyt.Yaml2PropertiesAction" class="com.explyt.spring.core.action.Yaml2PropertiesAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
         <group id="Explyt.SpringBootProjectRefreshActionGroup">
             <action id="Explyt.SpringBootProjectRefreshAction"
                     class="com.explyt.spring.core.externalsystem.action.SpringBootFloatingProjectRefreshAction">
