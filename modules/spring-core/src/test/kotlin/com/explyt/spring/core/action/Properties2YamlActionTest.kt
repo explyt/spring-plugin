@@ -51,19 +51,20 @@ spring.aop.custom=sample
     @Test
     fun testArrayProp2Yaml() {
         @Language("Properties") val propString = """
-roles_and_permissions.1.role=admin
-roles_and_permissions.1.permissions.1=read
-roles_and_permissions.1.permissions.2=write
-roles_and_permissions.1.permissions.3=delete
-roles_and_permissions.2.role=user
-roles_and_permissions.2.permissions.1=read
-roles_and_permissions.2.permissions.2=write
+roles_and_permissions[0].role=admin
+roles_and_permissions[0].permissions[0]=read
+roles_and_permissions[0].permissions[1]=write
+roles_and_permissions[0].permissions[2]=delete
+roles_and_permissions[1].role=user
+roles_and_permissions[1].permissions[0]=read
+roles_and_permissions[1].permissions[1]=write
         """.trimIndent()
         testProp2Yaml(propString)
     }
 
     private fun testYml2Prop(content: String) {
         val yamlMap = Yaml2PropertiesAction.readYaml(null, content)
+        Assert.assertFalse(yamlMap.isEmpty())
         val propertyString = Yaml2PropertiesAction.mapToProperty(null, yamlMap)
         val propertyMap = Properties2YamlAction.readProperty(null, propertyString)
         Assert.assertEquals(toHashMap(yamlMap), toHashMap(propertyMap))
@@ -71,6 +72,7 @@ roles_and_permissions.2.permissions.2=write
 
     private fun testProp2Yaml(content: String) {
         val propertyMap = Properties2YamlAction.readProperty(null, content)
+        Assert.assertFalse(propertyMap.isEmpty())
         val propertyString = Properties2YamlAction.mapToYaml(null, propertyMap)
         val yamlMap = Yaml2PropertiesAction.readYaml(null, propertyString)
         Assert.assertEquals(toHashMap(yamlMap), toHashMap(propertyMap))
