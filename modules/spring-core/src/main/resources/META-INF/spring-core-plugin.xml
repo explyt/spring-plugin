@@ -578,6 +578,8 @@
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.core.providers.SpringBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.core.providers.SpringAutoConfigurationLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.core.providers.EventListenerLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.core.providers.ConfigurationPropertyLineMarkerProvider"/>

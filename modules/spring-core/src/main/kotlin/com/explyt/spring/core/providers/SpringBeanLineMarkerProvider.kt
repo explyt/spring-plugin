@@ -18,7 +18,6 @@
 package com.explyt.spring.core.providers
 
 import com.explyt.spring.core.*
-import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
@@ -47,7 +46,6 @@ import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.diagnostic.PluginException
 import com.intellij.ide.util.ModuleRendererFactory
 import com.intellij.ide.util.PlatformModuleRendererFactory
-import com.intellij.lang.properties.IProperty
 import com.intellij.navigation.ItemPresentation
 import com.intellij.navigation.NavigationItem
 import com.intellij.openapi.editor.markup.GutterIconRenderer
@@ -123,15 +121,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
             result.add(builder.createLineMarkerInfo(element))
         }
-        //todo to separate lineMarkerProvider
-        if (processor.isAutoConfigurationClass()) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringFactories)
-                .setAlignment(GutterIconRenderer.Alignment.LEFT)
-                .setTargets(NotNullLazyValue.lazy { processor.findFactoriesMetadataFiles() })
-                .setTooltipText(SpringCoreBundle.message("explyt.spring.factories.gutter.tooltip"))
-                .setPopupTitle(SpringCoreBundle.message("explyt.spring.factories.gutter.popup.title"))
-            result.add(builder.createLineMarkerInfo(element))
-        }
     }
 
     private fun getLineMarkerElementProcessor(element: PsiElement): LineMarkerElementProcessor? {
@@ -160,7 +149,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private val uParent: UElement,
     ) {
         private val springSearchService = SpringSearchService.getInstance(module.project)
-        private val autoConfigureProperties = NotNullLazyValue.lazy { getAutoconfigureIPropertiesByStringKey() }
 
         var inSpringContextClass: Boolean? = null
 
@@ -273,31 +261,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         private fun findTargetType(): PsiType? {
             return if (uParent is UMethod) uParent.returnType else null
-        }
-
-        private fun getAutoconfigureIPropertiesByStringKey(): List<Pair<String, IProperty>> {
-            return SpringConfigurationPropertiesSearch.getInstance(element.project)
-                .getAllFactoriesMetadataFiles(module)
-                .filter { it.key != null && it.value != null }
-                .map { (it.key ?: "") + (it.value ?: "") to it }
-        }
-
-        fun isAutoConfigurationClass(): Boolean {
-            if (uParent is UClass) {
-                val qualifiedName = uParent.qualifiedName ?: return false
-                return autoConfigureProperties.value.any { it.first.contains(qualifiedName) }
-            }
-            return false
-        }
-
-        fun findFactoriesMetadataFiles(): Collection<PsiElement> {
-            StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_FACTORIES_METADATA_FIND)
-            if (uParent !is UClass) return emptyList()
-            val qualifiedName = uParent.qualifiedName ?: return emptyList()
-            return autoConfigureProperties.value.asSequence()
-                .filter { it.first.contains(qualifiedName) }
-                .map { it.second.psiElement }
-                .toList()
         }
 
         private fun isComponent(uMethod: UMethod): Boolean {
