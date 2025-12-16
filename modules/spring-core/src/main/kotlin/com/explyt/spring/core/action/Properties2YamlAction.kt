@@ -18,6 +18,7 @@
 package com.explyt.spring.core.action
 
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.util.ActionUtil
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -45,6 +46,10 @@ import kotlin.io.path.name
 
 
 class Properties2YamlAction : AnAction(SpringCoreBundle.message("explyt.spring.properties.action.yaml")) {
+    init {
+        templatePresentation.icon = SpringIcons.Property
+    }
+
     override fun update(e: AnActionEvent) {
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
         if (virtualFiles == null || virtualFiles.size > 1) {
@@ -113,6 +118,9 @@ class Properties2YamlAction : AnAction(SpringCoreBundle.message("explyt.spring.p
 
 
 class Yaml2PropertiesAction : AnAction(SpringCoreBundle.message("explyt.spring.properties.action.prop")) {
+    init {
+        templatePresentation.icon = SpringIcons.Property
+    }
     override fun update(e: AnActionEvent) {
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
         if (virtualFiles == null || virtualFiles.size > 1) {
