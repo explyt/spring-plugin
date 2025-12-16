@@ -38,6 +38,7 @@ import org.jetbrains.kotlin.idea.quickfix.AddAnnotationFix.Kind
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.getContainingUClass
@@ -107,6 +108,7 @@ class AddAnnotationValueQuickFix(
             } else {
                 startElement.add(fakeAnnotation.valueArgumentList!!)
             }
+            navigateToValue(startElement.toUElement() as? UAnnotation, parameterName, editor)
             return
         }
 
@@ -115,6 +117,17 @@ class AddAnnotationValueQuickFix(
         val psiAnnotation = startElement as? PsiAnnotation ?: return
         val psiNameValuePair = fakeAnnotation.parameterList.attributes[0]
         psiAnnotation.parameterList.add(psiNameValuePair)
+        navigateToValue(psiAnnotation.toUElement() as? UAnnotation, parameterName, editor)
+    }
+
+    private fun navigateToValue(uAnnotation: UAnnotation?, parameterName: String, editor: Editor?) {
+        if (!ApplicationManager.getApplication().isWriteAccessAllowed) return
+        uAnnotation ?: return
+        val expression = uAnnotation.attributeValues.find { it.name == parameterName }?.expression ?: return
+        val sourcePsi = expression.sourcePsi ?: return
+
+        editor?.caretModel?.moveToOffset(sourcePsi.startOffset + 1)
+        editor?.selectionModel?.selectWordAtCaret(true)
     }
 
 }
