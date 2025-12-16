@@ -22,24 +22,14 @@ import com.explyt.spring.aop.SpringAopBundle
 import com.explyt.spring.aop.SpringAopClasses
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.SpringSearchService
-import com.intellij.codeInsight.intention.AddAnnotationFix
-import com.intellij.codeInsight.intention.impl.invokeAsAction
+import com.explyt.util.QuickFixUtil
 import com.intellij.codeInspection.InspectionManager
-import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
-import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.codeInspection.ProblemHighlightType.WARNING
 import com.intellij.openapi.module.ModuleUtilCore
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.ThrowableComputable
-import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.idea.codeinsight.utils.findExistingEditor
-import org.jetbrains.kotlin.idea.quickfix.AddAnnotationFix.Kind
-import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.psi.KtElement
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.uast.*
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.getContainingUClass
 
 
 class SpringAopAnnotationInspection : SpringBaseUastLocalInspectionTool() {
@@ -61,7 +51,7 @@ class SpringAopAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         if (springBeanAnnotations.isNotEmpty()) return emptyArray()
         val problemDescriptor = manager.createProblemDescriptor(
             sourcePsiAspectAnnotation, SpringAopBundle.message("explyt.spring.inspection.aop.component"),
-            isOnTheFly, addClassAnnotationFix(uClass, SpringCoreClasses.COMPONENT), ProblemHighlightType.WARNING
+            isOnTheFly, QuickFixUtil.addClassAnnotationFix(uClass, SpringCoreClasses.COMPONENT), WARNING
         )
         return arrayOf(problemDescriptor)
     }
@@ -80,40 +70,8 @@ class SpringAopAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         if (springBeanAnnotations.isNotEmpty()) return emptyArray()
         val problemDescriptor = manager.createProblemDescriptor(
             sourcePsiAspectAnnotation, SpringAopBundle.message("explyt.spring.inspection.aop.aspect"),
-            isOnTheFly, addClassAnnotationFix(uClass, SpringAopClasses.ASPECT), ProblemHighlightType.WARNING
+            isOnTheFly, QuickFixUtil.addClassAnnotationFix(uClass, SpringAopClasses.ASPECT), WARNING
         )
         return arrayOf(problemDescriptor)
-    }
-
-    private fun addClassAnnotationFix(uClass: UClass, annotationFqName: String): Array<LocalQuickFix> {
-        if (uClass.lang === KotlinLanguage.INSTANCE) {
-            return arrayOf(AddClassAnnotationKotlinFix(annotationFqName))
-        } else {
-            return arrayOf(AddAnnotationFix(annotationFqName, uClass.javaPsi))
-        }
-    }
-}
-
-class AddClassAnnotationKotlinFix(private val annotationFqName: String) : LocalQuickFix {
-    override fun getName() = SpringAopBundle.message(
-        "explyt.spring.inspection.aop.fix.annotate",
-        "@" + ClassId.topLevel(FqName(annotationFqName)).shortClassName
-    )
-
-    override fun getFamilyName() = name
-    override fun startInWriteAction() = false
-
-    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-
-        val uAnnotation = descriptor.psiElement.toUElement() as? UAnnotation ?: return
-        val ktElement = uAnnotation.getContainingUClass()?.sourcePsi as? KtElement ?: return
-        val editor = ktElement.findExistingEditor() ?: return
-        val ktFile = ktElement.containingFile as? KtFile ?: return
-
-        ApplicationManager.getApplication().runWriteIntentReadAction(ThrowableComputable {
-            org.jetbrains.kotlin.idea.quickfix.AddAnnotationFix(
-                ktElement, ClassId.topLevel(FqName(annotationFqName)), Kind.Self
-            ).asIntention().invokeAsAction(editor, ktFile)
-        })
     }
 }

@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.dataformat.javaprop.JavaPropsMapper
+import com.fasterxml.jackson.dataformat.javaprop.JavaPropsSchema
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
 import com.intellij.lang.properties.PropertiesFileType
@@ -159,7 +160,13 @@ class Yaml2PropertiesAction : AnAction(SpringCoreBundle.message("explyt.spring.p
 
         @TestOnly
         fun mapToProperty(path: Path? = null, yamlMap: LinkedHashMap<String, Any?>): String? {
-            val mapper = JavaPropsMapper().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, false)
+            val mapper = JavaPropsMapper()
+                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, false)
+                .writer(
+                    JavaPropsSchema.emptySchema()
+                        .withWriteIndexUsingMarkers(true)
+                        .withFirstArrayOffset(0)
+                )
             if (path != null) {
                 mapper.writeValue(path.toFile(), yamlMap)
                 return null
