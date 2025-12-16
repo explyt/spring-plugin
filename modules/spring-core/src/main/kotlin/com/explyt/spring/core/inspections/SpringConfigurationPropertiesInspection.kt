@@ -25,6 +25,7 @@ import com.explyt.spring.core.completion.properties.utils.ProjectConfigurationPr
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.util.AddAnnotationValueQuickFix
 import com.intellij.codeInsight.navigation.getPsiElementPopup
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
@@ -81,7 +82,10 @@ class SpringConfigurationPropertiesInspection : SpringBaseUastLocalInspectionToo
         val valueText = extractConfigurationPropertyPrefix(module, javaPsiAnnotation)
         val holder = ProblemsHolder(manager, sourcePsi.containingFile, isOnTheFly)
         if (valueText.isNullOrEmpty()) {
-            holder.registerProblem(sourcePsi, message("explyt.spring.inspection.config.prefix.empty"))
+            holder.registerProblem(
+                sourcePsi, message("explyt.spring.inspection.config.prefix.empty"),
+                AddAnnotationValueQuickFix(sourcePsi, "prefix", "prefix")
+            )
         } else if (isNotKebabCase(valueText)) {
             holder.registerProblem(sourcePsi, message("explyt.spring.inspection.config.prefix.kebab"))
         }
