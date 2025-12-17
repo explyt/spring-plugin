@@ -17,6 +17,7 @@
 
 package com.explyt.base
 
+import com.intellij.diagnostic.LogMessage
 import com.intellij.ide.DataManager
 import com.intellij.idea.IdeaLogger
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -88,14 +89,11 @@ class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter(
                     ideaEvent.message?.let {
                         eventBuilder.withExtra("event.message", it)
                     }
-                    ideaEvent.attachments.forEach {
-                        eventBuilder.withExtra(it.name, it.encodedBytes)
+                    (ideaEvent.data as? LogMessage)?.let {
+                        it.includedAttachments.forEach {
+                            eventBuilder.withExtra(it.name, it.encodedBytes)
+                        }
                     }
-                    ideaEvent.plugin?.let {
-                        eventBuilder.withTag("event.plugin.id", it.pluginId.idString)
-                        eventBuilder.withTag("event.plugin.version", it.version)
-                    }
-
                     sentryClient.sendEvent(eventBuilder)
                 }
                 // by default, Sentry is sending async in a background thread

@@ -239,7 +239,6 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                     explytContextClass,
                     methodName,
                     null,
-                    emptyList()
                 ) as? ObjectReference
             }
         } catch (_: Exception) {
@@ -270,7 +269,7 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
     ): String? {
         return try {
             (DebuggerUtilsImpl.invokeClassMethod(
-                evaluationContext, explytContextClass, "getRawBeanData", null, emptyList()
+                evaluationContext, explytContextClass, "getRawBeanData", null,
             ) as? StringReference)?.value()
         } catch (_: Exception) {
             null
@@ -301,7 +300,6 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 txReferenceType,
                 "isActualTransactionActive",
                 null,
-                emptyList()
             ) as? BooleanValue)?.value() ?: false
             if (!isActive) return null
             val isReadOnly = (DebuggerUtilsImpl.invokeClassMethod(
@@ -309,7 +307,6 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 txReferenceType,
                 "isCurrentTransactionReadOnly",
                 null,
-                emptyList()
             ) as? BooleanValue)?.value() ?: false
 
             val level = (DebuggerUtilsImpl.invokeClassMethod(
@@ -317,7 +314,6 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                 txReferenceType,
                 "getCurrentTransactionIsolationLevel",
                 null,
-                emptyList()
             ) as? ObjectReference)?.let { mapToLevelString(it) } ?: "DEFAULT"
 
             "Isolation=$level, ReadOnly=$isReadOnly"
@@ -353,7 +349,6 @@ class SpringDebuggerContextRenderer : ExtraDebugNodesProvider {
                     txReferenceType,
                     "currentTransactionInfo",
                     null,
-                    emptyList()
                 ) as? ObjectReference
             }
         } catch (_: Exception) {

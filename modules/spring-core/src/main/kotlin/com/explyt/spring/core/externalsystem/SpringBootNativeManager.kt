@@ -28,7 +28,7 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Pair
 import com.intellij.util.Function
-import org.jetbrains.kotlin.idea.base.externalSystem.find
+import org.jetbrains.kotlin.idea.base.externalSystem.findAll
 
 class SpringBootNativeManager :
     ExternalSystemManager<NativeProjectSettings, SettingsListener, NativeSettings, LocalSettings, NativeExecutionSettings> {
@@ -64,7 +64,7 @@ class SpringBootNativeManager :
 
     private fun getBeanSearch(project: Project, projectPath: String): Boolean = ProjectDataManager.getInstance()
         .getExternalProjectData(project, SYSTEM_ID, projectPath)
-        ?.externalProjectStructure?.find(BeanSearch.KEY)?.data?.enabled ?: false
+        ?.externalProjectStructure?.findAll(BeanSearch.KEY)?.firstOrNull()?.data?.enabled ?: false
 
     override fun getProjectResolverClass() = SpringBeanNativeResolver::class.java
 

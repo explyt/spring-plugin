@@ -18,7 +18,7 @@
 package com.explyt.spring.core.color
 
 import com.intellij.icons.AllIcons
-import com.intellij.lang.properties.PropertiesHighlighterImpl
+import com.intellij.lang.properties.PropertiesHighlighter
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.SyntaxHighlighter
 import com.intellij.openapi.options.colors.AttributesDescriptor
@@ -41,7 +41,7 @@ class ExplytPropertyColorSettingsPage : ColorSettingsPage {
     override fun getIcon(): Icon = AllIcons.FileTypes.Properties
 
     override fun getHighlighter(): SyntaxHighlighter {
-        return PropertiesHighlighterImpl()
+        return PropertiesHighlighter()
     }
 
     override fun getDemoText(): String {
