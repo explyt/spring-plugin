@@ -6,13 +6,14 @@
 
 ### Spring Core/Boot
 
-- feat: [Endpoints](https://github.com/explyt/spring-plugin/pull/143#issuecomment-3641799841) for Message Brokers &
-  Spring Boot
-- feat: Spring Aspect nodes to Explyt
-  Spring [Tool Window](https://github.com/explyt/spring-plugin/pull/151#issuecomment-3641786335)
-- fix: property redundant inspection and gutter icon. [Issue](https://github.com/explyt/spring-plugin/issues/114)
-- fix: Kotlin template string inspection PathVariable. [Issue](https://github.com/explyt/spring-plugin/issues/142)
-- fix: Yaml Kebab quick fix. [Issue](https://github.com/explyt/spring-plugin/issues/147)
+- feat: [Endpoints](https://github.com/explyt/spring-plugin/pull/143#issuecomment-3641799841) support for message brokers and Spring Boot (demo video)
+- feat: Added Spring Aspect nodes to the Explyt Spring
+  [Tool Window](https://github.com/explyt/spring-plugin/pull/151#issuecomment-3641786335) (demo video)
+- feat: Properties converter between `.yml` and `.properties`. [#153](https://github.com/explyt/spring-plugin/pull/153)
+- fix: `@ConfigurationProperties` quick-fix improvements. [details](https://github.com/explyt/spring-plugin/pull/153#issuecomment-3664193934) (demo video)
+- fix: Redundant property inspection and gutter icon behavior. [Issue](https://github.com/explyt/spring-plugin/issues/114)
+- fix: Kotlin template string inspection for `@PathVariable`. [Issue](https://github.com/explyt/spring-plugin/issues/142)
+- fix: YAML kebab-case quick fix. [Issue](https://github.com/explyt/spring-plugin/issues/147)
 
 ### Spring Debugger
 
@@ -22,7 +23,7 @@
 ### Spring Data
 
 - feat: Spring Data 4.0 [AOT navigation](https://github.com/explyt/spring-plugin/pull/148#issuecomment-3641770937) from
-  repository method
+  repository methods (demo video).
 
 ## [252.29.43] - 2025-10-02
 
@@ -38,8 +39,7 @@
 
 ### Spring Debugger
 
-- feat: [support](https://storage.yandexcloud.net/explyt-web/videos/spring-wiki/debugger/spring-debug-old.mp4) old
-  version 241/242
+- feat: [Support](https://storage.yandexcloud.net/explyt-web/videos/spring-wiki/debugger/spring-debug-old.mp4) for IntelliJ IDEA versions 241 / 242 (demo video).
 
 ### Spring Data
 
