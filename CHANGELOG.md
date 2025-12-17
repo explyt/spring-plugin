@@ -6,22 +6,26 @@
 
 ### Spring Core/Boot
 
-- feat: improve Explyt Endpoints Tool Window. Message brokers & Spring Boot roots
-- fix: Kotlin template string inspection [PathVariable](https://github.com/explyt/spring-plugin/issues/142)
-- fix: k2 mode & kotlin plugin [required](https://github.com/explyt/spring-plugin/issues/137)
-- fix: property redundant inspection and [gutter](https://github.com/explyt/spring-plugin/issues/114)
+- feat: [Endpoints](https://github.com/explyt/spring-plugin/pull/143#issuecomment-3641799841) for Message Brokers &
+  Spring Boot
+- feat: Spring Aspect nodes to Explyt
+  Spring [Tool Window](https://github.com/explyt/spring-plugin/pull/151#issuecomment-3641786335)
+- feat: Properties converter yml -> prop & prop -> yml. [#153](https://github.com/explyt/spring-plugin/pull/153)
+- fix: ConfigurationProperties ConfigurationProperties
+  improvements [quick fixes](https://github.com/explyt/spring-plugin/pull/153#issuecomment-3664108661)
+- fix: property redundant inspection and gutter icon. [Issue](https://github.com/explyt/spring-plugin/issues/114)
+- fix: Kotlin template string inspection PathVariable. [Issue](https://github.com/explyt/spring-plugin/issues/142)
+- fix: Yaml Kebab quick fix. [Issue](https://github.com/explyt/spring-plugin/issues/147)
 
 ### Spring Data
 
-- feat: Support navigation Spring Data AOT in Spring Boot 4
+- feat: Spring Data 4.0 [AOT navigation](https://github.com/explyt/spring-plugin/pull/148#issuecomment-3641770937) from
+  repository method
 
 ### Spring Debugger
 
-- fix: Stable Debug run configuration (#127)
-
-### Other
-
-- Support 253
+- feat: [support](https://storage.yandexcloud.net/explyt-web/videos/spring-wiki/debugger/spring-debug-old.mp4) old
+  version 241/242
 
 ## [252.29.43] - 2025-11-24
 
