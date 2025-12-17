@@ -12,7 +12,7 @@
   Spring [Tool Window](https://github.com/explyt/spring-plugin/pull/151#issuecomment-3641786335)
 - feat: Properties converter yml -> prop & prop -> yml. [#153](https://github.com/explyt/spring-plugin/pull/153)
 - fix: ConfigurationProperties ConfigurationProperties
-  improvements [quick fixes](https://github.com/explyt/spring-plugin/pull/153#issuecomment-3664108661)
+  improvements [quick fixes](https://github.com/explyt/spring-plugin/pull/153#issuecomment-3664193934)
 - fix: property redundant inspection and gutter icon. [Issue](https://github.com/explyt/spring-plugin/issues/114)
 - fix: Kotlin template string inspection PathVariable. [Issue](https://github.com/explyt/spring-plugin/issues/142)
 - fix: Yaml Kebab quick fix. [Issue](https://github.com/explyt/spring-plugin/issues/147)
