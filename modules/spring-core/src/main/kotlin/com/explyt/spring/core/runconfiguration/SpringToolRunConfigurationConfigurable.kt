@@ -24,14 +24,15 @@ import com.explyt.spring.core.language.profiles.ProfilesLanguage
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.ZipDownloader
-import com.intellij.execution.RunManager
 import com.intellij.ide.impl.ProjectUtil
+import com.intellij.ide.plugins.PluginManager
 import com.intellij.lang.Language
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.observable.properties.AtomicBooleanProperty
 import com.intellij.openapi.observable.properties.GraphProperty
 import com.intellij.openapi.observable.properties.PropertyGraph
@@ -40,7 +41,6 @@ import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.openapi.ui.emptyText
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.injection.Injectable
-import com.intellij.sh.run.ShConfigurationType
 import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.ui.ColoredListCellRenderer
@@ -278,13 +278,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         const val ID = "com.explyt.spring.runConfigurations"
 
         fun shellScriptEnabled(): Boolean {
-            val project = ProjectUtil.getActiveProject() ?: return false
-            return try {
-                RunManager.getInstance(project).getConfigurationTemplate(ShConfigurationType.getInstance())
-                true
-            } catch (_: NoClassDefFoundError) {
-                false
-            }
+            return PluginManager.getInstance().findEnabledPlugin(PluginId.getId("com.jetbrains.sh")) != null
         }
     }
 }

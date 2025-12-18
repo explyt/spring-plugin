@@ -165,6 +165,11 @@ object SpringCoreUtil {
         ) != null
     }
 
+    fun isSpringBootProject(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringCoreClasses.SPRING_BOOT_APPLICATION, module.moduleWithLibrariesScope) != null
+    }
+
     /**
      * Returns whether the given PsiClass (or its inheritors) could possibly be mapped as Spring Bean.
      *

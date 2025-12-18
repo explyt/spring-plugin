@@ -72,6 +72,10 @@ dependencies {
     api(baseProject)
     implementation("com.cronutils:cron-utils:9.2.1")
     implementation("javax.validation:validation-api:2.0.1.Final")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-properties:2.17.2") {
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-databind") // it is already exist in IDEA.jar
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-core")
+    }
     implementation(fileTree("libs") { include("*.jar") })
 
     intellijPlatform {

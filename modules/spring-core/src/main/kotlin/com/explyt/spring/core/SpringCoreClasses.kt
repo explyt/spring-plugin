@@ -139,11 +139,14 @@ object SpringCoreClasses {
     const val LOAD_BALANCED = "org.springframework.cloud.client.loadbalancer.LoadBalanced"
 
     const val MESSAGE_MAPPING = "org.springframework.messaging.handler.annotation.MessageMapping"
+    const val MESSAGE_MAPPING_EE = "org.eclipse.microprofile.reactive.messaging.Incoming"
 
     const val MOCK_BEAN = "org.springframework.boot.test.mock.mockito.MockBean"
     const val SPY_BEAN = "org.springframework.boot.test.mock.mockito.SpyBean"
 
     const val HIBERNATE_CFG_AVAILABLE_SETTING = "org.hibernate.cfg.AvailableSettings"
+
+    const val ASPECT = "org.aspectj.lang.annotation.Aspect"
 
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_PROPERTIES = setOf(PROPERTY_SOURCE, TEST_PROPERTY_SOURCE)
     val ANNOTATIONS_WITH_FILE_REFERENCES_TO_XML = setOf(CONTEXT_CONFIGURATION, IMPORT_RESOURCE)
