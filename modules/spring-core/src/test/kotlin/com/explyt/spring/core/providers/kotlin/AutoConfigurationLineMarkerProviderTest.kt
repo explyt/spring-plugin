@@ -23,11 +23,16 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
 
 
 class AutoConfigurationLineMarkerProviderTest : ExplytKotlinLightTestCase() {
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springBoot_3_1_1, TestLibrary.springBootAutoConfigure_3_1_1
+    )
 
     fun testSpringFactories() {
         myFixture.addFileToProject(

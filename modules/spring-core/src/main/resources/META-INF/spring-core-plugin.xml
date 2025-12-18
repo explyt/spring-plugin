@@ -577,6 +577,8 @@
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.core.providers.SpringBeanLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
+                                        implementationClass="com.explyt.spring.core.providers.SpringAutoConfigurationLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.core.providers.EventListenerLineMarkerProvider"/>
         <codeInsight.lineMarkerProvider language="UAST"
                                         implementationClass="com.explyt.spring.core.providers.ConfigurationPropertyLineMarkerProvider"/>
@@ -791,6 +793,13 @@
         <action id="Explyt.PreDestroyKotlinGenerateAction"
                 class="com.explyt.spring.core.action.PreDestroyKotlinGenerateAction">
             <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+
+        <action id="Explyt.Properties2YamlAction" class="com.explyt.spring.core.action.Properties2YamlAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="Explyt.Yaml2PropertiesAction" class="com.explyt.spring.core.action.Yaml2PropertiesAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
         <group id="Explyt.SpringBootProjectRefreshActionGroup">
