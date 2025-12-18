@@ -17,6 +17,8 @@
 
 package com.explyt.spring.core.debug
 
+import com.explyt.spring.core.externalsystem.utils.Constants
+import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.EXPLYT_AGENT_JAR
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.hint.PropertyDebugValueCodeVisionProvider
@@ -38,6 +40,7 @@ import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
@@ -60,6 +63,7 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
     ) {
         if (runnerSettings !is GenericDebuggerRunnerSettings) return
 
+        unlinkPreviousRemoteSession<T>(configuration)
         val module = getModule(configuration)?.takeIf { isSpringModule(it) } ?: return
         if (javaParameters.vmParametersList.parametersString.contains(EXPLYT_AGENT_JAR)) return
 
@@ -74,6 +78,16 @@ class SpringDebuggerRunConfigurationExtension : RunConfigurationExtension() {
         }
 
         ApplicationManager.getApplication().executeOnPooledThread { addExplytContextLibrary(module) }
+    }
+
+    private fun <T : RunConfigurationBase<*>?> unlinkPreviousRemoteSession(configuration: T & Any) {
+        try {
+            ApplicationManager.getApplication().invokeLater {
+                ExternalSystemApiUtil.getSettings(configuration.project, SYSTEM_ID)
+                    .unlinkExternalProject(Constants.DEBUG_SESSION_NAME)
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun <T : RunConfigurationBase<*>?> invalidatePropertyCodeVision(configuration: T & Any) {

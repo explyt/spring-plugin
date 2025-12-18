@@ -793,6 +793,17 @@
             <add-to-group group-id="GenerateGroup" anchor="last"/>
         </action>
 
+        <action id="Explyt.LoadDebugBeansAction"
+                class="com.explyt.spring.core.debug.LoadBeansDebugAction">
+            <add-to-group group-id="XDebugger.ToolWindow.TopToolbar" anchor="last"/>
+            <add-to-group group-id="XDebugger.ToolWindow.TopToolbar3.Extra" anchor="last"/>
+        </action>
+        <action id="Explyt.EvaluateDialogDebugAction"
+                class="com.explyt.spring.core.debug.EvaluateDialogDebugAction">
+            <add-to-group group-id="XDebugger.ToolWindow.TopToolbar" anchor="last"/>
+            <add-to-group group-id="XDebugger.ToolWindow.TopToolbar3.Extra" anchor="last"/>
+        </action>
+
         <group id="Explyt.SpringBootProjectRefreshActionGroup">
             <action id="Explyt.SpringBootProjectRefreshAction"
                     class="com.explyt.spring.core.externalsystem.action.SpringBootFloatingProjectRefreshAction">
