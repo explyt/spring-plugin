@@ -77,6 +77,8 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         if (contextBean == null && !isComponentCandidate) return
 
         addContextBean(uClass, contextBean == null, result) { libraryBeans }
+
+        if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return
         processMethodsNative(uClass, result) { libraryBeans }
         processFields(uClass, result) { libraryBeans }
     }

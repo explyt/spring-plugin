@@ -36,4 +36,6 @@ object SpringDataClasses {
     const val JDBC_CLIENT_STATEMENT = "org.springframework.jdbc.core.simple.JdbcClient.StatementSpec"
 
     const val DOMAIN_PACKAGE_PREFIX = "org.springframework.data.domain."
+
+    const val DATA_COMMON_MAVEN = "org.springframework.boot:spring-boot-data-commons"
 }

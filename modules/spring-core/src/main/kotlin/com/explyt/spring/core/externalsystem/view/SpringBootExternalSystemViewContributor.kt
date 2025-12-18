@@ -83,6 +83,7 @@ private fun splitBeansByType(beanNodes: List<DataNode<SpringBeanData>>, view: Ex
     val configProperties = mutableListOf<DataNode<SpringBeanData>>()
     val autoConfigs = mutableListOf<DataNode<SpringBeanData>>()
     val messagesBroker = mutableListOf<DataNode<SpringBeanData>>()
+    val aspects = mutableListOf<DataNode<SpringBeanData>>()
     for (beanNode in beanNodes) {
         val beanData = beanNode.data
         val beanType = beanData.type
@@ -97,6 +98,7 @@ private fun splitBeansByType(beanNodes: List<DataNode<SpringBeanData>>, view: Ex
             SpringBeanType.CONFIGURATION_PROPERTIES -> configProperties.add(beanNode)
             SpringBeanType.AUTO_CONFIGURATION -> autoConfigs.add(beanNode)
             SpringBeanType.MESSAGE_MAPPING -> messagesBroker.add(beanNode)
+            SpringBeanType.ASPECT -> aspects.add(beanNode)
             SpringBeanType.OTHER -> others.add(beanNode)
         }
     }
@@ -112,6 +114,7 @@ private fun splitBeansByType(beanNodes: List<DataNode<SpringBeanData>>, view: Ex
         others = toSpringBeanViewNodes(others, view),
         autoConfigs = toSpringBeanViewNodes(autoConfigs, view),
         messagesBroker = toSpringBeanViewNodes(messagesBroker, view),
+        aspects = toSpringBeanViewNodes(aspects, view),
     )
 }
 
@@ -149,6 +152,9 @@ private fun toChildNodes(
     if (splitBeanHolder.configProperties.isNotEmpty()) {
         result.add(ConfigPropertiesBeanNodes(view, splitBeanHolder.configProperties))
     }
+    if (splitBeanHolder.aspects.isNotEmpty()) {
+        result.add(AspectsBeanNodes(view, splitBeanHolder.aspects))
+    }
     return result
 }
 
@@ -169,4 +175,5 @@ private data class SplitBeanHolder(
     val configProperties: List<SpringBeanViewNode>,
     val autoConfigs: List<SpringBeanViewNode>,
     val messagesBroker: List<SpringBeanViewNode>,
+    val aspects: List<SpringBeanViewNode>,
 )

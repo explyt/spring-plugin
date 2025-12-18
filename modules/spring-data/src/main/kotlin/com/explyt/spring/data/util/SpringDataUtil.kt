@@ -24,6 +24,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.AnnotationUtil.CHECK_HIERARCHY
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.PropertyUtilBase
@@ -40,6 +41,11 @@ object SpringDataUtil {
 
     fun isSpringDataProject(project: Project): Boolean {
         return LibraryClassCache.searchForLibraryClass(project, SpringDataClasses.REPOSITORY) != null
+    }
+
+    fun isDataModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringDataClasses.REPOSITORY, module.moduleWithLibrariesScope) != null
     }
 
     fun isSpringDataJpaModule(module: Module): Boolean {

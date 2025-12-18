@@ -161,6 +161,7 @@ If you see issues or edge cases, please open an issue in GitHub.
         - **Nullable Parameters Check**: Warns if constructor parameters in `@ConfigurationProperties` classes are not nullable.
         - **Invalid Prefix Detection**: Finds empty, duplicate, or incorrectly formatted prefixes in `@ConfigurationProperties`.
         - **Configuration Verification**: Ensures `@ConfigurationProperties` classes are correctly registered with Spring.
+        - **Quick-Fix Improvements**: Smarter suggestions and corrections for common configuration property mistakes (see changelog for demo videos).
     - **Bean Autowiring Checks**:
         - Reports if no beans are found for autowiring.
         - Alerts if multiple candidate beans cause ambiguity.
@@ -184,10 +185,12 @@ If you see issues or edge cases, please open an issue in GitHub.
     - XML configuration support when using native context mode (no extra setup required).
     - SPI bean navigation and line markers for SPI-produced beans.
     - Search Everywhere integration: quickly find beans by name.
+    - One-click converter between `.properties` and `.yml` Spring configuration files.
 
 ### Spring Web Enhancements
 
-- **Endpoints Tool Window**: Access all your Spring MVC and WebFlux endpoints in one place. View, navigate, and analyze your controllers and router functions.
+- **Endpoints Tool Window**: Access all your Spring MVC, WebFlux, and message broker endpoints in one place.
+    View, navigate, and analyze your controllers, router functions, and messaging listeners.
 
 - **Inspections and Quick Fixes**:
     - **Duplicate Endpoint Detection**: Warns about duplicate `@RequestMapping` paths.
@@ -255,6 +258,7 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 - Evaluate Spring context directly in the debugger via `Explyt.context` and helpers (`getBeanFactory()`, `getEnvironment()`); call any bean methods at breakpoints.
 - Inline run markers on Spring Data repository methods during debug to auto‑populate Evaluate Expression and run queries.
 - Inactive beans are visually indicated during debug to highlight context membership.
+- Compatible with IntelliJ IDEA 2024.1 / 2024.2 (builds 241 / 242) via legacy debug mode ([demo video](https://storage.yandexcloud.net/explyt-web/videos/spring-wiki/debugger/spring-debug-old.mp4)).
 - [Learn more about Explyt Spring Debugger](https://habr.com/ru/companies/explyt/articles/933158/)
 
 ### Spring Data Support
@@ -265,6 +269,7 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 - **Bean Recognition**: Detects Spring Data repositories as beans, helping with navigation and autowiring checks.
 - **Repository Method Autocomplete**: Offers autocompletion for new Repository methods using method naming conventions and entity properties.
 - **Generate equals/hashCode for JPA entities**: based on best practices (Code → Generate) per Vlad Mihalcea’s guidance.
+- **Spring Data 4.0 AOT Navigation**: Jump from repository methods to AOT-generated artifacts and back, to better understand what Spring Data executes at runtime.
 
 ### Spring AOP Enhancements
 
@@ -511,7 +516,7 @@ Thank you for helping us make Explyt Spring Plugin better! ⭐
 
 Explyt Spring Plugin is **free for both commercial and non-commercial use**. However, redistribution or modification of the plugin is not allowed without explicit permission. For details, see the [Explyt License](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
 
-And if You want to utilise the source code of the Plugin, you must read and accept our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md).
+And if you want to utilise the source code of the plugin, you must read and accept our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md).
 
 ## Acknowledgments
 

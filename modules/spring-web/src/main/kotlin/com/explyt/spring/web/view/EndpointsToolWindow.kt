@@ -24,8 +24,9 @@ import com.explyt.spring.web.SpringWebClasses.URI_TYPE
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
-import com.explyt.spring.web.view.nodes.HttpMethodNode
+import com.explyt.spring.web.view.nodes.EndpointNavigable
 import com.explyt.spring.web.view.nodes.RootEndpointNode
+import com.explyt.util.ExplytPsiUtil.toSmartPointer
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.AbstractTreeStructure
 import com.intellij.openapi.Disposable
@@ -36,8 +37,8 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
-import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiElement
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.JBColor
 import com.intellij.ui.SearchTextField
@@ -111,7 +112,7 @@ class EndpointsToolWindow(private val project: Project) :
         filterPanel.add(createCollapseAll())
         searchTextField = SearchTextField()
         searchTextField.text = ""
-        searchTextField.textEditor.emptyText.text = "Search by url"
+        searchTextField.textEditor.emptyText.text = "Search"
         filterPanel.add(searchTextField)
         filterPanel.add(createHttpTypeFilterActions())
         filterPanel.add(createEndpointTypeFilterActions())
@@ -147,9 +148,7 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun navigation(closestPathForLocation: TreePath?) {
         val lastUserObject = TreeUtil.getLastUserObject(closestPathForLocation)
-        if (lastUserObject is HttpMethodNode) {
-            (lastUserObject.httpElement.psiElement.navigationElement as? Navigatable)?.navigate(true)
-        }
+        (lastUserObject as? EndpointNavigable)?.navigate()
     }
 
     private fun createRefreshButton(): JComponent {
@@ -382,7 +381,11 @@ class EndpointsToolWindow(private val project: Project) :
         val classOrFileName = element.containingClass?.name
             ?: element.containingFile?.name ?: return emptyList()
         return element.requestMethods.asSequence()
-            .map { EndpointElementViewData(element.type, element.psiElement, classOrFileName, it, element.path) }
+            .map {
+                EndpointElementViewData(
+                    element.type, element.psiElement.toSmartPointer(), classOrFileName, it, element.path
+                )
+            }
             .sortedBy { it.classOrFileName + it.method }
             .toList()
     }
@@ -403,7 +406,7 @@ class EndpointsToolWindow(private val project: Project) :
 
 data class EndpointElementViewData(
     val type: EndpointType,
-    val psiElement: PsiElement,
+    val psiPointer: SmartPsiElementPointer<PsiElement>,
     val classOrFileName: String,
     val method: String,
     val path: String

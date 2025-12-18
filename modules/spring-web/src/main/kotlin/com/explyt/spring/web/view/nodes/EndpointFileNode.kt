@@ -21,15 +21,14 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.web.SpringWebIcons
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.view.EndpointElementViewData
-import com.intellij.pom.Navigatable
 import com.intellij.ui.treeStructure.CachingSimpleNode
 import com.intellij.ui.treeStructure.SimpleNode
 
-class WebFileNode(
+class EndpointFileNode(
     type: EndpointType,
     private val classOrFileName: String,
     private val elements: List<EndpointElementViewData>,
-    rootNode: WebTypeNode
+    rootNode: EndpointTypeNode
 ) : CachingSimpleNode(rootNode) {
     init {
         if (type == EndpointType.OPENAPI) {
@@ -44,10 +43,6 @@ class WebFileNode(
     }
 
     override fun getName() = classOrFileName
-
-    fun getNavigable(): Navigatable? {
-        return elements.firstOrNull()?.psiElement?.navigationElement as? Navigatable
-    }
 
     override fun buildChildren(): Array<SimpleNode> {
         return elements.map { HttpMethodNode(it, this) }.toTypedArray()
