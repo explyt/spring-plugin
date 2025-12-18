@@ -20,6 +20,7 @@ package com.explyt.spring.core.inspections
 import com.explyt.base.LibraryClassCache
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT
 import com.explyt.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES
 import com.explyt.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES_SCAN
@@ -29,6 +30,7 @@ import com.explyt.spring.core.service.PackageScanService.Companion.getPackages
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.util.QuickFixUtil
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemsHolder
@@ -75,7 +77,11 @@ class SpringConfigurationPropertiesContextInspection : SpringBaseUastLocalInspec
         val qualifiedName = configPropertyClass.qualifiedName ?: return
         if (propertiesScanPackages.any { qualifiedName.startsWith(it) }) return
 
-        problemsHolder.registerProblem(sourcePsi, SpringCoreBundle.message("explyt.spring.inspection.config.context"))
+        problemsHolder.registerProblem(
+            sourcePsi,
+            SpringCoreBundle.message("explyt.spring.inspection.config.context"),
+            *QuickFixUtil.addClassAnnotationFix(configPropertyClass, SpringCoreClasses.CONFIGURATION)
+        )
     }
 
     private fun findEnabledConfigurationPropertiesClasses(module: Module): Set<PsiClass> {
