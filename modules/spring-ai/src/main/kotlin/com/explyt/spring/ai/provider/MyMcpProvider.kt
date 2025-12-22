@@ -17,21 +17,83 @@
 
 package com.explyt.spring.ai.provider
 
+import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.core.service.SpringSearchService
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
-import com.intellij.openapi.project.getOpenedProjects
+import com.intellij.mcpserver.mcpFail
+import com.intellij.mcpserver.project
+import com.intellij.openapi.application.readAction
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jetbrains.kotlin.idea.base.util.projectScope
 
 
-class MyMcpToolset : McpToolset {
+class SpringBootApplicationMcpToolset : McpToolset {
 
-    @McpTool
-    @McpDescription(description = "My Reformats a specified file in the JetBrains IDE.\n        |Use this tool to apply code formatting rules to a file identified by its path.\n  ")
-    suspend fun test(path: String): String {
-        getOpenedProjects()
+    @McpTool("find all spring boot applications")
+    @McpDescription(description = "Return all SpringBootApplication java class names in project")
+    suspend fun applications(): List<SpringBootApplication> {
+        return withContext(Dispatchers.IO) {
+            readAction {
+                val project = coroutineContext.project
+                val springBootAppAnnotations = PackageScanService.getInstance(project).getSpringBootAppAnnotations()
+                springBootAppAnnotations.asSequence()
+                    .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, project.projectScope()) }
+                    .mapNotNull { it.qualifiedName }
+                    .toSet()
+                    .map { SpringBootApplication(it) }
+            }
+        }
+    }
 
-        // resolveInProject
-        return "hello"
+    @McpTool("find all beans in spring boot application")
+    @McpDescription(description = "Return all project Spring Beans in SpringBootApplication")
+    suspend fun applicationBeans(application: SpringBootApplication): List<SpringBean> {
+        return withContext(Dispatchers.IO) {
+            readAction {
+                val project = coroutineContext.project
+                val applicationPsiClass = JavaPsiFacade.getInstance(project)
+                    .findClass(application.className, project.projectScope())
+                    ?: mcpFail("Spring Boot Application class not found ${application.className}")
+                val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
+                    ?: mcpFail("Module not found for ${application.className}")
+                SpringSearchService.getInstance(project)
+                    .getProjectBeanPsiClassesAnnotatedByComponent(module)
+                    .mapNotNull {
+                        val qualifiedName = it.psiClass.qualifiedName
+                        qualifiedName?.let { className -> SpringBean(it.name, className) }
+                    }
+            }
+        }
     }
 }
+
+data class SpringBootApplication(
+    @param:McpDescription("full qualified java class name") val className: String
+)
+
+data class SpringBean(
+    @param:McpDescription("Spring Bean name") val beanName: String,
+    @param:McpDescription("full qualified java class name for Spring Bean") val className: String
+)
+
+
+/*class McpTool1 : com.intellij.mcpserver.McpTool {
+    override suspend fun call(args: JsonObject): McpToolCallResult {
+
+        val project = coroutineContext.project
+        mcpFail("fdfdf")
+        throwOnFailure()
+        McpToolCallResult.text("ff")
+        TODO("Not yet implemented")
+    }
+
+    override val descriptor: McpToolDescriptor
+        get() = TODO("Not yet implemented")
+}*/
 
