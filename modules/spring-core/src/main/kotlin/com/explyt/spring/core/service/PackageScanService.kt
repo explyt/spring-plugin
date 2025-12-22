@@ -236,7 +236,7 @@ class PackageScanService(private val project: Project) {
         return ScanAnnotationHolder(rootAnnotationClass, scanAnnotationClass, importClasses)
     }
 
-    private fun getSpringBootAppAnnotations(): Set<PsiClass> {
+    fun getSpringBootAppAnnotations(): Set<PsiClass> {
         val springBootAppClass = LibraryClassCache.searchForLibraryClass(project, SPRING_BOOT_APPLICATION)
             ?: return emptySet()
         val childrenBoot = MetaAnnotationUtil.getChildren(springBootAppClass, GlobalSearchScope.allScope(project))
