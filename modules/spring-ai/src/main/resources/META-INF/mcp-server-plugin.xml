@@ -17,6 +17,6 @@
 
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
-        <mcpServer.mcpToolset implementation="com.explyt.spring.ai.provider.MyMcpToolset"/>
+        <mcpServer.mcpToolset implementation="com.explyt.spring.ai.provider.SpringBootApplicationMcpToolset"/>
     </extensions>
 </idea-plugin>

@@ -35,9 +35,9 @@ import org.jetbrains.kotlin.idea.base.util.projectScope
 
 class SpringBootApplicationMcpToolset : McpToolset {
 
-    @McpTool("find all spring boot applications")
+    @McpTool("get_all_spring_boot_applications")
     @McpDescription(description = "Return all SpringBootApplication java class names in project")
-    suspend fun applications(): List<SpringBootApplication> {
+    suspend fun getAllSpringBootApplications(): List<SpringBootApplication> {
         return withContext(Dispatchers.IO) {
             readAction {
                 val project = coroutineContext.project
@@ -51,7 +51,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
     }
 
-    @McpTool("find all beans in spring boot application")
+    @McpTool("get_all_beans_by_spring_boot_application")
     @McpDescription(description = "Return all project Spring Beans in SpringBootApplication")
     suspend fun applicationBeans(application: SpringBootApplication): List<SpringBean> {
         return withContext(Dispatchers.IO) {
@@ -82,18 +82,4 @@ data class SpringBean(
     @param:McpDescription("full qualified java class name for Spring Bean") val className: String
 )
 
-
-/*class McpTool1 : com.intellij.mcpserver.McpTool {
-    override suspend fun call(args: JsonObject): McpToolCallResult {
-
-        val project = coroutineContext.project
-        mcpFail("fdfdf")
-        throwOnFailure()
-        McpToolCallResult.text("ff")
-        TODO("Not yet implemented")
-    }
-
-    override val descriptor: McpToolDescriptor
-        get() = TODO("Not yet implemented")
-}*/
 
