@@ -266,9 +266,6 @@
                     icon="/com/explyt/spring/web/icons/endpointsSidebar.svg"
                     factoryClass="com.explyt.spring.web.EndpointsToolWindowFactory"/>
 
-        <postStartupActivity
-                implementation="com.explyt.spring.web.service.ToolWindowService$StartupActivity"/>
-
         <fileType name="Http File"
                   implementationClass="com.explyt.spring.web.language.http.HttpFileType"
                   fieldName="INSTANCE"
