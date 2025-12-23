@@ -20,6 +20,8 @@ package com.explyt.spring.core.service
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.externalsystem.model.SpringBeanType
+import com.explyt.spring.core.externalsystem.model.SpringBeanType.*
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService.Companion.getInstance
 import com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
@@ -155,7 +157,7 @@ class SpringSearchService(private val project: Project) {
             CachedValueProvider.Result(
                 project.modules
                     .filter { SpringCoreUtil.isSpringModule(it) }
-                    .flatMapTo(mutableSetOf()) { getProjectBeanPsiClassesAnnotatedByComponent(it) },
+                    .flatMapTo(mutableSetOf()) { getProjectBeans(it) },
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
@@ -736,7 +738,16 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getProjectBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
+    fun getProjectBeansCacheable(module: Module): Set<PsiBean> {
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                getProjectBeans(module),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    fun getProjectBeans(module: Module): Set<PsiBean> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
         val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
         val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()
@@ -905,5 +916,30 @@ object SpringSearchUtils {
             }
         }
         return result
+    }
+
+    fun getBeanType(psiClass: PsiClass, messageMappingClasses: Collection<PsiClass> = emptyList()): SpringBeanType {
+        return if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.SPRING_BOOT_APPLICATION)) {
+            APPLICATION
+        } else if (messageMappingClasses.contains(psiClass)) {
+            MESSAGE_MAPPING
+        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER)) {
+            CONTROLLER
+        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOT_AUTO_CONFIGURATION)) {
+            AUTO_CONFIGURATION
+        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) {
+            CONFIGURATION_PROPERTIES
+        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.ASPECT)) {
+            ASPECT
+        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION)) {
+            CONFIGURATION
+        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.REPOSITORY)
+            || psiClass.isMetaAnnotatedBy("org.springframework.data.repository.RepositoryDefinition")
+            || InheritanceUtil.isInheritor(psiClass, "org.springframework.data.repository.Repository")
+        ) {
+            REPOSITORY
+        } else {
+            COMPONENT
+        }
     }
 }

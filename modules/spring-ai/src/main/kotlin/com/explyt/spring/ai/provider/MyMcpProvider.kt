@@ -17,17 +17,25 @@
 
 package com.explyt.spring.ai.provider
 
+import com.explyt.spring.core.messaging.MessageMappingEndpointLoader
 import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
 import com.intellij.mcpserver.mcpFail
 import com.intellij.mcpserver.project
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.idea.base.util.projectScope
@@ -62,24 +70,47 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     ?: mcpFail("Spring Boot Application class not found ${application.className}")
                 val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
                     ?: mcpFail("Module not found for ${application.className}")
-                SpringSearchService.getInstance(project)
-                    .getProjectBeanPsiClassesAnnotatedByComponent(module)
-                    .mapNotNull {
-                        val qualifiedName = it.psiClass.qualifiedName
-                        qualifiedName?.let { className -> SpringBean(it.name, className) }
-                    }
+                getProjectBeansMcp(module)
             }
         }
     }
 }
 
+private fun getProjectBeansMcp(module: Module): List<SpringBean> {
+    return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+        CachedValueProvider.Result(
+            getProjectBeans(module),
+            ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+        )
+    }
+}
+
+private fun getProjectBeans(module: Module): List<SpringBean> {
+    val projectBeans = SpringSearchService.getInstance(module.project).getProjectBeans(module)
+    val mappingClasses = MessageMappingEndpointLoader
+        .searchMessageMappingClasses(module, module.moduleWithDependenciesScope)
+    return projectBeans.asSequence()
+        .mapNotNull { toSpringBean(it, mappingClasses) }
+        .toList()
+
+}
+
+private fun toSpringBean(bean: PsiBean, mappingClasses: Collection<PsiClass>): SpringBean? {
+    val qualifiedName = bean.psiClass.qualifiedName ?: return null
+    val module = ModuleUtilCore.findModuleForPsiElement(bean.psiClass) ?: return null
+    val beanType = SpringSearchUtils.getBeanType(bean.psiClass, mappingClasses)
+    return SpringBean(bean.name, qualifiedName, beanType.name, module.name)
+}
+
 data class SpringBootApplication(
-    @param:McpDescription("full qualified java class name") val className: String
+    @param:McpDescription("full qualified java class name for Spring Boot Application Main") val className: String
 )
 
 data class SpringBean(
     @param:McpDescription("Spring Bean name") val beanName: String,
-    @param:McpDescription("full qualified java class name for Spring Bean") val className: String
+    @param:McpDescription("full qualified java class name for Spring Bean") val className: String,
+    @param:McpDescription("Spring Bean type: Controller, Repository, MessageListener, Service, Aspect") val beanType: String,
+    @param:McpDescription("project module name for Spring Bean") val moduleName: String,
 )
 
 
