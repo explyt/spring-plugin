@@ -20,8 +20,6 @@ package com.explyt.spring.core.service
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.externalsystem.model.SpringBeanType
-import com.explyt.spring.core.externalsystem.model.SpringBeanType.*
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService.Companion.getInstance
 import com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
@@ -916,30 +914,5 @@ object SpringSearchUtils {
             }
         }
         return result
-    }
-
-    fun getBeanType(psiClass: PsiClass, messageMappingClasses: Collection<PsiClass> = emptyList()): SpringBeanType {
-        return if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.SPRING_BOOT_APPLICATION)) {
-            APPLICATION
-        } else if (messageMappingClasses.contains(psiClass)) {
-            MESSAGE_MAPPING
-        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER)) {
-            CONTROLLER
-        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.BOOT_AUTO_CONFIGURATION)) {
-            AUTO_CONFIGURATION
-        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) {
-            CONFIGURATION_PROPERTIES
-        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.ASPECT)) {
-            ASPECT
-        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION)) {
-            CONFIGURATION
-        } else if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.REPOSITORY)
-            || psiClass.isMetaAnnotatedBy("org.springframework.data.repository.RepositoryDefinition")
-            || InheritanceUtil.isInheritor(psiClass, "org.springframework.data.repository.Repository")
-        ) {
-            REPOSITORY
-        } else {
-            COMPONENT
-        }
     }
 }
