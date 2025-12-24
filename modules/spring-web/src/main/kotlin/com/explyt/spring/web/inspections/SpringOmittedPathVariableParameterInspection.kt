@@ -33,8 +33,10 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
+import org.jetbrains.uast.UAnnotated
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.evaluateString
+import org.jetbrains.uast.getContainingUClass
 
 class SpringOmittedPathVariableParameterInspection : SpringWebBaseUastLocalInspectionTool() {
 
@@ -47,21 +49,20 @@ class SpringOmittedPathVariableParameterInspection : SpringWebBaseUastLocalInspe
         val sourcePsi = method.sourcePsi ?: return null
         if (!psiMethod.isMetaAnnotatedBy(REQUEST_MAPPING)) return null
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
+        val uClass = method.getContainingUClass()
 
-        val urlPathParams = collectUrlPathParams(module, method)
+        val urlMethodPathParams = collectUrlPathParams(module, method)
+        val urlClassPathParams = collectUrlPathParams(module, uClass)
+        val pathVariableNames = (urlMethodPathParams.asSequence() + urlClassPathParams.asSequence())
+            .flatMap { it.namesWithRanges.map { namesWithRange -> namesWithRange.name } }
+            .toSet()
         val pathVariableInfos = SpringWebUtil.collectPathVariables(psiMethod)
 
         val problems = mutableListOf<ProblemDescriptor>()
 
         for (pathVariableInfo in pathVariableInfos) {
-            if (!pathVariableInfo.isMap
-                && pathVariableInfo.isRequired
-                && urlPathParams.any { urlPathParam ->
-                    urlPathParam.namesWithRanges.none {
-                        it.name == pathVariableInfo.name
-                    }
-                }
-            ) {
+            if (pathVariableInfo.isMap || pathVariableInfo.isRequired) continue
+            if (!pathVariableNames.contains(pathVariableInfo.name)) {
                 val pathVariableSourcePsi = pathVariableInfo.psiElement.toSourcePsi() ?: continue
                 problems += manager.createProblemDescriptor(
                     pathVariableSourcePsi,
@@ -74,7 +75,7 @@ class SpringOmittedPathVariableParameterInspection : SpringWebBaseUastLocalInspe
         }
 
         if (pathVariableInfos.none { it.isMap }) {
-            for (urlPathParam in urlPathParams) {
+            for (urlPathParam in urlMethodPathParams) {
                 for (nameAndRange in urlPathParam.namesWithRanges) {
                     if (pathVariableInfos.none { it.name == nameAndRange.name }) {
                         val urlPathParamSourcePsi = urlPathParam.element.toSourcePsi() ?: continue
@@ -94,16 +95,18 @@ class SpringOmittedPathVariableParameterInspection : SpringWebBaseUastLocalInspe
         return problems.toTypedArray()
     }
 
-    private fun collectUrlPathParams(module: Module, method: UMethod): MutableList<RefInfo> {
+    private fun collectUrlPathParams(module: Module, uAnnotated: UAnnotated?): List<RefInfo> {
+        uAnnotated ?: return emptyList()
         val mahRequestMapping = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, REQUEST_MAPPING)
-        val urlPaths = mahRequestMapping.getAnnotationValues(method, setOf("value", "path"))
+        val urlPaths = mahRequestMapping.getAnnotationValues(uAnnotated, setOf("value", "path"))
 
         val urlPathParams = mutableListOf<RefInfo>()
         for (memberValue in urlPaths) {
             val sourcePsi = memberValue.sourcePsi ?: continue
             memberValue.evaluateString() ?: continue
             val urlPath = memberValue.asSourceString()
+            if (!urlPath.contains("{")) continue
             val namesWithRanges = SpringWebUtil.NameInBracketsRx.findAll(urlPath)
                 .mapNotNull { it.groups["name"] }
                 .mapNotNull {
