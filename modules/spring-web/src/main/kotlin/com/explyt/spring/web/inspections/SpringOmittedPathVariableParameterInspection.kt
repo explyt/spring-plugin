@@ -56,12 +56,12 @@ class SpringOmittedPathVariableParameterInspection : SpringWebBaseUastLocalInspe
         val pathVariableNames = (urlMethodPathParams.asSequence() + urlClassPathParams.asSequence())
             .flatMap { it.namesWithRanges.map { namesWithRange -> namesWithRange.name } }
             .toSet()
-        val pathVariableInfos = SpringWebUtil.collectPathVariables(psiMethod)
+        val methodPathVariableInfos = SpringWebUtil.collectPathVariables(psiMethod)
 
         val problems = mutableListOf<ProblemDescriptor>()
 
-        for (pathVariableInfo in pathVariableInfos) {
-            if (pathVariableInfo.isMap || pathVariableInfo.isRequired) continue
+        for (pathVariableInfo in methodPathVariableInfos) {
+            if (pathVariableInfo.isMap || !pathVariableInfo.isRequired) continue
             if (!pathVariableNames.contains(pathVariableInfo.name)) {
                 val pathVariableSourcePsi = pathVariableInfo.psiElement.toSourcePsi() ?: continue
                 problems += manager.createProblemDescriptor(
@@ -74,10 +74,10 @@ class SpringOmittedPathVariableParameterInspection : SpringWebBaseUastLocalInspe
             }
         }
 
-        if (pathVariableInfos.none { it.isMap }) {
+        if (methodPathVariableInfos.none { it.isMap }) {
             for (urlPathParam in urlMethodPathParams) {
                 for (nameAndRange in urlPathParam.namesWithRanges) {
-                    if (pathVariableInfos.none { it.name == nameAndRange.name }) {
+                    if (methodPathVariableInfos.none { it.name == nameAndRange.name }) {
                         val urlPathParamSourcePsi = urlPathParam.element.toSourcePsi() ?: continue
                         problems += manager.createProblemDescriptor(
                             urlPathParamSourcePsi,
