@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.kotlin.dsl.version
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
@@ -19,6 +20,7 @@ plugins {
     id("org.jetbrains.intellij.platform.module") apply false
     id("org.jetbrains.changelog") version "2.2.1" apply false
     kotlin("jvm") apply false
+    kotlin("plugin.serialization") apply false
 }
 
 tasks.register<DefaultTask>("runIde") {

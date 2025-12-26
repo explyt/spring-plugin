@@ -155,7 +155,7 @@ class SpringSearchService(private val project: Project) {
             CachedValueProvider.Result(
                 project.modules
                     .filter { SpringCoreUtil.isSpringModule(it) }
-                    .flatMapTo(mutableSetOf()) { getProjectBeanPsiClassesAnnotatedByComponent(it) },
+                    .flatMapTo(mutableSetOf()) { getProjectBeans(it) },
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
@@ -736,7 +736,16 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getProjectBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
+    fun getProjectBeansCacheable(module: Module): Set<PsiBean> {
+        return CachedValuesManager.getManager(project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                getProjectBeans(module),
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    fun getProjectBeans(module: Module): Set<PsiBean> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
         val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
         val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()

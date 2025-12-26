@@ -8,6 +8,7 @@ pluginManagement {
 
     plugins {
         kotlin("jvm") version kotlinVersion apply false
+        kotlin("plugin.serialization") version kotlinVersion apply false
         id("org.jetbrains.intellij.platform") version gradleIntellijPluginVersion apply false
         id("org.jetbrains.intellij.platform.module") version gradleIntellijPluginVersion apply false
         id("org.jetbrains.intellij.platform.migration") version gradleIntellijPluginVersion apply false
