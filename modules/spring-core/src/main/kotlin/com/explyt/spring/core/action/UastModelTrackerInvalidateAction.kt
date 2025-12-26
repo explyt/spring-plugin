@@ -19,6 +19,7 @@ package com.explyt.spring.core.action
 
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.ActionUtil
@@ -29,8 +30,11 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.psi.PsiManager
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import org.jetbrains.kotlin.idea.base.util.projectScope
 
 class UastModelTrackerInvalidateAction : AnAction() {
     init {
@@ -40,7 +44,24 @@ class UastModelTrackerInvalidateAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
+
+        val project1 = getCurrentProject() ?: return
+        val projectScope = project1.projectScope()
+        val springBootAppAnnotations = PackageScanService.getInstance(project1).getSpringBootAppAnnotations()
+        val mapNotNull = springBootAppAnnotations.mapNotNull { it.qualifiedName }
+        println("!!!2 $mapNotNull")
+        val map = springBootAppAnnotations.asSequence()
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope) }
+            .mapNotNull { it.qualifiedName }
+            .toSet()
+        println("!!!3 $map")
+
         invalidate(project)
+    }
+
+    private fun getCurrentProject(): Project? {
+        val openProjects = ProjectManager.getInstance().openProjects
+        return openProjects.firstOrNull { !it.isDefault }
     }
 
     override fun update(e: AnActionEvent) {

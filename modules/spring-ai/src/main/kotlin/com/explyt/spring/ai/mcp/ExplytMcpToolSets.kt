@@ -25,10 +25,14 @@ import com.intellij.mcpserver.mcpFail
 import com.intellij.mcpserver.project
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import org.jetbrains.kotlin.idea.base.util.projectScope
 
 
@@ -36,17 +40,25 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     @McpTool("get_all_spring_boot_applications")
     @McpDescription(description = "Return all SpringBootApplications - fully-qualified (e.g. 'java.util.List') java class names in project")
-    suspend fun getAllSpringBootApplications(): List<SpringBootApplication> {
+    suspend fun getAllSpringBootApplications(): SpringBootApplications {
+        // val project = currentCoroutineContext().project
         return withContext(Dispatchers.IO) {
-            readAction {
-                val project = coroutineContext.project
+            val project = getCurrentProject() ?: mcpFail("project not found")
+            val classes = readAction {
+                println("!!!1 ${project.basePath}")
                 val springBootAppAnnotations = PackageScanService.getInstance(project).getSpringBootAppAnnotations()
-                springBootAppAnnotations.asSequence()
+                val mapNotNull = springBootAppAnnotations.mapNotNull { it.qualifiedName }
+                println("!!!2 $mapNotNull")
+                val map = springBootAppAnnotations.asSequence()
                     .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, project.projectScope()) }
                     .mapNotNull { it.qualifiedName }
-                    .toSet()
-                    .map { SpringBootApplication(it) }
+                    .distinct()
+                    .toList()
+                //.map { SpringBootApplication(it) }
+                println("!!!3 $map")
+                map
             }
+            SpringBootApplications(classes)
         }
     }
 
@@ -70,11 +82,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
     ): List<McpSpringBean> {
         val mcpBeanType = getMcpBeanType(beanType) ?: mcpFail("bean type not found $beanType")
         val springBeans = withContext(Dispatchers.IO) {
+            val project = currentCoroutineContext().project
             readAction {
-                val project = coroutineContext.project
+                println("!!! project found")
                 val applicationPsiClass = JavaPsiFacade.getInstance(project)
                     .findClass(applicationClassName, project.projectScope())
                     ?: mcpFail("Spring Boot Application class not found $applicationClassName")
+                println("applicationPsiClass")
                 val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
                     ?: mcpFail("Module not found for $applicationClassName")
                 McpBeanSearchService.getInstance(project).getProjectBeansMcp(module)
@@ -93,8 +107,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
             null
         }
     }
+
+    private fun getCurrentProject(): Project? {
+        val openProjects = ProjectManager.getInstance().openProjects
+        return openProjects.filter { it.basePath?.contains("spring-boot-4") == true }.firstOrNull { !it.isDefault }
+    }
 }
 
+@Serializable
+data class SpringBootApplications(
+    @param:McpDescription("list of fully-qualified java class name for Spring Boot Application Main")
+    val files: List<String>
+)
+
+@Serializable
 data class SpringBootApplication(
     @param:McpDescription("fully-qualified java class name for Spring Boot Application Main") val className: String
 )
