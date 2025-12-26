@@ -58,7 +58,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 println("!!!3 $map")
                 map
             }
-            SpringBootApplications(classes)
+            SpringBootApplications("f")
         }
     }
 
@@ -116,8 +116,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
 @Serializable
 data class SpringBootApplications(
-    @param:McpDescription("list of fully-qualified java class name for Spring Boot Application Main")
-    val files: List<String>
+    val files: String
 )
 
 @Serializable

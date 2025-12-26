@@ -21,6 +21,7 @@ plugins {
     java
     id("org.jetbrains.intellij.platform.module")
     kotlin("jvm")
+    kotlin("plugin.serialization")
 }
 
 evaluationDependsOn(":spring-core")
@@ -57,8 +58,8 @@ val defaultIdeaVersion: String by rootProject
 dependencies {
     implementation(springCoreProject)
     implementation(springWebProject)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")//1.9.0 -> 253 1.8.1 -> 252
+    /* implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")*/
 
     intellijPlatform {
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
