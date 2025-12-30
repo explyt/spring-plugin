@@ -6,6 +6,16 @@
 
 ### Spring Core/Boot
 
+-feat: Kotlin: Quick-fix for data class @ConfigurationProperties without
+@ConstructorBinding [#31](https://github.com/explyt/spring-plugin/issues/31)
+-fix: Slow operation in EDT [#154](https://github.com/explyt/spring-plugin/issues/154)
+-fix: ConfigurationProperties for kotlin inspection [#163](https://github.com/explyt/spring-plugin/issues/163)
+-fix: PathVariable in Class URL [#161](https://github.com/explyt/spring-plugin/issues/161)
+
+## [252.30.53] - 2025-12-22
+
+### Spring Core/Boot
+
 - feat: [Endpoints](https://github.com/explyt/spring-plugin/pull/143#issuecomment-3641799841) for Message Brokers &
   Spring Boot
 - feat: Spring Aspect nodes to Explyt
