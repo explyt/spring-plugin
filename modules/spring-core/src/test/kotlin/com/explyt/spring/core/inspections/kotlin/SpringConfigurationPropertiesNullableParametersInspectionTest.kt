@@ -111,7 +111,7 @@ class SpringConfigurationPropertiesNullableParametersInspectionTest : ExplytInsp
                 var notAProblemA: String = "A",
                 val notAProblemB: String = "B"
             ) {
-                fun getTest(orgId1: String) = "test"
+                fun getTest(orgId1: String) = "test" + orgId1
             }        
 
         """.trimIndent()
