@@ -29,7 +29,8 @@ import com.intellij.util.concurrency.annotations.RequiresReadLock
 
 
 private const val SPRING_BOOT_STARTER_SUFFIX = "-starter"
-private const val SPRING_BOOT_MAIN_STARTER = ":spring-boot-starter:"
+private const val SPRING_BOOT_MAIN_STARTER = "spring-boot-starter"
+private const val SPRING_BOOT_KAFKA = "spring-kafka"
 
 object SpringBootUtil {
 
@@ -46,21 +47,38 @@ object SpringBootUtil {
     }
 
     @RequiresReadLock
-    fun getSpringBootStarters(psiElement: PsiElement): List<String> {
-        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return emptyList()
+    fun getSpringBootStartersInfo(psiElement: PsiElement): Pair<String?, List<String>>? {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
         val entries = ModuleRootManager.getInstance(module).orderEntries()
         val libraries = mutableListOf<String>()
+        var buildTool: String? = null
         entries.forEachLibrary {
             val name = it?.name ?: return@forEachLibrary true
-            if (name.contains(SPRING_BOOT_MAIN_STARTER)) return@forEachLibrary true
-            if (name.contains(SPRING_BOOT_STARTER_SUFFIX)) {
+            if (buildTool == null) {
+                buildTool = getBuildToolName(name)
+            }
+            if (name.contains(":$SPRING_BOOT_MAIN_STARTER:")) return@forEachLibrary true
+            if (name.contains(":$SPRING_BOOT_KAFKA:")) {
+                libraries.add(SPRING_BOOT_KAFKA)
+            } else if (name.contains(SPRING_BOOT_STARTER_SUFFIX)) {
                 val starterArtifactId = name.split(":").reversed()
                     .firstOrNull { part -> part.contains(SPRING_BOOT_STARTER_SUFFIX) }
                 starterArtifactId?.let { libraries.add(it) }
             }
             true
         }
-        return libraries
+        return buildTool to libraries
     }
+}
 
+private const val GRADLE = "Gradle"
+private const val MAVEN = "Maven"
+
+private fun getBuildToolName(libraryName: String): String? {
+    val buildToolPrefix = libraryName.split(":").firstOrNull() ?: return null
+    return if (buildToolPrefix.contains(GRADLE, true)) {
+        GRADLE
+    } else if (buildToolPrefix.contains(MAVEN, true)) {
+        MAVEN
+    } else null
 }

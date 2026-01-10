@@ -103,10 +103,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     private fun toSpringBootApplicationDto(psiClass: PsiClass): SpringBootApplicationJson? {
         val qualifiedName = psiClass.qualifiedName ?: return null
+        val springBootInfo = SpringBootUtil.getSpringBootStartersInfo(psiClass)
         return SpringBootApplicationJson(
-            qualifiedName,
-            SpringBootUtil.getSpringBootVersion(psiClass),
-            SpringBootUtil.getSpringBootStarters(psiClass)
+            fullyQualifiedClassName = qualifiedName,
+            springBootVersion = SpringBootUtil.getSpringBootVersion(psiClass),
+            springBootStarters = springBootInfo?.second ?: emptyList(),
+            moduleName = ModuleUtilCore.findModuleForPsiElement(psiClass)?.name,
+            buildTool = springBootInfo?.first
         )
     }
 
@@ -149,6 +152,8 @@ data class SpringBootApplicationJson(
     val fullyQualifiedClassName: String,
     val springBootVersion: String,
     val springBootStarters: List<String>,
+    val moduleName: String?,
+    val buildTool: String?,
 )
 
 data class SpringBootApplication(
