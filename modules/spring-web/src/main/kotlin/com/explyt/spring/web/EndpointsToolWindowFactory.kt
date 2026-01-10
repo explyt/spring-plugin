@@ -32,7 +32,7 @@ class EndpointsToolWindowFactory : ToolWindowFactory {
         val endpointsToolWindow = EndpointsToolWindow(project)
 
         val content = toolWindow.contentManager.factory.createContent(endpointsToolWindow.component, "", false)
-        content.isCloseable = false
+        content.isCloseable = true
 
         toolWindow.contentManager.addContent(content)
         toolWindow.contentManager.setSelectedContent(content, true)
