@@ -30,7 +30,6 @@ import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.openapi.editor.markup.GutterIconRenderer
-import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
@@ -48,8 +47,7 @@ class AspectMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (uClass is UClass) {
             val javaPsi = uClass.javaPsi
             if (!javaPsi.isMetaAnnotatedBy(SpringAopClasses.ASPECT)) return
-            val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
-            val aspectSearchService = AspectSearchService.getInstance(module.project)
+            val aspectSearchService = AspectSearchService.getInstance(javaPsi.project)
             val aspectClasses = aspectSearchService.getAspectQualifiedClasses()
             if (javaPsi.qualifiedName?.let { aspectClasses.contains(it) } == false) return
             val aspectData = aspectSearchService.getAspectsData()
