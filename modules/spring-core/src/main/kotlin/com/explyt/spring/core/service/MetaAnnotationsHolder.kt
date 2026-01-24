@@ -29,10 +29,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
-import org.jetbrains.uast.UAnnotation
-import org.jetbrains.uast.UCallExpression
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.*
 
 class MetaAnnotationsHolder private constructor(
     private val rootFqn: String,
@@ -74,6 +71,13 @@ class MetaAnnotationsHolder private constructor(
         )
     }
 
+    fun getAnnotationValues(uAnnotated: UAnnotated, targetMethods: Set<String>): Set<UExpression> {
+        return uAnnotated.uAnnotations.flatMapTo(mutableSetOf()) {
+            getAnnotationMemberValues(it, targetMethods)
+        }
+    }
+
+    @Deprecated("Use UAST method instead this. getAnnotationValues(org.jetbrains.uast.UAnnotated, java.util.Set)")
     fun getAnnotationMemberValues(psiMember: PsiMember, targetMethods: Set<String>): Set<PsiAnnotationMemberValue> {
         return psiMember.annotations
             .flatMapTo(mutableSetOf()) {
@@ -81,6 +85,7 @@ class MetaAnnotationsHolder private constructor(
             }
     }
 
+    @Deprecated("Use UAST method instead this. getAnnotationMemberValues(org.jetbrains.uast.UAnnotation, java.util.Set)")
     fun getAnnotationMemberValues(psiMember: PsiMember, targetMethod: String): Set<PsiAnnotationMemberValue> {
         val targetMethods = setOf(targetMethod)
         return psiMember.annotations
@@ -89,13 +94,12 @@ class MetaAnnotationsHolder private constructor(
             }
     }
 
-    fun getAnnotationMemberValues(
-        psiAnnotation: PsiAnnotation,
-        targetMethod: String
-    ): Set<PsiAnnotationMemberValue> {
+    @Deprecated("Use UAST method instead this. getAnnotationMemberValues(org.jetbrains.uast.UAnnotation, java.util.Set)")
+    fun getAnnotationMemberValues(psiAnnotation: PsiAnnotation, targetMethod: String): Set<PsiAnnotationMemberValue> {
         return getAnnotationMemberValues(psiAnnotation, setOf(targetMethod))
     }
 
+    @Deprecated("Use UAST method instead this. getAnnotationMemberValues(org.jetbrains.uast.UAnnotation, java.util.Set)")
     fun getAnnotationMemberValues(
         psiAnnotation: PsiAnnotation,
         targetMethods: Set<String>
@@ -149,18 +153,10 @@ class MetaAnnotationsHolder private constructor(
                     )
                 }
                 .flatMap { getValues(it.expression) }
+
         }
 
         return annotationMemberValues.toSet()
-    }
-
-    fun getValues(uExpression: UExpression?): List<UExpression> {
-        uExpression ?: return emptyList()
-        return if (uExpression is UCallExpression) {
-            uExpression.valueArguments
-        } else {
-            listOf(uExpression)
-        }
     }
 
     fun getRootClassQualified() = rootFqn
@@ -195,6 +191,15 @@ class MetaAnnotationsHolder private constructor(
 
             }
             return MetaAnnotationsHolder(parentFqn, annotationByFqn)
+        }
+
+        fun getValues(uExpression: UExpression?): List<UExpression> {
+            uExpression ?: return emptyList()
+            return if (uExpression is UCallExpression) {
+                uExpression.valueArguments
+            } else {
+                listOf(uExpression)
+            }
         }
     }
 
@@ -234,6 +239,27 @@ object AliasUtils {
                 getAliasedClassJava(it)
                     ?: getAliasedClassKt(it)
             } ?: alias.parentOfType<PsiClass>()
+    }
+
+    fun getAliasedClass(annotation: UAnnotation): PsiClass? {
+        val psiClass = annotation.findAttributeValue("annotation")
+            ?.let { getPsiClasses(it).firstOrNull() } ?: return null
+
+        return if (psiClass.qualifiedName == JavaCoreClasses.ANNOTATION) {
+            annotation.getParentOfType<UClass>()
+        } else {
+            psiClass
+        }
+    }
+
+    fun getPsiClasses(uExpression: UExpression?): List<PsiClass> {
+        uExpression ?: return emptyList()
+        return MetaAnnotationsHolder.getValues(uExpression).mapNotNull { getPsiClass(it) }
+    }
+
+    private fun getPsiClass(uExpression: UExpression): PsiClass? {
+        val uClassLiteralExpression = uExpression as? UClassLiteralExpression ?: return null
+        return uClassLiteralExpression.type?.resolvedPsiClass
     }
 
     private fun getAliasedClassJava(memberValue: PsiAnnotationMemberValue): PsiClass? {
