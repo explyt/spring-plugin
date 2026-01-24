@@ -95,7 +95,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
     ) {
         val psiField = uField.javaPsi as? PsiField ?: return
         if (psiField.containingClass?.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES) == true) return
-        if (!isAutowiredFieldExpression(psiField) && !isLombokAnnotatedClassFieldExpression(psiField)) return
+        val isLombok = isLombokAnnotatedClassFieldExpression(psiField)
+        if (isLombok && psiField.hasInitializer()) return
+        if (!isAutowiredFieldExpression(psiField) && !isLombok) return
 
         val sourcePsi = uField.uastAnchor?.sourcePsi ?: return
         val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
