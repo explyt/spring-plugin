@@ -58,6 +58,9 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
     private fun isStringDefinedAsSqlVariable(uElement: UElement): Boolean {
         val parent = uElement.uastParent
         // Case 1: direct string initializer
+        if (uElement is ULiteralExpression || uElement is UPolyadicExpression) {
+            if (isNotSqlString(uElement)) return false
+        }
         if (parent is UVariable && parent.name?.startsOrEndsWithSql() ?: false && parent.uastInitializer == uElement) {
             return true
         }
@@ -65,6 +68,12 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
         // Case 2: string literal is receiver of a call expression (e.g., .trimIndent()),
         val variable = parent?.uastParent as? UVariable ?: return false
         return variable.name?.startsOrEndsWithSql() ?: false && variable.uastInitializer == parent
+    }
+
+    private fun isNotSqlString(uElement: UExpression): Boolean {
+        val string = uElement.evaluateString() ?: ""
+        if (string.isNotEmpty() && !string.contains(" ")) return true
+        return false
     }
 
     private fun isJdbcTemplateLike(uElement: UElement): Boolean {
