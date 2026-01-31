@@ -203,7 +203,7 @@ intellijPlatform {
     }
     publishing {
         token.set(providers.environmentVariable("PUBLISH_TOKEN"))
-        hidden = true
+        hidden = false
     }
 }
 
