@@ -93,8 +93,8 @@ class PointCutMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun toPsiMethod(aspectData: SpringAspectData, project: Project): PsiElement? {
-        return JavaPsiFacade.getInstance(project)
-            .findClass(aspectData.aspectQualifiedClassName, project.allScope())
-            ?.findMethodsByName(aspectData.aspectMethodName, false)?.firstOrNull()
+        val psiClass = JavaPsiFacade.getInstance(project)
+            .findClass(aspectData.aspectQualifiedClassName, project.allScope()) ?: return null
+        return psiClass.findMethodsByName(aspectData.aspectMethodName, false).firstOrNull() ?: psiClass
     }
 }

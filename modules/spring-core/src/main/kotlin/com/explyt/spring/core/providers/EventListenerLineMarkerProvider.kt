@@ -260,30 +260,16 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
     private fun getMethodsByEventListener(module: Module): List<MethodArgumentClasses> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
-
-        val eventListenerClass = LibraryClassCache.searchForLibraryClass(module, EVENT_LISTENER) ?: return emptyList()
-        val listenerMethods = AnnotatedElementsSearch.searchPsiMethods(eventListenerClass, scope)
-        val eventListenerInheritors = searchEventListenerClasses(eventListenerClass, scope)
-        val listenerInheritorMethods = eventListenerInheritors.asSequence()
-            .filter { it.isAnnotationType }
+        val listenerClass = SpringSearchUtils.findAnnotationClassesByQualifiedName(module, EVENT_LISTENER)
+        val listenerMethods = listenerClass.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiMethods(it, scope) }
 
-        val allListenerMethods = listenerMethods + listenerInheritorMethods
-
         val methodArguments = mutableListOf<MethodArgumentClasses>()
-        for (element in allListenerMethods) {
+        for (element in listenerMethods) {
             val byAnnotation = getPsiClassesByAnnotationCached(module, element)
             methodArguments.add(MethodArgumentClasses(element, byAnnotation))
         }
         return methodArguments
-    }
-
-    private fun searchEventListenerClasses(eventListenerClass: PsiClass, scope: GlobalSearchScope): Set<PsiClass> {
-        val result = mutableSetOf<PsiClass>()
-        val psiClasses = AnnotatedElementsSearch.searchPsiClasses(eventListenerClass, scope)
-        result.addAll(psiClasses)
-        result.addAll(psiClasses.flatMap { searchEventListenerClasses(it, scope) })
-        return result
     }
 
     private fun isEqualsTypeOrClass(methodArgumentClasses: MethodArgumentClasses, eventPsiType: PsiType): Boolean {
