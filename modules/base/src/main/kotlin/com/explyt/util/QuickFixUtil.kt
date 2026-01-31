@@ -80,6 +80,29 @@ private class AddClassAnnotationKotlinFix(private val annotationFqName: String) 
     }
 }
 
+class AddParameterMethodAnnotationKotlinFix(private val annotationFqName: String) : LocalQuickFix {
+    override fun getName() = BaseBundle.message(
+        "explyt.base.inspection.add.annotate.method.fix",
+        "@" + ClassId.topLevel(FqName(annotationFqName)).shortClassName
+    )
+
+    override fun getFamilyName() = name
+    override fun startInWriteAction() = false
+
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+
+        val ktElement = descriptor.psiElement.parent.parent as? KtElement ?: return
+        val editor = ktElement.findExistingEditor() ?: return
+        val ktFile = ktElement.containingFile as? KtFile ?: return
+
+        ApplicationManager.getApplication().runWriteIntentReadAction(ThrowableComputable {
+            AddAnnotationFix(
+                ktElement, ClassId.topLevel(FqName(annotationFqName)), Kind.Self
+            ).asIntention().invokeAsAction(editor, ktFile)
+        })
+    }
+}
+
 class AddAnnotationValueQuickFix(
     psiAnnotation: PsiElement, private val parameterName: String, private val parameterValue: String
 ) :

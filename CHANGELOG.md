@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+### Spring AI
+
+- feat: Spring AI Tools for bundled [MCP Server plugin](https://plugins.jetbrains.com/plugin/26071-mcp-server)
+
+### Spring Core/Boot
+
+- feat: Kotlin: Quick-fix for data class @ConfigurationProperties without `@ConstructorBinding` [#31](https://github.com/explyt/spring-plugin/issues/31)
+- fix: Slow operation in EDT [#154](https://github.com/explyt/spring-plugin/issues/154)
+- fix: ConfigurationProperties for kotlin inspection [#163](https://github.com/explyt/spring-plugin/issues/163)
+- fix: PathVariable in Class URL [#161](https://github.com/explyt/spring-plugin/issues/161)
+- fix: Events for @TransactionalEventListener [PR](https://github.com/explyt/spring-plugin/pull/179)
+- fix: Bean Autowired gutter icon for lombok
+
+## [253.30.53] - 2025-12-22
+
 ### Spring Core/Boot
 
 - feat: [Endpoints](https://github.com/explyt/spring-plugin/pull/143#issuecomment-3641799841) support for message brokers and Spring Boot (demo video)
