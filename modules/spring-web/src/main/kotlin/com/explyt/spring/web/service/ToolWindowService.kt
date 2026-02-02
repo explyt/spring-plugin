@@ -1,5 +1,5 @@
 /*
- * Copyright © 2024 Explyt Ltd
+ * Copyright © 2025 Explyt Ltd
  *
  * All rights reserved.
  *
@@ -19,9 +19,6 @@ package com.explyt.spring.web.service
 
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.util.SpringCoreUtil
-import com.explyt.spring.web.util.SpringWebUtil.isEeWebProject
-import com.explyt.spring.web.util.SpringWebUtil.isSpringWebProject
-import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
@@ -37,8 +34,6 @@ import java.util.concurrent.Callable
 @Service(Service.Level.PROJECT)
 class ToolWindowService(private val project: Project) {
 
-    private val propertiesComponent = PropertiesComponent.getInstance(project)
-
     init {
         project.messageBus.connect().subscribe(ModuleRootListener.TOPIC, object : ModuleRootListener {
             override fun rootsChanged(event: ModuleRootEvent) {
@@ -48,13 +43,10 @@ class ToolWindowService(private val project: Project) {
     }
 
     fun changeToolWindow(toolWindowId: String) {
-        ReadAction.nonBlocking(Callable {
-            isSpringWebProject(project) || isEeWebProject(project) || SpringCoreUtil.isSpringBootProject(project)
-        })
+        ReadAction.nonBlocking(Callable { SpringCoreUtil.isSpringProject(project) })
             .inSmartMode(project)
             .finishOnUiThread(ModalityState.nonModal()) { isVisible ->
                 updateToolWindowVisibility(toolWindowId, isVisible)
-                handleToolWindowNotification(toolWindowId, isVisible)
             }
             .submit(AppExecutorUtil.getAppScheduledExecutorService())
     }
@@ -63,23 +55,6 @@ class ToolWindowService(private val project: Project) {
         val toolWindowManager = ToolWindowManager.getInstance(project)
         val toolWindow = toolWindowManager.getToolWindow(toolWindowId) ?: return
         toolWindow.isAvailable = isVisible
-    }
-
-    private fun handleToolWindowNotification(toolWindowId: String, shouldShow: Boolean) {
-        val notificationExists = getToolWindowNotification(toolWindowId)
-        if (!notificationExists && shouldShow) {
-            setToolWindowNotificationIsShow(toolWindowId)
-        }
-    }
-
-    private fun getToolWindowNotification(toolWindowId: String): Boolean {
-        return propertiesComponent
-            .getBoolean(propertyValue(toolWindowId), false)
-    }
-
-    private fun setToolWindowNotificationIsShow(toolWindowId: String) {
-        propertiesComponent
-            .setValue(propertyValue(toolWindowId), true, false)
     }
 
     class StartupActivity : ProjectActivity {

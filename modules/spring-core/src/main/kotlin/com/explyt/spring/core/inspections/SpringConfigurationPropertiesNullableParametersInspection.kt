@@ -20,56 +20,47 @@ package com.explyt.spring.core.inspections
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringCoreClasses.CONSTRUCTOR_BINDING
+import com.explyt.util.AddParameterMethodAnnotationKotlinFix
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.PsiElementVisitor
-import com.intellij.uast.UastVisitorAdapter
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtNullableType
 import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.uast.UParameter
-import org.jetbrains.uast.getContainingUClass
-import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
+import org.jetbrains.uast.UClass
 
 class SpringConfigurationPropertiesNullableParametersInspection : SpringBaseUastLocalInspectionTool() {
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return UastVisitorAdapter(ConstructorParameterVisitor(holder, isOnTheFly), true)
-    }
+    override fun checkClass(
+        uClass: UClass,
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): Array<out ProblemDescriptor?> {
+        if (uClass.lang != KotlinLanguage.INSTANCE) return emptyArray()
+        val javaPsi = uClass.javaPsi
+        if (!javaPsi.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return emptyArray()
+        if (javaPsi.constructors.any { it?.isMetaAnnotatedBy(CONSTRUCTOR_BINDING) == true }) return emptyArray()
 
-    private class ConstructorParameterVisitor(
-        private val problemsHolder: ProblemsHolder, private val isOnTheFly: Boolean
-    ) : AbstractUastNonRecursiveVisitor() {
-
-        override fun visitParameter(node: UParameter): Boolean {
-            if (node.lang != KotlinLanguage.INSTANCE) return true
-            if (node.isFinal) return true
-            val ktParameter = node.sourcePsi as? KtParameter ?: return true
-            if (ktParameter.hasDefaultValue()) return true
-            val psiClass = node.getContainingUClass()?.javaPsi ?: return true
-            if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return true
-            if (ktParameter.typeReference?.typeElement is KtNullableType) return true
-            if (psiClass.constructors.firstOrNull()
-                    ?.isMetaAnnotatedBy(SpringCoreClasses.CONSTRUCTOR_BINDING) == true
-            ) return true
-
-            problemsHolder.registerProblem(
-                problemsHolder.manager.createProblemDescriptor(
+        val problems = mutableListOf<ProblemDescriptor>()
+        for (method in uClass.methods) {
+            if (!method.isConstructor) continue
+            for (parameter in method.uastParameters) {
+                val ktParameter = parameter.sourcePsi as? KtParameter ?: continue
+                if (ktParameter.hasDefaultValue()) continue
+                if (ktParameter.typeReference?.typeElement is KtNullableType) continue
+                problems += manager.createProblemDescriptor(
                     ktParameter,
                     ktParameter.getHighlightRange(),
-                    SpringCoreBundle.message(
-                        "explyt.spring.inspection.kotlin.constructor.nullable"
-                    ),
-                    ProblemHighlightType.GENERIC_ERROR,
-                    isOnTheFly
+                    SpringCoreBundle.message("explyt.spring.inspection.kotlin.constructor.nullable"),
+                    ProblemHighlightType.ERROR,
+                    isOnTheFly,
+                    AddParameterMethodAnnotationKotlinFix(CONSTRUCTOR_BINDING)
                 )
-            )
-
-            return super.visitParameter(node)
+            }
         }
-
+        return problems.toTypedArray()
     }
-
 }

@@ -63,6 +63,7 @@ dependencies {
             useInstaller = false
         }
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
+        bundledPlugin("com.intellij.mcpServer")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
 
