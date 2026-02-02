@@ -20,9 +20,9 @@ package com.explyt.spring.web.inspections.kotlin
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.test.ExplytInspectionKotlinTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.inspections.SpringOmittedPathVariableParameterInspection
 import org.intellij.lang.annotations.Language
-import org.jetbrains.kotlin.test.TestMetadata
 
 class SpringOmittedPathVariableParameterInspectionTest : ExplytInspectionKotlinTestCase() {
 
@@ -35,19 +35,179 @@ class SpringOmittedPathVariableParameterInspectionTest : ExplytInspectionKotlinT
         myFixture.enableInspections(SpringOmittedPathVariableParameterInspection::class.java)
     }
 
-    @TestMetadata("pathVariableController")
-    fun testPathVariableController() = doTest(SpringOmittedPathVariableParameterInspection())
+    fun testSimpleMapping() {
+        @Language("kotlin") val code = """
+import org.springframework.web.bind.annotation.*
+
+@RestController
+class PathVariableController {
+    // Simple mapping
+    @RequestMapping(path = ["/api/employees/{id}/{<warning>omittedInUrl</warning>}"], method = [RequestMethod.GET])
+    @ResponseBody
+    fun getEmployeesById(@PathVariable id: String, <warning>@PathVariable omittedInSignature: String?</warning>): String {
+        return "ID: ${'$'}id"
+    }
+}
+""".trimIndent()
+        myFixture.configureByText("PathVariableController.kt", code)
+        myFixture.testHighlighting("PathVariableController.kt")
+    }
+
+    fun testPathVariableSpecifyName() {
+        @Language("kotlin") val code = """
+import org.springframework.web.bind.annotation.*
+
+@RestController
+class PathVariableController {
+    // Specifying name
+    @GetMapping("/api/employeeswithvariable/{id}")
+    @ResponseBody
+    fun getEmployeesByIdWithVariableName(
+        @PathVariable(ID_NAMED) employeeId: String
+    ): String {
+        return "ID: ${'$'}employeeId"
+    }
+
+    companion object {
+        const val ID_NAMED: String = "id"
+    }
+
+}
+""".trimIndent()
+        myFixture.configureByText("PathVariableController.kt", code)
+        myFixture.testHighlighting("PathVariableController.kt")
+    }
+
+    fun testPathVariableNotRequired() {
+        @Language("kotlin") val code = """
+import org.springframework.web.bind.annotation.*
+
+@RestController
+class PathVariableController {   
+        // Not required
+    @GetMapping(
+        value = ["/api/employeeswithrequiredfalse", "/api/employeeswithrequiredfalse/{id}"]
+    )
+    @ResponseBody
+    fun getEmployeesByIdWithRequiredFalse(@PathVariable(required = false) id: String?    ): String = "test"
+}
+""".trimIndent()
+        myFixture.configureByText("PathVariableController.kt", code)
+        myFixture.testHighlighting("PathVariableController.kt")
+    }
+
+    fun testPathVariableMap() {
+        @Language("kotlin") val code = """
+import org.springframework.web.bind.annotation.*
+
+@RestController
+class PathVariableController {   
+    // Multiple variables in a map
+    @GetMapping("/api/employeeswithmapvariable/{id}/{name}")
+    @ResponseBody
+    fun getEmployeesByIdAndNameWithMapVariable(
+        @PathVariable pathVarsMap: Map<String?, String?>
+    ): String = "test"
+}
+""".trimIndent()
+        myFixture.configureByText("PathVariableController.kt", code)
+        myFixture.testHighlighting("PathVariableController.kt")
+    }
+
+    fun testPathVariableOptional() {
+        @Language("kotlin") val code = """
+            import org.springframework.web.bind.annotation.*
+
+@RestController
+class PathVariableController {
+    // Optional
+    @GetMapping(
+        value = ["/api/employeeswithoptional", "/api/employeeswithoptional/{id}"]
+    )
+    @ResponseBody
+    fun getEmployeesByIdWithOptional(
+        @PathVariable id: java.util.Optional<String?>
+    ): String {
+        return ""
+    }
+}
+            """.trimIndent()
+        myFixture.configureByText("PathVariableController.kt", code)
+        myFixture.testHighlighting("PathVariableController.kt")
+    }
 
     fun testKotlinStringExpression() {
         @Language("kotlin") val code = """
             import org.springframework.web.bind.annotation.PostMapping
             const val str = "str" 
             
-            @${SpringCoreClasses.COMPONENT}            
+            @${SpringCoreClasses.CONTROLLER}            
             class SpringComponent {
                                  
-                @PostMapping("post1/${'$'}{str}")
+                @PostMapping("post/${'$'}{str}")
                 fun postStr(): String {
+                    return "postStr"
+                }
+            }
+            """.trimIndent()
+        myFixture.configureByText("SpringComponent.kt", code)
+        myFixture.testHighlighting("SpringComponent.kt")
+    }
+
+    fun testClassRequestMapping() {
+        @Language("kotlin") val code = """
+            import org.springframework.web.bind.annotation.PostMapping             
+            
+            @${SpringWebClasses.REQUEST_MAPPING}("{data}")
+            @${SpringCoreClasses.CONTROLLER}            
+            class SpringComponent {
+                                
+                @PostMapping("post/{version}")
+                fun postStr(
+                    @${SpringWebClasses.PATH_VARIABLE} data: String,
+                    @${SpringWebClasses.PATH_VARIABLE} version: String,
+                ): String {
+                    return "postStr"
+                }
+            }
+            """.trimIndent()
+        myFixture.configureByText("SpringComponent.kt", code)
+        myFixture.testHighlighting("SpringComponent.kt")
+    }
+
+    fun testClassRequestMappingNoPathVariable() {
+        @Language("kotlin") val code = """
+            import org.springframework.web.bind.annotation.PostMapping             
+            
+            @${SpringWebClasses.REQUEST_MAPPING}("{data}")
+            @${SpringCoreClasses.CONTROLLER}            
+            class SpringComponent {
+                                
+                @PostMapping("post")
+                fun postStr(
+                    <warning>@${SpringWebClasses.PATH_VARIABLE} data1: String</warning>,                    
+                ): String {
+                    return "postStr"
+                }
+            }
+            """.trimIndent()
+        myFixture.configureByText("SpringComponent.kt", code)
+        myFixture.testHighlighting("SpringComponent.kt")
+    }
+
+    fun testMethodRequestMappingNoPathVariable() {
+        @Language("kotlin") val code = """
+            import org.springframework.web.bind.annotation.PostMapping             
+            
+            @${SpringWebClasses.REQUEST_MAPPING}("{data}")
+            @${SpringCoreClasses.CONTROLLER}            
+            class SpringComponent {
+                                
+                @PostMapping("post/{<warning>version</warning>}")
+                fun postStr(
+                    @${SpringWebClasses.PATH_VARIABLE} data: String,                    
+                    <warning>@${SpringWebClasses.PATH_VARIABLE} ver: String</warning>
+                ): String {
                     return "postStr"
                 }
             }

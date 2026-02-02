@@ -20,7 +20,6 @@ package com.explyt.spring.aop.service
 import com.explyt.spring.aop.SpringAopBundle
 import com.explyt.spring.aop.SpringAopIcons
 import com.explyt.spring.core.externalsystem.model.SpringAspectData
-import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.util.ExplytPsiUtil.isPrivate
@@ -31,9 +30,11 @@ import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiType
 import com.intellij.psi.util.TypeConversionUtil
+import org.jetbrains.kotlin.idea.base.util.allScope
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.toUElement
 
@@ -92,7 +93,8 @@ class PointCutMethodsLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private fun toPsiMethod(aspectData: SpringAspectData, project: Project): PsiElement? {
-        val psiClass = NativeBootUtils.findProjectClass(aspectData.aspectQualifiedClassName, project) ?: return null
-        return psiClass.findMethodsByName(aspectData.aspectMethodName, false).firstOrNull()
+        val psiClass = JavaPsiFacade.getInstance(project)
+            .findClass(aspectData.aspectQualifiedClassName, project.allScope()) ?: return null
+        return psiClass.findMethodsByName(aspectData.aspectMethodName, false).firstOrNull() ?: psiClass
     }
 }
