@@ -17,6 +17,7 @@
 
 <idea-plugin>
     <depends optional="true" config-file="spring-test-plugin.xml">com.explyt.test</depends>
+    <depends optional="true" config-file="mcp-server-plugin.xml">com.intellij.mcpServer</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <postStartupActivity implementation="com.explyt.spring.ai.service.AiStartupActivity"/>

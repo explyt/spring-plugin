@@ -48,9 +48,16 @@ Available on JetBrains Marketplace: https://plugins.jetbrains.com/plugin/28675-s
 ## Features
 ### Key Features
 - **Accurate Bean Detection**: Understand your Spring application with real bean data, even for complex configurations.
-- **Built-in HTTP Client**: Test APIs using Swagger UI directly in your IDE.
-- **Advanced Inspections**: Detect and fix issues in Spring configurations, beans, and annotations.
+- **Built-in HTTP Client**: Test APIs using Swagger UI directly in your
+  IDE. [Demo video.](https://github.com/explyt/spring-plugin/wiki/Spring-Web-&-OpenApi-rest-client)
 - **Spring Boot & Web Support**: Enhanced tools for Spring Boot, MVC, WebFlux, and more.
+- **Spring Debugger**: Full access to Spring Context in
+  debug.[Demo video.](https://github.com/explyt/spring-plugin/wiki/Spring-Debugger)
+- **Code Generations**: @PostConstruct, @PreDestroy, Spring Web Methods, JPA equals &
+  hashCode. [Demo video.](https://github.com/explyt/spring-plugin/wiki/Code-Generations)
+- **Rest Client RFC 7230**: Support *.http *.rest files ‐ httpYac or IDEA HTTP
+  CLI [Demo video.](https://github.com/explyt/spring-plugin/wiki/Rest-Client-RFC-7230)
+- **Advanced Inspections**: Detect and fix issues in Spring configurations, beans, and annotations.
 - **Kotlin-Friendly**: Full support for Kotlin Spring applications.
 - **Lightweight & Fast**: Runs a lightweight version of your app for accurate insights without slowing down your IDE.
 - **Quarkus Support**: CDI/DI navigation and inspections, JAX-RS web endpoints, AOP (interceptors/decorators), Endpoints tool window, and a Swagger UI–based HTTP client.
