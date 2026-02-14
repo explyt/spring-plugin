@@ -32,6 +32,9 @@
                 implementation="com.explyt.spring.web.loader.MessageBrokerEndpointLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringBootEndpointLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.EventListenersEndpointLoader"/>
+
 
     </extensions>
 

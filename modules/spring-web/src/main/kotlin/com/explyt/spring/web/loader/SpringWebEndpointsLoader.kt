@@ -89,4 +89,5 @@ enum class EndpointType(val readable: String, val isWeb: Boolean) {
     OPENAPI("OpenAPI", false),
     SPRING_OPEN_FEIGN("OpenFeign", true),
     MESSAGE_BROKER("Message Broker", false),
+    EVENT_LISTENERS("Event Listeners", false),
 }
