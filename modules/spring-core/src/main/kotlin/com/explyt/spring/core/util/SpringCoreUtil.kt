@@ -51,6 +51,7 @@ import com.explyt.util.ExplytPsiUtil.isObject
 import com.explyt.util.ExplytPsiUtil.isObjectProvider
 import com.explyt.util.ExplytPsiUtil.isOptional
 import com.explyt.util.ExplytPsiUtil.isString
+import com.explyt.util.ExplytPsiUtil.onlyAllSupers
 import com.explyt.util.ExplytPsiUtil.psiClassType
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
@@ -215,7 +216,7 @@ object SpringCoreUtil {
     private fun PsiClass.hasTestComponentAnnotation(): Boolean {
         val virtualFile = this.containingFile?.virtualFile ?: return false
         val isInTestSources = ProjectRootManager.getInstance(this.project).fileIndex.isInTestSourceContent(virtualFile)
-        return isInTestSources && this.superClass?.hasComponentAnnotation() == true
+        return isInTestSources && this.onlyAllSupers().any { it.hasComponentAnnotation() }
     }
 
     fun PsiClass.getBeanName(): String? =
