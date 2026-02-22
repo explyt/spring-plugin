@@ -28,35 +28,26 @@ import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.GlobalSearchScopeTestAware
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.beanPsiTypeKotlin
 import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiType
-import com.explyt.spring.core.util.SpringCoreUtil.filterByBeanPsiTypeRegistrar
 import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatch
-import com.explyt.spring.core.util.SpringCoreUtil.filterByExactMatchRegistrar
-import com.explyt.spring.core.util.SpringCoreUtil.filterByQualifier
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isComponentCandidate
 import com.explyt.spring.core.util.SpringCoreUtil.matchesWildcardType
 import com.explyt.spring.core.util.SpringCoreUtil.possibleMultipleBean
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
-import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.util.CacheKeyStore
-import com.explyt.util.ExplytAnnotationUtil.getLongValue
-import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
+import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isGeneric
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isNonStatic
 import com.explyt.util.ExplytPsiUtil.isPublic
-import com.explyt.util.ExplytPsiUtil.isRegistrar
 import com.explyt.util.ExplytPsiUtil.resolvedDeepPsiClass
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
 import com.explyt.util.ModuleUtil
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
-import com.intellij.lang.Language
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
@@ -72,12 +63,11 @@ import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.InheritanceUtil
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.uast.UastModificationTracker
 import com.jetbrains.rd.util.getOrCreate
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.idea.util.projectStructure.module
 import org.jetbrains.uast.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -99,7 +89,7 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    private fun getStaticBeans(module: Module): Set<PsiBean> {
+    fun getStaticBeans(module: Module): Set<PsiBean> {
         synchronized(getMutexString(MutexType.SEARCH, module)) {
             return cachedValuesManager.getCachedValue(module) {
                 CachedValueProvider.Result(
@@ -155,7 +145,7 @@ class SpringSearchService(private val project: Project) {
             CachedValueProvider.Result(
                 project.modules
                     .filter { SpringCoreUtil.isSpringModule(it) }
-                    .flatMapTo(mutableSetOf()) { getProjectBeanPsiClassesAnnotatedByComponent(it) },
+                    .flatMapTo(mutableSetOf()) { getProjectBeans(it) },
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
@@ -287,14 +277,6 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    private fun isAnnotated(it: PsiBean, annotationType: String): Boolean {
-        return if (it.psiClass === it.psiMember) {
-            it.psiClass.isMetaAnnotatedBy(annotationType)
-        } else {
-            it.psiClass.isMetaAnnotatedBy(annotationType) || it.psiMember.isMetaAnnotatedBy(annotationType)
-        }
-    }
-
     @Deprecated("Don use directly. Use SpringSearchServiceFacade")
     fun getDependentBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
         try {
@@ -317,11 +299,34 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    private fun getImportedBeans(modulePackagesHolder: RootDataHolder, module: Module) =
-        modulePackagesHolder.importQualified.asSequence()
+    private fun getImportedBeans(modulePackagesHolder: RootDataHolder, module: Module): Set<PsiBean> {
+        val importPsiClasses = modulePackagesHolder.importQualified
             .mapNotNull { JavaPsiFacade.getInstance(project).findClass(it, module.moduleWithDependenciesScope) }
-            .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
-            .toSet()
+        return getImportedBeans(importPsiClasses, module)
+    }
+
+    private fun getImportedBeans(importPsiClasses: List<PsiClass>, module: Module): Set<PsiBean> {
+        val result = mutableSetOf<PsiBean>()
+        for (psiClass in importPsiClasses) {
+            result += PsiBean(psiClass.resolveBeanName(module), psiClass, psiClass.getQualifierAnnotation(), psiClass)
+            result += getMethodBeans(psiClass).map {
+                val beanName = it.resolveBeanName(module).firstOrNull() ?: it.name
+                PsiBean(beanName, psiClass, it.getQualifierAnnotation(), it)
+            }
+        }
+        return result
+    }
+
+    fun searchTestBeanClasses(psiClass: PsiClass): Set<PsiBean> {
+        val module = psiClass.module ?: return emptySet()
+        val allTestClasses = psiClass.allSupers()
+        val psiClassesTestContext = allTestClasses
+            .mapNotNull { it.toUElement() as? UClass }
+            .flatMap { PackageScanService.getInstance(project).getAllImportClasses(it) }
+
+        val importedBeans = getImportedBeans(psiClassesTestContext, module)
+        return importedBeans
+    }
 
     private fun filterBeansByPackage(
         beanComponents: Set<PsiBean>, rootDataHolder: RootDataHolder, module: Module
@@ -347,8 +352,7 @@ class SpringSearchService(private val project: Project) {
                 .asSequence()
                 .map { it.psiClass }
                 .filter { it.isValid }
-                .flatMap { it.allMethods.asSequence() }
-                .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
+                .flatMap { getMethodBeans(it) }
                 .filter { isActive(it) }
                 .toSet()
             CachedValueProvider.Result(
@@ -356,6 +360,10 @@ class SpringSearchService(private val project: Project) {
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
+    }
+
+    private fun getMethodBeans(psiClass: PsiClass): Sequence<PsiMethod> {
+        return psiClass.allMethods.asSequence().filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
     }
 
     private fun isActive(psiMember: PsiMember): Boolean {
@@ -394,7 +402,6 @@ class SpringSearchService(private val project: Project) {
             .flatMap { it.allMethods.asSequence() }
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
             .filter { isActive(it) }
-            .asSequence()
             .flatMap { method ->
                 // for array created separated method: searchArrayComponentPsiClassesByBeanMethods
                 method.returnType?.resolvedPsiClass?.let { psiClass ->
@@ -458,7 +465,7 @@ class SpringSearchService(private val project: Project) {
         val byTypeBeanMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType)
         if (byTypeBeanMethods.isNotEmpty()) return true
 
-        val byTypeComponents = getPsiClassesByComponents(module, this, beanPsiType, true)
+        val byTypeComponents = getPsiClassesByComponents(module, this, beanPsiType)
         return byTypeComponents.isNotEmpty()
     }
 
@@ -466,7 +473,6 @@ class SpringSearchService(private val project: Project) {
         module: Module,
         sourcePsiType: PsiType,
         beanPsiType: PsiType,
-        byTypeBeanMethodsIsEmpty: Boolean
     ): Sequence<PsiClass> {
         val beanPsiClass = beanPsiType.resolvedPsiClass
         val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
@@ -476,121 +482,8 @@ class SpringSearchService(private val project: Project) {
                 beanPsiClass != null && it.isEqualOrInheritor(beanPsiClass)
                         || beanPsiType is PsiWildcardType && it.matchesWildcardType(beanPsiType)
             }
-            .filter { !it.isGeneric(sourcePsiType) || !byTypeBeanMethodsIsEmpty }
+            .filter { !it.isGeneric(sourcePsiType) }
         return byTypeComponents
-    }
-
-
-    private fun findBeanDeclarations(
-        module: Module,
-        byBeanName: String,
-        sourcePsiType: PsiType?,
-        qualifier: PsiAnnotation?,
-        language: Language,
-    ): List<PsiMember> {
-        val beanPsiType = if (language == KotlinLanguage.INSTANCE)
-            sourcePsiType?.beanPsiTypeKotlin else sourcePsiType?.beanPsiType
-        val beanPsiClass = sourcePsiType?.resolveBeanPsiClass
-        var isMultipleBean = sourcePsiType?.possibleMultipleBean() ?: false
-        val methodsPsiBeans = getComponentBeanPsiMethods(module)
-        val registrarPsiBeans = searchAllBeanLight(module).filter { it.psiMember.isRegistrar() }
-        val beanNameFromQualifier = qualifier?.resolveBeanName()
-
-        val resultByType: List<PsiMember> = if (sourcePsiType != null && beanPsiType != null) {
-            val byExactMatch = methodsPsiBeans.filterByExactMatch(sourcePsiType).toSet()
-            val byExactMatchRegistrar = registrarPsiBeans.filterByExactMatchRegistrar(sourcePsiType).toSet()
-            var byTypeBeanMethods = byExactMatch + byExactMatchRegistrar
-            if (isMultipleBean || byTypeBeanMethods.isEmpty()) {
-                val psiMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType).toSet()
-                val psiMethodsRegistrar = registrarPsiBeans.filterByBeanPsiTypeRegistrar(beanPsiType).toSet()
-                byTypeBeanMethods = psiMethods + psiMethodsRegistrar
-            }
-
-            val beanQualifiedName = beanPsiClass?.qualifiedName
-            val byTypeComponents = getStaticBeans(module)
-                .filter { bean ->
-                    bean.psiClass.qualifiedName?.let { InheritanceUtil.isInheritor(beanPsiClass, it) } == true
-                            || beanQualifiedName != null && InheritanceUtil.isInheritor(
-                        bean.psiClass,
-                        beanQualifiedName
-                    )
-                }
-                .map { it.psiClass } +
-                    getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
-
-            if (isMultipleBean && byExactMatch.isNotEmpty()
-                && byTypeBeanMethods.isEmpty() && byTypeComponents.isEmpty()
-            ) {
-                // Check if multiple bean has exact type match
-                isMultipleBean = false
-                byTypeBeanMethods = byExactMatch
-            }
-
-            val aResultByTypeAndQualifier: List<PsiMember> = (byTypeBeanMethods + byTypeComponents)
-                .filter { it.filterByQualifier(module, qualifier, beanNameFromQualifier) }
-
-            if (aResultByTypeAndQualifier.isEmpty()) {
-                return emptyList()
-            }
-
-            if (aResultByTypeAndQualifier.size > 1 && !isMultipleBean) {
-                val byPrimary = aResultByTypeAndQualifier.filter { it.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY) }
-                if (byPrimary.isNotEmpty()) {
-                    return byPrimary
-                }
-                val byPriority = aResultByTypeAndQualifier.asSequence()
-                    .filter { it.isMetaAnnotatedBy(JavaEeClasses.PRIORITY.allFqns) }
-                    .groupBy {
-                        it.getMetaAnnotation(JavaEeClasses.PRIORITY.allFqns)?.getLongValue()?.toInt() ?: Int.MAX_VALUE
-                    }
-                if (byPriority.isNotEmpty()) {
-                    val highestPriority = byPriority.minOf { it.key }
-                    return byPriority[highestPriority] ?: emptyList()
-                }
-            }
-            aResultByTypeAndQualifier
-        } else {
-            val componentPsiBeans = getBeanPsiClassesAnnotatedByComponent(module)
-            (methodsPsiBeans + componentPsiBeans.mapTo(mutableSetOf()) { it.psiClass })
-                .filter { it.filterByQualifier(module, qualifier, beanNameFromQualifier) }
-        }
-
-        if (resultByType.size == 1) {
-            return resultByType
-        }
-
-        if (qualifier == null) {
-            if (beanPsiClass != null && isMultipleBean) {
-                return resultByType
-            }
-
-            val filteredByBeanName = resultByType
-                .filter { byBeanName in it.resolveBeanName(module) }
-            return filteredByBeanName.ifEmpty { resultByType }
-        }
-        val byNameFromQualifierBean = resultByType
-            .filter { it.filterByQualifier(module, qualifier, beanNameFromQualifier) }
-        return byNameFromQualifierBean
-            .filter { byBeanName in it.resolveBeanName(module) }
-            .ifEmpty { byNameFromQualifierBean }
-    }
-
-    @Deprecated("Don use directly. Use SpringSearchServiceFacade")
-    fun findActiveBeanDeclarations(
-        module: Module,
-        byBeanName: String,
-        language: Language,
-        byBeanPsiType: PsiType? = null,
-        qualifier: PsiAnnotation? = null
-    ): List<PsiMember> = runReadAction {
-        try {
-            val beanDeclarations = findBeanDeclarations(module, byBeanName, byBeanPsiType, qualifier, language)
-            val excludedElements = getExcludedBeansClasses(module).map { it.psiMember }.toSet()
-
-            beanDeclarations - excludedElements
-        } catch (e: AlreadyDisposedException) {
-            emptyList()
-        }
     }
 
     private fun filterByConditionals(module: Module, foundBeans: Set<PsiBean>): FoundBeans {
@@ -741,7 +634,7 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
-    fun getProjectBeanPsiClassesAnnotatedByComponent(module: Module): Set<PsiBean> {
+    fun getProjectBeans(module: Module): Set<PsiBean> {
         val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
         val annotationPsiClasses = SpringSearchUtils.getComponentClassAnnotations(module)
         val modulePackagesHolder = PackageScanService.getInstance(module.project).getAllPackages()

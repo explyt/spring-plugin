@@ -209,7 +209,7 @@ object SpringCoreUtil {
         return ClassInheritorsSearch.search(psiClass, moduleScope, true).any { it?.hasComponentAnnotation() == true }
     }
 
-    private fun PsiClass.hasComponentAnnotation(): Boolean {
+    fun PsiClass.hasComponentAnnotation(): Boolean {
         return isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) || isMetaAnnotatedBy(SpringCoreClasses.BOOTSTRAP_WITH)
     }
 
