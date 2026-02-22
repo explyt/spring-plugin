@@ -25,7 +25,9 @@ import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
+import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
+import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
 import com.intellij.lang.Language
@@ -33,8 +35,10 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -48,7 +52,6 @@ class SpringSearchServiceFacade(private val project: Project) {
     fun getAllBeansClassesConsideringContext(project: Project): SpringSearchService.FoundBeans {
         return springSearchService.getAllBeansClassesConsideringContext(project)
     }
-
 
     fun getAllActiveBeans(module: Module, isNative: Boolean = false): Set<PsiBean> {
         return if (isNative || isExternalProjectExist(project)) {
@@ -103,13 +106,18 @@ class SpringSearchServiceFacade(private val project: Project) {
         byBeanName: String,
         language: Language,
         byBeanPsiType: PsiType? = null,
-        qualifier: PsiAnnotation? = null
+        qualifier: PsiAnnotation? = null,
+        psiElement: PsiElement? = null
     ): List<PsiMember> {
         return if (isExternalProjectExist(project)) {
             val beans = nativeSearchService.getAllActiveBeans()
             nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
-            springSearchService.findActiveBeanDeclarations(module, byBeanName, language, byBeanPsiType, qualifier)
+            val isTestSource = ExplytPsiUtil.isTestFiles(psiElement)
+            val beans = springSearchService.getActiveBeansClasses(module)
+            nativeSearchService.findActiveBeanDeclarations(
+                beans, byBeanName, language, byBeanPsiType, qualifier, module
+            ).filter { filterBeanByTest(it, psiElement, isTestSource) }
         }
     }
 
@@ -172,6 +180,12 @@ class SpringSearchServiceFacade(private val project: Project) {
         }
     }
 
+    private fun filterBeanByTest(member: PsiMember, psiElement: PsiElement?, testSource: Boolean): Boolean {
+        if (testSource || psiElement == null) return true
+        val virtualFile = member.containingFile?.virtualFile ?: return true
+        return !TestSourcesFilter.isTestSources(virtualFile, member.project)
+    }
+
     companion object {
         fun getInstance(project: Project): SpringSearchServiceFacade = project.service()
 
@@ -196,5 +210,24 @@ class SpringSearchServiceFacade(private val project: Project) {
         private fun isExternalProjectExistInternal(project: Project): Boolean {
             return getLoadedProjects(project).any { isActiveDiPredicate(it) }
         }
+    }
+
+    //todo split test & production beans
+    private fun getAllActiveBeansWithTests(psiElement: PsiElement): Set<PsiBean> {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return emptySet()
+        val activeBeansClasses = springSearchService.getActiveBeansClasses(module)
+        val springTestClass = getSpringTestClass(psiElement)
+        if (springTestClass != null) {
+            val testBeanClasses = springSearchService.searchTestBeanClasses(springTestClass)
+            return testBeanClasses + activeBeansClasses
+        }
+        return activeBeansClasses
+    }
+
+    private fun getSpringTestClass(psiElement: PsiElement): PsiClass? {
+        val virtualFile = psiElement.containingFile?.virtualFile ?: return null
+        if (!ProjectRootManager.getInstance(project).fileIndex.isInTestSourceContent(virtualFile)) return null
+        val uClass = psiElement.toUElement()?.getContainingUClass() ?: return null
+        return if (uClass.javaPsi.allSupers().any { it.hasComponentAnnotation() }) uClass.javaPsi else null
     }
 }
