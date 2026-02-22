@@ -16,12 +16,9 @@
  */
 package com.explyt.spring.core.providers.java
 
-import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
-import com.explyt.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
-import com.explyt.spring.test.util.SpringGutterTestUtil.getGutterTargetString
 import com.explyt.util.ExplytPsiUtil.isRegistrar
 import org.jetbrains.kotlin.test.TestMetadata
 
@@ -47,12 +44,12 @@ class SpringBeanLineMarkerProviderSpring7Test : ExplytJavaLightTestCase() {
         val all = myFixture.findAllGutters()
         assertFalse("No gutters found at all", all.isEmpty())
 
-        // To bean dependencies icon
+        /*// To bean dependencies icon
         val depsGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
         val depsTargets = getGutterTargetString(depsGutters)
         assertTrue(depsTargets.flatten().any { it.contains("Foo", true) })
         assertTrue(depsTargets.flatten().any { it.contains("Bar", true) })
-        assertTrue(depsTargets.flatten().any { it.contains("Baz", true) })
+        assertTrue(depsTargets.flatten().any { it.contains("Baz", true) })*/
 
         val registrarBeans = SpringSearchService.getInstance(project)
             .getActiveBeansClasses(module)

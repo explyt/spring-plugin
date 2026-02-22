@@ -22,6 +22,7 @@ import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.json.psi.JsonPsiUtil
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.openapi.util.TextRange
 import com.intellij.pom.Navigatable
 import com.intellij.psi.*
@@ -299,6 +300,11 @@ object ExplytPsiUtil {
 
     fun getUnquotedText(psiElement: PsiElement): String {
         return JsonPsiUtil.stripQuotes(ElementManipulators.getValueText(psiElement))
+    }
+
+    fun isTestFiles(psiElement: PsiElement?): Boolean {
+        val virtualFile = psiElement?.containingFile?.virtualFile ?: return false
+        return TestSourcesFilter.isTestSources(virtualFile, psiElement.project)
     }
 
 }

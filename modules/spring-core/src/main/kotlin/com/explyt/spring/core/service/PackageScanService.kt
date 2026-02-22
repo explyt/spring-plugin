@@ -23,6 +23,7 @@ import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCANS
 import com.explyt.spring.core.SpringCoreClasses.IMPORT
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
+import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_TEST
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
@@ -45,6 +46,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.uast.*
 
 @Service(Service.Level.PROJECT)
@@ -184,6 +186,24 @@ class PackageScanService(private val project: Project) {
         return uClass.uAnnotations.asSequence()
             .filter { holderImport.contains(it) }
             .flatMapTo(mutableSetOf()) { getImportClasses(it, holderImport) }
+    }
+
+    fun getAllImportClasses(uClass: UClass): Set<PsiClass> {
+        val module = uClass.module ?: return emptySet()
+        val holderImport = SpringSearchService.getInstance(project).getMetaAnnotations(module, IMPORT)
+        val holderSpringTest = SpringSearchService.getInstance(project).getMetaAnnotations(module, SPRING_BOOT_TEST)
+
+        val springTestClasses = uClass.uAnnotations.asSequence()
+            .filter { holderSpringTest.contains(it) }
+            .flatMap { holderSpringTest.getAnnotationMemberValues(it, setOf("classes")) }
+            .flatMap { getPsiClasses(it) }
+            .toSet()
+        val importClasses = uClass.uAnnotations.asSequence()
+            .filter { holderImport.contains(it) }
+            .flatMap { holderImport.getAnnotationMemberValues(it, setOf(SpringProperties.VALUE)) }
+            .flatMap { getPsiClasses(it) }
+            .toSet()
+        return importClasses + springTestClasses
     }
 
     private fun getPackagesScans(uAnnotation: UAnnotation, metaAnnotationsHolder: MetaAnnotationsHolder): Set<String> {
