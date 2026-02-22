@@ -22,6 +22,7 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
 import com.explyt.spring.test.util.SpringGutterTestUtil.getGutterTargetString
+import org.intellij.lang.annotations.Language
 
 class SpringBeanLineMarkerProviderCollectionTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
@@ -729,6 +730,7 @@ class SpringBeanLineMarkerProviderCollectionTest : ExplytKotlinLightTestCase() {
         assertEquals(gutterTargetString.flatMap { gutter -> gutter.filter { it == "beanListI()" } }.size, 1)
     }
 
+    @Language("Java")
     private fun getCollectionClasses(): String {
         return """
             import org.springframework.context.annotation.Bean;
