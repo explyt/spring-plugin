@@ -54,11 +54,13 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.*
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
 import java.util.concurrent.atomic.AtomicBoolean
@@ -288,7 +290,8 @@ class NativeSearchService(private val project: Project) {
         byBeanName: String,
         language: Language,
         sourcePsiType: PsiType?,
-        qualifier: PsiAnnotation?
+        qualifier: PsiAnnotation?,
+        moduleFindInSource: Module? = null //when uses bean search by source(not native) - default behavior
     ): List<PsiMember> {
         val beanPsiType = if (language == KotlinLanguage.INSTANCE)
             sourcePsiType?.beanPsiTypeKotlin else sourcePsiType?.beanPsiType
@@ -296,13 +299,15 @@ class NativeSearchService(private val project: Project) {
         val isMultipleBean = AtomicBoolean(sourcePsiType?.possibleMultipleBean() ?: false)
         val beanNameFromQualifier = qualifier?.resolveBeanName()
 
-        val resultByType: List<PsiBean> = if (sourcePsiType != null && beanPsiType != null) {
+        val findBeansByType: List<PsiBean> = (if (sourcePsiType != null && beanPsiType != null) {
             findActiveBeanDeclarations(
                 allPsiBeans, isMultipleBean, sourcePsiType, beanPsiType, qualifier, beanNameFromQualifier
-            )
+            ) + findInArray(beanPsiType, moduleFindInSource)
         } else {
             allPsiBeans.filter { it.filterByQualifier(qualifier, beanNameFromQualifier) }
-        }
+        })
+        val resultByType = findBeansByType.takeIf { it.isNotEmpty() }
+            ?: findInStaticBeans(beanPsiClass, moduleFindInSource)
 
         if (resultByType.size == 1) {
             return resultByType.map { it.psiMember }
@@ -324,6 +329,33 @@ class NativeSearchService(private val project: Project) {
             .ifEmpty { byNameFromQualifierBean }
     }
 
+    private fun findInArray(beanPsiType: PsiType, module: Module?): List<PsiBean> {
+        module ?: return emptyList()
+        val methodsPsiBeans = SpringSearchService.getInstance(project).getComponentBeanPsiMethods(module)
+            .filter { it.returnType is PsiArrayType }
+        val psiMethods = methodsPsiBeans.filterByBeanPsiType(beanPsiType).toSet()
+        return psiMethods.flatMap { methodToPsiBean(it) }
+    }
+
+    private fun methodToPsiBean(method: PsiMethod): List<PsiBean> {
+        return method.returnType?.resolvedDeepPsiClass?.let { psiClass ->
+            method.resolveBeanName.map { PsiBean(it, psiClass, method.getQualifierAnnotation(), method) }
+        } ?: emptyList()
+    }
+
+    private fun findInStaticBeans(beanPsiClass: PsiClass?, moduleFindInStatic: Module?): List<PsiBean> {
+        moduleFindInStatic ?: return emptyList()
+        val beanQualifiedName = beanPsiClass?.qualifiedName
+        return SpringSearchService.getInstance(project).getStaticBeans(moduleFindInStatic)
+            .filter { bean ->
+                bean.psiClass.qualifiedName?.let { InheritanceUtil.isInheritor(beanPsiClass, it) } == true
+                        || beanQualifiedName != null && InheritanceUtil.isInheritor(
+                    bean.psiClass,
+                    beanQualifiedName
+                )
+            }
+    }
+
     private fun findActiveBeanDeclarations(
         allPsiBeans: Collection<PsiBean>,
         atomicIsMultipleBean: AtomicBoolean,
@@ -332,8 +364,9 @@ class NativeSearchService(private val project: Project) {
         qualifier: PsiAnnotation?,
         beanNameFromQualifier: String?
     ): List<PsiBean> {
-        val methodsPsiBeans = allPsiBeans.mapNotNullTo(mutableSetOf()) { it.psiMember as? PsiMethod }
-        val registrarPsiBeans = allPsiBeans.filter { it.psiMember.isRegistrar() }
+        val membersPsiBeans = allPsiBeans.filter { it.isMember() }
+        val methodsPsiBeans = membersPsiBeans.mapNotNull { it.psiMember as? PsiMethod }
+        val registrarPsiBeans = membersPsiBeans.filter { it.psiMember.isRegistrar() }
         val byExactMatch = methodsPsiBeans.filterByExactMatch(sourcePsiType).toSet()
         val byExactMatchRegistrar = registrarPsiBeans.filterByExactMatchRegistrar(sourcePsiType).toSet()
         var byTypeBeanMethods = byExactMatch + byExactMatchRegistrar
