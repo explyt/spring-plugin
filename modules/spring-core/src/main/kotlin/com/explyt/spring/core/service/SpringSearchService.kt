@@ -506,9 +506,14 @@ class SpringSearchService(private val project: Project) {
                 byTypeBeanMethods = psiMethods + psiMethodsRegistrar
             }
 
+            val beanQualifiedName = beanPsiClass?.qualifiedName
             val byTypeComponents = getStaticBeans(module)
                 .filter { bean ->
                     bean.psiClass.qualifiedName?.let { InheritanceUtil.isInheritor(beanPsiClass, it) } == true
+                            || beanQualifiedName != null && InheritanceUtil.isInheritor(
+                        bean.psiClass,
+                        beanQualifiedName
+                    )
                 }
                 .map { it.psiClass } +
                     getPsiClassesByComponents(module, sourcePsiType, beanPsiType, byTypeBeanMethods.isEmpty()).toSet()
