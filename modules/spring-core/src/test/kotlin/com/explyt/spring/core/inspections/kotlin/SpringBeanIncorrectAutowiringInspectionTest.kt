@@ -42,17 +42,16 @@ class SpringBeanIncorrectAutowiringInspectionTest : ExplytInspectionKotlinTestCa
 
     fun testResourceLoader() {
         @Language("kotlin") val code = """
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.core.io.ResourceLoader;
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.ApplicationContext
+import org.springframework.core.io.ResourceLoader
+import org.springframework.context.support.AbstractApplicationContext
 
 @${SpringCoreClasses.COMPONENT}
 class DemoApplication {
-    @Autowired
-    var resourceLoader: ResourceLoader? = null
-    @Autowired
-    var context: ApplicationContext? = null
+    @Autowired var resourceLoader: ResourceLoader? = null
+    @Autowired var context: ApplicationContext? = null
+    @Autowired var abstractContext: AbstractApplicationContext? = null
 }
             """
         myFixture.configureByText("DemoApplication.kt", code.trimIndent())
