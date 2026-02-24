@@ -46,6 +46,7 @@ class SpringBeanIncorrectAutowiringInspectionTest : ExplytInspectionJavaTestCase
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.context.support.AbstractApplicationContext;
 
 @${SpringCoreClasses.COMPONENT}
 public class DemoApplication {
@@ -53,6 +54,8 @@ public class DemoApplication {
     ResourceLoader resourceLoader;
     @Autowired
     ApplicationContext context;
+    @Autowired
+    AbstractApplicationContext abstractContext;
 }
             """
         myFixture.configureByText("DemoApplication.java", code.trimIndent())
