@@ -122,9 +122,9 @@ object ExplytPsiUtil {
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
-    fun PsiClass.isEqualOrInheritor(fullyQualifiedName: String): Boolean {
+    fun PsiClass.isEqualOrInheritor(fullyQualifiedName: String, recursionCount: Int = 0): Boolean {
         return qualifiedName == fullyQualifiedName
-                || supers.any { it.isEqualOrInheritor(fullyQualifiedName) }
+                || recursionCount < 10 && supers.any { it.isEqualOrInheritor(fullyQualifiedName, recursionCount + 1) }
     }
 
     fun PsiClassType.isEqualOrInheritor(baseType: PsiClassType): Boolean {
