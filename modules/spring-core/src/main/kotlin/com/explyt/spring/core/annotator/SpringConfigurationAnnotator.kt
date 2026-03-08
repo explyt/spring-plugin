@@ -72,7 +72,7 @@ abstract class SpringConfigurationAnnotator : Annotator {
             val textAttribute = getTextAttributeForReferenceValue(reference) ?: return@forEach
             val textRange = reference.rangeInElement.shiftRight(offset)
 
-            if (isValidTextRange(textRange, annotatedOffsets)) {
+            if (element.textRange.contains(textRange) && isValidTextRange(textRange, annotatedOffsets)) {
                 holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
                     .range(textRange)
                     .textAttributes(textAttribute)
