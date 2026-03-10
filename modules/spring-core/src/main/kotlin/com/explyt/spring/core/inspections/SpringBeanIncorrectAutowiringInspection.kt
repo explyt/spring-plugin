@@ -30,6 +30,7 @@ import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
 import com.explyt.spring.core.util.SpringCoreUtil.targetClass
+import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOptional
@@ -181,14 +182,9 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         val problemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
 
         val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
-        val beanDeclarations = springSearchService
-            .findActiveBeanDeclarations(
-                module,
-                element.name ?: "",
-                element.language,
-                psiType,
-                element.getQualifierAnnotation()
-            )
+        val beanDeclarations = springSearchService.findActiveBeanDeclarations(
+            module, element.name ?: "", element.language, psiType, element.getQualifierAnnotation(), element
+        )
 
         if (psiType.isOptional || element.isAutowiredByRequiredTrue() == false) {
             if (beanDeclarations.size > 1) {
@@ -237,15 +233,17 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         }
         var problems = emptyArray<ProblemDescriptor>()
         if (beanDeclarations.isEmpty() || !psiType.isMultipleBean(module)) {
-            problems += manager.createProblemDescriptor(
-                problemElement,
-                getWarningMessageInheritor(
-                    module, beanDeclarations,
-                    SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.too-many", nameClass)
-                ),
-                AddQualifierQuickFix(SpringCoreClasses.QUALIFIER, problemElement),
-                ProblemHighlightType.GENERIC_ERROR, isOnTheFly
-            )
+            if (!ExplytPsiUtil.isTestFiles(element)) {
+                problems += manager.createProblemDescriptor(
+                    problemElement,
+                    getWarningMessageInheritor(
+                        module, beanDeclarations,
+                        SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.too-many", nameClass)
+                    ),
+                    AddQualifierQuickFix(SpringCoreClasses.QUALIFIER, problemElement),
+                    ProblemHighlightType.GENERIC_ERROR, isOnTheFly
+                )
+            }
         }
 
         return problems
