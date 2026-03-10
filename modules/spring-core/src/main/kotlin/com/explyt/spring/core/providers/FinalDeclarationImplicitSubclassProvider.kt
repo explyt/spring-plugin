@@ -29,15 +29,14 @@ import com.explyt.spring.core.SpringCoreClasses.CACHEPUT
 import com.explyt.spring.core.SpringCoreClasses.CACHING
 import com.explyt.spring.core.SpringCoreClasses.CONFIGURATION
 import com.explyt.spring.core.util.SpringCoreUtil.isSpringBeanCandidateClass
+import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isAbstract
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isStatic
 import com.intellij.codeInspection.inheritance.ImplicitSubclassProvider
 import com.intellij.lang.jvm.JvmModifier
-import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 
 @Suppress("UnstableApiUsage")
@@ -120,13 +119,8 @@ class FinalDeclarationImplicitSubclassProvider : ImplicitSubclassProvider() {
         return psiClass.isMetaAnnotatedBy(CONFIGURATION) && method.isMetaAnnotatedBy(BEAN)
     }
 
-    private fun isTestFiles(psiElement: PsiElement): Boolean {
-        val virtualFile = psiElement.containingFile?.virtualFile ?: return false
-        return TestSourcesFilter.isTestSources(virtualFile, psiElement.project)
-    }
-
     private fun getModifiersForTransactional(method: PsiMethod): Array<JvmModifier> {
-        return if (isTestFiles(method)) {
+        return if (ExplytPsiUtil.isTestFiles(method)) {
             arrayOf(JvmModifier.PUBLIC, JvmModifier.PROTECTED, JvmModifier.PACKAGE_LOCAL)
         } else {
             arrayOf(JvmModifier.PUBLIC)
