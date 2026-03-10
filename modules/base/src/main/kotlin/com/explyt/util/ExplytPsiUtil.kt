@@ -21,6 +21,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.pom.Navigatable
@@ -125,9 +126,9 @@ object ExplytPsiUtil {
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
-    fun PsiClass.isEqualOrInheritor(fullyQualifiedName: String): Boolean {
+    fun PsiClass.isEqualOrInheritor(fullyQualifiedName: String, recursionCount: Int = 0): Boolean {
         return qualifiedName == fullyQualifiedName
-                || supers.any { it.isEqualOrInheritor(fullyQualifiedName) }
+                || recursionCount < 10 && supers.any { it.isEqualOrInheritor(fullyQualifiedName, recursionCount + 1) }
     }
 
     fun PsiClassType.isEqualOrInheritor(baseType: PsiClassType): Boolean {
@@ -306,6 +307,11 @@ object ExplytPsiUtil {
 
     fun getUnquotedText(psiElement: PsiElement): String {
         return StringUtil.unquoteString(ElementManipulators.getValueText(psiElement))
+    }
+
+    fun isTestFiles(psiElement: PsiElement?): Boolean {
+        val virtualFile = psiElement?.containingFile?.virtualFile ?: return false
+        return TestSourcesFilter.isTestSources(virtualFile, psiElement.project)
     }
 
 }

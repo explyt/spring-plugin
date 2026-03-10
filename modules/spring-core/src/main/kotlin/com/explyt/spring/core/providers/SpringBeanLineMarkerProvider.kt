@@ -239,8 +239,8 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val beanName = uField.name ?: return emptyList()
             val qualifierAnnotation = uField.getQualifierAnnotation()
 
-            val activeBean = springSearchService.findActiveBeanDeclarations(
-                module, beanName, element.language, beanPsiType, qualifierAnnotation
+            val activeBean = SpringSearchServiceFacade.getInstance(module.project).findActiveBeanDeclarations(
+                module, beanName, element.language, beanPsiType, qualifierAnnotation, element
             )
             if (activeBean.isNotEmpty()) {
                 return activeBean
@@ -319,9 +319,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val filteredByName = allByType.filter {
                 val beanName = it.name ?: return@filter true
                 val beanPsiType = it.type
-                val resolvedBeanTargets = springSearchService.findActiveBeanDeclarations(
-                    module, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
-                )
+
+                val resolvedBeanTargets = SpringSearchServiceFacade.getInstance(module.project)
+                    .findActiveBeanDeclarations(
+                        module, beanName, it.language, beanPsiType, it.getQualifierAnnotation()
+                    )
                 return@filter uParent.javaPsi in resolvedBeanTargets
             }
 

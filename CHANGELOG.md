@@ -4,6 +4,26 @@
 
 ## [Unreleased]
 
+### Spring Core
+
+- feat: Show EventListeners in endpoint tool
+  window [#181](https://github.com/explyt/spring-plugin/issues/181#issuecomment-4021542501)
+- feat: Support method beans from @Import annotation [#189](https://github.com/explyt/spring-plugin/issues/189)
+- fix: support ResourceLoader bean [#190](https://github.com/explyt/spring-plugin/issues/190)
+- fix: StackOverflowError in ExplytPsiUtil [#196](https://github.com/explyt/spring-plugin/issues/196)
+- fix: Error during ranges calculation in yaml annotator [#173](https://github.com/explyt/spring-plugin/issues/173)
+
+### Spring Test
+
+- fix: Test beans inspections [#183](https://github.com/explyt/spring-plugin/issues/183)
+
+### Spring Core/Boot
+
+- feat: Kotlin: Quick-fix for data class @ConfigurationProperties without
+  `@ConstructorBinding` [#31](https://github.com/explyt/spring-plugin/issues/31)
+
+## [253.31.58] - 2026-01-31
+
 ### Spring AI
 
 - feat: Spring AI Tools for bundled [MCP Server plugin](https://plugins.jetbrains.com/plugin/26071-mcp-server)

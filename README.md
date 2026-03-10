@@ -25,18 +25,29 @@ Available on JetBrains Marketplace: https://plugins.jetbrains.com/plugin/28675-s
     - [Key Features](#key-features)
     - [Our Innovative Approach](#our-innovative-approach)
     - [Built-in HTTP Client Using Swagger UI](#built-in-http-client-using-swagger-ui)
+    - [Two Ways to Test HTTP Requests](#two-ways-to-test-http-requests)
+    - [Quarkus Support](#quarkus-support)
     - [Spring Core and Boot Enhancements](#spring-core-and-boot-enhancements)
     - [Spring Web Enhancements](#spring-web-enhancements)
     - [Spring Debugger](#spring-debugger)
-    - [Quarkus Support](#quarkus-support)
     - [Spring Data Support](#spring-data-support)
     - [Spring AOP Enhancements](#spring-aop-enhancements)
     - [Spring Initializr](#spring-initializr)
-    - [Docker Compose](#docker-compose)
+    - [Docker Compose and Kubernetes](#docker-compose-and-kubernetes)
     - [Spring AI](#spring-ai)
     - [Additional Inspections and Features](#additional-inspections-and-features)
+- [Tool Windows](#tool-windows)
+- [Inlay Hints & Code Vision](#inlay-hints--code-vision)
+- [Code Generation](#code-generation)
+- [Advanced Features](#advanced-features)
+- [Performance](#performance)
 - [Installation](#installation)
-    - [Installing Explyt Spring Plugin from Custom Repository](#installing-explyt-spring-plugin-from-custom-repository)
+    - [System Requirements](#system-requirements)
+    - [Option 1: JetBrains Marketplace (recommended)](#option-1-jetbrains-marketplace-recommended)
+    - [Option 2: Install from Custom Repository](#option-2-install-from-custom-repository)
+    - [Option 3: Manual Installation](#option-3-manual-installation)
+    - [First-time setup](#first-time-setup)
+    - [Troubleshooting](#troubleshooting)
 - [Usage](#usage)
 - [Learn More](#learn-more)
 - [Integrations](#integrations)
@@ -116,8 +127,9 @@ This feature allows you to test and interact with HTTP APIs seamlessly within yo
 #### Additional Features
 
 - **Code Generators**
-    - **Generate Methods from URLs or cURL Commands**: Use the **Generate** menu (`Alt+Ins`) inside a Java class or Kotlin file to create Spring Web methods based on a given URL or cURL command.
-    - **Supports Java and Kotlin**: Works seamlessly with both languages.
+    - **Spring Web Method** from URL/cURL: Use the **Generate** menu (`Alt`+`Insert` / `⌘`+`N`) to create a Spring Web annotated method.
+    - **HttpClient Method** from URL/cURL: Generates a `java.net.http.HttpClient` example (Java 11+), useful outside of Spring.
+    - **Supports Java and Kotlin**.
 
 - **Supports OpenAPI Editing**
     - **Edit OpenAPI Files**: If needed, you can directly edit the generated OpenAPI files. The plugin provides code completion and validation support for OpenAPI specifications.
@@ -183,14 +195,19 @@ If you see issues or edge cases, please open an issue in GitHub.
 
 - **Other Enhancements**:
     - XML configuration support when using native context mode (no extra setup required).
-    - SPI bean navigation and line markers for SPI-produced beans.
-    - Search Everywhere integration: quickly find beans by name.
+    - **@Profile inlay hints**: shows the computed result of Spring profile expressions inline.
+    - **@Scheduled cron completion + hints** (including `zone` attribute support).
+    - **Multi-context support**: works with Spring apps that create multiple `ApplicationContext`s.
+    - **Library beans DI support**: autowiring/inspections/navigation also consider beans coming from dependencies.
+    - **SPI bean navigation** and line markers for SPI-produced beans.
+    - **Search Everywhere integration**: quickly find beans by name in a dedicated **Beans** tab (`Shift` `Shift`).
+    - **Mark directory as Spring Application Property Folder** to enable completion/validation in non-standard config locations.
     - One-click converter between `.properties` and `.yml` Spring configuration files.
 
 ### Spring Web Enhancements
 
-- **Endpoints Tool Window**: Access all your Spring MVC, WebFlux, and message broker endpoints in one place.
-    View, navigate, and analyze your controllers, router functions, and messaging listeners.
+- **Endpoints Tool Window**: Access all your Spring MVC, WebFlux, and **message broker** endpoints in one place.
+    View, navigate, and analyze your controllers, router functions, and messaging listeners (e.g. `@KafkaListener`, `@RabbitListener`).
 
 - **Inspections and Quick Fixes**:
     - **Duplicate Endpoint Detection**: Warns about duplicate `@RequestMapping` paths.
@@ -252,6 +269,7 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 ### Spring Debugger
 
 - Remote Debugger: attach to a running JVM (started with JDWP) and the Explyt javaagent; full support for breakpoints, runtime PropertySource resolution, BeanDefinition view, transaction info, and auto Web URL detection. [Agent source](https://github.com/explyt/spring-plugin/blob/main/explyt-spring-boot-bean-reader/java-agent/src/main/java/com/explyt/spring/boot/bean/reader/InternalHolderContext.java) · [agent JAR](https://github.com/explyt/spring-plugin/blob/main/modules/spring-core/libs/explyt-java-agent-0.1.jar)
+- Runtime property value Code Vision in `.properties` / `.yml` during Explyt debug sessions: shows the actual runtime value and helps locate the `PropertySource` that provided it.
 - Debug Spring applications with the Explyt Spring Debugger run configuration.
 - Automatically patches build/run to attach a lightweight javaagent and reverts Gradle configuration after debug.
 - Dedicated nodes and improved presentation in the debugger tree for Spring beans, including Explyt: Spring Context and Active Transaction variables.
@@ -267,8 +285,13 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 - **Return Type and Parameter Checks**: Validates that repository methods have correct return types and parameters that match the query.
 - **Language Injection**: Offers JPQL and SQL syntax support within repository query methods.
 - **Bean Recognition**: Detects Spring Data repositories as beans, helping with navigation and autowiring checks.
-- **Repository Method Autocomplete**: Offers autocompletion for new Repository methods using method naming conventions and entity properties.
-- **Generate equals/hashCode for JPA entities**: based on best practices (Code → Generate) per Vlad Mihalcea’s guidance.
+- **Repository Method Autocomplete**: Suggests method names based on entity properties and common Spring Data keywords, for example:
+    - Prefixes: `findBy`, `readBy`, `getBy`, `queryBy`, `countBy`, `existsBy`, `deleteBy` / `removeBy`
+    - Operators: `And`, `Or`, `Between`, `LessThan`, `GreaterThan`, `Like`, `Containing`, `In`, `IsNull`, `IsNotNull`, `True`, `False`, `IgnoreCase`
+    - Sorting/limits: `OrderBy...Asc/Desc`, `Top` / `First`, `Distinct`
+- **Generate equals/hashCode for JPA entities** (Code → Generate): follows the commonly recommended Hibernate approach:
+    - `equals()` is `final`, checks type, and compares a non-null `@Id`
+    - `hashCode()` is `final` and based on the entity class (stable for proxies)
 - **Spring Data 4.0 AOT Navigation**: Jump from repository methods to AOT-generated artifacts and back, to better understand what Spring Data executes at runtime.
 
 ### Spring AOP Enhancements
@@ -281,10 +304,12 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 - Create new Spring projects directly from the IDE with enhanced error reporting and compatibility fixes.
 - Works in Community Edition; supports Kotlin and Java templates.
 
-### Docker Compose
+### Docker Compose and Kubernetes
 
-- Completion for Spring properties and environment variables in docker-compose files.
-- Go to declaration for property keys to jump into application properties/yaml.
+- Completion for Spring properties **as environment variables** in `docker-compose.yml` under `environment:`.
+- Completion for Spring properties in Kubernetes manifests (e.g. `k8s.yml`) under `env.name:`.
+- Converts property keys to `ENVIRONMENT_VARIABLE_FORM` (e.g. `server.port` → `SERVER_PORT`).
+- Go to declaration for property keys to jump into `application.properties` / `application.yml`.
 
 ### Spring AI
 
@@ -328,7 +353,114 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
     - Helps understand complex bean interactions and resolve issues.
 
 - **Experimental Scala Support**:
-    - Allows to create and develop projects using Scala lang. 
+    - Allows you to create and develop projects using Scala.
+
+## Tool Windows
+
+### Explyt Spring (beans, contexts, and the native loader)
+
+The **Explyt Spring** tool window is the central place for working with Spring beans and application contexts.
+It is also the entry point for **native context mode** (loading real bean metadata via a lightweight app run).
+
+- Open it from the right sidebar: **Explyt Spring**.
+- Link your Spring Boot run configuration: **Link Explyt Spring Boot Project From RunConfiguration**.
+- Load/refresh beans: use **Load Beans** / **Refresh** on the toolbar.
+- **Bean Analyzer**: open the Dependency Analyzer view for your loaded context (toolbar action labeled **Bean Analyzer**).
+- **Aspects**: Spring AOP aspects are shown as dedicated nodes in the tree (since `253.30.53`).
+
+Video: [How Native Context Mode works in Explyt Spring panel](https://github.com/user-attachments/assets/db380852-d239-4e0f-a1b2-15a3a2659f53)
+
+### Explyt Endpoints (Web + Message Brokers)
+
+The **Explyt Endpoints** tool window provides a single view for:
+- Spring MVC / WebFlux endpoints
+- Router functions
+- Spring Messaging listeners (Kafka, RabbitMQ, etc.)
+
+You can filter endpoints, navigate to handlers, and quickly jump between related endpoints.
+
+<img width="800" alt="Endpoints" src="https://github.com/user-attachments/assets/48b80d76-258e-4841-a4dc-fd59a9188d11" />
+
+Video: [How Explyt Endpoints Tool Window works](https://github.com/user-attachments/assets/e38625a3-bc68-4075-9efa-945e64977f36)
+
+## Inlay Hints & Code Vision
+
+### @Profile expression evaluation (inlay hints)
+
+The plugin adds inline hints that show the computed result of Spring `@Profile` expressions.
+
+Example:
+```java
+@Profile("production & !cloud") // : true
+class ProdOnlyBean {}
+```
+
+Enable/disable: **Settings | Editor | Inlay Hints | Annotations | Annotation profile hints**.
+
+### Runtime property values in Debug (Code Vision)
+
+When you debug a Spring app with **Explyt debug enabled**, Explyt shows Code Vision entries in `.properties` and `.yml` files:
+- the **actual runtime value** of a key (when it differs from the file value)
+- a shortcut to locate the `PropertySource` that provided it
+
+The lens name is: **Explyt: property runtime value**.
+
+### @Scheduled cron hints (including `zone`)
+
+- Completion/validation for Spring cron expressions in `@Scheduled`.
+- Human-readable hints for cron values.
+- Supports the `zone` attribute (since `252.25.15`).
+
+## Code Generation
+
+All generators are available from **Code | Generate** (`Alt+Ins` / `Cmd+N`):
+
+- **Spring Web Method** from URL/cURL: generates a Spring Web annotated method (Java/Kotlin).
+- **HttpClient Method** from URL/cURL: generates a `java.net.http.HttpClient` example (Java/Kotlin).
+- **JPA equals/hashCode**: generates methods for **Java** entities following best practices.
+- **Generate OpenAPI specification** for a project.
+- **Properties ↔ YAML** conversion (Editor popup menu): convert Spring config between `.properties` and `.yml`.
+
+## Advanced Features
+
+### Beans in Search Everywhere
+
+Press **Shift** twice to open **Search Everywhere** and use the dedicated **Beans** tab to navigate to any Spring bean by name.
+
+### Mark directory as Spring Application Property Folder
+
+If your project stores configuration in non-standard locations, you can opt in those directories:
+- Project View → right-click a directory → **Mark Directory as** → **Spring Application Property Folder**
+
+This enables Spring property completion/validation inside that folder.
+
+### Bean Analyzer (Dependency Analyzer integration)
+
+Open **Explyt Spring** tool window → click **Bean Analyzer** to visualize relationships between loaded beans and navigate to their declarations.
+
+### Multi-context projects
+
+If your application creates multiple Spring contexts, Explyt tracks them separately and keeps inspections/navigation context-aware (since `252.29.43`).
+
+### Library beans DI support
+
+Inspections and autowiring resolution also consider beans coming from project dependencies, not only the project sources.
+
+### SPI beans
+
+Navigation and gutter markers are available for beans produced via Java SPI (`ServiceLoader`).
+
+## Performance
+
+- **Static analysis vs Native context mode**:
+    - Static analysis works immediately after opening a project (good for quick feedback and Quarkus support).
+    - Native context mode provides the most accurate Spring bean model (conditional beans, profiles, factory beans), but requires a compile + lightweight run.
+- **When to use Load Beans**:
+    - Use it when you want the highest quality autowiring checks, bean navigation, and tool window data.
+    - For large projects, keep only the necessary run configurations linked to minimize background work.
+- **Large project tips**:
+    - Use **Detach All Spring Boot Projects** when you temporarily don’t need native context data.
+    - Prefer **Refresh** over re-linking whenever possible.
 
 ## Installation
 
@@ -357,20 +489,33 @@ For additional details, go to [Installation Guide](https://github.com/explyt/spr
 
 Useful links: [Changelog](./CHANGELOG.md) · [Plugin description](./PLUGIN-DESCRIPTION.md)
 
+### First-time setup
+
+1. Open **Tool Windows** → **Explyt Spring** and **Explyt Endpoints**.
+2. Link your Spring Boot run configuration via **Link Explyt Spring Boot Project From RunConfiguration**.
+3. Click **Load Beans** to populate the bean tree.
+4. Optional: enable **Spring Debug** and start a debug session to get runtime property Code Vision in config files.
+5. Optional: configure `.http` / `.rest` runners in **Settings | Tools | Explyt Spring**.
+
+### Troubleshooting
+
+- **No beans / autowiring looks incomplete**: run **Load Beans** in the **Explyt Spring** tool window to build the native model.
+- **Sync failed due to build errors**: build the project first (Build → Build Project) and try syncing/loading again.
+- **Older Spring Boot versions (< 2.4)**: you can try enabling the registry key `explyt.spring.native.old`.
+
 ---
 
 ## Usage
 
-- **Endpoints Tool Window**
+- **Explyt Spring tool window (beans & context)**
 
-  Access the **Explyt Endpoints** tool window from the right sidebar to see all endpoints in your project, including controllers and REST endpoints.
+  Open the **Explyt Spring** tool window (right sidebar). Link a Spring Boot run configuration via **Link Explyt Spring Boot Project From RunConfiguration**, then click **Load Beans** / **Refresh**.
 
-- **Native Bean Loading**
+  Tip: click **Bean Analyzer** to open the Dependency Analyzer view for the current context.
 
-  Use the **Explyt Spring Run Configuration** to load bean definitions directly from your Spring application. This process compiles your project and runs it in a special mode to get bean information without fully starting the application.
+- **Explyt Endpoints tool window**
 
-    - Click on the **Load Beans** icon (a Spring Boot icon with a magnifying glass) to start loading.
-    - After loading, a panel showing all beans in your application will appear. Double-click any bean to navigate to it.
+  Open **Explyt Endpoints** to browse and navigate Spring MVC/WebFlux endpoints and message broker listeners.
 
 - **Built-in HTTP Client with Swagger UI**
 
@@ -400,11 +545,11 @@ Useful links: [Changelog](./CHANGELOG.md) · [Plugin description](./PLUGIN-DESCR
         - Switch to the OpenAPI definition if you need to make manual adjustments.
         - The plugin provides code completion and validation for OpenAPI files.
 
-    - **Generate Methods from URLs or cURL Commands**
+    - **Generate methods from URL/cURL**
 
         - Use the **Generate** menu (`Alt+Ins`) inside a Java class or Kotlin file.
-        - Choose **"Spring Web Method from URL"** or **"Spring Web Method from cURL"**.
-        - This helps you quickly create methods without manually typing code.
+        - Choose **Spring Web Method** to generate Spring Web annotated methods.
+        - Choose **HttpClient Method** to generate a standalone `java.net.http.HttpClient` example.
 
 - **Inspections and Quick Fixes**
 
@@ -418,9 +563,21 @@ Useful links: [Changelog](./CHANGELOG.md) · [Plugin description](./PLUGIN-DESCR
 
   Visual markers appear in the gutter to help you identify Spring components, endpoints, scheduled tasks, and more. Click these icons to navigate directly to related code.
 
-- **Dependency Analyzer**
+- **Bean Analyzer (Dependency Analyzer)**
 
-  Analyze bean dependencies and navigate through their relationships. This is useful for understanding complex interactions and solving dependency issues.
+  Open **Explyt Spring** tool window and click **Bean Analyzer** to explore the loaded bean graph and navigate between related components.
+
+- **Beans in Search Everywhere**
+
+  Press `Shift` twice → open the **Beans** tab to navigate to any bean by name.
+
+- **Mark directory as Spring Application Property Folder**
+
+  Project View → right-click a directory → **Mark Directory as** → **Spring Application Property Folder**.
+
+- **Inlay Hints & Code Vision**
+
+  Use inline hints for `@Profile` expressions and runtime property value Code Vision during debug (see sections above).
 
 - **Kotlin Support**
 
