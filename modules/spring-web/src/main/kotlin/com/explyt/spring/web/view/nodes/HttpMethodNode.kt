@@ -17,6 +17,7 @@
 
 package com.explyt.spring.web.view.nodes
 
+import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.web.SpringWebIcons
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.view.EndpointElementViewData
@@ -42,6 +43,7 @@ class HttpMethodNode(
             "TRACE" -> presentation.setIcon(SpringWebIcons.HttpTrace)
 
             EndpointType.MESSAGE_BROKER.name -> presentation.setIcon(AllIcons.Webreferences.MessageQueue)
+            EndpointType.EVENT_LISTENERS.name -> presentation.setIcon(SpringIcons.EventListener)
 
             else -> presentation.setIcon(AllIcons.General.Web)
         }

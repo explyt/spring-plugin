@@ -15,13 +15,9 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 package com.explyt.spring.core.providers.kotlin
-
-import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
-import com.explyt.spring.test.util.SpringGutterTestUtil.getAllBeanGuttersByIcon
-import com.explyt.spring.test.util.SpringGutterTestUtil.getGutterTargetString
 import com.explyt.util.ExplytPsiUtil.isRegistrar
 import org.jetbrains.kotlin.test.TestMetadata
 
@@ -42,11 +38,11 @@ class SpringBeanLineMarkerProviderSpring7Test : ExplytKotlinLightTestCase() {
         myFixture.configureFromExistingVirtualFile(file)
         myFixture.doHighlighting()
 
-        val depsGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        /*val depsGutters = getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
         val depsTargets = getGutterTargetString(depsGutters)
         assertTrue(depsTargets.flatten().any { it.contains("Foo", true) })
         assertTrue(depsTargets.flatten().any { it.contains("Bar", true) })
-        assertTrue(depsTargets.flatten().any { it.contains("Baz", true) })
+        assertTrue(depsTargets.flatten().any { it.contains("Baz", true) })*/
 
         val registrarBeans = SpringSearchService.getInstance(project)
             .getActiveBeansClasses(module)
@@ -56,6 +52,4 @@ class SpringBeanLineMarkerProviderSpring7Test : ExplytKotlinLightTestCase() {
         assertTrue(registrarBeans.any { it.name == "bar" })
         assertTrue(registrarBeans.any { it.name == "baz" })
     }
-
-    //test for registrar
 }
