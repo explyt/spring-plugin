@@ -44,7 +44,7 @@ class PathVariableController {
     // Simple mapping
     @RequestMapping(path = ["/api/employees/{id}/{<warning>omittedInUrl</warning>}"], method = [RequestMethod.GET])
     @ResponseBody
-    fun getEmployeesById(@PathVariable id: String, @PathVariable omittedInSignature: String?): String {
+    fun getEmployeesById(@PathVariable id: String, <warning>@PathVariable omittedInSignature: String?</warning>): String {
         return "ID: ${'$'}id"
     }
 }
@@ -166,6 +166,47 @@ class PathVariableController {
                 fun postStr(
                     @${SpringWebClasses.PATH_VARIABLE} data: String,
                     @${SpringWebClasses.PATH_VARIABLE} version: String,
+                ): String {
+                    return "postStr"
+                }
+            }
+            """.trimIndent()
+        myFixture.configureByText("SpringComponent.kt", code)
+        myFixture.testHighlighting("SpringComponent.kt")
+    }
+
+    fun testClassRequestMappingNoPathVariable() {
+        @Language("kotlin") val code = """
+            import org.springframework.web.bind.annotation.PostMapping             
+            
+            @${SpringWebClasses.REQUEST_MAPPING}("{data}")
+            @${SpringCoreClasses.CONTROLLER}            
+            class SpringComponent {
+                                
+                @PostMapping("post")
+                fun postStr(
+                    <warning>@${SpringWebClasses.PATH_VARIABLE} data1: String</warning>,                    
+                ): String {
+                    return "postStr"
+                }
+            }
+            """.trimIndent()
+        myFixture.configureByText("SpringComponent.kt", code)
+        myFixture.testHighlighting("SpringComponent.kt")
+    }
+
+    fun testMethodRequestMappingNoPathVariable() {
+        @Language("kotlin") val code = """
+            import org.springframework.web.bind.annotation.PostMapping             
+            
+            @${SpringWebClasses.REQUEST_MAPPING}("{data}")
+            @${SpringCoreClasses.CONTROLLER}            
+            class SpringComponent {
+                                
+                @PostMapping("post/{<warning>version</warning>}")
+                fun postStr(
+                    @${SpringWebClasses.PATH_VARIABLE} data: String,                    
+                    <warning>@${SpringWebClasses.PATH_VARIABLE} ver: String</warning>
                 ): String {
                     return "postStr"
                 }
