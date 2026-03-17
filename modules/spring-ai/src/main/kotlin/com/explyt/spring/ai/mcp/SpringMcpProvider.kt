@@ -20,7 +20,6 @@ package com.explyt.spring.ai.mcp
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.util.SpringBootUtil
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.intellij.mcpserver.McpExpectedError
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
@@ -44,7 +43,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         @McpDescription("Path to the project root")
         projectPath: String
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFailSpring("project not found")
+        val project = getCurrentProject(projectPath) ?: return ("error: project not found")
         val applications = withContext(Dispatchers.IO) {
             readAction {
                 //val project = coroutineContext.project
@@ -82,15 +81,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
     ): String {
         val project = getCurrentProject(projectPath)
             ?: getCurrentProjectForClass(applicationClassName)
-            ?: mcpFailSpring("project not found")
-        val mcpBeanType = getMcpBeanType(beanType) ?: mcpFailSpring("bean type not found $beanType")
+            ?: return ("error: project not found")
+        val mcpBeanType = getMcpBeanType(beanType) ?: return ("error: bean type not found $beanType")
         val springBeans = withContext(Dispatchers.IO) {
             readAction {
                 val applicationPsiClass = JavaPsiFacade.getInstance(project)
                     .findClass(applicationClassName, project.projectScope())
-                    ?: mcpFailSpring("Spring Boot Application class not found $applicationClassName")
+                    ?: return@readAction emptyList()
                 val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
-                    ?: mcpFailSpring("Module not found for $applicationClassName")
+                    ?: return@readAction emptyList()
                 McpBeanSearchService.getInstance(project).getProjectBeansMcp(module)
             }
         }
@@ -124,10 +123,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
     companion object {
         private val mapper = ObjectMapper()
     }
-}
-
-private fun mcpFailSpring(message: String): Nothing {
-    throw McpExpectedError(message)
 }
 
 private fun getCurrentProject(projectPath: String?): Project? {
