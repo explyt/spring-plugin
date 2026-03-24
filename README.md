@@ -671,9 +671,8 @@ Thank you for helping us make Explyt Spring Plugin better! ⭐
 
 ## License
 
-Explyt Spring Plugin is **free for both commercial and non-commercial use**. However, redistribution or modification of the plugin is not allowed without explicit permission. For details, see the [Explyt License](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
-
-And if you want to utilise the source code of the plugin, you must read and accept our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md).
+Explyt Spring Plugin is licensed under the [Apache License 2.0](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
+You may use, modify, and distribute it under the terms of that license.
 
 ## Acknowledgments
 
