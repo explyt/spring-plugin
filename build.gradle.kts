@@ -30,6 +30,12 @@ subprojects {
     apply(plugin = "java")
     apply(plugin = "org.jetbrains.intellij.platform")
 
+    val junitBomVersion: String by rootProject
+
+    dependencies {
+        add("testImplementation", platform("org.junit:junit-bom:$junitBomVersion"))
+    }
+
     // This syntax is used to avoid duplicated in compileKotlin and compileTestKotlin settings
     //noinspection GroovyAssignabilityCheck
 
