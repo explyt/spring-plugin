@@ -12,12 +12,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: 21
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v5
       - run: echo "ESCAPED_BRANCH_NAME=$(echo "$GITHUB_REF_NAME" | sed -e 's|release/||g' | sed -e 's|/|_|g' )" >> $GITHUB_ENV
       - name: Sign Plugin
         env:
@@ -27,7 +27,7 @@ jobs:
           PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         run: ./gradlew --info :spring-bootstrap:buildPlugin :spring-bootstrap:signPlugin :spring-bootstrap:publishPlugin -PsnapshotVersion=$GITHUB_RUN_NUMBER -PdistFilePostfix=$ESCAPED_BRANCH_NAME-b$GITHUB_RUN_NUMBER -PsetUntilVersion | tee build.log
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-without-markdown
           compression-level: 0
@@ -35,7 +35,7 @@ jobs:
           path: |
             modules/spring-bootstrap/build/distributions/*.zip
       - name: Build log
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-log
           compression-level: 0

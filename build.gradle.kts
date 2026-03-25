@@ -30,6 +30,12 @@ subprojects {
     apply(plugin = "java")
     apply(plugin = "org.jetbrains.intellij.platform")
 
+    val junitBomVersion: String by rootProject
+
+    dependencies {
+        add("testImplementation", platform("org.junit:junit-bom:$junitBomVersion"))
+    }
+
     // This syntax is used to avoid duplicated in compileKotlin and compileTestKotlin settings
     //noinspection GroovyAssignabilityCheck
 
@@ -38,7 +44,11 @@ subprojects {
     tasks.withType<KotlinJvmCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
-            freeCompilerArgs.addAll("-Xjvm-default=all-compatibility", "-Xjsr305=strict")
+            freeCompilerArgs.addAll(listOf(
+                "-Xjvm-default=all-compatibility",
+                "-Xjsr305=strict",
+                "-opt-in=org.jetbrains.kotlin.K1Deprecation"
+            ))
         }
     }
 
