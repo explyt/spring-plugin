@@ -36,6 +36,7 @@ class SpringImplicitUsageProviderTest : ExplytInspectionKotlinTestCase() {
         TestLibrary.javax_annotation_1_3_2,
         TestLibrary.jakarta_inject_2_0_1,
         TestLibrary.jakarta_annotation_2_1_1,
+        TestLibrary.springBootTestAutoConfigure_3_1_1,
     )
 
     @TestMetadata("testConfiguration")
