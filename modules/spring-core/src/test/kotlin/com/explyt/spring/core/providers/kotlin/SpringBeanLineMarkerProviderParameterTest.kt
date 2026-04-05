@@ -22,6 +22,7 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
+import org.intellij.lang.annotations.Language
 
 private const val TEST_DATA_PATH = "providers/linemarkers/beans"
 
@@ -220,6 +221,22 @@ class SpringBeanLineMarkerProviderParameterTest : ExplytKotlinLightTestCase() {
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(gutterTargetString.size, 0)
+    }
+
+    fun testLineMarkerParameterAInConstructor_Value() {
+        @Language("kotlin") val fooComponent =
+            """
+                @org.springframework.stereotype.Component
+                class FooConstructorA(
+                    val a: A,
+                    @org.springframework.beans.factory.annotation.Value("test") val s: String
+                )
+            """.trimIndent()
+        myFixture.configureByText("FooComponent.kt", getParameterClasses() + fooComponent)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        assertEquals(1, allBeanGutters.size)
     }
 
     fun testLineMarkerParameterFooOpt_toAutowired() {
