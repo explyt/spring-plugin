@@ -6,6 +6,7 @@ Bring powerful Spring and Spring Boot tooling to IntelliJ IDEA Community Edition
 - Spring Debugger
 - Quarkus CDI/JAX‑RS/AOP support
 - Optional AI helpers for Spring tasks
+- Spring-aware MCP tools for agentic AI clients (IntelliJ IDEA 2025.2+)
 
 ![Screen](https://raw.githubusercontent.com/explyt/spring-plugin/refs/heads/main/images/screen1.jpg)
 
@@ -57,6 +58,11 @@ Bring powerful Spring and Spring Boot tooling to IntelliJ IDEA Community Edition
   - Works with OpenAI‑compatible providers or local models; requires IntelliJ Platform 2025.1+ for AI features.
   - Requires [Explyt plugin]() to enable AI features
 
+### MCP Server tools
+- Supports the bundled **JetBrains MCP Server** in IntelliJ IDEA **2025.2+**.
+- Adds Spring-aware MCP tools so agentic clients can inspect Spring Boot applications and project beans with less generic code exploration.
+- Current tools: `explyt_get_spring_boot_applications` and `explyt_get_project_beans_by_spring_boot_application`.
+
 ## Getting started
 - Open the **Endpoints** tool window (right sidebar) to explore and navigate all HTTP endpoints.
 - Use **Load Beans** (native context) to extract runtime bean metadata for accurate inspections/navigation.
@@ -86,8 +92,6 @@ Bring powerful Spring and Spring Boot tooling to IntelliJ IDEA Community Edition
 ---
 
 ### Search keywords
-spring boot intellij community plugin, idea community spring plugin, spring plugin for intellij, swagger ui http client, openapi client intellij, http client .http files, jetbrains http client cli, httpyac runner, spring debugger community, spring endpoints explorer, spring data repository inspection, configuration properties validation, bean injection navigation, autowiring inspection, spring initializr community, kotlin spring plugin, quarkus intellij community, java backend development, spring framework tooling
+spring boot intellij community plugin, idea community spring plugin, spring plugin for intellij, explyt spring, swagger ui http client, openapi client intellij, http client .http files, jetbrains http client cli, httpyac runner, spring debugger community, spring endpoints explorer, kafka listener navigation, rabbit listener navigation, bean dependency analyzer, search everywhere beans, spring profile inlay hints, runtime property value code vision, configuration properties validation, spring data repository inspection, jpa equals hashcode generator, kotlin spring plugin, quarkus intellij community, mcp server intellij, jetbrains mcp server, spring mcp tools
 
----
-
-Thank you for using Explyt Spring Plugin — please star, contribute and share to help more developers discover it.
+_Thank you for using Explyt Spring Plugin!_ — [please star](https://github.com/explyt/spring-plugin), contribute and share to help more developers discover it.
