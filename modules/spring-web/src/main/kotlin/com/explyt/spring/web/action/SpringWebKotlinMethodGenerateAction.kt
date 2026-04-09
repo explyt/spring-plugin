@@ -43,8 +43,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
-import org.jetbrains.kotlin.idea.refactoring.isInterfaceClass
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.toUElement
 
 class SpringWebKotlinMethodGenerateAction : BaseGenerateAction(KotlinWebMethodHandler()) {
     init {
@@ -77,7 +78,7 @@ private class KotlinWebMethodHandler : CodeInsightActionHandler {
                 PsiDocumentManager.getInstance(file.project).commitDocument(document)
 
                 val offsetToInsert = KotlinMethodGenerateUtils.findOffsetToInsertMethod(editor, file, targetClass)
-                val isInterface = targetClass?.isInterfaceClass() == true
+                val isInterface = (targetClass.toUElement() as? UClass)?.isInterface == true
                 val template = getTemplate(file.project, httpMethod, isInterface) ?: return@runWriteAction
 
                 editor.caretModel.moveToOffset(offsetToInsert)

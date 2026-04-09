@@ -21,10 +21,10 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.PsiMethod
 import junit.framework.TestCase
-import org.jetbrains.kotlin.idea.util.projectStructure.getModule
 
 class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
@@ -41,7 +41,7 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
 
     fun testImportComponent() {
         val virtualFile = myFixture.copyDirectoryToProject("service/importComponent", "")
-        val module = virtualFile.getModule(project)
+        val module = ModuleUtilCore.findModuleForFile(virtualFile, project)
         TestCase.assertNotNull(module)
         val beans = SpringSearchService.getInstance(project).getBeanPsiClassesAnnotatedByComponent(module!!)
         val beanNames = beans.filter { it.psiClass.qualifiedName?.startsWith("com.") == true }
@@ -52,7 +52,7 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
 
     fun testImportWithBean() {
         val virtualFile = myFixture.copyDirectoryToProject("service/importComponentWithBean", "")
-        val module = virtualFile.getModule(project)
+        val module = ModuleUtilCore.findModuleForFile(virtualFile, project)
         TestCase.assertNotNull(module)
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module!!)
         val beanNames = beans.filter { it.psiClass.qualifiedName?.startsWith("com.") == true }
@@ -64,7 +64,7 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
 
     fun testImportComplexWithComponentScan() {
         val virtualFile = myFixture.copyDirectoryToProject("service/importComplexWithComponentScan", "")
-        val module = virtualFile.getModule(project)
+        val module = ModuleUtilCore.findModuleForFile(virtualFile, project)
         TestCase.assertNotNull(module)
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module!!)
         val beanNames = beans.filter { it.psiClass.qualifiedName?.startsWith("com.") == true }
@@ -80,7 +80,7 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
 
     fun testComponentMissingBeanSearch() {
         val virtualFile = myFixture.copyDirectoryToProject("service/conditionalOnMissingBean", "")
-        val module = virtualFile.getModule(project)
+        val module = ModuleUtilCore.findModuleForFile(virtualFile, project)
         assertNotNull(module)
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module!!)
         val beanTestClass = beans.filter { it.name == "testClass" }
