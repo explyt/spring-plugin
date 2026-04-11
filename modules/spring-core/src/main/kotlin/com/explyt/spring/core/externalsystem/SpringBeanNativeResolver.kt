@@ -52,6 +52,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.importing.ProjectResolverPolicy
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
@@ -82,6 +83,8 @@ import java.util.concurrent.TimeUnit.MINUTES
 import javax.swing.JPanel
 import kotlin.io.path.Path
 import kotlin.io.path.name
+
+private val logger = logger<SpringBeanNativeResolver>()
 
 private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.config.ConfigData"
 
@@ -120,8 +123,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             return synchronized(this::class.java) {
                 try {
                     getProjectDataNode(id, projectPath, runConfigurationHolder, settings, listener)
-                } catch (_: Exception) {
-                    throw ExternalSystemException("Project data is disposed. Please try again")
+                } catch (e: Exception) {
+                    logger.warn("resolve spring project error", e)
+                    null
                 }
             }
         } finally {
