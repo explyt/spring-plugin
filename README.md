@@ -17,7 +17,7 @@ Available on JetBrains Marketplace: https://plugins.jetbrains.com/plugin/28675-s
 
 ![Screen](https://raw.githubusercontent.com/explyt/spring-plugin/refs/heads/main/images/screen1.jpg)
 
-👉 Visit the [official Explyt website](https://explyt.ai/docs/category/explyt-spring).
+👉 Visit the [official Explyt website](https://explyt.ai/docs/category/explyt-spring?utm_campaign=explytai&utm_source=github&utm_medium=springexplyt).
 
 ## Table of Contents
 
