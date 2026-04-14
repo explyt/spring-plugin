@@ -25,7 +25,7 @@
     <name>Spring Explyt</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="support@explyt.ai" url="https://explyt.ai/docs/explyt-spring">Explyt</vendor>
+    <vendor email="support@explyt.ai" url="https://explyt.ai/docs/category/explyt-spring">Explyt</vendor>
     <category>JVM Frameworks</category>
 
     <!-- Product and plugin compatibility requirements.
