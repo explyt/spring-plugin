@@ -1,3 +1,8 @@
+<!--
+  ~ Copyright (c) 2024 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
 

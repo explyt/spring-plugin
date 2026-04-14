@@ -1,3 +1,6 @@
+# Copyright (c) 2024 Explyt Ltd
+# SPDX-License-Identifier: Apache-2.0
+
 name: "Feature request"
 description: "Suggest an idea for the Explyt Spring plugin"
 title: "[FEATURE]"
