@@ -40,14 +40,16 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
             if (element.isConstructor) {
                 return element.isMetaAnnotatedBy(IMPLICIT_CONSTRUCTOR_ANNOTATIONS)
                         || element.containingClass?.let {
-                            it.isMetaAnnotatedBy(IMPLICIT_CLASS_ANNOTATIONS)
-                            && it.constructors.size == 1
-                        } ?: false
+                    it.isMetaAnnotatedBy(IMPLICIT_CLASS_ANNOTATIONS) && it.constructors.size == 1
+                } ?: false
             }
             if (isDynamicPropertySource(element)) {
                 return true
             }
             return element.isMetaAnnotatedBy(IMPLICIT_METHOD_ANNOTATIONS)
+        }
+        if (element is PsiField) {
+            return element.isAnnotatedBy(MOCK_BEANS)
         }
         return false
     }
@@ -101,6 +103,12 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
                 JavaEeClasses.RESOURCE.allFqns +
                 JavaEeClasses.POST_CONSTRUCT.allFqns +
                 JavaEeClasses.PRE_DESTROY.allFqns
+
+        private val MOCK_BEANS = listOf(
+            SpringCoreClasses.MOCK_BEAN,
+            SpringCoreClasses.SPY_BEAN
+        )
+
     }
 
 }
