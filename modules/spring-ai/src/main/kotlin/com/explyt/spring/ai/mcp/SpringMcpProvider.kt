@@ -17,11 +17,16 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.util.SpringBootUtil
+import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.util.ExplytPsiUtil.findChildrenOfType
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.ExplytPsiUtil.toSourcePsi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
@@ -32,14 +37,19 @@ import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiMethod
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.*
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import com.intellij.psi.search.searches.MethodReferencesSearch
+import com.intellij.psi.util.PsiTreeUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.idea.base.util.projectScope
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.getUastParentOfType
+import org.jetbrains.uast.toUElement
 
 
 class SpringBootApplicationMcpToolset : McpToolset {
@@ -233,6 +243,166 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return result
     }
 
+    @McpTool("explyt_trace_spring_call_chain")
+    @McpDescription(
+        description = "Traces the call chain from a given method through Spring layers (Controller → Service → Repository). " +
+                "Returns the chain of methods with their Spring stereotype (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION), " +
+                "parameters, called methods, file paths, and line numbers. " +
+                "Optionally finds test files that reference discovered methods. " +
+                "Useful for understanding cross-cutting concerns and planning parameter-threading changes."
+    )
+    suspend fun traceCallChain(
+        @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
+        filePath: String,
+        @McpDescription("1-based line number within the method to start tracing from")
+        line: Int,
+        @McpDescription("Path to the project root")
+        projectPath: String,
+        @McpDescription("How many layers deep to trace (default 3). Each layer follows method calls into injected beans.")
+        depth: Int = 3,
+        @McpDescription("Whether to find test files that reference the discovered methods (default true)")
+        includeTests: Boolean = true,
+    ): String {
+        if (filePath.isBlank()) mcpFail("filePath must not be empty")
+        if (line < 1) mcpFail("line must be >= 1")
+        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val effectiveDepth = depth.coerceIn(1, 10)
+
+        val result = withContext(Dispatchers.IO) {
+            smartReadAction(project) {
+                val basePath = project.basePath ?: mcpFail("project base path not found")
+                val absolutePath = "$basePath/$filePath"
+                val virtualFile = LocalFileSystem.getInstance().findFileByPath(absolutePath)
+                    ?: mcpFail("file not found: $filePath")
+                val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
+                    ?: mcpFail("cannot parse file: $filePath")
+                val document = PsiDocumentManager.getInstance(project).getDocument(psiFile)
+                    ?: mcpFail("cannot get document for: $filePath")
+
+                val offset = document.getLineStartOffset((line - 1).coerceIn(0, document.lineCount - 1))
+                val elementAtLine = psiFile.findElementAt(offset)
+                // Use UAST to support both Java (PsiMethod) and Kotlin (KtNamedFunction)
+                val psiMethod = elementAtLine
+                    ?.getUastParentOfType<UMethod>()
+                    ?.javaPsi
+                    ?: mcpFail("no method found at $filePath:$line")
+
+                val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
+                val visited = mutableSetOf<PsiMethod>()
+                val chain = buildChain(psiMethod, effectiveDepth, visited, project)
+
+                val testReferences = if (includeTests && module != null) {
+                    findTestReferences(visited, module, project)
+                } else {
+                    emptyList()
+                }
+
+                CallChainResultJson(chain = chain, testReferences = testReferences)
+            }
+        }
+
+        return mapper.writeValueAsString(result)
+    }
+
+    private fun buildChain(
+        psiMethod: PsiMethod,
+        remainingDepth: Int,
+        visited: MutableSet<PsiMethod>,
+        project: Project,
+    ): List<CallChainNodeJson> {
+        if (remainingDepth <= 0 || !visited.add(psiMethod)) return emptyList()
+
+        val containingClass = psiMethod.containingClass
+        val calledMethods = findCalledMethods(psiMethod)
+
+        val callsInto = calledMethods.map { callee ->
+            CallTargetJson(
+                target = "${callee.containingClass?.name ?: "?"}.${callee.name}",
+                line = lineOf(callee),
+            )
+        }
+
+        val node = CallChainNodeJson(
+            layer = containingClass?.let { detectSpringLayer(it) },
+            className = containingClass?.qualifiedName ?: containingClass?.name,
+            methodName = psiMethod.name,
+            filePath = relativePathOf(psiMethod, project),
+            line = lineOf(psiMethod),
+            parameters = psiMethod.parameterList.parameters.map { it.name ?: "_" },
+            callsInto = callsInto,
+        )
+
+        val childNodes = calledMethods.flatMap { callee ->
+            buildChain(callee, remainingDepth - 1, visited, project)
+        }
+
+        return listOf(node) + childNodes
+    }
+
+    private fun findCalledMethods(psiMethod: PsiMethod): List<PsiMethod> {
+        return psiMethod.toSourcePsi()
+            ?.findChildrenOfType<PsiElement>()
+            ?.asSequence()
+            ?.mapNotNull { it.toUElement() as? UCallExpression }
+            ?.mapNotNull { it.resolve() }
+            ?.filter { it != psiMethod } // skip self-recursion
+            ?.distinctBy { (it.containingClass?.qualifiedName ?: "") + "#" + it.name + "#" + it.parameterList.parametersCount }
+            ?.toList()
+            ?: emptyList()
+    }
+
+    private fun findTestReferences(
+        methods: Set<PsiMethod>,
+        module: com.intellij.openapi.module.Module,
+        project: Project,
+    ): List<TestReferenceJson> {
+        val testScope = module.getModuleTestsWithDependentsScope()
+        val byFile = mutableMapOf<String, MutableMap<String, MutableList<Int>>>()
+
+        for (method in methods) {
+            val refs = MethodReferencesSearch.search(method, testScope, true).findAll()
+            for (ref in refs) {
+                val refElement = ref.element
+                val refFile = relativePathOf(refElement, project) ?: continue
+                val refLine = lineOf(refElement)
+                val methodKey = "${method.containingClass?.name ?: "?"}.${method.name}"
+                byFile.getOrPut(refFile) { mutableMapOf() }
+                    .getOrPut(methodKey) { mutableListOf() }
+                    .add(refLine)
+            }
+        }
+
+        return byFile.map { (file, methods) ->
+            TestReferenceJson(
+                filePath = file,
+                referencedMethods = methods.map { (method, lines) ->
+                    TestMethodReferenceJson(method = method, lines = lines.distinct().sorted())
+                },
+            )
+        }
+    }
+
+    private fun detectSpringLayer(psiClass: PsiClass): String? = when {
+        psiClass.isMetaAnnotatedBy(SpringWebClasses.REST_CONTROLLER) -> "CONTROLLER"
+        psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER) -> "CONTROLLER"
+        psiClass.isMetaAnnotatedBy(SpringCoreClasses.SERVICE) -> "SERVICE"
+        psiClass.isMetaAnnotatedBy(SpringCoreClasses.REPOSITORY) -> "REPOSITORY"
+        psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION) -> "CONFIGURATION"
+        psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT) -> "COMPONENT"
+        else -> null
+    }
+
+    private fun relativePathOf(element: PsiElement, project: Project): String? {
+        val basePath = project.basePath?.let { "$it/" } ?: return null
+        val filePath = element.containingFile?.virtualFile?.path ?: return null
+        return if (filePath.startsWith(basePath)) filePath.removePrefix(basePath) else filePath
+    }
+
+    private fun lineOf(element: PsiElement): Int {
+        val raw = element.getLineNumber(start = true)
+        return if (raw >= 0) raw + 1 else 1
+    }
+
     companion object {
         private const val MAX_ENDPOINT_RESULTS = 50
         private val mapper = ObjectMapper()
@@ -297,5 +467,35 @@ data class EndpointParameterJson(
     val type: String,
     val required: Boolean,
     val defaultValue: String? = null,
+)
+
+data class CallChainResultJson(
+    val chain: List<CallChainNodeJson>,
+    val testReferences: List<TestReferenceJson>,
+)
+
+data class CallChainNodeJson(
+    val layer: String?,
+    val className: String?,
+    val methodName: String,
+    val filePath: String?,
+    val line: Int,
+    val parameters: List<String>,
+    val callsInto: List<CallTargetJson>,
+)
+
+data class CallTargetJson(
+    val target: String,
+    val line: Int,
+)
+
+data class TestReferenceJson(
+    val filePath: String,
+    val referencedMethods: List<TestMethodReferenceJson>,
+)
+
+data class TestMethodReferenceJson(
+    val method: String,
+    val lines: List<Int>,
 )
 
