@@ -35,6 +35,7 @@ import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.psi.PsiElement
@@ -148,7 +149,7 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun navigation(closestPathForLocation: TreePath?) {
         val lastUserObject = TreeUtil.getLastUserObject(closestPathForLocation)
-        (lastUserObject as? EndpointNavigable)?.navigate()
+        runReadAction { (lastUserObject as? EndpointNavigable)?.navigate() }
     }
 
     private fun createRefreshButton(): JComponent {
@@ -248,7 +249,6 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun createEndpointTypeFilter(): FilterField {
         val title: String = SpringWebBundle.message("explyt.web.endpoints.tool.filter.endpoint.type")
-        val disposable = this
 
         return (object : FilterField(title) {
             override fun buildActions(): Collection<AnAction> {
