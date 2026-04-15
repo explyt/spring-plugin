@@ -25,7 +25,7 @@ import kotlin.concurrent.withLock
 
 object SentryReporter {
 
-    private const val DSN = "https://a99462e81c8011f19d2f56e10d7aebdf@sentry.explyt.ai/2"
+    private const val DSN = "https://e45ddc59e273e25c659729f194b8009f@sentry.explyt.ai/4"
 
     @Volatile
     private var initialized = false
