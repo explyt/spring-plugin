@@ -18,7 +18,6 @@
 package com.explyt.base
 
 import com.intellij.ide.DataManager
-import com.intellij.idea.IdeaLogger
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.ErrorReportSubmitter
@@ -66,7 +65,6 @@ class SentryErrorReporter : ErrorReportSubmitter() {
 
                         sentryEvent.level = SentryLevel.ERROR
 
-                        scope.setExtra("last.action", IdeaLogger.ourLastActionId)
                         additionalInfo?.let { scope.setExtra("event.info", it) }
                         ideaEvent.message?.let { scope.setExtra("event.message", it) }
 

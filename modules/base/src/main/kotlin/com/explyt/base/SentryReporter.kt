@@ -17,7 +17,9 @@
 
 package com.explyt.base
 
+import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationInfo
+import io.sentry.Breadcrumb
 import io.sentry.IScope
 import io.sentry.Sentry
 import java.util.concurrent.locks.ReentrantLock
@@ -64,11 +66,23 @@ object SentryReporter {
                         "idea.kotlin.plugin.use.k2",
                         properties.getProperty("idea.kotlin.plugin.use.k2", "false")
                     )
+
+                    scope.setContexts("Non-Bundled Plugins", collectNonBundledPlugins())
                 }
 
                 initialized = true
             }
         }
+    }
+
+    private fun collectNonBundledPlugins(): Map<String, String> =
+        PluginManagerCore.loadedPlugins
+            .filter { !it.isBundled }
+            .associate { it.pluginId.idString to (it.version ?: "unknown") }
+
+    fun addBreadcrumb(breadcrumb: Breadcrumb) {
+        ensureInitialized()
+        Sentry.addBreadcrumb(breadcrumb)
     }
 
     /**
