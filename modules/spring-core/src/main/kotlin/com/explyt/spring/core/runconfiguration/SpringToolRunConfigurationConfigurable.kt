@@ -70,6 +70,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
 
     private val isAutoDetection = propertyGraph.property(false)
     private val isBeanFilterEnabled = propertyGraph.property(false)
+    private val isExplytBeanNavigationBind = propertyGraph.property(false)
     private val isCollectStatisticBind = propertyGraph.property(false)
     private val isShowFloatingRefreshActionBind = propertyGraph.property(false)
     private val isDebugModeBind = propertyGraph.property(false)
@@ -100,6 +101,13 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
                         .applyToComponent {
                             toolTipText = message("explyt.spring.settings.enableBeanFiltering.tooltip")
                         }
+                        .resizableColumn()
+                }
+
+                row {
+                    checkBox(message("explyt.spring.settings.explyt.bean.navigation.label"))
+                        .align(AlignX.FILL)
+                        .bindSelected(isExplytBeanNavigationBind)
                         .resizableColumn()
                 }
 
@@ -168,6 +176,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     override fun reset() {
         isAutoDetection.set(settingsState.isAutoDetectConfigurations)
         isBeanFilterEnabled.set(settingsState.isBeanFilterEnabled)
+        isExplytBeanNavigationBind.set(settingsState.isExplytBeanNavigation)
         isCollectStatisticBind.set(settingsState.isCollectStatistic)
         isShowFloatingRefreshActionBind.set(settingsState.isShowFloatingRefreshAction)
         isDebugModeBind.set(settingsState.isDebugMode)
@@ -179,6 +188,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
     override fun isModified(): Boolean {
         if (settingsState.isAutoDetectConfigurations != isAutoDetection.get()) return true
         if (settingsState.isBeanFilterEnabled != isBeanFilterEnabled.get()) return true
+        if (settingsState.isExplytBeanNavigation != isExplytBeanNavigationBind.get()) return true
         if (settingsState.isCollectStatistic != isCollectStatisticBind.get()) return true
         if (settingsState.isShowFloatingRefreshAction != isShowFloatingRefreshActionBind.get()) return true
         if (settingsState.isDebugMode != isDebugModeBind.get()) return true
@@ -192,6 +202,7 @@ class SpringToolRunConfigurationConfigurable : SearchableConfigurable {
         StatisticService.getInstance().addActionUsage(StatisticActionId.SETTINGS_CHANGED)
         settingsState.isAutoDetectConfigurations = isAutoDetection.get()
         settingsState.isBeanFilterEnabled = isBeanFilterEnabled.get()
+        settingsState.isExplytBeanNavigation = isExplytBeanNavigationBind.get()
         settingsState.isCollectStatistic = isCollectStatisticBind.get()
         settingsState.isShowFloatingRefreshAction = isShowFloatingRefreshActionBind.get()
         settingsState.isDebugMode = isDebugModeBind.get()

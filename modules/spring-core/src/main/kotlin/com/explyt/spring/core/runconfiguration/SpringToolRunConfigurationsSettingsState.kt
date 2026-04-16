@@ -51,6 +51,9 @@ class SpringToolRunConfigurationsSettingsState :
     var isJavaAgentMode by property(true)
 
     @get:Property(surroundWithTag = true)
+    var isExplytBeanNavigation by property(true)
+
+    @get:Property(surroundWithTag = true)
     var sqlLanguageId by string("")
 
     @get:Property(surroundWithTag = true)

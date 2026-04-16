@@ -19,6 +19,7 @@ package com.explyt.spring.core.providers
 
 import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.*
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
@@ -66,14 +67,15 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         elements: MutableList<out PsiElement>,
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
+        val beanNavigation = SpringToolRunConfigurationsSettingsState.getInstance().isExplytBeanNavigation
         val module = getModule(elements)
         if (module == null) {
-            if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
+            if (!beanNavigation) return
             SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
         } else if (isExternalProjectExist(elements)) {
             SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
         } else {
-            if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
+            if (!beanNavigation) return
             super.collectSlowLineMarkers(elements, result)
         }
     }
