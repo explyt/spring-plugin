@@ -33,8 +33,6 @@ import com.intellij.util.ProcessingContext
 class AutoConfigureReferenceContributor : PsiReferenceContributor() {
 
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
-        if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
-
         val filePattern = PlatformPatterns.virtualFile().ofType(FactoriesFileType)
         val autoConfigureImportsFilePattern = PlatformPatterns.virtualFile().ofType(AutoConfigurationImportsFileType)
 
