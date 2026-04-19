@@ -314,7 +314,6 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         val progressBar = progress.components.last() as? JProgressBar
 
         val eFileName = if (info.components.size > 1) info.components[1] as? JTextField else null
-        val btnDelete = info.components.last() as? JButton
 
         val url = serverUrl ?: SpringInitializrBundle.message("explyt.spring.initializr.url")
         val browser = JBCefBrowser(url)
@@ -325,15 +324,6 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         browser.cefBrowser.createImmediately()
 
         val client = browser.jbCefClient
-       /* client.addDownloadHandler(
-            DownloadHandler(
-                contentToolWindow,
-                progressBar,
-                progressBarLabel,
-                eFileName,
-                btnDelete
-            ), browser.cefBrowser
-        )*/
 
         client.addRequestHandler(
             object : CefRequestHandlerAdapter() {
@@ -350,9 +340,12 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
 
                     val uri = URI.create(url)
                     val queryParameters = uri.queryParameters
-                    val name = queryParameters["name"] ?: return null
+                    val name = queryParameters["name"]
+                        ?: queryParameters["artifactId"]
+                        ?: return null
 
                     contentToolWindow.cursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+                    progressBar?.isVisible = true
                     progressBar?.isIndeterminate = true
                     progressBarLabel?.text = SpringInitializrBundle.message(
                         "explyt.spring.initializr.progress.label.text", name
@@ -387,6 +380,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
                         downloadFullPath = downloadItemLocation
                         zipFilePath = targetFile.getName()
                         eFileName?.text = zipFilePath
+                        progressBar?.isVisible = false
                         progressBar?.isIndeterminate = false
                         progressBarLabel?.text = SpringInitializrBundle.message(
                             "explyt.spring.initializr.progress.label.finish"
