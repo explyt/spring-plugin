@@ -18,98 +18,70 @@
 package com.explyt.base
 
 import com.intellij.ide.DataManager
-import com.intellij.idea.IdeaLogger
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.ErrorReportSubmitter
 import com.intellij.openapi.diagnostic.IdeaLoggingEvent
 import com.intellij.openapi.diagnostic.SubmittedReportInfo
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.util.Consumer
-import io.sentry.GlitchtipSentryClientFactory
-import io.sentry.SentryClient
-import io.sentry.event.Event
-import io.sentry.event.EventBuilder
-import io.sentry.event.interfaces.ExceptionInterface
+import io.sentry.Sentry
+import io.sentry.SentryEvent
+import io.sentry.SentryLevel
+import io.sentry.protocol.Message
 import java.awt.Component
 
 
-class SentryErrorReporter: com.intellij.openapi.diagnostic.ErrorReportSubmitter() {
-
-    val sentryClient: SentryClient = GlitchtipSentryClientFactory().createClient(
-        "https://7e30ca42b0df43d3b31837cdb77b38f9@dev.explyt.ai/glitchtip/11916"
-    )
-
-    init {
-        sentryClient.apply {
-            val properties = System.getProperties()
-            addTag("plugin.version", PluginContext.pluginVersion)
-            addExtra("idea.kotlin.plugin.use.k2", properties.getProperty("idea.kotlin.plugin.use.k2", "false"))
-            addTag("ide.build", PluginContext.ideBuild)
-            addExtra("ide.version", PluginContext.ideFullVersion)
-            addExtra("environment.java.version", properties.getProperty("java.version", "unknown"))
-            addExtra("environment.java.vendor.version", properties.getProperty("java.vendor.version", "unknown"))
-            environment = properties.getProperty("os.name", "unknown") + " " + properties.getProperty("os.version", "unknown")
-            release = PluginContext.pluginVersion
-        }
-    }
+class SentryErrorReporter : ErrorReportSubmitter() {
 
     override fun getReportActionText(): String = BaseBundle.message("explyt.base.report.action")
 
-    override fun getReporterAccount(): String? {
-        return getReporterAccountInternal()
-    }
+    override fun getReporterAccount(): String = doGetReporterAccount()
 
-    private fun getReporterAccountInternal(): String? = System.getProperties().getProperty("user.name", "anonymous")
+    private fun doGetReporterAccount(): String =
+        System.getProperties().getProperty("user.name", "anonymous")
 
-    override fun submit(events: Array<out IdeaLoggingEvent>, additionalInfo: String?, parentComponent: Component, consumer: Consumer<in SubmittedReportInfo>): Boolean {
+    override fun getPrivacyNoticeText(): String = BaseBundle.message("explyt.base.report.notice")
+
+    override fun submit(
+        events: Array<out IdeaLoggingEvent>,
+        additionalInfo: String?,
+        parentComponent: Component,
+        consumer: Consumer<in SubmittedReportInfo>,
+    ): Boolean {
         val context = DataManager.getInstance().getDataContext(parentComponent)
         val project: Project? = CommonDataKeys.PROJECT.getData(context)
 
         object : Task.Backgroundable(project, BaseBundle.message("explyt.base.report.background")) {
             override fun run(indicator: ProgressIndicator) {
                 for (ideaEvent in events) {
-                    val eventBuilder = EventBuilder()
-                        .withMessage(ideaEvent.throwable.message)
-                        .withLevel(Event.Level.ERROR)
-                        .withSentryInterface(ExceptionInterface(ideaEvent.throwable))
-                        .withExtra("user.name", getReporterAccountInternal())
-                        .withExtra("last_action", IdeaLogger.ourLastActionId)
-                        .withExtra("event.stacktrace", ideaEvent.throwableText)
+                    SentryReporter.withErrorReportTag { scope ->
+                        val sentryEvent = ideaEvent.throwable?.let { SentryEvent(it) }
+                            ?: SentryEvent().apply {
+                                message = Message().apply { message = ideaEvent.throwableText }
+                            }
 
-                    /* TODO:
-                        it seems last action is not actual for the moment of submitting the issue.
-                        It is better to track for last actions and put them into breadcrumbs,
-                        in that case we have a chance to find out reproduce path.
-                     */
+                        sentryEvent.level = SentryLevel.ERROR
 
-                    additionalInfo?.let {
-                        eventBuilder.withExtra("event.info", it)
-                    }
-                    ideaEvent.message?.let {
-                        eventBuilder.withExtra("event.message", it)
-                    }
-                    ideaEvent.attachments.forEach {
-                        eventBuilder.withExtra(it.name, it.encodedBytes)
-                    }
-                    ideaEvent.plugin?.let {
-                        eventBuilder.withTag("event.plugin.id", it.pluginId.idString)
-                        eventBuilder.withTag("event.plugin.version", it.version)
-                    }
+                        additionalInfo?.let { scope.setExtra("event.info", it) }
+                        ideaEvent.message?.let { scope.setExtra("event.message", it) }
 
-                    sentryClient.sendEvent(eventBuilder)
+                        ideaEvent.plugin?.let {
+                            scope.setTag("plugin.id", it.pluginId.idString)
+                            scope.setTag("plugin.version", it.version)
+                        }
+
+                        Sentry.captureEvent(sentryEvent)
+                    }
                 }
-                // by default, Sentry is sending async in a background thread
 
+                // Sentry sends async in a background thread
                 ApplicationManager.getApplication().invokeLater {
-                    // we're a bit lazy here.
-                    // Alternatively, we could add a listener to the sentry client
-                    // to be notified if the message was successfully send
                     consumer.consume(SubmittedReportInfo(SubmittedReportInfo.SubmissionStatus.NEW_ISSUE))
                 }
             }
-
         }.queue()
         return true
     }
