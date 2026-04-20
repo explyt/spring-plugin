@@ -8,6 +8,11 @@
     <extensionPoints>
     </extensionPoints>
 
+    <applicationListeners>
+        <listener class="com.explyt.base.ActionBreadcrumbListener"
+                  topic="com.intellij.openapi.actionSystem.ex.AnActionListener"/>
+    </applicationListeners>
+
     <extensions defaultExtensionNs="com.intellij">
         <errorHandler implementation="com.explyt.base.SentryErrorReporter"/>
     </extensions>
