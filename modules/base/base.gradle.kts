@@ -48,9 +48,7 @@ tasks {
 
 
 dependencies {
-    implementation("io.sentry:sentry:1.7.30") {
-        exclude(group = "com.fasterxml.jackson.core", module = "jackson-core")
-    }
+    implementation("io.sentry:sentry:8.29.0")
     intellijPlatform {
         instrumentationTools()
 
