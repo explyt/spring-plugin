@@ -48,7 +48,6 @@ import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
-import com.intellij.psi.util.PsiTreeUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
@@ -185,7 +184,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     .filter { matchesUrlPattern(it, normalizedPattern) }
                     .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
                     .take(MAX_ENDPOINT_RESULTS)
-                    .mapNotNull { toEndpointJson(it, project) }
+                    .map { toEndpointJson(it, project) }
                     .toList()
             }
         }
@@ -202,7 +201,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return false
     }
 
-    private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson? {
+    private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson {
         val psiMethod = endpoint.psiElement as? PsiMethod
         val controllerClass = endpoint.containingClass ?: psiMethod?.containingClass
         val basePath = project.basePath?.let { "$it/" }
@@ -397,8 +396,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // Skip JDK / framework wrapper types — unwrap generics instead
         if (fqn.startsWith("java.") || fqn.startsWith("kotlin.") || fqn.startsWith("org.springframework.")) {
             // For generic wrappers (ResponseEntity<T>, List<T>, Optional<T>), expand the type argument
-            val typeArgs = (psiType as? PsiClassType)?.parameters
-            if (!typeArgs.isNullOrEmpty()) {
+            val typeArgs = psiType.parameters
+            if (typeArgs.isNotEmpty()) {
                 return expandType(typeArgs[0], project, depth)
             }
             return null
@@ -527,7 +526,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             methodName = psiMethod.name,
             filePath = relativePathOf(psiMethod, project),
             line = lineOf(psiMethod),
-            parameters = psiMethod.parameterList.parameters.map { it.name ?: "_" },
+            parameters = psiMethod.parameterList.parameters.map { it.name },
             callsInto = callsInto,
         )
 
@@ -555,7 +554,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         module: com.intellij.openapi.module.Module,
         project: Project,
     ): List<TestReferenceJson> {
-        val testScope = module.getModuleTestsWithDependentsScope()
+        val testScope = module.moduleTestsWithDependentsScope
         val byFile = mutableMapOf<String, MutableMap<String, MutableList<Int>>>()
 
         for (method in methods) {
