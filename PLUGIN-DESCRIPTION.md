@@ -89,7 +89,7 @@ Use **Generate (Alt+Insert / Command+N)**:
 ### MCP Server tools
 - Supports the bundled **JetBrains MCP Server** in IntelliJ IDEA **2025.2+**.
 - Adds Spring-aware MCP tools so agentic clients can inspect Spring Boot applications and project beans with less generic code exploration.
-- Current tools: `explyt_get_spring_boot_applications`, `explyt_get_project_beans_by_spring_boot_application`, and `explyt_find_spring_endpoint` (find endpoints by URL pattern across MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, message brokers, and more).
+- Current tools: `explyt_get_spring_boot_applications`, `explyt_get_project_beans_by_spring_boot_application`, `explyt_find_spring_endpoint` (find endpoints by URL pattern), and `explyt_trace_spring_call_chain` (trace Controller → Service → Repository call chains with test references).
 
 ## Getting started
 1. Open the **Explyt Spring** tool window → **Link Explyt Spring Boot Project From RunConfiguration** → **Load Beans**.

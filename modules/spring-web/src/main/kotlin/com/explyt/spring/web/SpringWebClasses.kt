@@ -25,6 +25,7 @@ object SpringWebClasses {
 
 
     const val CONTROLLER = "org.springframework.stereotype.Controller"
+    const val REST_CONTROLLER = "org.springframework.web.bind.annotation.RestController"
     const val RESPONSE_BODY = "org.springframework.web.bind.annotation.ResponseBody"
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
