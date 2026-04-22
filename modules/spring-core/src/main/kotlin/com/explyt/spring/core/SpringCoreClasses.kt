@@ -50,7 +50,6 @@ object SpringCoreClasses {
     const val COMPONENT = "org.springframework.stereotype.Component"
     const val SERVICE = "org.springframework.stereotype.Service"
     const val CONTROLLER = "org.springframework.stereotype.Controller"
-    const val REST_CONTROLLER = "org.springframework.web.bind.annotation.RestController"
     const val REPOSITORY = "org.springframework.stereotype.Repository"
 
     const val BOOTSTRAP_WITH = "org.springframework.test.context.BootstrapWith"
