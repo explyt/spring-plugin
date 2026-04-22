@@ -19,6 +19,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
@@ -48,6 +49,7 @@ import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
 
@@ -241,6 +243,197 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
 
         return result
+    }
+
+    // ---- explyt_get_spring_http_endpoints ----
+
+    @McpTool("explyt_get_spring_http_endpoints")
+    @McpDescription(
+        description = "Lists all HTTP endpoints in the project. " +
+                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
+                "Each entry includes the HTTP method, full path, controller class, method name, return type, " +
+                "file path, line number, and endpoint type. " +
+                "Use optional filters to narrow results by controller class name or endpoint type."
+    )
+    suspend fun getHttpEndpoints(
+        @McpDescription("Path to the project root")
+        projectPath: String,
+        @McpDescription("Optional substring filter on controller class name (e.g. 'Coverage'). Leave empty for all.")
+        controllerFilter: String = "",
+        @McpDescription(
+            "Optional endpoint type filter. Possible values: SPRING_MVC, SPRING_WEBFLUX, SPRING_JAX_RS, " +
+                    "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, SPRING_BOOT, OPENAPI. Leave empty for all."
+        )
+        endpointType: String = "",
+    ): String {
+        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
+        val typeFilter = endpointType.trim().uppercase().takeIf { it.isNotEmpty() }
+
+        val endpoints = withContext(Dispatchers.IO) {
+            smartReadAction(project) {
+                SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
+                    .filter { it.type.isWeb }
+                    .filter { typeFilter == null || it.type.name.equals(typeFilter, ignoreCase = true) }
+                    .filter {
+                        if (controllerSubstring == null) true
+                        else {
+                            val cls = it.containingClass ?: (it.psiElement as? PsiMethod)?.containingClass
+                            cls?.qualifiedName?.contains(controllerSubstring, ignoreCase = true) == true
+                                    || cls?.name?.contains(controllerSubstring, ignoreCase = true) == true
+                        }
+                    }
+                    .take(MAX_ENDPOINT_RESULTS)
+                    .mapNotNull { toEndpointJson(it, project) }
+                    .toList()
+            }
+        }
+
+        return mapper.writeValueAsString(endpoints)
+    }
+
+    // ---- explyt_get_spring_endpoint_contract ----
+
+    @McpTool("explyt_get_spring_endpoint_contract")
+    @McpDescription(
+        description = "Returns the full API contract for a specific endpoint. " +
+                "Includes HTTP method, full path, all parameters (path variables, query params, request body, headers) " +
+                "with types and required flags, return type, response DTO field schema (recursively expanded up to 3 levels), " +
+                "produces/consumes media types, and the first service method called from the controller. " +
+                "Use this after explyt_find_spring_endpoint or explyt_get_spring_http_endpoints to deeply inspect a single endpoint."
+    )
+    suspend fun getEndpointContract(
+        @McpDescription(
+            "URL pattern of the endpoint to inspect (e.g. '/api/orgs/{orgId}/project-success/v1/coverage/users'). " +
+                    "Must match a single endpoint. If multiple match, all are returned."
+        )
+        urlPattern: String,
+        @McpDescription("Path to the project root")
+        projectPath: String,
+        @McpDescription("Optional HTTP method filter: GET, POST, PUT, DELETE, etc. Leave empty for all.")
+        httpMethod: String = "",
+    ): String {
+        if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
+        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val normalizedPattern = SpringWebUtil.simplifyUrl(urlPattern)
+        val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
+
+        val contracts = withContext(Dispatchers.IO) {
+            smartReadAction(project) {
+                val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
+
+                allEndpoints.asSequence()
+                    .filter { matchesUrlPattern(it, normalizedPattern) }
+                    .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
+                    .take(MAX_ENDPOINT_RESULTS)
+                    .mapNotNull { buildContract(it, project) }
+                    .toList()
+            }
+        }
+
+        return mapper.writeValueAsString(contracts)
+    }
+
+    private fun buildContract(endpoint: EndpointElement, project: Project): EndpointContractJson? {
+        val psiMethod = endpoint.psiElement as? PsiMethod ?: return null
+        val uMethod = psiMethod.toUElement() as? UMethod ?: return null
+        val controllerClass = endpoint.containingClass ?: psiMethod.containingClass
+        val parameters = extractParameters(psiMethod)
+        val returnTypeFqn = psiMethod.returnType?.canonicalText
+
+        // Response DTO schema
+        val responseSchema = psiMethod.returnType?.let { expandType(it, project, depth = 3) }
+
+        // Produces / consumes from @RequestMapping via UAST API
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
+        var produces = emptyList<String>()
+        var consumes = emptyList<String>()
+        if (module != null) {
+            val mah = SpringSearchService.getInstance(project).getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
+            produces = mah.getAnnotationValues(uMethod, setOf("produces"))
+                .mapNotNull { it.evaluateString() }
+            consumes = mah.getAnnotationValues(uMethod, setOf("consumes"))
+                .mapNotNull { it.evaluateString() }
+        }
+
+        // First service call target
+        val calledMethods = findCalledMethods(psiMethod)
+        val serviceCall = calledMethods.firstOrNull()?.let { callee ->
+            val calleeClass = callee.containingClass
+            CallTargetJson(
+                target = "${calleeClass?.qualifiedName ?: calleeClass?.name ?: "?"}.${callee.name}",
+                line = lineOf(callee),
+            )
+        }
+
+        return EndpointContractJson(
+            httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
+            fullPath = endpoint.path,
+            controllerClass = controllerClass?.qualifiedName,
+            methodName = psiMethod.name,
+            filePath = relativePathOf(psiMethod, project),
+            line = lineOf(psiMethod),
+            parameters = parameters,
+            returnType = returnTypeFqn,
+            responseSchema = responseSchema,
+            produces = produces,
+            consumes = consumes,
+            serviceCall = serviceCall,
+            endpointType = endpoint.type.readable,
+        )
+    }
+
+    private fun expandType(psiType: PsiType, project: Project, depth: Int): DtoSchemaJson? {
+        if (depth <= 0) return null
+        val resolved = (psiType as? PsiClassType)?.resolve() ?: return null
+        val fqn = resolved.qualifiedName ?: return null
+
+        // Skip JDK / framework wrapper types — unwrap generics instead
+        if (fqn.startsWith("java.") || fqn.startsWith("kotlin.") || fqn.startsWith("org.springframework.")) {
+            // For generic wrappers (ResponseEntity<T>, List<T>, Optional<T>), expand the type argument
+            val typeArgs = (psiType as? PsiClassType)?.parameters
+            if (!typeArgs.isNullOrEmpty()) {
+                return expandType(typeArgs[0], project, depth)
+            }
+            return null
+        }
+
+        val fields = mutableListOf<DtoFieldJson>()
+        for (field in resolved.allFields) {
+            if (field.hasModifierProperty(PsiModifier.STATIC)) continue
+            val fieldType = field.type
+            val nested = expandType(fieldType, project, depth - 1)
+            fields += DtoFieldJson(
+                name = field.name,
+                type = fieldType.canonicalText,
+                nullable = fieldType is PsiPrimitiveType && fieldType == PsiTypes.nullType()
+                        || field.annotations.any { it.qualifiedName?.contains("Nullable") == true },
+                nested = nested,
+            )
+        }
+
+        // Also include Kotlin data class properties via getter methods (for classes without Java fields)
+        if (fields.isEmpty()) {
+            for (method in resolved.allMethods) {
+                if (method.hasModifierProperty(PsiModifier.STATIC)) continue
+                if (!method.name.startsWith("get") && !method.name.startsWith("is")) continue
+                if (method.parameterList.parametersCount != 0) continue
+                if (method.containingClass?.qualifiedName?.startsWith("java.") == true) continue
+                val propName = method.name
+                    .removePrefix("get").removePrefix("is")
+                    .replaceFirstChar { it.lowercase() }
+                val retType = method.returnType ?: continue
+                val nested = expandType(retType, project, depth - 1)
+                fields += DtoFieldJson(
+                    name = propName,
+                    type = retType.canonicalText,
+                    nullable = false,
+                    nested = nested,
+                )
+            }
+        }
+
+        return DtoSchemaJson(className = fqn, fields = fields)
     }
 
     @McpTool("explyt_trace_spring_call_chain")
@@ -497,5 +690,33 @@ data class TestReferenceJson(
 data class TestMethodReferenceJson(
     val method: String,
     val lines: List<Int>,
+)
+
+data class EndpointContractJson(
+    val httpMethods: List<String>,
+    val fullPath: String,
+    val controllerClass: String?,
+    val methodName: String?,
+    val filePath: String?,
+    val line: Int,
+    val parameters: List<EndpointParameterJson>,
+    val returnType: String?,
+    val responseSchema: DtoSchemaJson?,
+    val produces: List<String>,
+    val consumes: List<String>,
+    val serviceCall: CallTargetJson?,
+    val endpointType: String,
+)
+
+data class DtoSchemaJson(
+    val className: String,
+    val fields: List<DtoFieldJson>,
+)
+
+data class DtoFieldJson(
+    val name: String,
+    val type: String,
+    val nullable: Boolean,
+    val nested: DtoSchemaJson?,
 )
 
