@@ -30,9 +30,7 @@ import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
 import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringAttribute
-import com.explyt.util.ExplytPsiUtil.findChildrenOfType
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.explyt.util.ExplytPsiUtil.toSourcePsi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
@@ -54,6 +52,7 @@ import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.visitor.AbstractUastVisitor
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
@@ -538,15 +537,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     private fun findCalledMethods(psiMethod: PsiMethod): List<PsiMethod> {
-        return psiMethod.toSourcePsi()
-            ?.findChildrenOfType<PsiElement>()
-            ?.asSequence()
-            ?.mapNotNull { it.toUElement() as? UCallExpression }
-            ?.mapNotNull { it.resolve() }
-            ?.filter { it != psiMethod } // skip self-recursion
-            ?.distinctBy { (it.containingClass?.qualifiedName ?: "") + "#" + it.name + "#" + it.parameterList.parametersCount }
-            ?.toList()
-            ?: emptyList()
+        val uMethod = psiMethod.toUElement() as? UMethod ?: return emptyList()
+        val calls = mutableListOf<UCallExpression>()
+        uMethod.accept(object : AbstractUastVisitor() {
+            override fun visitCallExpression(node: UCallExpression): Boolean {
+                calls += node
+                return false // keep descending so nested calls are discovered too
+            }
+        })
+        return calls.asSequence()
+            .mapNotNull { it.resolve() }
+            .filter { it != psiMethod } // skip self-recursion
+            .distinctBy { (it.containingClass?.qualifiedName ?: "") + "#" + it.name + "#" + it.parameterList.parametersCount }
+            .toList()
     }
 
     private fun findTestReferences(
