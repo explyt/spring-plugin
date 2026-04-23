@@ -86,6 +86,35 @@ object ExplytAnnotationUtil {
         return computeConstantExpression() as? String
     }
 
+    /**
+     * Returns the string value of the given annotation attribute, or `null` if the annotation
+     * is absent, the attribute is missing, or the evaluated value is not a non-blank string.
+     */
+    fun PsiAnnotation?.getStringAttribute(attributeName: String): String? {
+        val attributeValue = this?.findAttributeValue(attributeName) ?: return null
+        return attributeValue.getStringValue()?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Returns the boolean value of the given annotation attribute, or `null` if the annotation
+     * is absent, the attribute is missing, or the evaluated value is not a boolean.
+     */
+    fun PsiAnnotation?.getBooleanAttribute(attributeName: String): Boolean? {
+        val attributeValue = this?.findAttributeValue(attributeName) ?: return null
+        return attributeValue.getBooleanValue()
+    }
+
+    /**
+     * Returns the first annotation on this owner whose qualified name matches any of [annotationFqns].
+     * Useful for multi-vendor annotations (e.g. `jakarta.persistence.*` / `javax.persistence.*`).
+     */
+    fun PsiModifierListOwner.findFirstAnnotation(annotationFqns: Iterable<String>): PsiAnnotation? {
+        for (fqn in annotationFqns) {
+            getAnnotation(fqn)?.let { return it }
+        }
+        return null
+    }
+
     fun getArrayValueAnnotations(
         annotation: PsiAnnotation,
         attrName: String
