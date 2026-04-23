@@ -17,6 +17,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.jpa.JpaClasses
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
@@ -25,9 +26,11 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.SpringWebUtil
-import com.explyt.util.ExplytPsiUtil.findChildrenOfType
+import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
+import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
+import com.explyt.util.ExplytAnnotationUtil.getMemberValues
+import com.explyt.util.ExplytAnnotationUtil.getStringAttribute
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.explyt.util.ExplytPsiUtil.toSourcePsi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
@@ -40,15 +43,16 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.*
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
-import com.intellij.psi.util.PsiTreeUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.visitor.AbstractUastVisitor
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
@@ -179,7 +183,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     .filter { matchesUrlPattern(it, normalizedPattern) }
                     .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
                     .take(MAX_ENDPOINT_RESULTS)
-                    .mapNotNull { toEndpointJson(it, project) }
+                    .map { toEndpointJson(it, project) }
                     .toList()
             }
         }
@@ -196,7 +200,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return false
     }
 
-    private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson? {
+    private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson {
         val psiMethod = endpoint.psiElement as? PsiMethod
         val controllerClass = endpoint.containingClass ?: psiMethod?.containingClass
         val basePath = project.basePath?.let { "$it/" }
@@ -391,8 +395,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // Skip JDK / framework wrapper types — unwrap generics instead
         if (fqn.startsWith("java.") || fqn.startsWith("kotlin.") || fqn.startsWith("org.springframework.")) {
             // For generic wrappers (ResponseEntity<T>, List<T>, Optional<T>), expand the type argument
-            val typeArgs = (psiType as? PsiClassType)?.parameters
-            if (!typeArgs.isNullOrEmpty()) {
+            val typeArgs = psiType.parameters
+            if (typeArgs.isNotEmpty()) {
                 return expandType(typeArgs[0], project, depth)
             }
             return null
@@ -521,7 +525,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             methodName = psiMethod.name,
             filePath = relativePathOf(psiMethod, project),
             line = lineOf(psiMethod),
-            parameters = psiMethod.parameterList.parameters.map { it.name ?: "_" },
+            parameters = psiMethod.parameterList.parameters.map { it.name },
             callsInto = callsInto,
         )
 
@@ -533,15 +537,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     private fun findCalledMethods(psiMethod: PsiMethod): List<PsiMethod> {
-        return psiMethod.toSourcePsi()
-            ?.findChildrenOfType<PsiElement>()
-            ?.asSequence()
-            ?.mapNotNull { it.toUElement() as? UCallExpression }
-            ?.mapNotNull { it.resolve() }
-            ?.filter { it != psiMethod } // skip self-recursion
-            ?.distinctBy { (it.containingClass?.qualifiedName ?: "") + "#" + it.name + "#" + it.parameterList.parametersCount }
-            ?.toList()
-            ?: emptyList()
+        val uMethod = psiMethod.toUElement() as? UMethod ?: return emptyList()
+        val calls = mutableListOf<UCallExpression>()
+        uMethod.accept(object : AbstractUastVisitor() {
+            override fun visitCallExpression(node: UCallExpression): Boolean {
+                calls += node
+                return false // keep descending so nested calls are discovered too
+            }
+        })
+        return calls.asSequence()
+            .mapNotNull { it.resolve() }
+            .filter { it != psiMethod } // skip self-recursion
+            .distinctBy { (it.containingClass?.qualifiedName ?: "") + "#" + it.name + "#" + it.parameterList.parametersCount }
+            .toList()
     }
 
     private fun findTestReferences(
@@ -549,7 +557,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         module: com.intellij.openapi.module.Module,
         project: Project,
     ): List<TestReferenceJson> {
-        val testScope = module.getModuleTestsWithDependentsScope()
+        val testScope = module.moduleTestsWithDependentsScope
         val byFile = mutableMapOf<String, MutableMap<String, MutableList<Int>>>()
 
         for (method in methods) {
@@ -575,6 +583,135 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
     }
 
+    // ---- explyt_get_spring_data_entities ----
+
+    @McpTool("explyt_get_spring_data_entities")
+    @McpDescription(
+        description = "Returns all JPA entities (@Entity annotated classes) in the project with their schema metadata. " +
+                "Detects both javax.persistence and jakarta.persistence annotations. " +
+                "Each entity includes class name, file path and line, table name (from @Table or default), " +
+                "fields with column names, types, primary key flag, nullability, " +
+                "and JPA relationships (@OneToOne, @OneToMany, @ManyToOne, @ManyToMany) with joinColumn/mappedBy metadata. " +
+                "Also returns table indexes from @Table(indexes=[...]). " +
+                "Use this for schema understanding, migration planning, DTO design, and query writing."
+    )
+    suspend fun getSpringDataEntities(
+        @McpDescription("Path to the project root")
+        projectPath: String,
+        @McpDescription("Optional fully-qualified package prefix to restrict results (e.g. 'com.example.domain'). Leave empty for all packages.")
+        packageFilter: String = "",
+    ): String {
+        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val packagePrefix = packageFilter.trim().takeIf { it.isNotEmpty() }
+
+        val entities = withContext(Dispatchers.IO) {
+            smartReadAction(project) {
+                val projectScope = project.projectScope()
+                val librariesScope = GlobalSearchScope.allScope(project)
+                val javaPsiFacade = JavaPsiFacade.getInstance(project)
+                val entityClasses = ENTITY_ANNOTATION_FQNS.asSequence()
+                    .mapNotNull { javaPsiFacade.findClass(it, librariesScope) }
+                    .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope).findAll().asSequence() }
+                    .distinctBy { it.qualifiedName }
+                    .filter { cls ->
+                        packagePrefix == null || cls.qualifiedName?.startsWith(packagePrefix) == true
+                    }
+                    .take(MAX_ENTITY_RESULTS)
+                    .toList()
+
+                entityClasses.mapNotNull { toEntityJson(it, project) }
+            }
+        }
+
+        return mapper.writeValueAsString(entities)
+    }
+
+    private fun toEntityJson(psiClass: PsiClass, project: Project): SpringDataEntityJson? {
+        val qualifiedName = psiClass.qualifiedName ?: return null
+        val simpleName = psiClass.name ?: qualifiedName.substringAfterLast('.')
+        val tableName = resolveTableName(psiClass, simpleName)
+        val fields = collectEntityFields(psiClass)
+        val indexes = collectEntityIndexes(psiClass)
+
+        return SpringDataEntityJson(
+            name = simpleName,
+            className = qualifiedName,
+            filePath = relativePathOf(psiClass, project),
+            line = lineOf(psiClass),
+            tableName = tableName,
+            fields = fields,
+            indexes = indexes,
+        )
+    }
+
+    private fun resolveTableName(psiClass: PsiClass, defaultName: String): String {
+        val tableName = psiClass.findFirstAnnotation(TABLE_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
+        if (tableName != null) return tableName
+        val entityName = psiClass.findFirstAnnotation(ENTITY_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
+        return entityName ?: defaultName
+    }
+
+    private fun collectEntityFields(psiClass: PsiClass): List<EntityFieldJson> {
+        val seen = mutableSetOf<String>()
+        val result = mutableListOf<EntityFieldJson>()
+        for (field in psiClass.allFields) {
+            if (field.hasModifierProperty(PsiModifier.STATIC)) continue
+            if (field.hasModifierProperty(PsiModifier.TRANSIENT)) continue
+            if (field.findFirstAnnotation(TRANSIENT_ANNOTATION_FQNS) != null) continue
+            if (!seen.add(field.name)) continue
+
+            result += toEntityField(field)
+        }
+        return result
+    }
+
+    private fun toEntityField(field: PsiField): EntityFieldJson {
+        val columnAnnotation = field.findFirstAnnotation(COLUMN_ANNOTATION_FQNS)
+        val column = columnAnnotation.getStringAttribute(ATTR_NAME)
+        val columnNullable = columnAnnotation.getBooleanAttribute(ATTR_NULLABLE)
+        val relationshipMatch = RELATIONSHIP_ANNOTATIONS.firstNotNullOfOrNull { (fqns, kind) ->
+            field.findFirstAnnotation(fqns)?.let { it to kind }
+        }
+        val relationshipAnnotation = relationshipMatch?.first
+        val relationshipType = relationshipMatch?.second
+        val joinColumn = field.findFirstAnnotation(JOIN_COLUMN_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
+        val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
+        val primaryKey = field.findFirstAnnotation(ID_ANNOTATION_FQNS) != null
+        val nullable = columnNullable ?: !hasNotNullAnnotation(field)
+
+        return EntityFieldJson(
+            name = field.name,
+            type = field.type.canonicalText,
+            column = column,
+            primaryKey = primaryKey,
+            nullable = nullable,
+            relationship = relationshipType,
+            joinColumn = joinColumn,
+            mappedBy = mappedBy,
+        )
+    }
+
+    private fun collectEntityIndexes(psiClass: PsiClass): List<EntityIndexJson> {
+        val tableAnnotation = psiClass.findFirstAnnotation(TABLE_ANNOTATION_FQNS) ?: return emptyList()
+        return tableAnnotation.getMemberValues(ATTR_INDEXES)
+            .filterIsInstance<PsiAnnotation>()
+            .map { indexAnnotation ->
+                EntityIndexJson(
+                    name = indexAnnotation.getStringAttribute(ATTR_NAME),
+                    columns = indexAnnotation.getStringAttribute(ATTR_COLUMN_LIST)
+                        ?.split(',')
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotBlank() }
+                        ?: emptyList(),
+                    unique = indexAnnotation.getBooleanAttribute(ATTR_UNIQUE) ?: false,
+                )
+            }
+    }
+
+    private fun hasNotNullAnnotation(field: PsiField): Boolean {
+        return field.annotations.any { it.qualifiedName?.substringAfterLast('.') == NOT_NULL_SIMPLE_NAME }
+    }
+
     private fun detectSpringLayer(psiClass: PsiClass): String? = when {
         psiClass.isMetaAnnotatedBy(SpringWebClasses.REST_CONTROLLER) -> "CONTROLLER"
         psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONTROLLER) -> "CONTROLLER"
@@ -598,7 +735,29 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     companion object {
         private const val MAX_ENDPOINT_RESULTS = 50
+        private const val MAX_ENTITY_RESULTS = 500
         private val mapper = ObjectMapper()
+
+        private const val ATTR_NAME = "name"
+        private const val ATTR_NULLABLE = "nullable"
+        private const val ATTR_MAPPED_BY = "mappedBy"
+        private const val ATTR_INDEXES = "indexes"
+        private const val ATTR_COLUMN_LIST = "columnList"
+        private const val ATTR_UNIQUE = "unique"
+        private const val NOT_NULL_SIMPLE_NAME = "NotNull"
+
+        private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
+        private val TABLE_ANNOTATION_FQNS = JpaClasses.table.allFqns
+        private val COLUMN_ANNOTATION_FQNS = JpaClasses.column.allFqns
+        private val ID_ANNOTATION_FQNS = JpaClasses.id.allFqns + JpaClasses.embeddedId.allFqns
+        private val TRANSIENT_ANNOTATION_FQNS = JpaClasses.transient.allFqns
+        private val JOIN_COLUMN_ANNOTATION_FQNS = JpaClasses.joinColumn.allFqns
+        private val RELATIONSHIP_ANNOTATIONS: List<Pair<List<String>, String>> = listOf(
+            JpaClasses.oneToOne.allFqns to "ONE_TO_ONE",
+            JpaClasses.oneToMany.allFqns to "ONE_TO_MANY",
+            JpaClasses.manyToOne.allFqns to "MANY_TO_ONE",
+            JpaClasses.manyToMany.allFqns to "MANY_TO_MANY",
+        )
     }
 }
 
@@ -718,5 +877,32 @@ data class DtoFieldJson(
     val type: String,
     val nullable: Boolean,
     val nested: DtoSchemaJson?,
+)
+
+data class SpringDataEntityJson(
+    val name: String,
+    val className: String,
+    val filePath: String?,
+    val line: Int,
+    val tableName: String,
+    val fields: List<EntityFieldJson>,
+    val indexes: List<EntityIndexJson>,
+)
+
+data class EntityFieldJson(
+    val name: String,
+    val type: String,
+    val column: String?,
+    val primaryKey: Boolean,
+    val nullable: Boolean,
+    val relationship: String?,
+    val joinColumn: String?,
+    val mappedBy: String?,
+)
+
+data class EntityIndexJson(
+    val name: String?,
+    val columns: List<String>,
+    val unique: Boolean,
 )
 
