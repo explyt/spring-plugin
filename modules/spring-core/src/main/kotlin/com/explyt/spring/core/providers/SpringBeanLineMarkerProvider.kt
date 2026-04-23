@@ -68,12 +68,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     ) {
         val module = getModule(elements)
         if (module == null) {
-            if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
             SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
         } else if (isExternalProjectExist(elements)) {
             SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
         } else {
-            if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
             super.collectSlowLineMarkers(elements, result)
         }
     }

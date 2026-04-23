@@ -28,7 +28,6 @@ abstract class SpringBaseUastLocalInspectionTool : AbstractBaseUastLocalInspecti
     override fun isAvailableForFile(file: PsiFile): Boolean {
         //spring boot is ultimate plugin. it is mean that inspection not available in Paid version,
         // because it already has spring bundle plugin
-        return PluginIds.SPRING_BOOT_JB.isNotEnabled()
-                && LibraryClassCache.searchForLibraryClass(file.project, CORE_ENVIRONMENT) != null
+        return LibraryClassCache.searchForLibraryClass(file.project, CORE_ENVIRONMENT) != null
     }
 }
