@@ -25,6 +25,11 @@ object PluginContext {
         PluginManager.getPluginByClass(SentryErrorReporter::class.java)?.version ?: "Unknown"
     }
 
+    /** Middle segment of the version string, e.g. "31" from "253.31.58" */
+    val pluginMajorVersion: String by lazy {
+        pluginVersion.split('.').getOrElse(1) { "unknown" }
+    }
+
     val ideName: String by lazy {
         ApplicationInfo.getInstance().build.productCode
     }

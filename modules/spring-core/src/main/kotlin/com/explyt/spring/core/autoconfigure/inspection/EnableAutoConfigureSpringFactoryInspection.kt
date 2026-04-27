@@ -60,8 +60,6 @@ import javax.swing.Icon
 class EnableAutoConfigureSpringFactoryInspection : SpringBaseLocalInspectionTool() {
 
     override fun checkFile(file: PsiFile, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor> {
-        if (PluginIds.SPRING_BOOT_JB.isEnabled()) return emptyArray()
-
         if (!FactoriesFileType.isMyFileType(file.virtualFile)) return ProblemDescriptor.EMPTY_ARRAY
         val propertiesFile = file as? PropertiesFile ?: return ProblemDescriptor.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForFile(file) ?: return ProblemDescriptor.EMPTY_ARRAY

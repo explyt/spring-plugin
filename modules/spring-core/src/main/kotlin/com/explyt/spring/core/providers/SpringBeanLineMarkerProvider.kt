@@ -68,12 +68,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
     ) {
         val module = getModule(elements)
         if (module == null) {
-            if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
             SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
         } else if (isExternalProjectExist(elements)) {
             SpringBeanLineMarkerProviderNative().collectSlowLineMarkers(elements, result)
         } else {
-            if (PluginIds.SPRING_BOOT_JB.isEnabled()) return
             super.collectSlowLineMarkers(elements, result)
         }
     }
@@ -216,6 +214,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val uMethod = (uParent.uastParent as? UMethod)?.takeIf { filterMethod(it) } ?: return false
                 val javaPsiClass = uMethod.getContainingUClass()?.javaPsi ?: return false
                 if (javaPsiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return false
+                if ((uParent.javaPsi as? PsiModifierListOwner)?.isMetaAnnotatedBy(SpringCoreClasses.VALUE) == true) {
+                    return false
+                }
                 val psiMethod = uMethod.javaPsi
                 return ((uMethod.isConstructor && isComponent(uMethod))
                         || isAutowiredMethodExpression(psiMethod)

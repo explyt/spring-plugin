@@ -17,7 +17,7 @@ Available on JetBrains Marketplace: https://plugins.jetbrains.com/plugin/28675-s
 
 ![Screen](https://raw.githubusercontent.com/explyt/spring-plugin/refs/heads/main/images/screen1.jpg)
 
-👉 Visit the [official Explyt website](https://explyt.ai/docs/category/explyt-spring).
+👉 Visit the [official Explyt website](https://explyt.ai/docs/category/explyt-spring?utm_campaign=explytai&utm_source=github&utm_medium=springexplyt).
 
 ## Table of Contents
 
@@ -35,6 +35,7 @@ Available on JetBrains Marketplace: https://plugins.jetbrains.com/plugin/28675-s
     - [Spring Initializr](#spring-initializr)
     - [Docker Compose and Kubernetes](#docker-compose-and-kubernetes)
     - [Spring AI](#spring-ai)
+    - [MCP Server Tools](#mcp-server-tools)
     - [Additional Inspections and Features](#additional-inspections-and-features)
 - [Tool Windows](#tool-windows)
 - [Inlay Hints & Code Vision](#inlay-hints--code-vision)
@@ -328,6 +329,25 @@ To switch runners, go to **Settings > Tools > Explyt Spring** and select your pr
 - HTTP format conversions: Convert curl/Postman collections to RFC 7230 .http/.rest files supported by our HTTP client runners.
 - Properties ↔ YAML: Convert Spring configuration between properties and YAML formats.
 
+### MCP Server Tools
+
+- Supports the bundled **JetBrains MCP Server** available in IntelliJ IDEA **2025.2+**.
+- Adds **Spring-aware MCP tools** so AI agents can understand Spring Boot projects without relying only on generic file search and code navigation.
+- This helps agentic clients use fewer broad tool calls, reduce token usage, and get more accurate Spring-specific context.
+- Current tools include:
+    - [`explyt_get_spring_boot_applications`](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt) — lists Spring Boot applications in the current workspace, including detected Spring Boot versions and starters.
+    - [`explyt_get_project_beans_by_spring_boot_application`](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt) — returns beans for a selected Spring Boot application, with filtering by bean type such as `CONTROLLER`, `REPOSITORY`, `CONFIGURATION`, `COMPONENT`, and more.
+    - [`explyt_find_spring_endpoint`](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt) — finds endpoints matching a URL pattern across all endpoint types: Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers (Kafka/RabbitMQ listeners), and event listeners. Resolves composed paths (class-level `@RequestMapping` + method-level `@GetMapping`/`@PostMapping`), supports partial URL matching and path variable wildcards. Returns matched endpoints with full path, HTTP methods, controller class, method name, parameters (with source, type, required flag), return type, file path, line number, and endpoint type.
+    - [`explyt_get_spring_http_endpoints`](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt) — lists all HTTP endpoints in the project with optional filtering by controller class name or endpoint type (SPRING_MVC, SPRING_WEBFLUX, SPRING_JAX_RS, etc.). Returns a summary of every endpoint: HTTP method, full path, controller, method name, return type, file location, and endpoint type.
+    - [`explyt_get_spring_endpoint_contract`](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt) — returns the full API contract for a specific endpoint. Includes all parameters (path variables, query params, request body, headers) with types and required flags, response DTO schema recursively expanded up to 3 levels, produces/consumes media types, and the first service method called from the controller.
+    - [`explyt_trace_spring_call_chain`](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt) — traces the call chain from a method through Spring layers (Controller → Service → Repository). Given a file path and line number, recursively follows method calls via UAST, detects Spring stereotypes (`CONTROLLER`, `SERVICE`, `REPOSITORY`, `COMPONENT`, `CONFIGURATION`), and returns the full chain with parameters, file paths, line numbers, and called methods. Optionally finds test files referencing discovered methods — essential for planning cross-cutting changes like adding a new parameter.
+    - [`explyt_get_spring_data_entities`](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt) — lists all JPA entities (`@Entity`) in the project (detects both `jakarta.persistence` and `javax.persistence`). For each entity returns the class name, file path and line, resolved table name (from `@Table` or `@Entity(name=...)`), fields with column names, types, primary-key flag (`@Id`/`@EmbeddedId`), nullability, JPA relationships (`@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany`) with `joinColumn`/`mappedBy` metadata, and table indexes from `@Table(indexes=[...])`. Essential for schema understanding, migration planning, DTO design, and query writing. Supports an optional package prefix filter.
+- Implementation details:
+    - [Toolset registration](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/resources/META-INF/mcp-server-plugin.xml)
+    - [Tool implementation and DTOs](https://github.com/explyt/spring-plugin/blob/main/modules/spring-ai/src/main/kotlin/com/explyt/spring/ai/mcp/SpringMcpProvider.kt)
+- Works well with AI plugins and clients that can connect to the IntelliJ IDEA MCP Server, including Explyt AI.
+- Read more in our article: [Explyt Spring: Tools for MCP Server plugin (RU)](https://habr.com/ru/articles/986226/).
+
 ### Additional Inspections and Features
 
 - **Kotlin Support**:
@@ -604,6 +624,7 @@ For a detailed overview of the plugin's features and how it can improve your dev
 - **[Explyt Spring Release: SQL, Docker-Compose, Debugger (RU)](https://habr.com/ru/companies/explyt/articles/962536/)** — overview SQL DML, Docker Compose completions, and Remote Debugger.
 - **[Neural Networks in Spring Development: Eliminating Routine, Not Intelligence (RU)](https://habr.com/ru/companies/explyt/articles/944266/)**
 - **[Explyt AI Platform and integrated agents (RU)](https://habr.com/ru/companies/explyt/articles/936992/)**
+- **[Explyt Spring: Tools for MCP Server plugin (RU)](https://habr.com/ru/articles/986226/)** — how Explyt Spring adds Spring-aware tools on top of the IntelliJ IDEA bundled MCP Server.
 - **[Explyt Spring Plugin: Quarkus support (RU)](https://habr.com/ru/companies/explyt/articles/926484/)**
 - **[Explyt Spring Debugger (RU)](https://habr.com/ru/companies/explyt/articles/933158/)**
 - **[Explyt Spring plugin: *.http files support in IntelliJ IDEA Community (RU)](https://habr.com/ru/companies/explyt/articles/884280/)**
@@ -622,6 +643,7 @@ The articles include explanations, screenshots, and examples showing how the Exp
 - JPA/JPQL support (query language inspections and highlighting)
 - Spring Security, Spring Cloud, Spring Integration, Spring Messaging modules
 - Quarkus support: CDI, JAX-RS, interceptors, decorators, Endpoints tool window, Swagger UI–based HTTP client
+- JetBrains MCP Server (IntelliJ IDEA 2025.2+): Spring-aware MCP tools for agentic AI clients
 - IntelliJ IDEA Ultimate: if you use Ultimate, disable the built‑in Spring plugin to avoid conflicts.
 
 ## Contributing

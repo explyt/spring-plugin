@@ -22,6 +22,7 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.SpringGutterTestUtil
 import junit.framework.TestCase
+import org.intellij.lang.annotations.Language
 
 private const val TEST_DATA_PATH = "providers/linemarkers/beans"
 
@@ -232,6 +233,25 @@ class SpringBeanLineMarkerProviderParameterTest : ExplytJavaLightTestCase() {
         val gutterTargetString = SpringGutterTestUtil.getGutterTargetString(allBeanGutters)
 
         TestCase.assertEquals(gutterTargetString.size, 0)
+    }
+
+    fun testLineMarkerParameterAInConstructor_Value() {
+        @Language("java") val fooComponent =
+            """
+                @org.springframework.stereotype.Component
+                class FooConstructorA {
+                    private final A a;
+                    Foo(
+                        A fooConstructorParameter,
+                        @org.springframework.beans.factory.annotation.Value("test") String s
+                    ) { }
+                }
+            """.trimIndent()
+        myFixture.configureByText("FooComponent.java", getParameterClasses() + fooComponent)
+        myFixture.doHighlighting()
+
+        val allBeanGutters = SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBeanDependencies)
+        assertEquals(1, allBeanGutters.size)
     }
 
     fun testLineMarkerParameterFooOpt_toAutowired() {

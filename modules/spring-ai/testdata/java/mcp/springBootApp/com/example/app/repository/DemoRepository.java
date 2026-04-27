@@ -15,15 +15,19 @@
  * Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
  */
 
-package io.sentry
+package com.example.app.repository;
 
-import io.sentry.config.Lookup
-import io.sentry.marshaller.json.GlitchtipJsonMarshaller
-import io.sentry.marshaller.json.JsonMarshaller
+import com.example.app.dto.DemoDto;
+import org.springframework.stereotype.Repository;
 
-class GlitchtipSentryClientFactory @JvmOverloads constructor(lookup: Lookup = Lookup.getDefault()) : DefaultSentryClientFactory(lookup) {
+@Repository
+public class DemoRepository {
 
-    override fun createJsonMarshaller(maxMessageLength: Int): JsonMarshaller {
-        return GlitchtipJsonMarshaller(maxMessageLength)
+    public DemoDto load(Long id) {
+        return new DemoDto(id, "name-" + id);
+    }
+
+    public DemoDto store(DemoDto dto) {
+        return dto;
     }
 }
