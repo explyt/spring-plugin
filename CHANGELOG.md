@@ -4,6 +4,53 @@
 
 ## [Unreleased]
 
+### Spring Core
+- feat: 261 spring boot support (#217)
+- feat: Spring Mock/Spy beans in test #209 (#211)
+- fix: Redundant line marker under @Value constructor (#210)
+
+### Spring Initializr
+- fix: spring init (#218)
+
+### Spring MCP
+- feat: Add explyt_get_spring_data_entities (#222)
+- feat: Tools explyt_get_spring_http_endpoints and explyt_get_spring_endpoint_contract (#221)
+- feat: Tool explyt_trace_spring_call_chain (#220)
+- feat: Find Spring Endpoints MCP tool: explyt_find_spring_endpoint (#219)
+
+### Other
+- chore: support 261 (#192)
+- chore: Prepare release 33
+- chore: Migrate Sentry (#215)
+- chore: Add tests with TypeChecks
+- fix: Fix outdated URL
+- docs: Add tags to the urls
+- feat: EDT #213 (#214)
+- chore: Update plugin versions in GitHub Workflows
+- chore: Add information about MCP into README files
+
+## [253.32.71] - 2026-01-31
+
+### Spring Core
+
+- feat: Show EventListeners in endpoint tool
+  window [#181](https://github.com/explyt/spring-plugin/issues/181#issuecomment-4021542501)
+- feat: Support method beans from @Import annotation [#189](https://github.com/explyt/spring-plugin/issues/189)
+- fix: support ResourceLoader bean [#190](https://github.com/explyt/spring-plugin/issues/190)
+- fix: StackOverflowError in ExplytPsiUtil [#196](https://github.com/explyt/spring-plugin/issues/196)
+- fix: Error during ranges calculation in yaml annotator [#173](https://github.com/explyt/spring-plugin/issues/173)
+
+### Spring Test
+
+- fix: Test beans inspections [#183](https://github.com/explyt/spring-plugin/issues/183)
+
+### Spring Core/Boot
+
+- feat: Kotlin: Quick-fix for data class @ConfigurationProperties without
+  `@ConstructorBinding` [#31](https://github.com/explyt/spring-plugin/issues/31)
+
+## 253.31.58 - 2026-01-31
+
 ### Spring AI
 
 - feat: Spring AI Tools for bundled [MCP Server plugin](https://plugins.jetbrains.com/plugin/26071-mcp-server)
@@ -14,9 +61,10 @@
 - fix: Slow operation in EDT [#154](https://github.com/explyt/spring-plugin/issues/154)
 - fix: ConfigurationProperties for kotlin inspection [#163](https://github.com/explyt/spring-plugin/issues/163)
 - fix: PathVariable in Class URL [#161](https://github.com/explyt/spring-plugin/issues/161)
+- fix: Events for @TransactionalEventListener [PR](https://github.com/explyt/spring-plugin/pull/179)
 - fix: Bean Autowired gutter icon for lombok
 
-## [253.30.53] - 2025-12-22
+## 253.30.53 - 2025-12-22
 
 ### Spring Core/Boot
 
@@ -38,7 +86,7 @@
 
 - feat: [Support](https://storage.yandexcloud.net/explyt-web/videos/spring-wiki/debugger/spring-debug-old.mp4) for IntelliJ IDEA versions 241 / 242 (demo video).
 
-## [252.29.43] - 2025-11-24
+## 252.29.43 - 2025-11-24
 
 ### Spring Core/Boot
 
