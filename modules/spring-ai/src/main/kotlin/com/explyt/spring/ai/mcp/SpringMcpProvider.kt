@@ -35,6 +35,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
+import com.intellij.mcpserver.mcpFail
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.module.ModuleUtilCore
@@ -108,9 +109,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             smartReadAction(project) {
                 val applicationPsiClass = JavaPsiFacade.getInstance(project)
                     .findClass(applicationClassName, project.projectScope())
-                    ?: return@readAction emptyList()
+                    ?: return@smartReadAction emptyList()
                 val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
-                    ?: return@readAction emptyList()
+                    ?: return@smartReadAction emptyList()
                 McpBeanSearchService.getInstance(project).getProjectBeansMcp(module)
             }
         }
