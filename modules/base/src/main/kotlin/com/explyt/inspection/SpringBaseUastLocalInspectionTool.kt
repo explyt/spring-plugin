@@ -18,7 +18,6 @@
 package com.explyt.inspection
 
 import com.explyt.base.LibraryClassCache
-import com.explyt.plugin.PluginIds
 import com.explyt.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.intellij.codeInspection.AbstractBaseUastLocalInspectionTool
 import com.intellij.psi.PsiFile
