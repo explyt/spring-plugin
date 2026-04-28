@@ -38,6 +38,9 @@
     <extensions defaultExtensionNs="com.intellij">
 
     </extensions>
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK2="true"/>
+    </extensions>
 
     <xi:include href="base-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="spring-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
