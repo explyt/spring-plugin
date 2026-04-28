@@ -35,7 +35,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
-import com.intellij.mcpserver.mcpFail
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.module.ModuleUtilCore
@@ -57,6 +56,17 @@ import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
 
+private const val MCP_EXPECTED_ERROR_CLASS = "com.intellij.mcpserver.McpExpectedError"
+
+private fun mcpFail(message: String): Nothing = throw createMcpExpectedError(message)
+
+private fun createMcpExpectedError(message: String): Throwable {
+    return runCatching {
+        Class.forName(MCP_EXPECTED_ERROR_CLASS)
+            .getConstructor(String::class.java)
+            .newInstance(message) as Throwable
+    }.getOrElse { IllegalArgumentException(message) }
+}
 
 class SpringBootApplicationMcpToolset : McpToolset {
 
