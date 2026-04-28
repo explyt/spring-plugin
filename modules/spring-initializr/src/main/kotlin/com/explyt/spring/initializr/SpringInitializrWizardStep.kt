@@ -307,6 +307,7 @@ class SpringInitializrWizardStep(private val context: WizardContext) : ModuleWiz
         val progressBar = progress.components.last() as? JProgressBar
 
         val eFileName = if (info.components.size > 1) info.components[1] as? JTextField else null
+        val btnDelete = info.components.last() as? JButton
 
         val url = serverUrl ?: SpringInitializrBundle.message("explyt.spring.initializr.url")
         val browser = JBCefBrowser(url)
