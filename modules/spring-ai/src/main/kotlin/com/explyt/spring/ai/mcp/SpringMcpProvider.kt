@@ -103,15 +103,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
     ): String {
         val project = getCurrentProject(projectPath)
             ?: getCurrentProjectForClass(applicationClassName)
-            ?: return ("error: project not found")
-        val mcpBeanType = getMcpBeanType(beanType) ?: return ("error: bean type not found $beanType")
+            ?: mcpFail("project not found")
+        val mcpBeanType = getMcpBeanType(beanType) ?: mcpFail("unknown bean type: $beanType")
         val springBeans = withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val applicationPsiClass = JavaPsiFacade.getInstance(project)
                     .findClass(applicationClassName, project.projectScope())
-                    ?: return@smartReadAction emptyList()
+                    ?: mcpFail("Spring Boot Application class not found: $applicationClassName")
                 val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
-                    ?: return@smartReadAction emptyList()
+                    ?: mcpFail("module not found for: $applicationClassName")
                 McpBeanSearchService.getInstance(project).getProjectBeansMcp(module)
             }
         }
