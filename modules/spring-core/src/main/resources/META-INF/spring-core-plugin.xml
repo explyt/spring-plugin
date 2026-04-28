@@ -1,12 +1,9 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <depends>com.intellij.modules.lang</depends>
     <depends>org.intellij.intelliLang</depends>
-    <depends>com.intellij.java</depends>
     <depends>com.intellij.properties</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
-    <depends>com.intellij.modules.json</depends>
-    <depends optional="true" config-file="spring-core-sh.xml">org.jetbrains.plugins.terminal</depends>
+    <depends optional="true" config-file="spring-core-terminal.xml">org.jetbrains.plugins.terminal</depends>
     <depends optional="true" config-file="spring-core-sh.xml">com.jetbrains.sh</depends>
 
     <extensionPoints>

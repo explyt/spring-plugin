@@ -1,7 +1,4 @@
 <idea-plugin>
-    <depends>com.intellij.modules.json</depends>
-    <depends>com.intellij.java</depends>
-
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.web.springWebEndpointsLoader" dynamic="true"
                         interface="com.explyt.spring.web.loader.SpringWebEndpointsLoader"
