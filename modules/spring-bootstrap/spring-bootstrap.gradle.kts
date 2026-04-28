@@ -152,6 +152,7 @@ dependencies {
     @Suppress("UNCHECKED_CAST")
     intellijPlatform {
         instrumentationTools()
+        pluginVerifier()
         zipSigner()
 
         val pluginDependencies = mutableSetOf<String>()
