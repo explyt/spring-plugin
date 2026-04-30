@@ -35,7 +35,7 @@ import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.psi.PsiElement
@@ -149,7 +149,9 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun navigation(closestPathForLocation: TreePath?) {
         val lastUserObject = TreeUtil.getLastUserObject(closestPathForLocation)
-        runReadAction { (lastUserObject as? EndpointNavigable)?.navigate() }
+        val navigable = (lastUserObject as? EndpointNavigable) ?: return
+        val navigatable = runReadActionBlocking { navigable.asNavigatable() } ?: return
+        navigatable.navigate(true)
     }
 
     private fun createRefreshButton(): JComponent {

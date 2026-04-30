@@ -53,7 +53,6 @@ class HttpMethodNode(
 
     override fun buildChildren() = emptyArray<SimpleNode>()
 
-    override fun navigate() {
-        (httpElement.psiPointer.element?.navigationElement as? Navigatable)?.navigate(true)
-    }
+    override fun asNavigatable(): Navigatable? =
+        httpElement.psiPointer.element?.navigationElement as? Navigatable
 }

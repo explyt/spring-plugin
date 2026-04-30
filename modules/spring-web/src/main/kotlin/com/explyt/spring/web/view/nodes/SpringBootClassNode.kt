@@ -37,7 +37,6 @@ class SpringBootClassNode(
 
     override fun buildChildren() = emptyArray<SimpleNode>()
 
-    override fun navigate() {
-        (viewData?.psiPointer?.element?.navigationElement as? Navigatable)?.navigate(true)
-    }
+    override fun asNavigatable(): Navigatable? =
+        viewData?.psiPointer?.element?.navigationElement as? Navigatable
 }

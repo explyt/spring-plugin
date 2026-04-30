@@ -17,6 +17,16 @@
 
 package com.explyt.spring.web.view.nodes
 
+import com.intellij.pom.Navigatable
+
 interface EndpointNavigable {
-    fun navigate()
+    /**
+     * Resolves a [Navigatable] for this node. Must be called inside a read action
+     * because it touches PSI. The returned [Navigatable.navigate] call must be
+     * performed outside the read action because the platform now requires a
+     * write-intent read action when opening file editors
+     *
+     * Since 253
+     */
+    fun asNavigatable(): Navigatable?
 }
