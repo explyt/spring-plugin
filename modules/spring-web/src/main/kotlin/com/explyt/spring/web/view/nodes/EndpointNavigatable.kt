@@ -17,16 +17,16 @@
 
 package com.explyt.spring.web.view.nodes
 
-import com.intellij.pom.Navigatable
-
 interface EndpointNavigable {
     /**
-     * Resolves a [Navigatable] for this node. Must be called inside a read action
-     * because it touches PSI. The returned [Navigatable.navigate] call must be
-     * performed outside the read action because the platform now requires a
-     * write-intent read action when opening file editors
+     * Performs navigation to the underlying PSI element.
      *
-     * Since 253
+     * Implementations access PSI and open a file editor, both of which require
+     * the EDT under a write-intent read action. Callers must invoke this from
+     * the EDT (e.g. via [com.intellij.openapi.application.Application.invokeLater]),
+     * not from a plain read action — opening an editor cannot be performed
+     * from inside a `ReadAction` ("WriteIntentReadAction can not be called
+     * from ReadAction", since 253).
      */
-    fun asNavigatable(): Navigatable?
+    fun navigate()
 }

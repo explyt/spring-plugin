@@ -35,7 +35,6 @@ import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.WriteIntentReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.psi.PsiElement
@@ -147,18 +146,13 @@ class EndpointsToolWindow(private val project: Project) :
         }.installOn(endpointTree)
     }
 
-    @Suppress("UnstableApiUsage")
     private fun navigation(closestPathForLocation: TreePath?) {
         val lastUserObject = TreeUtil.getLastUserObject(closestPathForLocation)
         val navigable = (lastUserObject as? EndpointNavigable) ?: return
-        // Both PSI access and opening a file editor need to happen under a
-        // write-intent read action on the EDT (IJPL platform threading model).
-        // A plain ReadAction is not sufficient ("Read access is allowed from
-        // inside read-action only" / "WriteIntentReadAction can not be called
-        // from ReadAction").
-        WriteIntentReadAction.run {
-            navigable.asNavigatable()?.navigate(true) ?: return@run
-        }
+        // Schedule navigation on the EDT: invokeLater runs the action under a
+        // write-intent read action, which is required since 253 to open a file
+        // editor and at the same time covers PSI read access inside navigate().
+        ApplicationManager.getApplication().invokeLater { navigable.navigate() }
     }
 
     private fun createRefreshButton(): JComponent {
