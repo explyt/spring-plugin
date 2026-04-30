@@ -35,7 +35,6 @@ import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.psi.PsiElement
@@ -149,7 +148,11 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun navigation(closestPathForLocation: TreePath?) {
         val lastUserObject = TreeUtil.getLastUserObject(closestPathForLocation)
-        runReadAction { (lastUserObject as? EndpointNavigable)?.navigate() }
+        val navigable = (lastUserObject as? EndpointNavigable) ?: return
+        // Schedule navigation on the EDT: invokeLater runs the action under a
+        // write-intent read action, which is required since 253 to open a file
+        // editor and at the same time covers PSI read access inside navigate().
+        ApplicationManager.getApplication().invokeLater { navigable.navigate() }
     }
 
     private fun createRefreshButton(): JComponent {
