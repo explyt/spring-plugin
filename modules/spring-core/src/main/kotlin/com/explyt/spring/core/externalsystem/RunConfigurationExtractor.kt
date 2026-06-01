@@ -65,11 +65,13 @@ object RunConfigurationExtractor {
                 return RunConfigurationHolder(runConfiguration)
             }
         }
-        val runConfig = if (settings.runConfigurationName != null) {
-            allConfigurationsList.find { it is SpringBootRunConfiguration && it.name == settings.runConfigurationName }
-        } else {
-            allConfigurationsList.find { checkRunConfiguration(it, projectPath) }
+        val runConfigByName = settings.runConfigurationName?.let { name ->
+            allConfigurationsList.find { it is SpringBootRunConfiguration && it.name == name }
         }
+        // If the stored name doesn't match (e.g. user renamed/replaced the run config),
+        // fall back to matching any SpringBootRunConfiguration by main-class file path.
+        val runConfig = runConfigByName
+            ?: allConfigurationsList.find { checkRunConfiguration(it, projectPath) }
         if (runConfig is SpringBootRunConfiguration) {
             if (isJavaAgent) {
                 return RunConfigurationHolder(agentRunConfiguration = runConfig.clone())
