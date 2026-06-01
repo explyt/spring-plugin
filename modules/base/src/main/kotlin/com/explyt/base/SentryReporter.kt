@@ -42,6 +42,9 @@ object SentryReporter {
 
                 Sentry.init { options ->
                     options.dsn = DSN
+                    // Tie every event to a release so Sentry can show Suspect Commits.
+                    // Must match the release created by the release CI (see release.yaml).
+                    options.release = PluginContext.pluginVersion
                     options.isEnableUncaughtExceptionHandler = false
                 }
 
