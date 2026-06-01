@@ -18,6 +18,7 @@
 package com.explyt.spring.core.search
 
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.ide.actions.searcheverywhere.FoundItemDescriptor
 import com.intellij.ide.actions.searcheverywhere.WeightedSearchEverywhereContributor
 import com.intellij.ide.util.NavigationItemListCellRenderer
@@ -64,6 +65,8 @@ class BeanSearchEverywhereContributor(private val project: Project) :
         val searchService = SpringSearchServiceFacade.getInstance(project)
 
         val navItemList = ApplicationManager.getApplication().runReadAction<List<BeanNavigationItem>, Throwable?> {
+            if (!SpringCoreUtil.isSpringBootProject(project)) return@runReadAction emptyList()
+
             val (active, excluded) = searchService.getAllBeansClassesConsideringContext(project)
             active.map { BeanNavigationItem(it, true) } +
                     excluded.map { BeanNavigationItem(it, false) }
