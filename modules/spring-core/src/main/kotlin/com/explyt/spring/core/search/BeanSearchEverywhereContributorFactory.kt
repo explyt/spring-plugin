@@ -17,7 +17,6 @@
 
 package com.explyt.spring.core.search
 
-import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.ide.actions.searcheverywhere.SearchEverywhereContributor
 import com.intellij.ide.actions.searcheverywhere.SearchEverywhereContributorFactory
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -31,7 +30,10 @@ class BeanSearchEverywhereContributorFactory : SearchEverywhereContributorFactor
     }
 
     override fun isAvailable(project: Project?): Boolean {
-        return project != null && SpringCoreUtil.isSpringBootProject(project)
+        // Search Everywhere asks availability on the EDT, so keep this check cheap.
+        // Spring Boot detection touches libraries/indices and is performed later in
+        // the contributor's background read action instead.
+        return project != null
     }
 
 }
