@@ -43,6 +43,8 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     private fun texts(node: JsonNode, field: String): List<String> =
         node.mapNotNull { it[field]?.asText() }
 
+    private fun endpointsOf(json: String): JsonNode = mapper.readTree(json)["endpoints"]
+
     fun testGetAllSpringBootApplications() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
@@ -152,9 +154,18 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             controllerFilter = "DemoController",
             endpointType = ""
         )
-        val methodNames = texts(parseArray(result), "methodName").toSet()
+        val root = mapper.readTree(result)
+        val endpoints = root["endpoints"]
+        val methodNames = texts(endpoints, "methodName").toSet()
         assertTrue("Expected getItem in $methodNames", methodNames.contains("getItem"))
         assertTrue("Expected createItem in $methodNames", methodNames.contains("createItem"))
+
+        // Wrapper metadata: totalCount matches the returned array and the small fixture is not truncated.
+        assertEquals(
+            "Expected totalCount to match endpoints array size",
+            endpoints.size(), root["totalCount"].asInt()
+        )
+        assertEquals("Expected truncated=false for the small fixture", false, root["truncated"].asBoolean())
     }
 
     fun testGetEndpointContract() = runBlocking<Unit> {
@@ -296,7 +307,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             controllerFilter = "",
             endpointType = "SPRING_MVC"
         )
-        val mvcMethodNames = texts(parseArray(mvcResult), "methodName").toSet()
+        val mvcMethodNames = texts(endpointsOf(mvcResult), "methodName").toSet()
         assertTrue(
             "Expected Spring MVC endpoints (getItem, createItem), got $mvcMethodNames",
             mvcMethodNames.containsAll(setOf("getItem", "createItem"))
@@ -307,7 +318,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             controllerFilter = "",
             endpointType = "SPRING_OPEN_FEIGN"
         )
-        val feignEndpoints = parseArray(feignResult)
+        val feignEndpoints = endpointsOf(feignResult)
         assertEquals(
             "Expected no Feign endpoints in test fixture, got $feignEndpoints",
             0, feignEndpoints.size()
@@ -322,7 +333,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             controllerFilter = "NoSuchControllerAnywhere",
             endpointType = ""
         )
-        val endpoints = parseArray(result)
+        val endpoints = endpointsOf(result)
         assertEquals(
             "Expected no endpoints when controllerFilter matches nothing, got $endpoints",
             0, endpoints.size()
