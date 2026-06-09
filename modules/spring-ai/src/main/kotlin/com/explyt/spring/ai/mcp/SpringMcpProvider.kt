@@ -255,8 +255,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
     @McpDescription(
         description = "Lists all HTTP endpoints in the project. " +
                 "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
-                "Each entry includes the HTTP method, full path, controller class, method name, return type, " +
-                "file path, line number, and endpoint type. " +
+                "Returns an object: 'endpoints' is the array (each entry has the HTTP method, full path, " +
+                "controller class, method name, return type, file path, line number, and endpoint type), " +
+                "'totalCount' is how many endpoints matched the filters, and 'truncated' is true when the " +
+                "matches exceeded the result cap so 'endpoints' is incomplete. " +
+                "When 'truncated' is true, narrow the result with the controller or endpoint-type filters. " +
                 "Use optional filters to narrow results by controller class name or endpoint type."
     )
     suspend fun getHttpEndpoints(
@@ -274,9 +277,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
         val typeFilter = endpointType.trim().uppercase().takeIf { it.isNotEmpty() }
 
-        val endpoints = withContext(Dispatchers.IO) {
+        val result = withContext(Dispatchers.IO) {
             smartReadAction(project) {
-                SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
+                val matching = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
                     .filter { it.type.isWeb }
                     .filter { typeFilter == null || it.type.name.equals(typeFilter, ignoreCase = true) }
                     .filter {
@@ -287,13 +290,22 @@ class SpringBootApplicationMcpToolset : McpToolset {
                                     || cls?.name?.contains(controllerSubstring, ignoreCase = true) == true
                         }
                     }
-                    .take(MAX_ENDPOINT_RESULTS)
-                    .mapNotNull { toEndpointJson(it, project) }
                     .toList()
+
+                val endpoints = matching.asSequence()
+                    .take(MAX_ENDPOINT_LIST_RESULTS)
+                    .map { toEndpointJson(it, project) }
+                    .toList()
+
+                EndpointListJson(
+                    totalCount = matching.size,
+                    truncated = matching.size > MAX_ENDPOINT_LIST_RESULTS,
+                    endpoints = endpoints,
+                )
             }
         }
 
-        return mapper.writeValueAsString(endpoints)
+        return mapper.writeValueAsString(result)
     }
 
     // ---- explyt_get_spring_endpoint_contract ----
@@ -734,7 +746,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     companion object {
+        // Guard cap for single-target lookups (find / contract): a URL pattern is not
+        // expected to resolve to many endpoints, so a small cap is enough.
         private const val MAX_ENDPOINT_RESULTS = 50
+
+        // Guard cap for the "list all endpoints" tool. It must be high enough to return
+        // every endpoint of a realistic project (the previous shared cap of 50 silently
+        // truncated larger projects); the value only exists to bound pathological output.
+        private const val MAX_ENDPOINT_LIST_RESULTS = 2000
         private const val MAX_ENTITY_RESULTS = 500
         private val mapper = ObjectMapper()
 
@@ -811,6 +830,12 @@ data class EndpointJson(
     val parameters: List<EndpointParameterJson>,
     val returnType: String?,
     val endpointType: String,
+)
+
+data class EndpointListJson(
+    val totalCount: Int,
+    val truncated: Boolean,
+    val endpoints: List<EndpointJson>,
 )
 
 data class EndpointParameterJson(
