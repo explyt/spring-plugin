@@ -5,31 +5,55 @@
 ## [Unreleased]
 
 ### Spring Core
-- feat: 261 spring boot support (#217)
-- feat: Spring Mock/Spy beans in test #209 (#211)
-- fix: Redundant line marker under @Value constructor (#210)
+- fix: Renamed Run Configuration causes Explyt Spring Boot project linkage (#229)
+- fix: Avoid Spring Boot lookup in Search Everywhere availability (#233) (#240)
+- fix: Anchor inherited autowired inspection problems (#234) (#241)
+- fix: Avoid invalid TextRange in `@Value` reference provider (#236) (#238)
+- fix: Handle transient PSI file text mismatch in bean search (#232) (#243)
 
-### Spring Initializr
-- fix: spring init (#218)
+### Spring Data
+- fix: Fail closed on stale PSI in SQL injector (#235) (#242)
+
+### Spring Web
+- fix: EDT while navigation (#227)
+- fix: Read HTTP env PSI under read action (#237) (#239)
 
 ### Spring MCP
-- feat: Add explyt_get_spring_data_entities (#222)
-- feat: Tools explyt_get_spring_http_endpoints and explyt_get_spring_endpoint_contract (#221)
-- feat: Tool explyt_trace_spring_call_chain (#220)
-- feat: Find Spring Endpoints MCP tool: explyt_find_spring_endpoint (#219)
+- fix: Stop `explyt_get_spring_http_endpoints` from silently truncating results (#244)
 
 ### Other
-- chore: support 261 (#192)
+- ci: Add Sentry release to analyze Suspected commits (#230)
+- ci: Ignore PLUGIN_STRUCTURE_WARNINGS
+- chore: Configure Plugin Verifier
+
+## [261.33.80] - 2026-04-28
+
+### Spring Core
+- feat: 261 spring boot support (#217)
+- feat: Spring Mock/Spy beans in test #209 (#211)
+- fix: Redundant line marker under `@Value` constructor (#210)
+
+### Spring Initializr
+- fix: Spring Init (#218)
+
+### Spring MCP
+- feat: MCP Tool `explyt_get_spring_data_entities` (#222)
+- feat: MCP Tools `explyt_get_spring_http_endpoints` and `explyt_get_spring_endpoint_contract` (#221)
+- feat: MCP Tool `explyt_trace_spring_call_chain` (#220)
+- feat: MCP Tool `explyt_find_spring_endpoint` (#219)
+
+### Other
+- fix: EDT #213 (#214)
+- chore: Support 261 (#192)
 - chore: Prepare release 33
 - chore: Migrate Sentry (#215)
 - chore: Add tests with TypeChecks
-- fix: Fix outdated URL
-- docs: Add tags to the urls
-- feat: EDT #213 (#214)
 - chore: Update plugin versions in GitHub Workflows
 - chore: Add information about MCP into README files
+- chore: Fix outdated URL
+- docs: Add tags to the urls
 
-## [253.32.71] - 2026-01-31
+## 253.32.71 - 2026-01-31
 
 ### Spring Core
 
