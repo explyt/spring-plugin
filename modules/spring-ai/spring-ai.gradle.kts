@@ -13,6 +13,7 @@ plugins {
 
 evaluationDependsOn(":spring-core")
 evaluationDependsOn(":spring-web")
+evaluationDependsOn(":jpa")
 
 val intellijPlugins = listOf<String>()
 
@@ -22,6 +23,7 @@ ext {
 
 val springCoreProject = project(":spring-core")
 val springWebProject = project(":spring-web")
+val jpaProject = project(":jpa")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -45,6 +47,7 @@ val defaultIdeaVersion: String by rootProject
 dependencies {
     implementation(springCoreProject)
     implementation(springWebProject)
+    implementation(jpaProject)
 
     intellijPlatform {
         intellijIdea(defaultIdeaVersion) {
@@ -59,7 +62,7 @@ dependencies {
     }
     testImplementation(project(":test-framework"))
     testImplementation("junit:junit:4.13.2")
-    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.10.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 }
 
 kotlin {

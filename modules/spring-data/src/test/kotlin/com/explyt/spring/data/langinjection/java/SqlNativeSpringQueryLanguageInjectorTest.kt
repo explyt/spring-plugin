@@ -287,6 +287,41 @@ class SqlNativeSpringQueryLanguageInjectorTest : ExplytJavaLightTestCase() {
         injectionTestFixture.assertInjectedLangAtCaret(null)
     }
 
+    fun testInjectionForAnyMethodParameterNamedSql() {
+        assertInjectionForParameterName("sqlText")
+    }
+
+    fun testInjectionForParameterNameWithSqlCamelCaseWord() {
+        assertInjectionForParameterName("nativeSqlQuery")
+    }
+
+    fun testInjectionForParameterNameWithSqlUpperSnakeCaseWord() {
+        assertInjectionForParameterName("NATIVE_SQL_QUERY")
+    }
+
+    private fun assertInjectionForParameterName(parameterName: String) {
+        @Language("JAVA") val code = """   
+            import org.springframework.stereotype.Component;
+            
+            @Component
+            class TestService {
+                public void testQuery() {
+                    var service = new QueryExecutor();
+                    service.run("select * from test<caret>");
+                }
+            }
+            
+            class QueryExecutor {
+                void run(String $parameterName) {
+                }
+            }
+            """
+
+        myFixture.configureByText("TestService.java", code.trimIndent())
+        val injectionTestFixture = InjectionTestFixture(myFixture)
+        injectionTestFixture.assertInjectedLangAtCaret(JpqlLanguage.INSTANCE.id)
+    }
+
 
     fun testSqlVarInjection() {
         @Language("JAVA") val code = """  

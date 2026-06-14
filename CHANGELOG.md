@@ -5,6 +5,57 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Renamed Run Configuration causes Explyt Spring Boot project linkage (#229)
+- fix: Avoid Spring Boot lookup in Search Everywhere availability (#233) (#240)
+- fix: Anchor inherited autowired inspection problems (#234) (#241)
+- fix: Avoid invalid TextRange in `@Value` reference provider (#236) (#238)
+- fix: Handle transient PSI file text mismatch in bean search (#232) (#243)
+
+### Spring Data
+- fix: Fail closed on stale PSI in SQL injector (#235) (#242)
+
+### Spring Web
+- fix: EDT while navigation (#227)
+- fix: Read HTTP env PSI under read action (#237) (#239)
+
+### Spring MCP
+- fix: Stop `explyt_get_spring_http_endpoints` from silently truncating results (#244)
+
+### Other
+- ci: Add Sentry release to analyze Suspected commits (#230)
+- ci: Ignore PLUGIN_STRUCTURE_WARNINGS
+- chore: Configure Plugin Verifier
+
+## [261.33.80] - 2026-04-28
+
+### Spring Core
+- feat: 261 spring boot support (#217)
+- feat: Spring Mock/Spy beans in test #209 (#211)
+- fix: Redundant line marker under `@Value` constructor (#210)
+
+### Spring Initializr
+- fix: Spring Init (#218)
+
+### Spring MCP
+- feat: MCP Tool `explyt_get_spring_data_entities` (#222)
+- feat: MCP Tools `explyt_get_spring_http_endpoints` and `explyt_get_spring_endpoint_contract` (#221)
+- feat: MCP Tool `explyt_trace_spring_call_chain` (#220)
+- feat: MCP Tool `explyt_find_spring_endpoint` (#219)
+
+### Other
+- fix: EDT #213 (#214)
+- chore: Support 261 (#192)
+- chore: Prepare release 33
+- chore: Migrate Sentry (#215)
+- chore: Add tests with TypeChecks
+- chore: Update plugin versions in GitHub Workflows
+- chore: Add information about MCP into README files
+- chore: Fix outdated URL
+- docs: Add tags to the urls
+
+## 253.32.71 - 2026-01-31
+
+### Spring Core
 
 - feat: Show EventListeners in endpoint tool
   window [#181](https://github.com/explyt/spring-plugin/issues/181#issuecomment-4021542501)
@@ -22,7 +73,7 @@
 - feat: Kotlin: Quick-fix for data class @ConfigurationProperties without
   `@ConstructorBinding` [#31](https://github.com/explyt/spring-plugin/issues/31)
 
-## [253.31.58] - 2026-01-31
+## 253.31.58 - 2026-01-31
 
 ### Spring AI
 
@@ -37,7 +88,7 @@
 - fix: Events for @TransactionalEventListener [PR](https://github.com/explyt/spring-plugin/pull/179)
 - fix: Bean Autowired gutter icon for lombok
 
-## [253.30.53] - 2025-12-22
+## 253.30.53 - 2025-12-22
 
 ### Spring Core/Boot
 
@@ -59,7 +110,7 @@
 
 - feat: [Support](https://storage.yandexcloud.net/explyt-web/videos/spring-wiki/debugger/spring-debug-old.mp4) for IntelliJ IDEA versions 241 / 242 (demo video).
 
-## [252.29.43] - 2025-11-24
+## 252.29.43 - 2025-11-24
 
 ### Spring Core/Boot
 

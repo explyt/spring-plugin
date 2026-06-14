@@ -136,7 +136,11 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun navigation(closestPathForLocation: TreePath?) {
         val lastUserObject = TreeUtil.getLastUserObject(closestPathForLocation)
-        (lastUserObject as? EndpointNavigable)?.navigate()
+        val navigable = (lastUserObject as? EndpointNavigable) ?: return
+        // Schedule navigation on the EDT: invokeLater runs the action under a
+        // write-intent read action, which is required since 253 to open a file
+        // editor and at the same time covers PSI read access inside navigate().
+        ApplicationManager.getApplication().invokeLater { navigable.navigate() }
     }
 
     private fun createRefreshButton(): JComponent {
@@ -236,7 +240,6 @@ class EndpointsToolWindow(private val project: Project) :
 
     private fun createEndpointTypeFilter(): FilterField {
         val title: String = SpringWebBundle.message("explyt.web.endpoints.tool.filter.endpoint.type")
-        val disposable = this
 
         return (object : FilterField(title) {
             override fun buildActions(): Collection<AnAction> {

@@ -40,6 +40,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.importing.ProjectResolverPolicy
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
@@ -71,6 +72,8 @@ import javax.swing.JPanel
 import kotlin.io.path.Path
 import kotlin.io.path.name
 
+private val logger = logger<SpringBeanNativeResolver>()
+
 private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.config.ConfigData"
 
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
@@ -90,28 +93,44 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         resolverPolicy: ProjectResolverPolicy?,
         listener: ExternalSystemTaskNotificationListener
     ): DataNode<ProjectData>? {
+        logger.info(
+            "Explyt resolveProjectInfo: path=$projectPath, isPreviewMode=$isPreviewMode, " +
+                    "resolverPolicy=${resolverPolicy?.javaClass?.simpleName}, " +
+                    "runConfigurationName=${settings?.runConfigurationName}, " +
+                    "runConfigurationType=${settings?.runConfigurationType}, " +
+                    "externalProjectMainFilePath=${settings?.externalProjectMainFilePath}"
+        )
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REFRESH)
         if (resolverPolicy is DebugProjectResolverPolicy && resolverPolicy.rawBeanData.isNotEmpty()) {
+            logger.info("Explyt resolveProjectInfo: taking DEBUG branch")
             return getDebugProjectNode(settings, resolverPolicy, projectPath, id, listener)
         } else if (projectPath == Constants.DEBUG_SESSION_NAME) {
+            logger.info("Explyt resolveProjectInfo: skipping DEBUG_SESSION_NAME path with null result")
             return null
         }
         val runConfigurationHolder = findRunConfigurationReadAction(projectPath, settings)
         if (isPreviewMode) {
+            logger.info("Explyt resolveProjectInfo: PREVIEW MODE, returning empty project node")
             return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfigurationHolder), null)
         }
         settings ?: throw ExternalSystemException("No settings")
         runConfigurationHolder ?: nothingException(settings)
         if (runConfigurationHolder.isEmpty()) nothingException(settings)
+        logger.info(
+            "Explyt resolveProjectInfo: resolved runConfigurationHolder=" +
+                    "explyt=${runConfigurationHolder.runConfiguration?.name}, " +
+                    "agent=${runConfigurationHolder.agentRunConfiguration?.name}"
+        )
 
         try {
             return synchronized(this::class.java) {
-                try {
-                    getProjectDataNode(id, projectPath, runConfigurationHolder, settings, listener)
-                } catch (_: Exception) {
-                    throw ExternalSystemException("Project data is disposed. Please try again")
-                }
+                val node = getProjectDataNode(id, projectPath, runConfigurationHolder, settings, listener)
+                logger.info("Explyt resolveProjectInfo: produced data node with ${node.children.size} children")
+                node
             }
+        } catch (e: Exception) {
+            logger.warn("resolve spring project error for path: $projectPath", e)
+            throw e
         } finally {
             cancellationMap.remove(id)
         }

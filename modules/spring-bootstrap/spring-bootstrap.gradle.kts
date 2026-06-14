@@ -5,6 +5,7 @@
 
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.date
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel
 
 plugins {
     kotlin("jvm")
@@ -59,6 +60,17 @@ version = fun(): String {
     val ideaPlatformVersion = "${rootProject.ext["sinceVersion"]}".substring(0, 3)
     return "${ideaPlatformVersion}.${rootProject.ext["pluginVersion"]}.${ext["snapshotVersion"]}"
 }.invoke()
+
+// Single source of truth for the Sentry release name: prints the resolved plugin
+// version (e.g. "261.33.58"). The release CI consumes this to create the matching
+// Sentry release; it must equal SentryReporter's options.release at runtime.
+val resolvedPluginVersion = version.toString()
+tasks.register("printPluginVersion") {
+    // Capture as a local val so the configuration cache serializes the String
+    // instead of the script instance (avoids "this$0 is null" at execution).
+    val versionToPrint = resolvedPluginVersion
+    doLast { println(versionToPrint) }
+}
 
 val springPluginName = "spring-tool"
 ext["springPluginName"] = springPluginName
@@ -136,7 +148,7 @@ dependencies {
     }
     testImplementation(testFramework)
     testImplementation("junit:junit:4.13.2")
-    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.10.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 
     @Suppress("UNCHECKED_CAST")
     intellijPlatform {
@@ -183,6 +195,17 @@ intellijPlatform {
         ides {
             recommended()
         }
+        // Fail the `verifyPlugin` task (and therefore the release build) on real problems.
+        failureLevel.set(
+            FailureLevel.ALL.minus(
+                setOf(
+                    FailureLevel.DEPRECATED_API_USAGES,
+                    FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
+                    FailureLevel.EXPERIMENTAL_API_USAGES,
+                    FailureLevel.PLUGIN_STRUCTURE_WARNINGS,
+                )
+            )
+        )
     }
     // see https://plugins.jetbrains.com/docs/intellij/plugin-signing.html
     signing {

@@ -46,9 +46,14 @@ class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferencePr
         }
 
         return referenceProperties
-            .map { referenceProperty ->
+            .mapNotNull { referenceProperty ->
                 val text = host.text.removeDummyIdentifier()
                 val startOffset = text.indexOf(referenceProperty.key)
+                // The key is extracted from the evaluated @Value string, which may not appear
+                // literally in the raw host text (e.g. a template referencing a constant).
+                // If it can't be located, skip it instead of building an invalid TextRange
+                // such as (-1, n), which throws IllegalArgumentException (issue #236).
+                if (startOffset < 0) return@mapNotNull null
 
                 ExplytPropertyReference(
                     host, referenceProperty.key,

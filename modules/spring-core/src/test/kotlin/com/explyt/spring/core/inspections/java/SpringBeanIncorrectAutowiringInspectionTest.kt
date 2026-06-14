@@ -49,4 +49,37 @@ public class DemoApplication {
         myFixture.configureByText("DemoApplication.java", code.trimIndent())
         myFixture.testHighlighting("DemoApplication.java")
     }
+
+    fun testInheritedAutowiredMethodDoesNotCreateProblemInForeignFile() {
+        myFixture.addClass(
+            """
+            public class MissingBean {
+            }
+            """.trimIndent()
+        )
+        myFixture.addClass(
+            """
+            import org.springframework.beans.factory.annotation.Autowired;
+
+            public class ParentService {
+                @Autowired
+                public void setMissingBean(MissingBean missingBean) {
+                }
+            }
+            """.trimIndent()
+        )
+
+        @Language("java") val code = """
+            import org.springframework.stereotype.Component;
+
+            @Component
+            public class <error descr="Autowire failed. No beans of 'MissingBean' found">ChildService</error> extends ParentService {
+            }
+        """
+        myFixture.configureByText("ChildService.java", code.trimIndent())
+
+        // Regression for issue #234: Spring processes superclass @Autowired methods, but the
+        // descriptor must be anchored in ChildService.java while ChildService.java is inspected.
+        myFixture.testHighlighting("ChildService.java")
+    }
 }

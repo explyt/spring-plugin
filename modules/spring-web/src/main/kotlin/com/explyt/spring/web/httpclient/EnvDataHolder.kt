@@ -7,6 +7,7 @@ package com.explyt.spring.web.httpclient
 
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.observable.properties.AtomicBooleanProperty
 import com.intellij.openapi.observable.properties.GraphProperty
 import com.intellij.openapi.observable.properties.PropertyGraph
@@ -77,13 +78,11 @@ class EnvDataHolder(
         val file = envFiles.selected?.let { httpFileState.filesPathByName[it] }
             ?.let { VfsUtil.findFile(Path.of(it), false) } ?: return
 
-        val psiJsonFile = getPsiJsonFile(file, project)
-        envFileIsJson.set(psiJsonFile != null)
-        val obj = psiJsonFile?.children?.filterIsInstance<JsonObject>() ?: emptyList()
-        val envList = obj.flatMap { it.propertyList }.map { it.name }
+        val envList = readEnvList(file, project)
+        envFileIsJson.set(envList != null)
         envModel.removeAll()
         envModel.add("")
-        envList.forEach { envModel.add(it) }
+        envList.orEmpty().forEach { envModel.add(it) }
         envModel.selectedItem = envModel.items[0]
     }
 
@@ -121,8 +120,13 @@ class EnvDataHolder(
         return fileName
     }
 
-    private fun getPsiJsonFile(file: VirtualFile, project: Project?): JsonFile? {
-        return project?.let { file.toPsiFile(it) as? JsonFile }
+    private fun readEnvList(file: VirtualFile, project: Project?): List<String>? {
+        project ?: return null
+        return runReadAction {
+            val psiJsonFile = file.toPsiFile(project) as? JsonFile ?: return@runReadAction null
+            val obj = psiJsonFile.children.filterIsInstance<JsonObject>()
+            obj.flatMap { it.propertyList }.map { it.name }
+        }
     }
 
     private fun isExist(file: Path) = HttpFileStateService.getInstance().getOrCreateState(this.file).filesPathByName

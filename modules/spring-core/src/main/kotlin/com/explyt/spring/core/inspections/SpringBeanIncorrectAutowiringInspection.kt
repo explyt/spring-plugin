@@ -32,6 +32,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.*
+import com.intellij.psi.util.MethodSignatureUtil
 import com.intellij.util.applyIf
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
@@ -82,19 +83,46 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             problems += getProblemByClassWithoutComponent(aClass, manager, isOnTheFly)
         } else {
             problems += getProblemConstructors(aClass, module, manager, isOnTheFly)
-            val methods = aClass.allMethods
-                .filter { it.isInjectOrAutowiredByRequiredTrue() }
-            for (method in methods) {
+            for ((method, descriptorElement) in getAutowiredMethodsToInspect(aClass)) {
                 val params = method.parameterList.parameters
                 for (parameter in params.toList()) {
-                    problems += getProblemAutowired(module, parameter, manager, isOnTheFly)
+                    problems += getProblemAutowired(module, parameter, manager, isOnTheFly, descriptorElement)
                 }
-                problems += getProblemByMethodWithoutParams(method, params, manager, isOnTheFly)
+                problems += getProblemByMethodWithoutParams(method, params, manager, isOnTheFly, descriptorElement)
             }
         }
 
         return problems
     }
+
+    private fun getAutowiredMethodsToInspect(aClass: PsiClass): List<AutowiredMethodToInspect> {
+        val currentClassProblemElement = getIdentifyingElement(aClass) ?: return aClass.methods
+            .filter { it.isInjectOrAutowiredByRequiredTrue() }
+            .map { AutowiredMethodToInspect(it, null) }
+        val processedSignatures = MethodSignatureUtil.createErasedMethodSignatureSet()
+        val result = mutableListOf<AutowiredMethodToInspect>()
+        var currentClass: PsiClass? = aClass
+
+        while (currentClass != null) {
+            currentClass.methods.forEach { method ->
+                if (!method.isInjectOrAutowiredByRequiredTrue()) return@forEach
+
+                val signature = method.getSignature(PsiSubstitutor.EMPTY)
+                if (!processedSignatures.add(signature)) return@forEach
+
+                val descriptorElement = if (currentClass == aClass) null else currentClassProblemElement
+                result += AutowiredMethodToInspect(method, descriptorElement)
+            }
+            currentClass = currentClass.superClass
+        }
+
+        return result
+    }
+
+    private data class AutowiredMethodToInspect(
+        val method: PsiMethod,
+        val descriptorElement: PsiElement?
+    )
 
     private fun getProblemConstructors(
         aClass: PsiClass,
@@ -160,14 +188,16 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         module: Module,
         element: PsiJvmModifiersOwner,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
+        descriptorElement: PsiElement? = null
     ): Array<ProblemDescriptor> {
         if (element !is PsiVariable) return ProblemDescriptor.EMPTY_ARRAY
 
         val psiType = element.type
         val nameClass =
             (psiType.resolveBeanPsiClass ?: psiType.resolvedPsiClass)?.name ?: return ProblemDescriptor.EMPTY_ARRAY
-        val problemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
+        val originalProblemElement = getIdentifyingElement(element) ?: return ProblemDescriptor.EMPTY_ARRAY
+        val problemElement = descriptorElement ?: originalProblemElement
 
         val springSearchService = SpringSearchServiceFacade.getInstance(module.project)
         val beanDeclarations = springSearchService.findActiveBeanDeclarations(
@@ -217,20 +247,31 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         }
 
         if (SpringCoreClasses.QUALIFIERS.any { element.isMetaAnnotatedBy(it) }) {
-            return getProblemQualifier(module, element, manager, isOnTheFly)
+            return getProblemQualifier(module, element, manager, isOnTheFly, descriptorElement)
         }
         var problems = emptyArray<ProblemDescriptor>()
         if (beanDeclarations.isEmpty() || !psiType.isMultipleBean(module)) {
             if (!ExplytPsiUtil.isTestFiles(element)) {
-                problems += manager.createProblemDescriptor(
-                    problemElement,
-                    getWarningMessageInheritor(
-                        module, beanDeclarations,
-                        SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.too-many", nameClass)
-                    ),
-                    AddQualifierQuickFix(SpringCoreClasses.QUALIFIER, problemElement),
-                    ProblemHighlightType.GENERIC_ERROR, isOnTheFly
+                val message = getWarningMessageInheritor(
+                    module, beanDeclarations,
+                    SpringCoreBundle.message("explyt.spring.inspection.bean.autowired.too-many", nameClass)
                 )
+                problems += if (descriptorElement == null) {
+                    manager.createProblemDescriptor(
+                        problemElement,
+                        message,
+                        AddQualifierQuickFix(SpringCoreClasses.QUALIFIER, originalProblemElement),
+                        ProblemHighlightType.GENERIC_ERROR, isOnTheFly
+                    )
+                } else {
+                    manager.createProblemDescriptor(
+                        problemElement,
+                        message,
+                        isOnTheFly,
+                        emptyArray(),
+                        ProblemHighlightType.GENERIC_ERROR
+                    )
+                }
             }
         }
 
@@ -241,7 +282,8 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         module: Module,
         element: PsiVariable,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
+        descriptorElement: PsiElement? = null
     ): Array<ProblemDescriptor> {
         if (element.isAutowiredByRequiredTrue() == false) return ProblemDescriptor.EMPTY_ARRAY
         if (element.type.resolvedPsiClass == null) return ProblemDescriptor.EMPTY_ARRAY
@@ -257,7 +299,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
         return arrayOf(
             manager.createProblemDescriptor(
-                qualifier,
+                descriptorElement ?: qualifier,
                 SpringCoreBundle.message(
                     "explyt.spring.inspection.bean.class.unknown.qualifier.bean",
                     qualifier.text
@@ -282,10 +324,11 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         method: PsiMethod,
         params: Array<out PsiParameter>,
         manager: InspectionManager,
-        isOnTheFly: Boolean
+        isOnTheFly: Boolean,
+        descriptorElement: PsiElement? = null
     ): Array<ProblemDescriptor> {
         var problems = emptyArray<ProblemDescriptor>()
-        val identifier = getIdentifyingElement(method)
+        val identifier = descriptorElement ?: getIdentifyingElement(method)
         if (method.isAutowiredByRequiredTrue() == true && params.isEmpty() && identifier != null) {
             problems += manager.createProblemDescriptor(
                 identifier,
