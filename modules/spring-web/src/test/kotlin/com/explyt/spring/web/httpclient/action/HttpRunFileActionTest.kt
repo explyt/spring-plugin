@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.explyt.spring.web.httpclient.action
 
 import org.junit.Assert.assertEquals

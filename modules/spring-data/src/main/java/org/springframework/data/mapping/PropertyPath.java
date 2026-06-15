@@ -1,10 +1,6 @@
 /*
- * Copyright © 2024 Explyt Ltd
- *
- * All rights reserved.
- *
- * This code and software are the property of Explyt Ltd
- * and are protected by copyright and other intellectual property laws.
+ * Copyright (c) 2024 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Original work: org.springframework.data.mapping.PropertyPath
  * Available during publication at https://github.com/spring-projects/spring-data-commons/blob/3.0.x/src/main/java/org/springframework/data/mapping/PropertyPath.java
@@ -13,21 +9,6 @@
  *     Mark Paluch, Mariusz Mączkowski, Johannes Englmeier, and other contributors.
  *
  * Modifications to the original work have been made by Explyt Ltd.
- *
- * You may use this code under the terms of the Explyt Source License Version 1.0 ("License"),
- * if you accept its terms and conditions.
- *
- * By installing, downloading, accessing, using, or distributing this code,
- * you agree to the terms and conditions of the License.
- * If you do not agree to such terms and conditions, you must cease using this code
- * and immediately delete all copies of it.
- *
- * You may obtain a copy of the License at:
- *
- *     https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
- *
- * Unauthorized use of this code constitutes a violation of intellectual property rights
- * and may result in legal action.
  *
  * Modifications Made:
  *     **Modified:**
@@ -39,13 +20,11 @@
  * NOTICE:
  *     This file includes code from an original work licensed under the Apache License 2.0.
  *     The original license and copyright notices are retained.
- *     This entire file, including modifications to the original work, is licensed under
- *     the Explyt Source License. To use this file, you must agree to the terms of the
- *     Explyt Source License.
  *
  * See the Apache License, Version 2.0, for the specific language governing permissions
  * and limitations under the original work's license.
  */
+
 package org.springframework.data.mapping;
 
 import com.intellij.openapi.util.text.StringUtil;

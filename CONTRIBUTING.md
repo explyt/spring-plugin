@@ -1,6 +1,6 @@
 # Contributing to Explyt Spring Plugin
 
-Thank you for your interest in contributing to Explyt Spring Plugin! This document provides guidelines for submitting contributions. By contributing, you agree to abide by our [Explyt Source License](https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md) and follow best practices to keep the project clean, efficient, and secure.
+Thank you for your interest in contributing to Explyt Spring Plugin. This document provides guidelines for submitting contributions. By contributing, you agree that your contributions will be licensed under the [Apache License 2.0](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
 
 ## Table of Contents
 1. [Code of Conduct](#1-code-of-conduct)
@@ -11,40 +11,40 @@ Thank you for your interest in contributing to Explyt Spring Plugin! This docume
 6. [License Agreement](#6-license-agreement)
 
 ## 1. Code of Conduct
-By participating in this project, you agree to adhere to the Code of Conduct. We strive to create a welcoming and respectful environment for everyone.
+By participating in this project, you agree to help maintain a welcoming and respectful environment for everyone.
 
 ## 2. Contribution Requirements
-Please note that this repository operates under the Explyt Source License, which **prohibits modifications to the Software outside of contributions submitted to this official repository**. Contributions should focus on enhancements or improvements that adhere to the plugin’s core purpose without creating derivative works. We encourage contributions that:
-- Enhance usability, performance, or functionality for Spring developers.
+We welcome contributions that improve the plugin for Spring developers. We especially value contributions that:
+- Enhance usability, performance, or functionality.
 - Improve code readability, documentation, or test coverage.
-- Correct bugs or add features that align with Explyt Spring Plugin's scope.
+- Fix bugs or add features that align with the plugin’s scope.
 
-**Important:** Contributions that deviate from the project’s purpose or attempt to create a derivative version will be rejected.
+**Important:** Please keep contributions aligned with the project’s purpose, coding standards, and overall quality bar.
 
 ## 3. Submitting Contributions
-1. **Fork the repository** to create your version of the code.
-2. **Create a new branch** for your contribution, following naming conventions (e.g., `feature/your-feature-name`).
-3. **Make changes** in your local environment, adhering to project guidelines.
-4. **Commit your changes** with clear messages.
-5. **Push your branch** to GitHub and prepare for review.
+1. **Fork the repository** to create your own working copy.
+2. **Create a new branch** for your contribution, following clear naming conventions such as `feature/your-feature-name`.
+3. **Make changes** in your local environment while following the project guidelines.
+4. **Commit your changes** with clear, descriptive commit messages.
+5. **Push your branch** to GitHub and open a pull request for review.
 
 ## 4. Pull Request Guidelines
-Ensure that your pull request (PR) meets the following criteria:
+Please make sure your pull request (PR) meets the following criteria:
 - **Link an Issue (if applicable):** Reference any related issue in the PR description.
-- **Detailed Description:** Describe the purpose of the PR, detailing how it improves the plugin's functionality or addresses a specific problem.
-- **Code Style:** Follow the project’s style and formatting guidelines. Code should be clean, well-documented, and easy to understand.
-- **Documentation:** Update or create relevant documentation to reflect your changes, including usage examples if new functionality is added.
-- **Testing:** Include relevant unit tests to verify the integrity of your changes.
+- **Detailed Description:** Explain the purpose of the PR and what problem it solves.
+- **Code Style:** Keep the code clean, well-structured, and easy to understand.
+- **Documentation:** Update relevant documentation when behavior or usage changes.
+- **Testing:** Include or update relevant tests where appropriate.
 
 ## 5. Review and Approval Process
-After submitting a pull request, the Explyt team will:
-- **Conduct an Initial Review** to ensure your PR aligns with the project’s purpose and license terms.
-- **Provide Feedback and Request Changes** if adjustments are necessary.
-- **Approve and Merge** the PR once all requirements are met. Only maintainers have merge permissions.
+After you submit a pull request, the Explyt team will:
+- **Conduct an initial review** to ensure the PR aligns with the project’s purpose and standards.
+- **Provide feedback and request changes** if adjustments are needed.
+- **Approve and merge** the PR once it is ready. Only maintainers have merge permissions.
 
 ## 6. License Agreement
-By contributing to this repository, you agree to transfer your contribution rights to Explyt Ltd., granting Explyt a perpetual, irrevocable, worldwide, royalty-free license to use, reproduce, modify, distribute, sublicense, and make your contribution available under the terms of the Explyt Source License. You affirm that you have the right to grant this license to Explyt Ltd.
+By contributing to this repository, you confirm that you have the right to submit your contribution and that it may be distributed under the [Apache License 2.0](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
 
 ---
 
-By following these guidelines, you help maintain the quality and focus of Explyt Spring Plugin while ensuring compliance with the Explyt Source License. Thank you for your contributions!
+By following these guidelines, you help maintain the quality of Explyt Spring Plugin and make contributions easier to review and merge. Thank you for contributing!

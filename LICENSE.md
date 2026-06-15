@@ -1,94 +1,202 @@
-Last updated: October 27, 2024
 
-End User License Agreement (EULA) of Explyt Spring Plugin
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
 
-## IMPORTANT!
-Be sure to carefully read and understand all of the rights, obligations and restrictions set forth in this EULA. 
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
-BY AGREEING TO THE TERMS OF THIS EULA, USING, INSTALLING OR DOWNLOADING THE SOFTWARE (EXPLYT SPRING PLUGIN), YOU (AS DEFINED BELOW) ACCEPT AND AGREE TO BE BOUND BY THE TERMS AND CONDITIONS OF THIS EULA. IF YOU DO NOT ACCEPT THE TERMS AND CONDITIONS OF THIS EULA, THEN DO NOT USE, INSTALL OR DOWNLOAD THE EXPLYT SPRING TOOLS. IF YOU HAVE ALREADY DOWNLOADED OR INSTALLED THE EXPLYT SPRING TOOLS YOU SHOULD REMOVE THEM FROM YOUR SYSTEM AND DESTROY ALL COPIES.
+1. Definitions.
 
-ADDITIONALLY, YOU AND DEVELOPER WAIVE ANY RIGHT TO PARTICIPATE IN A CLASS-ACTION LAWSUIT OR CLASS-WIDE ARBITRATION.
+   "License" shall mean the terms and conditions for use, reproduction,
+   and distribution as defined by Sections 1 through 9 of this document.
 
-IN CASE YOU WANT TO USE PLUGIN SOURCE CODE, YOU MUST ACCEPT THE EXPLYT SOURCE LICENSE WHICH IS AVAILABLE HERE https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
+   "Licensor" shall mean the copyright owner or entity authorized by
+   the copyright owner that is granting the License.
 
-Notice: This EULA can be accepted by You in case if You just want to use Plugin without utilising its source code or contributing to Plugin development.   
+   "Legal Entity" shall mean the union of the acting entity and all
+   other entities that control, are controlled by, or are under common
+   control with that entity. For the purposes of this definition,
+   "control" means (i) the power, direct or indirect, to cause the
+   direction or management of such entity, whether by contract or
+   otherwise, or (ii) ownership of fifty percent (50%) or more of the
+   outstanding shares, or (iii) beneficial ownership of such entity.
 
-## DEFINITIONS
-### Developer
-Explyt Ltd, copyright owner and developer of the Explyt Spring Plugin, with a principal place of business at (Office A, RAK DAO Business Centre, RAK BANK ROC Office, Ground Floor, Al Rifaa, Sheikh Mohammed Bin Zayed Road, Ras Al Khaimah, United Arab Emirates), company incorporated under the laws and regulations of RAK DAO and United Arab Emirates, company's licence №07010386.
+   "You" (or "Your") shall mean an individual or Legal Entity
+   exercising permissions granted by this License.
 
-### Explyt Spring Plugin ("Plugin")
-A Plugin developed by Developer that is designed to enhance the coding and development experience within JetBrains Products, specifically for Spring Framework, Spring Boot, Spring Data JPA, Spring Security, Spring Web, among others. This Plugin provides functionalities which are explicitly intended to aid the development process by generating code and facilitating Spring technology implementations.
+   "Source" form shall mean the preferred form for making modifications,
+   including but not limited to software source code, documentation
+   source, and configuration files.
 
-### JetBrains
-JetBrains s.r.o., having its principal place of business at Na hrebenech II 1718/8, Prague, 14000, Czech Republic, registered with Commercial Register kept by the Municipal Court of Prague, Section C, file 86211, ID.Nr.: 265 02 275.
+   "Object" form shall mean any form resulting from mechanical
+   transformation or translation of a Source form, including but
+   not limited to compiled object code, generated documentation,
+   and conversions to other media types.
 
-### JetBrains Affiliate
-Any subsidiaries, affiliates, and associated entities of JetBrains.
+   "Work" shall mean the work of authorship, whether in Source or
+   Object form, made available under the License, as indicated by a
+   copyright notice that is included in or attached to the work
+   (an example is provided in the Appendix below).
 
-### Plugin Marketplace
-The digital distribution service provided by JetBrains or an JetBrains Affiliate, through which the Plugin is made available to User(s), including but not limited to https://plugins.jetbrains.com, and any other related platforms or repositories, regardless of their specific designations.
+   "Derivative Works" shall mean any work, whether in Source or Object
+   form, that is based on (or derived from) the Work and for which the
+   editorial revisions, annotations, elaborations, or other modifications
+   represent, as a whole, an original work of authorship. For the purposes
+   of this License, Derivative Works shall not include works that remain
+   separable from, or merely link (or bind by name) to the interfaces of,
+   the Work and Derivative Works thereof.
 
-### JetBrains Products
-The suite of software programs and services offered by JetBrains, which includes IntelliJ IDEA and other integrated development environments (IDEs).
+   "Contribution" shall mean any work of authorship, including
+   the original version of the Work and any modifications or additions
+   to that Work or Derivative Works thereof, that is intentionally
+   submitted to Licensor for inclusion in the Work by the copyright owner
+   or by an individual or Legal Entity authorized to submit on behalf of
+   the copyright owner. For the purposes of this definition, "submitted"
+   means any form of electronic, verbal, or written communication sent
+   to the Licensor or its representatives, including but not limited to
+   communication on electronic mailing lists, source code control systems,
+   and issue tracking systems that are managed by, or on behalf of, the
+   Licensor for the purpose of discussing and improving the Work, but
+   excluding communication that is conspicuously marked or otherwise
+   designated in writing by the copyright owner as "Not a Contribution."
 
-### IntelliJ IDEA
-The IntelliJ IDEA is a JetBrains-owned IDE that supports the development of software across various programming languages, including the functionality to extend its capabilities via Plugins such as Explyt Spring Plugin.
+   "Contributor" shall mean Licensor and any individual or Legal Entity
+   on behalf of whom a Contribution has been received by Licensor and
+   subsequently incorporated within the Work.
 
-### User(s)
-The end users who have the ability to access and concurrently utilize the Plugin under this EULA.
+2. Grant of Copyright License. Subject to the terms and conditions of
+   this License, each Contributor hereby grants to You a perpetual,
+   worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+   copyright license to reproduce, prepare Derivative Works of,
+   publicly display, publicly perform, sublicense, and distribute the
+   Work and such Derivative Works in Source or Object form.
 
-### You
-An individual or legal entity agreeing to the terms of this EULA upon downloading, installing, or using the Plugin.
+3. Grant of Patent License. Subject to the terms and conditions of
+   this License, each Contributor hereby grants to You a perpetual,
+   worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+   (except as stated in this section) patent license to make, have made,
+   use, offer to sell, sell, import, and otherwise transfer the Work,
+   where such license applies only to those patent claims licensable
+   by such Contributor that are necessarily infringed by their
+   Contribution(s) alone or by combination of their Contribution(s)
+   with the Work to which such Contribution(s) was submitted. If You
+   institute patent litigation against any entity (including a
+   cross-claim or counterclaim in a lawsuit) alleging that the Work
+   or a Contribution incorporated within the Work constitutes direct
+   or contributory patent infringement, then any patent licenses
+   granted to You under this License for that Work shall terminate
+   as of the date such litigation is filed.
 
-### Site
-The official online presence of Explyt Spring Plugin, which can be accessed via [https://explyt.ai/].
+4. Redistribution. You may reproduce and distribute copies of the
+   Work or Derivative Works thereof in any medium, with or without
+   modifications, and in Source or Object form, provided that You
+   meet the following conditions:
 
-## AGREEMENT COVERAGE
-This EULA delineates the terms and conditions under which the Plugin is made available to You via the Plugin Marketplace. By engaging with the Plugin, You enter into this binding agreement EULA with Developer.
+   (a) You must give any other recipients of the Work or
+   Derivative Works a copy of this License; and
 
-### Plugin Licensing
-Subject to the terms and conditions of this EULA, Developer hereby grants You a worldwide, free of charge (royalty-free), non-sublicensable, non-exclusive license to use the Plugin for both commercial and non-commercial purposes without the right to modify or create derivative works under the terms described herein.
+   (b) You must cause any modified files to carry prominent notices
+   stating that You changed the files; and
 
-### Licensing Term
-Licensing Term the EULA grants You the right to use the specific version of the Plugin released under this EULA for the entire duration of the copyright term. Developer reserves the right to revoke and discontinue licensing of the Plugin under this EULA for any future versions of the Plugin. However, once a version of the Plugin has been licensed to a You under this EULA, the granted license for that version is irrevocable and perpetual, subject to the terms of this EULA.
+   (c) You must retain, in the Source form of any Derivative Works
+   that You distribute, all copyright, patent, trademark, and
+   attribution notices from the Source form of the Work,
+   excluding those notices that do not pertain to any part of
+   the Derivative Works; and
 
-### Limitations
-Nothing in his EULA constitutes or may be construed as permission:
-- to modify, alter, or create derivative works from the Plugin;
-- to assert or imply that You are, or that Your use of the the Plugin is, connected with, or sponsored, endorsed, or granted official status by, the Developer or others designated to receive attribution hereunder.
-  
-You may use the Plugin in your projects (embed it) as it is provided by the Developer under this EULA. However, if you wish to modify, enhance, or improve the Plugin in any way, you must contact Developer for appropriate permission at sales@explyt.ai.
+   (d) If the Work includes a "NOTICE" text file as part of its
+   distribution, then any Derivative Works that You distribute must
+   include a readable copy of the attribution notices contained
+   within such NOTICE file, excluding those notices that do not
+   pertain to any part of the Derivative Works, in at least one
+   of the following places: within a NOTICE text file distributed
+   as part of the Derivative Works; within the Source form or
+   documentation, if provided along with the Derivative Works; or,
+   within a display generated by the Derivative Works, if and
+   wherever such third-party notices normally appear. The contents
+   of the NOTICE file are for informational purposes only and
+   do not modify the License. You may add Your own attribution
+   notices within Derivative Works that You distribute, alongside
+   or as an addendum to the NOTICE text from the Work, provided
+   that such additional attribution notices cannot be construed
+   as modifying the License.
 
-### Attribution Requirements
-You must give appropriate credit to the Developer and provide a link to this EULA. You may do so in any reasonable manner, but not in any way that suggests the Developer endorses you or your use.
+   You may add Your own copyright statement to Your modifications and
+   may provide additional or different license terms and conditions
+   for use, reproduction, or distribution of Your modifications, or
+   for any such Derivative Works as a whole, provided Your use,
+   reproduction, and distribution of the Work otherwise complies with
+   the conditions stated in this License.
 
-### Usage Rights
-You are granted the right to employ the Plugin in congruence with the technical documentation provided on the Site or the Explyt Spring Plugin page on the Plugin Marketplace, over the duration specified by Developer in any jurisdiction where JetBrains Products are legally accessible.
+5. Submission of Contributions. Unless You explicitly state otherwise,
+   any Contribution intentionally submitted for inclusion in the Work
+   by You to the Licensor shall be under the terms and conditions of
+   this License, without any additional terms or conditions.
+   Notwithstanding the above, nothing herein shall supersede or modify
+   the terms of any separate license agreement you may have executed
+   with Licensor regarding such Contributions.
 
-### Plugin functionality
-The Plugin is subject to functionality limitations as outlined on the Site, which Developer reserves the right to modify without prior notification.
+6. Trademarks. This License does not grant permission to use the trade
+   names, trademarks, service marks, or product names of the Licensor,
+   except as required for reasonable and customary use in describing the
+   origin of the Work and reproducing the content of the NOTICE file.
 
-### Prohibitions
-You are expressly prohibited from altering, modifying, reverse-engineering, decompiling, or disassembling the Plugin, either partially or in its entirety. You may not create derivative works from the Plugin, attempt to obtain the source code of the Plugin which is not provided to you, or relicense any rights in the Plugin, unless explicitly authorized by Developer through written consent. You may not distribute any modified versions of the Plugin, unless explicitly authorized by Developer through written consent.
+7. Disclaimer of Warranty. Unless required by applicable law or
+   agreed to in writing, Licensor provides the Work (and each
+   Contributor provides its Contributions) on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+   implied, including, without limitation, any warranties or conditions
+   of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+   PARTICULAR PURPOSE. You are solely responsible for determining the
+   appropriateness of using or redistributing the Work and assume any
+   risks associated with Your exercise of permissions under this License.
 
-### Intellectual Property Rights
-The Plugin is safeguarded by copyright and intellectual property laws internationally. All rights, titles, and interests in intellectual property pertaining to the Plugin are the exclusive property of Developer or its licensors.
+8. Limitation of Liability. In no event and under no legal theory,
+   whether in tort (including negligence), contract, or otherwise,
+   unless required by applicable law (such as deliberate and grossly
+   negligent acts) or agreed to in writing, shall any Contributor be
+   liable to You for damages, including any direct, indirect, special,
+   incidental, or consequential damages of any character arising as a
+   result of this License or out of the use or inability to use the
+   Work (including but not limited to damages for loss of goodwill,
+   work stoppage, computer failure or malfunction, or any and all
+   other commercial damages or losses), even if such Contributor
+   has been advised of the possibility of such damages.
 
-### Disclaimer of Warranties
-Developer provides the Plugin on an "as is" and "as available" basis. Developer makes no warranties regarding the Plugin's performance or its congruence with Your requirements. To the fullest extent permitted by law, Developer disclaims all warranties, whether express or implied, including, but not limited to, the implied warranties of merchantability, fitness for a particular purpose, and non-infringement.
+9. Accepting Warranty or Additional Liability. While redistributing
+   the Work or Derivative Works thereof, You may choose to offer,
+   and charge a fee for, acceptance of support, warranty, indemnity,
+   or other liability obligations and/or rights consistent with this
+   License. However, in accepting such obligations, You may act only
+   on Your own behalf and on Your sole responsibility, not on behalf
+   of any other Contributor, and only if You agree to indemnify,
+   defend, and hold each Contributor harmless for any liability
+   incurred by, or claims asserted against, such Contributor by reason
+   of your accepting any such warranty or additional liability.
 
-### Limitation of Liability
-IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, OR USE, INCURRED BY LICENSEE OR ANY THIRD PARTY, WHETHER IN AN ACTION IN CONTRACT OR TORT, ARISING FROM LICENSEE'S ACCESS TO, OR USE OF, THE SOFTWARE.
+END OF TERMS AND CONDITIONS
 
-### Commercial Use and Inquiries
-Commercial use of the Explyt Spring Plugin is permitted under this EULA, provided that all terms and conditions are met.
+APPENDIX: How to apply the Apache License to your work.
 
-### Termination
-This EULA may be terminated unilaterally by Developer in the event of any breach by the User of its terms and conditions. Upon termination, the User may be required, under applicable law, to compensate Developer for any damages or pay statuary compensation for any breaches of the terms and conditions that constitute an infringement of Developer's exclusive rights to the Plugin.
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
 
-### Governing Law
-This EULA and the use of the Plugin shall be governed by the laws of the jurisdiction in which Developer is headquartered, without regard to conflict of law principles.
+Copyright 2024 Explyt Ltd
 
-### JetBrains' Role
-JetBrains, as the facilitator of the Plugin Marketplace, bears no responsibility for the contractual relationship between Developer and You, the customer. All liability associated with the Plugin is exclusively that of Developer.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

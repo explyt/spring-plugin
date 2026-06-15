@@ -1,3 +1,8 @@
+<!--
+  ~ Copyright (c) 2024 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <depends>com.intellij.java</depends>
