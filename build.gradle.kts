@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2024 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
