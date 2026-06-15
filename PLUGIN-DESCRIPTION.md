@@ -106,7 +106,7 @@ Bring powerful Spring and Spring Boot tooling to IntelliJ IDEA Community Edition
 - **Telegram**: https://t.me/explytspring
 
 ## License
-- Free for personal and commercial use. [EULA and source license](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md)
+- Licensed under the [Apache License 2.0](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
 
 ---
 
