@@ -27,5 +27,7 @@ open class TestConfig {
 
     var listNotInteger: List<Int> = ArrayList()
 
+    var allowedChatIds: Set<Long> = emptySet()
+
     var addresses: List<Int> = ArrayList()
 }
