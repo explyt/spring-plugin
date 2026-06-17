@@ -1,5 +1,9 @@
 # Explyt Spring Plugin — Free Spring Boot plugin for IntelliJ IDEA Community (Java, Kotlin, Quarkus)
 
+**Runtime-accurate Spring tooling for IntelliJ IDEA Community — free for commercial and non-commercial use.** 
+Explyt loads your application's *real* Spring context via a lightweight javaagent, so beans, endpoints, and inspections 
+reflect what your app actually wires up — not a static guess.
+
 Bring powerful Spring and Spring Boot tooling to IntelliJ IDEA Community Edition. Build, navigate, test, and debug faster with:
 - Accurate bean discovery and real context understanding (native context mode via javaagent)
 - Tool windows for **Beans/Contexts** and **Endpoints**
@@ -108,7 +112,8 @@ Use **Generate (Alt+Insert / Command+N)**:
 
 ## Support & community
 - **Issues/feature requests**: https://github.com/explyt/spring-plugin/issues
-- **Telegram**: https://t.me/explytspring
+- **Telegram (EN)**: https://t.me/explytspring_en
+- **Telegram (RU)**: https://t.me/explytspring
 
 ## License
 - Licensed under the [Apache License 2.0](https://github.com/explyt/spring-plugin/blob/main/LICENSE.md).
@@ -116,6 +121,6 @@ Use **Generate (Alt+Insert / Command+N)**:
 ---
 
 ### Search keywords
-spring boot intellij community plugin, idea community spring plugin, spring plugin for intellij, explyt spring, swagger ui http client, openapi client intellij, http client .http files, jetbrains http client cli, httpyac runner, spring debugger community, spring endpoints explorer, kafka listener navigation, rabbit listener navigation, bean dependency analyzer, search everywhere beans, spring profile inlay hints, runtime property value code vision, configuration properties validation, spring data repository inspection, jpa equals hashcode generator, kotlin spring plugin, quarkus intellij community, mcp server intellij, jetbrains mcp server, spring mcp tools
+spring plugin for intellij, spring boot tooling community edition, explyt spring, spring explyt, native spring context,
 
-_Thank you for using Explyt Spring Plugin!_ — [please star](https://github.com/explyt/spring-plugin), contribute and share to help more developers discover it.
+_Thank you for using Explyt Spring Plugin!_ — ⭐ [star us on GitHub](https://github.com/explyt/spring-plugin) and [rate the plugin on Marketplace](https://plugins.jetbrains.com/plugin/28675-spring-explyt/reviews) to help more developers discover it.
