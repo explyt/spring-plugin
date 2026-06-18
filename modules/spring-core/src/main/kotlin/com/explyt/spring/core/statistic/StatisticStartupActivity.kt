@@ -24,6 +24,7 @@ class StatisticStartupActivity : ProjectActivity {
         delay(initDelaySec.seconds)
 
         StatisticService.getInstance().removeOldFile()
+        FeedbackNudgeService.getInstance().maybeShowNudge(project)
         while (!ApplicationManager.getApplication().isUnitTestMode) {
             StatisticService.getInstance().writeStateToFile()
             delay(intervalSec.seconds)
