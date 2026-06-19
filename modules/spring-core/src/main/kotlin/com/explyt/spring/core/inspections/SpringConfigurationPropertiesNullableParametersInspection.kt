@@ -8,7 +8,9 @@ package com.explyt.spring.core.inspections
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringCoreClasses.AUTOWIRED
 import com.explyt.spring.core.SpringCoreClasses.CONSTRUCTOR_BINDING
+import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.util.AddParameterMethodAnnotationKotlinFix
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -31,6 +33,15 @@ class SpringConfigurationPropertiesNullableParametersInspection : SpringBaseUast
         val javaPsi = uClass.javaPsi
         if (!javaPsi.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return emptyArray()
         if (javaPsi.constructors.any { it?.isMetaAnnotatedBy(CONSTRUCTOR_BINDING) == true }) return emptyArray()
+        // Since Spring Boot 3.0 a single-constructor class is bound through its constructor automatically,
+        // so non-nullable properties are valid and must not be reported. Older Boot versions, @Autowired
+        // constructors, and classes with multiple constructors still rely on JavaBean (setter) binding unless
+        // @ConstructorBinding is present.
+        val singleConstructor = javaPsi.constructors.singleOrNull()
+        if (singleConstructor != null
+            && !singleConstructor.isMetaAnnotatedBy(AUTOWIRED)
+            && SpringBootUtil.isAtLeastSpringBoot3(javaPsi)
+        ) return emptyArray()
 
         val problems = mutableListOf<ProblemDescriptor>()
         for (method in uClass.methods) {
