@@ -15,6 +15,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.registry.Registry
 import java.time.LocalDate
 
 /**
@@ -56,7 +57,8 @@ class FeedbackNudgeService {
         if (skipForUnitTestAndHeadlessMode()) return
         try {
             val nudgeState = FeedbackNudgeState.getInstance()
-            if (!shouldShowFeedbackNudge(nudgeState.toStats())) return
+            val forceShow = Registry.`is`("explyt.spring.feedback.nudge.debug", false)
+            if (!forceShow && !shouldShowFeedbackNudge(nudgeState.toStats())) return
 
             // Mark as shown *before* displaying, so a crash/restart can never double-show it.
             nudgeState.state.nudgeShown = true
