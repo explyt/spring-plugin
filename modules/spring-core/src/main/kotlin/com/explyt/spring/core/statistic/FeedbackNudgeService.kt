@@ -7,6 +7,7 @@ package com.explyt.spring.core.statistic
 
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.notifications.SpringToolNotificationGroup
+import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType
@@ -75,6 +76,7 @@ class FeedbackNudgeService {
                 message("explyt.spring.feedback.nudge.content"),
                 NotificationType.INFORMATION
             )
+            .setIcon(AllIcons.Nodes.Favorite)
             .addAction(NotificationAction.createSimpleExpiring(message("explyt.spring.feedback.nudge.rate")) {
                 BrowserUtil.browse(MARKETPLACE_REVIEWS_URL)
             })
