@@ -1,0 +1,35 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Redundant @ConstructorBinding Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports a redundant <code>@ConstructorBinding</code> annotation on a single-constructor
+    <code>@ConfigurationProperties</code> class.
+</p>
+
+<p>
+    Since Spring Boot 3.0 <code>@ConstructorBinding</code> is no longer needed when a class (or record) has a single
+    constructor: such a class is bound through its constructor automatically. The annotation should only be used when
+    there are multiple constructors and one of them must be selected for property binding.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="kotlin">
+@ConfigurationProperties(prefix = "some.prefix")
+data class SomeProperties @ConstructorBinding constructor( // @ConstructorBinding is redundant
+        val first: String,
+        val second: Long
+)
+</code></pre>
+
+<p>The quick-fix removes the redundant annotation.</p>
+
+</body>
+</html>
