@@ -1,0 +1,32 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 3 Property Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports Spring Boot configuration properties that were renamed or removed in Spring Boot 3.0, and offers a
+    quick-fix that renames the key (<code>.properties</code>) or removes a no-longer-supported key.
+</p>
+
+<p>The inspection only runs on Spring configuration property files of a Spring Boot 3+ project.</p>
+
+<p><b>Examples:</b></p>
+<pre><code>
+# renamed
+server.max-http-header-size=8KB        # -> server.max-http-request-header-size
+spring.redis.host=localhost            # -> spring.data.redis.host
+spring.data.cassandra.port=9042        # -> spring.cassandra.port
+
+# removed (no longer supported)
+spring.jpa.hibernate.use-new-id-generator-mappings=true
+spring.session.store-type=redis
+</code></pre>
+
+</body>
+</html>

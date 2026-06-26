@@ -14,11 +14,13 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.concurrency.annotations.RequiresReadLock
+import com.intellij.util.text.VersionComparatorUtil
 
 
 private const val SPRING_BOOT_STARTER_SUFFIX = "-starter"
 private const val SPRING_BOOT_MAIN_STARTER = "spring-boot-starter"
 private const val SPRING_BOOT_KAFKA = "spring-kafka"
+private const val SPRING_BOOT_3_VERSION = "3.0"
 
 object SpringBootUtil {
 
@@ -32,6 +34,18 @@ object SpringBootUtil {
                 ProjectRootManager.getInstance(module.project)
             )
         }
+    }
+
+    /**
+     * Returns `true` when the detected Spring Boot version is 3.0 or later.
+     * Many Spring Boot 3.0 migration rules (Jakarta EE namespace, configuration-property renames, etc.)
+     * only apply to projects running on Spring Boot 3+.
+     */
+    @RequiresReadLock
+    fun isAtLeastSpringBoot3(psiElement: PsiElement): Boolean {
+        val version = getSpringBootVersion(psiElement)
+        if (version.isEmpty()) return false
+        return VersionComparatorUtil.compare(version, SPRING_BOOT_3_VERSION) >= 0
     }
 
     @RequiresReadLock
