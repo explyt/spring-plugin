@@ -1,0 +1,33 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Jakarta Namespace Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports legacy <code>javax.*</code> Jakarta EE imports in Spring Boot 3+ projects and offers a quick-fix that
+    rewrites them to the corresponding <code>jakarta.*</code> namespace.
+</p>
+
+<p>
+    Spring Boot 3 and Spring Framework 6 moved from Java EE (<code>javax.*</code>) to Jakarta EE 9+
+    (<code>jakarta.*</code>). The inspection only triggers when Spring Boot 3+ is detected and the matching
+    <code>jakarta.*</code> target is resolvable on the classpath, so it never proposes a migration the project
+    cannot satisfy.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+import javax.persistence.Entity;       // reported: use jakarta.persistence.Entity
+import javax.annotation.PostConstruct;  // reported: use jakarta.annotation.PostConstruct
+</code></pre>
+
+<p>The quick-fix replaces the import with its <code>jakarta.*</code> equivalent.</p>
+
+</body>
+</html>
