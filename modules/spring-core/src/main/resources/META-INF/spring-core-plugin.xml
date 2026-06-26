@@ -503,6 +503,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesNullableParametersInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringConfigurationPropertiesConstructorBindingInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.kotlin.constructor.binding.redundant"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringConfigurationPropertiesConstructorBindingInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringValueAnnotationInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
