@@ -23,6 +23,7 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springCloud_4_1_3 = TestLibrary("org.springframework.cloud:spring-cloud-starter-openfeign:4.1.3", true)
 
         val springBoot_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.1.1")
+        val springBoot_4_0_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:4.0.0")
         val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
         val springBootTestAutoConfigure_3_1_1: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-test-autoconfigure:3.1.1")
