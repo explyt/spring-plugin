@@ -547,6 +547,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBoot4ActuatorNullableInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot4.actuator.nullable.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot4ActuatorNullableInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringEntityScanInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
