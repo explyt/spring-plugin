@@ -1,0 +1,29 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 3 Actuator httptrace Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports the legacy <code>httptrace</code> Actuator endpoint id used in
+    <code>management.endpoints.*.exposure.include/exclude</code> property values, and offers a quick-fix that
+    renames it to <code>httpexchanges</code>.
+</p>
+
+<p>
+    The <code>httptrace</code> endpoint was renamed to <code>httpexchanges</code> in Spring Boot 3.0. The inspection
+    only runs on Spring configuration property files of a Spring Boot 3+ project.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code>
+management.endpoints.web.exposure.include=health,httptrace   # -> health,httpexchanges
+</code></pre>
+
+</body>
+</html>
