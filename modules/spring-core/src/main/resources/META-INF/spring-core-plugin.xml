@@ -547,6 +547,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBoot4JacksonAnnotationInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot4.jackson.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot4JacksonAnnotationInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringEntityScanInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
