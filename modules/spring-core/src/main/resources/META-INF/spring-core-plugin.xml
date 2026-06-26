@@ -546,6 +546,16 @@
                          level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
 
+        <localInspection shortName="SpringBoot4BootstrapPackageInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot4.bootstrap.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot4BootstrapPackageInspection"/>
+
         <localInspection language="UAST"
                          shortName="SpringEntityScanInspection"
                          groupBundle="messages.SpringCoreBundle"
