@@ -1,0 +1,39 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 TestRestTemplate Package Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports the legacy <code>TestRestTemplate</code> import location in Spring Boot 4+ projects and offers a
+    quick-fix that rewrites the import to the new package.
+</p>
+
+<p>
+    In Spring Boot 4.0 <code>TestRestTemplate</code> moved from
+    <code>org.springframework.boot.test.web.client</code> to <code>org.springframework.boot.resttestclient</code>
+    (provided by the new <code>spring-boot-resttestclient</code> module). The inspection only triggers when Spring
+    Boot 4+ is detected and the new class is resolvable on the classpath.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+// before
+import org.springframework.boot.test.web.client.TestRestTemplate;
+
+// after
+import org.springframework.boot.resttestclient.TestRestTemplate;
+</code></pre>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
