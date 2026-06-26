@@ -295,6 +295,15 @@
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
 
+        <localInspection shortName="SpringBoot3ActuatorHttpExchangesInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot3.actuator.httptrace"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot3ActuatorHttpExchangesInspection"/>
+
         <localInspection language="Properties"
                          shortName="EnableAutoConfigureSpringFactoryInspection"
                          groupBundle="messages.SpringCoreBundle"
