@@ -1,0 +1,43 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 MockBean/SpyBean Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports Spring Boot's <code>@MockBean</code> / <code>@SpyBean</code> test annotations, which were removed in
+    Spring Boot 4.0, and offers a quick-fix that replaces them with Spring Framework's
+    <code>@MockitoBean</code> / <code>@MockitoSpyBean</code> (updating the import).
+</p>
+
+<p>
+    Only runs in a Spring Boot 4+ project.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+// before
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+@MockBean
+private UserService userService;
+
+// after
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+@MockitoBean
+private UserService userService;
+</code></pre>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
