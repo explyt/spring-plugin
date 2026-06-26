@@ -9,11 +9,13 @@ import com.explyt.spring.core.util.SpringCoreUtil.SPRING_BOOT_MAVEN
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.ArrayUtil
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.text.VersionComparatorUtil
+import org.jetbrains.kotlin.idea.base.util.module
 
 object SpringBootUtil {
 
@@ -43,6 +45,17 @@ object SpringBootUtil {
             )
         }
     }
+
+    /**
+     * Returns `true` when the detected Spring Boot version is 3.0 or later.
+     * Since Spring Boot 3.0 `@ConstructorBinding` is no longer needed at the type level and a single-constructor
+     * `@ConfigurationProperties` class is bound through its constructor automatically.
+     */
+    fun isAtLeastSpringBoot3(psiElement: PsiElement): Boolean {
+        val version = psiElement.module?.let { getSpringBootVersion(it) } ?: return false
+        return version >= SpringBootVersion.VERSION_3_0_0
+    }
+
 
     enum class SpringBootVersion(val version: String) {
         ANY("1.0.0"),
