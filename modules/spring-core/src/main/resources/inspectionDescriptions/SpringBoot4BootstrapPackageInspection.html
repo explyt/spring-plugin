@@ -1,0 +1,31 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 Bootstrap Package Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports the legacy <code>BootstrapRegistry</code> / <code>BootstrapContext</code> import locations in Spring Boot
+    4+ projects and offers a quick-fix that rewrites the import to the new
+    <code>org.springframework.boot.bootstrap</code> package.
+</p>
+
+<p>
+    In Spring Boot 4.0 <code>BootstrapRegistry</code>, <code>ConfigurableBootstrapContext</code> and
+    <code>DefaultBootstrapContext</code> (and related bootstrap types) moved from <code>org.springframework.boot</code>
+    to <code>org.springframework.boot.bootstrap</code>. The inspection only triggers when Spring Boot 4+ is detected
+    and the new class is resolvable on the classpath.
+</p>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
