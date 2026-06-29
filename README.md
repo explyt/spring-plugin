@@ -158,13 +158,14 @@ Step-by-step walkthroughs: [**Usage wiki**](https://github.com/explyt/spring-plu
 
 ## Contributing
 
-Contributions are welcome! Fork the repo, create a feature branch, and open a pull request against `main`. See the [Contributing Guide](https://github.com/explyt/spring-plugin/blob/main/CONTRIBUTING.md) for setup and conventions.
+Contributions are welcome! New here? Clone, run `./gradlew :spring-bootstrap:runIde` for a sandbox IDE, and grab a [**good first issue**](https://github.com/explyt/spring-plugin/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22). The [Contributing Guide](https://github.com/explyt/spring-plugin/blob/main/CONTRIBUTING.md) has a 5-minute quickstart, a module map, and how to run a single test class.
 
 ---
 
 ## Community and Support
 
 - 🐛 **Issues / feature requests:** [GitHub Issues](https://github.com/explyt/spring-plugin/issues)
+- 🗨️ **Discussions:** [GitHub Discussions](https://github.com/explyt/spring-plugin/discussions) — Q&A, ideas, show & tell
 - 💬 **Telegram:** [English](https://t.me/explytspring_en) · RU [channel](https://t.me/explytspring) / [chat](https://t.me/explytspringchat)
 - 📚 **Docs:** [explyt.ai/docs](https://explyt.ai/docs/category/explyt-spring?utm_campaign=explytai&utm_source=github&utm_medium=springexplyt) · [Wiki](https://github.com/explyt/spring-plugin/wiki)
 
