@@ -333,6 +333,41 @@ object PropertyUtil {
         return toCommonPropertyForm(propertyName).uppercase().replace(".", "_")
     }
 
+    /**
+     * Converts a canonical configuration property name to its environment variable name
+     * following Spring Boot relaxed binding rules:
+     * - replace dots with underscores,
+     * - remove any dashes,
+     * - convert to uppercase,
+     * - list indexes are surrounded with underscores (`my.list[0].name` -> `MY_LIST_0_NAME`).
+     *
+     * See "Binding From Environment Variables" in the Spring Boot reference documentation.
+     */
+    fun toEnvironmentVariableName(propertyName: String): String {
+        val builder = StringBuilder(propertyName.length)
+        for (char in propertyName) {
+            when (char) {
+                '.', '[' -> builder.append('_')
+                ']', '-' -> Unit // drop closing brackets and dashes
+                else -> builder.append(char.uppercaseChar())
+            }
+        }
+        return builder.toString()
+            .replace(UNDERSCORE_SEQUENCE_REGEX, "_")
+            .trim('_')
+    }
+
+    /**
+     * Resolves the full canonical property key for the given element (typically the element under the caret).
+     * Works both for `.properties` ([IProperty]) and YAML ([YAMLKeyValue]) files.
+     */
+    fun getFullPropertyKey(element: PsiElement?): String? {
+        if (element == null) return null
+        element.parentOfType<PropertyImpl>(withSelf = true)?.let { return it.key }
+        element.parentOfType<YAMLKeyValue>(withSelf = true)?.let { return YAMLUtil.getConfigFullName(it) }
+        return null
+    }
+
     fun toBooleanAlias(property: String, type: String?): String {
         return if (type == JavaCoreClasses.BOOLEAN || type == PrimitiveTypes.BOOLEAN) {
             val result = property.substringBeforeLast(".")
@@ -683,6 +718,7 @@ object PropertyUtil {
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()
+    private val UNDERSCORE_SEQUENCE_REGEX = "_+".toRegex()
     private val INT_REGEX = "[-+]?[0-9]+".toRegex()
     private val DOUBLE_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?".toRegex()
 
