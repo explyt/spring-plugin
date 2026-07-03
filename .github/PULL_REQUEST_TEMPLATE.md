@@ -32,4 +32,3 @@
 - [ ] Every new file has the Apache-2.0 SPDX header.
 - [ ] I added or updated tests for my change (or explained why not).
 - [ ] I updated relevant documentation (README / wiki / bundle messages) if behavior changed.
-- [ ] I did **not** include links to internal infrastructure in public content.
