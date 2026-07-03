@@ -111,7 +111,7 @@ Most inspection tests have a Java and a Kotlin twin under `inspections/java/` an
 
 ## 6. Submitting contributions
 1. **Fork the repository** to create your own working copy.
-2. **Create a branch** with a clear name, e.g. `feature/kotlin-bean-inspection` or `fix/openapi-npe`.
+2. **Create a branch** named `username/feature-name`, e.g. `imuromtsev/kotlin-bean-inspection`.
 3. **Make your changes** following the guidelines above.
 4. **Add or update tests** and run the relevant module's tests locally.
 5. **Commit** with clear, descriptive messages.
