@@ -54,6 +54,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         elements: MutableList<out PsiElement>,
         result: MutableCollection<in LineMarkerInfo<*>>
     ) {
+        if (PluginIds.SPRING_JB.isEnabledWithUltimate()) return
         val module = getModule(elements)
         if (module == null) {
             SpringBeanLineMarkerProviderNativeLibrary().collectSlowLineMarkers(elements, result)
