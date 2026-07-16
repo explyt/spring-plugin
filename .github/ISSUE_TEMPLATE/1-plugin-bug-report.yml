@@ -54,7 +54,7 @@ body:
     id: logs
     attributes:
       label: "Additional information"
-      description: "Any additional information that can help us to investigate the reported problem"
+      description: "Any additional information that can help us to investigate the reported problem. Logs from Help | Show Log in Finder/Explorer (idea.log) are especially useful."
       placeholder: "Logs, screenshots, etc."
     validations:
       required: false
@@ -63,10 +63,19 @@ body:
     id: plugin_version
     attributes:
       label: Plugin version
-      description: "Type plugin version here"
-      placeholder: "252.28.37"
+      description: "Plugin version (Settings | Plugins | Spring Explyt)"
+      placeholder: "261.34"
     validations:
-      required: false
+      required: true
+
+  - type: input
+    id: ide_version
+    attributes:
+      label: IDE name and build
+      description: "From Help | About (or About IntelliJ IDEA). Include the edition (Community/Ultimate) and build number."
+      placeholder: "IntelliJ IDEA 2026.1 (Community Edition), build IC-261.xxxx"
+    validations:
+      required: true
 
   - type: dropdown
     id: build_system
