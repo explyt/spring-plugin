@@ -1,0 +1,36 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>ConfigurationProperties Autowired Constructor Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports a Spring stereotype bean injected into the constructor of a <code>@ConfigurationProperties</code> class
+    without <code>@Autowired</code> in a Spring Boot 3+ project.
+</p>
+
+<p>
+    Since Spring Boot 3.0 a single-constructor <code>@ConfigurationProperties</code> class is bound through its
+    constructor automatically, so a constructor parameter is treated as a property to bind unless it is explicitly
+    annotated with <code>@Autowired</code>. When the parameter type is itself a Spring bean (meta-annotated with
+    <code>@Component</code>, e.g. <code>@Service</code>/<code>@Repository</code>/<code>@Configuration</code>), it is
+    almost certainly a dependency and should be annotated with <code>@Autowired</code>.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="kotlin">
+@ConfigurationProperties("app")
+class AppProperties(
+    val objectMapperHolder: MyService // reported: annotate with @Autowired
+)
+</code></pre>
+
+<p>The quick-fix annotates the constructor with <code>@Autowired</code>.</p>
+
+</body>
+</html>

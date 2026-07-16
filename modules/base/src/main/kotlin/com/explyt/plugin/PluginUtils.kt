@@ -9,7 +9,7 @@ import com.intellij.ide.plugins.PluginManager
 import com.intellij.lang.Language
 import com.intellij.openapi.extensions.PluginId
 
-
+//todo remove
 enum class PluginIds(val pluginId: String) {
     EXPLYT("com.explyt.test"),
     HTTP_CLIENT_JB("com.jetbrains.restClient"),
