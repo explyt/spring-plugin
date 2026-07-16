@@ -1,0 +1,32 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 Bootstrap Package Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports declarations (fields, method parameters and return types) whose type is a <code>BootstrapRegistry</code> /
+    <code>BootstrapContext</code> family type from the legacy <code>org.springframework.boot</code> package in Spring
+    Boot 4+ projects, and offers a quick-fix that updates the import to the new
+    <code>org.springframework.boot.bootstrap</code> package.
+</p>
+
+<p>
+    In Spring Boot 4.0 <code>BootstrapRegistry</code>, <code>ConfigurableBootstrapContext</code> and
+    <code>DefaultBootstrapContext</code> (and related bootstrap types) moved from <code>org.springframework.boot</code>
+    to <code>org.springframework.boot.bootstrap</code>. The visible type usage is highlighted (not the import
+    statement, which the IDE usually folds away).
+</p>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
