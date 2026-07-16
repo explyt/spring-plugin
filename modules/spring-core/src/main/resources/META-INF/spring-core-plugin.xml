@@ -177,6 +177,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBoot3ConfigPropertiesAutowiredInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot3.configprops.autowired"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot3ConfigPropertiesAutowiredInspection"/>
+
+        <localInspection language="UAST"
                          shortName="ExplytEventListenerInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
