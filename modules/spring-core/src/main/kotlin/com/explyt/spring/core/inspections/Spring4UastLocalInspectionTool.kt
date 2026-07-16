@@ -20,4 +20,12 @@ abstract class Spring4UastLocalInspectionTool : SpringBaseUastLocalInspectionToo
     override fun isAvailableForFile(file: PsiFile): Boolean {
         return super.isAvailableForFile(file) && SpringBootUtil.isAtLeastSpringBoot4(file)
     }
+
+    protected fun isClassAvailable(file: PsiFile, fqn: String): Boolean {
+        return JavaPsiFacade.getInstance(file.project).findClass(fqn, file.resolveScope) != null
+    }
+
+    protected fun isAnyClassAvailable(file: PsiFile, vararg fqns: String): Boolean {
+        return fqns.any { isClassAvailable(file, it) }
+    }
 }
