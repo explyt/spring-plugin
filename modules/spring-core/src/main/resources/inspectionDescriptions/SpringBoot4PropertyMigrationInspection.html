@@ -1,0 +1,38 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 Property Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports Spring Boot configuration properties that were renamed in Spring Boot 4.0, in
+    <code>application*.properties</code> / <code>*.yml</code>, and offers a quick-fix that renames the key
+    (<code>.properties</code>; for YAML the suggested key is shown in the message).
+</p>
+
+<p>
+    Only runs on Spring configuration property files of a Spring Boot 4+ project.
+</p>
+
+<p><b>Examples of covered renames:</b></p>
+<ul>
+    <li><code>spring.jackson.read.*</code> &rarr; <code>spring.jackson.json.read.*</code></li>
+    <li><code>spring.jackson.write.*</code> &rarr; <code>spring.jackson.json.write.*</code></li>
+    <li><code>spring.dao.exceptiontranslation.enabled</code> &rarr; <code>spring.persistence.exceptiontranslation.enabled</code></li>
+    <li><code>spring.session.redis.*</code> &rarr; <code>spring.session.data.redis.*</code></li>
+    <li><code>spring.session.mongodb.*</code> &rarr; <code>spring.session.data.mongodb.*</code></li>
+    <li><code>spring.kafka.retry.topic.backoff.random</code> &rarr; <code>spring.kafka.retry.topic.backoff.jitter</code></li>
+</ul>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
