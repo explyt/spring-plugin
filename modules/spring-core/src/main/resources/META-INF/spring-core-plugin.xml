@@ -585,6 +585,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBoot4TestWebClientInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot4.test.webclient.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot4TestWebClientInspection"/>
+      
+        <localInspection language="UAST"
                          shortName="SpringBoot4BootstrapPackageInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
