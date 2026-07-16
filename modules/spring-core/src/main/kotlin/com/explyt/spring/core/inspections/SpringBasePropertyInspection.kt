@@ -569,7 +569,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         configurationProperty: ConfigurationProperty
     ): List<String> {
         val value = property.value?.trimEnd()
-        if (value.isNullOrBlank()) {
+        if (value.isNullOrBlank() || value.containsPlaceholder()) {
             return emptyList()
         }
         return if (
@@ -577,11 +577,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             && !property.key.endsWith("]")
         ) {
             value.split(",").map { it.trim() }
-        } else if (value.contains(PLACEHOLDER_PREFIX) && value.contains(PLACEHOLDER_SUFFIX)) {
-            emptyList()
         } else {
             listOf(value)
         }
+    }
+
+    private fun String.containsPlaceholder(): Boolean {
+        return contains(PLACEHOLDER_PREFIX) && contains(PLACEHOLDER_SUFFIX)
     }
 
     private fun getConfigurationProperty(

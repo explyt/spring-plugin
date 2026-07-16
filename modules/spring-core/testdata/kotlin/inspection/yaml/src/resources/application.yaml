@@ -11,3 +11,4 @@ main:
     simple2: 22
   list-not-integer[0]: error
   addresses[0]: 12345678
+  allowed-chat-ids: ${TELEGRAM_ALLOWED_CHAT_IDS:}
