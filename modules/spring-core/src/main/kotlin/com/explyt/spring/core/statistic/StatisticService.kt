@@ -46,6 +46,7 @@ class StatisticService {
                     if (count == null) 1 else count + 1
                 }
             }
+            FeedbackNudgeService.getInstance().recordEngagement()
         } catch (e: Exception) {
             logger.warn(e)
         }
