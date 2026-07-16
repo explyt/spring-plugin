@@ -1,0 +1,46 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 Test Web Client Auto-configuration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports a <code>@SpringBootTest</code> class that injects a web test client (<code>MockMvc</code> /
+    <code>TestRestTemplate</code>) without the auto-configuration annotation that Spring Boot 4 now requires, and
+    offers a quick-fix that adds it.
+</p>
+
+<p>
+    In Spring Boot 4.0 <code>@SpringBootTest</code> no longer auto-configures <code>MockMvc</code> /
+    <code>TestRestTemplate</code>; the corresponding <code>@AutoConfigureMockMvc</code> /
+    <code>@AutoConfigureTestRestTemplate</code> annotation must be added explicitly.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+// before
+@SpringBootTest
+class MyTest {
+    @Autowired MockMvc mockMvc;
+}
+
+// after
+@SpringBootTest
+@AutoConfigureMockMvc
+class MyTest {
+    @Autowired MockMvc mockMvc;
+}
+</code></pre>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
