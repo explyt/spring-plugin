@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.providers
 
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties.COLON
@@ -35,6 +36,7 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
         if (!SpringCoreUtil.isSpringProject(element.project)) return
         val uParent = getUParentForIdentifier(element) ?: return
         val dataRetriever = ConfigurationPropertyDataRetrieverFactory.createFor(uParent) ?: return

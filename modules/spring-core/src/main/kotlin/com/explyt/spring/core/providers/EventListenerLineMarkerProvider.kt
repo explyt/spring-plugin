@@ -6,6 +6,7 @@
 package com.explyt.spring.core.providers
 
 import com.explyt.base.LibraryClassCache
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses.APPLICATION_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_LISTENER
@@ -47,6 +48,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        if (PluginIds.SPRING_JB.isEnabledWithUltimate()) return
         val uParent = getUParentForIdentifier(element)
         if (uParent is UMethod) {
             val psiMethod = uParent.javaPsi

@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.providers
 
+import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
@@ -29,6 +30,7 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return
         }
