@@ -1,0 +1,35 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 Actuator JSpecify @Nullable Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports the use of Spring's <code>org.springframework.lang.Nullable</code> on parameters of Actuator endpoint
+    operation methods (<code>@ReadOperation</code> / <code>@WriteOperation</code> / <code>@DeleteOperation</code>) in
+    Spring Boot 4+ projects, and offers a quick-fix that replaces it with JSpecify's
+    <code>org.jspecify.annotations.Nullable</code>.
+</p>
+
+<p>
+    In Spring Boot 4.0 Actuator endpoint nullable parameters use JSpecify's <code>@Nullable</code>.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@ReadOperation
+public Object operation(@org.jspecify.annotations.Nullable String name) { ... }
+</code></pre>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
