@@ -7,6 +7,7 @@ package com.explyt.spring.core.inspections
 
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.util.SpringBootUtil
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiFile
 
 /**
