@@ -9,16 +9,21 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.service.PsiBean
 import com.intellij.navigation.ItemPresentation
 import com.intellij.navigation.NavigationItem
+import com.intellij.pom.Navigatable
 import javax.swing.Icon
 
-class BeanNavigationItem(private val psiBean: PsiBean, private val isActive: Boolean) : NavigationItem {
+class BeanNavigationItem(
+    private val psiBean: PsiBean,
+    private val isActive: Boolean,
+    private val navigatable: Navigatable?
+) : NavigationItem {
 
     override fun getName(): String {
         return psiBean.name
     }
 
     override fun navigate(requestFocus: Boolean) {
-        psiBean.psiMember.navigate(requestFocus)
+        navigatable?.navigate(requestFocus)
     }
 
     override fun getPresentation(): ItemPresentation {
