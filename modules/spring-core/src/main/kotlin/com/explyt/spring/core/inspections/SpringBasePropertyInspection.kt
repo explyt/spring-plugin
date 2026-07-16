@@ -5,8 +5,6 @@
 
 package com.explyt.spring.core.inspections
 
-import ai.grazie.nlp.utils.dropLastWhitespaces
-import ai.grazie.nlp.utils.dropWhitespaces
 import com.explyt.inspection.SpringBaseLocalInspectionTool
 import com.explyt.spring.core.*
 import com.explyt.spring.core.SpringCoreClasses.IO_RESOURCE
@@ -570,27 +568,29 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         property: DefinedConfigurationProperty,
         configurationProperty: ConfigurationProperty
     ): List<String> {
-        val value = property.value?.dropLastWhitespaces()
-        if (value.isNullOrBlank()) {
+        val value = property.value?.trimEnd()
+        if (value.isNullOrBlank() || value.containsPlaceholder()) {
             return emptyList()
         }
         return if (
             (configurationProperty.isArray() || configurationProperty.isList())
             && !property.key.endsWith("]")
         ) {
-            value.split(",").map { it.dropWhitespaces() }
-        } else if (value.contains(PLACEHOLDER_PREFIX) && value.contains(PLACEHOLDER_SUFFIX)) {
-            emptyList()
+            value.split(",").map { it.trim() }
         } else {
             listOf(value)
         }
+    }
+
+    private fun String.containsPlaceholder(): Boolean {
+        return contains(PLACEHOLDER_PREFIX) && contains(PLACEHOLDER_SUFFIX)
     }
 
     private fun getConfigurationProperty(
         module: Module,
         property: DefinedConfigurationProperty
     ): ConfigurationProperty? {
-        val key = property.key.dropLastWhitespaces()
+        val key = property.key.trimEnd()
         val propertiesSearch = SpringConfigurationPropertiesSearch.getInstance(module.project)
 
         val findProperty = propertiesSearch.findProperty(module, key)
