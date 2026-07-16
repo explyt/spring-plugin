@@ -1,0 +1,40 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 TestRestTemplate Package Migration Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports declarations (fields, method parameters and return types) whose type is the legacy
+    <code>TestRestTemplate</code> in Spring Boot 4+ projects, and offers a quick-fix that updates the import to the
+    new package.
+</p>
+
+<p>
+    In Spring Boot 4.0 <code>TestRestTemplate</code> moved from
+    <code>org.springframework.boot.test.web.client</code> to <code>org.springframework.boot.resttestclient</code>
+    (provided by the new <code>spring-boot-resttestclient</code> module). The visible type usage is highlighted (not
+    the import statement, which the IDE usually folds away).
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+// before
+import org.springframework.boot.test.web.client.TestRestTemplate;
+
+// after
+import org.springframework.boot.resttestclient.TestRestTemplate;
+</code></pre>
+
+<p>
+    See the
+    <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide">Spring Boot 4.0 Migration Guide</a>.
+</p>
+
+</body>
+</html>
