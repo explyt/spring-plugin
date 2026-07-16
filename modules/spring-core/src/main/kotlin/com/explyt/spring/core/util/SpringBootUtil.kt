@@ -56,11 +56,20 @@ object SpringBootUtil {
         return version >= SpringBootVersion.VERSION_3_0_0
     }
 
+    /**
+     * Returns `true` when the detected Spring Boot version is 4.0 or later.
+     */
+    @RequiresReadLock
+    fun isAtLeastSpringBoot4(psiElement: PsiElement): Boolean {
+        val version = psiElement.module?.let { getSpringBootVersion(it) } ?: return false
+        return version >= SpringBootVersion.VERSION_4_0_0
+    }
 
     enum class SpringBootVersion(val version: String) {
         ANY("1.0.0"),
 
-        VERSION_3_0_0("3.0.0");
+        VERSION_3_0_0("3.0.0"),
+        VERSION_4_0_0("4.0.0");
     }
 
 }
