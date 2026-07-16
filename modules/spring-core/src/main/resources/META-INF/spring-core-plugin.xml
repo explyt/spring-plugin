@@ -585,11 +585,22 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinInternalBeanInspection"/>
 
         <localInspection language="UAST"
-                         shortName="SpringBoot4ActuatorNullableInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.boot"
                          bundle="messages.SpringCoreBundle"
+                         shortName="SpringBoot4MockBeanMigrationInspection"
+                         key="explyt.spring.inspection.boot4.mockbean.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot4MockBeanMigrationInspection"/>
+                                                  
+        <localInspection language="UAST"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         shortName="SpringBoot4ActuatorNullableInspection"
                          key="explyt.spring.inspection.boot4.actuator.nullable.name"
                          enabledByDefault="true"
                          level="WARNING"
