@@ -21,6 +21,7 @@ private const val SPRING_BOOT_STARTER_SUFFIX = "-starter"
 private const val SPRING_BOOT_MAIN_STARTER = "spring-boot-starter"
 private const val SPRING_BOOT_KAFKA = "spring-kafka"
 private const val SPRING_BOOT_3_VERSION = "3.0"
+private const val SPRING_BOOT_4_VERSION = "4.0"
 
 object SpringBootUtil {
 
@@ -40,12 +41,24 @@ object SpringBootUtil {
      * Returns `true` when the detected Spring Boot version is 3.0 or later.
      * Many Spring Boot 3.0 migration rules (Jakarta EE namespace, configuration-property renames, etc.)
      * only apply to projects running on Spring Boot 3+.
+     * Since Spring Boot 3.0 `@ConstructorBinding` is no longer needed at the type level and a single-constructor
+     * `@ConfigurationProperties` class is bound through its constructor automatically.
      */
     @RequiresReadLock
     fun isAtLeastSpringBoot3(psiElement: PsiElement): Boolean {
         val version = getSpringBootVersion(psiElement)
         if (version.isEmpty()) return false
         return VersionComparatorUtil.compare(version, SPRING_BOOT_3_VERSION) >= 0
+    }
+
+    /**
+     * Returns `true` when the detected Spring Boot version is 4.0 or later.
+     */
+    @RequiresReadLock
+    fun isAtLeastSpringBoot4(psiElement: PsiElement): Boolean {
+        val version = getSpringBootVersion(psiElement)
+        if (version.isEmpty()) return false
+        return VersionComparatorUtil.compare(version, SPRING_BOOT_4_VERSION) >= 0
     }
 
     @RequiresReadLock

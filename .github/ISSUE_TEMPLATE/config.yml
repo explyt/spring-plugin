@@ -2,3 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & discussion (Telegram, English)
+    url: https://t.me/explytspring_en
+    about: Ask quick questions and chat with the team and community in English.
+  - name: 💬 Вопросы и обсуждение (Telegram, Russian)
+    url: https://t.me/explytspring
+    about: Задавайте вопросы и общайтесь с командой на русском.
+  - name: 🗨️ GitHub Discussions (Q&A, Ideas, Show & Tell)
+    url: https://github.com/explyt/spring-plugin/discussions
+    about: Search existing answers or start a discussion before opening an issue.
