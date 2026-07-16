@@ -41,6 +41,18 @@ class SpringBoot3JakartaMigrationInspection : LocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
         return LibraryClassCache.searchForLibraryClass(file.project, CORE_ENVIRONMENT) != null
+                && SpringBootUtil.isAtLeastSpringBoot3(file)
+                && isAnyLegacyJavaxAvailable(file)
+    }
+
+    /**
+     * A fresh Spring Boot 3 project has no legacy `javax.*` Jakarta EE classes on the classpath; in that case the
+     * inspection is skipped entirely.
+     */
+    private fun isAnyLegacyJavaxAvailable(file: PsiFile): Boolean {
+        val facade = JavaPsiFacade.getInstance(file.project)
+        return PACKAGE_PREFIXES.any { (oldPackage, _) -> facade.findPackage(oldPackage) != null }
+                || ANNOTATION_FQNS.any { facade.findClass(it, file.resolveScope) != null }
     }
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
@@ -58,7 +70,6 @@ class SpringBoot3JakartaMigrationInspection : LocalInspectionTool() {
         val fqName = importDirective.importedFqName?.asString() ?: return
         val isWildcard = importDirective.isAllUnder
         val target = migrate(fqName, isWildcard) ?: return
-        if (!SpringBootUtil.isAtLeastSpringBoot3(importDirective)) return
         if (!isMigrationTargetResolvable(holder.project, target, isWildcard)) return
 
         holder.registerProblem(
@@ -73,7 +84,6 @@ class SpringBoot3JakartaMigrationInspection : LocalInspectionTool() {
         val fqName = importStatement.qualifiedName ?: return
         val isWildcard = importStatement.isOnDemand
         val target = migrate(fqName, isWildcard) ?: return
-        if (!SpringBootUtil.isAtLeastSpringBoot3(importStatement)) return
         if (!isMigrationTargetResolvable(holder.project, target, isWildcard)) return
 
         holder.registerProblem(
