@@ -9,6 +9,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.ide.actions.searcheverywhere.FoundItemDescriptor
 import com.intellij.ide.actions.searcheverywhere.WeightedSearchEverywhereContributor
+import com.intellij.ide.util.EditSourceUtil
 import com.intellij.ide.util.NavigationItemListCellRenderer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
@@ -56,8 +57,8 @@ class BeanSearchEverywhereContributor(private val project: Project) :
             if (!SpringCoreUtil.isSpringBootProject(project)) return@runReadAction emptyList()
 
             val (active, excluded) = searchService.getAllBeansClassesConsideringContext(project)
-            active.map { BeanNavigationItem(it, true) } +
-                    excluded.map { BeanNavigationItem(it, false) }
+            active.map { BeanNavigationItem(it, true, EditSourceUtil.getDescriptor(it.psiMember)) } +
+                    excluded.map { BeanNavigationItem(it, false, EditSourceUtil.getDescriptor(it.psiMember)) }
         }
         if (navItemList != null) {
             for (item in navItemList) {
