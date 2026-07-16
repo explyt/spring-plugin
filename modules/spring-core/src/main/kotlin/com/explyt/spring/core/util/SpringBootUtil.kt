@@ -39,6 +39,8 @@ object SpringBootUtil {
 
     /**
      * Returns `true` when the detected Spring Boot version is 3.0 or later.
+     * Many Spring Boot 3.0 migration rules (Jakarta EE namespace, configuration-property renames, etc.)
+     * only apply to projects running on Spring Boot 3+.
      * Since Spring Boot 3.0 `@ConstructorBinding` is no longer needed at the type level and a single-constructor
      * `@ConfigurationProperties` class is bound through its constructor automatically.
      */
