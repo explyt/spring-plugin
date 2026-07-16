@@ -21,6 +21,7 @@ private const val SPRING_BOOT_STARTER_SUFFIX = "-starter"
 private const val SPRING_BOOT_MAIN_STARTER = "spring-boot-starter"
 private const val SPRING_BOOT_KAFKA = "spring-kafka"
 private const val SPRING_BOOT_3_VERSION = "3.0"
+private const val SPRING_BOOT_4_VERSION = "4.0"
 
 object SpringBootUtil {
 
@@ -46,6 +47,16 @@ object SpringBootUtil {
         val version = getSpringBootVersion(psiElement)
         if (version.isEmpty()) return false
         return VersionComparatorUtil.compare(version, SPRING_BOOT_3_VERSION) >= 0
+    }
+
+    /**
+     * Returns `true` when the detected Spring Boot version is 4.0 or later.
+     */
+    @RequiresReadLock
+    fun isAtLeastSpringBoot4(psiElement: PsiElement): Boolean {
+        val version = getSpringBootVersion(psiElement)
+        if (version.isEmpty()) return false
+        return VersionComparatorUtil.compare(version, SPRING_BOOT_4_VERSION) >= 0
     }
 
     @RequiresReadLock
