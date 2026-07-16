@@ -294,7 +294,7 @@
                          key="explyt.spring.inspection.yaml.key"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
-
+      
         <localInspection shortName="SpringBoot3ActuatorHttpExchangesInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
@@ -313,7 +313,16 @@
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringBoot3PropertyMigrationInspection"/>
 
-        <localInspection language="Properties"
+        <localInspection shortName="SpringBoot4PropertyMigrationInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot4.property.renamed.name"
+                         enabledByDefault="true" level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot4PropertyMigrationInspection"/>
+
+      <localInspection language="Properties"
                          shortName="EnableAutoConfigureSpringFactoryInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
