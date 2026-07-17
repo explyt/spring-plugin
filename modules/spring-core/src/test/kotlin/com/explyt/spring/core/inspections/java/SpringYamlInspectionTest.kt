@@ -91,6 +91,80 @@ explyt: some2
         myFixture.testHighlighting("application.yaml")
     }
 
+    fun testListElementUnderDigitBoundaryKey() {
+        @Language("java") val configurationProperty = """
+            import java.util.List;
+
+            @org.springframework.context.annotation.Configuration
+            @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.digit")
+            public class S3ConfigProperties {
+                private S3Logs s3Logs = new S3Logs();
+                public S3Logs getS3Logs() { return s3Logs; }
+                public void setS3Logs(S3Logs s3Logs) { this.s3Logs = s3Logs; }
+
+                public static class S3Logs {
+                    private List<Source> sources;
+                    public List<Source> getSources() { return sources; }
+                    public void setSources(List<Source> sources) { this.sources = sources; }
+                }
+
+                public static class Source {
+                    private String name;
+                    public String getName() { return name; }
+                    public void setName(String name) { this.name = name; }
+                }
+            }
+        """.trimIndent()
+        myFixture.addClass(configurationProperty)
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.digit:
+  s3-logs:
+    sources:
+      - name: first
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    fun testListElementUnderNonKebabKey() {
+        @Language("java") val configurationProperty = """
+            import java.util.List;
+
+            @org.springframework.context.annotation.Configuration
+            @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.camel")
+            public class CamelConfigProperties {
+                private Holder camelWritten = new Holder();
+                public Holder getCamelWritten() { return camelWritten; }
+                public void setCamelWritten(Holder camelWritten) { this.camelWritten = camelWritten; }
+
+                public static class Holder {
+                    private List<Item> items;
+                    public List<Item> getItems() { return items; }
+                    public void setItems(List<Item> items) { this.items = items; }
+                }
+
+                public static class Item {
+                    private String name;
+                    public String getName() { return name; }
+                    public void setName(String name) { this.name = name; }
+                }
+            }
+        """.trimIndent()
+        myFixture.addClass(configurationProperty)
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.camel:
+  camelWritten:
+    items:
+      - <warning descr="Should be kebab-case">name</warning>: first
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
     fun testComplexKebabCaseProperties() {
         myFixture.configureByText(
             "application.yaml",
