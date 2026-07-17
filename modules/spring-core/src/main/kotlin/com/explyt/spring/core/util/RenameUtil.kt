@@ -117,7 +117,10 @@ object RenameUtil {
     }
 
     private fun isUnderscoreRequired(before: Char, current: Char, after: Char): Boolean {
-        return Character.isLowerCase(before) && Character.isUpperCase(current) && Character.isLowerCase(after)
+        // Spring Boot's dashed-case convention inserts a dash before an uppercase letter
+        // that follows a letter OR a digit: s3Logs -> s3-logs (see ConventionUtils.toDashedCase).
+        return (Character.isLowerCase(before) || Character.isDigit(before))
+                && Character.isUpperCase(current) && Character.isLowerCase(after)
     }
 
 

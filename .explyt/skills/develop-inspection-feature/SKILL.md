@@ -42,7 +42,7 @@ Resolve before starting:
    - File-level checks (properties/YAML) → extend `SpringBaseLocalInspectionTool` / `Spring4LocalInspectionTool` and gate with `SpringCoreUtil.isConfigurationPropertyFile(file)`.
    - If a version-gated base for your version does not exist, create it once in a shared/foundational change: `isAvailableForFile = super.isAvailableForFile(file) && SpringBootUtil.isAtLeast<Version>(file)` (version lookup is cached per module).
    - Add narrower `isAvailableForFile` overrides on top of `super`:
-     - migration-of-old-class inspections: require the OLD class to be resolvable (`isClassAvailable` / `isAnyClassAvailable`) — fresh projects without the legacy class must skip the inspection entirely;
+     - migration-of-old-class inspections: require the OLD class to be resolvable — fresh projects without the legacy class must skip the inspection entirely; use the `isClassAvailable` / `isAnyClassAvailable` helpers from the version-gated base (create them there if missing: `JavaPsiFacade.findClass(fqn, file.resolveScope) != null`);
      - test-only features (e.g. `@SpringBootTest` checks): require `ExplytPsiUtil.isTestFiles(file)`.
 
 4. **Implement detection + quick-fix.** Reuse existing quick-fixes before writing new ones:
@@ -53,7 +53,7 @@ Resolve before starting:
    - Only propose a migration the project can satisfy: check the NEW target is resolvable before registering the problem.
 
 5. **Register.** In the module's plugin.xml:
-   - `language="UAST"` for UAST-based inspections; omit `language` for property/file-level and raw-PSI (import/type visitor) inspections;
+   - `language="UAST"` for UAST-based inspections; `language="Properties"` / `language="yaml"` for single-format property inspections (repo precedent); omit `language` only when one class must serve multiple file types (e.g. `.properties` + YAML via `checkFile`, or raw-PSI visitors);
    - `shortName` must equal the description HTML filename in `inspectionDescriptions/<ShortName>.html` — create it;
    - messages go to the module bundle (`messages/SpringCoreBundle.properties`); no-arg messages must not double apostrophes, parameterized (`{0}`) messages must double them.
 
