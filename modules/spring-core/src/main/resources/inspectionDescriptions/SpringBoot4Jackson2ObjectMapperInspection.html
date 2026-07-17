@@ -1,0 +1,41 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Spring Boot 4 Jackson 2 ObjectMapper Injection Inspection</title>
+</head>
+<body>
+
+<p>
+    Reports an injection point (autowired field, constructor parameter of a Spring bean, or <code>@Bean</code> method
+    parameter) whose type is the Jackson 2 <code>com.fasterxml.jackson.databind.ObjectMapper</code> in a Spring Boot
+    4+ project.
+</p>
+
+<p>
+    Spring Boot 4 ships Jackson 3: <code>JacksonAutoConfiguration</code> registers only Jackson 3 beans (the primary
+    mapper is <code>tools.jackson.databind.json.JsonMapper</code>), and no Jackson 2 <code>ObjectMapper</code> bean
+    exists. Such an injection still compiles because Jackson 2 usually remains a transitive dependency, but the
+    context fails at runtime with <code>NoSuchBeanDefinitionException</code>.
+</p>
+
+<p>
+    The inspection is skipped when the project opted into the deprecated Jackson 2 support
+    (<code>spring-boot-jackson2</code>), which auto-configures Jackson 2 beans again.
+</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+@RestController
+public class WebhookController {
+    ObjectMapper objectMapper; // reported: no Jackson 2 bean; inject tools.jackson.databind.json.JsonMapper
+}
+</code></pre>
+
+<p>The quick-fix replaces the injected type with <code>tools.jackson.databind.json.JsonMapper</code>.</p>
+
+</body>
+</html>
