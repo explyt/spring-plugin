@@ -662,15 +662,18 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
-        return properties.asSequence().filter { it.isMap() }.filter { fileProperty.key.startsWith(it.name) }.toList()
+        val commonFormKey = PropertyUtil.toCommonPropertyForm(fileProperty.key)
+        return properties.asSequence().filter { it.isMap() }
+            .filter { commonFormKey.startsWith(PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
     }
 
     private fun getListKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
+        val commonFormKey = PropertyUtil.toCommonPropertyForm(fileProperty.key)
         return properties.asSequence().filter { it.isList() || it.isArray() }
-            .filter { fileProperty.key.startsWith(it.name) }.toList()
+            .filter { commonFormKey.startsWith(PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
     }
 
     private fun checkDuplicateKeys(
