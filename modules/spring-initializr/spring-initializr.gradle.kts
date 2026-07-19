@@ -11,7 +11,8 @@ plugins {
 
 evaluationDependsOn(":spring-core")
 
-val intellijPlugins = listOf<String>()
+// JCEF moved to a separate bundled plugin in IntelliJ Platform 2026.2
+val intellijPlugins = listOf("com.intellij.modules.jcef")
 
 ext {
     set("intellijPlugins", intellijPlugins)
@@ -48,5 +49,5 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
 }

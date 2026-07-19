@@ -7,6 +7,7 @@ package com.explyt.spring.core.externalsystem.process
 
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.externalsystem.utils.Constants
+import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.ModalTaskOwner
@@ -24,7 +25,10 @@ class SpringBootProjectOpenProcessor : ProjectOpenProcessor() {
         forceOpenInNewFrame: Boolean
     ): Project? {
         return runWithModalProgressBlocking(ModalTaskOwner.guess(), "") {
-            importProvider.openProject(virtualFile, projectToClose, forceOpenInNewFrame)
+            val openProjectTask = OpenProjectTask.build()
+                .withProjectToClose(projectToClose)
+                .withForceOpenInNewFrame(forceOpenInNewFrame)
+            importProvider.openProject(virtualFile, openProjectTask)
         }
     }
 
