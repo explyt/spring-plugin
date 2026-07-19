@@ -25,6 +25,7 @@
 - ci: Add Sentry release to analyze Suspected commits (#230)
 - ci: Ignore PLUGIN_STRUCTURE_WARNINGS
 - chore: Configure Plugin Verifier
+- chore: Support IntelliJ Platform 2026.2 (262)
 
 ## [261.33.80] - 2026-04-28
 

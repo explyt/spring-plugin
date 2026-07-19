@@ -27,7 +27,7 @@ pluginManagement {
 
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
-    id("org.jetbrains.intellij.platform.settings") version "2.13.1"
+    id("org.jetbrains.intellij.platform.settings") version "2.18.1"
 }
 
 @Suppress("UnstableApiUsage")
