@@ -10,6 +10,26 @@
 - fix: Anchor inherited autowired inspection problems (#234) (#241)
 - fix: Avoid invalid TextRange in `@Value` reference provider (#236) (#238)
 - fix: Handle transient PSI file text mismatch in bean search (#232) (#243)
+- fix: Do not require `@ConstructorBinding` in Spring Boot 3 (#252)
+- feat: Add `Copy Full Property Path` and `Copy as Environment Variable` actions for properties/YAML (#266)
+- feat: Hide duplicate Explyt line markers when IntelliJ IDEA Ultimate provides Spring support (#269)
+- feat: Add Spring Boot 3 configuration property migration inspection (#254)
+- feat: Add an in-IDE feedback nudge for engaged users (#250)
+- fix: Convert placeholders correctly for collection properties (#247)
+- feat: Migrate Actuator `httptrace` exposure to `httpexchanges` in Spring Boot 3 (#256)
+- fix: Avoid EDT work while searching Spring beans (#249)
+- feat: Add Spring Boot 4 configuration property migration inspection (#257)
+- feat: Migrate Actuator endpoint `@Nullable` to JSpecify in Spring Boot 4 (#264)
+- feat: Warn when a Spring bean injected into a Spring Boot 3 `@ConfigurationProperties` constructor lacks `@Autowired` (#255)
+- feat: Migrate `@MockBean` and `@SpyBean` to `@MockitoBean` and `@MockitoSpyBean` in Spring Boot 4 (#258) (#270)
+- feat: Migrate `BootstrapRegistry` and `BootstrapContext` imports for Spring Boot 4 (#261)
+- feat: Warn when `@SpringBootTest` lacks Web Test Client auto-configuration in Spring Boot 4 (#260)
+- feat: Migrate `@EntityScan` import for Spring Boot 4 (#259)
+- feat: Migrate `TestRestTemplate` import for Spring Boot 4 (#262)
+- feat: Migrate `@JsonComponent` and `@JsonMixin` to `@JacksonComponent` and `@JacksonMixin` in Spring Boot 4 (#263)
+- fix: Close the quoted placeholder in the Spring Boot 4 property migration message (#272)
+- feat: Add Jakarta namespace migration inspection (`javax` to `jakarta`) (#253)
+- fix: Resolve list/map element property keys below digit-boundary names such as `s3Logs` (#271)
 
 ### Spring Data
 - fix: Fail closed on stale PSI in SQL injector (#235) (#242)
@@ -25,6 +45,10 @@
 - ci: Add Sentry release to analyze Suspected commits (#230)
 - ci: Ignore PLUGIN_STRUCTURE_WARNINGS
 - chore: Configure Plugin Verifier
+- chore: Migrate the project license to Apache-2.0 (#208)
+- docs: Update README and plugin description
+- docs: Update issue/PR templates and contributing guide
+- docs: Add AI Agent documentation
 
 ## [261.33.80] - 2026-04-28
 
