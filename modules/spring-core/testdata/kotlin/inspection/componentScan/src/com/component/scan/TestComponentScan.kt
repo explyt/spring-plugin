@@ -43,3 +43,28 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication("**.4")
 public class TestComponentScan {
 }
+
+const val BASE_PACKAGE = "com.component.scan"
+const val INVALID_BASE_PACKAGE = "com.component.invalid"
+
+@ComponentScan(BASE_PACKAGE)
+@ComponentScan(basePackages = [BASE_PACKAGE])
+@org.springframework.boot.context.properties.ConfigurationPropertiesScan(basePackages = [BASE_PACKAGE])
+@SpringBootApplication(scanBasePackages = [BASE_PACKAGE])
+class ConstPackageComponentScan
+
+@ComponentScan(INVALID_BASE_PACKAGE)
+@ComponentScan(basePackages = [INVALID_BASE_PACKAGE])
+@org.springframework.boot.context.properties.ConfigurationPropertiesScan(basePackages = [INVALID_BASE_PACKAGE])
+@SpringBootApplication(scanBasePackages = [INVALID_BASE_PACKAGE])
+class InvalidConstPackageComponentScan
+
+@ComponentScan(CROSS_FILE_BASE_PACKAGE)
+@ComponentScan(basePackages = [CROSS_FILE_INVALID_BASE_PACKAGE])
+class CrossFileConstPackageComponentScan
+
+fun nonConstPackage() = "com.component.invalid"
+
+// Not a compile-time constant: the inspection must stay silent instead of parsing the source text.
+@ComponentScan(nonConstPackage())
+class NonConstPackageComponentScan
