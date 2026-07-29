@@ -71,11 +71,11 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 
 ## 2. File conventions
 
-- **Every source file starts with the Apache-2.0 SPDX header:**
+- **Every source file starts with the Apache-2.0 SPDX header.** Use the current year for new files; do not bump the year when editing existing files.
 
   ```kotlin
   /*
-   * Copyright (c) 2024 Explyt Ltd
+   * Copyright (c) 2026 Explyt Ltd
    * SPDX-License-Identifier: Apache-2.0
    */
   ```
@@ -149,3 +149,16 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 - Branch names like `feature/kotlin-bean-inspection` or `fix/openapi-npe`.
 - Clean, Kotlin-idiomatic code with the SPDX header present in every new file.
 - Update docs/messages when behavior or usage changes; state how you verified the change.
+
+---
+
+## 9. Documentation synchronization
+
+Choose documentation by audience instead of copying the full changelog everywhere:
+
+- `CHANGELOG.md`: record all release-worthy user-facing changes and relevant maintenance work.
+- `README.md`: keep a concise overview of durable differentiators and first-use workflows.
+- `PLUGIN-DESCRIPTION.md`: highlight durable Marketplace-discovery features and benefits; avoid implementation details and minor fixes.
+- Public GitHub wiki (`explyt/spring-plugin.wiki`, commonly checked out as sibling `../spring-plugin.wiki`): document detailed workflows, examples, inspection matrices, limitations, and migration guidance.
+
+When a release adds a durable feature such as migration inspections or editor actions, update the concise entry points (`README.md` and `PLUGIN-DESCRIPTION.md`) and put the detailed usage in the public wiki. Keep isolated correctness fixes, EDT/PSI repairs, message fixes, and internal infrastructure changelog-only unless they change documented behavior.
