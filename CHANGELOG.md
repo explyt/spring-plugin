@@ -34,6 +34,7 @@
 - fix: Harden Spring Boot 3/4 migration inspections and quick-fixes for Java, Kotlin, unresolved imports, YAML sequences, and module scopes (#279)
 - fix: Resolve list/map element property keys below digit-boundary names such as `s3Logs` (#271)
 - fix: Resolve Kotlin `const val` package names in component-scan annotations
+- fix: Resolve `@Value` placeholder keys whose default is a SpEL or nested placeholder expression, such as `${my.key:#{null}}`
 
 ### Spring Data
 - fix: Fail closed on stale PSI in SQL injector (#235) (#242)
