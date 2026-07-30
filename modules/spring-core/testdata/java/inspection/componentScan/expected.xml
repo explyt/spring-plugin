@@ -285,4 +285,79 @@
         <length>7</length>
     </problem>
 
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>60</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.ConstPackageComponentScan.InvalidScalar"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>JAVA</language>
+        <offset>19</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>64</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.ConstPackageComponentScan.InvalidArray"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>JAVA</language>
+        <offset>35</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>65</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.ConstPackageComponentScan.InvalidArray"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>JAVA</language>
+        <offset>93</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>66</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.ConstPackageComponentScan.InvalidArray"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>JAVA</language>
+        <offset>47</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.java</file>
+        <line>72</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.CrossFileConstPackageComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>ScanConstants.INVALID_BASE_PACKAGE</highlighted_element>
+        <language>JAVA</language>
+        <offset>31</offset>
+        <length>34</length>
+    </problem>
+
 </problems>

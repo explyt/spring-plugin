@@ -241,4 +241,79 @@
         <length>6</length>
     </problem>
 
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>56</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.InvalidConstPackageComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>kotlin</language>
+        <offset>15</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>57</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.InvalidConstPackageComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>58</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.InvalidConstPackageComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>kotlin</language>
+        <offset>89</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>59</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.InvalidConstPackageComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>INVALID_BASE_PACKAGE</highlighted_element>
+        <language>kotlin</language>
+        <offset>43</offset>
+        <length>20</length>
+    </problem>
+
+    <problem>
+        <file>TestComponentScan.kt</file>
+        <line>63</line>
+        <module>light_idea_test_case</module>
+        <package>com.component.scan</package>
+        <entry_point TYPE="class" FQNAME="com.component.scan.CrossFileConstPackageComponentScan"/>
+        <problem_class id="SpringComponentScanInvalidPackage" severity="ERROR"
+                       attribute_key="WRONG_REFERENCES_ATTRIBUTES"/>
+        <description>Can't find package</description>
+        <highlighted_element>CROSS_FILE_INVALID_BASE_PACKAGE</highlighted_element>
+        <language>kotlin</language>
+        <offset>31</offset>
+        <length>31</length>
+    </problem>
+
 </problems>
