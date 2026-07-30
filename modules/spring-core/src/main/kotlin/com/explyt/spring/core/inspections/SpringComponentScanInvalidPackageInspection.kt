@@ -18,6 +18,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.ElementManipulators
 import org.jetbrains.uast.UClass
+import org.jetbrains.uast.ULiteralExpression
 
 class SpringComponentScanInvalidPackageInspection : SpringBaseUastLocalInspectionTool() {
     override fun checkClass(
@@ -35,22 +36,26 @@ class SpringComponentScanInvalidPackageInspection : SpringBaseUastLocalInspectio
                         COMPONENT_SCAN, CONFIGURATION_PROPERTIES_SCAN -> setOf("value", SpringCoreUtil.BASE_PACKAGES)
                         else -> setOf(SpringCoreUtil.BASE_PACKAGES, SpringCoreUtil.SCAN_BASE_PACKAGES)
                     }
-                val attributesAsPsiLiteral = ExplytAnnotationUtil.getAttributeValues(annotation, attributesName)
+                val attributeValues = ExplytAnnotationUtil.getAttributeValues(annotation, attributesName)
 
-                attributesAsPsiLiteral.mapNotNull { it.sourcePsi }.forEach attributes@{ sourcePsi ->
-                    val text = ElementManipulators.getValueText(sourcePsi)
-                    val range = ElementManipulators.getValueTextRange(sourcePsi)
-                    val words = text.split(".")
+                attributeValues.forEach attributes@{ expression ->
+                    val packageName = expression.evaluate() as? String ?: return@attributes
+                    val sourcePsi = expression.sourcePsi ?: return@attributes
+                    val sourceRange = ElementManipulators.getValueTextRange(sourcePsi)
+                    val isPlainLiteral = expression is ULiteralExpression
+                            && ElementManipulators.getValueText(sourcePsi) == packageName
+                    val words = packageName.split(".")
 
                     var path = ""
                     for (word in words) {
                         path += word
 
                         if (!packageFqnSearcher.isPackageExist(path)) {
-                            val curTextRange = TextRange(
-                                0,
-                                path.length
-                            ).shiftRight(range.startOffset)
+                            val curTextRange = if (isPlainLiteral) {
+                                TextRange(0, path.length).shiftRight(sourceRange.startOffset)
+                            } else {
+                                sourceRange
+                            }
 
                             problems.add(
                                 manager.createProblemDescriptor(

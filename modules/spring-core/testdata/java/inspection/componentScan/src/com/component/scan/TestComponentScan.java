@@ -42,3 +42,44 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication("**.4")
 public class TestComponentScan {
 }
+
+class ConstPackageComponentScan {
+    static final String BASE_PACKAGE = "com.component.scan";
+    static final String INVALID_BASE_PACKAGE = "com.component.invalid";
+
+    @ComponentScan(BASE_PACKAGE)
+    static class ValidScalar {
+    }
+
+    @ComponentScan(basePackages = {BASE_PACKAGE})
+    @org.springframework.boot.context.properties.ConfigurationPropertiesScan(basePackages = {BASE_PACKAGE})
+    @SpringBootApplication(scanBasePackages = {BASE_PACKAGE})
+    static class ValidArray {
+    }
+
+    @ComponentScan(INVALID_BASE_PACKAGE)
+    static class InvalidScalar {
+    }
+
+    @ComponentScan(basePackages = {INVALID_BASE_PACKAGE})
+    @org.springframework.boot.context.properties.ConfigurationPropertiesScan(basePackages = {INVALID_BASE_PACKAGE})
+    @SpringBootApplication(scanBasePackages = {INVALID_BASE_PACKAGE})
+    static class InvalidArray {
+    }
+}
+
+@ComponentScan(ScanConstants.BASE_PACKAGE)
+@ComponentScan(basePackages = {ScanConstants.INVALID_BASE_PACKAGE})
+class CrossFileConstPackageComponentScan {
+}
+
+class NonConstPackageComponentScan {
+    static String nonConstPackage() {
+        return "com.component.invalid";
+    }
+
+    // Not a compile-time constant: the inspection must stay silent instead of parsing the source text.
+    @ComponentScan(nonConstPackage())
+    static class NonConstArgument {
+    }
+}
