@@ -673,6 +673,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringBoot4JacksonAnnotationInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBoot4Jackson2ObjectMapperInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.boot4.jackson2.objectmapper.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBoot4Jackson2ObjectMapperInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringEntityScanInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
