@@ -7,6 +7,7 @@ package com.explyt.spring.web.httpclient
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.testFramework.PlatformTestUtil
 import java.nio.file.Files
 import kotlin.io.path.writeText
 
@@ -36,6 +37,13 @@ class EnvDataHolderTest : ExplytJavaLightTestCase() {
 
         val holder = EnvDataHolder(httpFile)
         holder.addFile(envVirtualFile!!, project)
+
+        // The environment file is parsed in a background read action and applied on EDT.
+        PlatformTestUtil.waitWithEventsDispatching(
+            "Environment list must be loaded",
+            { holder.envModel.items.size > 1 },
+            10
+        )
 
         assertTrue(holder.envFileIsJson.get())
         assertEquals(listOf("", "dev", "prod"), holder.envModel.items)
