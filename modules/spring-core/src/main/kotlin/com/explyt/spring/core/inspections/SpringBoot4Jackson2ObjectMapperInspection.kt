@@ -10,14 +10,17 @@ import com.explyt.spring.core.SpringCoreClasses.AUTOWIRED
 import com.explyt.spring.core.SpringCoreClasses.BEAN
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT
 import com.explyt.spring.core.inspections.quickfix.ReplaceTypeQuickFix
+import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiModifierListOwner
+import com.intellij.psi.PsiType
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UMethod
 
@@ -49,7 +52,7 @@ class SpringBoot4Jackson2ObjectMapperInspection : Spring4UastLocalInspectionTool
     override fun checkField(field: UField, manager: InspectionManager, isOnTheFly: Boolean): Array<ProblemDescriptor> {
         val javaPsi = field.javaPsi as? PsiModifierListOwner ?: return emptyArray()
         if (!javaPsi.isMetaAnnotatedBy(AUTOWIRED)) return emptyArray()
-        val problem = checkInjectedType(field.typeReference?.sourcePsi, field.type.canonicalText, manager, isOnTheFly)
+        val problem = checkInjectedType(field.typeReference?.sourcePsi, field.type, manager, isOnTheFly)
         return problem?.let { arrayOf(it) } ?: emptyArray()
     }
 
@@ -57,7 +60,7 @@ class SpringBoot4Jackson2ObjectMapperInspection : Spring4UastLocalInspectionTool
         if (!isInjectionMethod(method)) return emptyArray()
         val problems = mutableListOf<ProblemDescriptor>()
         for (parameter in method.uastParameters) {
-            checkInjectedType(parameter.typeReference?.sourcePsi, parameter.type.canonicalText, manager, isOnTheFly)
+            checkInjectedType(parameter.typeReference?.sourcePsi, parameter.type, manager, isOnTheFly)
                 ?.let { problems += it }
         }
         return problems.toTypedArray()
@@ -77,11 +80,14 @@ class SpringBoot4Jackson2ObjectMapperInspection : Spring4UastLocalInspectionTool
 
     private fun checkInjectedType(
         typeSourcePsi: PsiElement?,
-        canonicalText: String?,
+        type: PsiType,
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): ProblemDescriptor? {
-        if (typeSourcePsi == null || canonicalText != JACKSON2_OBJECT_MAPPER) return null
+        if (typeSourcePsi == null || type.canonicalText != JACKSON2_OBJECT_MAPPER) return null
+        // A user-provided Jackson 2 ObjectMapper bean makes the injection valid again: auto-configuration is not
+        // the only possible source of the bean, so ask the bean model before reporting.
+        if (hasObjectMapperBean(typeSourcePsi, type)) return null
         return manager.createProblemDescriptor(
             typeSourcePsi,
             message("explyt.spring.inspection.boot4.jackson2.objectmapper"),
@@ -89,6 +95,13 @@ class SpringBoot4Jackson2ObjectMapperInspection : Spring4UastLocalInspectionTool
             arrayOf<LocalQuickFix>(ReplaceTypeQuickFix(JACKSON3_JSON_MAPPER)),
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING
         )
+    }
+
+    private fun hasObjectMapperBean(element: PsiElement, type: PsiType): Boolean {
+        val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return false
+        return SpringSearchServiceFacade.getInstance(element.project)
+            .findActiveBeanDeclarations(module, "", element.language, type, null, element)
+            .isNotEmpty()
     }
 
     companion object {
