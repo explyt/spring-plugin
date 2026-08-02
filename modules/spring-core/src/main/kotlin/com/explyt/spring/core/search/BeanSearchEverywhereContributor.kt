@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.search
 
+import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.ide.actions.searcheverywhere.FoundItemDescriptor
@@ -13,7 +14,9 @@ import com.intellij.ide.util.EditSourceUtil
 import com.intellij.ide.util.NavigationItemListCellRenderer
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.psi.codeStyle.MinusculeMatcher
 import com.intellij.psi.codeStyle.NameUtil
 import com.intellij.util.Processor
 
@@ -35,6 +38,7 @@ class BeanSearchEverywhereContributor(private val project: Project) :
     override fun getDataForItem(element: BeanNavigationItem, dataId: String) = null
 
     override fun processSelectedItem(selected: BeanNavigationItem, modifiers: Int, searchText: String): Boolean {
+        if (!selected.canNavigate()) return false
         selected.navigate(true)
         return true
     }
@@ -53,19 +57,31 @@ class BeanSearchEverywhereContributor(private val project: Project) :
         val matcher = NameUtil.buildMatcher("*$pattern*", NameUtil.MatchingCaseSensitivity.NONE)
         val searchService = SpringSearchServiceFacade.getInstance(project)
 
+        // Match by name first and only then resolve navigation: building a descriptor per bean is expensive
+        // (it reads the member's text offset and creates a range marker) and would run on every keystroke.
         val navItemList = ApplicationManager.getApplication().runReadAction<List<BeanNavigationItem>, Throwable?> {
             if (!SpringCoreUtil.isSpringBootProject(project)) return@runReadAction emptyList()
 
             val (active, excluded) = searchService.getAllBeansClassesConsideringContext(project)
-            active.map { BeanNavigationItem(it, true, EditSourceUtil.getDescriptor(it.psiMember)) } +
-                    excluded.map { BeanNavigationItem(it, false, EditSourceUtil.getDescriptor(it.psiMember)) }
+            toNavigationItems(active, true, matcher) + toNavigationItems(excluded, false, matcher)
         }
         if (navItemList != null) {
             for (item in navItemList) {
-                if (matcher.matches(item.name)) {
-                    consumer.process(FoundItemDescriptor(item, Int.MAX_VALUE))
-                }
+                progressIndicator.checkCanceled()
+                if (!consumer.process(FoundItemDescriptor(item, Int.MAX_VALUE))) return
             }
+        }
+    }
+
+    private fun toNavigationItems(
+        beans: Collection<PsiBean>,
+        isActive: Boolean,
+        matcher: MinusculeMatcher
+    ): List<BeanNavigationItem> {
+        return beans.mapNotNull { bean ->
+            ProgressManager.checkCanceled()
+            if (!matcher.matches(bean.name)) return@mapNotNull null
+            BeanNavigationItem(bean, isActive, EditSourceUtil.getDescriptor(bean.psiMember))
         }
     }
 

@@ -31,6 +31,7 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.*
 import com.intellij.psi.util.MethodSignatureUtil
 import com.intellij.util.applyIf
@@ -101,9 +102,12 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
             .map { AutowiredMethodToInspect(it, null) }
         val processedSignatures = MethodSignatureUtil.createErasedMethodSignatureSet()
         val result = mutableListOf<AutowiredMethodToInspect>()
+        // A malformed or transiently inconsistent PSI hierarchy may be cyclic: stop as soon as a class repeats.
+        val visitedClasses = mutableSetOf<PsiClass>()
         var currentClass: PsiClass? = aClass
 
-        while (currentClass != null) {
+        while (currentClass != null && visitedClasses.add(currentClass)) {
+            ProgressManager.checkCanceled()
             currentClass.methods.forEach { method ->
                 if (!method.isInjectOrAutowiredByRequiredTrue()) return@forEach
 
