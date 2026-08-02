@@ -15,17 +15,17 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.project.Project
+import com.intellij.psi.JavaElementVisitor
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiImportStatement
-import com.intellij.psi.search.GlobalSearchScope
-import org.jetbrains.kotlin.idea.base.psi.replaced
-import org.jetbrains.kotlin.name.FqName
+import com.intellij.psi.PsiJavaFile
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtPsiFactory
-import org.jetbrains.kotlin.resolve.ImportPath
+import org.jetbrains.kotlin.psi.KtVisitorVoid
 
 /**
  * Reports legacy `javax.*` Jakarta EE imports in Spring Boot 3+ projects and offers a quick-fix that rewrites
@@ -55,22 +55,28 @@ class SpringBoot3JakartaMigrationInspection : LocalInspectionTool() {
                 || ANNOTATION_FQNS.any { facade.findClass(it, file.resolveScope) != null }
     }
 
-    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        return object : PsiElementVisitor() {
-            override fun visitElement(element: PsiElement) {
-                when (element) {
-                    is KtImportDirective -> inspectKotlinImport(element, holder)
-                    is PsiImportStatement -> inspectJavaImport(element, holder)
-                }
-            }
+    /**
+     * Only import statements are inspected, so the visitor is narrowed to the two languages that have them: any
+     * other file gets [PsiElementVisitor.EMPTY_VISITOR] instead of a walk over every PSI node.
+     */
+    override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor = when (holder.file) {
+        is PsiJavaFile -> object : JavaElementVisitor() {
+            override fun visitImportStatement(statement: PsiImportStatement) = inspectJavaImport(statement, holder)
         }
+
+        is KtFile -> object : KtVisitorVoid() {
+            override fun visitImportDirective(importDirective: KtImportDirective) =
+                inspectKotlinImport(importDirective, holder)
+        }
+
+        else -> PsiElementVisitor.EMPTY_VISITOR
     }
 
     private fun inspectKotlinImport(importDirective: KtImportDirective, holder: ProblemsHolder) {
         val fqName = importDirective.importedFqName?.asString() ?: return
         val isWildcard = importDirective.isAllUnder
         val target = migrate(fqName, isWildcard) ?: return
-        if (!isMigrationTargetResolvable(holder.project, target, isWildcard)) return
+        if (!isMigrationTargetResolvable(importDirective, target, isWildcard)) return
 
         holder.registerProblem(
             importDirective,
@@ -84,7 +90,7 @@ class SpringBoot3JakartaMigrationInspection : LocalInspectionTool() {
         val fqName = importStatement.qualifiedName ?: return
         val isWildcard = importStatement.isOnDemand
         val target = migrate(fqName, isWildcard) ?: return
-        if (!isMigrationTargetResolvable(holder.project, target, isWildcard)) return
+        if (!isMigrationTargetResolvable(importStatement, target, isWildcard)) return
 
         holder.registerProblem(
             importStatement,
@@ -94,12 +100,16 @@ class SpringBoot3JakartaMigrationInspection : LocalInspectionTool() {
         )
     }
 
-    private fun isMigrationTargetResolvable(project: Project, target: String, isWildcard: Boolean): Boolean {
-        val facade = JavaPsiFacade.getInstance(project)
+    /**
+     * Resolved in the edited file's scope: a sibling module may host the `jakarta.*` target while this module cannot
+     * see it, and migrating to it would leave the file uncompilable.
+     */
+    private fun isMigrationTargetResolvable(context: PsiElement, target: String, isWildcard: Boolean): Boolean {
+        val facade = JavaPsiFacade.getInstance(context.project)
         return if (isWildcard) {
             facade.findPackage(target) != null
         } else {
-            facade.findClass(target, GlobalSearchScope.allScope(project)) != null
+            facade.findClass(target, context.resolveScope) != null
         }
     }
 
@@ -161,20 +171,21 @@ private class ReplaceWithJakartaImportFix(
         }
     }
 
+    /**
+     * Replaces only the imported reference so the directive keeps its `.*` suffix and any `as` alias.
+     */
     private fun replaceKotlinImport(project: Project, importDirective: KtImportDirective) {
-        val importPath = ImportPath(FqName(targetFqName), isWildcard)
-        val newImport = KtPsiFactory(project).createImportDirective(importPath)
-        importDirective.replaced(newImport)
+        val importedReference = importDirective.importedReference ?: return
+        importedReference.replace(KtPsiFactory(project).createExpression(targetFqName))
     }
 
     private fun replaceJavaImport(project: Project, importStatement: PsiImportStatement) {
-        val factory = JavaPsiFacade.getInstance(project).elementFactory
+        val facade = JavaPsiFacade.getInstance(project)
         val newImport = if (isWildcard) {
-            factory.createImportStatementOnDemand(targetFqName)
+            facade.elementFactory.createImportStatementOnDemand(targetFqName)
         } else {
-            val psiClass = JavaPsiFacade.getInstance(project)
-                .findClass(targetFqName, GlobalSearchScope.allScope(project)) ?: return
-            factory.createImportStatement(psiClass)
+            val psiClass = facade.findClass(targetFqName, importStatement.resolveScope) ?: return
+            facade.elementFactory.createImportStatement(psiClass)
         }
         importStatement.replace(newImport)
     }

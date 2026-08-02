@@ -15,12 +15,15 @@ import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.util.AddParameterMethodAnnotationKotlinFix
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.intellij.codeInsight.intention.AddAnnotationModCommandAction
 import com.intellij.codeInspection.InspectionManager
+import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTypesUtil
-import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.UClass
 
@@ -34,6 +37,9 @@ import org.jetbrains.uast.UClass
  * `@Service`/`@Repository`/`@Configuration`/...), it is almost certainly a dependency that must be annotated with
  * `@Autowired` to avoid being mistaken for a property.
  *
+ * The rule is language-independent: Java and Kotlin classes are both reported, only the quick-fix implementation
+ * differs per language.
+ *
  * @see <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide#constructingbinding-no-longer-needed-at-the-type-level">Spring Boot 3.0 Migration Guide</a>
  */
 class SpringBoot3ConfigPropertiesAutowiredInspection : SpringBaseUastLocalInspectionTool() {
@@ -43,7 +49,6 @@ class SpringBoot3ConfigPropertiesAutowiredInspection : SpringBaseUastLocalInspec
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor?> {
-        if (uClass.lang != KotlinLanguage.INSTANCE) return emptyArray()
         val javaPsi = uClass.javaPsi
         if (!javaPsi.isMetaAnnotatedBy(CONFIGURATION_PROPERTIES)) return emptyArray()
         // Constructor binding is only automatic for a single-constructor class.
@@ -57,21 +62,29 @@ class SpringBoot3ConfigPropertiesAutowiredInspection : SpringBaseUastLocalInspec
         for (method in uClass.methods) {
             if (!method.isConstructor) continue
             for (parameter in method.uastParameters) {
-                val ktParameter = parameter.sourcePsi as? KtParameter ?: continue
+                val parameterPsi = parameter.sourcePsi ?: continue
                 val parameterClass = (parameter.type as? PsiClassType)
                     ?.let { PsiTypesUtil.getPsiClass(it) } ?: continue
                 if (!parameterClass.isMetaAnnotatedBy(COMPONENT)) continue
 
+                val fix = autowiredConstructorFix(parameterPsi, method.javaPsi) ?: continue
                 problems += manager.createProblemDescriptor(
-                    ktParameter,
-                    ktParameter.getHighlightRange(),
+                    parameterPsi,
+                    parameterPsi.getHighlightRange(),
                     SpringCoreBundle.message("explyt.spring.inspection.boot3.configprops.autowired"),
                     ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
                     isOnTheFly,
-                    AddParameterMethodAnnotationKotlinFix(AUTOWIRED)
+                    fix
                 )
             }
         }
         return problems.toTypedArray()
+    }
+
+    /** Both fixes annotate the enclosing constructor, which is what disambiguates binding from injection. */
+    private fun autowiredConstructorFix(parameterPsi: PsiElement, constructor: PsiMethod): LocalQuickFix? {
+        if (parameterPsi is KtParameter) return AddParameterMethodAnnotationKotlinFix(AUTOWIRED)
+        if (!constructor.isPhysical) return null
+        return LocalQuickFix.from(AddAnnotationModCommandAction(AUTOWIRED, constructor))
     }
 }
