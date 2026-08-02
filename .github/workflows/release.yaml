@@ -11,12 +11,20 @@ on:
 jobs:
   assemble:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        # Ensure failures in piped commands (e.g. `gradlew ... | tee`) propagate
+        shell: bash -euo pipefail {0}
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
         with:
           # Full history so Sentry can associate commits with the release (Suspect Commits)
           fetch-depth: 0
+          # No step in this job talks to the GitHub API over git; don't leave the token in .git/config
+          persist-credentials: false
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -39,7 +47,8 @@ jobs:
       - name: Resolve plugin version
         run: echo "PLUGIN_VERSION=$(./gradlew -q :spring-bootstrap:printPluginVersion -PsnapshotVersion=$GITHUB_RUN_NUMBER | tail -n1)" >> "$GITHUB_ENV"
       - name: Create Sentry release and associate commits
-        uses: getsentry/action-release@v3.6.1
+        # Pinned to the commit SHA of the reviewed release; the mutable tag is kept as a readable hint
+        uses: getsentry/action-release@f71adb49d4b2aeeda98052d3de234bbb0f3e03ab # v3.6.1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: sentry
