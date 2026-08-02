@@ -9,14 +9,13 @@ import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.util.RenameUtil
 import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.lang.properties.psi.impl.PropertyImpl
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiReference
 import com.intellij.psi.search.searches.ReferencesSearch
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtPsiFactory
@@ -35,33 +34,30 @@ class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
         startElement: PsiElement,
         endElement: PsiElement
     ) {
-        if (!ApplicationManager.getApplication().isWriteAccessAllowed) return
-
         if (startElement !is PropertyImpl) return
+        val oldKey = startElement.key ?: return
+        if (oldKey == key) return
         val containingFile = startElement.context?.containingFile
 
-        WriteCommandAction.runWriteCommandAction(project, "Replace key", null, {
-            if (editor != null) {
-                val startOffset = startElement.textRange.startOffset
-                val oldKey = startElement.text.substringBefore("=")
-                val end = startOffset + oldKey.length
-                editor.caretModel.moveToOffset(startOffset)
-                editor.selectionModel.setSelection(startOffset, end)
-                EditorModificationUtil.deleteSelectedText(editor)
-                EditorModificationUtil.insertStringAtCaret(editor, key)
+        // Collect the usages before the key is renamed: afterwards `${oldKey}` references no longer resolve to it.
+        val usages = ReferencesSearch.search(startElement).findAll().toList()
 
-                renameUsages(project, startElement, key)
-                RenameUtil.renameSameProperty(project, startElement, oldKey, key)
-            }
+        WriteCommandAction.runWriteCommandAction(project, "Replace Key", null, {
+            if (!startElement.isValid) return@runWriteCommandAction
+            // Rename through PSI so the fix also works without an editor (batch / "Fix all" inspection runs).
+            startElement.setName(key)
+
+            renameUsages(project, usages, key)
+            RenameUtil.renameSameProperty(project, startElement, oldKey, key)
         }, containingFile)
     }
 
-    private fun renameUsages(project: Project, elementToRename: PsiElement, newKey: String) {
-        val usages = ReferencesSearch.search(elementToRename).findAll().toList()
+    private fun renameUsages(project: Project, usages: List<PsiReference>, newKey: String) {
         if (usages.isEmpty()) return
 
         for (usage in usages) {
             val usageElement = usage.element
+            if (!usageElement.isValid) continue
             val oldText = usageElement.text.substringAfter("{").substringBefore("}").substringBefore(":")
             val newText = usageElement.text.replace(oldText, newKey)
             val newElement = if (usageElement.language == KotlinLanguage.INSTANCE) {
