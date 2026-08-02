@@ -18,6 +18,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.registry.Registry
 import java.time.LocalDate
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Shows a one-time, non-intrusive notification that invites engaged users to rate the plugin on
@@ -48,6 +49,9 @@ class FeedbackNudgeService {
                     state.distinctActiveDays += 1
                 }
             }
+        } catch (e: CancellationException) {
+            // Also covers ProcessCanceledException: cancellation must never be logged or swallowed.
+            throw e
         } catch (e: Exception) {
             logger.warn(e)
         }
@@ -64,6 +68,9 @@ class FeedbackNudgeService {
             // Mark as shown *before* displaying, so a crash/restart can never double-show it.
             nudgeState.state.nudgeShown = true
             showNotification(project)
+        } catch (e: CancellationException) {
+            // Also covers ProcessCanceledException: cancellation must never be logged or swallowed.
+            throw e
         } catch (e: Exception) {
             logger.warn(e)
         }
