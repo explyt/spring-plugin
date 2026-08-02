@@ -569,10 +569,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         configurationProperty: ConfigurationProperty
     ): List<String> {
         val value = property.value?.trimEnd()
-        if (value.isNullOrBlank() || value.containsPlaceholder()) {
+        if (value.isNullOrBlank()) {
             return emptyList()
         }
-        return if (
+        val values = if (
             (configurationProperty.isArray() || configurationProperty.isList())
             && !property.key.endsWith("]")
         ) {
@@ -580,6 +580,9 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         } else {
             listOf(value)
         }
+        // A placeholder is resolved at runtime and cannot be validated statically. Splitting the collection first
+        // makes the suppression element-wise, so literal elements of a mixed list are still validated.
+        return values.filterNot { it.containsPlaceholder() }
     }
 
     private fun String.containsPlaceholder(): Boolean {
