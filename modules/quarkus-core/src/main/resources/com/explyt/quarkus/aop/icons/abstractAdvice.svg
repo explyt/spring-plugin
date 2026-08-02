@@ -1,18 +1,6 @@
 <!--
-  - Copyright © 2025 Explyt Ltd
-  -
-  - All rights reserved.
-  -
-  - This code and software are the property of Explyt Ltd and are protected by copyright and other intellectual property laws.
-  -
-  - You may use this code under the terms of the Explyt Source License Version 1.0 ("License"), if you accept its terms and conditions.
-  -
-  - By installing, downloading, accessing, using, or distributing this code, you agree to the terms and conditions of the License.
-  - If you do not agree to such terms and conditions, you must cease using this code and immediately delete all copies of it.
-  -
-  - You may obtain a copy of the License at: https://github.com/explyt/spring-plugin/blob/main/EXPLYT-SOURCE-LICENSE.md
-  -
-  - Unauthorized use of this code constitutes a violation of intellectual property rights and may result in legal action.
+  ~ Copyright (c) 2025 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
   -->
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M12.9497 3.05025C15.6834 5.78392 15.6834 10.2161 12.9497 12.9497C10.2161 15.6834 5.78391 15.6834 3.05024 12.9497C0.316572 10.2161 0.316572 5.78392 3.05024 3.05025C5.78391 0.316582 10.2161 0.316583 12.9497 3.05025Z"
