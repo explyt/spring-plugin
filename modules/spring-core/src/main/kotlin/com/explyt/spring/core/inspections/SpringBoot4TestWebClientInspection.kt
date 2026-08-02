@@ -14,9 +14,9 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiClassType
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiNameIdentifierOwner
+import com.intellij.psi.PsiType
 import com.intellij.psi.util.PsiTypesUtil
 import org.jetbrains.uast.UClass
 
@@ -47,7 +47,7 @@ class SpringBoot4TestWebClientInspection : Spring4UastLocalInspectionTool() {
 
         val problems = mutableListOf<ProblemDescriptor>()
         for ((clientFqn, autoConfig) in REQUIREMENTS) {
-            if (!hasFieldOfType(uClass, clientFqn)) continue
+            if (!hasInjectionPointOfType(uClass, clientFqn)) continue
             if (javaPsi.isMetaAnnotatedBy(autoConfig.annotationFqn)) continue
 
             val fix = LocalQuickFix.from(AddAnnotationModCommandAction(autoConfig.annotationFqn, javaPsi))
@@ -63,11 +63,18 @@ class SpringBoot4TestWebClientInspection : Spring4UastLocalInspectionTool() {
         return problems.toTypedArray()
     }
 
-    private fun hasFieldOfType(uClass: UClass, typeFqn: String): Boolean {
-        return uClass.fields.any { field ->
-            val type = field.type as? PsiClassType ?: return@any false
-            PsiTypesUtil.getPsiClass(type)?.qualifiedName == typeFqn
-        }
+    /**
+     * The client can be injected into a field (field injection), a constructor parameter (Java constructor
+     * injection, the idiomatic form in Kotlin/Java tests) or a method parameter (setter and test-method injection).
+     */
+    private fun hasInjectionPointOfType(uClass: UClass, typeFqn: String): Boolean {
+        return uClass.fields.any { isTypeOf(it.type, typeFqn) }
+                || uClass.methods.any { method -> method.uastParameters.any { isTypeOf(it.type, typeFqn) } }
+    }
+
+    private fun isTypeOf(type: PsiType, typeFqn: String): Boolean {
+        val classType = type as? PsiClassType ?: return false
+        return PsiTypesUtil.getPsiClass(classType)?.qualifiedName == typeFqn
     }
 
     private fun clientShortName(fqn: String): String = fqn.substringAfterLast('.')

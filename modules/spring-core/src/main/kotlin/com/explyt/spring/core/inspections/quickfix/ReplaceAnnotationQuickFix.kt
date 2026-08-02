@@ -30,8 +30,8 @@ import org.jetbrains.uast.UAnnotation
  *
  * Declared attributes are carried over: [attributeRenames] maps an attribute name of the old annotation to its
  * counterpart on the new one (identity entries included). Values are copied verbatim; a Kotlin positional argument is
- * wrapped into a collection literal when the new attribute is an array. Call [canPreserveAttributes] before offering
- * the fix - an attribute outside [attributeRenames] cannot be migrated without changing semantics.
+ * wrapped into a collection literal when the new attribute is an array. Call [unmappedAttributes] before offering the
+ * fix - an attribute outside [attributeRenames] cannot be migrated without changing semantics.
  */
 class ReplaceAnnotationQuickFix(
     private val newFqn: String,
@@ -120,18 +120,26 @@ class ReplaceAnnotationQuickFix(
         private const val DEFAULT_ATTRIBUTE = PsiAnnotation.DEFAULT_REFERENCED_METHOD_NAME
 
         /**
-         * `true` when every attribute declared on [annotation] has a counterpart in [attributeRenames], i.e. the
-         * replacement can be built without dropping user configuration.
+         * Names of attributes declared on [annotation] that cannot be carried over to the replacement, i.e. that
+         * would make the rewrite drop or corrupt user configuration. Empty when the fix is safe to offer.
+         *
+         * An attribute blocks the rewrite when it has no counterpart in [attributeRenames], or when two declared
+         * attributes map onto the same replacement attribute (which would emit it twice).
          */
-        fun canPreserveAttributes(annotation: UAnnotation, attributeRenames: Map<String, String>): Boolean {
+        fun unmappedAttributes(annotation: UAnnotation, attributeRenames: Map<String, String>): List<String> {
             val declaredNames = when (val sourcePsi = annotation.sourcePsi) {
                 is PsiAnnotation -> sourcePsi.parameterList.attributes.map { it.name ?: DEFAULT_ATTRIBUTE }
                 is KtAnnotationEntry -> sourcePsi.valueArguments
                     .map { it.getArgumentName()?.asName?.asString() ?: DEFAULT_ATTRIBUTE }
                 // Unknown language: the fix would not be able to rewrite it either.
-                else -> return false
+                else -> return listOf(DEFAULT_ATTRIBUTE)
             }
-            return declaredNames.all { it in attributeRenames }
+            val (mapped, unmapped) = declaredNames.partition { it in attributeRenames }
+            val colliding = mapped
+                .groupBy { attributeRenames.getValue(it) }
+                .filterValues { it.size > 1 }
+                .values.flatten()
+            return unmapped + colliding
         }
     }
 }
