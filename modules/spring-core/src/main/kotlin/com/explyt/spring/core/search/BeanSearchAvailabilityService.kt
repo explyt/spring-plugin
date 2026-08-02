@@ -6,6 +6,7 @@
 package com.explyt.spring.core.search
 
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -24,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * only ever read from a volatile field on the EDT; it is recomputed when project roots change.
  */
 @Service(Service.Level.PROJECT)
-class BeanSearchAvailabilityService(private val project: Project) {
+class BeanSearchAvailabilityService(private val project: Project) : Disposable {
 
     @Volatile
     private var cached: Availability? = null
@@ -50,14 +51,19 @@ class BeanSearchAvailabilityService(private val project: Project) {
         if (!updateScheduled.compareAndSet(false, true)) return
 
         ReadAction.nonBlocking(Callable { SpringCoreUtil.isSpringBootProject(project) })
-            .expireWith(SpringCoreUtil.getDisposable(project))
+            .expireWith(this)
             .inSmartMode(project)
-            .finishOnUiThread({ com.intellij.openapi.application.ModalityState.any() }) { isSpringBoot ->
-                cached = Availability(isSpringBoot, modificationCount)
+            .submit(AppExecutorUtil.getAppScheduledExecutorService())
+            // onProcessed also covers cancellation, so the flag never stays stuck.
+            .onProcessed { isSpringBoot ->
+                if (isSpringBoot != null) {
+                    cached = Availability(isSpringBoot, modificationCount)
+                }
                 updateScheduled.set(false)
             }
-            .submit(AppExecutorUtil.getAppScheduledExecutorService())
     }
+
+    override fun dispose() = Unit
 
     private data class Availability(val isSpringBootProject: Boolean, val modificationCount: Long)
 
