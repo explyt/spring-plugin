@@ -12,6 +12,13 @@ import com.intellij.navigation.NavigationItem
 import com.intellij.pom.Navigatable
 import javax.swing.Icon
 
+/**
+ * A Search Everywhere item for a Spring bean.
+ *
+ * [navigatable] is resolved lazily (and outside the EDT, by the contributor's read action) only for items that
+ * actually matched the query. It stays nullable because `EditSourceUtil.getDescriptor` returns null for members
+ * without a navigable source, hence [canNavigate] reports the real capability instead of silently doing nothing.
+ */
 class BeanNavigationItem(
     private val psiBean: PsiBean,
     private val isActive: Boolean,
@@ -22,8 +29,14 @@ class BeanNavigationItem(
         return psiBean.name
     }
 
+    override fun canNavigate(): Boolean = navigatable?.canNavigate() ?: false
+
+    override fun canNavigateToSource(): Boolean = navigatable?.canNavigateToSource() ?: false
+
     override fun navigate(requestFocus: Boolean) {
-        navigatable?.navigate(requestFocus)
+        val navigatable = navigatable ?: return
+        if (!navigatable.canNavigate()) return
+        navigatable.navigate(requestFocus)
     }
 
     override fun getPresentation(): ItemPresentation {

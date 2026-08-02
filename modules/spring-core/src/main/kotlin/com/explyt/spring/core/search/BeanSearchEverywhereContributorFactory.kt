@@ -18,10 +18,10 @@ class BeanSearchEverywhereContributorFactory : SearchEverywhereContributorFactor
     }
 
     override fun isAvailable(project: Project?): Boolean {
-        // Search Everywhere asks availability on the EDT, so keep this check cheap.
-        // Spring Boot detection touches libraries/indices and is performed later in
-        // the contributor's background read action instead.
-        return project != null
+        // Search Everywhere asks availability on the EDT, so this must stay cheap: read the cached Spring Boot
+        // flag, which the service computes in a background read action instead of hitting libraries/indices here.
+        project ?: return false
+        return BeanSearchAvailabilityService.getInstance(project).isSpringBootProject()
     }
 
 }

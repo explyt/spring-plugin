@@ -40,6 +40,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.importing.ProjectResolverPolicy
 import com.intellij.openapi.externalSystem.model.DataNode
@@ -51,6 +52,7 @@ import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotifica
 import com.intellij.openapi.externalSystem.service.project.ExternalSystemProjectResolver
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
@@ -79,8 +81,12 @@ private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.conf
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
 
     private val cancellationMap = ConcurrentHashMap<ExternalSystemTaskId, ProcessHandler>()
+    private val cancelledTasks = ConcurrentHashMap.newKeySet<ExternalSystemTaskId>()
 
     override fun cancelTask(taskId: ExternalSystemTaskId, listener: ExternalSystemTaskNotificationListener): Boolean {
+        // Remember the cancellation: destroying the process surfaces as an ordinary failure downstream,
+        // and only this flag lets resolveProjectInfo report it as a cancellation instead of a failed refresh.
+        cancelledTasks += taskId
         cancellationMap.remove(taskId)?.destroyProcess()
         return true
     }
@@ -94,12 +100,17 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         listener: ExternalSystemTaskNotificationListener
     ): DataNode<ProjectData>? {
         logger.info(
-            "Explyt resolveProjectInfo: path=$projectPath, isPreviewMode=$isPreviewMode, " +
+            "Explyt resolveProjectInfo: isPreviewMode=$isPreviewMode, " +
                     "resolverPolicy=${resolverPolicy?.javaClass?.simpleName}, " +
-                    "runConfigurationName=${settings?.runConfigurationName}, " +
-                    "runConfigurationType=${settings?.runConfigurationType}, " +
-                    "externalProjectMainFilePath=${settings?.externalProjectMainFilePath}"
+                    "runConfigurationType=${settings?.runConfigurationType}"
         )
+        // Paths and run-configuration names identify the user's machine and projects: keep them out of idea.log,
+        // which users routinely attach to public bug reports.
+        logger.debug {
+            "Explyt resolveProjectInfo: path=$projectPath, " +
+                    "runConfigurationName=${settings?.runConfigurationName}, " +
+                    "externalProjectMainFilePath=${settings?.externalProjectMainFilePath}"
+        }
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REFRESH)
         if (resolverPolicy is DebugProjectResolverPolicy && resolverPolicy.rawBeanData.isNotEmpty()) {
             logger.info("Explyt resolveProjectInfo: taking DEBUG branch")
@@ -116,11 +127,11 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         settings ?: throw ExternalSystemException("No settings")
         runConfigurationHolder ?: nothingException(settings)
         if (runConfigurationHolder.isEmpty()) nothingException(settings)
-        logger.info(
+        logger.debug {
             "Explyt resolveProjectInfo: resolved runConfigurationHolder=" +
                     "explyt=${runConfigurationHolder.runConfiguration?.name}, " +
                     "agent=${runConfigurationHolder.agentRunConfiguration?.name}"
-        )
+        }
 
         try {
             return synchronized(this::class.java) {
@@ -128,11 +139,17 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
                 logger.info("Explyt resolveProjectInfo: produced data node with ${node.children.size} children")
                 node
             }
+        } catch (e: ProcessCanceledException) {
+            throw e
         } catch (e: Exception) {
-            logger.warn("resolve spring project error for path: $projectPath", e)
+            // The user pressed Stop: the destroyed process fails the run, but this is a cancellation, not an error.
+            if (cancelledTasks.contains(id)) throw ProcessCanceledException(e)
+            logger.warn("resolve spring project error", e)
+            logger.debug { "resolve spring project error for path: $projectPath" }
             throw e
         } finally {
             cancellationMap.remove(id)
+            cancelledTasks -= id
         }
     }
 
