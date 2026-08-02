@@ -27,6 +27,7 @@ import com.intellij.mcpserver.mcpFail
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -245,9 +246,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
                 "Returns an object: 'endpoints' is the array (each entry has the HTTP method, full path, " +
                 "controller class, method name, return type, file path, line number, and endpoint type), " +
-                "'totalCount' is how many endpoints matched the filters, and 'truncated' is true when the " +
-                "matches exceeded the result cap so 'endpoints' is incomplete. " +
-                "When 'truncated' is true, narrow the result with the controller or endpoint-type filters. " +
+                "'totalCount' is how many endpoints matched the filters, 'offset' is the index the returned page " +
+                "starts at, and 'truncated' is true when more matches remain after this page. " +
+                "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
+                "or request the next page with 'offset' = 'offset' + number of returned endpoints. " +
                 "Use optional filters to narrow results by controller class name or endpoint type."
     )
     suspend fun getHttpEndpoints(
@@ -260,10 +262,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, SPRING_BOOT, OPENAPI. Leave empty for all."
         )
         endpointType: String = "",
+        @McpDescription("Index of the first endpoint to return, for paging through large projects. Defaults to 0.")
+        offset: Int = 0,
+        @McpDescription(
+            "Maximum number of endpoints to return. Defaults to $DEFAULT_ENDPOINT_PAGE_SIZE, " +
+                    "capped at $MAX_ENDPOINT_LIST_RESULTS."
+        )
+        limit: Int = DEFAULT_ENDPOINT_PAGE_SIZE,
     ): String {
         val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
         val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
         val typeFilter = endpointType.trim().uppercase().takeIf { it.isNotEmpty() }
+        val pageStart = offset.coerceAtLeast(0)
+        val pageSize = limit.coerceIn(1, MAX_ENDPOINT_LIST_RESULTS)
 
         val result = withContext(Dispatchers.IO) {
             smartReadAction(project) {
@@ -280,14 +291,21 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     }
                     .toList()
 
+                // Convert only the requested page: building an EndpointJson resolves PSI (module, line number,
+                // parameters), which is far too expensive to do for every endpoint of a large project.
                 val endpoints = matching.asSequence()
-                    .take(MAX_ENDPOINT_LIST_RESULTS)
-                    .map { toEndpointJson(it, project) }
+                    .drop(pageStart)
+                    .take(pageSize)
+                    .map {
+                        ProgressManager.checkCanceled()
+                        toEndpointJson(it, project)
+                    }
                     .toList()
 
                 EndpointListJson(
                     totalCount = matching.size,
-                    truncated = matching.size > MAX_ENDPOINT_LIST_RESULTS,
+                    offset = pageStart,
+                    truncated = pageStart + endpoints.size < matching.size,
                     endpoints = endpoints,
                 )
             }
@@ -738,10 +756,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // expected to resolve to many endpoints, so a small cap is enough.
         private const val MAX_ENDPOINT_RESULTS = 50
 
-        // Guard cap for the "list all endpoints" tool. It must be high enough to return
-        // every endpoint of a realistic project (the previous shared cap of 50 silently
-        // truncated larger projects); the value only exists to bound pathological output.
+        // Hard cap for a single page of the "list all endpoints" tool. Converting an endpoint to JSON resolves
+        // PSI, so the page size bounds both the read-action duration and the response size.
         private const val MAX_ENDPOINT_LIST_RESULTS = 2000
+
+        // Default page size: high enough to return every endpoint of a typical project in one call, low enough
+        // that a broad call on a large/generated API stays cheap. Callers page via 'offset'.
+        private const val DEFAULT_ENDPOINT_PAGE_SIZE = 500
         private const val MAX_ENTITY_RESULTS = 500
         private val mapper = ObjectMapper()
 
@@ -822,6 +843,7 @@ data class EndpointJson(
 
 data class EndpointListJson(
     val totalCount: Int,
+    val offset: Int,
     val truncated: Boolean,
     val endpoints: List<EndpointJson>,
 )

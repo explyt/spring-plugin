@@ -27,6 +27,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.io.path.exists
 
 private const val STATISTIC_PREFIX = "explyt-spring-statistic"
@@ -47,6 +48,9 @@ class StatisticService {
                 }
             }
             FeedbackNudgeService.getInstance().recordEngagement()
+        } catch (e: CancellationException) {
+            // Also covers ProcessCanceledException: cancellation must never be logged or swallowed.
+            throw e
         } catch (e: Exception) {
             logger.warn(e)
         }
