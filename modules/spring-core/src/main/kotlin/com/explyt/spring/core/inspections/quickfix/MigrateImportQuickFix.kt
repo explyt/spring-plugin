@@ -10,20 +10,20 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiJavaFile
-import com.intellij.psi.search.GlobalSearchScope
-import org.jetbrains.kotlin.idea.base.psi.replaced
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
-import org.jetbrains.kotlin.resolve.ImportPath
 
 /**
- * Quick-fix that migrates an import of [oldFqName] to [newFqName] within the file containing the highlighted element.
+ * Quick-fix that migrates a usage of [oldFqName] to [newFqName], where the simple class name is unchanged.
  *
- * Used by the "package moved" Spring Boot 4 inspections, where the simple class name is unchanged: rewriting the
- * import is what actually migrates every usage in the file. The problem itself is highlighted on the visible type
- * usage (a field/parameter type), not on the import statement.
+ * Used by the "package moved" Spring Boot 4 inspections. The problem is highlighted on the visible type usage
+ * (a field/parameter type), not on the import statement.
+ *
+ * When the file has an explicit (non-wildcard) import of [oldFqName], rewriting only its imported reference migrates
+ * every usage in the file at once and keeps a Kotlin `as` alias intact. Otherwise - a fully qualified usage or a
+ * wildcard import - the highlighted type reference itself is replaced through [ReplaceTypeQuickFix].
  */
 class MigrateImportQuickFix(
     private val oldFqName: String,
@@ -33,25 +33,37 @@ class MigrateImportQuickFix(
     override fun getFamilyName(): String = message("explyt.spring.inspection.boot4.import.migrate.fix")
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        when (val file = descriptor.psiElement.containingFile) {
+        val element = descriptor.psiElement?.takeIf { it.isValid } ?: return
+        // Resolve in the edited file's scope: a sibling module may host the replacement while this module cannot
+        // see it, and migrating to it would leave the file uncompilable.
+        val psiClass = JavaPsiFacade.getInstance(project).findClass(newFqName, element.resolveScope) ?: return
+
+        val migrated = when (val file = element.containingFile) {
             is KtFile -> migrateKotlinImport(project, file)
-            is PsiJavaFile -> migrateJavaImport(project, file)
+            is PsiJavaFile -> migrateJavaImport(project, file, psiClass)
+            else -> false
+        }
+        if (!migrated) {
+            ReplaceTypeQuickFix(newFqName).applyFix(project, descriptor)
         }
     }
 
-    private fun migrateKotlinImport(project: Project, file: KtFile) {
-        val importDirective = file.importDirectives
-            .firstOrNull { it.importedFqName?.asString() == oldFqName && !it.isAllUnder } ?: return
-        val newImport = KtPsiFactory(project).createImportDirective(ImportPath(FqName(newFqName), false))
-        importDirective.replaced(newImport)
+    /**
+     * Replaces only the imported reference, so a trailing `as` alias of the directive is preserved.
+     */
+    private fun migrateKotlinImport(project: Project, file: KtFile): Boolean {
+        val importedReference = file.importDirectives
+            .firstOrNull { !it.isAllUnder && it.importedFqName?.asString() == oldFqName }
+            ?.importedReference ?: return false
+        importedReference.replace(KtPsiFactory(project).createExpression(newFqName))
+        return true
     }
 
-    private fun migrateJavaImport(project: Project, file: PsiJavaFile) {
+    private fun migrateJavaImport(project: Project, file: PsiJavaFile, psiClass: PsiClass): Boolean {
         val importStatement = file.importList?.importStatements
-            ?.firstOrNull { it.qualifiedName == oldFqName && !it.isOnDemand } ?: return
-        val psiClass = JavaPsiFacade.getInstance(project)
-            .findClass(newFqName, GlobalSearchScope.allScope(project)) ?: return
-        val newImport = JavaPsiFacade.getInstance(project).elementFactory.createImportStatement(psiClass)
-        importStatement.replace(newImport)
+            ?.firstOrNull { !it.isOnDemand && it.qualifiedName == oldFqName } ?: return false
+        val factory = JavaPsiFacade.getInstance(project).elementFactory
+        importStatement.replace(factory.createImportStatement(psiClass))
+        return true
     }
 }

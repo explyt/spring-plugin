@@ -18,7 +18,6 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentOfType
-import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtPrimaryConstructor
 import org.jetbrains.uast.UClass
@@ -30,6 +29,9 @@ import org.jetbrains.uast.UClass
  * such a class is bound through its constructor automatically. The annotation is only meaningful when there are
  * multiple constructors and one of them must be selected for binding.
  *
+ * The rule is language-independent, so Java classes and records are reported as well; only the follow-up cleanup of
+ * the then-redundant Kotlin `constructor` keyword is Kotlin-specific.
+ *
  * @see <a href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide#constructingbinding-no-longer-needed-at-the-type-level">Spring Boot 3.0 Migration Guide</a>
  */
 class SpringConfigurationPropertiesConstructorBindingInspection : SpringBaseUastLocalInspectionTool() {
@@ -39,7 +41,6 @@ class SpringConfigurationPropertiesConstructorBindingInspection : SpringBaseUast
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor?> {
-        if (uClass.lang != KotlinLanguage.INSTANCE) return emptyArray()
         val javaPsi = uClass.javaPsi
         if (!javaPsi.isMetaAnnotatedBy(CONFIGURATION_PROPERTIES)) return emptyArray()
         // The annotation only becomes redundant for a single-constructor class on Spring Boot 3.0+.
@@ -84,6 +85,7 @@ private class RemoveRedundantConstructorBindingFix : LocalQuickFix {
         if (!element.isValid) return
         // Capture the enclosing primary constructor before the annotation is removed so the now-redundant
         // `constructor` keyword (only required because of the annotation) can be dropped afterwards.
+        // (Java has no such keyword, so the cleanup is a no-op there.)
         val primaryConstructor = (element as? KtAnnotationEntry)?.parentOfType<KtPrimaryConstructor>()
         element.delete()
         primaryConstructor?.removeRedundantConstructorKeywordAndSpace()
