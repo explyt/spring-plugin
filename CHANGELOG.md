@@ -31,6 +31,7 @@
 - feat: Add Jakarta namespace migration inspection (`javax` to `jakarta`) (#253)
 - fix: Resolve list/map element property keys below digit-boundary names such as `s3Logs` (#271)
 - fix: Resolve Kotlin `const val` package names in component-scan annotations
+- fix: Resolve property keys consumed only from a dependency module (#276)
 
 ### Spring Data
 - fix: Fail closed on stale PSI in SQL injector (#235) (#242)
