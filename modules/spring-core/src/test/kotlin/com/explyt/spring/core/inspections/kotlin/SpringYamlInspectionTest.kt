@@ -81,7 +81,43 @@ explyt.digit:
 explyt.camel:
   camelWritten:
     items:
-      - <warning descr="Should be kebab-case">name</warning>: first
+            - <warning descr="Should be kebab-case">name</warning>: first
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    /**
+     * A property that only ever appears in a `@Value` placeholder with a SpEL default
+     * (`:#{null}`) is still a real, resolvable property. The nested brace group used to break
+     * placeholder key extraction, so no reference was created and the key was reported as
+     * unresolved even though Spring injects it at runtime.
+     */
+    fun testKeyUsedOnlyInValueWithSpelDefault() {
+        @Language("kotlin") val consumer = """
+            import org.springframework.beans.factory.annotation.Value
+            import org.springframework.boot.context.properties.ConfigurationProperties
+            import org.springframework.stereotype.Component
+
+            @ConfigurationProperties(prefix = "explyt.placeholder")
+            class PlaceholderKnownProperties {
+                var known: String = ""
+            }
+
+            @Component
+            class PlaceholderConsumer(
+                @Value("\${'$'}{explyt.placeholder.spel-default:#{null}}") val spelDefault: String?,
+                @Value("\${'$'}{explyt.placeholder.plain-default:someDefault}") val plainDefault: String,
+            )
+        """.trimIndent()
+        myFixture.addFileToProject("PlaceholderConsumer.kt", consumer)
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.placeholder:
+  known: someValue
+  spel-default: someValue
+  plain-default: someValue
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
