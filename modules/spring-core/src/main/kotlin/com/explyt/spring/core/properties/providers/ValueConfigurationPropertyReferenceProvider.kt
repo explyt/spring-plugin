@@ -22,7 +22,22 @@ import org.jetbrains.uast.getParentOfType
 class ValueConfigurationPropertyReferenceProvider : UastInjectionHostReferenceProvider() {
 
     companion object {
-        val PROPERTIES_PATTERN = """\$\{([.A-z\d_-]+)(:[^{]*)?\s*\}""".toPattern()
+        /**
+         * The default value (everything after the first `:`) may itself contain one brace-delimited
+         * expression: a SpEL default such as `:#{null}` or a nested placeholder such as
+         * `:$\{fallback.key}`. Such a group must be consumed as a whole, otherwise the placeholder
+         * key is not extracted at all, no property reference is created, and the property looks
+         * unused - producing false "Cannot resolve key property" warnings in properties and YAML
+         * files.
+         *
+         * Only one level of nesting is supported, which covers the defaults Spring accepts here.
+         * The alternatives are mutually exclusive by their first character and quantified
+         * possessively on purpose: this provider runs while computing references for editable
+         * annotation text, and an ambiguous alternation backtracks exponentially on input such as
+         * `$\{x:` followed by many `$\{a}` groups, which would freeze highlighting.
+         */
+        val PROPERTIES_PATTERN =
+            """\$\{([.A-z\d_-]+)(:(?:[^{}$]|\$(?!\{)|\$\{[^{}]*+}|\{[^{}]*+})*+)?\s*+}""".toPattern()
     }
 
     override fun getReferencesForInjectionHost(
