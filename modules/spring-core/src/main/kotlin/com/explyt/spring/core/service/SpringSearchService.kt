@@ -53,6 +53,7 @@ import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.uast.UastModificationTracker
 import com.jetbrains.rd.util.getOrCreate
@@ -761,6 +762,48 @@ object SpringSearchUtils {
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
+    }
+
+    /**
+     * Finds references to [element], also looking into the modules the containing module depends on.
+     *
+     * [getAllReferencesToElement] relies on the default `ReferencesSearch` scope, which the platform
+     * intersects with the element's *use scope*. For a configuration file that use scope is the
+     * owning module plus its dependents, which deliberately excludes the modules the owner depends
+     * on. A property consumed only from a dependency module therefore looks unused (issue #276).
+     *
+     * Spring resolves placeholders against the whole application classpath, so both directions of
+     * the module graph matter: the dependents scope keeps the previous behaviour, and the
+     * dependencies scope adds the modules the configuration file's module depends on. Libraries are
+     * excluded on purpose - placeholder usages live in project sources, and this runs on-the-fly.
+     *
+     * The result is cached on [PsiModificationTracker.MODIFICATION_COUNT] rather than the narrower
+     * UAST model tracker used by [getAllReferencesToElement]: `MyUastPsiTreeChangeAdapter` only
+     * bumps that tracker for annotations whose owner is a class, field or non-variable method, so
+     * editing a placeholder in a **constructor parameter** `@Value` - the most common Spring style -
+     * would leave a stale result and keep reporting a warning the edit just fixed.
+     *
+     * Not covered by a test: the heavy fixture's word index does not pick up in-place document
+     * edits, so a reference search after such an edit returns nothing regardless of caching.
+     */
+    fun getAllReferencesToElementWithDependencies(element: PsiElement): Set<PsiReference> {
+        val project = element.project
+        val module = ModuleUtilCore.findModuleForPsiElement(element)
+            ?: return getAllReferencesToElement(element)
+
+        val key = CacheKeyStore.getInstance(project)
+            .getKey<Set<PsiReference>>("ExplytAllReferencesToElementWithDependencies")
+        return CachedValuesManager.getManager(project).getCachedValue(element, key, {
+            // Deliberately not routed through GlobalSearchScopeTestAware: that helper widens the
+            // scope to allScope() under unit tests, which would make the cross-module regression
+            // test pass without exercising the production scope.
+            val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+                .uniteWith(GlobalSearchScope.moduleWithDependentsScope(module))
+            CachedValueProvider.Result(
+                ReferencesSearch.search(element, scope, true).toSet(),
+                PsiModificationTracker.MODIFICATION_COUNT
+            )
+        }, false)
     }
 
     fun getAutowiredFieldAnnotations(module: Module): Collection<PsiClass> {
