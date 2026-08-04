@@ -136,7 +136,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                     //this means that the property is defined directly in the file
                     continue
                 }
-                val psiReferences = SpringSearchUtils.getAllReferencesToElement(elementFileProperty)
+                // Dependency modules must be searched too: a key may be consumed only from a
+                // module the configuration file's module depends on (issue #276).
+                val psiReferences =
+                    SpringSearchUtils.getAllReferencesToElementWithDependencies(elementFileProperty)
                 if (psiReferences.isEmpty()) {
                     problems += manager.createProblemDescriptor(
                         psiKey,
