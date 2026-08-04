@@ -16,12 +16,9 @@ import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
-import com.intellij.util.concurrency.AppExecutorUtil
-import java.util.concurrent.Callable
 
 class ExplytRunManagerListener(val project: Project) : RunManagerListener {
 
@@ -46,8 +43,10 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
      * the same main class gets its stored name refreshed, otherwise `RunConfigurationExtractor`
      * would fail to locate it during sync.
      *
-     * This callback may run on EDT and while run configurations are being loaded, so the cheap checks come first
-     * and the main class is never resolved through a blocking read action.
+     * This callback may run on EDT and while run configurations are being loaded, so the cheap checks come first:
+     * the main class is resolved only for a link that predates [NativeProjectSettings.qualifiedMainClassName] and
+     * actually needs renaming. The update stays synchronous, because `RunConfigurationExtractor` may look the name
+     * up as soon as this callback returns.
      */
     private fun syncLinkedProjectName(configuration: SpringBootRunConfiguration) {
         val nativeSettings = project.getService(NativeSettings::class.java) ?: return
@@ -66,33 +65,18 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
         }
 
         // Projects linked before the main class name was stored can only be matched by the main-class file path,
-        // which requires resolving PSI: do it in a non-blocking read action instead.
+        // which requires resolving PSI. Reaching this point means such a link exists and its name is stale, so the
+        // resolution cost is now paid only in that case instead of on every configuration change.
         val legacySettings = outdatedSettings.filter { it.qualifiedMainClassName == null }
         if (legacySettings.isEmpty()) return
-        syncLegacyLinkedProjectName(configuration, nativeSettings, legacySettings, newName)
-    }
 
-    private fun syncLegacyLinkedProjectName(
-        configuration: SpringBootRunConfiguration,
-        nativeSettings: NativeSettings,
-        legacySettings: List<NativeProjectSettings>,
-        newName: String
-    ) {
-        ReadAction.nonBlocking(Callable {
+        val mainFilePath = runReadActionBlocking {
             configuration.mainClass?.containingFile?.virtualFile?.canonicalPath
-        })
-            .expireWhen { project.isDisposed }
-            .coalesceBy(this, configuration)
-            .finishOnUiThread(ModalityState.nonModal()) { mainFilePath ->
-                if (mainFilePath == null) return@finishOnUiThread
-                val linked = nativeSettings.getLinkedProjectSettings(mainFilePath)
-                    ?.takeIf { it in legacySettings }
-                    ?: return@finishOnUiThread
-                if (linked.runConfigurationName != newName) {
-                    linked.runConfigurationName = newName
-                }
-            }
-            .submit(AppExecutorUtil.getAppScheduledExecutorService())
+        } ?: return
+        val linked = nativeSettings.getLinkedProjectSettings(mainFilePath)
+            ?.takeIf { it in legacySettings }
+            ?: return
+        linked.runConfigurationName = newName
     }
 
     override fun stateLoaded(runManager: RunManager, isFirstLoadState: Boolean) {
