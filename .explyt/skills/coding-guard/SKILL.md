@@ -97,6 +97,7 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 - Don't store raw `PsiElement` in fields or pass it across async/invokeLater boundaries — use `SmartPsiElementPointer` and check `isValid` on access.
 - Cache PSI getter results in local `val`s inside hot code (line markers, inspections, completion) — getters traverse the tree on every call.
 - Line marker providers, inspections, and completion contributors are hot paths: no resolve-heavy work in `getLineMarkerInfo` for leaf elements beyond what the platform contract allows; follow the patterns of existing providers in the same package.
+- **Do not make state-synchronizing platform callbacks asynchronous without proving the callback contract permits it.** In particular, `ExplytRunManagerListener.runConfigurationChanged` must make a linked project's renamed `runConfigurationName` visible before the callback returns because `RunConfigurationExtractor` may read it immediately. Keep cheap/stable-identity checks first, but retain a synchronous fallback for legacy links that require PSI resolution.
 
 ---
 
@@ -118,6 +119,8 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 - Most inspection tests have a **Java and a Kotlin twin** under `inspections/java/` and `inspections/kotlin/` — add or update both when behavior affects both languages.
 - Test data lives in the module's `testdata/` directory.
 - Fast feedback loop: `./gradlew :spring-core:test --tests "com.explyt.spring.core.inspections.kotlin.SpringKotlinObjectInspectionTest"`.
+- Before claiming no test covers a changed symbol, search `modules/<module>/src/test` for the class and symbol names. Run every directly covering existing test; compile-only or per-file lint is not sufficient.
+- Run `:spring-core:test` classes **sequentially**, never as concurrent Gradle invocations and preferably not as broad wildcard batches. The IntelliJ fixture shares its sandbox, indices, test-result files, and library caches; concurrent/broad runs produce environmental `NoSuchFileException`, `StorageException`, `ZipException`, and `ServiceNotReadyException` failures. Re-run the exact failing class alone before attributing such failures to a code change.
 - Add or update a test for any behavior change — PRs without tests are questioned in review.
 
 ---
