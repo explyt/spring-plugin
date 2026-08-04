@@ -165,6 +165,49 @@ explyt.camel:
         myFixture.testHighlighting("application.yaml")
     }
 
+    /**
+     * A property that only ever appears in a `@Value` placeholder with a SpEL default
+     * (`:#{null}`) is still a real, resolvable property. The nested brace group used to break
+     * placeholder key extraction, so no reference was created and the key was reported as
+     * unresolved even though Spring injects it at runtime.
+     */
+    fun testKeyUsedOnlyInValueWithSpelDefault() {
+        @Language("java") val knownProperties = """
+            @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.placeholder")
+            public class PlaceholderKnownProperties {
+                private String known;
+                public String getKnown() { return known; }
+                public void setKnown(String known) { this.known = known; }
+            }
+        """.trimIndent()
+        myFixture.addClass(knownProperties)
+
+        @Language("java") val consumer = """
+            import org.springframework.beans.factory.annotation.Value;
+
+            @org.springframework.stereotype.Component
+            public class PlaceholderConsumer {
+                @Value("${'$'}{explyt.placeholder.spel-default:#{null}}")
+                private String spelDefault;
+
+                @Value("${'$'}{explyt.placeholder.plain-default:someDefault}")
+                private String plainDefault;
+            }
+        """.trimIndent()
+        myFixture.addClass(consumer)
+
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.placeholder:
+  known: someValue
+  spel-default: someValue
+  plain-default: someValue
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
     fun testComplexKebabCaseProperties() {
         myFixture.configureByText(
             "application.yaml",
