@@ -5,17 +5,18 @@
 ## [Unreleased]
 
 ### Spring Core
-- fix: Renamed Run Configuration causes Explyt Spring Boot project linkage (#229)
-- fix: Avoid Spring Boot lookup in Search Everywhere availability (#233) (#240)
+- fix: Keep renamed Spring Boot run configurations linked without ambiguous fallback (#229) (#279)
+- fix: Hide the Beans Search Everywhere tab outside Spring Boot projects without blocking EDT (#233) (#240) (#279)
 - fix: Anchor inherited autowired inspection problems (#234) (#241)
+- fix: Prevent cyclic inherited-autowiring traversal from hanging inspection analysis (#279)
 - fix: Avoid invalid TextRange in `@Value` reference provider (#236) (#238)
 - fix: Handle transient PSI file text mismatch in bean search (#232) (#243)
 - fix: Do not require `@ConstructorBinding` in Spring Boot 3 (#252)
 - feat: Add `Copy Full Property Path` and `Copy as Environment Variable` actions for properties/YAML (#266)
-- feat: Hide duplicate Explyt line markers when IntelliJ IDEA Ultimate provides Spring support (#269)
+- feat: Hide duplicate Explyt line markers and Related Symbol targets when IntelliJ IDEA Ultimate provides Spring support (#269) (#279)
 - feat: Add Spring Boot 3 configuration property migration inspection (#254)
 - feat: Add an in-IDE feedback nudge for engaged users (#250)
-- fix: Convert placeholders correctly for collection properties (#247)
+- fix: Validate literal collection elements alongside unresolved placeholders (#247) (#279)
 - feat: Migrate Actuator `httptrace` exposure to `httpexchanges` in Spring Boot 3 (#256)
 - fix: Avoid EDT work while searching Spring beans (#249)
 - feat: Add Spring Boot 4 configuration property migration inspection (#257)
@@ -29,6 +30,8 @@
 - feat: Migrate `@JsonComponent` and `@JsonMixin` to `@JacksonComponent` and `@JacksonMixin` in Spring Boot 4 (#263)
 - fix: Close the quoted placeholder in the Spring Boot 4 property migration message (#272)
 - feat: Add Jakarta namespace migration inspection (`javax` to `jakarta`) (#253)
+- feat: Warn on Jackson 2 `ObjectMapper` injection in Spring Boot 4 (#246) (#273)
+- fix: Harden Spring Boot 3/4 migration inspections and quick-fixes for Java, Kotlin, unresolved imports, YAML sequences, and module scopes (#279)
 - fix: Resolve list/map element property keys below digit-boundary names such as `s3Logs` (#271)
 - fix: Resolve Kotlin `const val` package names in component-scan annotations
 
@@ -37,16 +40,16 @@
 
 ### Spring Web
 - fix: EDT while navigation (#227)
-- fix: Read HTTP env PSI under read action (#237) (#239)
+- fix: Load HTTP environment JSON PSI asynchronously off EDT (#237) (#239) (#279)
 
 ### Spring MCP
-- fix: Stop `explyt_get_spring_http_endpoints` from silently truncating results (#244)
+- fix: Paginate `explyt_get_spring_http_endpoints` results and preserve total-count metadata (#244) (#279)
 
 ### Other
-- ci: Add Sentry release to analyze Suspected commits (#230)
+- ci: Pin the Sentry release action and restrict release-job permissions (#230) (#279)
 - ci: Ignore PLUGIN_STRUCTURE_WARNINGS
 - chore: Configure Plugin Verifier
-- chore: Migrate the project license to Apache-2.0 (#208)
+- chore: Finish migrating shipped resources to Apache-2.0 (#208) (#279)
 - docs: Update README and plugin description
 - docs: Update issue/PR templates and contributing guide
 - docs: Add AI Agent documentation
