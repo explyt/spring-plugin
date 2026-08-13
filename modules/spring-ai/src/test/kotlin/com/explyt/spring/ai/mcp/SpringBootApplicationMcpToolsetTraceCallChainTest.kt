@@ -12,10 +12,19 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiMethod
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.asJava.elements.KtLightMethod
+import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.visitor.AbstractUastVisitor
+import org.jetbrains.uast.toUElement
 import java.io.File
 
 /**
@@ -41,7 +50,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
 
         // Controller -> Service -> Repository, single compilation unit so no cross-file
         // resolution is required. All calls are qualified, which is the realistic Spring style.
-        writeJava(
+        writeSource(
             sourcesRoot, "com/example/app/App.java",
             """
             package com.example.app;
@@ -152,7 +161,154 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         )
     }
 
-    private fun writeJava(sourcesRoot: File, relativePath: String, content: String) {
+    fun testTraceKotlinLightCallee() = runBlocking {
+        val basePath = project.basePath!!
+        val sourcesRoot = File(basePath, "kotlinSrc").apply { mkdirs() }
+        val relativePath = "kotlinSrc/com/example/app/Controller.kt"
+        val source = """
+            package com.example.app
+
+            class DemoService {
+                fun findById(id: Long): String = id.toString()
+            }
+
+            class DemoController(private val service: DemoService) {
+                fun getItem(id: Long): String {
+                    return service.findById(id)
+                }
+            }
+        """.trimIndent()
+        writeSource(sourcesRoot, "com/example/app/Controller.kt", source)
+        registerSourceRoot(sourcesRoot)
+
+        val appVf = LocalFileSystem.getInstance().findFileByPath("$basePath/$relativePath")
+            ?: error("Kotlin source not registered in VFS")
+        val appPsi = PsiManager.getInstance(project).findFile(appVf) as? KtFile
+            ?: error("Kotlin PSI not available")
+        val controllerMethod = appPsi.declarations
+            .filterIsInstance<KtClass>()
+            .first { it.name == "DemoController" }
+            .declarations
+            .filterIsInstance<KtNamedFunction>()
+            .single { it.name == "getItem" }
+        val resolvedCallee = resolvedCalls(controllerMethod.toUElement() as UMethod)
+            .single { it.name == "findById" }
+
+        assertTrue(
+            "Expected Kotlin UAST callee to be a light method, got ${resolvedCallee.javaClass.name}",
+            resolvedCallee is KtLightMethod
+        )
+        assertNotNull("Expected Kotlin light method to have a source range in this fixture", resolvedCallee.textRange)
+        assertNotNull("Expected light method to navigate to source PSI", resolvedCallee.navigationElement.textRange)
+
+        val document = PsiDocumentManager.getInstance(project).getDocument(appPsi)!!
+        val callLine = document.getLineNumber(source.indexOf("return service.findById(id)")) + 1
+        val declarationLine = document.getLineNumber(source.indexOf("fun findById")) + 1
+        val result = mapper.readTree(
+            toolset.traceCallChain(
+                filePath = relativePath,
+                line = callLine,
+                projectPath = basePath,
+                depth = 2,
+                includeTests = false,
+            )
+        )
+
+        val head = result["chain"].first { it["methodName"].asText() == "getItem" }
+        val callee = result["chain"].first { it["methodName"].asText() == "findById" }
+        assertEquals(
+            declarationLine,
+            head["callsInto"].single { it["target"].asText().endsWith("DemoService.findById") }["line"].asInt()
+        )
+        assertEquals(declarationLine, callee["line"].asInt())
+    }
+
+    fun testTraceGeneratedDataClassCalleeLine() = runBlocking {
+        // Generated `copy()` of a Kotlin data class: a light callee whose reported line must stay inside the
+        // declaring file rather than being fabricated. See the unit tests for the null-range fallback itself.
+        val basePath = project.basePath!!
+        val sourcesRoot = File(basePath, "syntheticSrc").apply { mkdirs() }
+        val relativePath = "syntheticSrc/com/example/app/Synthetic.kt"
+        val source = """
+            package com.example.app
+
+            data class Item(val id: Long, val title: String)
+
+            class ItemController {
+                fun rename(item: Item): Item {
+                    return item.copy(title = "renamed")
+                }
+            }
+        """.trimIndent()
+        writeSource(sourcesRoot, "com/example/app/Synthetic.kt", source)
+        registerSourceRoot(sourcesRoot)
+
+        val appVf = LocalFileSystem.getInstance().findFileByPath("$basePath/$relativePath")
+            ?: error("Kotlin source not registered in VFS")
+        val appPsi = PsiManager.getInstance(project).findFile(appVf) as? KtFile
+            ?: error("Kotlin PSI not available")
+        val renameFunction = appPsi.declarations
+            .filterIsInstance<KtClass>()
+            .first { it.name == "ItemController" }
+            .declarations
+            .filterIsInstance<KtNamedFunction>()
+            .single { it.name == "rename" }
+        val syntheticCallee = resolvedCalls(renameFunction.toUElement() as UMethod)
+            .single { it.name == "copy" }
+
+        // In this fixture `copy()` resolves to a light method that still carries a range, so the chain must
+        // report the generated member at its declaring `data class`.
+        assertTrue("Expected copy() to resolve to a light method", syntheticCallee is KtLightMethod)
+
+        val document = PsiDocumentManager.getInstance(project).getDocument(appPsi)!!
+        val callLine = document.getLineNumber(source.indexOf("return item.copy(")) + 1
+        val itemClassLine = document.getLineNumber(source.indexOf("data class Item")) + 1
+        val result = mapper.readTree(
+            toolset.traceCallChain(
+                filePath = relativePath,
+                line = callLine,
+                projectPath = basePath,
+                depth = 2,
+                includeTests = false,
+            )
+        )
+
+        val head = result["chain"].first { it["methodName"].asText() == "rename" }
+        val copyTarget = head["callsInto"].single { it["target"].asText().endsWith("Item.copy") }
+        assertEquals(
+            "Expected the generated copy() to be reported at its declaring data class",
+            itemClassLine, copyTarget["line"].asInt()
+        )
+    }
+
+    private fun resolvedCalls(method: UMethod): List<PsiMethod> {
+        val result = mutableListOf<PsiMethod>()
+        method.accept(object : AbstractUastVisitor() {
+            override fun visitCallExpression(node: UCallExpression): Boolean {
+                node.resolve()?.let(result::add)
+                return false
+            }
+        })
+        return result
+    }
+
+    private fun registerSourceRoot(sourcesRoot: File) {
+        WriteAction.runAndWait<Throwable> {
+            LocalFileSystem.getInstance().refresh(false)
+        }
+        val sourcesRootVf = VfsUtil.findFile(sourcesRoot.toPath(), true)
+            ?: error("Sources root not visible in VFS: ${sourcesRoot.absolutePath}")
+        ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
+            model.addContentEntry(sourcesRootVf).addSourceFolder(sourcesRootVf, true)
+        }
+        WriteAction.runAndWait<Throwable> {
+            LocalFileSystem.getInstance().refresh(false)
+        }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
+
+    private fun writeSource(sourcesRoot: File, relativePath: String, content: String) {
         val target = File(sourcesRoot, relativePath)
         target.parentFile.mkdirs()
         target.writeText(content)
