@@ -36,6 +36,7 @@ import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.uast.UCallExpression
@@ -202,15 +203,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
     private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson {
         val psiMethod = endpoint.psiElement as? PsiMethod
         val controllerClass = endpoint.containingClass ?: psiMethod?.containingClass
-        val basePath = project.basePath?.let { "$it/" }
-        val filePath = (endpoint.containingFile ?: endpoint.psiElement.containingFile)?.virtualFile?.path
-        val relativePath = if (basePath != null && filePath != null && filePath.startsWith(basePath)) {
-            filePath.removePrefix(basePath)
-        } else {
-            filePath
-        }
-        val rawLine = endpoint.psiElement.getLineNumber(start = true)
-        val lineNumber = if (rawLine >= 0) rawLine + 1 else 1
+        val position = sourcePositionOf(endpoint.psiElement, project)
+        // A loader may know the declaring file of an endpoint whose element has no source position of its own.
+        val filePath = position.filePath
+            ?: endpoint.containingFile?.let { relativePathOf(it, project) }
 
         val parameters = if (psiMethod != null) extractParameters(psiMethod) else emptyList()
         val returnType = psiMethod?.returnType?.canonicalText
@@ -220,8 +216,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             fullPath = endpoint.path,
             controllerClass = controllerClass?.qualifiedName,
             methodName = psiMethod?.name,
-            filePath = relativePath,
-            line = lineNumber,
+            filePath = filePath,
+            line = position.line,
             parameters = parameters,
             returnType = returnType,
             endpointType = endpoint.type.readable,
@@ -397,14 +393,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 line = lineOf(callee),
             )
         }
+        val position = sourcePositionOf(psiMethod, project)
 
         return EndpointContractJson(
             httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
             fullPath = endpoint.path,
             controllerClass = controllerClass?.qualifiedName,
             methodName = psiMethod.name,
-            filePath = relativePathOf(psiMethod, project),
-            line = lineOf(psiMethod),
+            filePath = position.filePath,
+            line = position.line,
             parameters = parameters,
             returnType = returnTypeFqn,
             responseSchema = responseSchema,
@@ -547,12 +544,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
             )
         }
 
+        val position = sourcePositionOf(psiMethod, project)
         val node = CallChainNodeJson(
             layer = containingClass?.let { detectSpringLayer(it) },
             className = containingClass?.qualifiedName ?: containingClass?.name,
             methodName = psiMethod.name,
-            filePath = relativePathOf(psiMethod, project),
-            line = lineOf(psiMethod),
+            filePath = position.filePath,
+            line = position.line,
             parameters = psiMethod.parameterList.parameters.map { it.name },
             callsInto = callsInto,
         )
@@ -592,8 +590,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             val refs = MethodReferencesSearch.search(method, testScope, true).findAll()
             for (ref in refs) {
                 val refElement = ref.element
-                val refFile = relativePathOf(refElement, project) ?: continue
-                val refLine = lineOf(refElement)
+                val position = sourcePositionOf(refElement, project)
+                val refFile = position.filePath ?: continue
+                val refLine = position.line ?: continue
                 val methodKey = "${method.containingClass?.name ?: "?"}.${method.name}"
                 byFile.getOrPut(refFile) { mutableMapOf() }
                     .getOrPut(methodKey) { mutableListOf() }
@@ -661,11 +660,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val fields = collectEntityFields(psiClass)
         val indexes = collectEntityIndexes(psiClass)
 
+        val position = sourcePositionOf(psiClass, project)
         return SpringDataEntityJson(
             name = simpleName,
             className = qualifiedName,
-            filePath = relativePathOf(psiClass, project),
-            line = lineOf(psiClass),
+            filePath = position.filePath,
+            line = position.line,
             tableName = tableName,
             fields = fields,
             indexes = indexes,
@@ -756,10 +756,40 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return if (filePath.startsWith(basePath)) filePath.removePrefix(basePath) else filePath
     }
 
-    private fun lineOf(element: PsiElement): Int {
-        val raw = element.getLineNumber(start = true)
-        return if (raw >= 0) raw + 1 else 1
+    /**
+     * File path and line of a single source anchor. Both are `null` when the reported element has no
+     * physical declaration to point at, so a caller never gets a path and a line taken from different files.
+     */
+    private data class SourcePosition(val filePath: String?, val line: Int?)
+
+    private fun sourcePositionOf(element: PsiElement, project: Project): SourcePosition {
+        val anchor = sourceAnchorOf(element) ?: return SourcePosition(null, null)
+        return SourcePosition(relativePathOf(anchor, project), lineOfAnchor(anchor))
     }
+
+    /**
+     * Physical element a source position may be reported for.
+     *
+     * Light and synthetic members - a Kotlin `data class` `copy()`, an enum `values()`, or any light method
+     * whose origin declaration is absent - have no text range, and reading a line number from them fails.
+     * Such a member is reported through its declaring class, and through nothing at all when that class is
+     * synthetic too.
+     */
+    private fun sourceAnchorOf(element: PsiElement): PsiElement? =
+        element.withSourcePosition()
+            ?: (element as? PsiMember)?.containingClass?.withSourcePosition()
+
+    private fun PsiElement.withSourcePosition(): PsiElement? =
+        takeIf { it.hasSourcePosition() } ?: navigationElement?.takeIf { it.hasSourcePosition() }
+
+    private fun PsiElement.hasSourcePosition(): Boolean = textRange != null && containingFile != null
+
+    private fun lineOfAnchor(anchor: PsiElement): Int? =
+        anchor.getLineNumber(start = true).takeIf { it >= 0 }?.plus(1)
+
+    /** 1-based line of [element], or `null` when it has no physical declaration to point at. */
+    @VisibleForTesting
+    internal fun lineOf(element: PsiElement): Int? = sourceAnchorOf(element)?.let(::lineOfAnchor)
 
     companion object {
         // Guard cap for single-target lookups (find / contract): a URL pattern is not
@@ -845,7 +875,8 @@ data class EndpointJson(
     val controllerClass: String?,
     val methodName: String?,
     val filePath: String?,
-    val line: Int,
+    /** `null` when the endpoint element has no physical declaration to point at. */
+    val line: Int?,
     val parameters: List<EndpointParameterJson>,
     val returnType: String?,
     val endpointType: String,
@@ -876,14 +907,16 @@ data class CallChainNodeJson(
     val className: String?,
     val methodName: String,
     val filePath: String?,
-    val line: Int,
+    /** `null` for a light or synthetic method with no physical declaration, e.g. a generated `copy()`. */
+    val line: Int?,
     val parameters: List<String>,
     val callsInto: List<CallTargetJson>,
 )
 
 data class CallTargetJson(
     val target: String,
-    val line: Int,
+    /** `null` for a light or synthetic call target with no physical declaration. */
+    val line: Int?,
 )
 
 data class TestReferenceJson(
@@ -902,7 +935,8 @@ data class EndpointContractJson(
     val controllerClass: String?,
     val methodName: String?,
     val filePath: String?,
-    val line: Int,
+    /** `null` when the endpoint method has no physical declaration to point at. */
+    val line: Int?,
     val parameters: List<EndpointParameterJson>,
     val returnType: String?,
     val responseSchema: DtoSchemaJson?,
@@ -928,7 +962,8 @@ data class SpringDataEntityJson(
     val name: String,
     val className: String,
     val filePath: String?,
-    val line: Int,
+    /** `null` when the entity class has no physical declaration to point at. */
+    val line: Int?,
     val tableName: String,
     val fields: List<EntityFieldJson>,
     val indexes: List<EntityIndexJson>,

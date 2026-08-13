@@ -9,6 +9,12 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
+import com.intellij.psi.impl.FakePsiElement
+import com.intellij.psi.impl.light.LightMethod
+import com.intellij.psi.util.PsiTreeUtil
 import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
@@ -197,6 +203,73 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         } catch (_: Exception) {
             // expected: mcpFail("file not found: ...")
         }
+    }
+
+    fun testLineOfElementWithoutTextRange() {
+        val physicalElement = PsiTreeUtil.findChildOfType(
+            myFixture.configureByText("Controller.java", "\n\nclass Controller {}"),
+            PsiClass::class.java
+        )!!
+        val elementWithoutTextRange = object : FakePsiElement() {
+            override fun getParent(): PsiElement = physicalElement
+            override fun getName(): String = "Controller"
+            override fun getNavigationElement(): PsiElement = physicalElement
+        }
+
+        assertNull(elementWithoutTextRange.textRange)
+        assertEquals(3, toolset.lineOf(physicalElement))
+        assertEquals(3, toolset.lineOf(elementWithoutTextRange))
+    }
+
+    fun testLineOfLightMethodUsesNavigationTarget() {
+        // A light method without a text range still resolves through the physical method it navigates to.
+        val declaringClass = physicalClass()
+        val physicalMethod = declaringClass.methods.single()
+        val lightMethod = object : LightMethod(psiManager, physicalMethod, declaringClass) {
+            override fun getTextRange(): TextRange? = null
+            override fun getNavigationElement(): PsiElement = physicalMethod
+        }
+
+        assertNull("Expected a light method without a text range", lightMethod.textRange)
+        assertEquals(3, toolset.lineOf(lightMethod))
+    }
+
+    fun testLineOfSyntheticMethodFallsBackToContainingClass() {
+        // Reproduces issue #281: a synthetic member - a generated `copy()`, an enum `values()`, or a Kotlin
+        // light method whose origin declaration is absent - has no text range and navigates to itself, so it
+        // has no source position at all. Its declaring class is the closest physical anchor.
+        val declaringClass = physicalClass()
+        val syntheticMethod = object : LightMethod(psiManager, declaringClass.methods.single(), declaringClass) {
+            override fun getTextRange(): TextRange? = null
+            override fun getNavigationElement(): PsiElement = this
+        }
+
+        assertNull("Expected a synthetic method without a text range", syntheticMethod.textRange)
+        assertSame(
+            "Expected a synthetic method navigating to itself",
+            syntheticMethod, syntheticMethod.navigationElement
+        )
+        assertEquals(3, toolset.lineOf(syntheticMethod))
+    }
+
+    private fun physicalClass(): PsiClass = PsiTreeUtil.findChildOfType(
+        myFixture.configureByText("Controller.java", "\n\nclass Controller { void handle() {} }"),
+        PsiClass::class.java
+    )!!
+
+    fun testLineOfElementWithoutSourceRangeIsUnknown() {
+        // The fixture class sits on line 3, so a genuine lookup could never return `null`.
+        val physicalElement = myFixture.configureByText("Controller.java", "\n\nclass Controller {}")
+        val elementWithoutSourceRange = object : FakePsiElement() {
+            override fun getParent(): PsiElement = physicalElement
+            override fun getName(): String = "Controller"
+        }
+
+        assertNull(elementWithoutSourceRange.textRange)
+        assertNull(
+            "Expected an unknown line rather than a fabricated one",
+            toolset.lineOf(elementWithoutSourceRange)
+        )
     }
 
     fun testGetSpringDataEntities() = runBlocking<Unit> {
