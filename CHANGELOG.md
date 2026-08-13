@@ -46,6 +46,7 @@
 
 ### Spring MCP
 - fix: Paginate `explyt_get_spring_http_endpoints` results and preserve total-count metadata (#244) (#279)
+- fix: Keep MCP tools working on Kotlin light and synthetic PSI without a source range, omitting `line` when no declaration can be pointed at (#281)
 
 ### Other
 - ci: Pin the Sentry release action and restrict release-job permissions (#230) (#279)
