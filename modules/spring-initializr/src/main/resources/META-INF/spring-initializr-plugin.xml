@@ -4,6 +4,9 @@
   -->
 
 <idea-plugin>
+    <!-- JCEF is a separate bundled plugin since IntelliJ Platform 2026.2 -->
+    <depends>com.intellij.modules.jcef</depends>
+
     <extensions defaultExtensionNs="com.intellij">
 
         <moduleType id="EXPLYT_SPRING_INITIALIZR"
