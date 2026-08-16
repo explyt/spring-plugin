@@ -56,7 +56,6 @@ import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.uast.UastModificationTracker
 import com.jetbrains.rd.util.getOrCreate
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.idea.util.projectStructure.module
 import org.jetbrains.uast.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -307,7 +306,7 @@ class SpringSearchService(private val project: Project) {
     }
 
     fun searchTestBeanClasses(psiClass: PsiClass): Set<PsiBean> {
-        val module = psiClass.module ?: return emptySet()
+        val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return emptySet()
         val allTestClasses = psiClass.allSupers()
         val psiClassesTestContext = allTestClasses
             .mapNotNull { it.toUElement() as? UClass }

@@ -16,6 +16,7 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.LocalQuickFixOnPsiElement
 import com.intellij.codeInspection.util.IntentionName
 import com.intellij.java.analysis.JavaAnalysisBundle
+import com.intellij.java.syntax.parser.JavaKeywords
 import com.intellij.lang.injection.InjectedLanguageManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.command.undo.UndoUtil
@@ -281,7 +282,7 @@ class RewriteAnnotationQuickFix(
                     var newList: PsiParameterList?
                     if (PsiUtil.isAvailable(JavaFeature.VAR_LAMBDA_PARAMETER, list)) {
                         val newListText =
-                            StreamEx.of(*parameters).map { p: PsiParameter -> PsiKeyword.VAR + " " + p.name }
+                            StreamEx.of(*parameters).map { p: PsiParameter -> JavaKeywords.VAR + " " + p.name }
                                 .joining(",", "(", ")")
                         newList = (JavaPsiFacade.getElementFactory(list.project)
                             .createExpressionFromText("$newListText -> {}", null) as PsiLambdaExpression).parameterList

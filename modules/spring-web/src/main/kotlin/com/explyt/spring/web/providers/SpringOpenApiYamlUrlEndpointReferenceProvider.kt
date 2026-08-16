@@ -12,8 +12,8 @@ import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceProvider
+import com.intellij.psi.util.parentOfType
 import com.intellij.util.ProcessingContext
-import org.jetbrains.kotlin.analysis.utils.printer.parentOfType
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 

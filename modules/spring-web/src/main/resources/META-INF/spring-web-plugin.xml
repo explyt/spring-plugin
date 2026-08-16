@@ -6,6 +6,8 @@
 <idea-plugin>
     <depends>com.intellij.modules.json</depends>
     <depends>com.intellij.java</depends>
+    <!-- JCEF is a separate bundled plugin since IntelliJ Platform 2026.2 -->
+    <depends>com.intellij.modules.jcef</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.web.springWebEndpointsLoader" dynamic="true"
