@@ -18,7 +18,11 @@ Create or find an issue in `explyt/spring-plugin` from a user description, follo
 - Before creating an issue, always do light codebase research and a similar-issue search.
 - Do not implement, deep-review, or refactor code: research only enough for a good title, body, labels, and template choice.
 - Pick labels from the live repository label list (`gh label list --repo explyt/spring-plugin`); never invent label names.
-- Template labels are applied automatically only via the web forms; when creating through `gh` CLI, add the matching template label explicitly (`plugin-bug`, `compatibility`, `feature-request`, `question`).
+- **Verify every label exists before passing it to `gh`**, including labels named in this skill and labels declared by the issue forms. `gh issue create` fails outright on an unknown label. Check with:
+  `gh label list --repo explyt/spring-plugin --limit 200 --json name --jq '.[].name'` and match exactly.
+- **Do not trust the `labels:` field in `.github/ISSUE_TEMPLATE/*.yml`.** A form may declare a label that no longer exists in the repository (verified: `plugin-bug` **does** exist in the live label list and is applied to filed bugs, while `feature-request`, declared by the feature form, is **absent**, so that form silently applies nothing). Treat the forms as the source of truth for *body structure only*, and verify each declared label against `gh label list` before relying on it.
+- This repository does **not** use type labels; the issue type is conveyed by the title prefix (`[BUG]`, `[FEATURE]`, ...). Label instead by **area and topic**, matching existing issues: an `in:<module>` label (`in:spring-core`, `in:spring-web`, `in:spring-data`, `in:spring-messaging`, `in:spring-initializr`, `in:spring-debugger`) plus 0-2 topic labels (`inspection`, `properties`, `open-api`, `performance`, `compatibility`, `question`). Reference examples: #25/#44/#268 (`inspection`, `in:spring-core`), #118 (`inspection`, `in:spring-core`, `properties`), #142 (`inspection`, `in:spring-web`).
+- If a needed label genuinely does not exist, file without it and say so in the report; never create labels and never substitute a similar-looking name.
 - If issue creation is blocked (permissions, auth, missing tooling), return the ready-to-create title/body/labels and the exact blocker instead of retrying.
 - When creating or proposing a new issue, always append as the final body line: `_Created automatically by github-issue-manager skill._`
 - Never include secrets, tokens, private customer data, or local absolute paths in an issue body.
@@ -36,13 +40,15 @@ Create or find an issue in `explyt/spring-plugin` from a user description, follo
 
 Map the request to one of the repository issue forms (in `.github/ISSUE_TEMPLATE/`):
 
-| Category | Form | Title prefix | Auto label | When |
+The `Labels to apply` column lists only labels **verified to exist**; re-verify against the live list before every `gh` call, because the forms declare labels the repository no longer has.
+
+| Category | Form | Title prefix | Labels to apply | When |
 |---|---|---|---|---|
-| Bug | `1-plugin-bug-report.yml` | `[BUG] ` | `plugin-bug` | Unexpected behavior, exception, red balloon / IDE internal error, false-positive inspection, broken navigation/completion, freeze, stack trace |
-| Compatibility | `2-compatibility.yml` | `[COMPATIBILITY]` | `compatibility` | Problem specific to an IDE version, OS, JDK, or other-plugin combination |
-| Feature | `3-feature-request.yml` | `[FEATURE]` | `feature-request` | New user-facing capability or enhancement of an existing one |
+| Bug | `1-plugin-bug-report.yml` | `[BUG] ` | `plugin-bug` (exists in the live label list) | Unexpected behavior, exception, red balloon / IDE internal error, false-positive inspection, broken navigation/completion, freeze, stack trace |
+| Compatibility | `2-compatibility.yml` | `[COMPATIBILITY]` | `compatibility` (+ `in:<module>` when known) | Problem specific to an IDE version, OS, JDK, or other-plugin combination |
+| Feature | `3-feature-request.yml` | `[FEATURE]` | `in:<module>` + topic (the form's declared `feature-request` does **not** exist) | New user-facing capability or enhancement of an existing one |
 | Question | `4-ask_question.yml` | `[QUESTION] ` | `question` | Usage question; prefer redirecting to GitHub Discussions or Telegram (see `config.yml` contact links) before filing |
-| Task | no form | none | none | Refactoring, docs, infrastructure, cleanup, engineering work; create as a plain issue with Description / Additional context sections |
+| Task | no form | none | `type:internal` (+ `in:<module>`) | Refactoring, docs, infrastructure, cleanup, engineering work; create as a plain issue with Description / Additional context sections |
 
 - If the user explicitly set a category, use it unless it is clearly wrong; if you correct it, explain why.
 - The bug and feature forms include a **Component** dropdown; pick one of: `Inspection`, `Navigation gutter`, `References`, `Autocompletion`, `Usages`, `Properties`, `OpenAPI`, `Slow operation on EDT`, `Other`.
@@ -50,7 +56,7 @@ Map the request to one of the repository issue forms (in `.github/ISSUE_TEMPLATE
 ## Two-lane label policy (from CONTRIBUTING.md §2)
 
 - **Lane A — roadmap items**: implemented by the Explyt team; no extra labels needed.
-- **Lane B — contributor-friendly**: if the issue is genuinely optional, well-scoped, and a longer wait costs nothing (small UX, docs, messages, one focused inspection), suggest the `good first issue` or `help wanted` label and say so in the report. Only suggest these labels if they exist in the live label list.
+- **Lane B — contributor-friendly**: if the issue is genuinely optional, well-scoped, and a longer wait costs nothing (small UX, docs, messages, one focused inspection), suggest the `good first issue` label and say so in the report. Only suggest it if it exists in the live label list — as of 2026-08 `good first issue` exists but `help wanted` does **not**. Do not apply it to work needing non-trivial PSI/resolve logic, language-version gating, or multi-namespace handling.
 
 ## Body templates
 
@@ -177,8 +183,9 @@ Fill unknown optional fields with `_No response_`.
 
 3. **Collect GitHub metadata**
    - Execution: parallelizable with step 2.
-   - Fetch live labels: `gh label list --repo explyt/spring-plugin --limit 100`.
-   - Keep exact names of applicable labels only.
+   - Fetch live labels: `gh label list --repo explyt/spring-plugin --limit 200 --json name --jq '.[].name'`.
+   - Keep exact names of applicable labels only, and confirm each intended label appears verbatim in that output before using it.
+   - Also inspect 2-3 existing issues of the same category (`gh issue view <n> --json labels`) to copy the actual labeling convention rather than relying on the forms.
 
 4. **Search for duplicates and related issues**
    - Execution: single, after steps 2–3.
@@ -245,7 +252,7 @@ Return exactly one of:
 - [ ] No new issue created when a substantially matching issue already exists.
 - [ ] Created or proposed issue uses the matching form's title prefix, headings, and template label.
 - [ ] Bug creation asked for plugin version and IDE build when missing.
-- [ ] Labels taken from the live repository label list, never invented; two-lane policy considered.
+- [ ] Every applied label verified verbatim against the live label list (not taken from the issue form's `labels:` field); two-lane policy considered.
 - [ ] Body ends with `_Created automatically by github-issue-manager skill._`.
 - [ ] Final response follows one of the declared output formats.
 - [ ] At most one issue created for one user request.
