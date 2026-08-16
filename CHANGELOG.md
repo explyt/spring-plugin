@@ -57,6 +57,7 @@
 - docs: Update issue/PR templates and contributing guide
 - docs: Add AI Agent documentation
 - chore: Support IntelliJ Platform 2026.2 (262)
+- fix: Replace internal plugin-manager APIs with `PluginDetailsService` to unblock 2026.2 plugin verification
 
 ## [261.33.80] - 2026-04-28
 
