@@ -80,6 +80,39 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
         assertEquals("Dashboard Staging", linkedName(mainFilePath))
     }
 
+    /**
+     * A link stores `null` when it was created without a run configuration: that is a deliberate "unbound" state
+     * meaning "discover by main-class path or by the selected configuration", which `RunConfigurationExtractor`
+     * relies on. Binding it to the only matching configuration would silently disable that discovery.
+     */
+    fun testUnboundLinkIsNotBound() {
+        val mainFilePath = configureDemoApplication()
+        linkProject(mainFilePath, storedName = null)
+
+        addSpringBootConfiguration("Dashboard Prod")
+
+        NativeLinkRepairService.getInstance(project).repairNow()
+
+        assertNull(linkedName(mainFilePath))
+    }
+
+    /**
+     * Removing a configuration must keep the now-stale name: it is what marks the link as repairable. Clearing it
+     * would both hide the link from the repair pass and downgrade it to an unbound link, making
+     * `RunConfigurationExtractor` fabricate a default configuration instead of reporting the broken link.
+     */
+    fun testRemovedConfigurationKeepsStaleNameForRepair() {
+        val mainFilePath = configureDemoApplication()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+
+        project.messageBus.syncPublisher(RunManagerListener.TOPIC)
+            .runConfigurationRemoved(detachedConfiguration())
+
+        NativeLinkRepairService.getInstance(project).repairNow()
+
+        assertEquals("Dashboard VPC", linkedName(mainFilePath))
+    }
+
     /** The debug-session link is keyed by a transient session, not by a run configuration name. */
     fun testDebugSessionLinkIsNotTouched() {
         configureDemoApplication()
@@ -103,7 +136,7 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
     private fun linkedName(mainFilePath: String): String? =
         project.getService(NativeSettings::class.java).getLinkedProjectSettings(mainFilePath)?.runConfigurationName
 
-    private fun linkProject(mainFilePath: String, storedName: String) {
+    private fun linkProject(mainFilePath: String, storedName: String?) {
         project.getService(NativeSettings::class.java).linkProject(NativeProjectSettings().apply {
             externalProjectPath = mainFilePath
             qualifiedMainClassName = "com.demo.DemoApplication"

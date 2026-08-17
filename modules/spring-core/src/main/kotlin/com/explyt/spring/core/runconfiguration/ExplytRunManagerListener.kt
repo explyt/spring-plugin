@@ -50,15 +50,13 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
     }
 
     /**
-     * Drops a stored name that just disappeared, keeping `externalProjectPath` and `qualifiedMainClassName` so the
-     * link can still be re-bound by main-class file once the replacing configuration arrives.
+     * Schedules a repair, deliberately keeping the now-stale stored name: that name is what marks the link as
+     * repairable. Clearing it would make the link invisible to the repair pass and downgrade it to an *unbound* link
+     * (a `null` name means "discover by path or by the selected configuration"), so `RunConfigurationExtractor` would
+     * fabricate a default configuration instead of reporting the broken link.
      */
     override fun runConfigurationRemoved(settings: RunnerAndConfigurationSettings) {
         super.runConfigurationRemoved(settings)
-        val nativeSettings = project.getService(NativeSettings::class.java) ?: return
-        nativeSettings.linkedProjectsSettings
-            .filter { it.runConfigurationName == settings.name }
-            .forEach { it.runConfigurationName = null }
         NativeLinkRepairService.getInstance(project).scheduleRepair()
     }
 

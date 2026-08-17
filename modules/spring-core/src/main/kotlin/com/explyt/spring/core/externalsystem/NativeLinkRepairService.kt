@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class NativeLinkRepairService(private val project: Project) : Disposable {
 
     private val repairScheduled = AtomicBoolean(false)
+    private val repairRequestedAgain = AtomicBoolean(false)
 
     /**
      * Schedules a coalesced repair pass off the EDT.
@@ -51,11 +52,25 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
      * published from inside that initialization — and touching `RunManager.getInstance` from there re-enters the
      * service container and fails with a cycle. The whole pass, including the cheap check, is therefore deferred
      * until the current initialization has finished; a burst of load events collapses into a single pass.
+     *
+     * Events arriving while a pass is in flight are not dropped: they raise [repairRequestedAgain], which triggers
+     * exactly one follow-up pass, so a configuration removed or added mid-pass is still observed.
      */
     fun scheduleRepair() {
-        if (!repairScheduled.compareAndSet(false, true)) return
+        if (!repairScheduled.compareAndSet(false, true)) {
+            repairRequestedAgain.set(true)
+            return
+        }
         ApplicationManager.getApplication()
             .invokeLater({ startRepair() }, ModalityState.nonModal(), project.disposed)
+    }
+
+    /** Ends a pass and runs at most one follow-up for the events that arrived while it was in flight. */
+    private fun finishPass() {
+        repairScheduled.set(false)
+        if (repairRequestedAgain.compareAndSet(true, false)) {
+            scheduleRepair()
+        }
     }
 
     /**
@@ -64,17 +79,21 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
      */
     private fun startRepair() {
         if (findDanglingSettings().isEmpty()) {
-            repairScheduled.set(false)
+            finishPass()
             return
         }
 
         ReadAction.nonBlocking(Callable { computeRepairs() })
             .expireWith(this)
             .coalesceBy(this)
+            // Resolving a main class goes through JavaPsiFacade and the indexes, which are unavailable in dumb mode.
+            // Project open — the case this pass exists for — is exactly when indexing runs, and a failure here would
+            // waste the only scheduled attempt, so wait for smart mode instead.
+            .inSmartMode(project)
             .finishOnUiThread(ModalityState.nonModal()) { applyRepairs(it) }
             .submit(AppExecutorUtil.getAppExecutorService())
             // onProcessed also covers cancellation and expiration, so the flag never stays stuck.
-            .onProcessed { repairScheduled.set(false) }
+            .onProcessed { finishPass() }
     }
 
     /** Synchronous variant for tests, which must not race the background pipeline. */
@@ -85,18 +104,25 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     }
 
     /**
-     * A stored name is dangling when no run configuration bears it any more. The `-DebugSession-` link is not a real
-     * project link: it is keyed by a transient debug session, never by a run configuration name, so it is skipped.
+     * Collects the links worth repairing. The `-DebugSession-` link is not a real project link: it is keyed by a
+     * transient debug session, never by a run configuration name, so it is skipped.
      */
     private fun findDanglingSettings(): List<NativeProjectSettings> {
         val nativeSettings = project.getService(NativeSettings::class.java) ?: return emptyList()
         val runManager = RunManager.getInstance(project)
         return nativeSettings.linkedProjectsSettings.filter { settings ->
-            settings.externalProjectPath != Constants.DEBUG_SESSION_NAME
-                    && settings.runConfigurationName.let { name ->
-                name == null || runManager.allSettings.none { it.name == name }
-            }
+            settings.externalProjectPath != Constants.DEBUG_SESSION_NAME && isDangling(settings, runManager)
         }
+    }
+
+    /**
+     * A `null` stored name is **not** dangling: a link created without a run configuration uses it to mean "discover
+     * by main-class path or by the selected configuration", and `RunConfigurationExtractor` depends on that state.
+     * Only a name that was stored and no longer resolves marks a link as broken.
+     */
+    private fun isDangling(settings: NativeProjectSettings, runManager: RunManager): Boolean {
+        val storedName = settings.runConfigurationName ?: return false
+        return runManager.allSettings.none { it.name == storedName }
     }
 
     private fun computeRepairs(): List<Repair> {
@@ -126,8 +152,18 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     private fun mainFilePath(configuration: RunConfiguration): String? =
         NativeBootUtils.getMainClass(configuration)?.containingFile?.virtualFile?.canonicalPath
 
+    /**
+     * Runs on the EDT after a background computation, so the world may have moved on: a configuration can have been
+     * removed or the link repaired meanwhile. Each repair is revalidated before it is written, otherwise a name that
+     * no longer exists could be stored back into the settings.
+     */
     private fun applyRepairs(repairs: List<Repair>) {
-        repairs.forEach { it.settings.runConfigurationName = it.runConfigurationName }
+        if (repairs.isEmpty()) return
+        val runManager = RunManager.getInstance(project)
+        repairs.asSequence()
+            .filter { isDangling(it.settings, runManager) }
+            .filter { repair -> runManager.allSettings.any { it.name == repair.runConfigurationName } }
+            .forEach { it.settings.runConfigurationName = it.runConfigurationName }
     }
 
     override fun dispose() = Unit
