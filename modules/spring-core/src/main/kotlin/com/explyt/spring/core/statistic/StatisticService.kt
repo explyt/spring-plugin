@@ -5,15 +5,15 @@
 
 package com.explyt.spring.core.statistic
 
-import com.explyt.spring.core.runconfiguration.SpringRunConfigurationDetectService
+import com.explyt.base.PluginContext
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
-import com.intellij.ide.plugins.PluginManager
+import com.intellij.ide.plugins.PluginDetailsService
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.extensions.PluginDescriptor
+import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.registry.Registry
 import java.io.File
@@ -85,8 +85,8 @@ class StatisticService {
     }
 
     private fun writeStateToFile(localDate: LocalDate) {
-        val descriptor = pluginDescriptor() ?: return
-        if (skipForNonProductionMode(descriptor)) {
+        val pluginVersion = pluginVersion() ?: return
+        if (skipForNonProductionMode(pluginVersion)) {
             clearStatistic()
             return
         }
@@ -100,19 +100,19 @@ class StatisticService {
 
         val counterMap = getCurrentStatistic().takeIf { it.isNotEmpty() } ?: return
         val properties = getCurrentFilePropertiesState(resultDailyPath)
-        updateStatistic(properties, deviceId, descriptor, localDate, counterMap)
+        updateStatistic(properties, deviceId, pluginVersion, localDate, counterMap)
         saveStatisticToFile(resultDailyPath, properties, fileName)
     }
 
     private fun updateStatistic(
         properties: Properties,
         deviceId: String,
-        descriptor: PluginDescriptor,
+        pluginVersion: String,
         localDate: LocalDate,
         counterMap: Map<String, Int>
     ) {
         properties[StatisticActionId.DEVICE_ID.name] = deviceId
-        properties[StatisticActionId.PLUGIN_VERSION.name] = descriptor.version
+        properties[StatisticActionId.PLUGIN_VERSION.name] = pluginVersion
         properties[StatisticActionId.LOCAL_DATE.name] = localDate.toString()
         for (entry in counterMap) {
             val value = properties[entry.key] as? String
@@ -161,12 +161,12 @@ class StatisticService {
         ApplicationManager.getApplication().getService(StatisticState::class.java)
 
 
-    private fun skipForNonProductionMode(pluginDescriptor: PluginDescriptor): Boolean {
+    private fun skipForNonProductionMode(pluginVersion: String): Boolean {
         if (skipForUnitTestAndHeadlessMode()) return true
 
         if (Registry.`is`("explyt.statistic.debug")) return false
 
-        return pluginDescriptor.version.contains("snapshot", true)
+        return pluginVersion.contains("snapshot", true)
     }
 
     fun skipForUnitTestAndHeadlessMode() = (ApplicationManager.getApplication().isUnitTestMode
@@ -198,8 +198,11 @@ class StatisticService {
         return null
     }
 
-    private fun pluginDescriptor(): PluginDescriptor? {
-        return PluginManager.getPluginByClass(SpringRunConfigurationDetectService::class.java)
+    private fun pluginVersion(): String? {
+        @Suppress("UnstableApiUsage")
+        return PluginDetailsService.getInstance()
+            .findDetails(PluginId.getId(PluginContext.PLUGIN_ID))
+            ?.version
     }
 
     private fun createLockFile(lockFilePath: Path): Path? {
