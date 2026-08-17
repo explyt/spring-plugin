@@ -6,6 +6,7 @@
 
 ### Spring Core
 - fix: Keep renamed Spring Boot run configurations linked without ambiguous fallback (#229) (#279)
+- fix: Keep Kotlin top-level `main()` projects linked when the stored run configuration name no longer exists (#229)
 - fix: Hide the Beans Search Everywhere tab outside Spring Boot projects without blocking EDT (#233) (#240) (#279)
 - fix: Anchor inherited autowired inspection problems (#234) (#241)
 - fix: Prevent cyclic inherited-autowiring traversal from hanging inspection analysis (#279)
