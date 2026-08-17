@@ -5,12 +5,19 @@
 
 package com.explyt.base
 
-import com.intellij.ide.plugins.PluginManager
+import com.intellij.ide.plugins.PluginDetailsService
 import com.intellij.openapi.application.ApplicationInfo
+import com.intellij.openapi.extensions.PluginId
 
 object PluginContext {
+    /** Plugin id declared in `spring-bootstrap/src/main/resources/META-INF/plugin.xml`. */
+    const val PLUGIN_ID = "com.explyt.spring"
+
     val pluginVersion by lazy {
-        PluginManager.getPluginByClass(SentryErrorReporter::class.java)?.version ?: "Unknown"
+        @Suppress("UnstableApiUsage")
+        PluginDetailsService.getInstance()
+            .findDetails(PluginId.getId(PLUGIN_ID))
+            ?.version ?: "Unknown"
     }
 
     /** Middle segment of the version string, e.g. "31" from "253.31.58" */

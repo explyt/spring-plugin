@@ -5,7 +5,7 @@
 
 package com.explyt.base
 
-import com.intellij.ide.plugins.PluginManagerCore
+import com.intellij.ide.plugins.PluginDetailsService
 import com.intellij.openapi.application.ApplicationInfo
 import io.sentry.Breadcrumb
 import io.sentry.IScope
@@ -66,10 +66,19 @@ object SentryReporter {
         }
     }
 
+    /**
+     * Third-party plugins reported as Sentry context.
+     *
+     * [PluginDetailsService.PluginDetails.isBuiltIn] covers both bundled plugins and updates of bundled ones,
+     * which is slightly broader than the previous `isBundled` check: an updated bundled plugin is no longer
+     * reported. The platform exposes no public API distinguishing the two, and the internal one fails
+     * plugin verification, so the broader filter is accepted here.
+     */
+    @Suppress("UnstableApiUsage")
     private fun collectNonBundledPlugins(): Map<String, String> =
-        PluginManagerCore.loadedPlugins
-            .filter { !it.isBundled }
-            .associate { it.pluginId.idString to (it.version ?: "unknown") }
+        PluginDetailsService.getInstance().getActivePlugins()
+            .filter { !it.isBuiltIn }
+            .associate { it.id.idString to (it.version ?: "unknown") }
 
     fun addBreadcrumb(breadcrumb: Breadcrumb) {
         ensureInitialized()

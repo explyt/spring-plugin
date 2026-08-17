@@ -5,8 +5,7 @@
 
 package com.explyt.spring.web.editor.openapi
 
-import com.intellij.ide.plugins.PluginManagerCore
-import com.intellij.openapi.extensions.PluginId
+
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.JBColor
@@ -59,11 +58,8 @@ class OpenApiResourcesRequestHandler : HttpRequestHandler() {
         if (resource == "specification_file")
             return OpenApiUtils.getFile(key)
 
-        val pluginId = PluginId.findId("com.explyt.spring") ?: return null
         val mainTemplatePath = "htmlTemplates/openapi/$resource"
-        val mainTemplateUrl = PluginManagerCore.getPlugin(pluginId)
-            ?.pluginClassLoader
-            ?.getResource(mainTemplatePath) ?: return null
+        val mainTemplateUrl = javaClass.classLoader.getResource(mainTemplatePath) ?: return null
         return VfsUtil.findFileByURL(mainTemplateUrl)
     }
 
