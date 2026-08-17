@@ -44,9 +44,15 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
      * would fail to locate it during sync.
      *
      * This callback may run on EDT and while run configurations are being loaded, so the cheap checks come first:
-     * the main class is resolved only for a link that predates [NativeProjectSettings.qualifiedMainClassName] and
-     * actually needs renaming. The update stays synchronous, because `RunConfigurationExtractor` may look the name
-     * up as soon as this callback returns.
+     * the main class is resolved only for a link whose stored name is dangling and actually needs renaming.
+     * The update stays synchronous, because `RunConfigurationExtractor` may look the name up as soon as this
+     * callback returns.
+     *
+     * Kotlin needs the file-path fallback even for links that do store [NativeProjectSettings.qualifiedMainClassName]:
+     * for a top-level `main()` the configuration's main class is the file facade (`...FooKt`), while the link stores
+     * the `@SpringBootApplication` class (`...Foo`), so those two identities can never match. The main-class *file*
+     * is what both sides agree on. Renaming is then guarded by [isDanglingName]: several configurations may share one
+     * main class, and a stored name that still belongs to a live configuration must survive a sibling's change.
      */
     private fun syncLinkedProjectName(configuration: SpringBootRunConfiguration) {
         val nativeSettings = project.getService(NativeSettings::class.java) ?: return
@@ -64,19 +70,25 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
             return
         }
 
-        // Projects linked before the main class name was stored can only be matched by the main-class file path,
-        // which requires resolving PSI. Reaching this point means such a link exists and its name is stale, so the
-        // resolution cost is now paid only in that case instead of on every configuration change.
-        val legacySettings = outdatedSettings.filter { it.qualifiedMainClassName == null }
-        if (legacySettings.isEmpty()) return
+        // Links that cannot be matched by the stored class name are matched by the main-class file path, which
+        // requires resolving PSI. Only a dangling stored name is repaired this way, so the resolution cost is paid
+        // in that case alone instead of on every configuration change.
+        val danglingSettings = outdatedSettings.filter { isDanglingName(it.runConfigurationName) }
+        if (danglingSettings.isEmpty()) return
 
         val mainFilePath = runReadActionBlocking {
             configuration.mainClass?.containingFile?.virtualFile?.canonicalPath
         } ?: return
         val linked = nativeSettings.getLinkedProjectSettings(mainFilePath)
-            ?.takeIf { it in legacySettings }
+            ?.takeIf { it in danglingSettings }
             ?: return
         linked.runConfigurationName = newName
+    }
+
+    /** A stored name is dangling when no run configuration bears it any more, so claiming it cannot steal a live link. */
+    private fun isDanglingName(storedName: String?): Boolean {
+        storedName ?: return true
+        return RunManager.getInstance(project).allSettings.none { it.name == storedName }
     }
 
     override fun stateLoaded(runManager: RunManager, isFirstLoadState: Boolean) {
