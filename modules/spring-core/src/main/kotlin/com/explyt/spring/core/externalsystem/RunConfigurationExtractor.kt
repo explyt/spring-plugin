@@ -14,7 +14,12 @@ import com.intellij.execution.RunManager
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiClassOwner
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiMethodUtil
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UFile
@@ -56,17 +61,24 @@ object RunConfigurationExtractor {
         }
         // If the stored name doesn't match (e.g. user renamed/replaced the run config),
         // fall back to matching a SpringBootRunConfiguration by main-class file path.
-        // Configurations sharing a main class can still differ in profiles, VM args or environment,
-        // so an ambiguous match is treated as no match instead of guessing.
+        // Configurations sharing a main class can still differ in profiles, VM args or environment, so when the
+        // path match is ambiguous the user's current selection is the only honest tie-breaker.
+        val matchingByPath = allConfigurationsList.filter { checkRunConfiguration(it, projectPath) }
         val runConfig = runConfigByName
-            ?: allConfigurationsList.singleOrNull { checkRunConfiguration(it, projectPath) }
+            ?: matchingByPath.singleOrNull()
+            ?: RunManager.getInstance(settings.project).selectedConfiguration?.configuration
+                ?.takeIf { selected -> matchingByPath.any { it === selected } }
         if (runConfig is SpringBootRunConfiguration) {
             if (isJavaAgent) {
                 return RunConfigurationHolder(agentRunConfiguration = runConfig.clone())
             }
             return RunConfigurationHolder(runConfig.clone() as SpringBootRunConfiguration)
         }
-        return createDefaultRunConfiguration(settings)?.let { RunConfigurationHolder(agentRunConfiguration = it) }
+        // A stored-but-missing name means a dangling link: fabricating a configuration would silently sync with
+        // default profiles/env and hide the real cause, so report it instead (SpringBeanNativeResolver.nothingException).
+        if (settings.runConfigurationName != null) return null
+        return createDefaultRunConfiguration(settings)
+            ?.let { if (isJavaAgent) RunConfigurationHolder(agentRunConfiguration = it) else RunConfigurationHolder(it) }
     }
 
     private fun checkRunConfiguration(runConfiguration: RunConfiguration, projectPath: String): Boolean {
@@ -107,19 +119,33 @@ object RunConfigurationExtractor {
     }
 
     private fun createDefaultRunConfiguration(settings: NativeExecutionSettings): SpringBootRunConfiguration? {
-        val qualifiedMainClassName = settings.qualifiedMainClassName ?: return null
         val externalProjectMainFilePath = settings.externalProjectMainFilePath ?: return null
         val virtualFile = VfsUtil.findFile(Path(externalProjectMainFilePath), false) ?: return null
         val module = ModuleUtilCore.findModuleForFile(virtualFile, settings.project) ?: return null
+        // The stored qualified name is the `@SpringBootApplication` class, which for a Kotlin top-level `main()` is
+        // not the launchable class: running it fails with "Main method not found in class ...". Resolve the class that
+        // actually declares `main` from the linked file and keep the stored name only as a last resort.
+        val mainClassName = findRunnableMainClassName(virtualFile, settings.project)
+            ?: settings.qualifiedMainClassName
+            ?: return null
 
         val runConfiguration = SpringBootConfigurationFactory
             .createTemplateConfiguration(settings.project)
             .apply {
                 setModule(module)
-                mainClassName = qualifiedMainClassName
+                this.mainClassName = mainClassName
                 setGeneratedName()
             }
         return runConfiguration
+    }
+
+    /**
+     * `KtFile` is a [PsiClassOwner] too, so a single branch covers Java and Kotlin: for Kotlin the reported classes
+     * include the `...Kt` file facade that actually holds a top-level `main()`.
+     */
+    private fun findRunnableMainClassName(virtualFile: VirtualFile, project: Project): String? {
+        val classOwner = PsiManager.getInstance(project).findFile(virtualFile) as? PsiClassOwner ?: return null
+        return classOwner.classes.firstOrNull { PsiMethodUtil.hasMainMethod(it) }?.qualifiedName
     }
 
     private fun mapToSpringBootRunConfiguration(
