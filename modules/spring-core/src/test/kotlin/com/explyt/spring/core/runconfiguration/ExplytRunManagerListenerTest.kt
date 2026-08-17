@@ -84,6 +84,85 @@ class ExplytRunManagerListenerTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    /**
+     * Production repro: for a Kotlin top-level `main()` the configuration's main class is the file facade
+     * (`...DemoApplicationKt`), while the link stores the `@SpringBootApplication` class (`...DemoApplication`).
+     * Those identities never match, so a dangling stored name has to be repaired through the main-class file.
+     */
+    fun testKotlinFacadeLinkFollowsRenameWhenStoredNameIsDangling() {
+        val mainFilePath = configureDemoApplication()
+
+        val nativeSettings = project.getService(NativeSettings::class.java)
+        nativeSettings.linkProject(NativeProjectSettings().apply {
+            externalProjectPath = mainFilePath
+            qualifiedMainClassName = "com.demo.DemoApplication"
+            runConfigurationName = "DemoApplicationKt"
+        })
+
+        val rcSettings = addSpringBootConfiguration("Dashboard VPC")
+
+        runManager().fireRunConfigurationChanged(rcSettings)
+
+        assertEquals(
+            "Dashboard VPC",
+            nativeSettings.getLinkedProjectSettings(mainFilePath)?.runConfigurationName
+        )
+    }
+
+    /**
+     * Configurations sharing one main class differ in profiles, VM args and environment, so a stored name that
+     * still belongs to a live configuration must not be overwritten when a sibling configuration changes.
+     */
+    fun testLinkNameIsKeptWhenStoredNameBelongsToAnotherLiveConfiguration() {
+        val mainFilePath = configureDemoApplication()
+
+        val nativeSettings = project.getService(NativeSettings::class.java)
+        nativeSettings.linkProject(NativeProjectSettings().apply {
+            externalProjectPath = mainFilePath
+            qualifiedMainClassName = "com.demo.DemoApplication"
+            runConfigurationName = "Dashboard Staging"
+        })
+
+        addSpringBootConfiguration("Dashboard Staging")
+        val vpcSettings = addSpringBootConfiguration("Dashboard VPC")
+
+        runManager().fireRunConfigurationChanged(vpcSettings)
+
+        assertEquals(
+            "Dashboard Staging",
+            nativeSettings.getLinkedProjectSettings(mainFilePath)?.runConfigurationName
+        )
+    }
+
+    private fun runManager() = RunManager.getInstance(project) as RunManagerImpl
+
+    private fun configureDemoApplication(): String = myFixture.configureByText(
+        "DemoApplication.kt",
+        """
+        package com.demo
+
+        import org.springframework.boot.autoconfigure.SpringBootApplication
+        import org.springframework.boot.runApplication
+
+        @SpringBootApplication
+        class DemoApplication
+
+        fun main(args: Array<String>) {
+            runApplication<DemoApplication>(*args)
+        }
+        """.trimIndent()
+    ).virtualFile.canonicalPath!!
+
+    private fun addSpringBootConfiguration(name: String): RunnerAndConfigurationSettingsImpl {
+        val runManager = runManager()
+        val runConfiguration = SpringBootConfigurationFactory.createTemplateConfiguration(project)
+        runConfiguration.name = name
+        runConfiguration.mainClassName = "com.demo.DemoApplicationKt"
+        val rcSettings = RunnerAndConfigurationSettingsImpl(runManager, runConfiguration)
+        runManager.addConfiguration(rcSettings)
+        return rcSettings
+    }
+
     fun testNoLinkedProjectIsLeftUntouched() {
         val mainFile = myFixture.configureByText(
             "Other.kt",
