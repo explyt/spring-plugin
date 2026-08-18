@@ -125,8 +125,13 @@ This plugin uses JCEF for the OpenAPI/Swagger preview (`OpenApiCefBrowser`) and 
 - Must override `actionPerformed()` and `update()`. Must declare `getActionUpdateThread()` → `BGT` or `EDT`.
 - `update()` on BGT → no Swing access.
 - `update()` on EDT → no PSI/VFS/project model.
-- `update()` must be fast — no FS/network. Gutter-related actions must not resolve beans in `update()`.
-- Dumb-mode actions → extend `DumbAwareAction`, not `override fun isDumbAware() = true`.
+- `update()` must be fast — no FS/network. Frequently refreshed toolbar actions must also avoid PSI resolution,
+  annotation checks, and index-backed run-configuration main-class lookup; `BGT` prevents EDT blocking but does not
+  make multi-second updates acceptable.
+- Gutter-related actions must not resolve beans in `update()`.
+- Dumb-mode actions → extend `DumbAwareAction`, not `override fun isDumbAware() = true`. `DumbAwareAction` does not
+  make index-backed work safe; keep `update()` index-free and make index-dependent execution non-dumb-aware or
+  explicitly unavailable until smart mode.
 - Every `<action>` and `<group>` in `plugin.xml` must have a unique `id`. Text/description via XML or resource bundle, not hardcoded in the constructor.
 - Static children → `DefaultActionGroup`, not `ActionGroup`.
 - `ActionToolbar.setTargetComponent(panel)` is mandatory.
