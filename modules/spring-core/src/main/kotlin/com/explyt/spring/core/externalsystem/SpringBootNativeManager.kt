@@ -10,21 +10,28 @@ import com.explyt.spring.core.externalsystem.setting.*
 import com.explyt.spring.core.externalsystem.setting.RunConfigurationType.EXPLYT
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.intellij.execution.configurations.SimpleJavaParameters
+import com.intellij.openapi.externalSystem.ExternalSystemAutoImportAware
 import com.intellij.openapi.externalSystem.ExternalSystemManager
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Pair
 import com.intellij.util.Function
-import org.jetbrains.kotlin.idea.base.externalSystem.findAll
+import org.jetbrains.kotlin.idea.base.externalSystem.find
+import java.io.File
 
 class SpringBootNativeManager :
-    ExternalSystemManager<NativeProjectSettings, SettingsListener, NativeSettings, LocalSettings, NativeExecutionSettings> {
+    ExternalSystemManager<NativeProjectSettings, SettingsListener, NativeSettings, LocalSettings, NativeExecutionSettings>,
+    ExternalSystemAutoImportAware {
 
     override fun enhanceRemoteProcessing(parameters: SimpleJavaParameters) =
         throw java.lang.UnsupportedOperationException()
 
     override fun getSystemId() = SYSTEM_ID
+
+    override fun getAffectedExternalProjectPath(changedFileOrDirPath: String, project: Project): String? = null
+
+    override fun getAffectedExternalProjectFiles(projectPath: String, project: Project): List<File> = emptyList()
 
     override fun getSettingsProvider(): Function<Project, NativeSettings> {
         return Function<Project, NativeSettings> { project: Project -> project.getService(NativeSettings::class.java) }
@@ -52,7 +59,7 @@ class SpringBootNativeManager :
 
     private fun getBeanSearch(project: Project, projectPath: String): Boolean = ProjectDataManager.getInstance()
         .getExternalProjectData(project, SYSTEM_ID, projectPath)
-        ?.externalProjectStructure?.findAll(BeanSearch.KEY)?.firstOrNull()?.data?.enabled ?: false
+        ?.externalProjectStructure?.find(BeanSearch.KEY)?.data?.enabled ?: false
 
     override fun getProjectResolverClass() = SpringBeanNativeResolver::class.java
 

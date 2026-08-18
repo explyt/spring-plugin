@@ -21,6 +21,7 @@
 - fix: Validate literal collection elements alongside unresolved placeholders (#247) (#279)
 - feat: Migrate Actuator `httptrace` exposure to `httpexchanges` in Spring Boot 3 (#256)
 - fix: Avoid EDT work while searching Spring beans (#249)
+- fix: Avoid slow toolbar updates, stale auto-import tracking, and dumb-mode failures during Native Context refresh
 - feat: Add Spring Boot 4 configuration property migration inspection (#257)
 - feat: Migrate Actuator endpoint `@Nullable` to JSpecify in Spring Boot 4 (#264)
 - feat: Warn when a Spring bean injected into a Spring Boot 3 `@ConfigurationProperties` constructor lacks `@Autowired` (#255)

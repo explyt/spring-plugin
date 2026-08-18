@@ -5,9 +5,11 @@
 
 package com.explyt.spring.core.externalsystem.process
 
+import com.explyt.spring.core.externalsystem.SpringBootNativeManager
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.utils.Constants.DEBUG_SESSION_NAME
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
+import com.intellij.openapi.externalSystem.ExternalSystemAutoImportAware
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 
@@ -16,6 +18,12 @@ class SpringBootOpenProjectProviderTest : LightJavaCodeInsightFixtureTestCase() 
     override fun setUp() {
         super.setUp()
         ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).unlinkExternalProject(DEBUG_SESSION_NAME)
+    }
+
+    fun testManagerRegistersWithExternalSystemAutoImportTracker() {
+        val manager: ExternalSystemAutoImportAware = SpringBootNativeManager()
+        assertNull(manager.getAffectedExternalProjectPath("/tmp/changed-file", project))
+        assertEmpty(manager.getAffectedExternalProjectFiles("/tmp/project", project))
     }
 
     fun testFirstDebugSessionRun() {
