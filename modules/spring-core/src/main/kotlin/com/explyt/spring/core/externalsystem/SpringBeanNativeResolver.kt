@@ -40,6 +40,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.importing.ProjectResolverPolicy
@@ -171,8 +172,13 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
 
         detectMessageMapping(settings)
-        beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
-            .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
+        val springBeanData = readInSmartMode(settings.project) {
+            settings.aspectExist = LibraryClassCache.searchForLibraryClass(
+                settings.project, SpringCoreClasses.ASPECT
+            ) != null
+            beans.mapNotNull { toSpringBeanData(it, id, settings, listener) }
+        }
+        springBeanData.forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
         return projectDataNode
@@ -223,8 +229,13 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         fillBeanSearch(projectDataNode, settings)
 
         detectMessageMapping(settings)
-        beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
-            .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
+        val springBeanData = readInSmartMode(settings.project) {
+            settings.aspectExist = LibraryClassCache.searchForLibraryClass(
+                settings.project, SpringCoreClasses.ASPECT
+            ) != null
+            beans.mapNotNull { toSpringBeanData(it, id, settings, listener) }
+        }
+        springBeanData.forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
         return projectDataNode
@@ -238,11 +249,10 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     ) {
         val explytRunConfiguration = runConfigurationHolder.runConfiguration ?: throw RuntimeException()
 
-        val mainClass = ApplicationManager.getApplication()
-            .runReadAction(Computable { NativeBootUtils.getMainClass(explytRunConfiguration) })
-            ?: throw ExternalSystemException("No main class run configuration found")
-        explytRunConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
-            .runReadAction(Computable { mainClass.qualifiedName })
+        val mainClassName = readInSmartMode(explytRunConfiguration.project) {
+            NativeBootUtils.getMainClass(explytRunConfiguration)?.qualifiedName
+        } ?: throw ExternalSystemException("No main class run configuration found")
+        explytRunConfiguration.envs["explyt.spring.appClassName"] = mainClassName
         explytRunConfiguration.mainClassName = getMainClassName(modules, id, listener)
         explytRunConfiguration.classpathModifications.add(getClasspathExplytModification())
     }
@@ -287,11 +297,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     }
 
     private fun detectMessageMapping(settings: NativeExecutionSettings) {
-        val messageMappingExist = ApplicationManager.getApplication()
-            .runReadAction(Computable {
-                LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.MESSAGE_MAPPING) != null
-            })
-        settings.messageMappingExist = messageMappingExist
+        settings.messageMappingExist = readInSmartMode(settings.project) {
+            LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.MESSAGE_MAPPING) != null
+        }
     }
 
     private fun buildProject(
@@ -326,10 +334,10 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         listener: ExternalSystemTaskNotificationListener
     ): String {
         if (!Registry.`is`("explyt.spring.native.old")) return SpringBootBeanReaderStarter::class.qualifiedName!!
-        val isSpringBoot24 = ApplicationManager.getApplication()
-            .runReadAction(Computable {
-                modules.any { LibraryClassCache.searchForLibraryClass(it, SPRING_BOOT_2_4_CLASS) != null }
-            }) ?: false
+        val project = modules.firstOrNull()?.project ?: return SpringBootBeanReaderStarter::class.qualifiedName!!
+        val isSpringBoot24 = readInSmartMode(project) {
+            modules.any { LibraryClassCache.searchForLibraryClass(it, SPRING_BOOT_2_4_CLASS) != null }
+        }
         return if (isSpringBoot24) {
             SpringBootBeanReaderStarter::class.qualifiedName!!
         } else {
@@ -407,17 +415,10 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     }
 
 
-    private fun toSpringBeanDataInReadAction(
-        bean: BeanInfo,
-        id: ExternalSystemTaskId,
-        settings: NativeExecutionSettings,
-        listener: ExternalSystemTaskNotificationListener
-    ): SpringBeanData? {
-        settings.aspectExist = ApplicationManager.getApplication().runReadAction(Computable {
-            LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.ASPECT) != null
-        })
-        return ApplicationManager.getApplication()
-            .runReadAction(Computable { toSpringBeanData(bean, id, settings, listener) })
+    private fun <T> readInSmartMode(project: Project, action: () -> T): T {
+        return ReadAction.nonBlocking<T> { action() }
+            .inSmartMode(project)
+            .executeSynchronously()
     }
 
     private fun toSpringBeanData(
@@ -489,8 +490,10 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     private fun findRunConfigurationReadAction(
         projectPath: String, settings: NativeExecutionSettings?
     ): RunConfigurationHolder? {
-        return ApplicationManager.getApplication()
-            .runReadAction(Computable { RunConfigurationExtractor.findRunConfiguration(projectPath, settings) })
+        settings ?: return null
+        return readInSmartMode(settings.project) {
+            RunConfigurationExtractor.findRunConfiguration(projectPath, settings)
+        }
     }
 
     private fun getEnvironment(
