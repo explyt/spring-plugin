@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import org.gradle.api.tasks.compile.JavaCompile
-import org.gradle.api.tasks.testing.Test
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 buildscript {
@@ -42,9 +41,9 @@ subprojects {
     java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
     tasks.withType<KotlinJvmCompile>().configureEach {
-        kotlinOptions {
-            jvmTarget = java.toolchain.languageVersion.get().toString()
-            freeCompilerArgs += listOf("-Xjvm-default=all-compatibility", "-Xjsr305=strict")
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+            freeCompilerArgs.addAll("-Xjvm-default=all", "-Xjsr305=strict")
         }
     }
 
