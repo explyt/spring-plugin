@@ -15,7 +15,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
@@ -100,7 +100,7 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     @VisibleForTesting
     fun repairNow() {
         if (findDanglingSettings().isEmpty()) return
-        applyRepairs(runReadActionBlocking { computeRepairs() })
+        applyRepairs(runReadAction { computeRepairs() })
     }
 
     /**
