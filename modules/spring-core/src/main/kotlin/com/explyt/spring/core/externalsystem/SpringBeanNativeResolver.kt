@@ -179,8 +179,13 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     }
 
     private fun nothingException(settings: NativeExecutionSettings): Nothing {
-        if (settings.runConfigurationName != null) {
-            throw ExternalSystemException("No run configuration found by name: " + settings.runConfigurationName)
+        val runConfigurationName = settings.runConfigurationName
+        if (runConfigurationName != null) {
+            // The user who hits this often did not break the link: a renamed configuration can arrive from version
+            // control, so the message has to say what happened and how to recover.
+            throw ExternalSystemException(
+                SpringCoreBundle.message("explyt.external.project.sync.link.broken", runConfigurationName)
+            )
         }
         throw ExternalSystemException("No run configuration found by path: " + settings.externalProjectMainFilePath)
     }
