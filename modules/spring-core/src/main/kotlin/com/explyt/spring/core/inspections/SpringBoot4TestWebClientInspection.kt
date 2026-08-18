@@ -8,9 +8,8 @@ package com.explyt.spring.core.inspections
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isTestFiles
-import com.intellij.codeInsight.intention.AddAnnotationModCommandAction
+import com.intellij.codeInsight.intention.AddAnnotationFix
 import com.intellij.codeInspection.InspectionManager
-import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiClassType
@@ -50,8 +49,7 @@ class SpringBoot4TestWebClientInspection : Spring4UastLocalInspectionTool() {
             if (!hasInjectionPointOfType(uClass, clientFqn)) continue
             if (javaPsi.isMetaAnnotatedBy(autoConfig.annotationFqn)) continue
 
-            val fix = LocalQuickFix.from(AddAnnotationModCommandAction(autoConfig.annotationFqn, javaPsi))
-                ?: continue
+            val fix = AddAnnotationFix(autoConfig.annotationFqn, javaPsi)
             problems += manager.createProblemDescriptor(
                 highlightElement,
                 message("explyt.spring.inspection.boot4.test.webclient", autoConfig.shortName, clientShortName(clientFqn)),
