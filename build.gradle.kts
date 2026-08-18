@@ -43,7 +43,7 @@ subprojects {
     tasks.withType<KotlinJvmCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
-            freeCompilerArgs.addAll("-Xjvm-default=all-compatibility", "-Xjsr305=strict")
+            freeCompilerArgs.addAll("-Xjvm-default=all", "-Xjsr305=strict")
         }
     }
 
