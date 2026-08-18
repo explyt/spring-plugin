@@ -15,7 +15,7 @@ import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.util.AddParameterMethodAnnotationKotlinFix
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.intellij.codeInsight.intention.AddAnnotationModCommandAction
+import com.intellij.codeInsight.intention.AddAnnotationFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -85,6 +85,6 @@ class SpringBoot3ConfigPropertiesAutowiredInspection : SpringBaseUastLocalInspec
     private fun autowiredConstructorFix(parameterPsi: PsiElement, constructor: PsiMethod): LocalQuickFix? {
         if (parameterPsi is KtParameter) return AddParameterMethodAnnotationKotlinFix(AUTOWIRED)
         if (!constructor.isPhysical) return null
-        return LocalQuickFix.from(AddAnnotationModCommandAction(AUTOWIRED, constructor))
+        return AddAnnotationFix(AUTOWIRED, constructor)
     }
 }
