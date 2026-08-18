@@ -6,6 +6,7 @@
 package com.explyt.spring.core.runconfiguration
 
 import com.explyt.spring.core.action.UastModelTrackerInvalidateAction
+import com.explyt.spring.core.externalsystem.NativeLinkRepairService
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.setting.NativeSettings
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
@@ -35,6 +36,28 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
             syncLinkedProjectName(configuration)
         }
         updateProfilesFromConfiguration(settings)
+    }
+
+    /**
+     * [runConfigurationChanged] only sees renames made in this IDE. Run configurations shared through `.run` files
+     * use the configuration name as their scheme key, so a rename renames the file too: pulling that change deletes
+     * one configuration and adds another, and no `changed` event is ever published. Repairing on add — which also
+     * fires for every configuration while the project opens — is what heals links broken on another machine.
+     */
+    override fun runConfigurationAdded(settings: RunnerAndConfigurationSettings) {
+        super.runConfigurationAdded(settings)
+        NativeLinkRepairService.getInstance(project).scheduleRepair()
+    }
+
+    /**
+     * Schedules a repair, deliberately keeping the now-stale stored name: that name is what marks the link as
+     * repairable. Clearing it would make the link invisible to the repair pass and downgrade it to an *unbound* link
+     * (a `null` name means "discover by path or by the selected configuration"), so `RunConfigurationExtractor` would
+     * fabricate a default configuration instead of reporting the broken link.
+     */
+    override fun runConfigurationRemoved(settings: RunnerAndConfigurationSettings) {
+        super.runConfigurationRemoved(settings)
+        NativeLinkRepairService.getInstance(project).scheduleRepair()
     }
 
     /**
@@ -94,6 +117,9 @@ class ExplytRunManagerListener(val project: Project) : RunManagerListener {
     override fun stateLoaded(runManager: RunManager, isFirstLoadState: Boolean) {
         super.stateLoaded(runManager, isFirstLoadState)
         ProfilesService.getInstance(project).updateFromConfiguration(runManager.selectedConfiguration)
+        // A fresh clone carries linked projects but no local event history, so project open is the only chance to
+        // heal a link whose stored name was renamed away on another machine.
+        NativeLinkRepairService.getInstance(project).scheduleRepair()
     }
 
     private fun updateProfilesFromConfiguration(
