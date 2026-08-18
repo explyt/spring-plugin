@@ -1,7 +1,7 @@
 ---
 name: "coding-guard"
 schemaVersion: "v0.1"
-description: "Compact coding guidelines for the explyt/spring-plugin repository - covers process rules (think first, simplicity, surgical changes), module layout, IntelliJ Platform threading and PSI rules, inspection and test conventions, message bundles, statistics tracking, and PR hygiene. You must call this skill before any code modification in this repository."
+description: "Compact explyt/spring-plugin coding guard for branch-aware versions, IntelliJ threading and PSI, inspections, tests, Kotlin bytecode, Plugin Verifier, bundles, statistics, and PR hygiene. Use before any code modification in this repository."
 agent: null
 used-by:
   - "Code"
@@ -49,9 +49,10 @@ These apply **before** any technical rule below. Bias toward caution over speed;
 
 ## 1. Project facts (verify before assuming)
 
-- **Kotlin 2.3.20, JDK 21** (`kotlinVersion` in `gradle.properties`; JDK toolchain in root `build.gradle.kts`). Kotlin-idiomatic code is expected; latest language features are welcome.
+- **Read the active branch values before editing.** Release branches can intentionally use older Kotlin or IntelliJ Platform versions than the main branch; do not copy versions from this skill without checking `gradle.properties` and the build scripts.
+- Kotlin-idiomatic code is expected; latest language features supported by the active branch are welcome.
 - Multi-module Gradle build: each module lives in `modules/<name>/` and is configured by `modules/<name>/<name>.gradle.kts` (not `build.gradle.kts`).
-- `spring-bootstrap` is the assembly module. Run the sandbox with `./gradlew :spring-bootstrap:runIde` (the root `runIde` is intentionally disabled); build the ZIP with `./gradlew :spring-bootstrap:buildPlugin`. Default sandbox IDE is IntelliJ IDEA Community 2026.1 (`defaultIdeaVersion` / `defaultIdeaType=IC`).
+- `spring-bootstrap` is the assembly module. Run the sandbox with `./gradlew :spring-bootstrap:runIde` (the root `runIde` is intentionally disabled); build the ZIP with `./gradlew :spring-bootstrap:buildPlugin`. Read the active branch's default sandbox IDE from `defaultIdeaVersion` and `defaultIdeaType` in `gradle.properties`.
 - Package roots: `com.explyt.spring.<module>`, `com.explyt.quarkus.core`, `com.explyt.jpa`, `com.explyt.base`.
 
 ### Module boundaries
@@ -122,6 +123,14 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 - Before claiming no test covers a changed symbol, search `modules/<module>/src/test` for the class and symbol names. Run every directly covering existing test; compile-only or per-file lint is not sufficient.
 - Run `:spring-core:test` classes **sequentially**, never as concurrent Gradle invocations and preferably not as broad wildcard batches. The IntelliJ fixture shares its sandbox, indices, test-result files, and library caches; concurrent/broad runs produce environmental `NoSuchFileException`, `StorageException`, `ZipException`, and `ServiceNotReadyException` failures. Re-run the exact failing class alone before attributing such failures to a code change.
 - Add or update a test for any behavior change — PRs without tests are questioned in review.
+
+### Plugin Verifier failures caused by generated Kotlin methods
+
+- Plugin Verifier analyzes compiled bytecode, so a reported method may be a compiler-generated compatibility accessor absent from source. Confirm with `javap -p -s` before adding a source override or excluding the verifier category.
+- If the active branch compiles with `-Xjvm-default=all-compatibility`, an implementation of a Kotlin interface can receive concrete delegating methods for inherited defaults. If one default signature mentions an IntelliJ internal type, the generated method can trigger `INTERNAL_API_USAGES`.
+- Prefer the already-shipped project fix when available: commit `34e312c7` switches bundled modules to `-Xjvm-default=all`. This suppresses compatibility bridges globally and avoids source-level coupling to one IntelliJ interface. Treat the mode change as an ABI change: rebuild every bundled module together and do not mix stale jars from different modes.
+- `@JvmDefaultWithoutCompatibility` can suppress generated super-call methods on one leaf class, but use that fallback only when a project-wide mode change is inappropriate and after checking binary compatibility.
+- Keep `INTERNAL_API_USAGES` fatal. Fix the compiled reference rather than weakening `failureLevel`.
 
 ---
 
