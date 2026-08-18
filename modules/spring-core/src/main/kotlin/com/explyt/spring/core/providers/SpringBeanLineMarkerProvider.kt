@@ -77,9 +77,6 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        // Also reached directly by RelatedItemLineMarkerGotoAdapter (Navigate | Related Symbol), bypassing
-        // collectSlowLineMarkers, so the JetBrains Spring suppression has to be repeated here.
-        if (PluginIds.SPRING_JB.isEnabledWithUltimate()) return
         val processor = getLineMarkerElementProcessor(element) ?: return
 
         if (processor.isComponentClassOrBeanMethod()) {
