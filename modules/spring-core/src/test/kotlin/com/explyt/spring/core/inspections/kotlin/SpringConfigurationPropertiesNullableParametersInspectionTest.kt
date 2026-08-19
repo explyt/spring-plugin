@@ -18,6 +18,7 @@ class SpringConfigurationPropertiesNullableParametersInspectionTest : ExplytInsp
 
     @TestMetadata("nullableConstructorParameters")
     fun testNullableConstructorParameters() = doTest(SpringConfigurationPropertiesNullableParametersInspection())
+
     override fun setUp() {
         super.setUp()
         myFixture.enableInspections(SpringConfigurationPropertiesNullableParametersInspection::class.java)

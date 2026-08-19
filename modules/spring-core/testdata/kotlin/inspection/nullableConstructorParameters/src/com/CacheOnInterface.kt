@@ -9,7 +9,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 data class SomeProperties(
     var first: String?,
     var mustBeNullable: String
-)
+) {
+    constructor() : this(null, "")
+}
 
 @Component
 //@ConfigurationProperties(prefix = "some.prefix")

@@ -8,6 +8,8 @@ package com.explyt.spring.core.inspections
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringCoreClasses.AUTOWIRED
+import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.ProblemHighlightType
@@ -17,6 +19,7 @@ import com.intellij.uast.UastVisitorAdapter
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtNullableType
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UParameter
 import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.visitor.AbstractUastNonRecursiveVisitor
@@ -34,13 +37,18 @@ class SpringConfigurationPropertiesNullableParametersInspection : SpringBaseUast
         override fun visitParameter(node: UParameter): Boolean {
             if (node.lang != KotlinLanguage.INSTANCE) return true
             if (node.isFinal) return true
+            val method = node.uastParent as? UMethod ?: return true
+            if (!method.isConstructor) return true
             val ktParameter = node.sourcePsi as? KtParameter ?: return true
             if (ktParameter.hasDefaultValue()) return true
             val psiClass = node.getContainingUClass()?.javaPsi ?: return true
             if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return true
             if (ktParameter.typeReference?.typeElement is KtNullableType) return true
-            if (psiClass.constructors.firstOrNull()
-                    ?.isMetaAnnotatedBy(SpringCoreClasses.CONSTRUCTOR_BINDING) == true
+            if (psiClass.constructors.any { it.isMetaAnnotatedBy(SpringCoreClasses.CONSTRUCTOR_BINDING) }) return true
+            val singleConstructor = psiClass.constructors.singleOrNull()
+            if (singleConstructor != null
+                && !singleConstructor.isMetaAnnotatedBy(AUTOWIRED)
+                && SpringBootUtil.isAtLeastSpringBoot3(psiClass)
             ) return true
 
             problemsHolder.registerProblem(
