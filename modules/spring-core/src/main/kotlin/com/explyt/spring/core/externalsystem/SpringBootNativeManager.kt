@@ -13,11 +13,11 @@ import com.intellij.execution.configurations.SimpleJavaParameters
 import com.intellij.openapi.externalSystem.ExternalSystemAutoImportAware
 import com.intellij.openapi.externalSystem.ExternalSystemManager
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Pair
 import com.intellij.util.Function
-import org.jetbrains.kotlin.idea.base.externalSystem.find
 import java.io.File
 
 class SpringBootNativeManager :
@@ -59,7 +59,9 @@ class SpringBootNativeManager :
 
     private fun getBeanSearch(project: Project, projectPath: String): Boolean = ProjectDataManager.getInstance()
         .getExternalProjectData(project, SYSTEM_ID, projectPath)
-        ?.externalProjectStructure?.find(BeanSearch.KEY)?.data?.enabled ?: false
+        ?.externalProjectStructure
+        ?.let { ExternalSystemApiUtil.findChild(it, BeanSearch.KEY, null) }
+        ?.data?.enabled ?: false
 
     override fun getProjectResolverClass() = SpringBeanNativeResolver::class.java
 
