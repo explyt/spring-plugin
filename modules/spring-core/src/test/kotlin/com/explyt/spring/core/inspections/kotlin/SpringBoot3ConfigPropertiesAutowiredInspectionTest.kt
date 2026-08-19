@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.inspections.kotlin
 
+import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.inspections.SpringBoot3ConfigPropertiesAutowiredInspection
 import com.explyt.spring.test.ExplytInspectionKotlinTestCase
 import com.explyt.spring.test.TestLibrary
@@ -36,6 +37,41 @@ class SpringBoot3ConfigPropertiesAutowiredInspectionTest : ExplytInspectionKotli
         """.trimIndent()
         myFixture.configureByText("AppProperties.kt", code)
         myFixture.testHighlighting("AppProperties.kt")
+    }
+
+    fun testAddAutowiredToPrimaryConstructorQuickFix() {
+        @Language("kotlin") val code = """
+            import org.springframework.boot.context.properties.ConfigurationProperties
+            import org.springframework.stereotype.Service
+
+            @Service
+            class MyService
+
+            @ConfigurationProperties(prefix = "app")
+            class AppProperties(
+                val name: String?,
+                val <caret>service: MyService
+            )
+        """.trimIndent()
+        myFixture.configureByText("AppProperties.kt", code)
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.boot3.configprops.autowired.fix")
+        myFixture.launchAction(myFixture.findSingleIntention(fixName))
+
+        @Language("kotlin") val expected = """
+            import org.springframework.beans.factory.annotation.Autowired
+            import org.springframework.boot.context.properties.ConfigurationProperties
+            import org.springframework.stereotype.Service
+
+            @Service
+            class MyService
+
+            @ConfigurationProperties(prefix = "app")
+            class AppProperties @Autowired constructor(
+                val name: String?,
+                val service: MyService
+            )
+        """.trimIndent()
+        myFixture.checkResult(expected)
     }
 
     fun testBeanDependencyWithAutowiredNotReported() {

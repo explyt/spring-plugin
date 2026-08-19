@@ -12,19 +12,25 @@ import com.explyt.spring.core.SpringCoreClasses.COMPONENT
 import com.explyt.spring.core.SpringCoreClasses.CONFIGURATION_PROPERTIES
 import com.explyt.spring.core.SpringCoreClasses.CONSTRUCTOR_BINDING
 import com.explyt.spring.core.util.SpringBootUtil
-import com.explyt.util.AddParameterMethodAnnotationKotlinFix
 import com.explyt.util.ExplytPsiUtil.getHighlightRange
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.intention.AddAnnotationFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTypesUtil
+import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtPsiFactory
+import org.jetbrains.kotlin.psi.KtPrimaryConstructor
 import org.jetbrains.uast.UClass
 
 /**
@@ -83,8 +89,32 @@ class SpringBoot3ConfigPropertiesAutowiredInspection : SpringBaseUastLocalInspec
 
     /** Both fixes annotate the enclosing constructor, which is what disambiguates binding from injection. */
     private fun autowiredConstructorFix(parameterPsi: PsiElement, constructor: PsiMethod): LocalQuickFix? {
-        if (parameterPsi is KtParameter) return AddParameterMethodAnnotationKotlinFix(AUTOWIRED)
+        if (parameterPsi is KtParameter) return AddAutowiredConstructorKotlinFix(parameterPsi)
         if (!constructor.isPhysical) return null
         return AddAnnotationFix(AUTOWIRED, constructor)
+    }
+
+    private class AddAutowiredConstructorKotlinFix(
+        parameter: KtParameter
+    ) : LocalQuickFixAndIntentionActionOnPsiElement(parameter) {
+        override fun getText() = SpringCoreBundle.message(
+            "explyt.spring.inspection.boot3.configprops.autowired.fix"
+        )
+
+        override fun getFamilyName() = text
+
+        override fun invoke(
+            project: Project,
+            file: PsiFile,
+            editor: Editor?,
+            startElement: PsiElement,
+            endElement: PsiElement
+        ) {
+            val constructor = startElement.parent?.parent as? KtPrimaryConstructor ?: return
+            val annotation = constructor.addAnnotationEntry(
+                KtPsiFactory(project).createAnnotationEntry("@$AUTOWIRED")
+            )
+            ShortenReferencesFacility.getInstance().shorten(annotation)
+        }
     }
 }

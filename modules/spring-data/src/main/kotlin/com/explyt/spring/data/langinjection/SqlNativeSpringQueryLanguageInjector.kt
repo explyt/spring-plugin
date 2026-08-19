@@ -52,8 +52,9 @@ class SqlNativeSpringQueryLanguageInjector : JpqlInjectorBase() {
     private fun isStringDefinedAsSqlVariable(uElement: UElement): Boolean {
         val parent = uElement.uastParent
         // Case 1: direct string initializer
-        if (uElement is ULiteralExpression || uElement is UPolyadicExpression) {
-            if (isNotSqlString(uElement)) return false
+        val expression = uElement as? UExpression
+        if (expression is ULiteralExpression || expression is UPolyadicExpression) {
+            if (isNotSqlString(expression)) return false
         }
         if (parent is UVariable && parent.name?.hasSqlWord() ?: false && parent.uastInitializer == uElement) {
             return true
