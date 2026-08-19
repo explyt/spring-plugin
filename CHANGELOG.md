@@ -5,6 +5,10 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
+
+### Spring Web
+- fix: Resolve `MockMvc` autowired in tests as a bean provided by test auto-configuration
 
 ## 262.34.101 - 2026-08-18
 
