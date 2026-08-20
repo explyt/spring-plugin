@@ -318,11 +318,15 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
 
     private fun isBeanExist(module: Module, psiClass: PsiClass): Boolean {
         if (SpringCoreUtil.isComponentCandidate(psiClass)) return true
+        if (psiClass.isSpringTestClass()) return true
 
         return SpringSearchServiceFacade.getInstance(module.project).getAllActiveBeans(module).asSequence()
             .filter { it.psiClass.qualifiedName == psiClass.qualifiedName }
             .toList().isNotEmpty()
     }
+
+    private fun PsiClass.isSpringTestClass(): Boolean =
+        isMetaAnnotatedBy(SpringCoreClasses.CONTEXT_CONFIGURATION)
 
     private fun getProblemByMethodWithoutParams(
         method: PsiMethod,

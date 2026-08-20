@@ -15,10 +15,12 @@
     </extensionPoints>
 
 
-    <extensions defaultExtensionNs="com.explyt.spring.web">
+    <extensions defaultExtensionNs="com.explyt.spring.core">
         <additionalBeansDiscoverer
                 implementation="com.explyt.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
+    </extensions>
 
+    <extensions defaultExtensionNs="com.explyt.spring.web">
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebControllerLoader"/>
         <springWebEndpointsLoader
