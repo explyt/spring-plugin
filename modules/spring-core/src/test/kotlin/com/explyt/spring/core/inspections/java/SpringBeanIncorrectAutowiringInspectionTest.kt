@@ -82,4 +82,27 @@ public class DemoApplication {
         // descriptor must be anchored in ChildService.java while ChildService.java is inspected.
         myFixture.testHighlighting("ChildService.java")
     }
+
+    fun testAutowiredInContextConfigurationTestClass() {
+        @Language("java") val code = """
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+
+@${SpringCoreClasses.COMPONENT}
+class SomeService {
+}
+
+@ContextConfiguration(classes = SomeService.class)
+public class SomeServiceTest {
+    @Autowired
+    SomeService service;
+}
+            """
+        myFixture.configureByText("SomeServiceTest.java", code.trimIndent())
+        // A test class is not a bean, but Spring injects into it, so @Autowired must not be reported
+        // as "Must be defined in valid Spring bean". @SpringBootTest was already accepted through its
+        // @BootstrapWith meta-annotation; plain @ContextConfiguration was not.
+        myFixture.testHighlighting("SomeServiceTest.java")
+    }
 }

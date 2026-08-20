@@ -45,4 +45,25 @@ class DemoApplication {
         myFixture.configureByText("DemoApplication.kt", code.trimIndent())
         myFixture.testHighlighting("DemoApplication.kt")
     }
+
+    fun testAutowiredInContextConfigurationTestClass() {
+        @Language("kotlin") val code = """
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.ContextConfiguration
+
+@${SpringCoreClasses.COMPONENT}
+class SomeService
+
+@ContextConfiguration(classes = [SomeService::class])
+class SomeServiceTest {
+    @Autowired
+    lateinit var service: SomeService
+}
+            """
+        myFixture.configureByText("SomeServiceTest.kt", code.trimIndent())
+        // A test class is not a bean, but Spring injects into it, so @Autowired must not be reported
+        // as "Must be defined in valid Spring bean". @SpringBootTest was already accepted through its
+        // @BootstrapWith meta-annotation; plain @ContextConfiguration was not.
+        myFixture.testHighlighting("SomeServiceTest.kt")
+    }
 }

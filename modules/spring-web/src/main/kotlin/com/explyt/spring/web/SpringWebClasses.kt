@@ -32,6 +32,7 @@ object SpringWebClasses {
     const val RETROFIT_HTTP = "retrofit2.http.HTTP"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
+    const val MOCK_MVC = "org.springframework.test.web.servlet.MockMvc"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"
     const val WEB_TEST_CLIENT = "org.springframework.test.web.reactive.server.WebTestClient"
     const val WEB_TEST_CLIENT_URI_SPEC = "$WEB_TEST_CLIENT.UriSpec"
