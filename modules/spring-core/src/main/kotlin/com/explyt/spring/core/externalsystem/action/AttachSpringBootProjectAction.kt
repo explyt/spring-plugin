@@ -71,9 +71,17 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
 
             val mainClass = ApplicationManager.getApplication().runReadAction(
                 Computable { NativeBootUtils.getMainClass(selectedRunConfiguration) }
-            ) ?: return
-            val mainFile = mainClass.containingFile?.virtualFile ?: return
-            val canonicalPath = mainFile.canonicalPath ?: return
+            )
+            val mainFile = mainClass?.containingFile?.virtualFile
+            val canonicalPath = mainFile?.canonicalPath
+            if (mainClass == null || mainFile == null || canonicalPath == null) {
+                // The toolbar action is enabled from a cheap stored-name check, so an unresolvable main class must be
+                // reported here instead of failing silently.
+                ApplicationManager.getApplication().invokeLater {
+                    externalSystemNotification(message("explyt.external.project.run.config.required.message"), project)
+                }
+                return
+            }
             if (ExternalSystemApiUtil.getSettings(project, SYSTEM_ID).getLinkedProjectSettings(canonicalPath) != null) {
                 ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
                     ExternalSystemUtil.refreshProject(canonicalPath, ImportSpecBuilder(project, SYSTEM_ID))
