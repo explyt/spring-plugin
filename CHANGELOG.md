@@ -43,6 +43,7 @@
 - fix: Resolve Kotlin `const val` package names in component-scan annotations
 - fix: Resolve `@Value` placeholder keys whose default is a SpEL or nested placeholder expression, such as `${my.key:#{null}}`
 - fix: Resolve property keys consumed only from a dependency module (#276)
+- fix: Stop resolving PSI in the Spring Boot toolbar action update, which caused multi-second action-update delays
 
 ### Spring Data
 - fix: Fail closed on stale PSI in SQL injector (#235) (#242)
