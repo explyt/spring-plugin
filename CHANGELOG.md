@@ -9,7 +9,7 @@
 
 ### Spring Web
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
-- fix: Resolve `MockMvc` autowired in tests as a bean provided by test auto-configuration
+- fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
 
 ## 262.34.101 - 2026-08-18
 

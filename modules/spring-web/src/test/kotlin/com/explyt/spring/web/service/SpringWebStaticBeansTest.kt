@@ -41,5 +41,9 @@ class SpringWebStaticBeansTest : ExplytJavaLightTestCase() {
             "MockMvc missing, discovered: $discovered",
             discovered.contains("org.springframework.test.web.servlet.MockMvc")
         )
+        assertTrue(
+            "WebTestClient missing, discovered: $discovered",
+            discovered.contains("org.springframework.test.web.reactive.server.WebTestClient")
+        )
     }
 }

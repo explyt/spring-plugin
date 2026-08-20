@@ -53,6 +53,7 @@ class SpringWebAdditionalBeansDiscoverer : AdditionalBeansDiscoverer() {
      */
     private fun testClientBeans(module: Module): List<PsiBean> = listOfNotNull(
         getStaticBean(module, SpringWebClasses.MOCK_MVC, "mockMvc"),
+        getStaticBean(module, SpringWebClasses.WEB_TEST_CLIENT, "webTestClient"),
     )
 
 }
