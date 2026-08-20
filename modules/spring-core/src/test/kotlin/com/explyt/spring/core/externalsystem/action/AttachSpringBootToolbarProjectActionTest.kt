@@ -43,6 +43,10 @@ class AttachSpringBootToolbarProjectActionTest : ExplytKotlinLightTestCase() {
         assertFalse(updatePresentation(configuration).isVisible)
     }
 
+    /**
+     * Attaching resolves the main class through indexes, so during indexing the button must stay in place and only
+     * become inert: a main-toolbar button that disappears on every indexing pass shifts the whole toolbar.
+     */
     fun testUpdateKeepsButtonVisibleButDisabledInDumbMode() {
         val configuration = SpringBootConfigurationFactory.createTemplateConfiguration(project).apply {
             mainClassName = "missing.Application"
@@ -64,11 +68,10 @@ class AttachSpringBootToolbarProjectActionTest : ExplytKotlinLightTestCase() {
         manager.addConfiguration(settings)
         manager.selectedConfiguration = settings
         try {
-            val action = AttachSpringBootToolbarProjectAction()
             TestActionEvent.createTestEvent(
-                action,
+                AttachSpringBootToolbarProjectAction(),
                 SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
-            ).also(action::update).presentation
+            ).also { AttachSpringBootToolbarProjectAction().update(it) }.presentation
         } finally {
             manager.selectedConfiguration = null
             manager.removeConfiguration(settings)
