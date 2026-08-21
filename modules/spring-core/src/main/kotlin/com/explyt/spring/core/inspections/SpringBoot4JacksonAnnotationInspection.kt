@@ -28,7 +28,9 @@ import org.jetbrains.uast.UClass
 class SpringBoot4JacksonAnnotationInspection : Spring4UastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return super.isAvailableForFile(file) && isAnyClassAvailable(file, *RENAMES.keys.toTypedArray())
+        // Only the replacements have to be resolvable: the Boot 4 upgrade renames the legacy annotations, and the
+        // stale source that still uses them is exactly what must be reported.
+        return super.isAvailableForFile(file) && isAnyClassAvailable(file, *RENAMES.values.toTypedArray())
     }
 
     override fun checkClass(
@@ -37,14 +39,15 @@ class SpringBoot4JacksonAnnotationInspection : Spring4UastLocalInspectionTool() 
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor?> {
         val problems = mutableListOf<ProblemDescriptor>()
-        for ((oldFqn, newFqn) in RENAMES) {
-            val uAnnotation = uClass.uAnnotations.firstOrNull { it.qualifiedName == oldFqn } ?: continue
+        for (uAnnotation in uClass.uAnnotations) {
+            val oldFqn = legacyAnnotationFqn(uAnnotation, RENAMES.keys) ?: continue
+            val newFqn = RENAMES[oldFqn] ?: continue
             val highlightElement = uAnnotation.sourcePsi ?: continue
             val newShortName = newFqn.substringAfterLast('.')
 
-            // Preserve the declared attributes by reconstructing them on the new annotation.
-            val javaAnnotation = uClass.javaPsi.modifierList?.findAnnotation(oldFqn)
-            val attributes = reconstructAttributes(uClass.javaPsi, newFqn, javaAnnotation)
+            // Preserve the declared attributes by reconstructing them on the new annotation. The annotation's own
+            // `javaPsi` is used rather than a lookup by FQN on the owner, which a removed legacy class cannot match.
+            val attributes = reconstructAttributes(uClass.javaPsi, newFqn, uAnnotation.javaPsi)
             val fix = RewriteAnnotationQuickFix(newFqn, uClass.javaPsi, attributes, oldFqn)
 
             problems += manager.createProblemDescriptor(

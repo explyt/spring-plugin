@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Report the `BootstrapRegistry`, `@JsonComponent`/`@JsonMixin` and `@EntityScan` migrations when the legacy symbol no longer resolves after a Spring Boot 4 upgrade
 - fix: Report the `@MockBean` / `@SpyBean` migration when the legacy annotation no longer resolves after a Spring Boot 4 upgrade
 - feat: Report the renamed `management.endpoint.httptrace.*` configuration keys in Spring Boot 3, with a quick-fix to `httpexchanges`
 
