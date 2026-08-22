@@ -43,7 +43,7 @@ class SpringBoot4JacksonAnnotationInspection : Spring4UastLocalInspectionTool() 
             val highlightElement = uAnnotation.sourcePsi ?: continue
             val newShortName = newFqn.substringAfterLast('.')
 
-            val fix = ReplaceAnnotationQuickFix(newFqn)
+            val fix = ReplaceAnnotationQuickFix(newFqn, oldFqn = oldFqn)
 
             problems += manager.createProblemDescriptor(
                 highlightElement,

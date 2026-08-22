@@ -45,7 +45,7 @@ class SpringBoot4EntityScanPackageInspection : Spring4UastLocalInspectionTool() 
                 highlightElement,
                 message("explyt.spring.inspection.boot4.entityscan"),
                 isOnTheFly,
-                arrayOf<LocalQuickFix>(ReplaceAnnotationQuickFix(NEW_ENTITY_SCAN)),
+                arrayOf<LocalQuickFix>(ReplaceAnnotationQuickFix(NEW_ENTITY_SCAN, oldFqn = OLD_ENTITY_SCAN)),
                 ProblemHighlightType.LIKE_DEPRECATED
             )
         )
