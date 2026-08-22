@@ -403,6 +403,22 @@ object PropertyUtil {
         return null
     }
 
+    /**
+     * The element type of a list or array property, or `null` for any other property.
+     *
+     * A Kotlin `List<T>` reaches us as a wildcard light type (`java.util.List<? extends T>`), so the variance
+     * keyword is dropped to keep the result a plain qualified name.
+     */
+    fun getCollectionElementType(property: ConfigurationProperty): String? {
+        val propertyType = property.type ?: return null
+        val elementType = when {
+            property.isArray() -> propertyType.substringBefore("[]")
+            property.isList() -> propertyType.substringAfter("<", "").substringBeforeLast(">")
+            else -> return null
+        }
+        return elementType.substringAfterLast(' ').takeIf { it.isNotBlank() }
+    }
+
     private fun getClassNameFromInnerTypeInMap(propertyType: String): String? {
         val keyType = propertyType.substringAfter(",").substringBeforeLast(">")
         if (keyType != propertyType) {
@@ -657,7 +673,7 @@ object PropertyUtil {
         }
     }
 
-    fun getMethodsTypeByMap(module: Module, valueType: String, prefix: String): List<PsiMember> {
+    fun getMembersOfType(module: Module, valueType: String, prefix: String): List<PsiMember> {
         val result = hashMapOf<String, ConfigurationProperty>()
         val project = module.project
         val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
