@@ -19,6 +19,7 @@ import com.explyt.spring.core.completion.properties.PropertyType
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.renderer.PropertyRenderer
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
+import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.properties.references.MetaConfigurationKeyReference
 import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
 import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
@@ -75,10 +76,16 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         }
         if (keyHint == null) {
             val property = PropertyUtil.configurationProperty(module, propertyKey)
-            return if (property?.isMap() == true) {
-                getMapValueReferences(element, module, propertyKey, property)
-            } else {
-                arrayOf(
+            return when {
+                property?.isMap() == true -> getMapValueReferences(element, module, propertyKey, property)
+
+                propertyKey.contains(ConfigurationPropertyListElementReference.INDEX_START) -> arrayOf(
+                    ConfigurationPropertyListElementReference(element, module, propertyKey),
+                    ConfigurationPropertyKeyReference(element, module, propertyKey),
+                    MetaConfigurationKeyReference(element, module, propertyKey)
+                )
+
+                else -> arrayOf(
                     ConfigurationPropertyKeyReference(element, module, propertyKey),
                     MetaConfigurationKeyReference(element, module, propertyKey)
                 )
