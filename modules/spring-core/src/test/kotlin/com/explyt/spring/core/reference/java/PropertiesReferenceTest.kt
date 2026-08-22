@@ -7,6 +7,7 @@ package com.explyt.spring.core.reference.java
 
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
+import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.test.ExplytJavaLightTestCase
@@ -364,5 +365,37 @@ logging.level.org.hibernate.SQL=deb<caret>ug
         val resolveResult = multiResolve[0]
         val name = (resolveResult.element as? JsonPropertyImpl)?.name
         assertEquals(name, "value")
+    }
+
+    fun testRefKeyListElementMember() {
+        myFixture.copyFileToProject("S3LogsProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "ingest.s3-logs.sources[0].ena<caret>bled=true"
+        )
+
+        assertEquals("setEnabled", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementCollectionItself() {
+        myFixture.copyFileToProject("S3LogsProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "ingest.s3-logs.sour<caret>ces[0]=first"
+        )
+
+        assertEquals("setSources", resolveListElementReferenceName())
+    }
+
+    private fun resolveListElementReferenceName(): String? {
+        val reference = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references
+            ?.filterIsInstance<ConfigurationPropertyListElementReference>()
+            ?.singleOrNull()
+        assertNotNull("list element reference must be contributed", reference)
+
+        return reference!!.multiResolve(true)
+            .singleOrNull()
+            ?.let { (it.element as? ConfigKeyPsiElement)?.name }
     }
 }

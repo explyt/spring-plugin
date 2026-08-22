@@ -7,6 +7,7 @@ package com.explyt.spring.core.reference.kotlin
 
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
+import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
@@ -141,6 +142,83 @@ main:
         val resolveResult = multiResolve[0]
         val name = (resolveResult.element as? PsiEnumConstant)?.name
         assertEquals(name, "TUESDAY")
+    }
+
+    fun testRefKeyListElementMember() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3-logs:
+    sources:
+      - ena<caret>bled: true
+            """.trimIndent()
+        )
+
+        assertEquals("setEnabled", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementMemberCamelCaseWritten() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3Logs:
+    sources:
+      - ena<caret>bled: true
+            """.trimIndent()
+        )
+
+        assertEquals("setEnabled", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementPicksTheMatchingMember() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3-logs:
+    sources:
+      - na<caret>me: first
+        enabled: true
+            """.trimIndent()
+        )
+
+        assertEquals("setName", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementUnknownMemberIsNotResolved() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3-logs:
+    sources:
+      - unkn<caret>own: first
+            """.trimIndent()
+        )
+
+        // The reference is still contributed, so the empty result proves the member lookup rejected the key
+        // rather than the reference never having been created.
+        assertEmpty(listElementReference().multiResolve(true).toList())
+    }
+
+    private fun resolveListElementReferenceName(): String? = listElementReference()
+        .multiResolve(true)
+        .singleOrNull()
+        ?.let { (it.element as? ConfigKeyPsiElement)?.name }
+
+    private fun listElementReference(): ConfigurationPropertyListElementReference {
+        val reference = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references
+            ?.filterIsInstance<ConfigurationPropertyListElementReference>()
+            ?.singleOrNull()
+        assertNotNull("list element reference must be contributed", reference)
+        return reference!!
     }
 
 }

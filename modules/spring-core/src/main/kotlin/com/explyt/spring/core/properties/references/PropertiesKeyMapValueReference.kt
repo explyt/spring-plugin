@@ -51,7 +51,7 @@ class PropertiesKeyMapValueReference(
         val valueType = PropertyUtil.getValueClassNameInMap(property.type) ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
-        val methodsTypeByMap = PropertyUtil.getMethodsTypeByMap(module, valueType, propertyMapValue)
+        val methodsTypeByMap = PropertyUtil.getMembersOfType(module, valueType, propertyMapValue)
         if (methodsTypeByMap.isEmpty()) {
             return baseMapResolve(project)
         }
