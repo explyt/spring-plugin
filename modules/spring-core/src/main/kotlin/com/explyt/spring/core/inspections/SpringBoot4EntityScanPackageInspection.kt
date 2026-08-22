@@ -6,14 +6,12 @@
 package com.explyt.spring.core.inspections
 
 import com.explyt.spring.core.SpringCoreBundle.message
-import com.explyt.spring.core.inspections.quickfix.RewriteAnnotationQuickFix
+import com.explyt.spring.core.inspections.quickfix.ReplaceAnnotationQuickFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiNameValuePair
 import org.jetbrains.uast.UClass
 
 /**
@@ -28,7 +26,9 @@ import org.jetbrains.uast.UClass
 class SpringBoot4EntityScanPackageInspection : Spring4UastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return super.isAvailableForFile(file) && isClassAvailable(file, OLD_ENTITY_SCAN)
+        // Only the replacement has to be resolvable: the Boot 4 upgrade relocates the legacy annotation, and the
+        // stale source that still references the old package is exactly what must be reported.
+        return super.isAvailableForFile(file) && isClassAvailable(file, NEW_ENTITY_SCAN)
     }
 
     override fun checkClass(
@@ -36,42 +36,25 @@ class SpringBoot4EntityScanPackageInspection : Spring4UastLocalInspectionTool() 
         manager: InspectionManager,
         isOnTheFly: Boolean
     ): Array<out ProblemDescriptor?> {
-        val uAnnotation = uClass.uAnnotations.firstOrNull { it.qualifiedName == OLD_ENTITY_SCAN } ?: return emptyArray()
+        val uAnnotation = uClass.uAnnotations
+            .firstOrNull { legacyAnnotationFqn(it, LEGACY_FQNS) != null } ?: return emptyArray()
         val highlightElement = uAnnotation.sourcePsi ?: return emptyArray()
-        if (!isTargetResolvable(uClass)) return emptyArray()
 
-        val attributes = reconstructAttributes(uClass)
         return arrayOf(
             manager.createProblemDescriptor(
                 highlightElement,
                 message("explyt.spring.inspection.boot4.entityscan"),
                 isOnTheFly,
-                arrayOf<LocalQuickFix>(RewriteAnnotationQuickFix(NEW_ENTITY_SCAN, uClass.javaPsi, attributes, OLD_ENTITY_SCAN)),
+                arrayOf<LocalQuickFix>(ReplaceAnnotationQuickFix(NEW_ENTITY_SCAN, oldFqn = OLD_ENTITY_SCAN)),
                 ProblemHighlightType.LIKE_DEPRECATED
             )
         )
     }
 
-    private fun isTargetResolvable(uClass: UClass): Boolean {
-        return JavaPsiFacade.getInstance(uClass.javaPsi.project)
-            .findClass(NEW_ENTITY_SCAN, uClass.javaPsi.resolveScope) != null
-    }
-
-    private fun reconstructAttributes(uClass: UClass): Array<PsiNameValuePair> {
-        val oldAnnotation = uClass.javaPsi.modifierList?.findAnnotation(OLD_ENTITY_SCAN)
-        val argsText = oldAnnotation?.parameterList?.attributes
-            ?.takeIf { it.isNotEmpty() }
-            ?.joinToString(", ") { it.text }
-            ?: return PsiNameValuePair.EMPTY_ARRAY
-        return runCatching {
-            JavaPsiFacade.getInstance(uClass.javaPsi.project).elementFactory
-                .createAnnotationFromText("@$NEW_ENTITY_SCAN($argsText)", uClass.javaPsi)
-                .parameterList.attributes
-        }.getOrDefault(PsiNameValuePair.EMPTY_ARRAY)
-    }
-
     companion object {
         const val OLD_ENTITY_SCAN = "org.springframework.boot.autoconfigure.domain.EntityScan"
         const val NEW_ENTITY_SCAN = "org.springframework.boot.persistence.autoconfigure.EntityScan"
+
+        private val LEGACY_FQNS = setOf(OLD_ENTITY_SCAN)
     }
 }
