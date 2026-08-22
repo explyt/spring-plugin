@@ -88,6 +88,32 @@ class SpringBoot4EntityScanPackageUnresolvedImportTest : ExplytInspectionJavaTes
         assertEmpty("an unrelated annotation must not be reported: $messages", messages)
     }
 
+    fun testQuickFixReplacesUnresolvedAnnotation() {
+        myFixture.configureByText(
+            "AppConfig.java",
+            """
+            import org.springframework.boot.autoconfigure.domain.EntityScan;
+
+            @Entity<caret>Scan("com.example.domain")
+            public class AppConfig { }
+            """.trimIndent()
+        )
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.replace.annotation.fix", "EntityScan")
+        val intention = myFixture.availableIntentions.firstOrNull { it.text == fixName }
+        requireNotNull(intention) {
+            "EntityScan migration fix not found; available: " + myFixture.availableIntentions.map { it.text }
+        }
+        myFixture.launchAction(intention)
+        val result = myFixture.file.text
+        assertTrue(
+            "new annotation should be applied:\n$result",
+            result.contains("@EntityScan") || result.contains("@org.springframework.boot.persistence.autoconfigure.EntityScan")
+        )
+        assertTrue("new import should be added:\n$result", result.contains("org.springframework.boot.persistence.autoconfigure.EntityScan"))
+        assertTrue("attribute should be preserved:\n$result", result.contains("\"com.example.domain\""))
+        assertFalse("old annotation should be replaced:\n$result", result.contains("org.springframework.boot.autoconfigure.domain.EntityScan"))
+    }
+
     private fun assertReported(code: String) {
         val messages = migrationMessages(code)
         assertTrue("expected '$MESSAGE', got: $messages", messages.contains(MESSAGE))

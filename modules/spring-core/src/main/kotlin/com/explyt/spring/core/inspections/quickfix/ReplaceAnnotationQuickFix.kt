@@ -14,6 +14,7 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
 import org.jetbrains.kotlin.idea.base.psi.replaced
@@ -61,8 +62,11 @@ class ReplaceAnnotationQuickFix(
         }
         val newAnnotation = JavaPsiFacade.getElementFactory(project)
             .createAnnotationFromText(annotationText(arguments), annotation)
+        val styleManager = JavaCodeStyleManager.getInstance(project)
+        val javaFile = annotation.containingFile as? PsiJavaFile
         val replaced = annotation.replace(newAnnotation)
-        JavaCodeStyleManager.getInstance(project).shortenClassReferences(replaced)
+        styleManager.shortenClassReferences(replaced)
+        javaFile?.let(styleManager::optimizeImports)
     }
 
     private fun replaceKotlinAnnotation(project: Project, entry: KtAnnotationEntry) {

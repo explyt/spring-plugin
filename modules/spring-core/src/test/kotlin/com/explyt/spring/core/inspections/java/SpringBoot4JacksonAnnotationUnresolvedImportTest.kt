@@ -111,6 +111,56 @@ class SpringBoot4JacksonAnnotationUnresolvedImportTest : ExplytInspectionJavaTes
         assertEmpty("an unrelated annotation must not be reported: $messages", messages)
     }
 
+    fun testQuickFixReplacesUnresolvedJsonComponent() {
+        myFixture.configureByText(
+            "MyComponent.java",
+            """
+            import org.springframework.boot.jackson.JsonComponent;
+
+            @Json<caret>Component(String.class)
+            public class MyComponent { }
+            """.trimIndent()
+        )
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.replace.annotation.fix", "JacksonComponent")
+        val intention = myFixture.availableIntentions.firstOrNull { it.text == fixName }
+        requireNotNull(intention) {
+            "JacksonComponent migration fix not found; available: " + myFixture.availableIntentions.map { it.text }
+        }
+        myFixture.launchAction(intention)
+        val result = myFixture.file.text
+        assertTrue(
+            "new annotation should be applied:\n$result",
+            result.contains("@JacksonComponent") || result.contains("@org.springframework.boot.jackson.JacksonComponent")
+        )
+        assertTrue("attribute should be preserved:\n$result", result.contains("String.class"))
+        assertFalse("old annotation should be replaced:\n$result", result.contains("@JsonComponent"))
+    }
+
+    fun testQuickFixReplacesUnresolvedJsonMixin() {
+        myFixture.configureByText(
+            "MyMixin.java",
+            """
+            import org.springframework.boot.jackson.JsonMixin;
+
+            @Json<caret>Mixin(String.class)
+            public class MyMixin { }
+            """.trimIndent()
+        )
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.replace.annotation.fix", "JacksonMixin")
+        val intention = myFixture.availableIntentions.firstOrNull { it.text == fixName }
+        requireNotNull(intention) {
+            "JacksonMixin migration fix not found; available: " + myFixture.availableIntentions.map { it.text }
+        }
+        myFixture.launchAction(intention)
+        val result = myFixture.file.text
+        assertTrue(
+            "new annotation should be applied:\n$result",
+            result.contains("@JacksonMixin") || result.contains("@org.springframework.boot.jackson.JacksonMixin")
+        )
+        assertTrue("attribute should be preserved:\n$result", result.contains("String.class"))
+        assertFalse("old annotation should be replaced:\n$result", result.contains("@JsonMixin"))
+    }
+
     private fun assertReported(code: String, expectedMessage: String) {
         val messages = migrationMessages(code)
         assertTrue("expected '$expectedMessage', got: $messages", messages.contains(expectedMessage))

@@ -6,13 +6,11 @@
 package com.explyt.spring.core.inspections
 
 import com.explyt.spring.core.SpringCoreBundle.message
-import com.explyt.spring.core.inspections.quickfix.RewriteAnnotationQuickFix
+import com.explyt.spring.core.inspections.quickfix.ReplaceAnnotationQuickFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.psi.PsiAnnotation
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiFile
 import org.jetbrains.uast.UClass
 
@@ -45,10 +43,7 @@ class SpringBoot4JacksonAnnotationInspection : Spring4UastLocalInspectionTool() 
             val highlightElement = uAnnotation.sourcePsi ?: continue
             val newShortName = newFqn.substringAfterLast('.')
 
-            // Preserve the declared attributes by reconstructing them on the new annotation. The annotation's own
-            // `javaPsi` is used rather than a lookup by FQN on the owner, which a removed legacy class cannot match.
-            val attributes = reconstructAttributes(uClass.javaPsi, newFqn, uAnnotation.javaPsi)
-            val fix = RewriteAnnotationQuickFix(newFqn, uClass.javaPsi, attributes, oldFqn)
+            val fix = ReplaceAnnotationQuickFix(newFqn)
 
             problems += manager.createProblemDescriptor(
                 highlightElement,
@@ -59,21 +54,6 @@ class SpringBoot4JacksonAnnotationInspection : Spring4UastLocalInspectionTool() 
             )
         }
         return problems.toTypedArray()
-    }
-
-    private fun reconstructAttributes(
-        owner: PsiClass,
-        newFqn: String,
-        oldAnnotation: PsiAnnotation?
-    ): Array<com.intellij.psi.PsiNameValuePair> {
-        val argsText = oldAnnotation?.parameterList?.attributes
-            ?.takeIf { it.isNotEmpty() }
-            ?.joinToString(", ") { it.text }
-            ?: return com.intellij.psi.PsiNameValuePair.EMPTY_ARRAY
-        return runCatching {
-            val factory = com.intellij.psi.JavaPsiFacade.getInstance(owner.project).elementFactory
-            factory.createAnnotationFromText("@$newFqn($argsText)", owner).parameterList.attributes
-        }.getOrDefault(com.intellij.psi.PsiNameValuePair.EMPTY_ARRAY)
     }
 
     companion object {

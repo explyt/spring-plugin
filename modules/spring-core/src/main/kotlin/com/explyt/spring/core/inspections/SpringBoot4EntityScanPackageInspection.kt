@@ -6,15 +6,12 @@
 package com.explyt.spring.core.inspections
 
 import com.explyt.spring.core.SpringCoreBundle.message
-import com.explyt.spring.core.inspections.quickfix.RewriteAnnotationQuickFix
+import com.explyt.spring.core.inspections.quickfix.ReplaceAnnotationQuickFix
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiNameValuePair
 import org.jetbrains.uast.UClass
 
 /**
@@ -43,32 +40,15 @@ class SpringBoot4EntityScanPackageInspection : Spring4UastLocalInspectionTool() 
             .firstOrNull { legacyAnnotationFqn(it, LEGACY_FQNS) != null } ?: return emptyArray()
         val highlightElement = uAnnotation.sourcePsi ?: return emptyArray()
 
-        val attributes = reconstructAttributes(uClass, uAnnotation.javaPsi)
         return arrayOf(
             manager.createProblemDescriptor(
                 highlightElement,
                 message("explyt.spring.inspection.boot4.entityscan"),
                 isOnTheFly,
-                arrayOf<LocalQuickFix>(RewriteAnnotationQuickFix(NEW_ENTITY_SCAN, uClass.javaPsi, attributes, OLD_ENTITY_SCAN)),
+                arrayOf<LocalQuickFix>(ReplaceAnnotationQuickFix(NEW_ENTITY_SCAN)),
                 ProblemHighlightType.LIKE_DEPRECATED
             )
         )
-    }
-
-    /**
-     * The annotation's own `javaPsi` is used rather than a lookup by FQN on the owner, which a relocated legacy class
-     * cannot match once it no longer resolves.
-     */
-    private fun reconstructAttributes(uClass: UClass, oldAnnotation: PsiAnnotation?): Array<PsiNameValuePair> {
-        val argsText = oldAnnotation?.parameterList?.attributes
-            ?.takeIf { it.isNotEmpty() }
-            ?.joinToString(", ") { it.text }
-            ?: return PsiNameValuePair.EMPTY_ARRAY
-        return runCatching {
-            JavaPsiFacade.getInstance(uClass.javaPsi.project).elementFactory
-                .createAnnotationFromText("@$NEW_ENTITY_SCAN($argsText)", uClass.javaPsi)
-                .parameterList.attributes
-        }.getOrDefault(PsiNameValuePair.EMPTY_ARRAY)
     }
 
     companion object {

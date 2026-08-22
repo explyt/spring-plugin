@@ -123,31 +123,48 @@ class SpringBoot4JacksonAnnotationUnresolvedImportTest : ExplytInspectionKotlinT
         assertEmpty("an unrelated annotation must not be reported: $messages", messages)
     }
 
-    /**
-     * `RewriteAnnotationQuickFix` rejects a `LightElement` owner, and a Kotlin class reaches it as `KtLightClass`,
-     * so the reported problem carries no applicable fix. The test pins the current behaviour: if a Kotlin-aware fix
-     * is added later this assertion fails and has to be replaced by a result assertion.
-     *
-     * The fix is identified by the "Annotate" wording of `AddAnnotationPsiFix`; matching on the annotation name
-     * instead would also catch the platform's own `Import class` / `Create annotation` intentions.
-     */
-    fun testQuickFixUnavailableOnKotlin() {
+    fun testQuickFixReplacesUnresolvedJsonComponent() {
         myFixture.configureByText(
             "MyComponent.kt",
             """
             import org.springframework.boot.jackson.JsonComponent
-            
-            @Json<caret>Component
+
+            @Json<caret>Component(String::class)
             class MyComponent
             """.trimIndent()
         )
-        val migrationIntentions = myFixture.availableIntentions
-            .map { it.text }
-            .filter { it.contains("Annotate") }
-        assertEmpty(
-            "unexpected migration fix on Kotlin - the LightElement limitation may be gone: $migrationIntentions",
-            migrationIntentions
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.replace.annotation.fix", "JacksonComponent")
+        val intention = myFixture.availableIntentions.firstOrNull { it.text == fixName }
+        requireNotNull(intention) {
+            "JacksonComponent migration fix not found; available: " + myFixture.availableIntentions.map { it.text }
+        }
+        myFixture.launchAction(intention)
+        val result = myFixture.file.text
+        assertTrue("new annotation should be applied:\n$result", result.contains("@JacksonComponent"))
+        assertTrue("attribute should be preserved:\n$result", result.contains("String::class"))
+        assertFalse("old annotation should be replaced:\n$result", result.contains("@JsonComponent"))
+    }
+
+    fun testQuickFixReplacesUnresolvedJsonMixin() {
+        myFixture.configureByText(
+            "MyMixin.kt",
+            """
+            import org.springframework.boot.jackson.JsonMixin
+
+            @Json<caret>Mixin(String::class)
+            class MyMixin
+            """.trimIndent()
         )
+        val fixName = SpringCoreBundle.message("explyt.spring.inspection.replace.annotation.fix", "JacksonMixin")
+        val intention = myFixture.availableIntentions.firstOrNull { it.text == fixName }
+        requireNotNull(intention) {
+            "JacksonMixin migration fix not found; available: " + myFixture.availableIntentions.map { it.text }
+        }
+        myFixture.launchAction(intention)
+        val result = myFixture.file.text
+        assertTrue("new annotation should be applied:\n$result", result.contains("@JacksonMixin"))
+        assertTrue("attribute should be preserved:\n$result", result.contains("String::class"))
+        assertFalse("old annotation should be replaced:\n$result", result.contains("@JsonMixin"))
     }
 
     private fun assertReported(code: String, expectedMessage: String) {
