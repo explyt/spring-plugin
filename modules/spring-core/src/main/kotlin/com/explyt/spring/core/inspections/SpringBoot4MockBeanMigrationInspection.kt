@@ -11,11 +11,7 @@ import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiJavaFile
-import org.jetbrains.kotlin.psi.KtAnnotationEntry
-import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UField
@@ -60,41 +56,8 @@ class SpringBoot4MockBeanMigrationInspection : Spring4UastLocalInspectionTool() 
         return problems.toTypedArray()
     }
 
-    private fun replacementFor(annotation: UAnnotation): Replacement? {
-        REPLACEMENTS[annotation.qualifiedName]?.let { return it }
-        // A resolved annotation is identified by its FQN above. Once the Boot 4 upgrade removed the legacy artifact
-        // the annotation no longer resolves, and the source that still uses it is what has to be migrated.
-        if (annotation.resolve() != null) return null
-
-        val writtenName = writtenAnnotationName(annotation) ?: return null
-        REPLACEMENTS[writtenName]?.let { return it }
-
-        val file = annotation.sourcePsi?.containingFile ?: return null
-        val legacyFqn = REPLACEMENTS.keys
-            .firstOrNull { it.substringAfterLast('.') == writtenName && importsLegacyAnnotation(file, it) }
-            ?: return null
-        return REPLACEMENTS[legacyFqn]
-    }
-
-    private fun writtenAnnotationName(annotation: UAnnotation): String? = when (val sourcePsi = annotation.sourcePsi) {
-        is PsiAnnotation -> sourcePsi.nameReferenceElement?.text
-        is KtAnnotationEntry -> sourcePsi.typeReference?.text
-        else -> null
-    }?.substringBefore('<')?.trim()
-
-    private fun importsLegacyAnnotation(file: PsiFile, fqn: String): Boolean = when (file) {
-        is KtFile -> file.importDirectives.any {
-            val importedFqName = it.importedFqName?.asString()
-            if (it.isAllUnder) importedFqName == LEGACY_PACKAGE else importedFqName == fqn
-        }
-
-        is PsiJavaFile -> file.importList?.importStatements?.any {
-            val qualifiedName = it.qualifiedName
-            if (it.isOnDemand) qualifiedName == LEGACY_PACKAGE else qualifiedName == fqn
-        } == true
-
-        else -> false
-    }
+    private fun replacementFor(annotation: UAnnotation): Replacement? =
+        legacyAnnotationFqn(annotation, REPLACEMENTS.keys)?.let { REPLACEMENTS[it] }
 
     private fun createProblem(
         annotation: UAnnotation,
@@ -132,9 +95,8 @@ class SpringBoot4MockBeanMigrationInspection : Spring4UastLocalInspectionTool() 
     private class Replacement(val newFqn: String, val attributeRenames: Map<String, String>)
 
     companion object {
-        private const val LEGACY_PACKAGE = "org.springframework.boot.test.mock.mockito"
-        private const val MOCK_BEAN = "$LEGACY_PACKAGE.MockBean"
-        private const val SPY_BEAN = "$LEGACY_PACKAGE.SpyBean"
+        private const val MOCK_BEAN = "org.springframework.boot.test.mock.mockito.MockBean"
+        private const val SPY_BEAN = "org.springframework.boot.test.mock.mockito.SpyBean"
         private const val MOCKITO_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoBean"
         private const val MOCKITO_SPY_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoSpyBean"
 
