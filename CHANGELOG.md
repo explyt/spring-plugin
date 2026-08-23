@@ -11,8 +11,7 @@
 - fix: Navigate from an indexed collection key such as `ingest.s3-logs.sources[0].enabled` to the member of the collection's element class
 
 - fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<...>`
-- fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<Include>`
-- fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<...>`
+- fix: Accept an enum configuration value in any relaxed form, so `request-headers` resolves to `REQUEST_HEADERS` and is no longer reported as invalid
 - fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
 
 ### Spring Web
