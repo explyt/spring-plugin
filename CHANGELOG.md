@@ -12,7 +12,7 @@
 
 - fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<...>`
 - fix: Accept an enum configuration value in any relaxed form, so `request-headers` resolves to `REQUEST_HEADERS` and is no longer reported as invalid
-- fix: Complete an enum configuration value from any relaxed spelling, so `r`, `request-h` and `request_h` all offer `REQUEST_HEADERS`
+- fix: Complete an enum configuration value from any relaxed spelling and insert Spring's recommended one, so `r`, `request-h`, `request_h` and `REQ` all insert `request-headers`
 - fix: Resolve a configuration value against the enum element type of an array property such as `Include[]` and of a map property such as `java.util.Map<String, Include>`
 - fix: Navigate a configuration key with no declaring member, such as `management.endpoint.httpexchanges.access`, to its value type instead of the unrelated source class
 - fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix

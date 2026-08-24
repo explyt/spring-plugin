@@ -244,9 +244,17 @@ object PropertyUtil {
      * the default value.
      */
     fun relaxedValueSpellings(constantName: String): Set<String> {
-        val lowerSnakeCase = constantName.lowercase()
-        return setOf(lowerSnakeCase, lowerSnakeCase.replace('_', '-'))
+        return setOf(constantName.lowercase(), recommendedValueSpelling(constantName))
     }
+
+    /**
+     * The spelling of the enum constant [constantName] that Spring itself recommends: lower-case kebab-case.
+     *
+     * Measured on `spring-boot-autoconfigure-3.5.13`, every enum-typed property with a string `defaultValue` ships it
+     * in that form (51 single-word such as `never`, 13 dashed such as `read-uncommitted`, none in the declared
+     * `SCREAMING_SNAKE`), so this is the form to insert and to suggest.
+     */
+    fun recommendedValueSpelling(constantName: String): String = constantName.lowercase().replace('_', '-')
 
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
         val foundClass = findSourceTypeClass(sourceType, project) ?: return null

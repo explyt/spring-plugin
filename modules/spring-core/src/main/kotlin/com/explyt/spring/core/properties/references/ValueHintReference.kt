@@ -230,10 +230,11 @@ class ValueHintReference(
                     return propertyTypeClass.fields.asSequence()
                         .filterIsInstance<PsiEnumConstant>()
                         .mapToList { constant ->
-                            // Case sensitivity has to stay on: it is what makes the platform insert the declared
-                            // name verbatim instead of echoing the case of the typed prefix.
-                            LookupElementBuilder.create(constant)
-                                .withLookupStrings(PropertyUtil.relaxedValueSpellings(constant.name))
+                            // Case sensitivity has to stay on: it is what makes the platform insert this literal
+                            // verbatim instead of echoing the case of the typed prefix.
+                            LookupElementBuilder.create(constant, PropertyUtil.recommendedValueSpelling(constant.name))
+                                .withLookupStrings(PropertyUtil.relaxedValueSpellings(constant.name) + constant.name)
+                                .withTailText(" ${constant.name}", true)
                         }
                 }
                 emptyList()

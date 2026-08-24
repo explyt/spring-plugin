@@ -10,9 +10,9 @@ import com.explyt.spring.test.TestLibrary
 import com.intellij.codeInsight.CodeInsightSettings
 
 /**
- * Value completion has to offer an enum constant for every spelling relaxed binding accepts, because Spring's own
- * metadata ships the dashed lower-case form as the default value: only the declared name was a lookup string, so a
- * user following the framework's own recommendation got "No suggestions".
+ * Value completion has to offer an enum constant for every spelling relaxed binding accepts and insert the one Spring
+ * itself recommends: its own metadata ships enum default values in lower-case kebab-case (`never`, `read-uncommitted`)
+ * and never in the declared `SCREAMING_SNAKE` form.
  */
 class RelaxedEnumValueCompletionTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
@@ -56,34 +56,37 @@ class RelaxedEnumValueCompletionTest : ExplytInspectionJavaTestCase() {
 
     fun testLowerCasePrefixOffersConstants() = assertVariants(
         "explyt.recording.include=r<caret>",
-        "REQUEST_HEADERS", "RESPONSE_HEADERS"
+        "request-headers", "response-headers"
     )
 
     fun testUpperCasePrefixStillOffersConstants() = assertVariants(
         "explyt.recording.include=R<caret>",
-        "REQUEST_HEADERS", "RESPONSE_HEADERS"
+        "request-headers", "response-headers"
     )
 
     fun testEmptyPrefixOffersAllConstants() = assertVariants(
         "explyt.recording.include=<caret>",
-        "TIME_TAKEN", "REQUEST_HEADERS", "RESPONSE_HEADERS"
+        "time-taken", "request-headers", "response-headers"
     )
 
-    fun testKebabCasePrefixInsertsDeclaredName() =
-        assertInsertsDeclaredName("explyt.recording.include=request-h<caret>")
+    fun testKebabCasePrefixInsertsRecommendedForm() =
+        assertInsertsRecommendedForm("explyt.recording.include=request-h<caret>")
 
-    fun testSnakeCasePrefixInsertsDeclaredName() =
-        assertInsertsDeclaredName("explyt.recording.include=request_h<caret>")
+    fun testSnakeCasePrefixInsertsRecommendedForm() =
+        assertInsertsRecommendedForm("explyt.recording.include=request_h<caret>")
 
-    fun testDeclaredPrefixInsertsDeclaredName() =
-        assertInsertsDeclaredName("explyt.recording.include=REQUEST_H<caret>")
+    fun testDeclaredPrefixInsertsRecommendedForm() =
+        assertInsertsRecommendedForm("explyt.recording.include=REQUEST_H<caret>")
 
-    fun testFullKebabCaseValueInsertsDeclaredName() =
-        assertInsertsDeclaredName("explyt.recording.include=request-headers<caret>")
+    fun testDeclaredNamePrefixStillMatches() =
+        assertInsertsRecommendedForm("explyt.recording.include=REQ<caret>")
+
+    fun testFullKebabCaseValueInsertsRecommendedForm() =
+        assertInsertsRecommendedForm("explyt.recording.include=request-headers<caret>")
 
     fun testScalarEnumOffersConstantsForLowerCasePrefix() = assertVariants(
         "explyt.recording.single=r<caret>",
-        "REQUEST_HEADERS", "RESPONSE_HEADERS"
+        "request-headers", "response-headers"
     )
 
     fun testNonEnumValueTypeIsUnaffected() = assertVariants(
@@ -101,16 +104,16 @@ class RelaxedEnumValueCompletionTest : ExplytInspectionJavaTestCase() {
             """.trimIndent()
         )
 
-        assertLookupElements("REQUEST_HEADERS", "RESPONSE_HEADERS")
+        assertLookupElements("request-headers", "response-headers")
     }
 
-    fun testYamlKebabCasePrefixInsertsDeclaredName() {
+    fun testYamlDeclaredPrefixInsertsRecommendedForm() {
         myFixture.configureByText(
             "application.yaml",
             """
             explyt:
               recording:
-                include: request-h<caret>
+                include: REQUEST_H<caret>
             """.trimIndent()
         )
         myFixture.completeBasic()
@@ -119,7 +122,7 @@ class RelaxedEnumValueCompletionTest : ExplytInspectionJavaTestCase() {
             """
             explyt:
               recording:
-                include: REQUEST_HEADERS
+                include: request-headers
             """.trimIndent()
         )
     }
@@ -137,10 +140,10 @@ class RelaxedEnumValueCompletionTest : ExplytInspectionJavaTestCase() {
         assertEquals(expected.toSet(), lookupElementStrings!!.toSet())
     }
 
-    private fun assertInsertsDeclaredName(text: String) {
+    private fun assertInsertsRecommendedForm(text: String) {
         myFixture.configureByText("application.properties", text)
         myFixture.completeBasic()
 
-        myFixture.checkResult("explyt.recording.include=REQUEST_HEADERS")
+        myFixture.checkResult("explyt.recording.include=request-headers")
     }
 }
