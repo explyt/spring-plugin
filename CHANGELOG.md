@@ -14,6 +14,7 @@
 - fix: Accept an enum configuration value in any relaxed form, so `request-headers` resolves to `REQUEST_HEADERS` and is no longer reported as invalid
 - fix: Resolve a configuration value against the enum element type of an array property such as `Include[]` and of a map property such as `java.util.Map<String, Include>`
 - fix: Navigate a configuration key with no declaring member, such as `management.endpoint.httpexchanges.access`, to its value type instead of the unrelated source class
+- fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
 - fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
 
 ### Spring Web
