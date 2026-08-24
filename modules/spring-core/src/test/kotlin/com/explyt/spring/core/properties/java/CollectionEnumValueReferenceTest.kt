@@ -47,6 +47,29 @@ class CollectionEnumValueReferenceTest : ExplytInspectionJavaTestCase() {
 
     fun testScalarEnumStillResolves() = assertResolvesToConstant("explyt.recording.single")
 
+    fun testLowerCaseUnderscoreFormResolves() =
+        assertResolvesToConstant("explyt.recording.include", "request_headers")
+
+    fun testDashedFormResolves() =
+        assertResolvesToConstant("explyt.recording.include", "request-headers")
+
+    fun testMixedCaseDashedFormResolves() =
+        assertResolvesToConstant("explyt.recording.include", "Request-Headers")
+
+    fun testScalarEnumResolvesDashedForm() =
+        assertResolvesToConstant("explyt.recording.single", "request-headers")
+
+    fun testUnknownValueDoesNotResolve() {
+        myFixture.configureByText("application.properties", "explyt.recording.include=NOT_A_VALUE")
+
+        val reference = myFixture.file.findReferenceAt(myFixture.file.text.indexOf("NOT_A_VALUE"))
+        val valueReference = reference as? ValueHintReference
+        assertTrue(
+            "an unknown value must not resolve to a constant",
+            valueReference == null || valueReference.multiResolve(false).isEmpty()
+        )
+    }
+
     fun testYamlSetElementResolvesToEnumConstant() {
         myFixture.configureByText(
             "application.yaml",
@@ -60,14 +83,27 @@ class CollectionEnumValueReferenceTest : ExplytInspectionJavaTestCase() {
         assertEnumConstantResolved()
     }
 
-    private fun assertResolvesToConstant(key: String) {
-        myFixture.configureByText("application.properties", "$key=REQUEST_HEADERS")
+    fun testYamlDashedFormResolves() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+            explyt:
+              recording:
+                include: request-headers
+            """.trimIndent()
+        )
 
-        assertEnumConstantResolved()
+        assertEnumConstantResolved("request-headers")
     }
 
-    private fun assertEnumConstantResolved() {
-        val reference = myFixture.file.findReferenceAt(myFixture.file.text.indexOf("REQUEST_HEADERS"))
+    private fun assertResolvesToConstant(key: String, value: String = "REQUEST_HEADERS") {
+        myFixture.configureByText("application.properties", "$key=$value")
+
+        assertEnumConstantResolved(value)
+    }
+
+    private fun assertEnumConstantResolved(value: String = "REQUEST_HEADERS") {
+        val reference = myFixture.file.findReferenceAt(myFixture.file.text.indexOf(value))
         val valueReference = requireNotNull(reference as? ValueHintReference) {
             "expected a ValueHintReference on the value, got: $reference"
         }
