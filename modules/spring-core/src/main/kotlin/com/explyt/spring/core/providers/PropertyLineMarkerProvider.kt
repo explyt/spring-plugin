@@ -12,6 +12,7 @@ import com.explyt.spring.core.completion.properties.SpringConfigurationPropertie
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -26,11 +27,18 @@ import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
 class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
+        super.collectSlowLineMarkers(elements, result)
+    }
+
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return
         }
@@ -43,6 +51,11 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (yamlKeyValue.key != element) return
             elementText = YAMLUtil.getConfigFullName(yamlKeyValue)
         }
+
+        // Also reached directly by RelatedItemLineMarkerGotoAdapter (Navigate | Related Symbol), bypassing
+        // collectSlowLineMarkers, so the JetBrains Spring suppression has to be repeated here. It is consulted
+        // after the cheap early-outs above: an element rejected by them produces no marker either way.
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
 
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
