@@ -202,6 +202,24 @@ object PropertyUtil {
     }
 
 
+    /**
+     * The type of a single value of [configurationProperty]: the element type for a collection or array, the value
+     * type for a map, and the declared type otherwise.
+     *
+     * A metadata `type` such as `java.util.Set<...Include>` names the container, so resolving it verbatim finds no
+     * class. Every consumer that inspects or resolves an individual value has to unwrap it the same way, otherwise
+     * the inspection and the reference disagree about the same property.
+     */
+    fun valueTypeOf(configurationProperty: ConfigurationProperty): String? {
+        val propertyType = configurationProperty.type ?: return null
+        return when {
+            configurationProperty.isList() -> propertyType.substringAfter("<").substringBefore(">")
+            configurationProperty.isMap() -> propertyType.substringAfter(",").substringBefore(">")
+            configurationProperty.isArray() -> propertyType.substringBefore("[]")
+            else -> propertyType
+        }.replace('$', '.').trim()
+    }
+
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
         val javaPsiFacade = JavaPsiFacade.getInstance(project)
         var memberName = sourceType.substringAfterLast('#', "")
