@@ -17,7 +17,6 @@ import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
 import com.explyt.spring.core.util.PropertyUtil.propertyValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
-import com.explyt.util.ExplytPsiUtil.isPrivate
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.Module
@@ -229,8 +228,13 @@ class ValueHintReference(
                     .findClass(propertyType, GlobalSearchScope.allScope(project))
                 if (propertyTypeClass?.isEnum == true) {
                     return propertyTypeClass.fields.asSequence()
-                        .filter { !it.isPrivate }
-                        .mapToList { LookupElementBuilder.create(it) }
+                        .filterIsInstance<PsiEnumConstant>()
+                        .mapToList { constant ->
+                            // Case sensitivity has to stay on: it is what makes the platform insert the declared
+                            // name verbatim instead of echoing the case of the typed prefix.
+                            LookupElementBuilder.create(constant)
+                                .withLookupStrings(PropertyUtil.relaxedValueSpellings(constant.name))
+                        }
                 }
                 emptyList()
             }

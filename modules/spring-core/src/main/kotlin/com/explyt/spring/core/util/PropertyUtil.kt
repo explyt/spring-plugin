@@ -236,6 +236,18 @@ object PropertyUtil {
             .firstOrNull { toCommonPropertyForm(it.name) == relaxedValue }
     }
 
+    /**
+     * The spellings of the enum constant [constantName] that a user types and [findEnumConstant] accepts.
+     *
+     * The canonical form compared by [findEnumConstant] has its separators stripped, so it is not a literal anyone
+     * types; completion needs the typable alternatives instead, and Spring's own metadata ships the kebab-case one as
+     * the default value.
+     */
+    fun relaxedValueSpellings(constantName: String): Set<String> {
+        val lowerSnakeCase = constantName.lowercase()
+        return setOf(lowerSnakeCase, lowerSnakeCase.replace('_', '-'))
+    }
+
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
         val foundClass = findSourceTypeClass(sourceType, project) ?: return null
         return findDeclaringMember(foundClass, propertyKey, sourceType) ?: foundClass
