@@ -74,7 +74,7 @@ class ValueHintReference(
         val javaPsiFacade = JavaPsiFacade.getInstance(module.project)
         val configurationProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .findProperty(module, propertyKey) ?: return emptyResolveResult()
-        val propertyType = configurationProperty.type?.replace('$', '.') ?: return emptyResolveResult()
+        val propertyType = PropertyUtil.valueTypeOf(configurationProperty) ?: return emptyResolveResult()
         val propertyTypeClass = javaPsiFacade.findClass(propertyType, GlobalSearchScope.allScope(module.project))
         if (propertyTypeClass?.isEnum == true) {
             val field = propertyTypeClass.findFieldByName(propertyValue, true) ?: return emptyResolveResult()
@@ -149,7 +149,7 @@ class ValueHintReference(
             ?: SpringPropertiesCompletionContributor.getDynamicMapProperties(module, propertyKey)
                 .firstOrNull { it.name == propertyKey }
 
-        configurationProperty?.type?.replace('$', '.')?.let {
+        configurationProperty?.let { PropertyUtil.valueTypeOf(it) }?.let {
             result.addAll(getVariantsByPropertyType(it))
         }
 

@@ -1,0 +1,36 @@
+{
+  "groups": [],
+  "properties": [
+    {
+      "name": "explyt.recording.include",
+      "type": "java.util.Set<com.explyt.RecordingInclude>",
+      "description": "Items to include in the recording."
+    },
+    {
+      "name": "explyt.recording.list",
+      "type": "java.util.List<com.explyt.RecordingInclude>",
+      "description": "Items to include, as a list."
+    },
+    {
+      "name": "explyt.recording.collection",
+      "type": "java.util.Collection<com.explyt.RecordingInclude>",
+      "description": "Items to include, as a collection."
+    },
+    {
+      "name": "explyt.recording.array",
+      "type": "com.explyt.RecordingInclude[]",
+      "description": "Items to include, as an array."
+    },
+    {
+      "name": "explyt.recording.by-name",
+      "type": "java.util.Map<java.lang.String,com.explyt.RecordingInclude>",
+      "description": "Items to include, keyed by name."
+    },
+    {
+      "name": "explyt.recording.single",
+      "type": "com.explyt.RecordingInclude",
+      "description": "A single item to include."
+    }
+  ],
+  "hints": []
+}
