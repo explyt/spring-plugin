@@ -77,8 +77,9 @@ class ValueHintReference(
         val propertyType = PropertyUtil.valueTypeOf(configurationProperty) ?: return emptyResolveResult()
         val propertyTypeClass = javaPsiFacade.findClass(propertyType, GlobalSearchScope.allScope(module.project))
         if (propertyTypeClass?.isEnum == true) {
-            val field = propertyTypeClass.findFieldByName(propertyValue, true) ?: return emptyResolveResult()
-            return ResolveResultContainer(arrayOf(PsiElementResolveResult(field)), ResultType.ENUM)
+            val constant = PropertyUtil.findEnumConstant(propertyTypeClass, propertyValue)
+                ?: return emptyResolveResult()
+            return ResolveResultContainer(arrayOf(PsiElementResolveResult(constant)), ResultType.ENUM)
         }
         return emptyResolveResult()
     }
