@@ -10,6 +10,7 @@
 - feat: Report the renamed `management.endpoint.httptrace.*` configuration keys in Spring Boot 3, with a quick-fix to `httpexchanges`
 - fix: Navigate from an indexed collection key such as `ingest.s3-logs.sources[0].enabled` to the member of the collection's element class
 
+- fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<Include>`
 - fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
 - fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
 
