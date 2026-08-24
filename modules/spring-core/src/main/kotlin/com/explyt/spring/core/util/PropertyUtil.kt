@@ -237,7 +237,37 @@ object PropertyUtil {
     }
 
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
+        val foundClass = findSourceTypeClass(sourceType, project) ?: return null
+        return findDeclaringMember(foundClass, propertyKey, sourceType) ?: foundClass
+    }
+
+    /**
+     * The member declaring [propertyKey] in [sourceType], falling back to the value type of
+     * [configurationProperty] and only then to the `sourceType` class itself.
+     *
+     * Endpoint infrastructure keys such as `management.endpoint.<id>.access` are synthesised by Spring: the class
+     * named by `sourceType` declares no matching field or setter, so the `sourceType` fallback lands on a declaration
+     * where the key never appears. The value type answers what the key actually asks — for `access` it is the `Access`
+     * enum listing the permitted constants.
+     */
+    fun findSourceMember(
+        propertyKey: String,
+        sourceType: String,
+        configurationProperty: ConfigurationProperty,
+        project: Project
+    ): PsiMember? {
+        val foundClass = findSourceTypeClass(sourceType, project) ?: return null
+        return findDeclaringMember(foundClass, propertyKey, sourceType)
+            ?: findValueTypeClass(configurationProperty, project)
+            ?: foundClass
+    }
+
+    private fun findSourceTypeClass(sourceType: String, project: Project): PsiClass? {
+        val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
+        return JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
+    }
+
+    private fun findDeclaringMember(foundClass: PsiClass, propertyKey: String, sourceType: String): PsiMember? {
         var memberName = sourceType.substringAfterLast('#', "")
         var setterName = memberName
         if (memberName.isEmpty()) {
@@ -251,9 +281,19 @@ object PropertyUtil {
             setterName = "set${StringUtil.capitalize(memberName)}"
         }
 
-        val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
-        val foundClass = javaPsiFacade.findClass(qualifiedName, GlobalSearchScope.allScope(project)) ?: return null
-        return findMember(foundClass, memberName, setterName) ?: foundClass
+        return findMember(foundClass, memberName, setterName)
+    }
+
+    /**
+     * A built-in type such as `java.lang.String` or `java.time.Duration` carries no declaration worth navigating to,
+     * so those types are not treated as a target.
+     */
+    private fun findValueTypeClass(configurationProperty: ConfigurationProperty, project: Project): PsiClass? {
+        val valueType = valueTypeOf(configurationProperty) ?: return null
+        val valueClass = JavaPsiFacade.getInstance(project)
+            .findClass(valueType, GlobalSearchScope.allScope(project)) ?: return null
+        val packageName = valueClass.qualifiedName?.substringBeforeLast(DOT) ?: return null
+        return valueClass.takeUnless { packageName in BUILT_IN_VALUE_TYPE_PACKAGES }
     }
 
     fun PsiElement.propertyKey(): String? {
@@ -765,6 +805,12 @@ object PropertyUtil {
         if (propertyMapValue == propertyKey) propertyMapValue = ""
         return Pair(propertyMapKey, propertyMapValue)
     }
+
+    private val BUILT_IN_VALUE_TYPE_PACKAGES = setOf(
+        JavaCoreClasses.PACKAGE_JAVA_LANG,
+        JavaCoreClasses.PACKAGE_JAVA_TIME,
+        JavaCoreClasses.PACKAGE_KOTLIN
+    )
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()

@@ -280,7 +280,8 @@ class ConfigurationPropertyKeyReference(
             else -> return emptyArray()
         }
 
-        val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, project) ?: return emptyArray()
+        val sourceMember = PropertyUtil.findSourceMember(propertyKey, sourceType, foundProperty, project)
+            ?: return emptyArray()
         return PropertyUtil.resolveResults(sourceMember)
     }
 
