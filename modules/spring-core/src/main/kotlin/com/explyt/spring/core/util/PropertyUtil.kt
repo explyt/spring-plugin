@@ -220,6 +220,22 @@ object PropertyUtil {
         }.replace('$', '.').trim()
     }
 
+    /**
+     * The constant of the enum [enumClass] that [value] denotes under Spring's relaxed binding, or `null` when the
+     * enum declares none.
+     *
+     * Relaxed binding accepts a constant in any case with `-` and `_` interchangeable, and Spring's own metadata
+     * ships the dashed form as the default value (`management.httpexchanges.recording.include` defaults to
+     * `request-headers`), so comparing names verbatim rejects the spelling the framework itself recommends.
+     */
+    fun findEnumConstant(enumClass: PsiClass, value: String): PsiEnumConstant? {
+        if (!enumClass.isEnum) return null
+        val relaxedValue = toCommonPropertyForm(value)
+        return enumClass.fields.asSequence()
+            .filterIsInstance<PsiEnumConstant>()
+            .firstOrNull { toCommonPropertyForm(it.name) == relaxedValue }
+    }
+
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
         val javaPsiFacade = JavaPsiFacade.getInstance(project)
         var memberName = sourceType.substringAfterLast('#', "")
