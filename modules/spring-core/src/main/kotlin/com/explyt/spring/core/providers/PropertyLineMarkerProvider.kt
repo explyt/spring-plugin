@@ -39,6 +39,11 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        // Also reached directly by RelatedItemLineMarkerGotoAdapter (Navigate | Related Symbol), bypassing
+        // collectSlowLineMarkers, so the JetBrains Spring suppression has to be repeated here. Unlike the sibling
+        // providers the check stays first: almost every leaf of a configuration file passes the checks below, so
+        // deferring it measured no gain and made the suppressed case pay the index-backed file check.
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return
         }
@@ -51,11 +56,6 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (yamlKeyValue.key != element) return
             elementText = YAMLUtil.getConfigFullName(yamlKeyValue)
         }
-
-        // Also reached directly by RelatedItemLineMarkerGotoAdapter (Navigate | Related Symbol), bypassing
-        // collectSlowLineMarkers, so the JetBrains Spring suppression has to be repeated here. It is consulted
-        // after the cheap early-outs above: an element rejected by them produces no marker either way.
-        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
 
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
