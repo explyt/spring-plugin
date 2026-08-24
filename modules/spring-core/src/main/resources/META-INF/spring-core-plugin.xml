@@ -316,7 +316,8 @@
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
 
-        <localInspection shortName="SpringRecommendedEnumValueInspection"
+        <localInspection language=""
+                         shortName="SpringRecommendedEnumValueInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.common.notifications.boot"
