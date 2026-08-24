@@ -610,9 +610,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         value: String
     ): List<ProblemDescriptor> {
         val propertyTypeClass = getCachedPropertyTypeClass(module, propertyType) ?: return emptyList()
-        if (propertyTypeClass.isEnum
-            && !propertyTypeClass.fields.map { it.name.lowercase() }.any { it == value.lowercase() }
-        ) {
+        if (propertyTypeClass.isEnum && PropertyUtil.findEnumConstant(propertyTypeClass, value) == null) {
             return listOf(
                 manager.createProblemDescriptor(
                     psiElement,
