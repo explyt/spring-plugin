@@ -48,6 +48,10 @@ interface ConfigurationPropertiesLoader {
         }
 
         fun getPropertyType(psiClass: PsiClass?, type: String?): PropertyType? {
+            // A metadata array type is the plain string `com.example.Include[]`. The class lookup behind [psiClass]
+            // strips generics but not the brackets, so an array type never resolves and would be taken for a scalar.
+            if (type?.endsWith("[]") == true) return PropertyType.ARRAY
+
             val propertyType = type?.let {
                 psiClass ?: return@let null
                 if (!type.contains(".Map<")) return@let null
