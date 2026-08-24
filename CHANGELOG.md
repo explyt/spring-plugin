@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
 - fix: Keep renamed Spring Boot run configurations linked without ambiguous fallback (#229) (#279)
 - fix: Keep Kotlin top-level `main()` projects linked when the stored run configuration name no longer exists (#229)
 - fix: Restore Spring project links when a run configuration is renamed or replaced outside the IDE, such as by a version-control update (#229)
