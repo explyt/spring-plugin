@@ -26,11 +26,11 @@ class PropertiesCompletionValueByConfigurationPropertiesTest : AbstractSpringPro
         myFixture.copyFileToProject("META-INF/additional-spring-configuration-metadata.json")
         myFixture.configureByText("application.properties", "main.code-log-level=<caret>")
         doTest(
-            "DEBUG",
-            "ERROR",
-            "INFO",
-            "TRACE",
-            "WARN"
+            "debug",
+            "error",
+            "info",
+            "trace",
+            "warn"
         )
     }
 
@@ -63,9 +63,9 @@ class PropertiesCompletionValueByConfigurationPropertiesTest : AbstractSpringPro
             "main.local.enum-value=SD<caret>"
         )
         doTest(
-            "TUESDAY",
-            "WEDNESDAY",
-            "THURSDAY",
+            "tuesday",
+            "wednesday",
+            "thursday",
         )
     }
 
