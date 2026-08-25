@@ -19,6 +19,7 @@
 - fix: Navigate a configuration key with no declaring member, such as `management.endpoint.httpexchanges.access`, to its value type instead of the unrelated source class
 - fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
 - fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
+- fix: Evaluate the IntelliJ IDEA Ultimate line marker suppression once per highlighting batch instead of once per PSI element
 
 ### Spring Web
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
