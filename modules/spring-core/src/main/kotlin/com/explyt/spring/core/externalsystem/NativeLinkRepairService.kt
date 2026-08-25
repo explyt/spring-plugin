@@ -12,7 +12,6 @@ import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadAction
@@ -21,6 +20,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.concurrency.ThreadingAssertions
 import org.jetbrains.annotations.VisibleForTesting
 import java.util.concurrent.Callable
 import java.util.concurrent.atomic.AtomicBoolean
@@ -46,12 +46,17 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     private val repairRequestedAgain = AtomicBoolean(false)
 
     /**
-     * Schedules a coalesced repair pass off the EDT.
+     * Schedules a coalesced repair pass on a pooled thread.
      *
      * The callers are load-path listeners that can fire while `RunManager` is still initializing — `stateLoaded` is
-     * published from inside that initialization — and touching `RunManager.getInstance` from there re-enters the
-     * service container and fails with a cycle. The whole pass, including the cheap check, is therefore deferred
-     * until the current initialization has finished; a burst of load events collapses into a single pass.
+     * published from inside that initialization — so touching `RunManager.getInstance` inline re-enters the service
+     * container and fails with a cycle. The pass is therefore deferred, and a burst of load events collapses into a
+     * single pass.
+     *
+     * It must not be deferred *to the EDT*, which is what the pass originally did: requesting a project service that
+     * has not been created yet instantiates it synchronously, and the requesting thread is parked for the whole
+     * initialization. On the EDT that is a UI freeze, reported for `RunManager` in issue #294. A pooled thread waits
+     * for exactly the same initialization without blocking the UI.
      *
      * Events arriving while a pass is in flight are not dropped: they raise [repairRequestedAgain], which triggers
      * exactly one follow-up pass, so a configuration removed or added mid-pass is still observed.
@@ -61,8 +66,7 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
             repairRequestedAgain.set(true)
             return
         }
-        ApplicationManager.getApplication()
-            .invokeLater({ startRepair() }, ModalityState.nonModal(), project.disposed)
+        AppExecutorUtil.getAppExecutorService().execute { startRepair() }
     }
 
     /** Ends a pass and runs at most one follow-up for the events that arrived while it was in flight. */
@@ -76,24 +80,34 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     /**
      * Runs the dangling-link check in memory first: nothing is submitted unless a link actually needs repairing, so
      * a healthy project pays only a walk over the linked settings and never resolves PSI.
+     *
+     * The check deliberately runs *before* — and outside of — the read action below, because it is what forces the
+     * `RunManager` service to be created: doing that while holding the read lock would park this thread inside
+     * service initialization with the lock taken, stalling every write action queued behind it.
      */
     private fun startRepair() {
-        if (findDanglingSettings().isEmpty()) {
-            finishPass()
-            return
-        }
+        ThreadingAssertions.assertBackgroundThread()
+        var passHandedOver = false
+        try {
+            if (project.isDisposed || findDanglingSettings().isEmpty()) return
 
-        ReadAction.nonBlocking(Callable { computeRepairs() })
-            .expireWith(this)
-            .coalesceBy(this)
-            // Resolving a main class goes through JavaPsiFacade and the indexes, which are unavailable in dumb mode.
-            // Project open — the case this pass exists for — is exactly when indexing runs, and a failure here would
-            // waste the only scheduled attempt, so wait for smart mode instead.
-            .inSmartMode(project)
-            .finishOnUiThread(ModalityState.nonModal()) { applyRepairs(it) }
-            .submit(AppExecutorUtil.getAppExecutorService())
-            // onProcessed also covers cancellation and expiration, so the flag never stays stuck.
-            .onProcessed { finishPass() }
+            ReadAction.nonBlocking(Callable { computeRepairs() })
+                .expireWith(this)
+                .coalesceBy(this)
+                // Resolving a main class goes through JavaPsiFacade and the indexes, which are unavailable in dumb
+                // mode. Project open — the case this pass exists for — is exactly when indexing runs, and a failure
+                // here would waste the only scheduled attempt, so wait for smart mode instead.
+                .inSmartMode(project)
+                .finishOnUiThread(ModalityState.nonModal()) { applyRepairs(it) }
+                .submit(AppExecutorUtil.getAppExecutorService())
+                // onProcessed also covers cancellation and expiration, so the flag never stays stuck.
+                .onProcessed { finishPass() }
+            passHandedOver = true
+        } finally {
+            // A pooled pass can outlive the project that scheduled it and fail on an already-disposed service; the
+            // flag must be cleared on every exit, otherwise self-healing stays off for the rest of the session.
+            if (!passHandedOver) finishPass()
+        }
     }
 
     /** Synchronous variant for tests, which must not race the background pipeline. */
