@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Fold a `@Value` placeholder and an `Environment.getProperty` key to the value of the profile-less `application.*` file instead of an arbitrary one, and name the profile when the value comes only from `application-<profile>.*`
 - fix: Cache the `@PropertySource` lookup that decides whether a file is Spring configuration, so highlighting an unrelated `.properties`/`.yaml` file no longer runs a project-wide index search per PSI element
 - fix: Report the `BootstrapRegistry`, `@JsonComponent`/`@JsonMixin` and `@EntityScan` migrations when the legacy symbol no longer resolves after a Spring Boot 4 upgrade
 - fix: Report the `@MockBean` / `@SpyBean` migration when the legacy annotation no longer resolves after a Spring Boot 4 upgrade
