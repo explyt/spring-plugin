@@ -37,9 +37,9 @@ class PropertiesCompletionValueByConfigurationPropertiesTest : AbstractSpringPro
             "main.local.enum-value=SD<caret>"
         )
         doTest(
-            "TUESDAY",
-            "WEDNESDAY",
-            "THURSDAY",
+            "tuesday",
+            "wednesday",
+            "thursday",
         )
     }
 

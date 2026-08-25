@@ -30,6 +30,11 @@
       "name": "explyt.recording.single",
       "type": "com.explyt.RecordingInclude",
       "description": "A single item to include."
+    },
+    {
+      "name": "explyt.recording.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether recording is enabled."
     }
   ],
   "hints": []
