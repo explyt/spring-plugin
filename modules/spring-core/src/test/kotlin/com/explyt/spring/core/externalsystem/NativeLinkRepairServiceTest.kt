@@ -17,6 +17,7 @@ import com.intellij.execution.RunManagerListener
 import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
+import com.intellij.testFramework.PlatformTestUtil
 
 /**
  * Tests for [NativeLinkRepairService] — the self-healing path for links whose stored run configuration name no
@@ -52,6 +53,31 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
         NativeLinkRepairService.getInstance(project).repairNow()
 
         assertEquals("Dashboard Prod", linkedName(mainFilePath))
+    }
+
+    /**
+     * The scheduled pass must run entirely off the EDT. `RunManager` is requested by the very first step of the pass,
+     * and requesting a project service that has not been created yet blocks the calling thread for the whole service
+     * initialization — on the EDT that is the freeze reported in issue #294. `startRepair` asserts the thread, so a
+     * regression back to `invokeLater` turns this test red instead of reaching users.
+     *
+     * The link points at a plain `main()` file rather than at the `@SpringBootApplication` one used elsewhere in this
+     * class, because `SpringRunConfigurationDetectService` auto-creates a configuration for every Spring Boot entry
+     * point it finds. Waiting for an asynchronous pass gives that detection time to run, and a second configuration
+     * on the same main class would make the match ambiguous — which the repair pass deliberately leaves alone.
+     */
+    fun testScheduledRepairRunsOffEdt() {
+        val mainFilePath = configurePlainMainFile()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+        addSpringBootConfiguration("Dashboard Prod", mainClassName = "com.demo.PlainAppKt")
+
+        NativeLinkRepairService.getInstance(project).scheduleRepair()
+
+        PlatformTestUtil.waitWithEventsDispatching(
+            "Dangling link must be repaired by the scheduled pass",
+            { linkedName(mainFilePath) == "Dashboard Prod" },
+            10
+        )
     }
 
     /** Configurations sharing a main class differ in profiles and environment, so guessing one would be wrong. */
@@ -152,6 +178,18 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
         return RunnerAndConfigurationSettingsImpl(runManager(), runConfiguration)
     }
 
+    /** A `main()` that `SpringRunConfigurationDetectService` does not recognize, so no configuration is added for it. */
+    private fun configurePlainMainFile(): String = myFixture.configureByText(
+        "PlainApp.kt",
+        """
+        package com.demo
+
+        fun main(args: Array<String>) {
+            println(args.size)
+        }
+        """.trimIndent()
+    ).virtualFile.canonicalPath!!
+
     private fun configureDemoApplication(): String = myFixture.configureByText(
         "DemoApplication.kt",
         """
@@ -169,11 +207,14 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
         """.trimIndent()
     ).virtualFile.canonicalPath!!
 
-    private fun addSpringBootConfiguration(name: String): RunnerAndConfigurationSettingsImpl {
+    private fun addSpringBootConfiguration(
+        name: String,
+        mainClassName: String = "com.demo.DemoApplicationKt"
+    ): RunnerAndConfigurationSettingsImpl {
         val runManager = runManager()
         val runConfiguration = SpringBootConfigurationFactory.createTemplateConfiguration(project)
         runConfiguration.name = name
-        runConfiguration.mainClassName = "com.demo.DemoApplicationKt"
+        runConfiguration.mainClassName = mainClassName
         val rcSettings = RunnerAndConfigurationSettingsImpl(runManager, runConfiguration)
         runManager.addConfiguration(rcSettings)
         return rcSettings
