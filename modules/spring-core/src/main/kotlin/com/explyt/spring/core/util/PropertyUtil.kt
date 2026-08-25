@@ -236,6 +236,26 @@ object PropertyUtil {
             .firstOrNull { toCommonPropertyForm(it.name) == relaxedValue }
     }
 
+    /**
+     * The spellings of the enum constant [constantName] that a user types and [findEnumConstant] accepts.
+     *
+     * The canonical form compared by [findEnumConstant] has its separators stripped, so it is not a literal anyone
+     * types; completion needs the typable alternatives instead, and Spring's own metadata ships the kebab-case one as
+     * the default value.
+     */
+    fun relaxedValueSpellings(constantName: String): Set<String> {
+        return setOf(constantName.lowercase(), recommendedValueSpelling(constantName))
+    }
+
+    /**
+     * The spelling of the enum constant [constantName] that Spring itself recommends: lower-case kebab-case.
+     *
+     * Measured on `spring-boot-autoconfigure-3.5.13`, every enum-typed property with a string `defaultValue` ships it
+     * in that form (51 single-word such as `never`, 13 dashed such as `read-uncommitted`, none in the declared
+     * `SCREAMING_SNAKE`), so this is the form to insert and to suggest.
+     */
+    fun recommendedValueSpelling(constantName: String): String = constantName.lowercase().replace('_', '-')
+
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
         val foundClass = findSourceTypeClass(sourceType, project) ?: return null
         return findDeclaringMember(foundClass, propertyKey, sourceType) ?: foundClass
