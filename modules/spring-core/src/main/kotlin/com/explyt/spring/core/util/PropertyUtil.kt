@@ -221,6 +221,25 @@ object PropertyUtil {
     }
 
     /**
+     * The property whose value type governs [propertyKey].
+     *
+     * A map entry key is arbitrary (`explyt.recording.by-name.first`), so it is absent from the metadata and an exact
+     * lookup fails; the declared map property owns the value type instead. Matching is done on the canonical form so
+     * a relaxed-cased key finds its declaration too.
+     */
+    fun findValueOwner(module: Module, propertyKey: String): ConfigurationProperty? {
+        val search = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        search.findProperty(module, propertyKey)?.let { return it }
+
+        val commonKey = toCommonPropertyForm(propertyKey)
+        return search.getAllProperties(module).asSequence()
+            .filter { it.isMap() }
+            .filter { commonKey.startsWith(toCommonPropertyForm(it.name)) }
+            // The longest declared prefix is the closest declaration; a shorter one may be an unrelated ancestor.
+            .maxByOrNull { it.name.length }
+    }
+
+    /**
      * The constant of the enum [enumClass] that [value] denotes under Spring's relaxed binding, or `null` when the
      * enum declares none.
      *
