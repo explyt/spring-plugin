@@ -71,7 +71,7 @@ class ValueHintReference(
         }
 
         val javaPsiFacade = JavaPsiFacade.getInstance(module.project)
-        val configurationProperty = findValueOwner(module, propertyKey) ?: return emptyResolveResult()
+        val configurationProperty = PropertyUtil.findValueOwner(module, propertyKey) ?: return emptyResolveResult()
         val propertyType = PropertyUtil.valueTypeOf(configurationProperty) ?: return emptyResolveResult()
         val propertyTypeClass = javaPsiFacade.findClass(propertyType, GlobalSearchScope.allScope(module.project))
         if (propertyTypeClass?.isEnum == true) {
@@ -82,24 +82,6 @@ class ValueHintReference(
         return emptyResolveResult()
     }
 
-    /**
-     * The property whose value type governs [propertyKey].
-     *
-     * A map entry key is arbitrary (`explyt.recording.by-name.first`), so it is absent from the metadata and an exact
-     * lookup fails; the declared map property owns the value type instead. Matching is done on the canonical form so
-     * a relaxed-cased key finds its declaration too.
-     */
-    private fun findValueOwner(module: Module, propertyKey: String): ConfigurationProperty? {
-        val search = SpringConfigurationPropertiesSearch.getInstance(module.project)
-        search.findProperty(module, propertyKey)?.let { return it }
-
-        val commonKey = PropertyUtil.toCommonPropertyForm(propertyKey)
-        return search.getAllProperties(module).asSequence()
-            .filter { it.isMap() }
-            .filter { commonKey.startsWith(PropertyUtil.toCommonPropertyForm(it.name)) }
-            // The longest declared prefix is the closest declaration; a shorter one may be an unrelated ancestor.
-            .maxByOrNull { it.name.length }
-    }
 
     private fun processProvider(
         module: Module,
