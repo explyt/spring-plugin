@@ -25,6 +25,9 @@
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
 
+### Other
+- fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded
+
 ## 262.34.101 - 2026-08-18
 
 ### Spring Core
