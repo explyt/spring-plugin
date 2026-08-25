@@ -12,6 +12,7 @@ import com.explyt.spring.core.completion.properties.SpringConfigurationPropertie
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -26,10 +27,22 @@ import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
 class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
+        super.collectSlowLineMarkers(elements, result)
+    }
+
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        // Also reached directly by RelatedItemLineMarkerGotoAdapter (Navigate | Related Symbol), bypassing
+        // collectSlowLineMarkers, so the JetBrains Spring suppression has to be repeated here. Unlike the sibling
+        // providers the check stays first: almost every leaf of a configuration file passes the checks below, so
+        // deferring it measured no gain and made the suppressed case pay the index-backed file check.
         if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return
