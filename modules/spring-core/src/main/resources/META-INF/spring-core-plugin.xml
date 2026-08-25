@@ -313,7 +313,17 @@
                          key="explyt.spring.inspection.yaml.key"
                          enabledByDefault="true" level="WARNING"
                          implementationClass="com.explyt.spring.core.inspections.SpringYamlInspection"/>
-      
+
+        <localInspection language=""
+                         shortName="SpringRecommendedEnumValueInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.boot"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.properties.value.enum.recommended.name"
+                         enabledByDefault="true" level="WEAK WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringRecommendedEnumValueInspection"/>
+
         <localInspection shortName="SpringBoot3ActuatorHttpExchangesInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
