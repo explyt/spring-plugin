@@ -6,8 +6,6 @@
 package com.explyt.spring.core.properties
 
 import com.explyt.spring.core.SpringCoreClasses.PROPERTY_RESOLVER
-import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
-import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.lang.ASTNode
@@ -15,7 +13,6 @@ import com.intellij.lang.folding.FoldingBuilderEx
 import com.intellij.lang.folding.FoldingDescriptor
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.FoldingGroup
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.psi.ElementManipulators
@@ -47,14 +44,14 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
                 val key = ElementManipulators.getValueText(psiElement)
                 if (key.isBlank()) return false
 
-                val propertyInfo = getPropertyInfo(module, key)
+                val propertyValue = FoldedPropertyValue.resolve(module, key)
 
-                if (propertyInfo != null) {
+                if (propertyValue != null) {
                     descriptors.add(
                         FoldingDescriptor(
                             psiElement.node,
                             psiElement.textRange,
-                            group, setOfNotNull(propertyInfo.psiElement)
+                            group, setOfNotNull(propertyValue.property.psiElement)
                         )
                     )
                 }
@@ -82,16 +79,7 @@ class GetPropertyMethodFoldingBuilder : FoldingBuilderEx() {
         val key = ElementManipulators.getValueText(node.psi)
         if (key.isBlank()) return null
         val module = ModuleUtilCore.findModuleForPsiElement(node.psi) ?: return null
-        return getPropertyInfo(module, key)?.value
-    }
-
-    private fun getPropertyInfo(
-        module: Module,
-        key: String
-    ): DefinedConfigurationProperty? {
-        return DefinedConfigurationPropertiesSearch.getInstance(module.project)
-            .findProperties(module, key)
-            .firstOrNull()
+        return FoldedPropertyValue.resolve(module, key)?.presentation
     }
 
     override fun isCollapsedByDefault(node: ASTNode): Boolean = true
