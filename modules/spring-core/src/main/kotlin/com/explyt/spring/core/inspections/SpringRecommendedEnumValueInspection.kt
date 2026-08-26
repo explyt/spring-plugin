@@ -12,6 +12,7 @@ import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
 import com.explyt.spring.core.completion.properties.ConfigurationProperty
 import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
 import com.explyt.spring.core.completion.properties.PropertiesPropertySource
+import com.explyt.spring.core.completion.properties.PropertyHint
 import com.explyt.spring.core.completion.properties.YamlPropertySource
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.propertyValuePsiElement
@@ -35,18 +36,20 @@ import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLScalar
 
 /**
- * Reports an enum configuration value that is not written in the spelling Spring itself recommends, and offers a
- * quick-fix that rewrites it.
+ * Reports a configuration value that is not written in the spelling Spring itself recommends, and offers a quick-fix
+ * that rewrites it. Relaxed binding accepts every spelling, so this is a style report, not an error.
  *
- * Spring's own metadata never ships the declared `SCREAMING_SNAKE` name as a default value: measured on
- * `spring-boot-autoconfigure-3.5.13`, all 64 enum-typed properties with a string `defaultValue` use lower case
- * (`never`, `graceful`) or kebab-case (`read-uncommitted`, `path-pattern-parser`). Relaxed binding accepts the other
- * spellings, so this is a style report, not an error.
+ * Two sources say what the recommended spelling is:
  *
- * Only values that resolve to an enum constant are considered. A value that resolves to nothing is a different
- * diagnostic ([SpringBasePropertyInspection] reports it), and a value backed by metadata hints is left alone: those
- * literals come from metadata already written in the spelling users type. `logging.level.root=INFO` is such a case —
- * it is a `Map<String, String>` value with a `logging.level.values` hint, not an enum constant.
+ * - **Metadata hints.** A hint states the accepted literals verbatim, and every literal Spring ships is lower case
+ *   (`trace`, `info`, `read-only`), so a value that differs from a literal only by case is written against the
+ *   metadata that declares it. `logging.level.*=INFO` is the everyday case.
+ * - **Enum constants.** Spring's own metadata never ships the declared `SCREAMING_SNAKE` name as a default value:
+ *   measured on `spring-boot-autoconfigure-3.5.13`, all 64 enum-typed properties with a string `defaultValue` use
+ *   lower case (`never`, `graceful`) or kebab-case (`read-uncommitted`, `path-pattern-parser`).
+ *
+ * A value that matches nothing is never reported here: it is either free-form (a hint whose provider is `any`) or a
+ * genuine error, which [SpringBasePropertyInspection] owns.
  */
 class SpringRecommendedEnumValueInspection : SpringBaseLocalInspectionTool() {
 
@@ -81,37 +84,64 @@ class SpringRecommendedEnumValueInspection : SpringBaseLocalInspectionTool() {
         val psiElement = property.psiElement ?: return emptyList()
         val value = property.value?.trimEnd()
         if (value.isNullOrBlank()) return emptyList()
-        // Metadata hints spell out the accepted literals themselves, so an enum-typed property that ships hints has
-        // already declared the spelling to use and this inspection must not second-guess it.
-        if (PropertyUtil.getPropertyHint(module, property.key) != null) return emptyList()
-
-        val configurationProperty = PropertyUtil.findValueOwner(module, property.key) ?: return emptyList()
-        val enumClass = enumValueTypeOf(module, configurationProperty) ?: return emptyList()
         val psiValue = psiElement.propertyValuePsiElement() ?: return emptyList()
+
+        val configurationProperty = PropertyUtil.findValueOwner(module, property.key)
+        // A hint states the literals of this very property, so it outranks the value type: an enum-typed property that
+        // also ships hints has already declared which spelling to write.
+        val hint = PropertyUtil.getPropertyHint(module, property.key)
+        val recommend = hintRecommendation(hint)
+            ?: enumRecommendation(module, configurationProperty)
+            ?: return emptyList()
 
         val problems = mutableListOf<ProblemDescriptor>()
         for (element in valueElements(value, configurationProperty, property.key)) {
             if (element.text.contains(PLACEHOLDER_PREFIX) && element.text.contains(PLACEHOLDER_SUFFIX)) continue
-            val constant = PropertyUtil.findEnumConstant(enumClass, element.text) ?: continue
-            val recommended = PropertyUtil.recommendedValueSpelling(constant.name)
-            if (element.text == recommended) continue
+            val recommended = recommend(element.text) ?: continue
+            if (element.text == recommended.spelling) continue
 
             problems += manager.createProblemDescriptor(
                 psiValue,
                 element.rangeIn(psiValue.text, value),
-                message("explyt.spring.inspection.properties.value.enum.not.recommended", recommended),
+                message(recommended.messageKey, recommended.spelling),
                 ProblemHighlightType.WEAK_WARNING,
                 isOnTheFly,
-                RewriteEnumValueQuickFix(element.text, recommended)
+                RewriteValueQuickFix(element.text, recommended.spelling)
             )
         }
         return problems
     }
 
-    private fun enumValueTypeOf(module: Module, configurationProperty: ConfigurationProperty) =
-        PropertyUtil.valueTypeOf(configurationProperty)
+    /**
+     * The literal of [hint] that a written value denotes, matched the way Spring binds it — case-insensitively, so
+     * `INFO` and `Info` both name the `info` literal that the metadata declares.
+     */
+    private fun hintRecommendation(hint: PropertyHint?): ((String) -> Recommendation?)? {
+        val literals = hint?.values?.mapNotNull { it.value }?.takeIf { it.isNotEmpty() } ?: return null
+        return { written ->
+            literals.firstOrNull { it.equals(written, ignoreCase = true) }
+                ?.let { Recommendation(it, "explyt.spring.inspection.properties.value.not.recommended") }
+        }
+    }
+
+    private fun enumRecommendation(
+        module: Module,
+        configurationProperty: ConfigurationProperty?
+    ): ((String) -> Recommendation?)? {
+        val enumClass = configurationProperty
+            ?.let { PropertyUtil.valueTypeOf(it) }
             ?.let { JavaPsiFacade.getInstance(module.project).findClass(it, GlobalSearchScope.allScope(module.project)) }
             ?.takeIf { it.isEnum }
+            ?: return null
+        return { written ->
+            PropertyUtil.findEnumConstant(enumClass, written)?.let {
+                Recommendation(
+                    PropertyUtil.recommendedValueSpelling(it.name),
+                    "explyt.spring.inspection.properties.value.enum.not.recommended"
+                )
+            }
+        }
+    }
 
     /**
      * The individual values written in [value]: the elements of a comma-separated list for a collection property, and
@@ -119,10 +149,12 @@ class SpringRecommendedEnumValueInspection : SpringBaseLocalInspectionTool() {
      */
     private fun valueElements(
         value: String,
-        configurationProperty: ConfigurationProperty,
+        configurationProperty: ConfigurationProperty?,
         key: String
     ): List<ValueElement> {
-        val isCollection = (configurationProperty.isArray() || configurationProperty.isList()) && !key.endsWith("]")
+        val isCollection = configurationProperty != null
+                && (configurationProperty.isArray() || configurationProperty.isList())
+                && !key.endsWith("]")
         if (!isCollection) return listOf(ValueElement(value.trim(), value.indexOf(value.trim())))
 
         val elements = mutableListOf<ValueElement>()
@@ -135,6 +167,9 @@ class SpringRecommendedEnumValueInspection : SpringBaseLocalInspectionTool() {
         return elements
     }
 }
+
+/** The spelling to write instead of what the user wrote, and the message explaining where it comes from. */
+private data class Recommendation(val spelling: String, val messageKey: String)
 
 /** One value written in a property, with its offset inside the raw value text. */
 private data class ValueElement(val text: String, val offsetInValue: Int) {
@@ -150,7 +185,7 @@ private data class ValueElement(val text: String, val offsetInValue: Int) {
     }
 }
 
-private class RewriteEnumValueQuickFix(
+private class RewriteValueQuickFix(
     private val oldValue: String,
     private val newValue: String
 ) : LocalQuickFix {
