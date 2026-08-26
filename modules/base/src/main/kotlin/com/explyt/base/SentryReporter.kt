@@ -12,7 +12,6 @@ import io.sentry.Breadcrumb
 import io.sentry.IScope
 import io.sentry.ScopeType
 import io.sentry.Sentry
-import java.util.Date
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -50,9 +49,10 @@ object SentryReporter {
                     // Must match the release created by the release CI (see release.yaml).
                     options.release = PluginContext.pluginVersion
                     options.isEnableUncaughtExceptionHandler = false
+                    // Sentry drops the whole event when this callback throws, so sanitizing must fail closed.
                     options.setBeforeSend { event, _ ->
                         event.breadcrumbs?.let { breadcrumbs ->
-                            event.breadcrumbs = ActionBreadcrumbSanitizer.sanitize(breadcrumbs, Date())
+                            event.breadcrumbs = ActionBreadcrumbSanitizer.sanitizeSafely(breadcrumbs, event.timestamp)
                         }
                         event
                     }

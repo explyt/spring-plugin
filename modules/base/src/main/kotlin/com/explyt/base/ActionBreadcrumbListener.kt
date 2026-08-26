@@ -20,13 +20,16 @@ import io.sentry.SentryLevel
  */
 class ActionBreadcrumbListener : AnActionListener {
 
+    private val repeatedActions = RepeatedActionSuppressor()
+
     override fun afterActionPerformed(action: AnAction, event: AnActionEvent, result: AnActionResult) {
         val actionId = ActionManager.getInstance().getId(action)
-        if (!ActionBreadcrumbPolicy.shouldRecord(actionId)) return
+        val name = ActionBreadcrumbPolicy.breadcrumbName(actionId, action.javaClass) ?: return
+        if (!repeatedActions.shouldRecord(name, event.place)) return
 
         SentryReporter.addBreadcrumb(Breadcrumb().apply {
             category = ActionBreadcrumbSanitizer.ACTION_CATEGORY
-            message = actionId
+            message = name
             level = SentryLevel.INFO
             setData("place", event.place)
         })

@@ -6,100 +6,94 @@
 package com.explyt.base
 
 import com.intellij.openapi.actionSystem.IdeActions
-import io.sentry.Breadcrumb
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.Date
 
 class ActionBreadcrumbPolicyTest {
 
     @Test
-    fun `drops editor input actions but keeps navigation and completion`() {
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord(null))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord("EditorBackSpace"))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord("EditorCopy"))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord("EditorPaste"))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord("EditorEnter"))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord("EditorTab"))
+    fun `drops editor text input`() {
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_BACKSPACE))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_COPY))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_PASTE))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_ENTER))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_TAB))
         assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_COPY))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_PASTE))
         assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_SELECT_ALL))
+    }
 
-        assertTrue(ActionBreadcrumbPolicy.shouldRecord("EditorDown"))
-        assertTrue(ActionBreadcrumbPolicy.shouldRecord("EditorChooseLookupItem"))
+    /** Caret movement is the highest-volume noise: it evicts useful entries from Sentry's bounded queue. */
+    @Test
+    fun `drops caret movement`() {
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_MOVE_CARET_UP))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_MOVE_CARET_DOWN))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_MOVE_CARET_LEFT))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_MOVE_CARET_RIGHT))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_PREVIOUS_WORD_WITH_SELECTION))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_MOVE_CARET_PAGE_DOWN))
+        assertFalse(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_EDITOR_MOVE_LINE_END))
+    }
+
+    /**
+     * `$Delete`, `$Cut` and `$Paste` are place-agnostic: in the Project View they delete or move files, which is the
+     * most valuable context for a PSI/VFS failure. Sentry data shows their `place` is often just
+     * `keyboard shortcut`, so the editor case cannot be told apart and these must stay recorded.
+     */
+    @Test
+    fun `keeps place-agnostic file manipulation`() {
+        assertTrue(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_DELETE))
+        assertTrue(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_CUT))
+        assertTrue(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_PASTE))
+    }
+
+    @Test
+    fun `keeps navigation and completion`() {
         assertTrue(ActionBreadcrumbPolicy.shouldRecord("GotoDeclaration"))
+        assertTrue(ActionBreadcrumbPolicy.shouldRecord("SearchEverywhere"))
+        assertTrue(ActionBreadcrumbPolicy.shouldRecord(IdeActions.ACTION_CHOOSE_LOOKUP_ITEM))
         assertTrue(ActionBreadcrumbPolicy.shouldRecord("ReopenProjectAction"))
     }
 
     @Test
-    fun `drops missing action ids`() {
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord(null))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord(""))
-        assertFalse(ActionBreadcrumbPolicy.shouldRecord("   "))
-
-        assertTrue(ActionBreadcrumbPolicy.shouldRecord("ReopenProjectAction"))
+    fun `names a registered action by its id`() {
+        assertEquals(
+            "GotoDeclaration",
+            ActionBreadcrumbPolicy.breadcrumbName("GotoDeclaration", FOREIGN_ACTION_CLASS)
+        )
     }
 
     @Test
-    fun `removes old action breadcrumbs and keeps the fifteen minute boundary`() {
-        val now = Date(1_000_000_000)
-        val breadcrumbs = listOf(
-            action("old", now.time - 15 * 60 * 1000 - 1),
-            action("boundary", now.time - 15 * 60 * 1000),
-            action("recent", now.time - 1),
-            Breadcrumb("http").apply { category = "http" },
-        )
-
-        val result = ActionBreadcrumbSanitizer.sanitize(breadcrumbs, now)
-
-        assertEquals(listOf("boundary", "recent", "http"), result.map { it.message })
+    fun `drops a filtered action even when its id is registered`() {
+        assertNull(ActionBreadcrumbPolicy.breadcrumbName("EditorBackSpace", FOREIGN_ACTION_CLASS))
     }
 
+    /** A third-party action without an id carries no searchable signal, so a class name would only add noise. */
     @Test
-    fun `collapses consecutive equal actions by action and place`() {
-        val now = Date(1_000_000_000)
-        val breadcrumbs = listOf(
-            action("GotoDeclaration", now.time, "Editor"),
-            action("GotoDeclaration", now.time + 1, "Editor"),
-            action("GotoDeclaration", now.time + 2, "Editor"),
-            action("GotoDeclaration", now.time + 3, "Project"),
-            action("SearchEverywhere", now.time + 4, "Project"),
-        )
-
-        val result = ActionBreadcrumbSanitizer.sanitize(breadcrumbs, Date(now.time + 5))
-
-        assertEquals(3, result.size)
-        assertEquals("GotoDeclaration", result[0].message)
-        assertEquals("Editor", result[0].getData("place"))
-        assertEquals(3, result[0].getData("count"))
-        assertNull(result[1].getData("count"))
-        assertEquals("Project", result[1].getData("place"))
-        assertEquals("SearchEverywhere", result[2].message)
+    fun `drops a foreign action without an id`() {
+        assertNull(ActionBreadcrumbPolicy.breadcrumbName(null, FOREIGN_ACTION_CLASS))
+        assertNull(ActionBreadcrumbPolicy.breadcrumbName("", FOREIGN_ACTION_CLASS))
+        assertNull(ActionBreadcrumbPolicy.breadcrumbName("   ", FOREIGN_ACTION_CLASS))
     }
 
+    /**
+     * Our own toolbar and gutter actions are declared as anonymous `object : AnAction()`, so `ActionManager` has no id
+     * for them. Dropping them would blind the telemetry to exactly the plugin actions it exists to observe.
+     */
     @Test
-    fun `filters noise before collapsing useful actions`() {
-        val now = Date(1_000_000_000)
-        val breadcrumbs = listOf(
-            action("GotoDeclaration", now.time),
-            action("EditorBackSpace", now.time + 1),
-            action("GotoDeclaration", now.time + 2),
+    fun `names our own action without an id by its class`() {
+        assertEquals(
+            $$"ActionBreadcrumbPolicyTest$OwnAction",
+            ActionBreadcrumbPolicy.breadcrumbName(null, OwnAction::class.java)
         )
-
-        val result = ActionBreadcrumbSanitizer.sanitize(breadcrumbs, Date(now.time + 3))
-
-        assertEquals(1, result.size)
-        assertEquals(2, result.single().getData("count"))
     }
 
-    private fun action(message: String, timestamp: Long, place: String = "Editor") =
-        Breadcrumb(Date(timestamp)).apply {
-            category = "action"
-            this.message = message
-            level = io.sentry.SentryLevel.INFO
-            setData("place", place)
-        }
+    private class OwnAction
+
+    private companion object {
+        /** Stands in for a third-party action class, which lives outside the `com.explyt` package. */
+        private val FOREIGN_ACTION_CLASS: Class<*> = java.util.Date::class.java
+    }
 }

@@ -5,11 +5,18 @@
 
 package com.explyt.base
 
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
-/** Runs one deferred initialization at a time and closes races at the buffer hand-off boundary. */
+/**
+ * Runs one deferred initialization at a time, closing the races at the producer hand-off boundary.
+ *
+ * Initialization is expensive, so a failure is retried only [MAX_ATTEMPTS] times: resetting the state unconditionally
+ * would make every subsequent producer pay that cost again, turning one failure into a retry storm.
+ */
 internal class AsyncInitializationScheduler(
     private val executor: Executor,
     private val initialize: () -> Unit,
@@ -18,27 +25,40 @@ internal class AsyncInitializationScheduler(
     private val hasPending: () -> Boolean,
     private val discardPending: () -> Unit,
 ) {
-    private val scheduled = AtomicBoolean(false)
+    private val running = AtomicBoolean(false)
+    private val attempts = AtomicInteger(0)
 
     fun schedule() {
         if (isInitialized()) {
             flush()
             return
         }
-        if (!scheduled.compareAndSet(false, true)) return
+        if (attempts.get() >= MAX_ATTEMPTS) return
+        if (!running.compareAndSet(false, true)) return
 
         executor.execute {
+            var failed = false
             try {
+                attempts.incrementAndGet()
                 initialize()
                 flush()
             } catch (exception: ProcessCanceledException) {
                 throw exception
-            } catch (_: Exception) {
+            } catch (exception: Exception) {
+                failed = true
+                // Best-effort telemetry: buffered data is dropped rather than retained until the process exits.
                 discardPending()
+                logger.warn("Failed to initialize error reporting, attempt ${attempts.get()} of $MAX_ATTEMPTS", exception)
             } finally {
-                scheduled.set(false)
-                if (!isInitialized() && hasPending()) schedule()
+                running.set(false)
+                if (!failed && !isInitialized() && hasPending()) schedule()
             }
         }
+    }
+
+    companion object {
+        const val MAX_ATTEMPTS = 3
+
+        private val logger = Logger.getInstance(AsyncInitializationScheduler::class.java)
     }
 }
