@@ -17,6 +17,9 @@
 - fix: Complete an enum configuration value from any relaxed spelling and insert Spring's recommended one, so `r`, `request-h`, `request_h` and `REQ` all insert `request-headers`
 - feat: Report an enum configuration value that is not written in Spring's recommended spelling, with a quick-fix rewriting `REQUEST_HEADERS` to `request-headers`
 - fix: Resolve a configuration value against the enum element type of an array property such as `Include[]` and of a map property such as `java.util.Map<String, Include>`
+- fix: Navigate a configuration value to its metadata hint declaration whatever its case, so `logging.level.root=INFO` navigates like `info`
+- feat: Report a configuration value that differs from its metadata hint literal only by case, with a quick-fix rewriting `INFO` to `info`
+- fix: Offer one navigation target per metadata declaration instead of repeating the same hint or key once per metadata file and once per sources jar of the same artifact
 - fix: Navigate a configuration key with no declaring member, such as `management.endpoint.httpexchanges.access`, to its value type instead of the unrelated source class
 - fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
 - fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
