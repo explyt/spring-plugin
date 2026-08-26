@@ -162,8 +162,16 @@ class ValueHintReference(
         val result = mutableListOf<Any>()
         result.addAll(
             propertyHint.values
-            .filter { it.value != null }
-            .map { LookupElementBuilder.create(it, it.value!!).withRenderer(PropertyValueRenderer()) })
+                .filter { it.value != null }
+                .map {
+                    val literal = it.value!!
+                    // Hint resolution matches a literal ignoring case, so completion has to offer it for a prefix in
+                    // any case too. Case sensitivity has to stay on: it is what makes the platform insert the declared
+                    // literal verbatim instead of echoing the case of the typed prefix.
+                    LookupElementBuilder.create(it, literal)
+                        .withLookupStrings(PropertyUtil.hintValueSpellings(literal))
+                        .withRenderer(PropertyValueRenderer())
+                })
 
         propertyHint.providers.flatMapTo(result) { providerHint ->
             processProviderHints(providerHint)
