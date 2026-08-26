@@ -17,6 +17,14 @@ import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.kotlin.idea.base.util.module
 
+
+private const val SPRING_BOOT_STARTER_SUFFIX = "-starter"
+private const val SPRING_BOOT_MAIN_STARTER = "spring-boot-starter"
+private const val SPRING_BOOT_KAFKA = "spring-kafka"
+private const val SPRING_BOOT_3_VERSION = "3.0"
+private const val SPRING_BOOT_3_4_VERSION = "3.4"
+private const val SPRING_BOOT_4_VERSION = "4.0"
+
 object SpringBootUtil {
 
     @Suppress("UnstableApiUsage")
@@ -56,6 +64,19 @@ object SpringBootUtil {
     fun isAtLeastSpringBoot3(psiElement: PsiElement): Boolean {
         val version = psiElement.module?.let { getSpringBootVersion(it) } ?: return false
         return version >= SpringBootVersion.VERSION_3_0_0
+    }
+
+    /**
+     * Returns `true` when the detected Spring Boot version is 3.4 or later.
+     * Spring Boot 3.4 upgrades to Spring Framework 6.2, which is where the bean-override annotations
+     * (`@MockitoBean`, `@MockitoSpyBean`, `@TestBean`) appear and where their Spring Boot predecessors are
+     * deprecated for removal, so 3.4 opens the window in which such a migration can already be applied.
+     */
+    @RequiresReadLock
+    fun isAtLeastSpringBoot34(psiElement: PsiElement): Boolean {
+        val version = getSpringBootVersion(psiElement)
+        if (version.isEmpty()) return false
+        return VersionComparatorUtil.compare(version, SPRING_BOOT_3_4_VERSION) >= 0
     }
 
     /**
