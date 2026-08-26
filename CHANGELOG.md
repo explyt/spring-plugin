@@ -9,6 +9,7 @@
 - fix: Cache the `@PropertySource` lookup that decides whether a file is Spring configuration, so highlighting an unrelated `.properties`/`.yaml` file no longer runs a project-wide index search per PSI element
 - fix: Report the `BootstrapRegistry`, `@JsonComponent`/`@JsonMixin` and `@EntityScan` migrations when the legacy symbol no longer resolves after a Spring Boot 4 upgrade
 - fix: Report the `@MockBean` / `@SpyBean` migration when the legacy annotation no longer resolves after a Spring Boot 4 upgrade
+- feat: Report the `@MockBean` / `@SpyBean` migration already in Spring Boot 3.4/3.5, where the annotations are deprecated for removal, naming `@MockitoBean` / `@MockitoSpyBean` and offering the quick-fix the platform deprecation warning cannot
 - feat: Report the renamed `management.endpoint.httptrace.*` configuration keys in Spring Boot 3, with a quick-fix to `httpexchanges`
 - fix: Navigate from an indexed collection key such as `ingest.s3-logs.sources[0].enabled` to the member of the collection's element class
 
