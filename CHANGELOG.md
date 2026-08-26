@@ -15,6 +15,7 @@
 - fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<...>`
 - fix: Accept an enum configuration value in any relaxed form, so `request-headers` resolves to `REQUEST_HEADERS` and is no longer reported as invalid
 - fix: Complete an enum configuration value from any relaxed spelling and insert Spring's recommended one, so `r`, `request-h`, `request_h` and `REQ` all insert `request-headers`
+- fix: Complete a metadata hint value from a prefix written in any case and insert the declared literal, so `logging.level.org.springframework=IN` offers and inserts `info`
 - feat: Report an enum configuration value that is not written in Spring's recommended spelling, with a quick-fix rewriting `REQUEST_HEADERS` to `request-headers`
 - fix: Resolve a configuration value against the enum element type of an array property such as `Include[]` and of a map property such as `java.util.Map<String, Include>`
 - fix: Navigate a configuration value to its metadata hint declaration whatever its case, so `logging.level.root=INFO` navigates like `info`

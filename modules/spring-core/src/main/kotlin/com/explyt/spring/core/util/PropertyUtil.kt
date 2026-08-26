@@ -267,6 +267,15 @@ object PropertyUtil {
     }
 
     /**
+     * The spellings of the metadata hint literal [literal] that a user types and hint resolution accepts.
+     *
+     * A hint literal is an arbitrary string, not an enum constant name, so [relaxedValueSpellings] does not apply: it
+     * maps `_` to `-`, a rewrite hint matching does not perform. Only the case is free, which is why the alternatives
+     * are the case variants of the literal itself.
+     */
+    fun hintValueSpellings(literal: String): Set<String> = setOf(literal.lowercase(), literal.uppercase())
+
+    /**
      * The spelling of the enum constant [constantName] that Spring itself recommends: lower-case kebab-case.
      *
      * Measured on `spring-boot-autoconfigure-3.5.13`, every enum-typed property with a string `defaultValue` ships it
