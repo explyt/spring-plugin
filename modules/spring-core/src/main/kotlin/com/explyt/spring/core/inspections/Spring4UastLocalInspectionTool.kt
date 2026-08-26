@@ -20,7 +20,7 @@ import org.jetbrains.uast.UAnnotation
  * Base class for UAST inspections that only apply to Spring Boot 4+ projects.
  *
  * The Spring Boot version is checked once per file in [isAvailableForFile] (instead of on every visited PSI element),
- * so the inspection never builds a visitor or walks PSI in projects that are not on Spring Boot 4+.
+ * so the inspection never builds a visitor or walks PSI in projects below the required version.
  *
  * Migration inspections must gate on the **replacement** being resolvable, never on the legacy symbol: the upgrade
  * that makes them relevant is what removes the legacy artifact. The `legacy*Fqn` helpers below recognise a symbol
@@ -29,8 +29,17 @@ import org.jetbrains.uast.UAnnotation
 abstract class Spring4UastLocalInspectionTool : SpringBaseUastLocalInspectionTool() {
 
     override fun isAvailableForFile(file: PsiFile): Boolean {
-        return super.isAvailableForFile(file) && SpringBootUtil.isAtLeastSpringBoot4(file)
+        return super.isAvailableForFile(file) && isSupportedBootVersion(file)
     }
+
+    /**
+     * The Spring Boot version floor of this inspection, evaluated once per file.
+     *
+     * Defaults to Spring Boot 4, the version that performs the reported removals. An inspection whose replacement
+     * already exists in an earlier version overrides this to lower the floor, so it can also help during the
+     * deprecation window that precedes the removal.
+     */
+    protected open fun isSupportedBootVersion(file: PsiFile): Boolean = SpringBootUtil.isAtLeastSpringBoot4(file)
 
     protected fun isClassAvailable(file: PsiFile, fqn: String): Boolean {
         return JavaPsiFacade.getInstance(file.project).findClass(fqn, file.resolveScope) != null
