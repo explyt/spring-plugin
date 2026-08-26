@@ -59,6 +59,18 @@ object SpringBootUtil {
     }
 
     /**
+     * Returns `true` when the detected Spring Boot version is 3.4 or later.
+     * Spring Boot 3.4 upgrades to Spring Framework 6.2, which is where the bean-override annotations
+     * (`@MockitoBean`, `@MockitoSpyBean`, `@TestBean`) appear and where their Spring Boot predecessors are
+     * deprecated for removal, so 3.4 opens the window in which such a migration can already be applied.
+     */
+    @RequiresReadLock
+    fun isAtLeastSpringBoot34(psiElement: PsiElement): Boolean {
+        val version = psiElement.module?.let { getSpringBootVersion(it) } ?: return false
+        return version >= SpringBootVersion.VERSION_3_4_0
+    }
+
+    /**
      * Returns `true` when the detected Spring Boot version is 4.0 or later.
      */
     fun isAtLeastSpringBoot4(psiElement: PsiElement): Boolean {
@@ -70,6 +82,7 @@ object SpringBootUtil {
         ANY("1.0.0"),
 
         VERSION_3_0_0("3.0.0"),
+        VERSION_3_4_0("3.4.0"),
         VERSION_4_0_0("4.0.0");
     }
 
