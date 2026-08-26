@@ -14,17 +14,18 @@ import io.sentry.Breadcrumb
 import io.sentry.SentryLevel
 
 /**
- * Records each performed IDE action as a Sentry breadcrumb.
- * When an error is captured, the last 100 breadcrumbs (Sentry default) are sent
- * automatically, providing a reproduction path instead of a single random "last action".
+ * Records useful, registered IDE actions as Sentry breadcrumbs.
+ * High-frequency editor input is omitted before it reaches Sentry, so the trail keeps navigation and product actions
+ * instead of being consumed by typing noise.
  */
 class ActionBreadcrumbListener : AnActionListener {
 
     override fun afterActionPerformed(action: AnAction, event: AnActionEvent, result: AnActionResult) {
-        val actionId = ActionManager.getInstance().getId(action) ?: action.javaClass.simpleName
+        val actionId = ActionManager.getInstance().getId(action)
+        if (!ActionBreadcrumbPolicy.shouldRecord(actionId)) return
 
         SentryReporter.addBreadcrumb(Breadcrumb().apply {
-            category = "action"
+            category = ActionBreadcrumbSanitizer.ACTION_CATEGORY
             message = actionId
             level = SentryLevel.INFO
             setData("place", event.place)

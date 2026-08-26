@@ -34,6 +34,7 @@
 
 ### Other
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded
+- fix: Keep Sentry action breadcrumbs useful by dropping editor input noise, collapsing repeated actions, and removing stale entries from captured reports
 
 ## 262.34.101 - 2026-08-18
 
