@@ -20,6 +20,7 @@ import com.explyt.spring.core.completion.properties.SpringConfigurationPropertie
 import com.explyt.spring.core.completion.renderer.PropertyRenderer
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
 import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
+import com.explyt.spring.core.properties.references.LoggingLevelKeys
 import com.explyt.spring.core.properties.references.MetaConfigurationKeyReference
 import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
 import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
@@ -45,8 +46,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.*
 import com.intellij.psi.impl.FakePsiElement
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceProvider
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceSet
 import com.intellij.util.ProcessingContext
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtParameter
@@ -54,9 +53,6 @@ import org.jetbrains.uast.toUElement
 import org.jetbrains.yaml.YAMLLanguage
 
 class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
-
-    private val referenceProvider = JavaClassReferenceProvider()
-        .apply { isSoft = true }
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
@@ -96,7 +92,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         if (referencesByPrefixKey.isNotEmpty()) {
             return referencesByPrefixKey
         }
-        val referencesByLoggingLevel = getPsiReferencesByMapKeyLoggingLevel(propertyKey, element)
+        val referencesByLoggingLevel = getPsiReferencesByMapKeyLoggingLevel(propertyKey, element, module)
         if (referencesByLoggingLevel.isNotEmpty()) {
             return referencesByLoggingLevel
         }
@@ -235,15 +231,20 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
 
     private fun getPsiReferencesByMapKeyLoggingLevel(
         propertyKey: String,
-        element: PsiElement
+        element: PsiElement,
+        module: Module
     ): Array<PsiReference> {
         if (!propertyKey.startsWith("$LOGGING_LEVEL.")) return emptyArray()
 
+        val suffix = propertyKey.substringAfter("$LOGGING_LEVEL.")
         val valueText = ElementManipulators.getValueText(element)
-        val offset = ElementManipulators.getOffsetInElement(element)
+        // In YAML the key is split across nesting levels, so this element carries only the tail of the full key: the
+        // suffix alone under `logging.level:`, the whole key when it is written flat. Only the part of this element
+        // that belongs to the suffix may be covered.
+        if (!valueText.endsWith(suffix)) return emptyArray()
+        val offset = ElementManipulators.getOffsetInElement(element) + valueText.length - suffix.length
 
-        return JavaClassReferenceSet(valueText, element, offset, false, referenceProvider)
-            .references
+        return LoggingLevelKeys.referencesForSuffix(element, module, suffix, TextRange.from(offset, suffix.length))
     }
 }
 
