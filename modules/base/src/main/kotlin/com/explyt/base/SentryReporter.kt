@@ -12,7 +12,6 @@ import io.sentry.Breadcrumb
 import io.sentry.IScope
 import io.sentry.ScopeType
 import io.sentry.Sentry
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -28,7 +27,14 @@ object SentryReporter {
     private val lock = ReentrantLock()
 
     private val pendingBreadcrumbs = BoundedBuffer<Breadcrumb>(MAX_PENDING_BREADCRUMBS)
-    private val initializationScheduled = AtomicBoolean(false)
+    private val initializationScheduler = AsyncInitializationScheduler(
+        executor = AppExecutorUtil.getAppExecutorService(),
+        initialize = ::ensureInitialized,
+        flush = ::flushPendingBreadcrumbs,
+        isInitialized = { initialized },
+        hasPending = { !pendingBreadcrumbs.isEmpty() },
+        discardPending = { pendingBreadcrumbs.drain() },
+    )
 
     private fun ensureInitialized() {
         if (initialized) return
@@ -43,6 +49,13 @@ object SentryReporter {
                     // Must match the release created by the release CI (see release.yaml).
                     options.release = PluginContext.pluginVersion
                     options.isEnableUncaughtExceptionHandler = false
+                    // Sentry drops the whole event when this callback throws, so sanitizing must fail closed.
+                    options.setBeforeSend { event, _ ->
+                        event.breadcrumbs?.let { breadcrumbs ->
+                            event.breadcrumbs = ActionBreadcrumbSanitizer.sanitizeSafely(breadcrumbs, event.timestamp)
+                        }
+                        event
+                    }
                 }
 
                 // GLOBAL for the same reason as breadcrumbs: the default scope type is ISOLATION, which Sentry 8
@@ -102,12 +115,7 @@ object SentryReporter {
         }
 
         pendingBreadcrumbs.offer(breadcrumb)
-        if (initializationScheduled.compareAndSet(false, true)) {
-            AppExecutorUtil.getAppExecutorService().execute {
-                ensureInitialized()
-                flushPendingBreadcrumbs()
-            }
-        }
+        initializationScheduler.schedule()
     }
 
     /**
