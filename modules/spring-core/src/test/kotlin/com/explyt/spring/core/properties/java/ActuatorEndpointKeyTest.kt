@@ -60,6 +60,25 @@ class ActuatorEndpointKeyTest : ExplytJavaLightTestCase() {
         assertEquals("expected no unresolved key, got: ${unresolvedKeys()}", emptyList<String>(), unresolvedKeys())
     }
 
+    fun testYamlCacheTailNavigatesToDuration() {
+        addCustomEndpoint()
+        myFixture.configureByText(
+            "application.yaml",
+            """
+            management:
+              endpoint:
+                outboxpublishers:
+                  cache:
+                    time-to-live: 10s
+            """.trimIndent()
+        )
+
+        val targets = targetsAtLast("time-to-live")
+
+        assertEquals("one value type per YAML key, got: ${describe(targets)}", 1, targets.size)
+        assertEquals("Duration", (targets.single() as? PsiClass)?.name)
+    }
+
     fun testUnknownEndpointIdIsStillReported() {
         addCustomEndpoint()
 

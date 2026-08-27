@@ -40,24 +40,30 @@ class ActuatorEndpointConfigurationPropertiesLoader : ConfigurationPropertiesLoa
     override fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint? =
         null
 
-    private fun propertiesOf(endpoint: ActuatorEndpoint): Sequence<ConfigurationProperty> {
+    private fun propertiesOf(endpoint: ActuatorEndpoint): Sequence<ConfigurationProperty> = sequence {
         val id = endpoint.id
-        val defaultAccess = PropertyUtil.recommendedValueSpelling(endpoint.defaultAccess)
-        return sequenceOf(
-            property(
-                "$MANAGEMENT_ENDPOINT.$id.access",
-                SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS,
-                endpoint,
-                SpringCoreBundle.message("explyt.spring.property.actuator.endpoint.access", id, defaultAccess),
-                defaultAccess
-            ),
+        endpoint.defaultAccess?.let { defaultAccess ->
+            val recommendedAccess = PropertyUtil.recommendedValueSpelling(defaultAccess)
+            yield(
+                property(
+                    "$MANAGEMENT_ENDPOINT.$id.access",
+                    SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS,
+                    endpoint,
+                    SpringCoreBundle.message("explyt.spring.property.actuator.endpoint.access", id, recommendedAccess),
+                    recommendedAccess
+                )
+            )
+        }
+        yield(
             property(
                 "$MANAGEMENT_ENDPOINT.$id.enabled",
                 JavaCoreClasses.BOOLEAN,
                 endpoint,
                 SpringCoreBundle.message("explyt.spring.property.actuator.endpoint.enabled", id),
                 null
-            ),
+            )
+        )
+        yield(
             property(
                 "$MANAGEMENT_ENDPOINT.$id.cache.time-to-live",
                 ActuatorEndpointKeys.KEY_TYPES.getValue("cache.time-to-live"),
