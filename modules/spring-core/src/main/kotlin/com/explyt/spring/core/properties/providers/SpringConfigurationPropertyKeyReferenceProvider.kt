@@ -19,6 +19,7 @@ import com.explyt.spring.core.completion.properties.PropertyType
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.renderer.PropertyRenderer
 import com.explyt.spring.core.properties.PropertiesJavaClassReferenceSet
+import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.properties.references.LoggingLevelKeys
 import com.explyt.spring.core.properties.references.MetaConfigurationKeyReference
@@ -60,6 +61,12 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         }
         val propertyKey = element.propertyKey() ?: return PsiReference.EMPTY_ARRAY
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return PsiReference.EMPTY_ARRAY
+
+        // A synthesized endpoint key has no metadata declaration to navigate to, so each of its segments carries its
+        // own reference instead of one reference over the whole key resolving to the endpoint class.
+        val endpointReferences = ActuatorEndpointKeys.referencesForKey(element, module, propertyKey)
+        if (endpointReferences.isNotEmpty()) return endpointReferences
+
         val allHints = SpringConfigurationPropertiesSearch.getInstance(element.project).getAllHints(module)
 
         val keyHint: PropertyHint? = allHints.find { hint ->
