@@ -57,6 +57,29 @@ class ActuatorEndpointKotlinKeyTest : ExplytKotlinLightTestCase() {
         assertEquals("expected no unresolved key, got: ${unresolvedKeys()}", emptyList<String>(), unresolvedKeys())
     }
 
+    fun testYamlCacheTailNavigatesToDuration() {
+        addCustomEndpoint()
+        myFixture.configureByText(
+            "application.yaml",
+            """
+            management:
+              endpoint:
+                outboxpublishers:
+                  cache:
+                    time-to-live: 10s
+            """.trimIndent()
+        )
+
+        val reference = myFixture.file.findReferenceAt(myFixture.file.text.indexOf("time-to-live"))
+        val targets = when (reference) {
+            is PsiPolyVariantReference -> reference.multiResolve(false).mapNotNull { it.element }
+            else -> listOfNotNull(reference?.resolve())
+        }
+
+        assertEquals("one value type per YAML key, got: ${targets.map { describe(it) }}", 1, targets.size)
+        assertEquals("Duration", (targets.single() as? PsiClass)?.name)
+    }
+
     fun testIdSegmentNavigatesToTheKotlinEndpointClass() {
         addCustomEndpoint()
         myFixture.configureByText("application.properties", "management.endpoint.outboxpublishers.access=unrestricted")

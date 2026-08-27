@@ -26,12 +26,12 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
 /** An Actuator endpoint declared in the project: the id it publishes and the class publishing it. */
-data class ActuatorEndpoint(val id: String, val psiClass: PsiClass, val defaultAccess: String)
+data class ActuatorEndpoint(val id: String, val psiClass: PsiClass, val defaultAccess: String?)
 
 /**
- * `management.endpoint.<id>.*` is never declared per id in Spring's metadata: `PropertiesEndpointAccessResolver`
- * formats the key from the endpoint id at runtime, so every id a project declares owns such keys. The ids live in the
- * `@Endpoint` meta-annotation, which is why they are read from the code instead.
+ * Spring declares `management.endpoint.<id>.*` metadata for built-in endpoint ids, but cannot declare ids supplied by
+ * application code: `PropertiesEndpointAccessResolver` formats the key from the endpoint id at runtime. The ids live
+ * in the `@Endpoint` meta-annotation, which is why application endpoints are read from the code instead.
  */
 object ActuatorEndpointKeys {
 
@@ -55,9 +55,14 @@ object ActuatorEndpointKeys {
     /** The endpoints [module] declares, by id. An id may be declared twice, which is a project error, not ours. */
     fun endpointsById(module: Module): Map<String, List<ActuatorEndpoint>> {
         if (DumbService.isDumb(module.project)) return emptyMap()
+        val accessAvailable = JavaPsiFacade.getInstance(module.project)
+            .findClass(
+                SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS,
+                GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+            ) != null
         return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result(
-                findEndpoints(module),
+                findEndpoints(module, accessAvailable),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
@@ -90,12 +95,15 @@ object ActuatorEndpointKeys {
         }
         rangeOf(parsed.id)?.let { references += ActuatorEndpointIdReference(element, it, endpoints) }
         parsed.tail?.let { tail ->
-            rangeOf(tail)?.let { references += ActuatorEndpointValueTypeReference(element, it, module, KEY_TYPES[tail]) }
+            val localTail = tail.substringAfterLast(DOT)
+            rangeOf(localTail)?.let {
+                references += ActuatorEndpointValueTypeReference(element, it, module, KEY_TYPES[tail])
+            }
         }
         return references.toTypedArray()
     }
 
-    private fun findEndpoints(module: Module): Map<String, List<ActuatorEndpoint>> {
+    private fun findEndpoints(module: Module, accessAvailable: Boolean): Map<String, List<ActuatorEndpoint>> {
         // `@Endpoint` is the linking meta-annotation of `@WebEndpoint`, `@JmxEndpoint` and the controller endpoints,
         // so matching it covers every specialization, including ones a project or a future Boot release declares.
         val annotations = MetaAnnotationUtil
@@ -107,22 +115,25 @@ object ActuatorEndpointKeys {
             // An endpoint class is not a bean by virtue of the annotation - `@Endpoint` carries only `@Reflective` -
             // so it is found by annotation search, not through the bean model.
             AnnotatedElementsSearch.searchPsiClasses(annotationClass, module.moduleScope).forEach { psiClass ->
-                toEndpoint(psiClass, annotationName)
+                toEndpoint(psiClass, annotationName, accessAvailable)
                     ?.let { result.getOrPut(it.id) { mutableListOf() } += it }
-                true
             }
         }
         return result
     }
 
-    private fun toEndpoint(psiClass: PsiClass, annotationName: String): ActuatorEndpoint? {
+    private fun toEndpoint(psiClass: PsiClass, annotationName: String, accessAvailable: Boolean): ActuatorEndpoint? {
         val annotation = psiClass.getAnnotation(annotationName) ?: return null
         // `@Endpoint` and `@JmxEndpoint` declare `id() default ""`, so a class may carry no id; a key built from it
         // would read `management.endpoint..access`, which Spring resolves for nothing.
         val id = AnnotationUtil.getStringAttributeValue(annotation, ID_ATTRIBUTE)?.takeIf { it.isNotBlank() }
             ?: return null
-        val defaultAccess = annotation.findAttributeValue(DEFAULT_ACCESS_ATTRIBUTE)?.text
-            ?.substringAfterLast(DOT)?.takeIf { it.isNotBlank() } ?: UNRESTRICTED
+        val defaultAccess = if (accessAvailable) {
+            annotation.findAttributeValue(DEFAULT_ACCESS_ATTRIBUTE)?.text
+                ?.substringAfterLast(DOT)?.takeIf { it.isNotBlank() } ?: UNRESTRICTED
+        } else {
+            null
+        }
         return ActuatorEndpoint(id, psiClass, defaultAccess)
     }
 
