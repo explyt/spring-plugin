@@ -38,6 +38,8 @@
                 implementation="com.explyt.spring.web.loader.SpringBootEndpointLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.EventListenersEndpointLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.ActuatorEndpointLoader"/>
 
 
     </extensions>
