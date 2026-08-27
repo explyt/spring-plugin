@@ -95,9 +95,12 @@ object ActuatorEndpointKeys {
         }
         rangeOf(parsed.id)?.let { references += ActuatorEndpointIdReference(element, it, endpoints) }
         parsed.tail?.let { tail ->
-            val localTail = tail.substringAfterLast(DOT)
-            rangeOf(localTail)?.let {
-                references += ActuatorEndpointValueTypeReference(element, it, module, KEY_TYPES[tail])
+            val valueType = KEY_TYPES[tail]
+            if (valueType != null && (tail != "access" || endpoints.any { it.defaultAccess != null })) {
+                val localTail = tail.substringAfterLast(DOT)
+                rangeOf(localTail)?.let {
+                    references += ActuatorEndpointValueTypeReference(element, it, module, valueType)
+                }
             }
         }
         return references.toTypedArray()
