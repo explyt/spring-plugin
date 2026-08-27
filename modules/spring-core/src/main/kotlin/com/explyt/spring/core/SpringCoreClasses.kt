@@ -7,6 +7,8 @@ package com.explyt.spring.core
 
 object SpringCoreClasses {
     const val SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication"
+    const val ACTUATOR_ENDPOINT = "org.springframework.boot.actuate.endpoint.annotation.Endpoint"
+    const val ACTUATOR_ENDPOINT_ACCESS = "org.springframework.boot.actuate.endpoint.Access"
     const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
     const val BOOT_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.AutoConfiguration"
 
