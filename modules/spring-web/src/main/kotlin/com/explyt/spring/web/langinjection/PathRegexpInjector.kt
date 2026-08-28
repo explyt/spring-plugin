@@ -17,6 +17,7 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.impl.source.tree.injected.changesHandler.contentRange
+import kotlinx.coroutines.CancellationException
 import org.intellij.lang.regexp.RegExpLanguage
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UastFacade
@@ -86,6 +87,8 @@ class PathRegexpInjector : MultiHostInjector {
         val valueRange = try {
             contentRange
         } catch (e: ProcessCanceledException) {
+            throw e
+        } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             return null
