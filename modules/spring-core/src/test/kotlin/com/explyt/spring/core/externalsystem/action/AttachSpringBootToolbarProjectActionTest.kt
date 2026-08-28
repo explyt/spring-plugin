@@ -61,6 +61,8 @@ class AttachSpringBootToolbarProjectActionTest : ExplytKotlinLightTestCase() {
         )
         action.update(event)
 
+        assertFalse(event.presentation.isVisible)
+        assertFalse(event.presentation.isEnabled)
         assertNull(
             "update() must not create the RunManager service",
             RunManager.getInstanceIfCreated(projectWithLazyServices)
