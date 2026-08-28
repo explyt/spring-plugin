@@ -11,9 +11,11 @@ import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.lang.injection.MultiHostInjector
 import com.intellij.lang.injection.MultiHostRegistrar
 import com.intellij.openapi.module.ModuleUtil
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiLanguageInjectionHost
 import com.intellij.psi.impl.source.tree.injected.changesHandler.contentRange
 import org.intellij.lang.regexp.RegExpLanguage
 import org.jetbrains.uast.UAnnotation
@@ -38,41 +40,57 @@ class PathRegexpInjector : MultiHostInjector {
         val urlPaths = mahRequestMapping.getAnnotationMemberValues(uElement, setOf("value", "path"))
         for (memberValue in urlPaths) {
             memberValue.evaluateString() ?: continue
-            val urlPath = memberValue.asSourceString()
+            val valueSourcePsi = memberValue.sourcePsi ?: continue
+            val valueRange = valueSourcePsi.textRange ?: continue
+            // offsets below are relative to the source text of the whole member value expression,
+            // which may be a concatenation of several injection hosts
+            val urlPath = valueSourcePsi.text ?: continue
 
-            val ranges = SpringWebUtil.NameInBracketsRx.findAll(urlPath)
+            val regexpRanges = SpringWebUtil.NameInBracketsRx.findAll(urlPath)
                 .mapNotNull { it.groups["name"] }
                 .filter { it.value.contains(":") }
                 .mapTo(mutableListOf()) {
-                    val range = TextRange(it.range.first + 1, it.range.last + 2)
-                    val delimiterRegexp = it.value.indexOf(":")
-                    val regexpRange = TextRange(range.startOffset + delimiterRegexp + 1, range.endOffset)
-                    if (urlPath.startsWith("\"")) regexpRange.shiftLeft(1) else regexpRange
+                    val regexpStart = it.range.first + it.value.indexOf(":") + 1
+                    TextRange(regexpStart, it.range.last + 1)
                 }
-            if (ranges.isEmpty()) continue
+            if (regexpRanges.isEmpty()) continue
 
             val flattenExpression = memberValue !is UInjectionHost
             val concatenationsFacade =
                 UStringConcatenationsFacade.createFromUExpression(memberValue, flattenExpression) ?: return
-            val host = concatenationsFacade.psiLanguageInjectionHosts
+            val hostContentRanges = concatenationsFacade.psiLanguageInjectionHosts
                 .distinct()
-                .filter { it.isValid && it.isValidHost }
-                .filter { host ->
-                    try {
-                        val range = host.contentRange.shiftLeft(host.textOffset)
-                        range.startOffset >= 0 && range.endOffset >= range.startOffset
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-                .firstOrNull() ?: return
+                .mapNotNull { host -> host.absoluteContentRange()?.let { host to it } }
+                .toList()
+            if (hostContentRanges.isEmpty()) return
 
-            ranges.toString()
+            val places = regexpRanges.mapNotNull { regexpRange ->
+                val absoluteRange = regexpRange.shiftRight(valueRange.startOffset)
+                val (host, _) = hostContentRanges.firstOrNull { (_, content) -> content.contains(absoluteRange) }
+                    ?: return@mapNotNull null
+                host to absoluteRange.shiftLeft(host.textRange.startOffset)
+            }
+            if (places.isEmpty()) continue
+
             registrar.startInjecting(RegExpLanguage.INSTANCE)
-            ranges.forEach { registrar.addPlace(null, null, host, it) }
+            places.forEach { (host, rangeInsideHost) -> registrar.addPlace(null, null, host, rangeInsideHost) }
             registrar.doneInjecting()
             return
         }
+    }
+
+    /** Content range of the host in file coordinates, or null if the host cannot be injected into. */
+    private fun PsiLanguageInjectionHost.absoluteContentRange(): TextRange? {
+        if (!isValid || !isValidHost) return null
+        val hostRange = textRange ?: return null
+        val valueRange = try {
+            contentRange
+        } catch (e: ProcessCanceledException) {
+            throw e
+        } catch (_: Exception) {
+            return null
+        }
+        return valueRange.takeIf { hostRange.contains(it) }
     }
 
     override fun elementsToInjectIn(): List<Class<out PsiElement>> {
