@@ -15,6 +15,7 @@ import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.TestActionEvent
 
@@ -36,6 +37,34 @@ class AttachSpringBootToolbarProjectActionTest : ExplytKotlinLightTestCase() {
             mainClassName = "missing.Application"
         }
         assertUpdateVisible(configuration)
+    }
+
+    /**
+     * The toolbar action is updated on every frame refresh, long before anything in the project asked for the run
+     * configuration model, so `update()` must never be the code that initializes the `RunManager` service: creating a
+     * project service parks the calling thread until initialization completes.
+     *
+     * Any opened project — including the light fixture one — already holds a created `RunManager`, so the check uses the
+     * default project: a real project whose services stay uncreated until someone asks for them.
+     */
+    fun testUpdateDoesNotCreateRunManagerService() {
+        val projectWithLazyServices = ProjectManager.getInstance().defaultProject
+        assertNull(
+            "RunManager must not be created before update()",
+            RunManager.getInstanceIfCreated(projectWithLazyServices)
+        )
+
+        val action = AttachSpringBootToolbarProjectAction()
+        val event = TestActionEvent.createTestEvent(
+            action,
+            SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectWithLazyServices).build()
+        )
+        action.update(event)
+
+        assertNull(
+            "update() must not create the RunManager service",
+            RunManager.getInstanceIfCreated(projectWithLazyServices)
+        )
     }
 
     fun testUpdateHidesConfigurationWithoutMainClass() {
