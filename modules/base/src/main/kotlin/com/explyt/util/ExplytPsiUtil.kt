@@ -108,6 +108,7 @@ object ExplytPsiUtil {
                 && (method.containingFile?.name !in setOf("Annotation.class", "Object.class"))
 
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
+        if (!isValid || !baseClass.isValid) return false
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
