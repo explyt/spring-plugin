@@ -45,6 +45,7 @@ object RunConfigurationUtil {
     fun getRunClassName(runConfiguration: RunConfiguration?): String? {
         return when (runConfiguration) {
             is SpringBootRunConfiguration -> runConfiguration.mainClassName
+            is KotlinRunConfiguration -> runConfiguration.mainClassName
             is CommonJavaRunConfigurationParameters -> runConfiguration.runClass
             else -> null
         }
