@@ -317,6 +317,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
     }
 
     private fun isBeanExist(module: Module, psiClass: PsiClass): Boolean {
+        if (!psiClass.isValid) return false
         if (SpringCoreUtil.isComponentCandidate(psiClass)) return true
         if (psiClass.isSpringTestClass()) return true
 
