@@ -5,6 +5,7 @@
 
 package com.explyt.base
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
@@ -125,5 +126,48 @@ class AsyncInitializationSchedulerTest {
         }
 
         assertEquals(AsyncInitializationScheduler.MAX_ATTEMPTS, attempts)
+    }
+
+    @Test
+    fun `cancellation is rethrown without scheduling a follow-up`() {
+        val tasks = ArrayDeque<Runnable>()
+        val scheduler = AsyncInitializationScheduler(
+            executor = { tasks.addLast(it) },
+            initialize = { throw ProcessCanceledException() },
+            flush = {},
+            isInitialized = { false },
+            hasPending = { true },
+            discardPending = {},
+        )
+
+        scheduler.schedule()
+        var cancellationEscaped = false
+        try {
+            tasks.removeFirst().run()
+        } catch (_: ProcessCanceledException) {
+            cancellationEscaped = true
+        }
+
+        assertEquals(true, cancellationEscaped)
+        assertEquals("cancellation must not enqueue a follow-up", 0, tasks.size)
+    }
+
+    @Test
+    fun `runs no initialization when it already happened`() {
+        val tasks = ArrayDeque<Runnable>()
+        var flushes = 0
+        val scheduler = AsyncInitializationScheduler(
+            executor = { tasks.addLast(it) },
+            initialize = { error("must not initialize twice") },
+            flush = { flushes++ },
+            isInitialized = { true },
+            hasPending = { false },
+            discardPending = {},
+        )
+
+        scheduler.schedule()
+
+        assertEquals(1, flushes)
+        assertEquals("no background work is needed", 0, tasks.size)
     }
 }
