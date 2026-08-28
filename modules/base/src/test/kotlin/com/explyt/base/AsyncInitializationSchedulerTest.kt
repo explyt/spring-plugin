@@ -7,6 +7,7 @@ package com.explyt.base
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import com.intellij.openapi.progress.ProcessCanceledException
 import org.junit.Test
 import java.util.ArrayDeque
 import java.util.concurrent.Executor
@@ -22,12 +23,13 @@ class AsyncInitializationSchedulerTest {
         var flushes = 0
         lateinit var scheduler: AsyncInitializationScheduler
         scheduler = AsyncInitializationScheduler(
-            executor = Executor { tasks.addLast(it) },
+            executor = { tasks.addLast(it) },
             initialize = { initialized = true },
             flush = {
                 flushes++
                 pending = false
                 if (flushes == 1) {
+                    // A producer offers an item after the drain but before the worker returns.
                     pending = true
                     scheduler.schedule()
                 }
@@ -44,32 +46,57 @@ class AsyncInitializationSchedulerTest {
         assertFalse("nothing may remain pending", pending)
     }
 
+    /** A failure must not strand the buffer, but the retry has to be arranged by the scheduler itself. */
     @Test
-    fun `a failed initialization allows a later attempt`() {
+    fun `retries after a failed initialization`() {
         val tasks = ArrayDeque<Runnable>()
-        var initialized = false
-        var shouldFail = true
+        var attempts = 0
+        var pending = true
         val scheduler = AsyncInitializationScheduler(
-            executor = Executor { tasks.addLast(it) },
+            executor = { tasks.addLast(it) },
             initialize = {
-                if (shouldFail) {
-                    shouldFail = false
-                    error("initialization failed")
-                }
-                initialized = true
+                attempts++
+                error("initialization failed")
             },
-            flush = {},
-            isInitialized = { initialized },
-            hasPending = { false },
-            discardPending = {},
+            flush = { pending = false },
+            isInitialized = { false },
+            hasPending = { pending },
+            discardPending = { pending = false },
         )
 
         scheduler.schedule()
         tasks.removeFirst().run()
-        scheduler.schedule()
-        tasks.removeFirst().run()
 
-        assertEquals(true, initialized)
+        assertEquals(1, attempts)
+        assertFalse("pending telemetry is best-effort and must be dropped", pending)
+    }
+
+    /**
+     * Initialization reads the manifest of every installed plugin, so an unbounded retry would repeat that cost for
+     * every subsequent action. After the attempt budget is spent the scheduler must stay silent.
+     */
+    @Test
+    fun `stops attempting after the retry budget is spent`() {
+        val tasks = ArrayDeque<Runnable>()
+        var attempts = 0
+        val scheduler = AsyncInitializationScheduler(
+            executor = { tasks.addLast(it) },
+            initialize = {
+                attempts++
+                error("initialization failed")
+            },
+            flush = {},
+            isInitialized = { false },
+            hasPending = { true },
+            discardPending = {},
+        )
+
+        repeat(10) {
+            scheduler.schedule()
+            while (tasks.isNotEmpty()) tasks.removeFirst().run()
+        }
+
+        assertEquals(AsyncInitializationScheduler.MAX_ATTEMPTS, attempts)
     }
 
     @Test
@@ -104,26 +131,45 @@ class AsyncInitializationSchedulerTest {
     }
 
     @Test
-    fun `stops attempting after the retry budget is spent`() {
+    fun `cancellation is rethrown without scheduling a follow-up`() {
         val tasks = ArrayDeque<Runnable>()
-        var attempts = 0
         val scheduler = AsyncInitializationScheduler(
-            executor = Executor { tasks.addLast(it) },
-            initialize = {
-                attempts++
-                error("initialization failed")
-            },
+            executor = { tasks.addLast(it) },
+            initialize = { throw ProcessCanceledException() },
             flush = {},
             isInitialized = { false },
             hasPending = { true },
             discardPending = {},
         )
 
-        repeat(10) {
-            scheduler.schedule()
-            while (tasks.isNotEmpty()) tasks.removeFirst().run()
+        scheduler.schedule()
+        var cancellationEscaped = false
+        try {
+            tasks.removeFirst().run()
+        } catch (_: ProcessCanceledException) {
+            cancellationEscaped = true
         }
 
-        assertEquals(AsyncInitializationScheduler.MAX_ATTEMPTS, attempts)
+        assertEquals(true, cancellationEscaped)
+        assertEquals("cancellation must not enqueue a follow-up", 0, tasks.size)
+    }
+
+    @Test
+    fun `runs no initialization when it already happened`() {
+        val tasks = ArrayDeque<Runnable>()
+        var flushes = 0
+        val scheduler = AsyncInitializationScheduler(
+            executor = { tasks.addLast(it) },
+            initialize = { error("must not initialize twice") },
+            flush = { flushes++ },
+            isInitialized = { true },
+            hasPending = { false },
+            discardPending = {},
+        )
+
+        scheduler.schedule()
+
+        assertEquals(1, flushes)
+        assertEquals("no background work is needed", 0, tasks.size)
     }
 }
