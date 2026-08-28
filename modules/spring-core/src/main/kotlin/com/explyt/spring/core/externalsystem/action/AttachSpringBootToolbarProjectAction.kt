@@ -34,7 +34,7 @@ class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
     override fun update(e: AnActionEvent) {
         val presentation = e.presentation
         val project = e.project ?: return
-        val selectedConfiguration = RunManager.getInstance(project).selectedConfiguration?.configuration
+        val selectedConfiguration = RunManager.getInstanceIfCreated(project)?.selectedConfiguration?.configuration
         presentation.isVisible = selectedConfiguration.supportsSpringBootAttach()
         // Attaching resolves the main class through indexes, so keep the button in place but inert while indexing.
         presentation.isEnabled = presentation.isVisible && !DumbService.isDumb(project)
