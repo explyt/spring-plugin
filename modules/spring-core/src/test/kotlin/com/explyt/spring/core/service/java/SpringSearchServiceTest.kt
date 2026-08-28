@@ -7,11 +7,16 @@ package com.explyt.spring.core.service.java
 
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.util.PsiTreeUtil
 import junit.framework.TestCase
 
 class SpringSearchServiceTest : ExplytJavaLightTestCase() {
@@ -75,5 +80,31 @@ class SpringSearchServiceTest : ExplytJavaLightTestCase() {
         val psiBean = beanTestClass[0]
         assertTrue(psiBean.psiMember is PsiMethod)
         assertTrue((psiBean.psiMember as PsiMethod).containingClass?.qualifiedName == "com.app.AppConfiguration")
+    }
+
+    fun testAllReferencesToElementReflectSourceChanges() {
+        val file = myFixture.configureByText(
+            "References.java",
+            """
+            class References {
+                void setPrefix(String value) {}
+                void first() { setPrefix(\"first\"); }
+            }
+            """.trimIndent()
+        )
+        val method = PsiTreeUtil.findChildrenOfType(file, PsiMethod::class.java)
+            .single { it.name == "setPrefix" }
+
+        assertEquals(1, SpringSearchUtils.getAllReferencesToElement(method).size)
+
+        val document = file.viewProvider.document!!
+        WriteCommandAction.runWriteCommandAction(project) {
+            val insertionOffset = document.text.lastIndexOf('}')
+            document.insertString(insertionOffset, "    void second() { setPrefix(\\\"second\\\"); }\\n")
+        }
+        PsiDocumentManager.getInstance(project).commitDocument(document)
+        PsiManager.getInstance(project).dropPsiCaches()
+
+        assertEquals(2, SpringSearchUtils.getAllReferencesToElement(method).size)
     }
 }
