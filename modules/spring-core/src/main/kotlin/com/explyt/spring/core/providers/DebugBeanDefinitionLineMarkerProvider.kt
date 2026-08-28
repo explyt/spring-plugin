@@ -28,6 +28,7 @@ class DebugBeanDefinitionLineMarkerProvider : LineMarkerProvider {
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
         val uClass = getUParentForIdentifier(element) as? UClass ?: return null
         val psiClass = uClass.javaPsi
+        if (!psiClass.isValid) return null
         val qualifiedName = psiClass.qualifiedName ?: return null
         val project = psiClass.project
         if (!SpringCoreUtil.isExplytDebug(project)) return null
