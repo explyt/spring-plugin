@@ -12,7 +12,7 @@ import io.sentry.Breadcrumb
 import io.sentry.IScope
 import io.sentry.ScopeType
 import io.sentry.Sentry
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.Executor
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -28,7 +28,9 @@ object SentryReporter {
     private val lock = ReentrantLock()
 
     private val pendingBreadcrumbs = BoundedBuffer<Breadcrumb>(MAX_PENDING_BREADCRUMBS)
-    private val initializationScheduled = AtomicBoolean(false)
+    private val initializationScheduler = RetryableTaskScheduler(Executor { command ->
+        AppExecutorUtil.getAppExecutorService().execute(command)
+    })
 
     private fun ensureInitialized() {
         if (initialized) return
@@ -102,11 +104,9 @@ object SentryReporter {
         }
 
         pendingBreadcrumbs.offer(breadcrumb)
-        if (initializationScheduled.compareAndSet(false, true)) {
-            AppExecutorUtil.getAppExecutorService().execute {
-                ensureInitialized()
-                flushPendingBreadcrumbs()
-            }
+        initializationScheduler.schedule {
+            ensureInitialized()
+            flushPendingBreadcrumbs()
         }
     }
 
