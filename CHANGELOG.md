@@ -12,7 +12,6 @@
 - feat: Report the `@MockBean` / `@SpyBean` migration already in Spring Boot 3.4/3.5, where the annotations are deprecated for removal, naming `@MockitoBean` / `@MockitoSpyBean` and offering the quick-fix the platform deprecation warning cannot
 - feat: Report the renamed `management.endpoint.httptrace.*` configuration keys in Spring Boot 3, with a quick-fix to `httpexchanges`
 - fix: Navigate from an indexed collection key such as `ingest.s3-logs.sources[0].enabled` to the member of the collection's element class
-
 - fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<...>`
 - fix: Accept an enum configuration value in any relaxed form, so `request-headers` resolves to `REQUEST_HEADERS` and is no longer reported as invalid
 - fix: Complete an enum configuration value from any relaxed spelling and insert Spring's recommended one, so `r`, `request-h`, `request_h` and `REQ` all insert `request-headers`
@@ -28,6 +27,7 @@
 - fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
 - fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
 - fix: Do not freeze the UI while a project opens: the linked-project self-healing pass no longer requests the run configuration manager on the event dispatch thread
+- fix: Stop resolving PSI in the Spring Boot toolbar action update, which caused multi-second action-update delays
 
 ### Spring Web
 - feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port`
@@ -38,7 +38,7 @@
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded
 - fix: Keep Sentry action breadcrumbs useful by dropping editor typing and caret movement, recording a repeated action once, and trimming a captured report to the actions that led to it
 
-## 262.34.101 - 2026-08-18
+## [262.34.101] - 2026-08-19
 
 ### Spring Core
 - fix: Keep renamed Spring Boot run configurations linked without ambiguous fallback (#229) (#279)
@@ -75,7 +75,6 @@
 - fix: Resolve Kotlin `const val` package names in component-scan annotations
 - fix: Resolve `@Value` placeholder keys whose default is a SpEL or nested placeholder expression, such as `${my.key:#{null}}`
 - fix: Resolve property keys consumed only from a dependency module (#276)
-- fix: Stop resolving PSI in the Spring Boot toolbar action update, which caused multi-second action-update delays
 
 ### Spring Data
 - fix: Fail closed on stale PSI in SQL injector (#235) (#242)
