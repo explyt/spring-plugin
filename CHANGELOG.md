@@ -29,15 +29,22 @@
 - fix: Evaluate the IntelliJ IDEA Ultimate line marker suppression once per highlighting batch instead of once per PSI element
 - fix: Do not freeze the UI while a project opens: the linked-project self-healing pass no longer requests the run configuration manager on the event dispatch thread
 - fix: Stop resolving PSI in the Spring Boot toolbar action update, which caused multi-second action-update delays
+- fix: Keep the Spring Boot toolbar button responsive by not creating the run configuration manager while the action updates
+- fix: Do not show the Spring Boot debug value hint in an editor that has no file behind it
+- fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search
+- fix: Reflect an edited source file in reference search results instead of returning a stale cached set
+- fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread
 
 ### Spring Web
 - feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port`
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
+- fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 
 ### Other
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded
 - fix: Keep Sentry action breadcrumbs useful by dropping editor typing and caret movement, recording a repeated action once, and trimming a captured report to the actions that led to it
+- fix: Bring error reporting back up when the pooled executor rejects the initialization task, instead of leaving it disabled for the rest of the session
 
 ## [262.34.101] - 2026-08-19
 
