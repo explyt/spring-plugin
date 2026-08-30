@@ -125,6 +125,7 @@ Please make sure your pull request (PR) meets the following criteria:
 - **Code style:** clean, well-structured, Kotlin-idiomatic, SPDX header present.
 - **Documentation:** update relevant docs (README / wiki / messages) when behavior or usage changes.
 - **Testing:** include or update tests; state how you verified the change.
+- **Changelog:** add your entry under `## [Unreleased]`, never into an already-released section. Maintainers handle release sections and version bumps.
 
 ## 8. Review and approval process
 After you submit a pull request, the Explyt team will:
