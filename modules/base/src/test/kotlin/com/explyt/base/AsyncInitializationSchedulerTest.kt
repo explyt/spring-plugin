@@ -5,11 +5,14 @@
 
 package com.explyt.base
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.util.ArrayDeque
 import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 
 class AsyncInitializationSchedulerTest {
 
@@ -95,6 +98,64 @@ class AsyncInitializationSchedulerTest {
         }
 
         assertEquals(AsyncInitializationScheduler.MAX_ATTEMPTS, attempts)
+    }
+
+    /**
+     * A rejected task never runs, so the in-flight flag would stay set forever and error reporting would never come
+     * up again. The rejection must also not escape onto the calling thread, which is the EDT.
+     */
+    @Test
+    fun `executor rejection allows a later initialization attempt`() {
+        val tasks = ArrayDeque<Runnable>()
+        var reject = true
+        var initializations = 0
+        val scheduler = AsyncInitializationScheduler(
+            executor = {
+                if (reject) throw RejectedExecutionException("executor is shutting down")
+                tasks.addLast(it)
+            },
+            initialize = { initializations++ },
+            flush = {},
+            isInitialized = { initializations > 0 },
+            hasPending = { true },
+            discardPending = {},
+        )
+
+        scheduler.schedule()
+        assertEquals("a rejected task must not run", 0, initializations)
+
+        reject = false
+        scheduler.schedule()
+        tasks.removeFirst().run()
+
+        assertEquals("the next producer must be able to retry", 1, initializations)
+    }
+
+    /**
+     * Cancellation is not a failure of the initialization itself, so it must neither be swallowed nor spend the retry
+     * budget by scheduling a follow-up pass.
+     */
+    @Test
+    fun `cancellation is rethrown without scheduling a follow-up`() {
+        val tasks = ArrayDeque<Runnable>()
+        var attempts = 0
+        val scheduler = AsyncInitializationScheduler(
+            executor = { tasks.addLast(it) },
+            initialize = {
+                attempts++
+                throw ProcessCanceledException()
+            },
+            flush = {},
+            isInitialized = { false },
+            hasPending = { true },
+            discardPending = {},
+        )
+
+        scheduler.schedule()
+        assertThrows(ProcessCanceledException::class.java) { tasks.removeFirst().run() }
+
+        assertEquals("cancellation must not trigger a follow-up pass", 1, attempts)
+        assertEquals("no follow-up task may be queued", 0, tasks.size)
     }
 
     @Test
