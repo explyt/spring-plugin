@@ -48,7 +48,8 @@ class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
     private fun RunConfiguration?.supportsSpringBootAttach(): Boolean {
         val mainClassName = when (this) {
             is ApplicationConfiguration -> mainClassName
-            is KotlinRunConfiguration -> mainClassName
+            // This platform line exposes the Kotlin entry point as `runClass`; `mainClassName` arrived later.
+            is KotlinRunConfiguration -> runClass
             else -> null
         }
         return !mainClassName.isNullOrBlank()
