@@ -54,7 +54,7 @@ class RecommendedEnumValueInspectionTest : ExplytInspectionJavaTestCase() {
 
     fun testUnresolvedValueNotReported() = assertNotReported("explyt.recording.single=NOT_A_VALUE")
 
-    fun testPlaceholderNotReported() = assertNotReported($$"explyt.recording.single=${recording.include}")
+    fun testPlaceholderNotReported() = assertNotReported("explyt.recording.single=\${recording.include}")
 
     fun testNonEnumValueNotReported() = assertNotReported("explyt.recording.enabled=true")
 
