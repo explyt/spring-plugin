@@ -13,8 +13,6 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiJavaFile
-import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.uast.UField
 import org.jetbrains.uast.UMethod
 
@@ -60,7 +58,7 @@ class SpringBoot4TestRestTemplatePackageInspection : Spring4UastLocalInspectionT
         isOnTheFly: Boolean
     ): ProblemDescriptor? {
         if (typeSourcePsi == null) return null
-        if (!isLegacyTestRestTemplate(typeSourcePsi, canonicalText)) return null
+        if (legacyTypeFqn(typeSourcePsi, canonicalText, MIGRATIONS) == null) return null
 
         return manager.createProblemDescriptor(
             typeSourcePsi,
@@ -71,40 +69,10 @@ class SpringBoot4TestRestTemplatePackageInspection : Spring4UastLocalInspectionT
         )
     }
 
-    /**
-     * A resolved usage is recognised by its canonical FQN. When the legacy artifact is already gone the usage no
-     * longer resolves and UAST reports the written name instead, so the legacy import still present in the file
-     * identifies it.
-     */
-    private fun isLegacyTestRestTemplate(typeSourcePsi: PsiElement, canonicalText: String?): Boolean {
-        if (canonicalText == OLD_TEST_REST_TEMPLATE) return true
-        if (canonicalText == NEW_TEST_REST_TEMPLATE) return false
-        return when (typeSourcePsi.text?.substringBefore('<')?.trim()) {
-            OLD_TEST_REST_TEMPLATE -> true
-            SIMPLE_NAME -> importsLegacyTestRestTemplate(typeSourcePsi.containingFile)
-            else -> false
-        }
-    }
-
-    private fun importsLegacyTestRestTemplate(file: PsiFile?): Boolean = when (file) {
-        is KtFile -> file.importDirectives.any {
-            val importedFqName = it.importedFqName?.asString()
-            if (it.isAllUnder) importedFqName == OLD_PACKAGE else importedFqName == OLD_TEST_REST_TEMPLATE
-        }
-
-        is PsiJavaFile -> file.importList?.importStatements?.any {
-            val qualifiedName = it.qualifiedName
-            if (it.isOnDemand) qualifiedName == OLD_PACKAGE else qualifiedName == OLD_TEST_REST_TEMPLATE
-        } == true
-
-        else -> false
-    }
-
     companion object {
         const val OLD_TEST_REST_TEMPLATE = "org.springframework.boot.test.web.client.TestRestTemplate"
         const val NEW_TEST_REST_TEMPLATE = "org.springframework.boot.resttestclient.TestRestTemplate"
 
-        private const val OLD_PACKAGE = "org.springframework.boot.test.web.client"
-        private const val SIMPLE_NAME = "TestRestTemplate"
+        private val MIGRATIONS: Map<String, String> = mapOf(OLD_TEST_REST_TEMPLATE to NEW_TEST_REST_TEMPLATE)
     }
 }
