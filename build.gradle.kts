@@ -35,6 +35,15 @@ subprojects {
     apply(plugin = "java")
     apply(plugin = "org.jetbrains.intellij.platform")
 
+    val junitBomVersion: String by rootProject
+
+    dependencies {
+        add("testImplementation", platform("org.junit:junit-bom:$junitBomVersion"))
+        // Provide a launcher matching the JUnit BOM; otherwise Gradle injects its own
+        // (older) junit-platform-launcher, which mismatches the platform test framework
+        add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
+    }
+
     // This syntax is used to avoid duplicated in compileKotlin and compileTestKotlin settings
     //noinspection GroovyAssignabilityCheck
 
