@@ -64,7 +64,6 @@ object SpringBootUtil {
      * (`@MockitoBean`, `@MockitoSpyBean`, `@TestBean`) appear and where their Spring Boot predecessors are
      * deprecated for removal, so 3.4 opens the window in which such a migration can already be applied.
      */
-    @RequiresReadLock
     fun isAtLeastSpringBoot34(psiElement: PsiElement): Boolean {
         val version = psiElement.module?.let { getSpringBootVersion(it) } ?: return false
         return version >= SpringBootVersion.VERSION_3_4_0
