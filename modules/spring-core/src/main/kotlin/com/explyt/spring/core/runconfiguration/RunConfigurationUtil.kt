@@ -45,7 +45,9 @@ object RunConfigurationUtil {
     fun getRunClassName(runConfiguration: RunConfiguration?): String? {
         return when (runConfiguration) {
             is SpringBootRunConfiguration -> runConfiguration.mainClassName
-            is KotlinRunConfiguration -> runConfiguration.mainClassName
+            // This platform line exposes the Kotlin entry point as `runClass`; `mainClassName` arrived later.
+            // Reading it here still avoids the PSI resolution the generic branch below would trigger.
+            is KotlinRunConfiguration -> runConfiguration.runClass
             is CommonJavaRunConfigurationParameters -> runConfiguration.runClass
             else -> null
         }
