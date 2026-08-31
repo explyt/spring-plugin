@@ -83,10 +83,11 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
     }
 
     override fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint? {
-        return findMetadataFiles(module).asSequence()
+        val declarations = findMetadataFiles(module).asSequence()
             .filterIsInstance<JsonFile>()
             .mapNotNull { collectElementMetadataHintsValue(it, propertyName, propertyValue) }
-            .firstOrNull()
+            .toList()
+        return MetadataDeclarations.preferred(declarations) { it.jsonProperty.containingFile }
     }
 
 

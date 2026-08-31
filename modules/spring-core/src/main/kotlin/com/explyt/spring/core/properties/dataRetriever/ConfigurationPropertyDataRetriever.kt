@@ -7,6 +7,7 @@ package com.explyt.spring.core.properties.dataRetriever
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
+import com.explyt.spring.core.completion.properties.MetadataDeclarations
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.service.ConfigurationPropertiesService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -53,12 +54,11 @@ abstract class ConfigurationPropertyDataRetriever {
         val propertyFqn = prefix + name
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
-
-        return hints
-            .asSequence()
             .filter { PropertyUtil.isSameProperty(it.name, propertyFqn) }
+
+        return MetadataDeclarations
+            .distinct(hints, { it.name }, { it.jsonProperty.containingFile })
             .mapNotNull { it.jsonProperty.value }
-            .toList()
     }
 
     companion object {

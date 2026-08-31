@@ -59,13 +59,13 @@ main:
 """.trimIndent()
         )
         doTest(
-            "DEBUG",
-            "ERROR",
-            "FATAL",
-            "INFO",
-            "OFF",
-            "TRACE",
-            "WARN"
+            "debug",
+            "error",
+            "fatal",
+            "info",
+            "off",
+            "trace",
+            "warn"
         )
     }
 
@@ -115,9 +115,9 @@ main:
             """.trimIndent()
         )
         doTest(
-            "TUESDAY",
-            "WEDNESDAY",
-            "THURSDAY",
+            "tuesday",
+            "wednesday",
+            "thursday",
         )
     }
 

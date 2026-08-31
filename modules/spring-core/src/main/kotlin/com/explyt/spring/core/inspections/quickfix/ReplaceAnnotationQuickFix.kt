@@ -14,10 +14,12 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiArrayType
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.codeStyle.JavaCodeStyleManager
 import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
 import org.jetbrains.kotlin.idea.base.psi.replaced
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.uast.UAnnotation
 
@@ -36,7 +38,8 @@ import org.jetbrains.uast.UAnnotation
 class ReplaceAnnotationQuickFix(
     private val newFqn: String,
     @FileModifier.SafeFieldForPreview
-    private val attributeRenames: Map<String, String> = emptyMap()
+    private val attributeRenames: Map<String, String> = emptyMap(),
+    private val oldFqn: String? = null
 ) : LocalQuickFix {
 
     override fun getName(): String =
@@ -61,12 +64,16 @@ class ReplaceAnnotationQuickFix(
         }
         val newAnnotation = JavaPsiFacade.getElementFactory(project)
             .createAnnotationFromText(annotationText(arguments), annotation)
+        val styleManager = JavaCodeStyleManager.getInstance(project)
+        val javaFile = annotation.containingFile as? PsiJavaFile
         val replaced = annotation.replace(newAnnotation)
-        JavaCodeStyleManager.getInstance(project).shortenClassReferences(replaced)
+        styleManager.shortenClassReferences(replaced)
+        javaFile?.let(styleManager::optimizeImports)
     }
 
     private fun replaceKotlinAnnotation(project: Project, entry: KtAnnotationEntry) {
         val newAnnotationClass = JavaPsiFacade.getInstance(project).findClass(newFqn, entry.resolveScope)
+        migrateKotlinImport(entry)
 
         val positional = mutableListOf<String>()
         val named = mutableListOf<String>()
@@ -93,6 +100,16 @@ class ReplaceAnnotationQuickFix(
         val useSiteTarget = entry.useSiteTarget?.text?.removeSuffix(":")?.let { "$it:" }.orEmpty()
         val newEntry = KtPsiFactory(project).createAnnotationEntry(annotationText(arguments, useSiteTarget))
         ShortenReferencesFacility.getInstance().shorten(entry.replaced(newEntry))
+    }
+
+    private fun migrateKotlinImport(entry: KtAnnotationEntry) {
+        val legacyFqn = oldFqn ?: return
+        val file = entry.containingFile as? KtFile ?: return
+        val importDirective = file.importDirectives.firstOrNull {
+            !it.isAllUnder && it.importedFqName?.asString() == legacyFqn
+        } ?: return
+        val importedReference = importDirective.importedReference ?: return
+        importedReference.replace(KtPsiFactory(entry.project).createExpression(newFqn))
     }
 
     private fun annotationText(arguments: List<String>, useSiteTarget: String = ""): String {

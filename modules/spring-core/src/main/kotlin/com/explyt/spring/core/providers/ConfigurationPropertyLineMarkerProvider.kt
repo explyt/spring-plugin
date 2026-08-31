@@ -13,6 +13,7 @@ import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyData
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -32,11 +33,18 @@ import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyData
 
 class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
+        super.collectSlowLineMarkers(elements, result)
+    }
+
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
         if (!SpringCoreUtil.isSpringProject(element.project)) return
         val uParent = getUParentForIdentifier(element) ?: return
         val dataRetriever = ConfigurationPropertyDataRetrieverFactory.createFor(uParent) ?: return
@@ -47,6 +55,11 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
 
         val prefixValue = DataRetriever.getPrefixValue(psiClass)
         if (prefixValue.isBlank()) return
+
+        // Also reached directly by RelatedItemLineMarkerGotoAdapter (Navigate | Related Symbol), bypassing
+        // collectSlowLineMarkers, so the JetBrains Spring suppression has to be repeated here. It is consulted
+        // after the cheap early-outs above: an element rejected by them produces no marker either way.
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
 
         val properties = dataRetriever.getRelatedProperties(prefixValue, memberName, module)
         val hints = dataRetriever.getMetadataName(prefixValue, memberName, module)
