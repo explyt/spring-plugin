@@ -202,8 +202,120 @@ object PropertyUtil {
     }
 
 
+    /**
+     * The type of a single value of [configurationProperty]: the element type for a collection or array, the value
+     * type for a map, and the declared type otherwise.
+     *
+     * A metadata `type` such as `java.util.Set<...Include>` names the container, so resolving it verbatim finds no
+     * class. Every consumer that inspects or resolves an individual value has to unwrap it the same way, otherwise
+     * the inspection and the reference disagree about the same property.
+     */
+    fun valueTypeOf(configurationProperty: ConfigurationProperty): String? {
+        val propertyType = configurationProperty.type ?: return null
+        return when {
+            configurationProperty.isList() -> propertyType.substringAfter("<").substringBefore(">")
+            configurationProperty.isMap() -> propertyType.substringAfter(",").substringBefore(">")
+            configurationProperty.isArray() -> propertyType.substringBefore("[]")
+            else -> propertyType
+        }.replace('$', '.').trim()
+    }
+
+    /**
+     * The property whose value type governs [propertyKey].
+     *
+     * A map entry key is arbitrary (`explyt.recording.by-name.first`), so it is absent from the metadata and an exact
+     * lookup fails; the declared map property owns the value type instead. Matching is done on the canonical form so
+     * a relaxed-cased key finds its declaration too.
+     */
+    fun findValueOwner(module: Module, propertyKey: String): ConfigurationProperty? {
+        val search = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        search.findProperty(module, propertyKey)?.let { return it }
+
+        val commonKey = toCommonPropertyForm(propertyKey)
+        return search.getAllProperties(module).asSequence()
+            .filter { it.isMap() }
+            .filter { commonKey.startsWith(toCommonPropertyForm(it.name)) }
+            // The longest declared prefix is the closest declaration; a shorter one may be an unrelated ancestor.
+            .maxByOrNull { it.name.length }
+    }
+
+    /**
+     * The constant of the enum [enumClass] that [value] denotes under Spring's relaxed binding, or `null` when the
+     * enum declares none.
+     *
+     * Relaxed binding accepts a constant in any case with `-` and `_` interchangeable, and Spring's own metadata
+     * ships the dashed form as the default value (`management.httpexchanges.recording.include` defaults to
+     * `request-headers`), so comparing names verbatim rejects the spelling the framework itself recommends.
+     */
+    fun findEnumConstant(enumClass: PsiClass, value: String): PsiEnumConstant? {
+        if (!enumClass.isEnum) return null
+        val relaxedValue = toCommonPropertyForm(value)
+        return enumClass.fields.asSequence()
+            .filterIsInstance<PsiEnumConstant>()
+            .firstOrNull { toCommonPropertyForm(it.name) == relaxedValue }
+    }
+
+    /**
+     * The spellings of the enum constant [constantName] that a user types and [findEnumConstant] accepts.
+     *
+     * The canonical form compared by [findEnumConstant] has its separators stripped, so it is not a literal anyone
+     * types; completion needs the typable alternatives instead, and Spring's own metadata ships the kebab-case one as
+     * the default value.
+     */
+    fun relaxedValueSpellings(constantName: String): Set<String> {
+        return setOf(constantName.lowercase(), recommendedValueSpelling(constantName))
+    }
+
+    /**
+     * The spellings of the metadata hint literal [literal] that a user types and hint resolution accepts.
+     *
+     * A hint literal is an arbitrary string, not an enum constant name, so [relaxedValueSpellings] does not apply: it
+     * maps `_` to `-`, a rewrite hint matching does not perform. Only the case is free, which is why the alternatives
+     * are the case variants of the literal itself.
+     */
+    fun hintValueSpellings(literal: String): Set<String> = setOf(literal.lowercase(), literal.uppercase())
+
+    /**
+     * The spelling of the enum constant [constantName] that Spring itself recommends: lower-case kebab-case.
+     *
+     * Measured on `spring-boot-autoconfigure-3.5.13`, every enum-typed property with a string `defaultValue` ships it
+     * in that form (51 single-word such as `never`, 13 dashed such as `read-uncommitted`, none in the declared
+     * `SCREAMING_SNAKE`), so this is the form to insert and to suggest.
+     */
+    fun recommendedValueSpelling(constantName: String): String = constantName.lowercase().replace('_', '-')
+
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
+        val foundClass = findSourceTypeClass(sourceType, project) ?: return null
+        return findDeclaringMember(foundClass, propertyKey, sourceType) ?: foundClass
+    }
+
+    /**
+     * The member declaring [propertyKey] in [sourceType], falling back to the value type of
+     * [configurationProperty] and only then to the `sourceType` class itself.
+     *
+     * Endpoint infrastructure keys such as `management.endpoint.<id>.access` are synthesised by Spring: the class
+     * named by `sourceType` declares no matching field or setter, so the `sourceType` fallback lands on a declaration
+     * where the key never appears. The value type answers what the key actually asks — for `access` it is the `Access`
+     * enum listing the permitted constants.
+     */
+    fun findSourceMember(
+        propertyKey: String,
+        sourceType: String,
+        configurationProperty: ConfigurationProperty,
+        project: Project
+    ): PsiMember? {
+        val foundClass = findSourceTypeClass(sourceType, project) ?: return null
+        return findDeclaringMember(foundClass, propertyKey, sourceType)
+            ?: findValueTypeClass(configurationProperty, project)
+            ?: foundClass
+    }
+
+    private fun findSourceTypeClass(sourceType: String, project: Project): PsiClass? {
+        val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
+        return JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
+    }
+
+    private fun findDeclaringMember(foundClass: PsiClass, propertyKey: String, sourceType: String): PsiMember? {
         var memberName = sourceType.substringAfterLast('#', "")
         var setterName = memberName
         if (memberName.isEmpty()) {
@@ -217,9 +329,19 @@ object PropertyUtil {
             setterName = "set${StringUtil.capitalize(memberName)}"
         }
 
-        val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
-        val foundClass = javaPsiFacade.findClass(qualifiedName, GlobalSearchScope.allScope(project)) ?: return null
-        return findMember(foundClass, memberName, setterName) ?: foundClass
+        return findMember(foundClass, memberName, setterName)
+    }
+
+    /**
+     * A built-in type such as `java.lang.String` or `java.time.Duration` carries no declaration worth navigating to,
+     * so those types are not treated as a target.
+     */
+    private fun findValueTypeClass(configurationProperty: ConfigurationProperty, project: Project): PsiClass? {
+        val valueType = valueTypeOf(configurationProperty) ?: return null
+        val valueClass = JavaPsiFacade.getInstance(project)
+            .findClass(valueType, GlobalSearchScope.allScope(project)) ?: return null
+        val packageName = valueClass.qualifiedName?.substringBeforeLast(DOT) ?: return null
+        return valueClass.takeUnless { packageName in BUILT_IN_VALUE_TYPE_PACKAGES }
     }
 
     fun PsiElement.propertyKey(): String? {
@@ -401,6 +523,22 @@ object PropertyUtil {
             return getClassNameFromInnerTypeInMap(propertyType)
         }
         return null
+    }
+
+    /**
+     * The element type of a list or array property, or `null` for any other property.
+     *
+     * A Kotlin `List<T>` reaches us as a wildcard light type (`java.util.List<? extends T>`), so the variance
+     * keyword is dropped to keep the result a plain qualified name.
+     */
+    fun getCollectionElementType(property: ConfigurationProperty): String? {
+        val propertyType = property.type ?: return null
+        val elementType = when {
+            property.isArray() -> propertyType.substringBefore("[]")
+            property.isList() -> propertyType.substringAfter("<", "").substringBeforeLast(">")
+            else -> return null
+        }
+        return elementType.substringAfterLast(' ').takeIf { it.isNotBlank() }
     }
 
     private fun getClassNameFromInnerTypeInMap(propertyType: String): String? {
@@ -657,7 +795,7 @@ object PropertyUtil {
         }
     }
 
-    fun getMethodsTypeByMap(module: Module, valueType: String, prefix: String): List<PsiMember> {
+    fun getMembersOfType(module: Module, valueType: String, prefix: String): List<PsiMember> {
         val result = hashMapOf<String, ConfigurationProperty>()
         val project = module.project
         val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
@@ -715,6 +853,12 @@ object PropertyUtil {
         if (propertyMapValue == propertyKey) propertyMapValue = ""
         return Pair(propertyMapKey, propertyMapValue)
     }
+
+    private val BUILT_IN_VALUE_TYPE_PACKAGES = setOf(
+        JavaCoreClasses.PACKAGE_JAVA_LANG,
+        JavaCoreClasses.PACKAGE_JAVA_TIME,
+        JavaCoreClasses.PACKAGE_KOTLIN
+    )
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()

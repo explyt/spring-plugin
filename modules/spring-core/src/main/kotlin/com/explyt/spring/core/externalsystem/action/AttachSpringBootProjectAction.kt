@@ -75,8 +75,8 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
             val mainFile = mainClass?.containingFile?.virtualFile
             val canonicalPath = mainFile?.canonicalPath
             if (mainClass == null || mainFile == null || canonicalPath == null) {
-                // The toolbar uses only a cheap stored-name check, so report click-time resolution failures instead of
-                // silently doing nothing.
+                // The toolbar action is enabled from a cheap stored-name check, so an unresolvable main class must be
+                // reported here instead of failing silently.
                 ApplicationManager.getApplication().invokeLater {
                     externalSystemNotification(message("explyt.external.project.run.config.required.message"), project)
                 }
