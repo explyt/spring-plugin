@@ -8,14 +8,15 @@ package com.explyt.spring.core.providers
 import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.completion.properties.MetadataDeclarations
 import com.explyt.spring.core.completion.properties.SpringConfigurationPropertiesSearch
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.util.SpringCoreUtil
+import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
-import com.intellij.json.psi.JsonProperty
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.NotNullLazyValue
@@ -26,10 +27,22 @@ import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 
 class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
+        super.collectSlowLineMarkers(elements, result)
+    }
+
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
+        // Also reached directly by RelatedItemLineMarkerGotoAdapter (Navigate | Related Symbol), bypassing
+        // collectSlowLineMarkers, so the JetBrains Spring suppression has to be repeated here. Unlike the sibling
+        // providers the check stays first: almost every leaf of a configuration file passes the checks below, so
+        // deferring it measured no gain and made the suppressed case pay the index-backed file check.
         if (PluginIds.SPRING_BOOT_JB.isEnabledWithUltimate()) return
         if (!SpringCoreUtil.isConfigurationPropertyFile(element.containingFile)) {
             return
@@ -47,18 +60,12 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val hints = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getElementNameHints(module)
 
-        val targets = hints.asSequence()
-            .filter { it.name == elementText || isMapKey(elementText, it.name, isYaml) }
+        val matching = hints.filter { it.name == elementText || isMapKey(elementText, it.name, isYaml) }
+        // One artifact ships the same hint in both its generated and its hand-written metadata file, and again in its
+        // sources jar; they are one declaration, so only the preferred copy of each becomes a target.
+        val targets = MetadataDeclarations
+            .distinct(matching, { it.name }, { it.jsonProperty.containingFile })
             .map { it.jsonProperty }
-            .groupingBy { it.containingFile.virtualFile.path.replace(SOURCES_SUFFIX, "") }
-            .aggregate { _, acc: JsonProperty?, elem: JsonProperty, _ ->
-                when {
-                    acc == null -> elem
-                    acc.containingFile.virtualFile.path.contains(SOURCES_SUFFIX) -> acc
-                    else -> elem
-                }
-            }
-            .values
 
         if (targets.isEmpty()) return
 
@@ -82,8 +89,4 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val name = propertyName.substringBefore(".keys")
         return elementText.startsWith(name) && if (isYaml) name == elementText else !elementText.contains("=")
     }
-    companion object {
-        const val SOURCES_SUFFIX = "-sources"
-    }
-
 }

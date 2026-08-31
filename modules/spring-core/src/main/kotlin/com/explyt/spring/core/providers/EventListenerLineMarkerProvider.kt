@@ -25,6 +25,7 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isPublic
 import com.explyt.util.ExplytPsiUtil.isStatic
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
+import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
@@ -44,17 +45,25 @@ import org.jetbrains.uast.*
 import java.util.*
 
 class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
+    override fun collectSlowLineMarkers(
+        elements: MutableList<out PsiElement>,
+        result: MutableCollection<in LineMarkerInfo<*>>
+    ) {
+        if (PluginIds.SPRING_JB.isEnabledWithUltimate()) return
+        super.collectSlowLineMarkers(elements, result)
+    }
+
     override fun collectNavigationMarkers(
         element: PsiElement,
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
-        if (PluginIds.SPRING_JB.isEnabledWithUltimate()) return
         val uParent = getUParentForIdentifier(element)
         if (uParent is UMethod) {
             val psiMethod = uParent.javaPsi
             if (isMethodModifierForEvent(psiMethod) &&
                 (isEventListenerMethod(psiMethod) || isApplicationEventMethod(psiMethod))
             ) {
+                if (isSuppressedByJetBrainsSpring()) return
                 val builder = NavigationGutterIconBuilder.create(SpringIcons.EventPublisher)
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findPublishEvents(psiMethod) })
@@ -74,6 +83,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val sourceElement = uCallExpression.methodIdentifier.sourcePsiElement
                 if (sourceElement != null && sourcePsi != null
                 ) {
+                    if (isSuppressedByJetBrainsSpring()) return
                     val builder = NavigationGutterIconBuilder.create(SpringIcons.EventListener)
                         .setAlignment(GutterIconRenderer.Alignment.LEFT)
                         .setTargets(NotNullLazyValue.createValue { findEventListeners(sourcePsi) })
@@ -86,6 +96,16 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             }
         }
     }
+
+    /**
+     * [collectNavigationMarkers] is also reached directly by `RelatedItemLineMarkerGotoAdapter`
+     * (Navigate | Related Symbol), bypassing [collectSlowLineMarkers], so the JetBrains Spring
+     * suppression has to be repeated per element and cannot be moved to the batch entry point only.
+     *
+     * Consulted only where a marker would actually be produced: an element rejected by the cheap
+     * UAST checks above yields nothing either way.
+     */
+    private fun isSuppressedByJetBrainsSpring() = PluginIds.SPRING_JB.isEnabledWithUltimate()
 
     private fun isMethodModifierForEvent(psiMethod: PsiMethod): Boolean {
         return psiMethod.isPublic && !psiMethod.isStatic && !psiMethod.isConstructor
