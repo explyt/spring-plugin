@@ -22,7 +22,7 @@ private const val SPRING_BOOT_STARTER_SUFFIX = "-starter"
 private const val SPRING_BOOT_MAIN_STARTER = "spring-boot-starter"
 private const val SPRING_BOOT_KAFKA = "spring-kafka"
 private const val SPRING_BOOT_3_VERSION = "3.0"
-private const val SPRING_BOOT_3_4_VERSION = "3.4"
+
 private const val SPRING_BOOT_4_VERSION = "4.0"
 
 object SpringBootUtil {
@@ -72,11 +72,9 @@ object SpringBootUtil {
      * (`@MockitoBean`, `@MockitoSpyBean`, `@TestBean`) appear and where their Spring Boot predecessors are
      * deprecated for removal, so 3.4 opens the window in which such a migration can already be applied.
      */
-    @RequiresReadLock
     fun isAtLeastSpringBoot34(psiElement: PsiElement): Boolean {
-        val version = getSpringBootVersion(psiElement)
-        if (version.isEmpty()) return false
-        return VersionComparatorUtil.compare(version, SPRING_BOOT_3_4_VERSION) >= 0
+        val version = psiElement.module?.let { getSpringBootVersion(it) } ?: return false
+        return version >= SpringBootVersion.VERSION_3_4_0
     }
 
     /**
@@ -91,6 +89,7 @@ object SpringBootUtil {
         ANY("1.0.0"),
 
         VERSION_3_0_0("3.0.0"),
+        VERSION_3_4_0("3.4.0"),
         VERSION_4_0_0("4.0.0");
     }
 
