@@ -42,11 +42,11 @@ main:
         )
 
         doTest(
-            "DEBUG",
-            "ERROR",
-            "INFO",
-            "TRACE",
-            "WARN"
+            "debug",
+            "error",
+            "info",
+            "trace",
+            "warn"
         )
     }
 

@@ -6,12 +6,13 @@
 package com.explyt.spring.core.properties.providers
 
 import com.explyt.spring.core.SpringProperties.LOGGING_LEVEL
+import com.explyt.spring.core.properties.references.LoggingLevelKeys
+import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceProvider
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceProvider
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.JavaClassReferenceSet
 import com.intellij.util.ProcessingContext
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -19,9 +20,6 @@ import org.jetbrains.yaml.psi.YAMLMapping
 import org.jetbrains.yaml.psi.YAMLScalar
 
 class SpringConfigurationYamlKeyLoggingLevelReferenceProvider : PsiReferenceProvider() {
-
-    private val referenceProvider = JavaClassReferenceProvider()
-        .apply { isSoft = true }
 
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         val yamlScalar = element as? YAMLScalar ?: return PsiReference.EMPTY_ARRAY
@@ -38,8 +36,10 @@ class SpringConfigurationYamlKeyLoggingLevelReferenceProvider : PsiReferenceProv
 
         val textValue = yamlScalar.textValue
         val offset = ElementManipulators.getOffsetInElement(yamlScalar)
+        val module = ModuleUtilCore.findModuleForPsiElement(yamlScalar) ?: return PsiReference.EMPTY_ARRAY
 
-        return JavaClassReferenceSet(textValue, yamlScalar, offset, false, referenceProvider)
-            .references
+        return LoggingLevelKeys.referencesForSuffix(
+            yamlScalar, module, textValue, TextRange.from(offset, textValue.length)
+        )
     }
 }

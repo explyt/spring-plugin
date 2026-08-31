@@ -8,6 +8,7 @@ package com.explyt.spring.core.inspections
 import com.explyt.inspection.SpringBaseLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle.message
 import com.explyt.spring.core.completion.properties.PropertiesPropertySource
+import com.explyt.spring.core.util.PropertyUtil.propertyKeyPsiElement
 import com.explyt.spring.core.util.PropertyUtil.propertyValuePsiElement
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.core.util.SpringCoreUtil
@@ -20,6 +21,7 @@ import com.intellij.lang.properties.psi.Property
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.ElementManipulators
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
@@ -31,8 +33,13 @@ import org.jetbrains.yaml.psi.YAMLSequence
 import org.jetbrains.yaml.psi.YAMLValue
 
 /**
- * Reports the legacy `httptrace` Actuator endpoint id used in `management.endpoints.*.exposure.include/exclude`
- * property values, and offers a quick-fix that renames it to `httpexchanges`.
+ * Reports the legacy `httptrace` Actuator endpoint id, both in `management.endpoints.*.exposure.include/exclude`
+ * property values and in `management.endpoint.httptrace.*` keys, and offers a quick-fix that renames it to
+ * `httpexchanges`.
+ *
+ * Spring's own metadata carries a `deprecation.replacement` only for the `management.trace.http.*` family, so
+ * without the key check `management.endpoint.httptrace.enabled` degrades to a bare "cannot resolve key", which reads
+ * as a typo rather than a rename.
  *
  * The `httptrace` endpoint was renamed to `httpexchanges` in Spring Boot 3.0. The inspection only runs on Spring
  * configuration property files of a Spring Boot 3+ project.
@@ -68,7 +75,13 @@ class SpringBoot3ActuatorHttpExchangesInspection : SpringBaseLocalInspectionTool
         val problems = mutableListOf<ProblemDescriptor>()
         for (property in PropertiesPropertySource(file).properties) {
             ProgressManager.checkCanceled()
-            if (property.key !in EXPOSURE_KEYS) continue
+            val key = property.key
+            if (isLegacyEndpointKey(key)) {
+                val psiKey = property.psiElement?.propertyKeyPsiElement()
+                if (psiKey != null) problems += createKeyProblem(psiKey, manager, isOnTheFly)
+                continue
+            }
+            if (key !in EXPOSURE_KEYS) continue
             val value = property.value ?: continue
             if (!containsLegacyEndpoint(value)) continue
             val psiValue = property.psiElement?.propertyValuePsiElement() ?: continue
@@ -90,12 +103,16 @@ class SpringBoot3ActuatorHttpExchangesInspection : SpringBaseLocalInspectionTool
         val problems = mutableListOf<ProblemDescriptor>()
         PsiTreeUtil.processElements(file, YAMLKeyValue::class.java) { keyValue ->
             ProgressManager.checkCanceled()
-            if (YAMLUtil.getConfigFullName(keyValue) in EXPOSURE_KEYS) {
+            val fullName = YAMLUtil.getConfigFullName(keyValue)
+            if (fullName in EXPOSURE_KEYS) {
                 for (scalar in exposureScalars(keyValue.value)) {
                     if (containsLegacyEndpoint(scalar.textValue)) {
                         problems += createProblem(scalar, manager, isOnTheFly)
                     }
                 }
+            } else if (isLegacyEndpointKey(fullName) && keyValue.keyText.contains(LEGACY_ENDPOINT)) {
+                // Only the key that spells out `httptrace` is reported; the segments above it are keys of their own.
+                keyValue.key?.let { problems += createKeyProblem(it, manager, isOnTheFly) }
             }
             true
         }
@@ -120,10 +137,23 @@ class SpringBoot3ActuatorHttpExchangesInspection : SpringBaseLocalInspectionTool
         arrayOf<LocalQuickFix>(RenameHttpTraceEndpointFix()),
         ProblemHighlightType.LIKE_DEPRECATED
     )
+
+    private fun createKeyProblem(
+        psiKey: PsiElement,
+        manager: InspectionManager,
+        isOnTheFly: Boolean
+    ): ProblemDescriptor = manager.createProblemDescriptor(
+        psiKey,
+        message("explyt.spring.inspection.boot3.actuator.httptrace.key"),
+        isOnTheFly,
+        arrayOf<LocalQuickFix>(RenameHttpTraceKeyFix()),
+        ProblemHighlightType.LIKE_DEPRECATED
+    )
 }
 
 private const val LEGACY_ENDPOINT = "httptrace"
 private const val NEW_ENDPOINT = "httpexchanges"
+private const val LEGACY_ENDPOINT_KEY_PREFIX = "management.endpoint.$LEGACY_ENDPOINT"
 
 private val EXPOSURE_KEYS: Set<String> = setOf(
     "management.endpoints.web.exposure.include",
@@ -135,6 +165,10 @@ private val EXPOSURE_KEYS: Set<String> = setOf(
 private fun containsLegacyEndpoint(value: String): Boolean =
     value.split(',').any { it.trim() == LEGACY_ENDPOINT }
 
+/** `management.endpoint.httptrace` and everything below it, e.g. `…httptrace.enabled`. */
+private fun isLegacyEndpointKey(key: String?): Boolean =
+    key == LEGACY_ENDPOINT_KEY_PREFIX || key?.startsWith("$LEGACY_ENDPOINT_KEY_PREFIX.") == true
+
 /**
  * Returns [value] with every `httptrace` token replaced by `httpexchanges`. Only the matching token is rewritten:
  * separators and the whitespace around every other token are kept as the user wrote them.
@@ -143,6 +177,39 @@ private fun migratedValue(value: String): String =
     value.split(',').joinToString(",") { token ->
         if (token.trim() == LEGACY_ENDPOINT) token.replace(LEGACY_ENDPOINT, NEW_ENDPOINT) else token
     }
+
+private class RenameHttpTraceKeyFix : LocalQuickFix {
+    override fun getFamilyName(): String = message("explyt.spring.inspection.boot3.actuator.httptrace.key.fix")
+
+    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+        val element = descriptor.psiElement ?: return
+        if (!element.isValid) return
+
+        val property = element.parent as? Property
+        if (property != null) {
+            val key = property.key ?: return
+            property.setName(key.replaceFirst(LEGACY_ENDPOINT, NEW_ENDPOINT))
+            return
+        }
+        rewriteKeyText(project, element)
+    }
+
+    /**
+     * A YAML key is a leaf without an [ElementManipulators] manipulator, and regenerating the key-value would have to
+     * reproduce the nested mapping below it. Editing the key range in the document renames the segment in place and
+     * leaves indentation and children untouched.
+     */
+    private fun rewriteKeyText(project: Project, element: PsiElement) {
+        val text = element.text
+        if (!text.contains(LEGACY_ENDPOINT)) return
+        val file = element.containingFile ?: return
+        val documentManager = PsiDocumentManager.getInstance(project)
+        val document = documentManager.getDocument(file) ?: return
+        val range = element.textRange
+        document.replaceString(range.startOffset, range.endOffset, text.replaceFirst(LEGACY_ENDPOINT, NEW_ENDPOINT))
+        documentManager.commitDocument(document)
+    }
+}
 
 private class RenameHttpTraceEndpointFix : LocalQuickFix {
     override fun getFamilyName(): String = message("explyt.spring.inspection.boot3.actuator.httptrace.fix")

@@ -455,7 +455,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             val elementFileProperty = property.psiElement ?: continue
             val psiValue = elementFileProperty.propertyValuePsiElement() ?: continue
             val configurationProperty = getConfigurationProperty(module, property) ?: continue
-            val propertyType = getPropertyType(configurationProperty) ?: continue
+            val propertyType = PropertyUtil.valueTypeOf(configurationProperty) ?: continue
             val values = getPropertyValue(property, configurationProperty)
             for (value in values) {
                 val resultConvert = tryConvert(propertyType, value)
@@ -541,21 +541,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return resultEncoding
     }
 
-    private fun getPropertyType(configurationProperty: ConfigurationProperty): String? {
-        val propertyType = configurationProperty.type ?: return null
-        return when {
-            configurationProperty.isList() ->
-                propertyType.substringAfter("<").substringBefore(">")
 
-            configurationProperty.isMap() ->
-                propertyType.substringAfter(",").substringBefore(">")
-
-            configurationProperty.isArray() ->
-                propertyType.substringBefore("[]")
-
-            else -> propertyType.replace('$', '.')
-        }
-    }
 
     private fun isProblemPropertyType(propertyType: String, value: String): Boolean {
         return when (propertyType) {
@@ -624,9 +610,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         value: String
     ): List<ProblemDescriptor> {
         val propertyTypeClass = getCachedPropertyTypeClass(module, propertyType) ?: return emptyList()
-        if (propertyTypeClass.isEnum
-            && !propertyTypeClass.fields.map { it.name.lowercase() }.any { it == value.lowercase() }
-        ) {
+        if (propertyTypeClass.isEnum && PropertyUtil.findEnumConstant(propertyTypeClass, value) == null) {
             return listOf(
                 manager.createProblemDescriptor(
                     psiElement,
