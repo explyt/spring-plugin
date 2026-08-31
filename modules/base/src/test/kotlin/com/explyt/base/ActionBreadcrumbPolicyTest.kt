@@ -85,7 +85,7 @@ class ActionBreadcrumbPolicyTest {
     @Test
     fun `names our own action without an id by its class`() {
         assertEquals(
-            $$"ActionBreadcrumbPolicyTest$OwnAction",
+            "ActionBreadcrumbPolicyTest\$OwnAction",
             ActionBreadcrumbPolicy.breadcrumbName(null, OwnAction::class.java)
         )
     }
