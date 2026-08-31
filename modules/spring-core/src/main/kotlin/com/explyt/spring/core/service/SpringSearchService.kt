@@ -754,15 +754,8 @@ object SpringSearchUtils {
         }
     }
 
-    fun getAllReferencesToElement(element: PsiElement): Set<PsiReference> {
-        val project = element.project
-        return CachedValuesManager.getManager(project).getCachedValue(element) {
-            CachedValueProvider.Result(
-                ReferencesSearch.search(element).toSet(),
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
-        }
-    }
+    fun getAllReferencesToElement(element: PsiElement): Set<PsiReference> =
+        ReferencesSearch.search(element).toSet()
 
     /**
      * Finds references to [element], also looking into the modules the containing module depends on.

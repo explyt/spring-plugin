@@ -5,6 +5,50 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Fold a `@Value` placeholder and an `Environment.getProperty` key to the value of the profile-less `application.*` file instead of an arbitrary one, and name the profile when the value comes only from `application-<profile>.*`
+- fix: Cache the `@PropertySource` lookup that decides whether a file is Spring configuration, so highlighting an unrelated `.properties`/`.yaml` file no longer runs a project-wide index search per PSI element
+- fix: Report the `BootstrapRegistry`, `@JsonComponent`/`@JsonMixin` and `@EntityScan` migrations when the legacy symbol no longer resolves after a Spring Boot 4 upgrade
+- fix: Report the `@MockBean` / `@SpyBean` migration when the legacy annotation no longer resolves after a Spring Boot 4 upgrade
+- feat: Report the `@MockBean` / `@SpyBean` migration already in Spring Boot 3.4/3.5, where the annotations are deprecated for removal, naming `@MockitoBean` / `@MockitoSpyBean` and offering the quick-fix the platform deprecation warning cannot
+- feat: Report the renamed `management.endpoint.httptrace.*` configuration keys in Spring Boot 3, with a quick-fix to `httpexchanges`
+- fix: Navigate from an indexed collection key such as `ingest.s3-logs.sources[0].enabled` to the member of the collection's element class
+- fix: Resolve a configuration value against the enum element type of a collection property such as `java.util.Set<...>`
+- fix: Accept an enum configuration value in any relaxed form, so `request-headers` resolves to `REQUEST_HEADERS` and is no longer reported as invalid
+- fix: Complete an enum configuration value from any relaxed spelling and insert Spring's recommended one, so `r`, `request-h`, `request_h` and `REQ` all insert `request-headers`
+- fix: Complete a metadata hint value from a prefix written in any case and insert the declared literal, so `logging.level.org.springframework=IN` offers and inserts `info`
+- feat: Report an enum configuration value that is not written in Spring's recommended spelling, with a quick-fix rewriting `REQUEST_HEADERS` to `request-headers`
+- fix: Resolve a configuration value against the enum element type of an array property such as `Include[]` and of a map property such as `java.util.Map<String, Include>`
+- fix: Navigate a configuration value to its metadata hint declaration whatever its case, so `logging.level.root=INFO` navigates like `info`
+- feat: Report a configuration value that differs from its metadata hint literal only by case, with a quick-fix rewriting `INFO` to `info`
+- fix: Offer one navigation target per metadata declaration instead of repeating the same hint or key once per metadata file and once per sources jar of the same artifact
+- fix: Navigate from the key of `logging.level.<suffix>` to what the suffix names: the package or class of a logger name such as `org.springframework`, the `logging.level.keys` hint declaration of a group such as `root`, `sql` or `web`, and the `logging.group.<name>` entry of a group the project defines itself
+- fix: Navigate a configuration key with no declaring member, such as `management.endpoint.httpexchanges.access`, to its value type instead of the unrelated source class
+- fix: Stop reporting `management.endpoint.<id>.access`, `.enabled` and `.cache.time-to-live` of an Actuator endpoint the project declares itself as an unresolved key, and complete and navigate them: the id segment leads to the endpoint class, the value segment to the type it takes
+- fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
+- fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
+- fix: Evaluate the IntelliJ IDEA Ultimate line marker suppression once per highlighting batch instead of once per PSI element
+- fix: Do not freeze the UI while a project opens: the linked-project self-healing pass no longer requests the run configuration manager on the event dispatch thread
+- fix: Stop resolving PSI in the Spring Boot toolbar action update, which caused multi-second action-update delays
+- fix: Keep the Spring Boot toolbar button responsive by not creating the run configuration manager while the action updates
+- fix: Do not show the Spring Boot debug value hint in an editor that has no file behind it
+- fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search
+- fix: Reflect an edited source file in reference search results instead of returning a stale cached set
+- fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread
+
+### Spring Web
+- feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port`
+- fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
+- fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
+- fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
+
+### Other
+- fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded
+- fix: Keep Sentry action breadcrumbs useful by dropping editor typing and caret movement, recording a repeated action once, and trimming a captured report to the actions that led to it
+- fix: Bring error reporting back up when the pooled executor rejects the initialization task, instead of leaving it disabled for the rest of the session
+
+## [262.34.101] - 2026-08-19
+
+### Spring Core
 - fix: Keep renamed Spring Boot run configurations linked without ambiguous fallback (#229) (#279)
 - fix: Keep Kotlin top-level `main()` projects linked when the stored run configuration name no longer exists (#229)
 - fix: Restore Spring project links when a run configuration is renamed or replaced outside the IDE, such as by a version-control update (#229)
@@ -59,7 +103,7 @@
 - docs: Update issue/PR templates and contributing guide
 - docs: Add AI Agent documentation
 
-## [261.33.80] - 2026-04-28
+## 261.33.80 - 2026-04-28
 
 ### Spring Core
 - feat: 261 spring boot support (#217)
