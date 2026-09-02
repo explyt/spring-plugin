@@ -32,6 +32,7 @@
 - fix: Keep the Spring Boot toolbar button responsive by not creating the run configuration manager while the action updates
 - fix: Do not show the Spring Boot debug value hint in an editor that has no file behind it (#186)
 - fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search (#295)
+- fix: Apply that same filter on the source bean-search path, not only the native one, so a bean invalidated by an edit no longer breaks the autowiring inspection and bean navigation in a project without an external Spring model (#205)
 - fix: Reflect an edited source file in reference search results instead of returning a stale cached set
 - fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread (#185)
 
