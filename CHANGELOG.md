@@ -23,26 +23,26 @@
 - fix: Offer one navigation target per metadata declaration instead of repeating the same hint or key once per metadata file and once per sources jar of the same artifact
 - fix: Navigate from the key of `logging.level.<suffix>` to what the suffix names: the package or class of a logger name such as `org.springframework`, the `logging.level.keys` hint declaration of a group such as `root`, `sql` or `web`, and the `logging.group.<name>` entry of a group the project defines itself
 - fix: Navigate a configuration key with no declaring member, such as `management.endpoint.httpexchanges.access`, to its value type instead of the unrelated source class
-- fix: Stop reporting `management.endpoint.<id>.access`, `.enabled` and `.cache.time-to-live` of an Actuator endpoint the project declares itself as an unresolved key, and complete and navigate them: the id segment leads to the endpoint class, the value segment to the type it takes
-- fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix
+- fix: Stop reporting `management.endpoint.<id>.access`, `.enabled` and `.cache.time-to-live` of an Actuator endpoint the project declares itself as an unresolved key, and complete and navigate them: the id segment leads to the endpoint class, the value segment to the type it takes (#314)
+- fix: Do not fail the Alt+Enter preview of the deprecated configuration key replacement quick-fix (#296)
 - fix: Do not report `@Autowired` members of `@ContextConfiguration` test classes as not being a Spring bean
 - fix: Evaluate the IntelliJ IDEA Ultimate line marker suppression once per highlighting batch instead of once per PSI element
-- fix: Do not freeze the UI while a project opens: the linked-project self-healing pass no longer requests the run configuration manager on the event dispatch thread
+- fix: Do not freeze the UI while a project opens: the linked-project self-healing pass no longer requests the run configuration manager on the event dispatch thread (#294)
 - fix: Stop resolving PSI in the Spring Boot toolbar action update, which caused multi-second action-update delays
 - fix: Keep the Spring Boot toolbar button responsive by not creating the run configuration manager while the action updates
-- fix: Do not show the Spring Boot debug value hint in an editor that has no file behind it
-- fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search
+- fix: Do not show the Spring Boot debug value hint in an editor that has no file behind it (#186)
+- fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search (#295)
 - fix: Reflect an edited source file in reference search results instead of returning a stale cached set
-- fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread
+- fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread (#185)
 
 ### Spring Web
-- feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port`
+- feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port` (#315)
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 
 ### Other
-- fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded
+- fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded (#307)
 - fix: Keep Sentry action breadcrumbs useful by dropping editor typing and caret movement, recording a repeated action once, and trimming a captured report to the actions that led to it
 - fix: Bring error reporting back up when the pooled executor rejects the initialization task, instead of leaving it disabled for the rest of the session
 

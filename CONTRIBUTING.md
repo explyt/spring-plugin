@@ -126,6 +126,7 @@ Please make sure your pull request (PR) meets the following criteria:
 - **Documentation:** update relevant docs (README / wiki / messages) when behavior or usage changes.
 - **Testing:** include or update tests; state how you verified the change.
 - **Changelog:** add your entry under `## [Unreleased]`, never into an already-released section. Maintainers handle release sections and version bumps.
+- **Reference the issue in the changelog line too:** end the entry with `(#123)` when it answers a reported issue, the way the released sections do. `Closes #123` in the pull request is what closes the issue, but a change can reach `main` without a pull request; the changelog line is the one artifact every change has, so it is what keeps a shipped fix traceable to the report it answers.
 
 ## 8. Review and approval process
 After you submit a pull request, the Explyt team will:
