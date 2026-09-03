@@ -66,6 +66,10 @@ private class PsiFileReferenceVisitor(
 
     private fun checkCallExpression(node: UCallExpression) {
         if (node.kind != UastCallKind.METHOD_CALL) return
+        // Each check below needs exactly one value argument, so decide that syntactically before resolving.
+        // Resolution is the expensive half and it is what pulls this inspection into unrelated library PSI —
+        // every call in every file was resolved just to discover it is not `getResource` or a `ResourceUtils` call.
+        if (node.valueArgumentCount != 1) return
         val methodName = node.methodName
         val psiMethod = node.resolve() ?: return
         val targetClass = psiMethod.containingClass ?: return
@@ -77,6 +81,8 @@ private class PsiFileReferenceVisitor(
 
     private fun checkConstructorCallExpression(node: UCallExpression) {
         if (node.kind != UastCallKind.CONSTRUCTOR_CALL) return
+        // `checkResourceLoaderGetResource` is the only check reached from here, and it too needs one argument.
+        if (node.valueArgumentCount != 1) return
         val psiMethod = node.resolve() ?: return
         val targetClass = psiMethod.containingClass ?: return
         checkResourceLoaderGetResource(node, targetClass)
