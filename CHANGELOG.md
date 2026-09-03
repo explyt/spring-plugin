@@ -7,6 +7,9 @@
 ### Spring Core
 - fix: Fold a `@Value` placeholder and an `Environment.getProperty` key to the value of the profile-less `application.*` file instead of an arbitrary one, and name the profile when the value comes only from `application-<profile>.*`
 - fix: Cache the `@PropertySource` lookup that decides whether a file is Spring configuration, so highlighting an unrelated `.properties`/`.yaml` file no longer runs a project-wide index search per PSI element
+- fix: Look up a configuration key in the metadata catalogue through an index instead of scanning it: validating a `.properties`/`.yaml` file re-normalised every one of the thousands of catalogue names for every key in the file, on every highlighting pass
+- fix: Look up metadata hints by name instead of walking the whole hint list once per key per check
+- fix: Stop resolving every call in the file to decide whether it looks up a resource: the resource-reference inspection now rejects a call by its argument count first, so highlighting no longer walks into unrelated library PSI on calls it was always going to ignore
 - fix: Report the `BootstrapRegistry`, `@JsonComponent`/`@JsonMixin` and `@EntityScan` migrations when the legacy symbol no longer resolves after a Spring Boot 4 upgrade
 - fix: Report the `@MockBean` / `@SpyBean` migration when the legacy annotation no longer resolves after a Spring Boot 4 upgrade
 - feat: Report the `@MockBean` / `@SpyBean` migration already in Spring Boot 3.4/3.5, where the annotations are deprecated for removal, naming `@MockitoBean` / `@MockitoSpyBean` and offering the quick-fix the platform deprecation warning cannot
@@ -32,10 +35,15 @@
 - fix: Keep the Spring Boot toolbar button responsive by not creating the run configuration manager while the action updates
 - fix: Do not show the Spring Boot debug value hint in an editor that has no file behind it (#186)
 - fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search (#295)
+- fix: Apply that same filter on the source bean-search path, not only the native one, so a bean invalidated by an edit no longer breaks the autowiring inspection and bean navigation in a project without an external Spring model (#205)
 - fix: Reflect an edited source file in reference search results instead of returning a stale cached set
 - fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread (#185)
 - fix: Skip a cached component annotation that an edit invalidated instead of passing it to the annotated-elements search, which failed the whole bean search on it — with an `IllegalArgumentException` from the Java search executor and a message-less `AssertionError` from the Groovy one
 - fix: Recompute the bean search instead of failing it when a search executor dereferences an element invalidated while the query ran
+- feat: Open the Explyt Spring tool window after linking a Spring Boot project from a run configuration, including when the project was already linked and the click only refreshes it (#197)
+
+### Spring Initializr
+- fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
 - feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port` (#315)

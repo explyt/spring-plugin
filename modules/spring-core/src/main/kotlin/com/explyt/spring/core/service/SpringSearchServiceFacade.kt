@@ -45,7 +45,9 @@ class SpringSearchServiceFacade(private val project: Project) {
         return if (isNative || isExternalProjectExist(project)) {
             nativeSearchService.getAllActiveBeans()
         } else {
-            springSearchService.getActiveBeansClasses(module)
+            // The source path caches beans too, so it can hand out a bean whose PSI was invalidated by an edit just
+            // like the native path can. Filter it here as well: callers dereference `psiClass` without a guard.
+            nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
         }
     }
 
@@ -102,7 +104,7 @@ class SpringSearchServiceFacade(private val project: Project) {
             nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             val isTestSource = ExplytPsiUtil.isTestFiles(psiElement)
-            val beans = springSearchService.getActiveBeansClasses(module)
+            val beans = nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
             nativeSearchService.findActiveBeanDeclarations(
                 beans, byBeanName, language, byBeanPsiType, qualifier, module
             ).filter { filterBeanByTest(it, psiElement, isTestSource) }
