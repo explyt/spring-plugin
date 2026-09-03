@@ -417,11 +417,26 @@ class SpringSearchService(private val project: Project) {
             .toSet()
     }
 
+    /**
+     * Whether [psiClass] satisfies the preconditions every `AnnotatedElementsSearch` executor asserts, so that
+     * passing it to the search cannot fail the pass.
+     *
+     * The executors state the contract but each signals a violation differently, and none of them return
+     * quietly: the Java one throws `IllegalArgumentException("Annotation type should be passed …")` and
+     * `IllegalArgumentException("FQN is null for …")`, while the Groovy one uses bare `assert` and produces a
+     * message-less `AssertionError`. The annotation set arrives from a cached
+     * `getComponentClassAnnotations`, so an entry invalidated by an edit reaches the search with a null
+     * qualified name and takes down the whole bean search with it.
+     */
+    internal fun isSearchableAnnotationType(psiClass: PsiClass): Boolean =
+        psiClass.isValid && psiClass.isAnnotationType && psiClass.qualifiedName != null
+
     private fun searchBeanPsiClassesByAnnotations(
         module: Module, annotationPsiClasses: Collection<PsiClass>, scope: SearchScope
     ): Set<PsiBean> {
         try {
             return annotationPsiClasses.asSequence()
+                .filter { isSearchableAnnotationType(it) }
                 .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
                 .filter { it.isValid }
                 .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
@@ -433,6 +448,11 @@ class SpringSearchService(private val project: Project) {
             // Abort this pass via cancellation so the cached value is recomputed once PSI is
             // consistent again, instead of caching a partial result or logging a crash (issue #232).
             if (e.userMessage != FILE_TEXT_MISMATCH_MESSAGE) throw e
+            throw ProcessCanceledException(e)
+        } catch (e: PsiInvalidElementAccessException) {
+            // A search executor can dereference an element that was invalidated while the query ran —
+            // `ExternalAnnotatedElementsSearcher` asks a candidate for its containing file. Abort the pass so
+            // the cached value is recomputed against consistent PSI instead of failing every caller.
             throw ProcessCanceledException(e)
         }
     }
