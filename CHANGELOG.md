@@ -34,6 +34,8 @@
 - fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search (#295)
 - fix: Reflect an edited source file in reference search results instead of returning a stale cached set
 - fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread (#185)
+- fix: Skip a cached component annotation that an edit invalidated instead of passing it to the annotated-elements search, which failed the whole bean search on it — with an `IllegalArgumentException` from the Java search executor and a message-less `AssertionError` from the Groovy one
+- fix: Recompute the bean search instead of failing it when a search executor dereferences an element invalidated while the query ran
 
 ### Spring Web
 - feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port` (#315)
