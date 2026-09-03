@@ -34,6 +34,10 @@
 - fix: Ignore a cached bean whose PSI is no longer valid instead of failing inspections, gutters and bean search (#295)
 - fix: Reflect an edited source file in reference search results instead of returning a stale cached set
 - fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread (#185)
+- feat: Open the Explyt Spring tool window after linking a Spring Boot project from a run configuration, including when the project was already linked and the click only refreshes it (#197)
+
+### Spring Initializr
+- fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
 - feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port` (#315)
