@@ -212,7 +212,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         isOnTheFly: Boolean,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
-        val hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllHints(module)
+        val hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getHintIndex(module)
         val problems = mutableListOf<ProblemDescriptor>()
         problems += getProblemValues(manager, isOnTheFly, hints, fileProperties)
         problems += getProblemClassReference(module, manager, isOnTheFly, hints, fileProperties)
@@ -226,17 +226,18 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     private fun getProblemValues(
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val findInFileProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_KEYS == hint.name)
-                        && hint.values.isNotEmpty()
+            val declaresValues: (PropertyHint) -> Boolean = { hint ->
+                hint.values.isNotEmpty()
                         && (hint.providers.isEmpty()
                         || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
             }
+            hints.hintsNamed(property.key).any(declaresValues)
+                    || hints.hintsNamed(property.key.substringBeforeLast(".") + POSTFIX_KEYS).any(declaresValues)
         }
         if (findInFileProperties.isEmpty()) {
             return problems
@@ -250,12 +251,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 continue
             }
 
-            val hintValues = hints.asSequence()
-                .filter { it.name == key || it.name == key.substringBeforeLast(".") + POSTFIX_VALUES }
-                .distinctBy { it.name }
+            val hintValues = hints
+                .firstPerName(key, key.substringBeforeLast(".") + POSTFIX_VALUES)
                 .flatMap { it.values }
                 .mapNotNull { it.value }
-                .toList()
 
             if (value !in hintValues) {
                 problems += manager.createProblemDescriptor(
@@ -278,14 +277,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val classReferenceProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.CLASS_REFERENCE }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }.any { it.name == SpringProperties.CLASS_REFERENCE }
             }
         }
         if (classReferenceProperties.isEmpty()) {
@@ -350,14 +348,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val handleAsProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
             }
         }
         if (handleAsProperties.isEmpty()) {
@@ -371,11 +368,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             val key = elementFileProperty.propertyKey() ?: continue
             val value = elementFileProperty.propertyValue() ?: continue
 
-            val providerHints = hints.asSequence()
-                .filter { it.name == key }
-                .distinctBy { it.name }
-                .flatMap { it.providers }
-                .toList()
+            val providerHints = hints.firstPerName(key).flatMap { it.providers }
 
             val configurationProperty = propertiesSearch.findProperty(module, key)
             val propertyType = configurationProperty?.type?.replace('$', '.')
@@ -409,14 +402,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val springBeanReferenceProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }
                     .any { it.name == SpringProperties.SPRING_BEAN_REFERENCE }
             }
         }
@@ -486,14 +478,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     private fun getProblemResource(
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val resources = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
                         && hint.providers.any { it.parameters?.target == IO_RESOURCE }
             }
         }
