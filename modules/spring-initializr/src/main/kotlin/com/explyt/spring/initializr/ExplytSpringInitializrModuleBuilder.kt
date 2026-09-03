@@ -125,6 +125,7 @@ class ExplytSpringInitializrModuleBuilder : ModuleBuilder() {
         val zipDirectory = extractDirectory.resolve(FileUtil.getNameWithoutExtension(zip))
         val file = File(zipDirectory.toString())
         if (file.isDirectory) {
+            ProjectWrapperScripts.makeRunnable(zipDirectory)
             return file.canonicalPath
         }
 
