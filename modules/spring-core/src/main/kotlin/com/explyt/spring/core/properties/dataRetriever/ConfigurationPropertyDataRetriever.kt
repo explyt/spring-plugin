@@ -19,6 +19,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import java.util.Locale.getDefault
 
 abstract class ConfigurationPropertyDataRetriever {
 
@@ -82,12 +83,12 @@ abstract class ConfigurationPropertyDataRetriever {
         }
     }
 
-    protected fun toPascalFormat(memberName: String?): String {
+    protected fun String?.toPascalFormat(): String {
         return when {
-            memberName == null -> ""
-            memberName.startsWith("set") -> memberName.substring(3)
-            memberName.startsWith("get") -> memberName.substring(3)
-            else -> memberName.capitalize()
+            this == null -> ""
+            this.startsWith("set") -> this.substring(3)
+            this.startsWith("get") -> this.substring(3)
+            else -> this.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() }
         }
     }
 
