@@ -29,6 +29,7 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.wm.ToolWindowManager
 
 class AttachSpringBootProjectAction : DumbAwareAction() {
     init {
@@ -53,6 +54,13 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
     }
 
     companion object {
+
+        /**
+         * Must equal the `id` of the `toolWindow` registered in `spring-core-plugin.xml`: the platform looks a tool
+         * window up by that exact string and returns `null` for anything else, so a rename on either side would
+         * disable the activation silently. `AttachSpringBootProjectActionToolWindowIdTest` pins the two together.
+         */
+        internal const val TOOL_WINDOW_ID = "Explyt Spring"
         fun attachProject(project: Project) {
             val selectedRunConfiguration = ApplicationManager.getApplication().runReadAction(
                 Computable { RunManager.getInstance(project).selectedConfiguration?.configuration }
@@ -86,11 +94,29 @@ class AttachSpringBootProjectAction : DumbAwareAction() {
                 ExternalProjectsManagerImpl.getInstance(project).runWhenInitialized {
                     ExternalSystemUtil.refreshProject(canonicalPath, ImportSpecBuilder(project, SYSTEM_ID))
                 }
+                // The action reports success only through the tool window, so an already-linked project has to open it
+                // too — otherwise clicking the button looks like nothing happened at all (issue #197).
+                activateToolWindow(project)
                 return
             }
 
             SpringBootOpenProjectProvider().linkToExistingProject(
                 mainFile, selectedRunConfiguration, mainClass.qualifiedName, project
+            )
+            activateToolWindow(project)
+        }
+
+        /**
+         * Brings the Explyt Spring tool window to the front. Not called from the early-return paths above: those
+         * already explain themselves with a balloon, and opening an empty tool window on top of it would only add
+         * noise.
+         */
+        private fun activateToolWindow(project: Project) {
+            ApplicationManager.getApplication().invokeLater(
+                {
+                    ToolWindowManager.getInstance(project).getToolWindow(TOOL_WINDOW_ID)?.activate(null)
+                },
+                project.disposed
             )
         }
 
