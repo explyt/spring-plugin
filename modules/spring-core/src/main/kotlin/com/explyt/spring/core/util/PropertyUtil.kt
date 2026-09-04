@@ -47,6 +47,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.text.PlaceholderTextRanges
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -779,11 +780,28 @@ object PropertyUtil {
         val findProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .findProperty(module, propertyKey)
         if (findProperty == null) {
-            return SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
-                .find { propertyKey.startsWith(it.name) }
+            return longestPrefixProperty(
+                SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module),
+                propertyKey
+            )
         }
         return findProperty
     }
+
+    /**
+     * The declared property that owns [propertyKey] when no exact declaration exists — a map or collection entry
+     * such as `logging.level.sql`, whose arbitrary suffix is absent from the metadata.
+     *
+     * Several declarations can be prefixes of the same key, and only the longest is the owner: a shorter one is an
+     * unrelated ancestor that happens to share a namespace. [findValueOwner] already selects that way; this one used
+     * `find`, which returns whichever candidate the catalogue happened to list first.
+     */
+    @VisibleForTesting
+    fun longestPrefixProperty(
+        properties: List<ConfigurationProperty>, propertyKey: String
+    ): ConfigurationProperty? = properties.asSequence()
+        .filter { propertyKey.startsWith(it.name) }
+        .maxByOrNull { it.name.length }
 
     fun resolveResults(sourceMember: PsiMember): Array<ResolveResult> {
         val uElement = sourceMember.toUElement() ?: return emptyArray()
