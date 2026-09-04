@@ -31,9 +31,9 @@ We want the repository to be contribution-friendly **without putting important f
 ## 3. Quickstart (5 minutes)
 
 ### Prerequisites
-- **JDK 21.** The build targets Java 21. Gradle's toolchain support (foojay resolver) can auto-provision it, but having a JDK 21 installed avoids surprises.
+- **JDK 25.** This branch targets Java 25 (`261` and older target 21). Gradle's toolchain support (foojay resolver) can auto-provision it, but having a JDK 25 installed avoids surprises.
 - **Git** and a **GitHub account** (fork + PR workflow).
-- **IntelliJ IDEA** (Community is fine) to edit the code. The sandbox the plugin launches into is **IntelliJ IDEA Community 2026.1** by default (`defaultIdeaVersion` / `defaultIdeaType=IC` in `gradle.properties`).
+- **IntelliJ IDEA** (the free tier is fine) to edit the code. The sandbox the plugin launches into is **IntelliJ IDEA 2026.2** by default (`defaultIdeaVersion` in `gradle.properties`). Since 2025.3 IntelliJ IDEA ships as a single unified distribution, so the sandbox identifies itself as `IU-262.…` even without a subscription — Ultimate-only functionality stays gated behind one.
 
 ### Clone and launch a sandbox IDE
 ```bash

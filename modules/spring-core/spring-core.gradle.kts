@@ -53,7 +53,6 @@ tasks {
 
 val baseProject = project(":base")
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {
