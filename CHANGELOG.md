@@ -38,6 +38,7 @@
 - fix: Apply that same filter on the source bean-search path, not only the native one, so a bean invalidated by an edit no longer breaks the autowiring inspection and bean navigation in a project without an external Spring model (#205)
 - fix: Reflect an edited source file in reference search results instead of returning a stale cached set
 - fix: Read the main class of a Kotlin run configuration without resolving PSI on the event dispatch thread (#185)
+- fix: Resolve a configuration key with no exact declaration to the longest declared prefix that owns it, instead of whichever prefix the metadata catalogue happened to list first
 - fix: Skip a cached component annotation that an edit invalidated instead of passing it to the annotated-elements search, which failed the whole bean search on it — with an `IllegalArgumentException` from the Java search executor and a message-less `AssertionError` from the Groovy one
 - fix: Recompute the bean search instead of failing it when a search executor dereferences an element invalidated while the query ran
 - feat: Open the Explyt Spring tool window after linking a Spring Boot project from a run configuration, including when the project was already linked and the click only refreshes it (#197)
