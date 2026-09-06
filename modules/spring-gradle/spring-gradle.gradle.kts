@@ -37,7 +37,6 @@ tasks {
 val springCore = project(":spring-core")
 val testFramework = project(":test-framework")
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {

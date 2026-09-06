@@ -20,7 +20,6 @@ ext {
 
 evaluationDependsOn(":test-framework")
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 intellijPlatform {

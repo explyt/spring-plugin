@@ -35,7 +35,6 @@ tasks {
     verifyPlugin { enabled = false }
 }
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {
