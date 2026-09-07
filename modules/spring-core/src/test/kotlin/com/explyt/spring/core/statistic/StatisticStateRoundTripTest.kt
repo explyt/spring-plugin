@@ -6,7 +6,7 @@
 package com.explyt.spring.core.statistic
 
 import com.intellij.openapi.util.JDOMUtil
-import com.intellij.util.xmlb.SkipDefaultValuesSerializationFilters
+import com.intellij.util.xmlb.SkipDefaultsSerializationFilter
 import com.intellij.util.xmlb.XmlSerializer
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -20,7 +20,7 @@ class StatisticStateRoundTripTest {
         original.incrementUsage("FEEDBACK_NUDGE_STAR_CLICKED")
         original.incrementUsage("FEEDBACK_NUDGE_STAR_CLICKED")
 
-        val element = XmlSerializer.serialize(original, SkipDefaultValuesSerializationFilters())
+        val element = XmlSerializer.serialize(original, SkipDefaultsSerializationFilter())
         val xml = JDOMUtil.writeElement(element)
 
         val restored = XmlSerializer.deserialize(JDOMUtil.load(xml), StatisticState.UsagesMapStatistic::class.java)

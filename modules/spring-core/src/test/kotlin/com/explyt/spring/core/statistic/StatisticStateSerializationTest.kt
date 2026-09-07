@@ -6,7 +6,7 @@
 package com.explyt.spring.core.statistic
 
 import com.intellij.openapi.util.JDOMUtil
-import com.intellij.util.xmlb.SkipDefaultValuesSerializationFilters
+import com.intellij.util.xmlb.SkipDefaultsSerializationFilter
 import com.intellij.util.xmlb.XmlSerializer
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -21,7 +21,7 @@ class StatisticStateSerializationTest {
         state.incrementUsage("FEEDBACK_NUDGE_STAR_CLICKED")
         state.incrementUsage("FEEDBACK_NUDGE_STAR_CLICKED")
 
-        val element = XmlSerializer.serialize(state, SkipDefaultValuesSerializationFilters())
+        val element = XmlSerializer.serialize(state, SkipDefaultsSerializationFilter())
         assertNotNull("a populated state must not serialize to nothing", element)
         val xml = JDOMUtil.writeElement(element)
         println(xml)
