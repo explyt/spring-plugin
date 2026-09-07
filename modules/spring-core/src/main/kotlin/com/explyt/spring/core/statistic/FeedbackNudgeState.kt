@@ -37,6 +37,9 @@ class FeedbackNudgeState : SimplePersistentStateComponent<NudgeData>(NudgeData()
 
         /** Set when the user explicitly dismisses the nudge — honored forever. */
         var dismissed by property(false)
+
+        /** Set once the legacy [StatisticState] counters have been folded in — exactly once per installation. */
+        var legacySeeded by property(false)
     }
 
     fun toStats(): NudgeStats = with(state) {
