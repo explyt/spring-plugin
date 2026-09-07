@@ -639,22 +639,29 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         }.distinct()
 
 
+    /**
+     * The declared maps that would accept [fileProperty] as an entry. A map entry name is arbitrary, so a key with
+     * no declaration of its own is still legal when a map owns it — but only when ownership ends at a segment
+     * boundary. A bare prefix match makes the map `foo.bar` legalise the misspelled `foo.barbaz`, suppressing the
+     * unresolved-key report the inspection exists to produce.
+     */
     private fun getMapKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
         val commonFormKey = PropertyUtil.toCommonPropertyForm(fileProperty.key)
         return properties.asSequence().filter { it.isMap() }
-            .filter { commonFormKey.startsWith(PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
+            .filter { PropertyUtil.isOwnedBy(commonFormKey, PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
     }
 
+    /** The declared collections that would accept [fileProperty] as an element. See [getMapKeys] on the boundary. */
     private fun getListKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
         val commonFormKey = PropertyUtil.toCommonPropertyForm(fileProperty.key)
         return properties.asSequence().filter { it.isList() || it.isArray() }
-            .filter { commonFormKey.startsWith(PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
+            .filter { PropertyUtil.isOwnedBy(commonFormKey, PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
     }
 
     private fun checkDuplicateKeys(
