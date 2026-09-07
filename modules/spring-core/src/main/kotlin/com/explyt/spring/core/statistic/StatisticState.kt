@@ -7,12 +7,20 @@ package com.explyt.spring.core.statistic
 
 import com.explyt.spring.core.statistic.StatisticState.UsagesMapStatistic
 import com.intellij.openapi.components.*
+import com.intellij.util.ThreeState
 
+/**
+ * Local usage counters.
+ *
+ * `useSaveThreshold = NO` opts out of the platform's rule that saves a non-roamable component at most once every five
+ * minutes and does not force it on exit: with the default, every IDE session shorter than five minutes after the first
+ * counted action lost its counters.
+ */
 @Service(Service.Level.APP)
 @State(
     name = "ExplytSpringStatisticCache",
     category = SettingsCategory.PLUGINS,
-    storages = [Storage(StoragePathMacros.CACHE_FILE)]
+    storages = [Storage(StoragePathMacros.CACHE_FILE, useSaveThreshold = ThreeState.NO)]
 )
 class StatisticState : SimplePersistentStateComponent<UsagesMapStatistic>(UsagesMapStatistic()) {
 
