@@ -8,7 +8,12 @@ package com.explyt.spring.core.properties.kotlin
 import com.explyt.spring.core.properties.providers.ValueConfigurationPropertyReferenceProvider
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.util.PsiTreeUtil
 import kotlin.system.measureTimeMillis
 
@@ -126,6 +131,171 @@ class ValueConfigurationPropertyReferenceProviderTest : ExplytKotlinLightTestCas
             elapsedMs < 2000
         )
     }
+
+    //region SpEL bean references (issue #44)
+
+    /** A bean reference with one property access is the shape the issue is about. */
+    fun testSpelBeanPatternExtractsBeanAndMember() {
+        assertExtractedBeanMembers("#{@myProps.cron}", "myProps.cron")
+    }
+
+    /** A bare bean reference has no member to read, and must still offer the bean. */
+    fun testSpelBeanPatternExtractsABareBeanReference() {
+        assertExtractedBeanMembers("#{@myProps}", "myProps")
+    }
+
+    /** SpEL tolerates whitespace around the accessor, so the pattern has to as well. */
+    fun testSpelBeanPatternToleratesWhitespace() {
+        assertExtractedBeanMembers("#{ @myProps . cron }", "myProps.cron")
+    }
+
+    /** Every bean named in a composite expression contributes its own pair. */
+    fun testSpelBeanPatternExtractsEveryBeanInOneBlock() {
+        assertExtractedBeanMembers("#{@first.alpha + '-' + @second.beta}", "first.alpha", "second.beta")
+    }
+
+    /** A bean referenced from a placeholder's SpEL default is a real reference too. */
+    fun testSpelBeanPatternExtractsFromAPlaceholderDefault() {
+        assertExtractedBeanMembers("${'$'}{my.property:#{@fallbackProps.cron}}", "fallbackProps.cron")
+    }
+
+    /** `#{null}` is the common SpEL default and names no bean. */
+    fun testSpelDefaultWithoutABeanExtractsNothing() {
+        assertExtractedBeanMembers("${'$'}{my.property:#{null}}")
+    }
+
+    /** An `@` outside a SpEL block is literal text — an e-mail address, not a bean. */
+    fun testAtSignOutsideSpelExtractsNothing() {
+        assertExtractedBeanMembers("support@example.com")
+        assertExtractedBeanMembers("${'$'}{mail.from:support@example.com}")
+    }
+
+    /** A SpEL block that reads something other than a bean must not be misread as one. */
+    fun testSpelWithoutABeanReferenceExtractsNothing() {
+        assertExtractedBeanMembers("#{systemProperties['user.name']}")
+        assertExtractedBeanMembers("#{T(java.lang.Math).random()}")
+    }
+
+    /**
+     * The bean named in a SpEL block must navigate. `@Scheduled` resolves the attribute through
+     * `EmbeddedValueResolver`, which evaluates SpEL after placeholder resolution, so this value works at runtime
+     * and previously produced no references at all.
+     */
+    fun testScheduledSpelBeanNameResolvesToTheBean() {
+        configureSpelFixture("#{@myPr<caret>ops.cron}")
+
+        val resolved = resolveAtCaret()
+        // Exactly one: the fixture declares a second bean (TestComponent), and a name-only lookup that fell back
+        // to every candidate — as the injection-point reference does — would return both.
+        assertEquals(
+            "Expected the SpEL bean name to resolve to MyProps alone",
+            listOf("MyProps"),
+            resolved.map { (it as? PsiClass)?.name }
+        )
+    }
+
+    /** The member read from the bean must navigate to the property it reads. */
+    fun testScheduledSpelMemberResolvesToTheBeanProperty() {
+        configureSpelFixture("#{@myProps.cr<caret>on}")
+
+        val resolved = resolveAtCaret()
+        assertTrue(
+            "Expected the SpEL member to resolve to the cron getter, got ${resolved.map { (it as? PsiMember)?.name }}",
+            resolved.any { it is PsiMethod && it.name == "getCron" }
+        )
+    }
+
+    /** The same value in `@Value` goes through the same provider, so it must resolve identically. */
+    fun testValueSpelMemberResolvesToTheBeanProperty() {
+        myFixture.configureByText(
+            "TestComponent.kt",
+            """
+            import org.springframework.beans.factory.annotation.Value
+            import org.springframework.stereotype.Component
+
+            @Component("myProps")
+            class MyProps {
+                val cron: String = "0 0 * * * *"
+            }
+
+            @Component
+            class TestComponent {
+                @Value("#{@myProps.cr<caret>on}")
+                private val injected: String = ""
+            }
+            """.trimIndent()
+        )
+
+        val resolved = resolveAtCaret()
+        assertTrue(
+            "Expected the SpEL member to resolve to the cron getter, got ${resolved.map { (it as? PsiMember)?.name }}",
+            resolved.any { it is PsiMethod && it.name == "getCron" }
+        )
+    }
+
+    /** An unknown bean name yields a reference that resolves to nothing, never an exception. */
+    fun testUnknownSpelBeanResolvesToNothing() {
+        configureSpelFixture("#{@noSuch<caret>Bean.cron}")
+
+        assertNotNull("Expected a reference even for an unknown bean", file.findReferenceAt(myFixture.caretOffset))
+        assertTrue("An unknown bean must not resolve", resolveAtCaret().isEmpty())
+        // The reference is still computed for the whole file, which must not throw.
+        myFixture.doHighlighting()
+    }
+
+    /** Configures a component whose `@Scheduled` cron is the given SpEL expression, plus the bean it names. */
+    private fun configureSpelFixture(spel: String) {
+        myFixture.configureByText(
+            "TestComponent.kt",
+            """
+            import org.springframework.scheduling.annotation.Scheduled
+            import org.springframework.stereotype.Component
+
+            @Component("myProps")
+            class MyProps {
+                val cron: String = "0 0 * * * *"
+            }
+
+            @Component
+            class TestComponent {
+                @Scheduled(cron = "$spel")
+                fun run() {
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    /** The elements the reference under the caret resolves to, poly-variant or not. */
+    private fun resolveAtCaret(): List<PsiElement?> {
+        val reference = file.findReferenceAt(myFixture.caretOffset)
+        assertNotNull("Expected a reference at the caret", reference)
+        return when (reference) {
+            is PsiPolyVariantReference -> reference.multiResolve(false).map { it.element }
+            else -> listOfNotNull(reference?.resolve())
+        }
+    }
+
+    /**
+     * Asserts the bean references the provider's SpEL patterns extract, rendered as `bean` or `bean.member`.
+     * Mirrors the provider's own two-stage scan — blocks first, then bean accesses inside one — without needing
+     * a PSI fixture, so the pattern boundaries can be pinned down independently of bean resolution.
+     */
+    private fun assertExtractedBeanMembers(value: String, vararg expected: String) {
+        val spelMatcher = ValueConfigurationPropertyReferenceProvider.SPEL_PATTERN.matcher(value)
+        val actual = mutableListOf<String>()
+        while (spelMatcher.find()) {
+            val beanMatcher = ValueConfigurationPropertyReferenceProvider.SPEL_BEAN_PATTERN
+                .matcher(spelMatcher.group(1))
+            while (beanMatcher.find()) {
+                val member = beanMatcher.group(2)
+                actual += if (member == null) beanMatcher.group(1) else "${beanMatcher.group(1)}.$member"
+            }
+        }
+        assertEquals("Unexpected SpEL bean references extracted from '$value'", expected.toList(), actual)
+    }
+
+    //endregion
 
     /**
      * Configures a component whose `@Value` argument is the given placeholder and asserts that a

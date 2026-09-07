@@ -66,4 +66,7 @@ object SpringProperties {
     const val PLACEHOLDER_PREFIX = "\${"
     const val PLACEHOLDER_SUFFIX = "}"
 
+    /** The opener of a SpEL block, which an annotation value resolves after its placeholders. */
+    const val SPEL_PREFIX = "#{"
+
 }
