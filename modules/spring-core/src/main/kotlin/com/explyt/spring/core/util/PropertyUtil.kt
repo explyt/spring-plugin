@@ -17,6 +17,7 @@ import com.explyt.spring.core.completion.properties.ConfigurationPropertiesLoade
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetriever
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
+import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.explyt.spring.core.references.ReferenceType
 import com.explyt.spring.core.service.SpringSearchService
@@ -235,7 +236,7 @@ object PropertyUtil {
         val commonKey = toCommonPropertyForm(propertyKey)
         return search.getAllProperties(module).asSequence()
             .filter { it.isMap() }
-            .filter { commonKey.startsWith(toCommonPropertyForm(it.name)) }
+            .filter { isOwnedBy(commonKey, toCommonPropertyForm(it.name)) }
             // The longest declared prefix is the closest declaration; a shorter one may be an unrelated ancestor.
             .maxByOrNull { it.name.length }
     }
@@ -412,6 +413,31 @@ object PropertyUtil {
         return toCommonPropertyForm(property1) == toCommonPropertyForm(property2)
     }
 
+    /**
+     * Whether [propertyKey] belongs to the declaration [declaredName] — the same key, or a key that continues with a
+     * new segment.
+     *
+     * The relation cannot be a plain `startsWith`: that accepts `foo.bar` as the owner of `foo.barbaz`, two keys
+     * sharing seven characters and no relation. A bogus owner then decides the value type, the map-entry completion
+     * and whether an unknown key is reported at all, so the over-match turns into both false positives and
+     * suppressed warnings.
+     *
+     * The boundary is not the dot alone. A collection element and a bracket-notation map entry open with `[`, so
+     * `ingest.s3-logs.sources[0].enabled` belongs to `ingest.s3-logs.sources`; requiring `.` would drop collection
+     * ownership entirely.
+     *
+     * Callers that honour relaxed binding pass both arguments through [toCommonPropertyForm] first — it strips `-`
+     * and `_` but leaves both boundary characters intact, so the rule holds on canonical forms too.
+     */
+    fun isOwnedBy(propertyKey: String, declaredName: String): Boolean {
+        if (!propertyKey.startsWith(declaredName)) return false
+        if (propertyKey.length == declaredName.length) return true
+        // An empty declaration would otherwise own every key whose first character happens to be a boundary.
+        if (declaredName.isEmpty()) return false
+        val boundary = propertyKey[declaredName.length]
+        return boundary == DOT.single() || boundary == ConfigurationPropertyListElementReference.INDEX_START
+    }
+
     fun guessTypeFromValue(value: String?): String {
         return when {
             value == null -> CommonClassNames.JAVA_LANG_STRING
@@ -514,8 +540,13 @@ object PropertyUtil {
             .joinToString(".")
     }
 
+    /**
+     * Whether [key] is an entry of a declared map, whose entry names are arbitrary and so exempt from the
+     * kebab-case rule. Ownership has to respect the segment boundary: a map `foo.bar` does not make `foo.barBaz`
+     * an entry, and treating it as one silently drops a genuine warning.
+     */
     fun isKebabCaseInMapKey(key: String, properties: List<ConfigurationProperty>): Boolean {
-        return properties.any { it.isMap() && key.startsWith(it.name) && key != it.name }
+        return properties.any { it.isMap() && isOwnedBy(key, it.name) && key != it.name }
     }
 
     fun getValueClassNameInMap(propertyType: String?): String? {
@@ -800,7 +831,7 @@ object PropertyUtil {
     fun longestPrefixProperty(
         properties: List<ConfigurationProperty>, propertyKey: String
     ): ConfigurationProperty? = properties.asSequence()
-        .filter { propertyKey.startsWith(it.name) }
+        .filter { isOwnedBy(propertyKey, it.name) }
         .maxByOrNull { it.name.length }
 
     fun resolveResults(sourceMember: PsiMember): Array<ResolveResult> {
