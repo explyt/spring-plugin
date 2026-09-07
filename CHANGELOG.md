@@ -42,6 +42,7 @@
 - fix: Skip a cached component annotation that an edit invalidated instead of passing it to the annotated-elements search, which failed the whole bean search on it — with an `IllegalArgumentException` from the Java search executor and a message-less `AssertionError` from the Groovy one
 - fix: Recompute the bean search instead of failing it when a search executor dereferences an element invalidated while the query ran
 - feat: Open the Explyt Spring tool window after linking a Spring Boot project from a run configuration, including when the project was already linked and the click only refreshes it (#197)
+- feat: Navigate from a SpEL bean reference in `@Value` and `@Scheduled` to the bean and to the property it reads, so `#{@myProps.cron}` resolves both halves and completes the property name (#44)
 
 ### Spring Initializr
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
