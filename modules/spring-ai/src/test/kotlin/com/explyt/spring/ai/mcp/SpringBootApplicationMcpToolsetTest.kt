@@ -185,6 +185,81 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("id", pathParam!!["name"].asText())
     }
 
+    /**
+     * Every handler parameter must appear in the contract, whatever binds it.
+     *
+     * A parameter bound by a custom `HandlerMethodArgumentResolver` carries no binding annotation, so an
+     * enumeration driven purely by annotations dropped it silently — and a dropped parameter is
+     * indistinguishable from one that was never declared. The two have opposite meanings when the parameter is
+     * the one carrying authorization: reading the tool's output alone, an endpoint that authenticates its caller
+     * looks exactly like one that does not.
+     */
+    fun testEndpointContractReportsEveryParameterSource() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val result = toolset.getEndpointContract(
+            urlPattern = "/api/resolver/items/{id}",
+            projectPath = projectPath(),
+            httpMethod = "GET"
+        )
+        val contract = parseArray(result)[0]
+        val parameters = contract["parameters"]
+        val bySource = parameters.associate { it["name"].asText() to it["source"].asText() }
+
+        assertEquals(
+            "Every declared parameter must be reported, whatever binds it",
+            mapOf(
+                "id" to "PATH",
+                "q" to "QUERY",
+                "sid" to "COOKIE",
+                "currentUser" to "UNKNOWN",
+                "webRequest" to "FRAMEWORK",
+                "locale" to "FRAMEWORK",
+            ),
+            bySource
+        )
+    }
+
+    /** The same completeness must hold for the endpoint listing, which shares the parameter enumeration. */
+    fun testHttpEndpointsReportTheResolverBoundParameter() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val result = toolset.getHttpEndpoints(
+            projectPath = projectPath(),
+            controllerFilter = "ResolverController",
+            endpointType = ""
+        )
+        val endpoint = endpointsOf(result).first { it["methodName"].asText() == "getItem" }
+        val names = endpoint["parameters"].map { it["name"].asText() }
+
+        assertTrue(
+            "Expected the resolver-bound 'currentUser' to be listed, got $names",
+            names.contains("currentUser")
+        )
+    }
+
+    /**
+     * An unclassified parameter must not claim a requiredness it cannot know. The four annotation-bound sources
+     * declare it; a resolver's contract is private to the resolver, so `required` stays null rather than
+     * defaulting to a plausible-looking boolean.
+     */
+    fun testUnclassifiedParameterDoesNotAssertRequiredness() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val result = toolset.getEndpointContract(
+            urlPattern = "/api/resolver/items/{id}",
+            projectPath = projectPath(),
+            httpMethod = "GET"
+        )
+        val parameters = parseArray(result)[0]["parameters"]
+
+        val currentUser = parameters.first { it["name"].asText() == "currentUser" }
+        assertTrue("Expected 'required' to be null for a resolver-bound parameter", currentUser["required"].isNull)
+
+        val pathParam = parameters.first { it["name"].asText() == "id" }
+        assertEquals("A @PathVariable still declares its requiredness", true, pathParam["required"].asBoolean())
+    }
+
     fun testTraceCallChainFileNotFoundFails() = runBlocking<Unit> {
         // `traceCallChain` resolves files via `LocalFileSystem` using `project.basePath + filePath`.
         // In a light test fixture, testdata lives in an in-memory temp VFS, so any real path
