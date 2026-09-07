@@ -56,6 +56,8 @@
 
 ### Spring MCP
 - fix: Report every handler parameter in `explyt_get_spring_endpoint_contract` and `explyt_get_spring_http_endpoints`, not only the annotation-bound ones: a parameter bound by a custom `HandlerMethodArgumentResolver` was dropped silently, which is indistinguishable from an endpoint that never declared it — the opposite conclusion when the parameter is the one carrying authorization. Each parameter now names its `source` (`PATH`, `QUERY`, `BODY`, `HEADER`, `COOKIE`, `MODEL`, `FRAMEWORK` or `UNKNOWN`), and `required` is null wherever nothing declares it
+- feat: Add `compact` to `explyt_get_spring_http_endpoints`, omitting the `parameters` and `returnType` of each endpoint — they dominate the response, which on a 136-endpoint project reached 122 KB of single-line JSON that a line-based reader cannot chunk, and the controller/type filters cannot narrow it in the situation the tool is first called for: not yet knowing which controllers exist
+- fix: Describe the endpoint listing with the field names it actually returns, and show one complete example object: the description said "HTTP method, full path, line number" while the keys are `httpMethods` (an array), `fullPath` and `line`, so a first parse written against the prose silently yielded empty rows instead of failing
 
 ### Other
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded (#307)

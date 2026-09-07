@@ -191,7 +191,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return false
     }
 
-    private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson {
+    private fun toCompactEndpointJson(endpoint: EndpointElement, project: Project): CompactEndpointJson {
         val psiMethod = endpoint.psiElement as? PsiMethod
         val controllerClass = endpoint.containingClass ?: psiMethod?.containingClass
         val position = sourcePositionOf(endpoint.psiElement, project)
@@ -199,19 +199,31 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val filePath = position.filePath
             ?: endpoint.containingFile?.let { relativePathOf(it, project) }
 
-        val parameters = if (psiMethod != null) extractParameters(psiMethod) else emptyList()
-        val returnType = psiMethod?.returnType?.canonicalText
-
-        return EndpointJson(
+        return CompactEndpointJson(
             httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
             fullPath = endpoint.path,
             controllerClass = controllerClass?.qualifiedName,
             methodName = psiMethod?.name,
             filePath = filePath,
             line = position.line,
-            parameters = parameters,
-            returnType = returnType,
             endpointType = endpoint.type.readable,
+        )
+    }
+
+    private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson {
+        val psiMethod = endpoint.psiElement as? PsiMethod
+        val core = toCompactEndpointJson(endpoint, project)
+
+        return EndpointJson(
+            httpMethods = core.httpMethods,
+            fullPath = core.fullPath,
+            controllerClass = core.controllerClass,
+            methodName = core.methodName,
+            filePath = core.filePath,
+            line = core.line,
+            parameters = if (psiMethod != null) extractParameters(psiMethod) else emptyList(),
+            returnType = psiMethod?.returnType?.canonicalText,
+            endpointType = core.endpointType,
         )
     }
 
@@ -289,10 +301,18 @@ class SpringBootApplicationMcpToolset : McpToolset {
     @McpDescription(
         description = "Lists all HTTP endpoints in the project. " +
                 "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
-                "Returns an object: 'endpoints' is the array (each entry has the HTTP method, full path, " +
-                "controller class, method name, return type, file path, line number, and endpoint type), " +
-                "'totalCount' is how many endpoints matched the filters, 'offset' is the index the returned page " +
-                "starts at, and 'truncated' is true when more matches remain after this page. " +
+                "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
+                "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
+                "'endpoints'. One endpoint looks exactly like this - note 'httpMethods' is an array, and the keys " +
+                "are 'fullPath' and 'line', not 'path' or 'lineNumber': " +
+                "{\"httpMethods\":[\"GET\"],\"fullPath\":\"/api/demo/items/{id}\"," +
+                "\"controllerClass\":\"com.example.app.web.DemoController\",\"methodName\":\"getItem\"," +
+                "\"filePath\":\"src/main/java/com/example/app/web/DemoController.java\",\"line\":40," +
+                "\"parameters\":[{\"name\":\"id\",\"source\":\"PATH\",\"type\":\"java.lang.Long\"," +
+                "\"required\":true,\"defaultValue\":null}],\"returnType\":\"com.example.app.dto.DemoDto\"," +
+                "\"endpointType\":\"SPRING_MVC\"}. " +
+                "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
+                "and on a large project the full form can exceed 100 KB on a single line. " +
                 "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
                 "or request the next page with 'offset' = 'offset' + number of returned endpoints. " +
                 "Use optional filters to narrow results by controller class name or endpoint type."
@@ -314,6 +334,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "capped at $MAX_ENDPOINT_LIST_RESULTS."
         )
         limit: Int = DEFAULT_ENDPOINT_PAGE_SIZE,
+        @McpDescription(
+            "Omit 'parameters' and 'returnType' from each endpoint. Use this for a first inventory of a project " +
+                    "you do not know yet: those two fields dominate the response, and the controller/type " +
+                    "filters cannot narrow it before you know which controllers exist. Defaults to false."
+        )
+        compact: Boolean = false,
     ): String {
         val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
         val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
@@ -338,14 +364,17 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
                 // Convert only the requested page: building an EndpointJson resolves PSI (module, line number,
                 // parameters), which is far too expensive to do for every endpoint of a large project.
-                val endpoints = matching.asSequence()
+                // 'compact' also skips the parameter extraction itself, so it is cheaper to compute and not
+                // merely smaller to send.
+                val page = matching.asSequence()
                     .drop(pageStart)
                     .take(pageSize)
-                    .map {
-                        ProgressManager.checkCanceled()
-                        toEndpointJson(it, project)
-                    }
-                    .toList()
+                    .onEach { ProgressManager.checkCanceled() }
+                val endpoints: List<Any> = if (compact) {
+                    page.map { toCompactEndpointJson(it, project) }.toList()
+                } else {
+                    page.map { toEndpointJson(it, project) }.toList()
+                }
 
                 EndpointListJson(
                     totalCount = matching.size,
@@ -980,11 +1009,29 @@ data class EndpointJson(
     val endpointType: String,
 )
 
-data class EndpointListJson(
+/**
+ * One endpoint without its per-method signature, for the `compact` listing.
+ *
+ * Not [EndpointJson] with nulled-out fields: the two arrays are *absent* rather than empty, so a caller cannot
+ * mistake a projection for an endpoint that genuinely takes no parameters — the same absent-versus-empty
+ * confusion that made a dropped parameter unreadable before.
+ */
+data class CompactEndpointJson(
+    val httpMethods: List<String>,
+    val fullPath: String,
+    val controllerClass: String?,
+    val methodName: String?,
+    val filePath: String?,
+    /** `null` when the endpoint element has no physical declaration to point at. */
+    val line: Int?,
+    val endpointType: String,
+)
+
+data class EndpointListJson<T>(
     val totalCount: Int,
     val offset: Int,
     val truncated: Boolean,
-    val endpoints: List<EndpointJson>,
+    val endpoints: List<T>,
 )
 
 data class EndpointParameterJson(
