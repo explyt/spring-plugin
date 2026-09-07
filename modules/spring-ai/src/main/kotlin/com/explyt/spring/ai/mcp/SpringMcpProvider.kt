@@ -35,6 +35,7 @@ import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
+import com.intellij.psi.util.InheritanceUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
@@ -231,7 +232,55 @@ class SpringBootApplicationMcpToolset : McpToolset {
             result += EndpointParameterJson(info.name, "HEADER", info.typeFqn, info.isRequired, info.defaultValue)
         }
 
+        result += parametersOutsideCollectors(psiMethod)
         return result
+    }
+
+    /**
+     * The handler parameters none of the four annotation collectors claims.
+     *
+     * Enumerating only annotated parameters drops everything bound by a `HandlerMethodArgumentResolver`, and a
+     * dropped parameter is indistinguishable from one that was never declared. That is the dangerous half: a
+     * `currentUser` argument absent from the output can mean either "the endpoint authenticates its caller" or
+     * "the endpoint has no authorization at all", and those have opposite meanings for anyone reading the
+     * contract to audit it. Reporting the parameter with a source of `UNKNOWN` says "there is an argument here I
+     * cannot classify", which is actionable; silence is not.
+     */
+    private fun parametersOutsideCollectors(psiMethod: PsiMethod): List<EndpointParameterJson> =
+        psiMethod.parameterList.parameters
+            .filter { param -> COLLECTED_BINDING_ANNOTATIONS.none { param.isMetaAnnotatedBy(it) } }
+            .map { param ->
+                EndpointParameterJson(
+                    name = wireNameOf(param),
+                    source = sourceOfUncollected(param),
+                    type = param.type.canonicalText,
+                    // Not null-by-omission: the four annotations above declare their requiredness, whereas a
+                    // resolver's contract is private to the resolver. Defaulting to `true` or `false` here would
+                    // invent a fact about the wire format, which is the failure this method exists to avoid.
+                    required = null,
+                )
+            }
+
+    /**
+     * The name the client sends, which is not always the Java name: `@CookieValue("sid") String sessionId` is
+     * `sid` on the wire. The four collectors above already report the annotation's name, so reporting the
+     * declared identifier here instead would make one parameter list speak two different vocabularies — and the
+     * wire name is the one a generated client or a test fixture has to use.
+     *
+     * Falls back to the declared name, which is also Spring's own rule when the annotation names nothing.
+     */
+    private fun wireNameOf(param: PsiParameter): String {
+        val annotation = param.findFirstAnnotation(NAMED_BINDING_ANNOTATIONS) ?: return param.name
+        return annotation.getStringAttribute("value")
+            ?: annotation.getStringAttribute(ATTR_NAME)
+            ?: param.name
+    }
+
+    private fun sourceOfUncollected(param: PsiParameter): String = when {
+        param.isMetaAnnotatedBy(SpringWebClasses.COOKIE_VALUE) -> "COOKIE"
+        param.isMetaAnnotatedBy(SpringWebClasses.MODEL_ATTRIBUTE) -> "MODEL"
+        FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(param.type, it) } -> "FRAMEWORK"
+        else -> "UNKNOWN"
     }
 
     // ---- explyt_get_spring_http_endpoints ----
@@ -315,9 +364,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
     @McpTool("explyt_get_spring_endpoint_contract")
     @McpDescription(
         description = "Returns the full API contract for a specific endpoint. " +
-                "Includes HTTP method, full path, all parameters (path variables, query params, request body, headers) " +
-                "with types and required flags, return type, response DTO field schema (recursively expanded up to 3 levels), " +
+                "Includes HTTP method, full path, every declared handler parameter with its type, " +
+                "return type, response DTO field schema (recursively expanded up to 3 levels), " +
                 "produces/consumes media types, and the first service method called from the controller. " +
+                "Each parameter carries a 'source': PATH, QUERY, BODY, HEADER, COOKIE or MODEL for an " +
+                "annotation-bound one (whose 'name' is the wire name, not the Java name, and whose 'required' is " +
+                "declared); FRAMEWORK for one the container supplies, such as WebRequest or Principal; and " +
+                "UNKNOWN for one bound by a custom HandlerMethodArgumentResolver, whose wire format this tool " +
+                "cannot read - inspect the source before treating an UNKNOWN parameter as absent. " +
+                "'required' is null whenever nothing declares it. " +
                 "Use this after explyt_find_spring_endpoint or explyt_get_spring_http_endpoints to deeply inspect a single endpoint."
     )
     suspend fun getEndpointContract(
@@ -804,6 +859,59 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private const val ATTR_UNIQUE = "unique"
         private const val NOT_NULL_SIMPLE_NAME = "NotNull"
 
+        /** The binding annotations the four `SpringWebUtil` collectors in [extractParameters] already report. */
+        private val COLLECTED_BINDING_ANNOTATIONS = listOf(
+            SpringWebClasses.PATH_VARIABLE,
+            SpringWebClasses.REQUEST_PARAM,
+            SpringWebClasses.REQUEST_BODY,
+            SpringWebClasses.REQUEST_HEADER,
+        )
+
+        /** The uncollected annotations that carry a client-visible name of their own. */
+        private val NAMED_BINDING_ANNOTATIONS = listOf(
+            SpringWebClasses.COOKIE_VALUE,
+            SpringWebClasses.MODEL_ATTRIBUTE,
+        )
+
+        /**
+         * Types Spring's own argument resolvers supply from the container rather than from a named place in the
+         * request — the "Method Arguments" table of the Spring MVC reference.
+         *
+         * Deliberately excludes `Pageable`, `Sort` and `HttpEntity`. Those are resolved by Spring too, but they
+         * *do* have a client-visible wire format (`?page=&size=&sort=`, the request body), and calling them
+         * `FRAMEWORK` would tell a reader generating a client that there is nothing to send. Leaving them
+         * `UNKNOWN` errs toward "look at this", which is the safe direction for this tool.
+         *
+         * Matched by inheritance, so `HttpServletRequest` matches `ServletRequest` and `BindingResult` matches
+         * `Errors` without listing every subtype.
+         */
+        private val FRAMEWORK_SUPPLIED_TYPES = listOf(
+            "jakarta.servlet.ServletRequest",
+            "jakarta.servlet.ServletResponse",
+            "jakarta.servlet.http.HttpSession",
+            "jakarta.servlet.http.Part",
+            "javax.servlet.ServletRequest",
+            "javax.servlet.ServletResponse",
+            "javax.servlet.http.HttpSession",
+            "java.security.Principal",
+            "java.util.Locale",
+            "java.util.TimeZone",
+            "java.time.ZoneId",
+            "java.io.InputStream",
+            "java.io.OutputStream",
+            "java.io.Reader",
+            "java.io.Writer",
+            "org.springframework.http.HttpMethod",
+            "org.springframework.ui.Model",
+            "org.springframework.ui.ModelMap",
+            "org.springframework.validation.Errors",
+            "org.springframework.web.context.request.WebRequest",
+            "org.springframework.web.util.UriComponentsBuilder",
+            "org.springframework.web.servlet.mvc.support.RedirectAttributes",
+            "org.springframework.web.bind.support.SessionStatus",
+            "org.springframework.security.core.Authentication",
+        )
+
         private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
         private val TABLE_ANNOTATION_FQNS = JpaClasses.table.allFqns
         private val COLUMN_ANNOTATION_FQNS = JpaClasses.column.allFqns
@@ -881,9 +989,15 @@ data class EndpointListJson(
 
 data class EndpointParameterJson(
     val name: String,
+    /**
+     * Where the value comes from: `PATH`, `QUERY`, `BODY`, `HEADER`, `COOKIE` or `MODEL` for an annotation-bound
+     * parameter, `FRAMEWORK` for one the container supplies, and `UNKNOWN` for one this tool cannot classify —
+     * typically bound by a project-local `HandlerMethodArgumentResolver`.
+     */
     val source: String,
     val type: String,
-    val required: Boolean,
+    /** `null` when nothing declares it, which is every source the tool cannot read the contract of. */
+    val required: Boolean?,
     val defaultValue: String? = null,
 )
 

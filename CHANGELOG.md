@@ -54,6 +54,9 @@
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 
+### Spring MCP
+- fix: Report every handler parameter in `explyt_get_spring_endpoint_contract` and `explyt_get_spring_http_endpoints`, not only the annotation-bound ones: a parameter bound by a custom `HandlerMethodArgumentResolver` was dropped silently, which is indistinguishable from an endpoint that never declared it — the opposite conclusion when the parameter is the one carrying authorization. Each parameter now names its `source` (`PATH`, `QUERY`, `BODY`, `HEADER`, `COOKIE`, `MODEL`, `FRAMEWORK` or `UNKNOWN`), and `required` is null wherever nothing declares it
+
 ### Other
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded (#307)
 - fix: Keep Sentry action breadcrumbs useful by dropping editor typing and caret movement, recording a repeated action once, and trimming a captured report to the actions that led to it
