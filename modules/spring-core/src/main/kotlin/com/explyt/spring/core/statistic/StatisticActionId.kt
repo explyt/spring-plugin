@@ -99,4 +99,9 @@ enum class StatisticActionId(description: String) {
     GENERATE_WEB_METHOD("Method generate - Spring Web Method from generate menu"),
     GENERATE_HTTP_CLIENT_METHOD("Method generate - Curl to HttpClient method"),
     GENERATE_SPRING_BOOT_BEAN_ANALYZE("Generate code block - Spring Boot startup wrapper for beans analyzer"),
+
+    FEEDBACK_NUDGE_SHOWN("Feedback nudge - shown"),
+    FEEDBACK_NUDGE_RATE_CLICKED("Feedback nudge - Rate on Marketplace clicked"),
+    FEEDBACK_NUDGE_STAR_CLICKED("Feedback nudge - Star on GitHub clicked"),
+    FEEDBACK_NUDGE_DISMISSED("Feedback nudge - Don't show again clicked"),
 }

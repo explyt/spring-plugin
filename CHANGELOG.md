@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Keep the one-time feedback nudge on screen until it is acted on, show it right after the engagement threshold is crossed instead of during IDE startup, and let installs that predate the nudge qualify from their existing usage instead of starting from zero
 - fix: Fold a `@Value` placeholder and an `Environment.getProperty` key to the value of the profile-less `application.*` file instead of an arbitrary one, and name the profile when the value comes only from `application-<profile>.*`
 - fix: Cache the `@PropertySource` lookup that decides whether a file is Spring configuration, so highlighting an unrelated `.properties`/`.yaml` file no longer runs a project-wide index search per PSI element
 - fix: Look up a configuration key in the metadata catalogue through an index instead of scanning it: validating a `.properties`/`.yaml` file re-normalised every one of the thousands of catalogue names for every key in the file, on every highlighting pass

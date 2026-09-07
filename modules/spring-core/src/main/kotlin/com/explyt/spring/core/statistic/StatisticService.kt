@@ -47,7 +47,7 @@ class StatisticService {
                     if (count == null) 1 else count + 1
                 }
             }
-            FeedbackNudgeService.getInstance().recordEngagement()
+            FeedbackNudgeService.getInstance().recordEngagement(actionId)
         } catch (e: CancellationException) {
             // Also covers ProcessCanceledException: cancellation must never be logged or swallowed.
             throw e
