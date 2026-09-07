@@ -39,8 +39,12 @@ abstract class ConfigurationPropertyDataRetriever {
             DefinedConfigurationPropertiesSearch.getInstance(module.project)
                 .getAllProperties(module).asSequence()
                 .filter {
-                    PropertyUtil.toCommonPropertyForm(it.key)
-                        .startsWith(PropertyUtil.toCommonPropertyForm(propertyFqn))
+                    // Entries and elements of this member, not every key that merely shares its spelling:
+                    // `foo.bar` must not collect the unrelated `foo.barbaz`.
+                    PropertyUtil.isOwnedBy(
+                        PropertyUtil.toCommonPropertyForm(it.key),
+                        PropertyUtil.toCommonPropertyForm(propertyFqn)
+                    )
                 }
                 .mapNotNull { it.psiElement }.toList()
         } else {
