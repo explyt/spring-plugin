@@ -42,10 +42,7 @@ class StatisticService {
 
         try {
             synchronized(StatisticService::class.java) {
-                val statisticState = getStatisticState()
-                statisticState.state.counterUsagesMap.compute(actionId.name) { _, count ->
-                    if (count == null) 1 else count + 1
-                }
+                getStatisticState().state.incrementUsage(actionId.name)
             }
             FeedbackNudgeService.getInstance().recordEngagement(actionId)
         } catch (e: CancellationException) {
