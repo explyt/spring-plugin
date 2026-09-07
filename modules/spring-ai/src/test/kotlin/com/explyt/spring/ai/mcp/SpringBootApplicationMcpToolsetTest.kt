@@ -260,6 +260,91 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("A @PathVariable still declares its requiredness", true, pathParam["required"].asBoolean())
     }
 
+    /**
+     * The listing is the tool called *first*, before the caller knows which controllers exist — exactly when the
+     * `controllerFilter` / `endpointType` filters cannot help. On a real project it returned 136 endpoints as
+     * 122 722 characters of single-line JSON, most of it `parameters` arrays, which a line-based reader cannot
+     * chunk. `compact` drops the two per-endpoint arrays so an inventory fits in a context window.
+     */
+    fun testCompactListingOmitsParametersAndReturnType() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val endpoint = endpointsOf(
+            toolset.getHttpEndpoints(
+                projectPath = projectPath(),
+                controllerFilter = "ResolverController",
+                endpointType = "",
+                compact = true
+            )
+        ).first { it["methodName"].asText() == "getItem" }
+
+        assertFalse("compact must omit 'parameters', got $endpoint", endpoint.has("parameters"))
+        assertFalse("compact must omit 'returnType', got $endpoint", endpoint.has("returnType"))
+        // Everything an inventory needs is still there.
+        assertEquals("/api/resolver/items/{id}", endpoint["fullPath"].asText())
+        assertEquals("com.example.app.web.ResolverController", endpoint["controllerClass"].asText())
+        assertTrue("Expected a line number in $endpoint", endpoint["line"].isInt)
+    }
+
+    /** The default stays whole: `compact` is opt-in, so an existing caller sees no change. */
+    fun testDefaultListingKeepsParametersAndReturnType() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val endpoint = endpointsOf(
+            toolset.getHttpEndpoints(
+                projectPath = projectPath(),
+                controllerFilter = "ResolverController",
+                endpointType = ""
+            )
+        ).first { it["methodName"].asText() == "getItem" }
+
+        assertTrue("The default listing must keep 'parameters', got $endpoint", endpoint.has("parameters"))
+        assertTrue("The default listing must keep 'returnType', got $endpoint", endpoint.has("returnType"))
+    }
+
+    /** Paging metadata describes the page, not the projection, so it must survive `compact`. */
+    fun testCompactListingKeepsPagingMetadata() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.getHttpEndpoints(
+                projectPath = projectPath(),
+                controllerFilter = "",
+                endpointType = "",
+                compact = true
+            )
+        )
+
+        assertEquals("totalCount must match the returned page for a small fixture",
+            root["endpoints"].size(), root["totalCount"].asInt())
+        assertEquals(0, root["offset"].asInt())
+        assertEquals(false, root["truncated"].asBoolean())
+    }
+
+    /**
+     * The response field names are part of the tool's contract, and a mismatch between them and the description
+     * is not cosmetic: a first parse written against `httpMethod` / `path` / `lineNumber` yields silent nulls
+     * rather than an error, costing a whole call to notice. This pins the names the description promises.
+     */
+    fun testListingFieldNamesMatchTheDocumentedContract() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val endpoint = endpointsOf(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "DemoController", endpointType = "")
+        ).first()
+
+        val names = endpoint.fieldNames().asSequence().toSet()
+        assertEquals(
+            "Endpoint field names drifted from the documented contract",
+            setOf(
+                "httpMethods", "fullPath", "controllerClass", "methodName",
+                "filePath", "line", "parameters", "returnType", "endpointType",
+            ),
+            names
+        )
+        assertTrue("'httpMethods' is an array, not a scalar", endpoint["httpMethods"].isArray)
+    }
+
     fun testTraceCallChainFileNotFoundFails() = runBlocking<Unit> {
         // `traceCallChain` resolves files via `LocalFileSystem` using `project.basePath + filePath`.
         // In a light test fixture, testdata lives in an in-memory temp VFS, so any real path
