@@ -42,7 +42,11 @@ class StatisticService {
 
         try {
             synchronized(StatisticService::class.java) {
-                getStatisticState().state.incrementUsage(actionId.name)
+                val state = getStatisticState().state
+                state.incrementUsage(actionId.name)
+                if (logger.isDebugEnabled) {
+                    logger.debug("Recorded usage $actionId → ${state.counterUsagesMap[actionId.name]}; state modificationCount=${state.modificationCount}")
+                }
             }
             FeedbackNudgeService.getInstance().recordEngagement(actionId)
         } catch (e: CancellationException) {
