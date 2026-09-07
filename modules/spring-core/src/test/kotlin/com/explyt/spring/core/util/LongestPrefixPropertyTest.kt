@@ -74,4 +74,69 @@ class LongestPrefixPropertyTest {
             PropertyUtil.longestPrefixProperty(properties, "management.endpoint.health.show-details")
         )
     }
+
+    /**
+     * A textual prefix is not an ownership relation: `foo.bar` and `foo.barbaz` are unrelated keys that happen to
+     * share their first seven characters. Owning the key requires the match to end where a new segment begins.
+     */
+    @Test
+    fun testPrefixEndingInsideASegmentOwnsNothing() {
+        Assert.assertNull(PropertyUtil.longestPrefixProperty(listOf(property("foo.bar")), "foo.barbaz"))
+    }
+
+    /**
+     * The case the longest-prefix selection cannot mask: the mid-segment match is longer than the genuine ancestor,
+     * so length alone hands the key to the wrong declaration.
+     */
+    @Test
+    fun testGenuineAncestorBeatsALongerMidSegmentPrefix() {
+        val ancestor = property("foo")
+        Assert.assertEquals(
+            ancestor,
+            PropertyUtil.longestPrefixProperty(listOf(ancestor, property("foo.bar")), "foo.barbaz")
+        )
+    }
+
+    /** The case it did mask, kept as a regression: the deeper genuine ancestor must still win. */
+    @Test
+    fun testDeeperGenuineAncestorStillWinsOverAMidSegmentPrefix() {
+        val owner = property("foo.barbaz")
+        Assert.assertEquals(
+            owner,
+            PropertyUtil.longestPrefixProperty(listOf(property("foo.bar"), owner), "foo.barbaz.qux")
+        )
+    }
+
+    /**
+     * A collection element opens with `[`, not `.`, so the boundary cannot be the dot alone — requiring one would
+     * drop collection ownership entirely.
+     */
+    @Test
+    fun testIndexedKeyIsOwnedByTheCollectionDeclaration() {
+        val sources = property("ingest.s3-logs.sources")
+        Assert.assertEquals(
+            sources,
+            PropertyUtil.longestPrefixProperty(
+                listOf(property("ingest"), sources), "ingest.s3-logs.sources[0].enabled"
+            )
+        )
+    }
+
+    /** A map entry may be written in bracket notation, which ends the owner's match at `[` as well. */
+    @Test
+    fun testBracketNotationEntryIsOwnedByTheMapDeclaration() {
+        val levels = property("logging.level")
+        Assert.assertEquals(
+            levels,
+            PropertyUtil.longestPrefixProperty(listOf(levels), "logging.level[com.example.Dao]")
+        )
+    }
+
+    /** A declaration that only shares a prefix with the collection name must not capture its elements. */
+    @Test
+    fun testIndexedKeyIgnoresAMidSegmentPrefixOfTheCollection() {
+        Assert.assertNull(
+            PropertyUtil.longestPrefixProperty(listOf(property("ingest.source")), "ingest.sources[0].enabled")
+        )
+    }
 }
