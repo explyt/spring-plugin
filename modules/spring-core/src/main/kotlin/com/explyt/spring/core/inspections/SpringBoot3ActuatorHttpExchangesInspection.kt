@@ -191,7 +191,11 @@ private class RenameHttpTraceKeyFix : LocalQuickFix {
             property.setName(key.replaceFirst(LEGACY_ENDPOINT, NEW_ENDPOINT))
             return
         }
-        rewriteKeyText(project, element)
+        if (element is YAMLScalar) {
+            ElementManipulators.handleContentChange(element, element.textValue.replaceFirst(LEGACY_ENDPOINT, NEW_ENDPOINT))
+        } else {
+            rewriteKeyText(project, element)
+        }
     }
 
     /**
