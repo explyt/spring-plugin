@@ -51,6 +51,7 @@
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
+- fix: Let the OAuth2 Authorize flow of the OpenAPI preview complete. Swagger UI was left to derive its own redirect URL, and since the preview is served from `/explyt-openapi?key=…&resource=index.html` — a path whose query string is not part of `location.pathname` — that derivation produced `/oauth2-redirect.html` at the server root, which the preview does not serve. The redirect is now a stable, key-less endpoint the specification's provider can be registered against, served by its own handler that accepts the authorization server as the origin of the redirect while still refusing any request not addressed to the loopback interface
 - feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port` (#315)
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
