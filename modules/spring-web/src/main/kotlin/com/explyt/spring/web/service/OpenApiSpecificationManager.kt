@@ -55,6 +55,7 @@ class OpenApiSpecificationManager {
         return when (specificationType) {
             is OpenApiSpecificationType.OpenApiV30 -> "schema/openapi_3_0_0.json"
             is OpenApiSpecificationType.OpenApiV31 -> "schema/openapi_3_1_0.json"
+            is OpenApiSpecificationType.OpenApiV32 -> "schema/openapi_3_2_0.json"
             else -> null
         }
     }

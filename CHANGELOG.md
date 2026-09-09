@@ -51,6 +51,10 @@
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
+- feat: Recognise OpenAPI 3.2 specifications and validate them against the bundled `3.2/schema/2025-11-23`: an `openapi: 3.2.x` document was classified as undefined, which left it with no schema, no completion, no specification icon and no validation. The version is also offered by `openapi:` completion and survives a restart when picked manually for a file
+- fix: Refresh the bundled OpenAPI 3.0 and 3.1 schemas, three and four years stale respectively — 3.0 moves `2021-09-28` → `2024-10-18`, which splits `Parameter` into the four location-specific variants, and 3.1 moves `2022-10-07` → `2025-11-23`, which revises 29 of its 40 definitions
+- fix: Point the schema remote source at the versioned `spec.openapis.org` URL the bundled copy is taken from; both `raw.githubusercontent.com` links answered 404, so the IDE could never fetch the upstream schema behind the embedded one
+- fix: Update the bundled Swagger UI used by the specification preview to 5.32.15, and with it `swagger-ui-standalone-preset.js.map`, which held a copy of the stylesheet rather than a source map
 - feat: List Actuator endpoints in the Endpoints tool window, one row per `@ReadOperation`/`@WriteOperation`/`@DeleteOperation` with its `@Selector` path variables, and navigate to the declaring class and the operation method; the path follows `management.endpoints.web.base-path`, `management.endpoints.web.path-mapping.<id>` and `management.server.port` (#315)
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
