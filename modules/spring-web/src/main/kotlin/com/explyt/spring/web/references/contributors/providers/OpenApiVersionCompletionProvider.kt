@@ -70,7 +70,8 @@ class OpenApiVersionCompletionProvider : CompletionProvider<CompletionParameters
     private fun addLookup(result: CompletionResultSet, quotes: Boolean = false) {
         val openApiVersions = listOf(
             "3.0.0" to SpringWebBundle.message("explyt.openapi.3.0.schema.name"),
-            "3.1.0" to SpringWebBundle.message("explyt.openapi.3.1.schema.name")
+            "3.1.0" to SpringWebBundle.message("explyt.openapi.3.1.schema.name"),
+            "3.2.0" to SpringWebBundle.message("explyt.openapi.3.2.schema.name")
         )
 
         openApiVersions.forEach { (version, message) ->

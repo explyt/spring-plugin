@@ -43,7 +43,13 @@ internal class AsyncInitializationScheduler(
                 try {
                     attempts.incrementAndGet()
                     initialize()
-                    flush()
+                    try {
+                        flush()
+                    } catch (exception: ProcessCanceledException) {
+                        throw exception
+                    } catch (exception: Exception) {
+                        logger.warn("Failed to flush buffered error-reporting breadcrumbs", exception)
+                    }
                 } catch (exception: ProcessCanceledException) {
                     // Cancellation is not an initialization failure: rethrow it, but do not spend the retry budget on
                     // a follow-up pass the caller never asked for.

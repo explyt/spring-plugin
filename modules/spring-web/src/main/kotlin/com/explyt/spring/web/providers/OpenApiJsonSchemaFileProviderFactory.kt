@@ -26,6 +26,12 @@ class OpenApiJsonSchemaFileProviderFactory : JsonSchemaProviderFactory {
                 SpringWebBundle.message("explyt.openapi.3.1.schema.name"),
                 SpringWebBundle.message("explyt.openapi.3.1.schema.remote.url")
             ),
+            OpenApiJsonSchemaProvider(
+                project,
+                OpenApiSpecificationType.OpenApiV32.INSTANCE,
+                SpringWebBundle.message("explyt.openapi.3.2.schema.name"),
+                SpringWebBundle.message("explyt.openapi.3.2.schema.remote.url")
+            ),
         )
     }
 }

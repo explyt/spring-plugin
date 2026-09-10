@@ -34,6 +34,16 @@ open class OpenApiSpecificationType(val name: String) {
         }
     }
 
+    open class OpenApiV32 : OpenAPI3Components(SpringWebBundle.message("explyt.openapi.3.2.schema.name")) {
+        override fun toString(): String {
+            return SpringWebBundle.message("explyt.openapi.3.2.schema.type")
+        }
+
+        companion object {
+            val INSTANCE = OpenApiV32()
+        }
+    }
+
     interface SpecificationExtension {
         val schemaExt: String
     }
@@ -42,6 +52,9 @@ open class OpenApiSpecificationType(val name: String) {
         SpecificationExtension
 
     data class Openapi31SpecificationExtension(override val schemaExt: String) : OpenApiV31(),
+        SpecificationExtension
+
+    data class Openapi32SpecificationExtension(override val schemaExt: String) : OpenApiV32(),
         SpecificationExtension
 
     object OpenApiUndefined :
