@@ -128,6 +128,27 @@ class RecommendedEnumValueInspectionTest : ExplytInspectionJavaTestCase() {
         )
     }
 
+    fun testYamlQuotedQuickFixPreservesQuotes() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+            explyt:
+              recording:
+                single: "REQUEST<caret>_HEADERS"
+            """.trimIndent()
+        )
+
+        applySingleFix()
+
+        myFixture.checkResult(
+            """
+            explyt:
+              recording:
+                single: "request-headers"
+            """.trimIndent()
+        )
+    }
+
     private fun assertReported(propertyLine: String, expectedSuggestion: String) {
         myFixture.configureByText("application.properties", propertyLine)
 
