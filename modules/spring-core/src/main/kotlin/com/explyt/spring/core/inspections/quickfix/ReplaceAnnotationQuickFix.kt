@@ -74,7 +74,6 @@ class ReplaceAnnotationQuickFix(
     private fun replaceKotlinAnnotation(project: Project, entry: KtAnnotationEntry) {
         val newAnnotationClass = JavaPsiFacade.getInstance(project).findClass(newFqn, entry.resolveScope)
         migrateKotlinImport(entry)
-
         val positional = mutableListOf<String>()
         val named = mutableListOf<String>()
         for (argument in entry.valueArguments) {
@@ -108,6 +107,10 @@ class ReplaceAnnotationQuickFix(
         val importDirective = file.importDirectives.firstOrNull {
             !it.isAllUnder && it.importedFqName?.asString() == legacyFqn
         } ?: return
+        val remainingUsage = file.annotationEntries.count {
+            it.shortName?.asString() == legacyFqn.substringAfterLast('.')
+        } > 1
+        if (remainingUsage) return
         val importedReference = importDirective.importedReference ?: return
         importedReference.replace(KtPsiFactory(entry.project).createExpression(newFqn))
     }

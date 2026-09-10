@@ -111,7 +111,7 @@ class FeedbackNudgeService {
             val nudgeState = FeedbackNudgeState.getInstance()
             if (!force && !shouldShowFeedbackNudge(nudgeState.toStats())) return@invokeLater
             showNotification(project)
-            nudgeState.state.nudgeShown = true
+            synchronized(this) { nudgeState.state.nudgeShown = true }
             StatisticService.getInstance().addActionUsage(StatisticActionId.FEEDBACK_NUDGE_SHOWN)
         }, ModalityState.nonModal())
     }
@@ -138,7 +138,9 @@ class FeedbackNudgeService {
             })
             .addAction(NotificationAction.createSimpleExpiring(message("explyt.spring.feedback.nudge.dismiss")) {
                 StatisticService.getInstance().addActionUsage(StatisticActionId.FEEDBACK_NUDGE_DISMISSED)
-                FeedbackNudgeState.getInstance().state.dismissed = true
+                synchronized(this@FeedbackNudgeService) {
+                    FeedbackNudgeState.getInstance().state.dismissed = true
+                }
             })
             .notify(project)
     }
