@@ -253,6 +253,7 @@
 
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiResourcesRequestHandler"/>
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>
+        <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiOAuth2RedirectRequestHandler"/>
 
         <notificationGroup id="com.explyt.spring.notification.web"
                            displayType="BALLOON"
