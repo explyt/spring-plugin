@@ -213,6 +213,6 @@ private class RewriteValueQuickFix(
             return
         }
         // The manipulator rewrites the scalar content range only, so quoting style and indentation survive.
-        if (element is YAMLScalar) ElementManipulators.handleContentChange(element, rewritten)
+        if (element is YAMLScalar) ElementManipulators.handleContentChange(element, rangeInElement, newValue)
     }
 }
