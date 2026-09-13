@@ -6,7 +6,10 @@
 package com.explyt.spring.core.runconfiguration
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.intellij.execution.application.ApplicationConfiguration
+import com.intellij.execution.application.ApplicationConfigurationType
 import com.intellij.execution.configurations.JavaRunConfigurationModule
+import com.intellij.psi.PsiClass
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.kotlin.idea.run.KotlinRunConfigurationType
 
@@ -20,6 +23,28 @@ class RunConfigurationUtilTest : ExplytJavaLightTestCase() {
             KotlinRunConfigurationType.instance
         ) {
             override fun getRunClass(): String? = error("Kotlin run class must not be resolved")
+        }.apply {
+            this.mainClassName = mainClassName
+        }
+
+        assertEquals(mainClassName, RunConfigurationUtil.getRunClassName(configuration))
+    }
+
+    /**
+     * Covers every [ApplicationConfiguration], including the JetBrains Spring Boot configuration: its `getRunClass()`
+     * searches for a main-class candidate through indexes and jar attributes, which froze the event dispatch thread
+     * when a run configuration was selected.
+     */
+    fun testApplicationRunClassNameDoesNotResolvePsi() {
+        val mainClassName = "com.example.DemoApplication"
+        val configuration = object : ApplicationConfiguration(
+            "test",
+            project,
+            ApplicationConfigurationType.getInstance()
+        ) {
+            override fun getRunClass(): String = error("Run class must not be resolved")
+
+            override fun getMainClass(): PsiClass = error("Main class must not be resolved")
         }.apply {
             this.mainClassName = mainClassName
         }
