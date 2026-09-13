@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Do not freeze the UI when a run configuration is selected: reading the active profiles asked the run configuration for its run class, which makes the Spring Boot configuration search for a main class candidate through indexes and jar attributes — on the event dispatch thread. The stored main class name is read instead, which is all the caller compares
 - fix: Keep the one-time feedback nudge on screen until it is acted on, show it right after the engagement threshold is crossed instead of during IDE startup, and let installs that predate the nudge qualify from their existing usage instead of starting from zero
 - fix: Persist the local usage counters across IDE restarts — they were updated through `Map.compute`, which the platform's stored map does not count as a modification, so the state was never saved; they now live in a local, non-synced options file instead of the cache-file storage, which is saved at most once every five minutes, never forced on exit, and on 2026.2 kept in the opaque internal settings database
 - fix: Fold a `@Value` placeholder and an `Environment.getProperty` key to the value of the profile-less `application.*` file instead of an arbitrary one, and name the profile when the value comes only from `application-<profile>.*`
