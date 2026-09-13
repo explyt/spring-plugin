@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Do not freeze the UI when a run configuration is selected: reading the active profiles asked the run configuration for its run class, which makes the Spring Boot configuration search for a main class candidate through indexes and jar attributes — on the event dispatch thread. The stored main class name is read instead, which is all the caller compares
+- fix: Keep the one-time feedback nudge on screen until it is acted on, show it right after the engagement threshold is crossed instead of during IDE startup, and let installs that predate the nudge qualify from their existing usage instead of starting from zero
+- fix: Persist the local usage counters across IDE restarts — they were updated through `Map.compute`, which the platform's stored map does not count as a modification, so the state was never saved; they now live in a local, non-synced options file instead of the cache-file storage, which is saved at most once every five minutes, never forced on exit, and on 2026.2 kept in the opaque internal settings database
 - fix: Fold a `@Value` placeholder and an `Environment.getProperty` key to the value of the profile-less `application.*` file instead of an arbitrary one, and name the profile when the value comes only from `application-<profile>.*`
 - fix: Cache the `@PropertySource` lookup that decides whether a file is Spring configuration, so highlighting an unrelated `.properties`/`.yaml` file no longer runs a project-wide index search per PSI element
 - fix: Look up a configuration key in the metadata catalogue through an index instead of scanning it: validating a `.properties`/`.yaml` file re-normalised every one of the thousands of catalogue names for every key in the file, on every highlighting pass
@@ -60,6 +63,11 @@
 - fix: Register the web additional-beans discoverer under the extension namespace that declares the extension point, so framework-provided web beans such as `WebApplicationContext` are resolved again
 - fix: Resolve `MockMvc` and `WebTestClient` autowired in tests as beans provided by test auto-configuration
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
+
+### Spring MCP
+- fix: Report every handler parameter in `explyt_get_spring_endpoint_contract` and `explyt_get_spring_http_endpoints`, not only the annotation-bound ones: a parameter bound by a custom `HandlerMethodArgumentResolver` was dropped silently, which is indistinguishable from an endpoint that never declared it — the opposite conclusion when the parameter is the one carrying authorization. Each parameter now names its `source` (`PATH`, `QUERY`, `BODY`, `HEADER`, `COOKIE`, `MODEL`, `FRAMEWORK` or `UNKNOWN`), and `required` is null wherever nothing declares it
+- feat: Add `compact` to `explyt_get_spring_http_endpoints`, omitting the `parameters` and `returnType` of each endpoint — they dominate the response, which on a 136-endpoint project reached 122 KB of single-line JSON that a line-based reader cannot chunk, and the controller/type filters cannot narrow it in the situation the tool is first called for: not yet knowing which controllers exist
+- fix: Describe the endpoint listing with the field names it actually returns, and show one complete example object: the description said "HTTP method, full path, line number" while the keys are `httpMethods` (an array), `fullPath` and `line`, so a first parse written against the prose silently yielded empty rows instead of failing
 
 ### Other
 - fix: Do not freeze the UI on the first action after the IDE starts: error-reporting setup no longer runs while an action is being recorded (#307)

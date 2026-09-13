@@ -62,10 +62,18 @@ object RunConfigurationUtil {
         }
     }
 
+    /**
+     * Reads the *stored* main class name of every configuration that has one, because the only caller
+     * ([com.explyt.spring.core.service.ProfilesService]) compares it for change detection and never needs a resolved
+     * class. `getRunClass()` looks cheap but is not: [ApplicationConfiguration] resolves `getMainClass()` first, and
+     * the JetBrains Spring Boot configuration additionally searches for a main-class candidate, walking indexes and
+     * jar attributes. Reached from `runConfigurationSelected`, that resolution ran under a blocking read action on
+     * the event dispatch thread and froze the UI for tens of seconds on every run configuration switch.
+     */
     fun getRunClassNameInner(runConfiguration: RunConfiguration?): String? {
         return when (runConfiguration) {
-            is SpringBootRunConfiguration -> runConfiguration.mainClassName
             is KotlinRunConfiguration -> runConfiguration.mainClassName
+            is ApplicationConfiguration -> runConfiguration.mainClassName
             is CommonJavaRunConfigurationParameters -> runConfiguration.runClass
             else -> null
         }
