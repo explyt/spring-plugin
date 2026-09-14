@@ -10,6 +10,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
+import org.jetbrains.yaml.psi.YAMLSequence
 
 interface DefinedConfigurationProperty {
     val key: String
@@ -31,8 +32,14 @@ class YamlDefinedConfigurationProperty(
     override val key: String
         get() = psiElement?.let { YAMLUtil.getConfigFullName(it) } ?: ""
 
+    /**
+     * `null` for a sequence, which has no scalar value: `YAMLKeyValue.getValueText` answers a synthetic
+     * `<sequence:1f2e3d4c>` marker for one. Handing that to the value checks would report the marker as an
+     * unresolved class, bean or resource, so a list-valued key reports `null` — the same contract every consumer
+     * already handles for a key without a value.
+     */
     override val value: String?
-        get() = psiElement?.valueText
+        get() = psiElement?.takeIf { it.value !is YAMLSequence }?.valueText
 
     override val psiElement: YAMLKeyValue?
         get() = pointer.element
