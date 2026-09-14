@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Offer one navigation target for a configuration key declared by a library, instead of the same declaration once from the jar and once from its sources jar: the two were folded together by rewriting the file name while keeping the path, and Gradle caches them under two different checksum directories
 - fix: Inspect a configuration key whose value is a YAML sequence. Only a scalar-valued key was collected, so a list-valued one such as `paths_to_exclude:` was skipped by every per-key check — canonical form, unresolved key, deprecation and the profile-file restriction. A sequence has no scalar value, so the value-level checks correctly report nothing for it
 - fix: Report a configuration key that is not in Spring's canonical form as a weak warning rather than a warning, and say so in those words: relaxed binding resolves `myKey`, `my-key` and `my_key` to the same property, so the spelling is a style deviation and does not belong next to "Cannot resolve key property". The same applies to a `@ConfigurationProperties` prefix
 - fix: Show a plain apostrophe in the four messages that rendered a doubled one — "Don''t show again", the `javax`/`jakarta` import fix, the `@Async` return type warning and the recommended-spelling inspection name. `MessageFormat` collapses `''` only when a message is rendered with arguments, and these four take none
