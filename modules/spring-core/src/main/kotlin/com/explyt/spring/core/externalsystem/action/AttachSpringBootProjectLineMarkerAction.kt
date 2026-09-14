@@ -12,7 +12,7 @@ import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.spring.core.SpringIcons.SpringExplorer
 import com.explyt.spring.core.externalsystem.process.SpringBootOpenProjectProvider
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
-import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.runconfiguration.SpringBootRunConfiguration
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
@@ -29,14 +29,19 @@ import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClassOwner
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiMethodUtil
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.uast.*
 import java.awt.event.MouseEvent
@@ -172,27 +177,49 @@ class AttachProjectIconGutterHandler(private val canonicalPath: String, private 
             }
     }
 
+    /**
+     * Finds the run configuration that launches the clicked main-class file.
+     *
+     * The file is resolved to PSI **once**, and each run configuration is then compared by its *stored* main class
+     * name. Asking every configuration for its main class instead resolved PSI per configuration, and for the
+     * JetBrains Spring Boot configuration that means searching for a main-class candidate through the indexes and
+     * jar attributes — repeated for the whole list, on the event dispatch thread that handles the gutter click.
+     */
     private fun getRunConfiguration(project: Project, canonicalPath: String): RunConfiguration? {
-        val currentRunConfiguration = RunManager.getInstance(project).selectedConfiguration?.configuration
-        if (currentRunConfiguration != null) {
-            if (checkRunConfigurationForRun(currentRunConfiguration, canonicalPath)) return currentRunConfiguration
-        }
-        for (runConfiguration in RunManager.getInstance(project).allConfigurationsList) {
-            if (runConfiguration !is SpringBootRunConfiguration) continue
-            if (checkRunConfigurationForRun(runConfiguration, canonicalPath)) return runConfiguration
-        }
-        return null
+        val virtualFile = LocalFileSystem.getInstance().findFileByPath(canonicalPath) ?: return null
+        return findRunConfiguration(project, virtualFile)
     }
 
-    private fun checkRunConfigurationForRun(
-        runConfiguration: RunConfiguration, canonicalPath: String
-    ): Boolean {
-        val mainClass = NativeBootUtils.getMainClass(runConfiguration)
-        if (mainClass?.containingFile?.virtualFile?.canonicalPath == canonicalPath) {
-            return true
+    @VisibleForTesting
+    fun findRunConfiguration(project: Project, mainClassFile: VirtualFile): RunConfiguration? {
+        val mainClassNames = mainClassNamesOf(project, mainClassFile)
+        if (mainClassNames.isEmpty()) return null
+
+        val runManager = RunManager.getInstance(project)
+        val currentRunConfiguration = runManager.selectedConfiguration?.configuration
+        if (currentRunConfiguration != null && launchesAnyOf(currentRunConfiguration, mainClassNames)) {
+            return currentRunConfiguration
         }
-        return false
+        return runManager.allConfigurationsList
+            .filterIsInstance<SpringBootRunConfiguration>()
+            .firstOrNull { launchesAnyOf(it, mainClassNames) }
     }
+
+    /**
+     * Every class the file declares, by qualified name. A Kotlin file reports its `...Kt` facade here as well, which
+     * is the identity a run configuration stores for a top-level `main()` — the `@SpringBootApplication` class alone
+     * would never match one.
+     */
+    private fun mainClassNamesOf(project: Project, mainClassFile: VirtualFile): Set<String> {
+        return runReadActionBlocking {
+            val classOwner = PsiManager.getInstance(project).findFile(mainClassFile) as? PsiClassOwner
+                ?: return@runReadActionBlocking emptySet()
+            classOwner.classes.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
+        }
+    }
+
+    private fun launchesAnyOf(runConfiguration: RunConfiguration, mainClassNames: Set<String>): Boolean =
+        RunConfigurationUtil.getRunClassNameInner(runConfiguration) in mainClassNames
 
     private fun checkRunConfigurationForClassName(
         runConfiguration: RunConfiguration, qualifiedClassName: String
