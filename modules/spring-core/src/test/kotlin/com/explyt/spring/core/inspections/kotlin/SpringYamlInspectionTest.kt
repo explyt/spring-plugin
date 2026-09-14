@@ -81,7 +81,7 @@ explyt.digit:
 explyt.camel:
   camelWritten:
     items:
-            - <warning descr="Should be kebab-case">name</warning>: first
+            - <weak_warning descr="Key is not in Spring's canonical form">name</weak_warning>: first
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
