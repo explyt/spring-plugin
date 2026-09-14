@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Resolve the clicked main-class file once when the Load Beans gutter icon links a project, instead of asking every run configuration for its resolved main class — which made the Spring Boot configuration search for a main class candidate through the indexes and jar attributes, once per configuration, on the event dispatch thread
 - fix: Link the Spring Boot project from the gutter icon to the run configuration that actually matches the main class, instead of returning the selected one — which the check above had already rejected, and which is null when nothing is selected
 - fix: Do not fail the "Switch to kebab-case" quick fix with `IncorrectOperationException`: every `${...}` usage of the renamed key was rebuilt through a Java expression parser, which cannot parse a bare key, a kebab-cased one (the dashes read as subtraction), a segment that is a Java keyword such as `default`, or a nested placeholder chain. Usages are now rewritten in the document, which also preserves the quoting style and the `:default` suffix
 - fix: Apply that quick fix in batch mode too (`Fix all`, `Code | Inspect Code`): its whole body was guarded by `if (editor != null)`, so a batch run reported success and changed nothing
