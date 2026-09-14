@@ -40,8 +40,8 @@ foo:
             "application.yaml",
             """
 foo:
-    <warning descr="Should be kebab-case">barBaz</warning>: some1
-    <warning descr="Should be kebab-case">bar-Baz1</warning>: some1
+    <weak_warning descr="Key is not in Spring's canonical form">barBaz</weak_warning>: some1
+    <weak_warning descr="Key is not in Spring's canonical form">bar-Baz1</weak_warning>: some1
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
@@ -159,7 +159,7 @@ explyt.digit:
 explyt.camel:
   camelWritten:
     items:
-      - <warning descr="Should be kebab-case">name</warning>: first
+      - <weak_warning descr="Key is not in Spring's canonical form">name</weak_warning>: first
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
@@ -213,7 +213,7 @@ explyt.placeholder:
             "application.yaml",
             """
 foo:
-    <warning descr="Should be kebab-case">barbaz.testProp</warning>: some1    
+    <weak_warning descr="Key is not in Spring's canonical form">barbaz.testProp</weak_warning>: some1    
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
