@@ -179,7 +179,7 @@ class AttachProjectIconGutterHandler(private val canonicalPath: String, private 
         }
         for (runConfiguration in RunManager.getInstance(project).allConfigurationsList) {
             if (runConfiguration !is SpringBootRunConfiguration) continue
-            if (checkRunConfigurationForRun(runConfiguration, canonicalPath)) return currentRunConfiguration
+            if (checkRunConfigurationForRun(runConfiguration, canonicalPath)) return runConfiguration
         }
         return null
     }
