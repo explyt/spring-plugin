@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Link the Spring Boot project from the gutter icon to the run configuration that actually matches the main class, instead of returning the selected one — which the check above had already rejected, and which is null when nothing is selected
 - fix: Do not freeze the UI when a run configuration is selected: reading the active profiles asked the run configuration for its run class, which makes the Spring Boot configuration search for a main class candidate through indexes and jar attributes — on the event dispatch thread. The stored main class name is read instead, which is all the caller compares
 - fix: Let the Beans tab of Search Everywhere be interrupted by a write action instead of holding a read action until the whole bean model is built, which delayed every concurrent edit
 - fix: Keep the one-time feedback nudge on screen until it is acted on, show it right after the engagement threshold is crossed instead of during IDE startup, and let installs that predate the nudge qualify from their existing usage instead of starting from zero
