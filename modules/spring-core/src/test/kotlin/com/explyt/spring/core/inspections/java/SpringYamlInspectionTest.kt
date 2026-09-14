@@ -158,7 +158,7 @@ explyt.digit:
             """
 explyt.camel:
   camelWritten:
-    items:
+    <weak_warning descr="Key is not in Spring's canonical form">items</weak_warning>:
       - <weak_warning descr="Key is not in Spring's canonical form">name</weak_warning>: first
             """.trimIndent()
         )
@@ -281,4 +281,82 @@ foo:
         """.trimIndent(), true
         )
     }
+
+    /**
+     * A key whose value is a sequence is a leaf property like any other. It used to be collected only when its
+     * value was a scalar, so every per-key check skipped it silently.
+     */
+    fun testSequenceKeyInNonCanonicalFormIsReported() {
+        myFixture.addClass(listConfigurationProperties("pathsToExclude"))
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.doc:
+  <weak_warning descr="Key is not in Spring's canonical form">paths_to_exclude</weak_warning>:
+    - /actuator/**
+    - /internal/**
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    fun testSequenceKeyThatDoesNotResolveIsReported() {
+        myFixture.addClass(listConfigurationProperties("pathsToExclude"))
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.doc:
+  <warning descr="Cannot resolve key property 'explyt.doc.unknown-list'">unknown-list</warning>:
+    - /actuator/**
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    /** The regression guard for over-reporting: a resolvable list key must stay clean. */
+    fun testResolvableSequenceKeyIsNotReported() {
+        myFixture.addClass(listConfigurationProperties("pathsToExclude"))
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.doc:
+  paths-to-exclude:
+    - /actuator/**
+    - /internal/**
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    /**
+     * The value checks run on a scalar value. A sequence has no scalar value — `YAMLKeyValue.getValueText` answers a
+     * synthetic `<sequence:…>` marker — so a class-reference key must report nothing rather than the marker.
+     */
+    fun testClassReferenceCheckDoesNotFireOnASequence() {
+        myFixture.configureByText(
+            "application.yaml",
+            """
+spring:
+  main:
+    sources:
+      - com.explyt.NotAClassButAListElement
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+    }
+
+    @Language("java")
+    private fun listConfigurationProperties(propertyName: String) = """
+        import java.util.List;
+
+        @org.springframework.context.annotation.Configuration
+        @org.springframework.boot.context.properties.ConfigurationProperties(prefix = "explyt.doc")
+        public class DocConfigProperties {
+            private List<String> $propertyName;
+            public List<String> get${propertyName.replaceFirstChar { it.uppercase() }}() { return $propertyName; }
+            public void set${propertyName.replaceFirstChar { it.uppercase() }}(List<String> $propertyName) {
+                this.$propertyName = $propertyName;
+            }
+        }
+    """.trimIndent()
 }
