@@ -80,7 +80,7 @@ explyt.digit:
             """
 explyt.camel:
   camelWritten:
-    items:
+    <weak_warning descr="Key is not in Spring's canonical form">items</weak_warning>:
             - <weak_warning descr="Key is not in Spring's canonical form">name</weak_warning>: first
             """.trimIndent()
         )
