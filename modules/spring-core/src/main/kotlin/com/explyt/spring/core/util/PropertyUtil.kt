@@ -40,7 +40,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.polySymbols.utils.NameCaseUtils
+
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.search.GlobalSearchScope
@@ -53,6 +53,7 @@ import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLValue
+import java.util.Locale
 
 object PropertyUtil {
     const val DOT = "."
@@ -534,10 +535,35 @@ object PropertyUtil {
         return placeholder.any { it.isUpperCase() || it == '_' }
     }
 
+    /**
+     * Mirrors `ConventionUtils.toDashedCase` of the Spring Boot configuration processor, which is what produces the
+     * canonical key in the metadata: a dash is inserted for each `-`/`_` separator and before each uppercase letter,
+     * and the result is lowercased.
+     *
+     * `NameCaseUtils.toKebabCase` cannot stand in for it. That utility implements the `camelcase` npm convention and
+     * also dashes at a digit boundary, so it rewrote `v4` to `v-4` — a key Spring never generates and that the
+     * kebab-case inspection does not even flag.
+     */
     fun toKebabCase(from: String): String {
         return from.splitToSequence('.')
-            .map { NameCaseUtils.toKebabCase(it) }
+            .map(::toDashedCase)
             .joinToString(".")
+    }
+
+    private fun toDashedCase(segment: String): String {
+        val dashed = StringBuilder(segment.length)
+        var previous: Char? = null
+        for (current in segment) {
+            when {
+                current in KEY_SEPARATORS -> dashed.append('-')
+                current.isUpperCase() && previous != null && previous !in KEY_SEPARATORS ->
+                    dashed.append('-').append(current)
+
+                else -> dashed.append(current)
+            }
+            previous = current
+        }
+        return dashed.toString().lowercase(Locale.ENGLISH)
     }
 
     /**
@@ -908,6 +934,9 @@ object PropertyUtil {
         JavaCoreClasses.PACKAGE_JAVA_TIME,
         JavaCoreClasses.PACKAGE_KOTLIN
     )
+
+    /** Both characters Spring's `ConventionUtils.toDashedCase` treats as word separators. */
+    private val KEY_SEPARATORS = setOf('-', '_')
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()

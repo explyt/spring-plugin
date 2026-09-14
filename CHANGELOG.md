@@ -5,6 +5,10 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Do not fail the "Switch to kebab-case" quick fix with `IncorrectOperationException`: every `${...}` usage of the renamed key was rebuilt through a Java expression parser, which cannot parse a bare key, a kebab-cased one (the dashes read as subtraction), a segment that is a Java keyword such as `default`, or a nested placeholder chain. Usages are now rewritten in the document, which also preserves the quoting style and the `:default` suffix
+- fix: Apply that quick fix in batch mode too (`Fix all`, `Code | Inspect Code`): its whole body was guarded by `if (editor != null)`, so a batch run reported success and changed nothing
+- fix: Follow Spring's own `ConventionUtils.toDashedCase` when converting a configuration key to kebab-case. A dash belongs before an uppercase letter and in place of `-`/`_`, never at a digit boundary, so `v4` stays `v4` instead of becoming `v-4` while `s3Logs` still becomes `s3-logs`
+
 - fix: Do not freeze the UI when a run configuration is selected: reading the active profiles asked the run configuration for its run class, which makes the Spring Boot configuration search for a main class candidate through indexes and jar attributes — on the event dispatch thread. The stored main class name is read instead, which is all the caller compares
 - fix: Let the Beans tab of Search Everywhere be interrupted by a write action instead of holding a read action until the whole bean model is built, which delayed every concurrent edit
 - fix: Keep the one-time feedback nudge on screen until it is acted on, show it right after the engagement threshold is crossed instead of during IDE startup, and let installs that predate the nudge qualify from their existing usage instead of starting from zero
