@@ -14,12 +14,8 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiReference
 import com.intellij.psi.search.searches.ReferencesSearch
-import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.psi.KtPsiFactory
 
 class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
     LocalQuickFixAndIntentionActionOnPsiElement(element) {
@@ -58,29 +54,8 @@ class ReplacementKeyQuickFix(val key: String, element: PsiElement) :
             // Rename through PSI so the fix also works without an editor (batch / "Fix all" inspection runs).
             startElement.setName(key)
 
-            renameUsages(project, usages, key)
+            QuickFixUsageRenamer.renameKeyInUsages(project, usages, key)
             RenameUtil.renameSameProperty(project, startElement, oldKey, key)
         }, containingFile)
-    }
-
-    private fun renameUsages(project: Project, usages: List<PsiReference>, newKey: String) {
-        if (usages.isEmpty()) return
-
-        for (usage in usages) {
-            val usageElement = usage.element
-            if (!usageElement.isValid) continue
-            val oldText = usageElement.text.substringAfter("{").substringBefore("}").substringBefore(":")
-            val newText = usageElement.text.replace(oldText, newKey)
-            val newElement = if (usageElement.language == KotlinLanguage.INSTANCE) {
-                val factory = KtPsiFactory(usageElement.project)
-                factory.createExpression(newText)
-            } else {
-                PsiElementFactory.getInstance(usageElement.project)
-                    .createExpressionFromText(newText, usageElement.context)
-            }
-            WriteCommandAction.runWriteCommandAction(project) {
-                usageElement.replace(newElement)
-            }
-        }
     }
 }
