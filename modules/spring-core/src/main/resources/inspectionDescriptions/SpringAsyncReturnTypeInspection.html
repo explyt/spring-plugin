@@ -16,7 +16,7 @@
 public class SomeConfiguration {
     public void validReturnType() {}
 
-    public String invalidReturnType() { // reports "Async method should return type of ''void'' or a ''Future'' inheritor"
+    public String invalidReturnType() { // reports "Async method should return a type of 'void' or a 'Future' inheritor"
         return "";
     }
 }
