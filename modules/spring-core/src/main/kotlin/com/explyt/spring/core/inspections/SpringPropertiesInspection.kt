@@ -46,7 +46,9 @@ class SpringPropertiesInspection : SpringBasePropertyInspection() {
         psiKey,
         ElementManipulators.getValueTextRange(psiKey),
         SpringCoreBundle.message("explyt.spring.inspection.properties.value.should.be.kebab"),
-        ProblemHighlightType.WARNING,
+        // Relaxed binding makes every spelling resolve to the same property, so a non-canonical key is a style
+        // deviation, not a defect. Reporting it as a warning put it next to "Cannot resolve key property".
+        ProblemHighlightType.WEAK_WARNING,
         isOnTheFly,
         ReplacementKeyQuickFix(toKebabCase(key), psiKey.parent)
     )
