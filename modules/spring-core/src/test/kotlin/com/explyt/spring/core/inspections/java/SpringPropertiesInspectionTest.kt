@@ -41,7 +41,7 @@ class SpringPropertiesInspectionTest : ExplytInspectionJavaTestCase() {
         myFixture.configureByText(
             "application.properties",
             """
-            <weak_warning descr="Key is not in Spring's canonical form">test.fooBar</weak_warning>=1
+            test.<weak_warning descr="Key is not in Spring's canonical form">fooBar</weak_warning>=1
             test.foo-bar1=2
             """.trimIndent()
         )
@@ -95,7 +95,7 @@ class SpringPropertiesInspectionTest : ExplytInspectionJavaTestCase() {
             "application.properties",
             """
             logging.level.org.hibernate.type.descriptor.sql.BasicBinder=debug
-            <weak_warning descr="Key is not in Spring's canonical form">spring.jpa.databasePlatform</weak_warning>=org.hibernate.dialect.PostgreSQLDialect
+            spring.jpa.<weak_warning descr="Key is not in Spring's canonical form">databasePlatform</weak_warning>=org.hibernate.dialect.PostgreSQLDialect
             """.trimIndent()
         )
         myFixture.testHighlighting("application.properties")
