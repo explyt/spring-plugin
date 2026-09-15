@@ -79,9 +79,9 @@ explyt.digit:
             "application.yaml",
             """
 explyt.camel:
-  camelWritten:
-    <weak_warning descr="Key is not in Spring's canonical form">items</weak_warning>:
-            - <weak_warning descr="Key is not in Spring's canonical form">name</weak_warning>: first
+  <weak_warning descr="Key is not in Spring's canonical form">camelWritten</weak_warning>:
+    items:
+            - name: first
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")

@@ -97,6 +97,9 @@ class YamlKeyToKebabQuickFixTest : ExplytInspectionJavaTestCase() {
     /**
      * `defaultRpm` kebab-cases into `default-rpm`, whose first segment is a Java keyword. This case has no digit
      * boundary at all, which is what proves the expression parser — not the dash position — was the problem.
+     *
+     * The caret sits on `rateLimit` because that is the first non-canonical segment and therefore where the problem
+     * is reported; the fix still receives the leaf and renames every segment on the way up.
      */
     fun testRenamesKeyWhoseKebabFormStartsWithAJavaKeyword() {
         val usageFile = addConditionalOnProperty("Rate", "explyt.rateLimit.defaultRpm")
@@ -104,8 +107,8 @@ class YamlKeyToKebabQuickFixTest : ExplytInspectionJavaTestCase() {
             "application.yaml",
             """
             explyt:
-              rateLimit:
-                default<caret>Rpm: 60
+              rate<caret>Limit:
+                defaultRpm: 60
             """.trimIndent()
         )
 

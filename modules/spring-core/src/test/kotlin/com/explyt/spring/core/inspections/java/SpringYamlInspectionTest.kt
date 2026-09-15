@@ -157,9 +157,9 @@ explyt.digit:
             "application.yaml",
             """
 explyt.camel:
-  camelWritten:
-    <weak_warning descr="Key is not in Spring's canonical form">items</weak_warning>:
-      - <weak_warning descr="Key is not in Spring's canonical form">name</weak_warning>: first
+  <weak_warning descr="Key is not in Spring's canonical form">camelWritten</weak_warning>:
+    items:
+      - name: first
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
@@ -213,7 +213,7 @@ explyt.placeholder:
             "application.yaml",
             """
 foo:
-    <weak_warning descr="Key is not in Spring's canonical form">barbaz.testProp</weak_warning>: some1    
+    barbaz.<weak_warning descr="Key is not in Spring's canonical form">testProp</weak_warning>: some1    
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
