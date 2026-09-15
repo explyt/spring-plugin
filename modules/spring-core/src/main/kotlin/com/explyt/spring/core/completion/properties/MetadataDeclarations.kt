@@ -8,6 +8,7 @@ package com.explyt.spring.core.completion.properties
 import com.explyt.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.intellij.psi.PsiFile
 import com.intellij.util.io.URLUtil.JAR_SEPARATOR
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * One navigation target per metadata declaration.
@@ -41,16 +42,32 @@ object MetadataDeclarations {
         return sourcesRank + fileRank
     }
 
+    private fun artifactOf(file: PsiFile): String = artifactOf(pathOf(file))
+
     /**
-     * The artifact [file] belongs to: the jar, with its `-sources` twin folded into it, or the containing directory
-     * for a file that is not in a jar.
+     * The artifact [path] belongs to: the jar's file name, with its `-sources` twin folded into it, or the
+     * containing directory for a file that is not in a jar.
+     *
+     * The *name* rather than the whole path, because Gradle caches a jar and its sources jar under two different
+     * checksum directories (`.../spring-boot/3.5.16/efdac62e.../spring-boot-3.5.16-sources.jar` next to
+     * `.../spring-boot/3.5.16/8e75e8d0.../spring-boot-3.5.16.jar`). Folding the suffix while keeping those
+     * directories left the two copies in separate groups, so a key declared by a library offered the same
+     * declaration twice. The version is part of the file name, so distinct versions of one artifact stay distinct.
      */
-    private fun artifactOf(file: PsiFile): String {
-        val path = pathOf(file)
+    @VisibleForTesting
+    fun artifactOf(path: String): String {
         if (!path.contains(JAR_SEPARATOR)) return path.substringBeforeLast('/')
-        val jar = jarOf(path)
-        return if (jar.endsWith(SOURCES_JAR_SUFFIX)) jar.removeSuffix(SOURCES_JAR_SUFFIX) + JAR_SUFFIX else jar
+        val jarName = jarOf(path).substringAfterLast('/')
+        return if (jarName.endsWith(SOURCES_JAR_SUFFIX)) {
+            jarName.removeSuffix(SOURCES_JAR_SUFFIX) + JAR_SUFFIX
+        } else {
+            jarName
+        }
     }
+
+    /** The preference of [path] among the copies of one declaration; see [rank]. */
+    @VisibleForTesting
+    fun rankOf(path: String): Int = rank(path)
 
     private fun jarOf(path: String): String = path.substringBefore(JAR_SEPARATOR)
 
