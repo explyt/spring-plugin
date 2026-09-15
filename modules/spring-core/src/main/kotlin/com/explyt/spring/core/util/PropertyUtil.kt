@@ -536,6 +536,30 @@ object PropertyUtil {
     }
 
     /**
+     * The first dot-separated segment of [key] that is not in Spring's canonical form, or `null` when every segment
+     * already is.
+     *
+     * The check has to run per segment rather than over the whole key: the canonical-form problem is reported on the
+     * segment that actually deviates, and a key such as `explyt.camel.camelWritten.items[0].name` deviates only in
+     * `camelWritten`. A collection index is part of the key text but never part of a name, so it is dropped before
+     * judging a segment.
+     */
+    fun firstNonCanonicalSegment(key: String): Segment? {
+        var offset = 0
+        for (segment in key.split('.')) {
+            val name = segment.substringBefore('[')
+            if (isNotKebabCase(name)) return Segment(name, offset)
+            offset += segment.length + 1
+        }
+        return null
+    }
+
+    /** A dot-separated part of a configuration key, with its start offset inside the full key. */
+    data class Segment(val text: String, val startOffset: Int) {
+        val endOffset: Int get() = startOffset + text.length
+    }
+
+    /**
      * Mirrors `ConventionUtils.toDashedCase` of the Spring Boot configuration processor, which is what produces the
      * canonical key in the metadata: a dash is inserted for each `-`/`_` separator and before each uppercase letter,
      * and the result is lowercased.
