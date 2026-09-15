@@ -101,6 +101,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getAllProperties(module)
 
+        val reportedCanonicalFormRanges = mutableSetOf<Pair<PsiElement?, TextRange?>>()
         for (fileProperty in fileProperties) {
             val elementFileProperty = fileProperty.psiElement ?: continue
             val psiKey = elementFileProperty.propertyKeyPsiElement() ?: continue
@@ -118,8 +119,14 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             }
 
             val key = fileProperty.key
-            if (PropertyUtil.isNotKebabCase(key) && !PropertyUtil.isKebabCaseInMapKey(key, properties)) {
-                problems += keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key)
+            val nonCanonical = PropertyUtil.firstNonCanonicalSegment(key)
+            if (nonCanonical != null && !PropertyUtil.isKebabCaseInMapKey(key, properties)) {
+                // Every leaf under one non-canonical ancestor resolves to that ancestor's element, so without this
+                // guard a mapping with N children stacked N identical problems on the ancestor's line.
+                val descriptor = keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key, nonCanonical)
+                if (reportedCanonicalFormRanges.add(descriptor.psiElement to descriptor.textRangeInElement)) {
+                    problems += descriptor
+                }
             }
 
             val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key, it.type) }
@@ -166,11 +173,19 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return problems
     }
 
+    /**
+     * @param psiKey the key element of the property being inspected — the leaf, which may be a descendant of the
+     *   element that owns [nonCanonical]
+     * @param key the full dot-separated key
+     * @param nonCanonical the segment of [key] that deviates from Spring's canonical form, which is what the problem
+     *   has to be reported on
+     */
     abstract fun keyShouldBeKebabProblemDescriptor(
         manager: InspectionManager,
         psiKey: PsiElement,
         isOnTheFly: Boolean,
-        key: String
+        key: String,
+        nonCanonical: PropertyUtil.Segment
     ): ProblemDescriptor
 
     private fun getProblemPropertyDeprecated(
