@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Count a `@Value` placeholder in a dependent module — the shape of a Gradle test source-set module, which has no dependents of its own — as a usage of a configuration key: configuration files are now collected from both dependents and dependencies, so the main `application.yaml` no longer reports such a key as unresolved and the test-source placeholder navigates to the main definition (#381)
 - fix: Count a `${...}` placeholder in any `org.springframework.*` annotation attribute as a usage of the configuration key, not only in `@Value` and `@Scheduled`: a key consumed through `@KafkaListener(topics = ["\${...}"])`, `@RequestMapping(path = ...)`, `@RabbitListener` and the like no longer reports `Cannot resolve key property`, and navigates and renames like a `@Value` usage (#380)
 - fix: Resolve `management.endpoint.<id>.access`, `.enabled` and `.cache.time-to-live` of an Actuator endpoint declared in a dependency module — endpoint discovery searched only the configuration module's own sources, so a shared starter's endpoint was reported as an unresolved key and had no navigation (#382)
 - fix: Count a configuration key used through `@ConditionalOnProperty`, `Environment.getProperty` or `DynamicPropertyRegistry` as referenced when it is defined in several configuration files: the reference's single-target resolve returned nothing for two or more definitions, so every file defining the key reported "Cannot resolve key property" (#118)
