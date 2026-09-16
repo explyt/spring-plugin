@@ -16,10 +16,13 @@ import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.diagnostic.debug
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.autolink.ExternalSystemProjectLinkListener
 import com.intellij.openapi.externalSystem.autolink.ExternalSystemUnlinkedProjectAware
 import com.intellij.openapi.externalSystem.settings.ExternalSystemSettingsListener
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
+import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.projectImport.ProjectOpenProcessor
@@ -27,6 +30,7 @@ import com.intellij.psi.PsiManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private val logger = logger<UnlinkedProjectAware>()
 
 class UnlinkedProjectAware : ExternalSystemUnlinkedProjectAware {
     override val systemId = Constants.SYSTEM_ID
@@ -62,9 +66,20 @@ class UnlinkedProjectAware : ExternalSystemUnlinkedProjectAware {
     }
 
     override suspend fun unlinkProject(project: Project, externalProjectPath: String) {
-        val projectData = ExternalSystemApiUtil.findProjectNode(project, systemId, externalProjectPath)?.data ?: return
+        val projectData = ExternalSystemApiUtil.findProjectNode(project, systemId, externalProjectPath)?.data
         withContext(Dispatchers.EDT) {
-            DetachAllProjectsAction.detachProjectNode(projectData, project)
+            if (projectData != null) {
+                DetachAllProjectsAction.detachProjectNode(projectData, project)
+            } else {
+                // Import data is absent when a refresh never succeeded or its cache was dropped. Detaching by
+                // node would silently do nothing and leave the link in the settings file forever, so drop the
+                // link through the settings, which also publishes onProjectsUnlinked.
+                val unlinked = ExternalSystemApiUtil.getSettings(project, systemId)
+                    .unlinkExternalProject(externalProjectPath)
+                logger.info("Explyt unlink project: no import data, unlinked through settings: $unlinked")
+                logger.debug { "Explyt unlink project: path $externalProjectPath" }
+            }
+            ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, systemId)
         }
     }
 }
