@@ -56,7 +56,7 @@ class PropertiesKeyMapValueReference(
             return baseMapResolve(project)
         }
         return methodsTypeByMap
-            .firstOrNull { PropertyUtil.isNameSetMethod(it.name, propertyMapValue) }
+            .firstOrNull { PropertyUtil.isPropertyMemberName(it.name, propertyMapValue) }
             ?.let { PropertyUtil.resolveResults(it) }
             ?: emptyArray()
     }
