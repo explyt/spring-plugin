@@ -51,14 +51,16 @@ class PropertiesKeyMapValueReference(
         val valueType = PropertyUtil.getValueClassNameInMap(property.type) ?: return emptyArray()
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
-        val methodsTypeByMap = PropertyUtil.getMembersOfType(module, valueType, propertyMapValue)
-        if (methodsTypeByMap.isEmpty()) {
+        PropertyUtil.findMapValueMember(module, valueType, propertyMapValue)
+            ?.let { return PropertyUtil.resolveResults(it) }
+        // The map-declaration fallback stays for a single unknown member, the only shape it ever helped;
+        // a partially resolved path such as `routes[0].unknown` must not navigate to the map itself.
+        if (PropertyUtil.keySegments(propertyMapValue).size == 1
+            && PropertyUtil.getMembersOfType(module, valueType, propertyMapValue).isEmpty()
+        ) {
             return baseMapResolve(project)
         }
-        return methodsTypeByMap
-            .firstOrNull { PropertyUtil.isPropertyMemberName(it.name, propertyMapValue) }
-            ?.let { PropertyUtil.resolveResults(it) }
-            ?: emptyArray()
+        return emptyArray()
     }
 
     private fun baseMapResolve(project: Project): Array<ResolveResult> {

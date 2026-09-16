@@ -14,6 +14,7 @@ data class ConstructorBoundProperties(
 ) {
     data class PublisherProperties(
         val ownerApplication: String = "",
+        val routes: List<RouteProperties> = emptyList(),
     )
 
     data class RouteProperties(
