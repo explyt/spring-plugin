@@ -6,10 +6,16 @@
 package com.explyt.spring.core.properties.kotlin
 
 import com.explyt.spring.core.properties.providers.ValueConfigurationPropertyReferenceProvider
+import com.explyt.spring.core.properties.references.ExplytPropertyReference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiPolyVariantReference
+import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import kotlin.system.measureTimeMillis
 
 class ValueConfigurationPropertyReferenceProviderTest : ExplytKotlinLightTestCase() {
@@ -126,6 +132,69 @@ class ValueConfigurationPropertyReferenceProviderTest : ExplytKotlinLightTestCas
             elapsedMs < 2000
         )
     }
+
+    /**
+     * `@KafkaListener` is not `@Value`: until issue #380 the provider was registered for exactly two
+     * annotations, so a placeholder here produced no reference and the key looked unused in YAML.
+     */
+    fun testKafkaListenerPlaceholderResolvesReference() {
+        myFixture.configureByText(
+            "KafkaListener.kt",
+            """
+            package org.springframework.kafka.annotation
+
+            annotation class KafkaListener(val topics: Array<String> = [], val groupId: String = "")
+            """.trimIndent()
+        )
+        myFixture.configureByText(
+            "TestListener.kt",
+            """
+            import org.springframework.kafka.annotation.KafkaListener
+
+            class TestListener {
+                @KafkaListener(topics = ["\${'$'}{my.prop<caret>erty}"])
+                fun listen() {
+                }
+            }
+            """.trimIndent()
+        )
+
+        // The platform also contributes its ResourceBundle reference to the same literal, so the
+        // reference under the caret arrives wrapped in a PsiMultiReference.
+        val propertyReference = when (val reference = file.findReferenceAt(myFixture.caretOffset)) {
+            is PsiMultiReference -> reference.references.filterIsInstance<ExplytPropertyReference>().singleOrNull()
+            else -> reference as? ExplytPropertyReference
+        }
+        assertNotNull(
+            "Expected an ExplytPropertyReference for the @KafkaListener placeholder",
+            propertyReference
+        )
+    }
+
+    /**
+     * The generic `org.springframework.*` registration replaced the per-annotation ones; `@Value`
+     * must still yield exactly one property reference, not a duplicate from two registrations.
+     */
+    fun testValuePlaceholderYieldsExactlyOnePropertyReference() {
+        myFixture.configureByText(
+            "TestComponent.kt",
+            """
+            import org.springframework.beans.factory.annotation.Value
+
+            class TestComponent {
+                @Value("\${'$'}{my.prop<caret>erty}")
+                private val injected: String = ""
+            }
+            """.trimIndent()
+        )
+
+        val host = PsiTreeUtil.getParentOfType(
+            file.findElementAt(myFixture.caretOffset), KtStringTemplateExpression::class.java
+        )
+        val propertyReferences = host!!.references.filterIsInstance<ExplytPropertyReference>()
+        assertEquals("Expected exactly one property reference on the @Value host", 1, propertyReferences.size)
+    }
+
 
     /**
      * Configures a component whose `@Value` argument is the given placeholder and asserts that a
