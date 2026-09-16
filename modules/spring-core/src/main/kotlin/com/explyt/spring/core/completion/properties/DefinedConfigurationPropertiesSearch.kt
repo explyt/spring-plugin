@@ -110,9 +110,15 @@ class DefinedConfigurationPropertiesSearch(val project: Project) {
         val propertiesFileType = PropertiesLanguage.INSTANCE.associatedFileType ?: return emptySet()
         val yamlFileType = YAMLLanguage.INSTANCE.associatedFileType ?: return emptySet()
 
+        // Dependents: a library module's configuration lives in the applications depending on it.
+        // Dependencies: a Gradle test source-set module has no dependents, yet its code runs against
+        // the main resources too, so without them a test-source `@Value` neither resolves to the
+        // main key nor counts as its usage (issue #381). Project modules only, like #276.
+        val scope = module.moduleWithDependentsScope
+            .uniteWith(GlobalSearchScope.moduleWithDependenciesScope(module))
         val sources = mutableSetOf<PropertySource>()
-        collectPropertySources(propertiesFileType, sources, module.moduleWithDependentsScope)
-        collectPropertySources(yamlFileType, sources, module.moduleWithDependentsScope)
+        collectPropertySources(propertiesFileType, sources, scope)
+        collectPropertySources(yamlFileType, sources, scope)
         return sources
     }
 
