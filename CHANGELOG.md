@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Count a `${...}` placeholder in any `org.springframework.*` annotation attribute as a usage of the configuration key, not only in `@Value` and `@Scheduled`: a key consumed through `@KafkaListener(topics = ["\${...}"])`, `@RequestMapping(path = ...)`, `@RabbitListener` and the like no longer reports `Cannot resolve key property`, and navigates and renames like a `@Value` usage (#380)
 - fix: Resolve `management.endpoint.<id>.access`, `.enabled` and `.cache.time-to-live` of an Actuator endpoint declared in a dependency module — endpoint discovery searched only the configuration module's own sources, so a shared starter's endpoint was reported as an unresolved key and had no navigation (#382)
 - fix: Count a configuration key used through `@ConditionalOnProperty`, `Environment.getProperty` or `DynamicPropertyRegistry` as referenced when it is defined in several configuration files: the reference's single-target resolve returned nothing for two or more definitions, so every file defining the key reported "Cannot resolve key property" (#118)
 - fix: Do not report a configuration value as invalid when the metadata hint that declares its closed value set allows other values: the check was gated on the `<prefix>.keys` hint while validating against `<prefix>.values`, so `logging.level.root=INFO` was an error even though the `logging.level.values` hint declares provider `any` — and a property with only a `.keys` hint was told its value `must be one of []` (#385)
