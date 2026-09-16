@@ -230,6 +230,74 @@ spring:
 
     }
 
+    fun testRefKeyMapValuePlainKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    my-registration:
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapValue() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.reg<caret>istration]":
+      owner-application: my-app
+            """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? YamlKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setPublishers")
+    }
+
     fun testRefValueResource() {
         myFixture.copyFileToProject("MainFooProperties.java")
         myFixture.configureByText(

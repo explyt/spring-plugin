@@ -128,7 +128,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
     ): Array<PsiReference> {
         val references = mutableListOf<PsiReference>()
 
-        val propertyKeyPath = propertyKey.substringAfter("$propertyName.").split(".")
+        val propertyKeyPath = PropertyUtil.keySegments(propertyKey.substringAfter("$propertyName."))
         val elementText = element.text
 
         var currentOffset = 0
@@ -153,13 +153,16 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
         val keyValuePair = PropertyUtil.getKeyValuePair(propertyKey, foundProperty)
         val propertyName = foundProperty.name
         val mapPrefixRange = TextRange.from(0, propertyName.length)
+        // Bracket notation glues the map key to the prefix without a dot: `publishers[my.registration].x`.
+        val mapKeyOffset =
+            mapPrefixRange.length + if (propertyKey.getOrNull(propertyName.length) == '.') 1 else 0
         val refList = mutableListOf<PsiReference>()
         if (foundProperty.propertyType == PropertyType.ENUM_MAP && keyValuePair.first.isNotEmpty()) {
             ModuleUtilCore.findModuleForPsiElement(element)?.let {
                 refList.add(
                     PropertiesKeyMapValueReference(
                         element, foundProperty.name + "." + keyValuePair.first, foundProperty,
-                        TextRange.from(mapPrefixRange.length + 1, keyValuePair.first.length),
+                        TextRange.from(mapKeyOffset, keyValuePair.first.length),
                         enumMapKeyRef = true
                     )
                 )
@@ -169,7 +172,7 @@ class SpringConfigurationPropertyKeyReferenceProvider : PsiReferenceProvider() {
                 refList.add(
                     PropertiesKeyMapValueReference(
                         element, propertyKey, foundProperty,
-                        TextRange.from(mapPrefixRange.length + 1, keyValuePair.first.length),
+                        TextRange.from(mapKeyOffset, keyValuePair.first.length),
                         baseMapRef = true
                     )
                 )
