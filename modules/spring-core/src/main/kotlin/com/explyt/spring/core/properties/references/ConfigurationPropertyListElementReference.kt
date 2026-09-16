@@ -31,9 +31,13 @@ class ConfigurationPropertyListElementReference(
 ) : PsiReferenceBase.Poly<PsiElement>(element, null, true) {
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
-        val collectionProperty = findCollectionProperty() ?: return emptyArray()
+        val segments = PropertyUtil.keySegments(propertyKey)
+        val indexSegmentPosition = segments.indexOfFirst { it.indexOf(INDEX_START) > 0 }
+        if (indexSegmentPosition < 0) return emptyArray()
 
-        val elementKey = propertyKey.substringAfter(INDEX_END, "")
+        val collectionProperty = findCollectionProperty(segments, indexSegmentPosition) ?: return emptyArray()
+
+        val elementKey = segments.drop(indexSegmentPosition + 1).joinToString(".")
         if (elementKey.isEmpty()) return resolveCollection(collectionProperty)
 
         val elementType = PropertyUtil.getCollectionElementType(collectionProperty) ?: return emptyArray()
@@ -46,13 +50,16 @@ class ConfigurationPropertyListElementReference(
     /**
      * The collection is looked up by the exact key preceding the FIRST index, so a shorter parent key can never
      * win: [SpringConfigurationPropertiesSearch.getAllProperties] has no defined order, which makes a
-     * `startsWith` search over all properties ambiguous for nested keys.
+     * `startsWith` search over all properties ambiguous for nested keys. An index segment carries the bracket
+     * past its first character (`routes[0]`); a segment that STARTS with `[` is a bracketed map key
+     * (`publishers[my.registration]`) and never opens an index.
      */
-    private fun findCollectionProperty(): ConfigurationProperty? {
-        val indexStart = propertyKey.indexOf(INDEX_START)
-        if (indexStart < 0) return null
-
-        val collectionKey = propertyKey.substring(0, indexStart)
+    private fun findCollectionProperty(
+        segments: List<String>,
+        indexSegmentPosition: Int
+    ): ConfigurationProperty? {
+        val collectionKey = (segments.subList(0, indexSegmentPosition)
+                + segments[indexSegmentPosition].substringBefore(INDEX_START)).joinToString(".")
         return SpringConfigurationPropertiesSearch.getInstance(module.project)
             .findProperty(module, collectionKey)
             ?.takeIf { it.isList() || it.isArray() }
@@ -67,6 +74,5 @@ class ConfigurationPropertyListElementReference(
 
     companion object {
         const val INDEX_START = '['
-        private const val INDEX_END = "]."
     }
 }
