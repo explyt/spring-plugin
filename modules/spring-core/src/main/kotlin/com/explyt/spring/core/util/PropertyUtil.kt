@@ -608,6 +608,51 @@ object PropertyUtil {
     }
 
     /**
+     * The element type of a `java.util.List<T>` or array type text, or `null` for any other type.
+     * A Kotlin `List<T>` arrives as a wildcard light type (`java.util.List<? extends T>`), so the variance
+     * keyword is dropped to keep the result a plain qualified name.
+     */
+    fun getListElementClassName(propertyType: String?): String? {
+        if (propertyType == null) return null
+        val elementType = when {
+            propertyType.endsWith("[]") -> propertyType.substringBeforeLast("[]")
+            propertyType.substringBefore("<") == JavaCoreClasses.LIST ->
+                propertyType.substringAfter("<", "").substringBeforeLast(">")
+
+            else -> return null
+        }
+        return elementType.substringAfterLast(' ').takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * The member addressed by [memberPath] inside [mapValueType]: `owner-application` directly, or `payload-type`
+     * through an intermediate segment such as `routes[0]` (properties files) or `routes` (YAML full keys carry no
+     * list index). Each level is resolved by name in the declaring class, because map-value members are not declared
+     * as configuration properties of their own; an intermediate collection segment descends into its element type.
+     */
+    fun findMapValueMember(module: Module, mapValueType: String, memberPath: String): PsiMember? {
+        val segments = keySegments(memberPath)
+        var currentType = mapValueType
+        for ((index, segment) in segments.withIndex()) {
+            val memberName = segment.substringBefore('[')
+            val member = getMembersOfType(module, currentType, memberName)
+                .firstOrNull { isPropertyMemberName(it.name, memberName) } ?: return null
+            if (index == segments.lastIndex) return member
+            val memberType = memberTypeText(member) ?: return null
+            currentType = getListElementClassName(memberType) ?: memberType
+        }
+        return null
+    }
+
+    private fun memberTypeText(member: PsiMember): String? = when (member) {
+        is PsiField -> member.type.canonicalText
+        is PsiMethod -> (member.parameterList.parameters.singleOrNull()?.type
+            ?: member.returnType)?.canonicalText
+
+        else -> null
+    }
+
+    /**
      * The element type of a list or array property, or `null` for any other property.
      *
      * A Kotlin `List<T>` reaches us as a wildcard light type (`java.util.List<? extends T>`), so the variance
