@@ -1,0 +1,36 @@
+{
+  "groups": [],
+  "properties": [
+    {
+      "name": "explyt.modes.mode",
+      "type": "java.lang.String",
+      "description": "A property with a closed set of hint literals and no any provider."
+    },
+    {
+      "name": "explyt.maponly",
+      "type": "java.util.Map<java.lang.String,java.lang.String>",
+      "description": "A map whose keys hint exists while no values hint does."
+    }
+  ],
+  "hints": [
+    {
+      "name": "explyt.modes.mode",
+      "values": [
+        {
+          "value": "fast"
+        },
+        {
+          "value": "slow"
+        }
+      ]
+    },
+    {
+      "name": "explyt.maponly.keys",
+      "values": [
+        {
+          "value": "alpha"
+        }
+      ]
+    }
+  ]
+}
