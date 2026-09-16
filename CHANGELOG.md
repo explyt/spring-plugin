@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Count a `${...}` placeholder in any `org.springframework.*` annotation attribute as a usage of the configuration key, not only in `@Value` and `@Scheduled`: a key consumed through `@KafkaListener(topics = ["\${...}"])`, `@RequestMapping(path = ...)`, `@RabbitListener` and the like no longer reports `Cannot resolve key property`, and navigates and renames like a `@Value` usage (#380)
 - fix: Report a non-canonical configuration key on the segment that actually deviates instead of on the deepest key, so `explyt.camel.camelWritten.items[0].name` underlines `camelWritten` rather than the perfectly canonical `name`, and several keys under one such ancestor report it once instead of once each
 - fix: Offer one navigation target for a configuration key declared by a library, instead of the same declaration once from the jar and once from its sources jar: the two were folded together by rewriting the file name while keeping the path, and Gradle caches them under two different checksum directories
 - fix: Inspect a configuration key whose value is a YAML sequence. Only a scalar-valued key was collected, so a list-valued one such as `paths_to_exclude:` was skipped by every per-key check — canonical form, unresolved key, deprecation and the profile-file restriction. A sequence has no scalar value, so the value-level checks correctly report nothing for it
