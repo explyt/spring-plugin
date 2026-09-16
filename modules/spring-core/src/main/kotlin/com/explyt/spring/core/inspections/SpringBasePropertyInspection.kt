@@ -247,7 +247,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val problems = mutableListOf<ProblemDescriptor>()
         val findInFileProperties = fileProperties.filter { property ->
             hints.any { hint ->
-                (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_KEYS == hint.name)
+                (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_VALUES == hint.name)
                         && hint.values.isNotEmpty()
                         && (hint.providers.isEmpty()
                         || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
