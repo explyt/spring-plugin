@@ -141,6 +141,21 @@ main.enum-value-additional=TUE<caret>SDAY
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals("ownerApplication", name)
     }
+    
+    fun testRefKeyBracketMapValue() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].owner-<caret>application=x"
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
 
     fun testRefKeyListElementConstructorBoundDataClass() {
         myFixture.copyFileToProject("ConstructorBoundProperties.kt")

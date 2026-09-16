@@ -948,12 +948,44 @@ object PropertyUtil {
         return DeprecationInfo(DeprecationInfoLevel.WARNING, reason = annotationDeprecated.asRenderString())
     }
 
+    /**
+     * Segments of a configuration key with bracket groups kept atomic: in Spring's bracket notation
+     * (`app.publishers[my.registration].owner-application`, YAML `app.publishers.[my.registration].owner-application`)
+     * a `[...]` group is a single map key and may itself contain dots, so a plain `split(".")` shatters it.
+     */
+    fun keySegments(key: String): List<String> {
+        val segments = mutableListOf<String>()
+        val current = StringBuilder()
+        var depth = 0
+        for (c in key) {
+            when (c) {
+                '[' -> {
+                    depth++
+                    current.append(c)
+                }
+                ']' -> {
+                    if (depth > 0) depth--
+                    current.append(c)
+                }
+                '.' -> if (depth == 0) {
+                    segments += current.toString()
+                    current.clear()
+                } else {
+                    current.append(c)
+                }
+                else -> current.append(c)
+            }
+        }
+        segments += current.toString()
+        return segments
+    }
+
     fun getKeyValuePair(propertyKey: String, foundProperty: ConfigurationProperty): Pair<String, String> {
-        if (propertyKey == propertyKey.substringAfter("${foundProperty.name}.")) return Pair("", "")
-        val propertyMapKey = propertyKey.substringAfter("${foundProperty.name}.").substringBefore(".")
-        var propertyMapValue = propertyKey.substringAfter("$propertyMapKey.")
-        if (propertyMapValue == propertyKey) propertyMapValue = ""
-        return Pair(propertyMapKey, propertyMapValue)
+        if (!propertyKey.startsWith(foundProperty.name)) return Pair("", "")
+        val remainder = propertyKey.substring(foundProperty.name.length)
+        if (remainder.isEmpty() || (remainder[0] != '.' && remainder[0] != '[')) return Pair("", "")
+        val segments = keySegments(remainder.removePrefix("."))
+        return Pair(segments.first(), segments.drop(1).joinToString("."))
     }
 
     private val BUILT_IN_VALUE_TYPE_PACKAGES = setOf(
