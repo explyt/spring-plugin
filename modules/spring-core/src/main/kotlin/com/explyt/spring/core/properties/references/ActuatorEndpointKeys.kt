@@ -117,7 +117,14 @@ object ActuatorEndpointKeys {
             val annotationName = annotationClass.qualifiedName ?: continue
             // An endpoint class is not a bean by virtue of the annotation - `@Endpoint` carries only `@Reflective` -
             // so it is found by annotation search, not through the bean model.
-            AnnotatedElementsSearch.searchPsiClasses(annotationClass, module.moduleScope).forEach { psiClass ->
+            // The endpoint may live in a module the configuration module depends on — a shared starter
+            // declaring `@Endpoint` next to the application module holding `application.yaml` (issue #382).
+            // Dependencies are in, libraries are out: Boot's own endpoints already ship metadata, and
+            // synthesizing their keys again would duplicate every completion and navigation target.
+            AnnotatedElementsSearch.searchPsiClasses(
+                annotationClass,
+                GlobalSearchScope.moduleWithDependenciesScope(module)
+            ).forEach { psiClass ->
                 toEndpoint(psiClass, annotationName, accessAvailable)
                     ?.let { result.getOrPut(it.id) { mutableListOf() } += it }
             }
