@@ -608,6 +608,51 @@ object PropertyUtil {
     }
 
     /**
+     * The element type of a `java.util.List<T>` or array type text, or `null` for any other type.
+     * A Kotlin `List<T>` arrives as a wildcard light type (`java.util.List<? extends T>`), so the variance
+     * keyword is dropped to keep the result a plain qualified name.
+     */
+    fun getListElementClassName(propertyType: String?): String? {
+        if (propertyType == null) return null
+        val elementType = when {
+            propertyType.endsWith("[]") -> propertyType.substringBeforeLast("[]")
+            propertyType.substringBefore("<") == JavaCoreClasses.LIST ->
+                propertyType.substringAfter("<", "").substringBeforeLast(">")
+
+            else -> return null
+        }
+        return elementType.substringAfterLast(' ').takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * The member addressed by [memberPath] inside [mapValueType]: `owner-application` directly, or `payload-type`
+     * through an intermediate segment such as `routes[0]` (properties files) or `routes` (YAML full keys carry no
+     * list index). Each level is resolved by name in the declaring class, because map-value members are not declared
+     * as configuration properties of their own; an intermediate collection segment descends into its element type.
+     */
+    fun findMapValueMember(module: Module, mapValueType: String, memberPath: String): PsiMember? {
+        val segments = keySegments(memberPath)
+        var currentType = mapValueType
+        for ((index, segment) in segments.withIndex()) {
+            val memberName = segment.substringBefore('[')
+            val member = getMembersOfType(module, currentType, memberName)
+                .firstOrNull { isPropertyMemberName(it.name, memberName) } ?: return null
+            if (index == segments.lastIndex) return member
+            val memberType = memberTypeText(member) ?: return null
+            currentType = getListElementClassName(memberType) ?: memberType
+        }
+        return null
+    }
+
+    private fun memberTypeText(member: PsiMember): String? = when (member) {
+        is PsiField -> member.type.canonicalText
+        is PsiMethod -> (member.parameterList.parameters.singleOrNull()?.type
+            ?: member.returnType)?.canonicalText
+
+        else -> null
+    }
+
+    /**
      * The element type of a list or array property, or `null` for any other property.
      *
      * A Kotlin `List<T>` reaches us as a wildcard light type (`java.util.List<? extends T>`), so the variance
@@ -913,15 +958,18 @@ object PropertyUtil {
             .filterNotNullTo(mutableListOf())
     }
 
-    fun isNameSetMethod(name: String?, propertyMapValue: String): Boolean {
-        return name?.lowercase() ==
-                "set${
-                    propertyMapValue
-                        .substringAfterLast(".")
-                        .replace("-", "")
-                        .replace("_", "")
-                        .lowercase()
-                }"
+    fun isPropertyMemberName(memberName: String?, propertyName: String): Boolean {
+        if (memberName == null) return false
+        val accessorlessName = when {
+            memberName.length > 3 && memberName[3].isUpperCase()
+                    && (memberName.startsWith("set") || memberName.startsWith("get")) -> memberName.substring(3)
+
+            memberName.length > 2 && memberName[2].isUpperCase()
+                    && memberName.startsWith("is") -> memberName.substring(2)
+
+            else -> memberName
+        }
+        return isSameProperty(accessorlessName, propertyName.substringAfterLast("."))
     }
 
     fun findPropertyByConfigurationPropertyElement(element: PsiElement): PropertySearchResult? {
@@ -945,12 +993,44 @@ object PropertyUtil {
         return DeprecationInfo(DeprecationInfoLevel.WARNING, reason = annotationDeprecated.asRenderString())
     }
 
+    /**
+     * Segments of a configuration key with bracket groups kept atomic: in Spring's bracket notation
+     * (`app.publishers[my.registration].owner-application`, YAML `app.publishers.[my.registration].owner-application`)
+     * a `[...]` group is a single map key and may itself contain dots, so a plain `split(".")` shatters it.
+     */
+    fun keySegments(key: String): List<String> {
+        val segments = mutableListOf<String>()
+        val current = StringBuilder()
+        var depth = 0
+        for (c in key) {
+            when (c) {
+                '[' -> {
+                    depth++
+                    current.append(c)
+                }
+                ']' -> {
+                    if (depth > 0) depth--
+                    current.append(c)
+                }
+                '.' -> if (depth == 0) {
+                    segments += current.toString()
+                    current.clear()
+                } else {
+                    current.append(c)
+                }
+                else -> current.append(c)
+            }
+        }
+        segments += current.toString()
+        return segments
+    }
+
     fun getKeyValuePair(propertyKey: String, foundProperty: ConfigurationProperty): Pair<String, String> {
-        if (propertyKey == propertyKey.substringAfter("${foundProperty.name}.")) return Pair("", "")
-        val propertyMapKey = propertyKey.substringAfter("${foundProperty.name}.").substringBefore(".")
-        var propertyMapValue = propertyKey.substringAfter("$propertyMapKey.")
-        if (propertyMapValue == propertyKey) propertyMapValue = ""
-        return Pair(propertyMapKey, propertyMapValue)
+        if (!propertyKey.startsWith(foundProperty.name)) return Pair("", "")
+        val remainder = propertyKey.substring(foundProperty.name.length)
+        if (remainder.isEmpty() || (remainder[0] != '.' && remainder[0] != '[')) return Pair("", "")
+        val segments = keySegments(remainder.removePrefix("."))
+        return Pair(segments.first(), segments.drop(1).joinToString("."))
     }
 
     private val BUILT_IN_VALUE_TYPE_PACKAGES = setOf(

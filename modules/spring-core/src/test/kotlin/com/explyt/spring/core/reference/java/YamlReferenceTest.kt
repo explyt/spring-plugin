@@ -230,6 +230,74 @@ spring:
 
     }
 
+    fun testRefKeyMapValuePlainKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    my-registration:
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapValue() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.reg<caret>istration]":
+      owner-application: my-app
+            """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? YamlKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setPublishers")
+    }
+
     fun testRefValueResource() {
         myFixture.copyFileToProject("MainFooProperties.java")
         myFixture.configureByText(
@@ -623,6 +691,93 @@ ingest:
         // The reference is still contributed, so the empty result proves the member lookup rejected the key
         // rather than the reference never having been created.
         assertEmpty(listElementReference().multiResolve(true).toList())
+    }
+
+    fun testRefKeyMapValueConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    my-registration:
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? YamlKeyMapValueReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals("ownerApplication", name)
+    }
+
+    fun testRefKeyListElementConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  routes:
+    - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("payloadType", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementUnderBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      routes:
+        - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("setPayloadType", mapValueReferenceName())
+    }
+
+    fun testRefKeyListElementUnderMapKeyConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      routes:
+        - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("payloadType", mapValueReferenceName())
+    }
+
+    private fun mapValueReferenceName(): String? = mapValueReference()
+        .multiResolve(true)
+        .singleOrNull()
+        ?.let { (it.element as? ConfigKeyPsiElement)?.name }
+
+    private fun mapValueReference(): YamlKeyMapValueReference {
+        val found = file.findReferenceAt(myFixture.caretOffset)
+        val reference = when (found) {
+            is PsiMultiReference -> found.references.filterIsInstance<YamlKeyMapValueReference>().firstOrNull()
+            is YamlKeyMapValueReference -> found
+            else -> null
+        }
+        assertNotNull("map value reference must be contributed", reference)
+        return reference!!
     }
 
     private fun resolveListElementReferenceName(): String? = listElementReference()
