@@ -15,7 +15,7 @@ public record ConstructorBoundRecordProperties(
         Map<String, PublisherProperties> publishers,
         List<RouteProperties> routes
 ) {
-    public record PublisherProperties(String ownerApplication) {
+    public record PublisherProperties(String ownerApplication, List<RouteProperties> routes) {
     }
 
     public record RouteProperties(String payloadType) {

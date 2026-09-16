@@ -732,6 +732,54 @@ app:
         assertEquals("payloadType", resolveListElementReferenceName())
     }
 
+    fun testRefKeyListElementUnderBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      routes:
+        - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("setPayloadType", mapValueReferenceName())
+    }
+
+    fun testRefKeyListElementUnderMapKeyConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      routes:
+        - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("payloadType", mapValueReferenceName())
+    }
+
+    private fun mapValueReferenceName(): String? = mapValueReference()
+        .multiResolve(true)
+        .singleOrNull()
+        ?.let { (it.element as? ConfigKeyPsiElement)?.name }
+
+    private fun mapValueReference(): YamlKeyMapValueReference {
+        val found = file.findReferenceAt(myFixture.caretOffset)
+        val reference = when (found) {
+            is PsiMultiReference -> found.references.filterIsInstance<YamlKeyMapValueReference>().firstOrNull()
+            is YamlKeyMapValueReference -> found
+            else -> null
+        }
+        assertNotNull("map value reference must be contributed", reference)
+        return reference!!
+    }
+
     private fun resolveListElementReferenceName(): String? = listElementReference()
         .multiResolve(true)
         .singleOrNull()
