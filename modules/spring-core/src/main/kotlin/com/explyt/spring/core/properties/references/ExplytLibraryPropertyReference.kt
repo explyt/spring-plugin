@@ -24,7 +24,7 @@ class ExplytLibraryPropertyReference(
     private val propertyKey: String,
     rangeInElement: TextRange,
     private val prefix: String = ""
-) : PsiReferenceBase<PsiElement>(element, rangeInElement), PsiPolyVariantReference, HighlightedReference {
+) : PsiReferenceBase.Poly<PsiElement>(element, rangeInElement, false), HighlightedReference {
 
     override fun multiResolve(incompleteCode: Boolean): Array<out ResolveResult> {
         val result = mutableListOf<ResolveResult>()
@@ -50,11 +50,6 @@ class ExplytLibraryPropertyReference(
         }
 
         return result.toTypedArray()
-    }
-
-    override fun resolve(): PsiElement? {
-        val resolveResults: Array<out ResolveResult> = multiResolve(false)
-        return if (resolveResults.size == 1) resolveResults[0].element else null
     }
 
     override fun getVariants(): Array<Any> {
