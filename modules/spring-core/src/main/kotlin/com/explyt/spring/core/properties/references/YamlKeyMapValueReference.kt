@@ -55,7 +55,7 @@ class YamlKeyMapValueReference(
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return emptyArray()
 
         return PropertyUtil.getMembersOfType(module, valueType, keyValuePair.second)
-            .firstOrNull { PropertyUtil.isNameSetMethod(it.name, keyValuePair.second) }
+            .firstOrNull { PropertyUtil.isPropertyMemberName(it.name, keyValuePair.second) }
             ?.let { PropertyUtil.resolveResults(it) }
             ?: emptyArray()
     }
