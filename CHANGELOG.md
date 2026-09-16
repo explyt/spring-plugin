@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Navigate from a list-element key nested under a map entry, so `app.publishers."[my.registration]".routes[0].payload-type` in properties and its index-less YAML form resolve to the element type's member: map-value members are not declared as configuration properties, so the key remainder is now walked level by level — map value type, its list property, the element type (#396)
 - fix: Navigate from a map-entry or list-element member key to a constructor-bound property — a Kotlin `val` in a data class or a Java record component — instead of only to JavaBean setters, which constructor-bound classes do not have (#384)
 - fix: Navigate from a map-entry key written in Spring's bracket notation, so `app.publishers."[my.registration]".owner-application` in YAML and `app.publishers[my.registration].owner-application` in properties resolve to the map declaration and the declaring member instead of breaking on the dots inside the brackets (#383)
 - fix: Report a non-canonical configuration key on the segment that actually deviates instead of on the deepest key, so `explyt.camel.camelWritten.items[0].name` underlines `camelWritten` rather than the perfectly canonical `name`, and several keys under one such ancestor report it once instead of once each
