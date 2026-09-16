@@ -48,6 +48,32 @@ class SpringPropertiesInspectionTest : ExplytInspectionJavaTestCase() {
         myFixture.testHighlighting("application.properties")
     }
 
+    fun testLoggingLevelUppercaseValueIsNotAnError() {
+        myFixture.configureByText(
+            "application.properties",
+            """
+            logging.level.root=INFO
+            logging.level.org.springframework.kafka=DEBUG
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.properties")
+    }
+
+    fun testHintValueGateUsesValuesHint() {
+        myFixture.copyFileToProject(
+            "hintValueGate/META-INF/additional-spring-configuration-metadata.json",
+            "META-INF/additional-spring-configuration-metadata.json"
+        )
+        myFixture.configureByText(
+            "application.properties",
+            """
+            explyt.modes.mode=<error descr="Invalid value 'hyper', must be one of [fast, slow]">hyper</error>
+            explyt.maponly.beta=anything
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.properties")
+    }
+
     fun testFileDefinitionProperties() {
         @Language("java") val configurationProperty = """
             @org.springframework.context.annotation.Configuration
