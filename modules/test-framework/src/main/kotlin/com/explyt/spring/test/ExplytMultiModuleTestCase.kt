@@ -79,6 +79,25 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
     }
 
     /**
+     * Creates a module named [name] that depends on the main [module], mirroring a Gradle test
+     * source-set module (`foo.test` depends on `foo.main`). The new module gets the same
+     * [libraries] and inherits the project SDK.
+     *
+     * @return the created module, to be passed to [addFileToModule].
+     */
+    protected fun addDependentModule(name: String): Module {
+        val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
+        val dependent = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
+
+        ModuleRootModificationUtil.setSdkInherited(dependent)
+        attachLibraries(dependent)
+        ModuleRootModificationUtil.addDependency(dependent, module, DependencyScope.COMPILE, false)
+
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return dependent
+    }
+
+    /**
      * Writes [text] to [relativePath] inside the source root of [module] and returns the created
      * [PsiFile]. [relativePath] is relative to that source root, e.g. `com/example/Bean.kt`.
      */
