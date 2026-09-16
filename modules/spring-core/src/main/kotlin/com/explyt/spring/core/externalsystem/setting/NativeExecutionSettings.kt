@@ -19,5 +19,5 @@ class NativeExecutionSettings(val project: Project) : ExternalSystemExecutionSet
 }
 
 enum class RunConfigurationType {
-    EXPLYT, KOTLIN, APPLICATION
+    EXPLYT, KOTLIN, APPLICATION, EXTERNAL_SYSTEM
 }

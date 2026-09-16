@@ -26,10 +26,12 @@ import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
@@ -42,6 +44,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiMethodUtil
 import org.jetbrains.annotations.VisibleForTesting
+import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.uast.*
 import java.awt.event.MouseEvent
@@ -175,6 +178,42 @@ class AttachProjectIconGutterHandler(private val canonicalPath: String, private 
             ?: RunManager.getInstance(project).allConfigurationsList.firstOrNull {
                 checkRunConfigurationForClassName(it, qualifiedClassName)
             }
+            ?: findExternalSystemRunConfigurationForClass(project, qualifiedClassName)
+    }
+
+    /**
+     * A Gradle configuration carries no main class name, so it matches a main class only through the module its
+     * task prefix resolves to. One class resolution is needed for that; the module matching itself reads only
+     * the in-memory external-system module properties.
+     */
+    private fun findExternalSystemRunConfigurationForClass(
+        project: Project, qualifiedClassName: String
+    ): RunConfiguration? {
+        val module = runReadAction {
+            JavaPsiFacade.getInstance(project).findClass(qualifiedClassName, project.projectScope())
+                ?.let { ModuleUtilCore.findModuleForPsiElement(it) }
+        } ?: return null
+        val runManager = RunManager.getInstance(project)
+        return findExternalSystemRunConfiguration(runManager, runManager.selectedConfiguration?.configuration, module)
+    }
+
+    /**
+     * The selected configuration wins on a module match; otherwise a single configuration launching the module is
+     * unambiguous, while several differ in environment and none may be guessed — the same tie-breaker
+     * [com.explyt.spring.core.externalsystem.RunConfigurationExtractor] documents for path matches.
+     */
+    private fun findExternalSystemRunConfiguration(
+        runManager: RunManager, selected: RunConfiguration?, module: Module
+    ): RunConfiguration? {
+        if (selected is ExternalSystemRunConfiguration
+            && RunConfigurationUtil.findModuleForExternalSystemRunConfiguration(selected) == module
+        ) {
+            return selected
+        }
+        return runManager.allConfigurationsList
+            .filterIsInstance<ExternalSystemRunConfiguration>()
+            .filter { RunConfigurationUtil.findModuleForExternalSystemRunConfiguration(it) == module }
+            .singleOrNull()
     }
 
     /**
@@ -200,9 +239,12 @@ class AttachProjectIconGutterHandler(private val canonicalPath: String, private 
         if (currentRunConfiguration != null && launchesAnyOf(currentRunConfiguration, mainClassNames)) {
             return currentRunConfiguration
         }
-        return runManager.allConfigurationsList
+        runManager.allConfigurationsList
             .filterIsInstance<SpringBootRunConfiguration>()
             .firstOrNull { launchesAnyOf(it, mainClassNames) }
+            ?.let { return it }
+        val module = ModuleUtilCore.findModuleForFile(mainClassFile, project) ?: return null
+        return findExternalSystemRunConfiguration(runManager, currentRunConfiguration, module)
     }
 
     /**
