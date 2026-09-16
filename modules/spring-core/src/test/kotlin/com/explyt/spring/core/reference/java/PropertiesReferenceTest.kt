@@ -427,6 +427,52 @@ logging.level.org.hibernate.SQL=deb<caret>ug
         assertEquals("payloadType", resolveListElementReferenceName())
     }
 
+    fun testRefKeyListElementUnderBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].routes[0].payload-<caret>type=my.event"
+        )
+
+        assertEquals("setPayloadType", mapValueReferenceName())
+    }
+
+    fun testRefKeyListElementUnderMapKeyConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].routes[0].payload-<caret>type=my.event"
+        )
+
+        assertEquals("payloadType", mapValueReferenceName())
+    }
+
+    fun testRefKeyListElementUnderMapKeyUnknownMemberIsNotResolved() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].routes[0].unkn<caret>own=my.event"
+        )
+
+        assertNull(mapValueReferenceName())
+    }
+
+    private fun mapValueReferenceName(): String? = mapValueReference()
+        .multiResolve(true)
+        .singleOrNull()
+        ?.let { (it.element as? ConfigKeyPsiElement)?.name }
+
+    private fun mapValueReference(): PropertiesKeyMapValueReference {
+        val found = file.findReferenceAt(myFixture.caretOffset)
+        val reference = when (found) {
+            is PsiMultiReference -> found.references.filterIsInstance<PropertiesKeyMapValueReference>().lastOrNull()
+            is PropertiesKeyMapValueReference -> found
+            else -> null
+        }
+        assertNotNull("map value reference must be contributed", reference)
+        return reference!!
+    }
+
     private fun resolveListElementReferenceName(): String? {
         val reference = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references
