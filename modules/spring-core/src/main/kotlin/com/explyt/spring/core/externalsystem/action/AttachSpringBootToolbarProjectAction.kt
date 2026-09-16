@@ -12,6 +12,7 @@ import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.DumbService
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
@@ -46,6 +47,9 @@ class AttachSpringBootToolbarProjectAction : DumbAwareAction() {
     }
 
     private fun RunConfiguration?.supportsSpringBootAttach(): Boolean {
+        // An external-system (Gradle) configuration has no main class to peek at: it qualifies by carrying a task,
+        // and the exact module/main-class resolution happens in actionPerformed like for the other types.
+        if (this is ExternalSystemRunConfiguration) return settings.taskNames.isNotEmpty()
         val mainClassName = when (this) {
             is ApplicationConfiguration -> mainClassName
             // This platform line exposes the Kotlin entry point as `runClass`; `mainClassName` arrived later.
