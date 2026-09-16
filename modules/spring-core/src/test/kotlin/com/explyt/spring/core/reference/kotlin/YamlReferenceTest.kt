@@ -9,6 +9,7 @@ import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
 import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.properties.references.ValueHintReference
+import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.lang.properties.psi.impl.PropertiesFileImpl
@@ -142,6 +143,74 @@ main:
         val resolveResult = multiResolve[0]
         val name = (resolveResult.element as? PsiEnumConstant)?.name
         assertEquals(name, "TUESDAY")
+    }
+
+    fun testRefKeyMapValuePlainKey() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    my-registration:
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapValue() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.reg<caret>istration]":
+      owner-application: my-app
+            """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? YamlKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setPublishers")
     }
 
     fun testRefKeyListElementMember() {
