@@ -545,6 +545,17 @@
                          implementationClass="com.explyt.spring.core.inspections.SpringKotlinObjectInspection"/>
 
         <localInspection language="UAST"
+                         shortName="SpringBeanSystemEnvironmentAccessInspection"
+                         groupBundle="messages.SpringCoreBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.common.notifications.core"
+                         bundle="messages.SpringCoreBundle"
+                         key="explyt.spring.inspection.system.env"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.core.inspections.SpringBeanSystemEnvironmentAccessInspection"/>
+
+        <localInspection language="UAST"
                          shortName="SpringInterfaceCacheAnnotationsInspection"
                          groupBundle="messages.SpringCoreBundle"
                          groupPath="Explyt Spring"
