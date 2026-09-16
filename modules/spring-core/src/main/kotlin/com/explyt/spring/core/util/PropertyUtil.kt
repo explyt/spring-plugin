@@ -913,15 +913,18 @@ object PropertyUtil {
             .filterNotNullTo(mutableListOf())
     }
 
-    fun isNameSetMethod(name: String?, propertyMapValue: String): Boolean {
-        return name?.lowercase() ==
-                "set${
-                    propertyMapValue
-                        .substringAfterLast(".")
-                        .replace("-", "")
-                        .replace("_", "")
-                        .lowercase()
-                }"
+    fun isPropertyMemberName(memberName: String?, propertyName: String): Boolean {
+        if (memberName == null) return false
+        val accessorlessName = when {
+            memberName.length > 3 && memberName[3].isUpperCase()
+                    && (memberName.startsWith("set") || memberName.startsWith("get")) -> memberName.substring(3)
+
+            memberName.length > 2 && memberName[2].isUpperCase()
+                    && memberName.startsWith("is") -> memberName.substring(2)
+
+            else -> memberName
+        }
+        return isSameProperty(accessorlessName, propertyName.substringAfterLast("."))
     }
 
     fun findPropertyByConfigurationPropertyElement(element: PsiElement): PropertySearchResult? {

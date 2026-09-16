@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Navigate from a map-entry or list-element member key to a constructor-bound property — a Kotlin `val` in a data class or a Java record component — instead of only to JavaBean setters, which constructor-bound classes do not have (#384)
 - fix: Navigate from a map-entry key written in Spring's bracket notation, so `app.publishers."[my.registration]".owner-application` in YAML and `app.publishers[my.registration].owner-application` in properties resolve to the map declaration and the declaring member instead of breaking on the dots inside the brackets (#383)
 - fix: Report a non-canonical configuration key on the segment that actually deviates instead of on the deepest key, so `explyt.camel.camelWritten.items[0].name` underlines `camelWritten` rather than the perfectly canonical `name`, and several keys under one such ancestor report it once instead of once each
 - fix: Offer one navigation target for a configuration key declared by a library, instead of the same declaration once from the jar and once from its sources jar: the two were folded together by rewriting the file name while keeping the path, and Gradle caches them under two different checksum directories
