@@ -251,8 +251,12 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                         && (hint.providers.isEmpty()
                         || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
             }
+            // The gate must consult the same hint the values are validated against below: `<prefix>.values`
+            // declares the closed value set of a map property, while `<prefix>.keys` (e.g. `logging.level.keys`)
+            // enumerates allowed map KEYS and says nothing about values - its `logger-name` provider would
+            // otherwise license an `Invalid value` error that the `any` provider of `.values` forbids.
             hints.hintsNamed(property.key).any(declaresValues)
-                    || hints.hintsNamed(property.key.substringBeforeLast(".") + POSTFIX_KEYS).any(declaresValues)
+                    || hints.hintsNamed(property.key.substringBeforeLast(".") + POSTFIX_VALUES).any(declaresValues)
         }
         if (findInFileProperties.isEmpty()) {
             return problems
