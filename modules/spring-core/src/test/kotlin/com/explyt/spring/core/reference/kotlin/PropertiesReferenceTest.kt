@@ -8,6 +8,7 @@ package com.explyt.spring.core.reference.kotlin
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
 import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
+import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
@@ -124,6 +125,31 @@ main.enum-value-additional=TUE<caret>SDAY
         )
 
         assertEquals("setSources", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyMapValueConstructorBoundDataClass() {
+        myFixture.copyFileToProject("ConstructorBoundProperties.kt")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers.my-registration.owner-<caret>application=my-app"
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals("ownerApplication", name)
+    }
+
+    fun testRefKeyListElementConstructorBoundDataClass() {
+        myFixture.copyFileToProject("ConstructorBoundProperties.kt")
+        myFixture.configureByText(
+            "application.properties",
+            "app.routes[0].payload-<caret>type=my.event"
+        )
+
+        assertEquals("payloadType", resolveListElementReferenceName())
     }
 
     private fun resolveListElementReferenceName(): String? {

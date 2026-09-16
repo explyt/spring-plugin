@@ -38,7 +38,7 @@ class ConfigurationPropertyListElementReference(
 
         val elementType = PropertyUtil.getCollectionElementType(collectionProperty) ?: return emptyArray()
         return PropertyUtil.getMembersOfType(module, elementType, elementKey)
-            .firstOrNull { PropertyUtil.isNameSetMethod(it.name, elementKey) }
+            .firstOrNull { PropertyUtil.isPropertyMemberName(it.name, elementKey) }
             ?.let { PropertyUtil.resolveResults(it) }
             ?: emptyArray()
     }

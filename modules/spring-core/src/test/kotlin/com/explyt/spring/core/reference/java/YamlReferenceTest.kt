@@ -625,6 +625,45 @@ ingest:
         assertEmpty(listElementReference().multiResolve(true).toList())
     }
 
+    fun testRefKeyMapValueConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    my-registration:
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? YamlKeyMapValueReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals("ownerApplication", name)
+    }
+
+    fun testRefKeyListElementConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  routes:
+    - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("payloadType", resolveListElementReferenceName())
+    }
+
     private fun resolveListElementReferenceName(): String? = listElementReference()
         .multiResolve(true)
         .singleOrNull()

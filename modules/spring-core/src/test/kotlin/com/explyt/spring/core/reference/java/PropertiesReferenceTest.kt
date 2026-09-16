@@ -387,6 +387,31 @@ logging.level.org.hibernate.SQL=deb<caret>ug
         assertEquals("setSources", resolveListElementReferenceName())
     }
 
+    fun testRefKeyMapValueConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers.my-registration.owner-<caret>application=my-app"
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals("ownerApplication", name)
+    }
+
+    fun testRefKeyListElementConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.routes[0].payload-<caret>type=my.event"
+        )
+
+        assertEquals("payloadType", resolveListElementReferenceName())
+    }
+
     private fun resolveListElementReferenceName(): String? {
         val reference = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
             ?.references
