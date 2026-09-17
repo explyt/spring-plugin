@@ -13,6 +13,7 @@ import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.EndpointPathPatterns
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
 import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
@@ -176,11 +177,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "new method a different URL than the one written on it. " +
                 "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers " +
                 "(Kafka/RabbitMQ listeners) and event listeners. " +
-                "Returns each match with full path, HTTP methods, controller class, method name, parameters with " +
-                "their binding source, return type, file path, line and endpoint type. " +
+                "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
+                "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
+                "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
+                "file path, line and endpoint type. 'endpoints' is ordered the way Spring picks a handler - literal " +
+                "before '{template}', fewer wildcards first - so when several match one URL the first is the one " +
+                "that dispatches. " +
                 "Matching is forgiving: 'requests' matches '/api/.../requests', and '{id}' matches any path variable. " +
-                "An empty result means no such route exists yet - call explyt_get_spring_http_endpoints with " +
-                "controllerFilter to see the routes the target controller already has."
+                "When 'endpoints' is empty, no such route exists yet, and 'nearestByPrefix' lists the existing routes " +
+                "that share the longest leading path with the pattern - the controller and the conventions a new " +
+                "route has to fit; 'sharedPrefix' names that common path."
     )
     suspend fun findEndpoint(
         @McpDescription(
@@ -199,25 +205,82 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
         httpMethod: String = "",
     ): String {
+        val result = lookupEndpoints(urlPattern, projectPath, httpMethod) { endpoint, project ->
+            toEndpointJson(endpoint, project)
+        }
+        return mapper.writeValueAsString(result)
+    }
+
+    /**
+     * The single-URL lookup shared by the find and contract tools.
+     *
+     * Matches are ordered by [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}`
+     * route both match the pattern, the first element is the one Spring dispatches to. A pattern that matches
+     * nothing is not a dead end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing the longest
+     * leading path with it, which is where a route that does not exist yet would be added.
+     */
+    private suspend fun <T> lookupEndpoints(
+        urlPattern: String,
+        projectPath: String,
+        httpMethod: String,
+        toJson: (EndpointElement, Project) -> T?,
+    ): EndpointLookupJson<T> {
         if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
         val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
         val normalizedPattern = SpringWebUtil.simplifyUrl(urlPattern)
         val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
 
-        val endpoints = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
 
-                allEndpoints.asSequence()
+                val matching = allEndpoints
                     .filter { matchesUrlPattern(it, normalizedPattern) }
                     .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
+                    .sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+                val page = matching.asSequence()
                     .take(MAX_ENDPOINT_RESULTS)
-                    .map { toEndpointJson(it, project) }
+                    .onEach { ProgressManager.checkCanceled() }
+                    .mapNotNull { toJson(it, project) }
                     .toList()
+
+                // The neighbourhood of a miss is context, not an answer, so the method filter does not apply to
+                // it: a POST sibling under the same prefix still names the controller a new GET route belongs to.
+                val nearest = if (matching.isEmpty()) nearestByPrefix(allEndpoints, normalizedPattern, project) else null
+
+                EndpointLookupJson(
+                    totalCount = matching.size,
+                    truncated = matching.size > MAX_ENDPOINT_RESULTS,
+                    endpoints = page,
+                    sharedPrefix = nearest?.first,
+                    nearestByPrefix = nearest?.second ?: emptyList(),
+                )
             }
         }
+    }
 
-        return mapper.writeValueAsString(endpoints)
+    /**
+     * The routes sharing the longest leading path with [normalizedPattern], as compact endpoints, with that path.
+     *
+     * Nothing is returned when the longest shared path is empty: every route in the project "shares" the root,
+     * and listing all of them would say nothing about where the pattern belongs.
+     */
+    private fun nearestByPrefix(
+        endpoints: List<EndpointElement>,
+        normalizedPattern: String,
+        project: Project,
+    ): Pair<String, List<CompactEndpointJson>>? {
+        val bySharedSegments = endpoints
+            .groupBy { EndpointPathPatterns.sharedLeadingSegments(SpringWebUtil.simplifyUrl(it.path), normalizedPattern) }
+        val (sharedSegments, nearest) = bySharedSegments.maxByOrNull { it.key } ?: return null
+        if (sharedSegments == 0) return null
+
+        val compact = nearest
+            .sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+            .take(MAX_NEAREST_ROUTES)
+            .onEach { ProgressManager.checkCanceled() }
+            .map { toCompactEndpointJson(it, project) }
+        return EndpointPathPatterns.prefixOf(normalizedPattern, sharedSegments) to compact
     }
 
     private fun matchesUrlPattern(endpoint: EndpointElement, normalizedPattern: String): Boolean {
@@ -449,12 +512,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "UNKNOWN for one bound by a custom HandlerMethodArgumentResolver, whose wire format this tool " +
                 "cannot read - inspect the source before treating an UNKNOWN parameter as absent. " +
                 "'required' is null whenever nothing declares it. " +
+                "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
+                "'endpoints' ordered as Spring dispatches, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
+                "matched - with a contract in place of each endpoint. " +
                 "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
     )
     suspend fun getEndpointContract(
         @McpDescription(
             "URL pattern of the endpoint to inspect (e.g. '/api/orgs/{orgId}/project-success/v1/coverage/users'). " +
-                    "Must match a single endpoint. If multiple match, all are returned."
+                    "Should match a single endpoint. If several match, all are returned, the dispatching one first."
         )
         urlPattern: String,
         @McpDescription("Path to the project root")
@@ -462,25 +528,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         @McpDescription("Optional HTTP method filter: GET, POST, PUT, DELETE, etc. Leave empty for all.")
         httpMethod: String = "",
     ): String {
-        if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
-        val normalizedPattern = SpringWebUtil.simplifyUrl(urlPattern)
-        val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
-
-        val contracts = withContext(Dispatchers.IO) {
-            smartReadAction(project) {
-                val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
-
-                allEndpoints.asSequence()
-                    .filter { matchesUrlPattern(it, normalizedPattern) }
-                    .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
-                    .take(MAX_ENDPOINT_RESULTS)
-                    .mapNotNull { buildContract(it, project) }
-                    .toList()
-            }
+        val result = lookupEndpoints(urlPattern, projectPath, httpMethod) { endpoint, project ->
+            buildContract(endpoint, project)
         }
-
-        return mapper.writeValueAsString(contracts)
+        return mapper.writeValueAsString(result)
     }
 
     private fun buildContract(endpoint: EndpointElement, project: Project): EndpointContractJson? {
@@ -926,6 +977,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // expected to resolve to many endpoints, so a small cap is enough.
         private const val MAX_ENDPOINT_RESULTS = 50
 
+        // A miss is answered with the routes around it, and a handful of them already names the controller
+        // and its conventions; more would only repeat the listing tool with a worse filter.
+        private const val MAX_NEAREST_ROUTES = 20
+
         // Hard cap for a single page of the "list all endpoints" tool. Converting an endpoint to JSON resolves
         // PSI, so the page size bounds both the read-action duration and the response size.
         private const val MAX_ENDPOINT_LIST_RESULTS = 2000
@@ -1088,6 +1143,23 @@ data class EndpointListJson<T>(
     val offset: Int,
     val truncated: Boolean,
     val endpoints: List<T>,
+)
+
+/**
+ * The result of resolving one URL pattern, for the find and contract tools.
+ *
+ * [endpoints] is ordered by [EndpointPathPatterns.SPECIFICITY], the order Spring picks a handler in, so its
+ * first element is the one that dispatches when several routes match. [nearestByPrefix] is filled only when
+ * [endpoints] is empty: the routes sharing the longest leading path ([sharedPrefix]) with the pattern, which is
+ * where a route that does not exist yet would be added. The two lists are empty rather than null so a client
+ * can always iterate them; [sharedPrefix] is null exactly when [nearestByPrefix] is empty.
+ */
+data class EndpointLookupJson<T>(
+    val totalCount: Int,
+    val truncated: Boolean,
+    val endpoints: List<T>,
+    val sharedPrefix: String?,
+    val nearestByPrefix: List<CompactEndpointJson>,
 )
 
 data class EndpointParameterJson(
