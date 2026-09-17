@@ -16,7 +16,7 @@ import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.model.ExternalSystemDataKeys
 import com.intellij.openapi.externalSystem.model.project.ProjectData
-import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
@@ -49,16 +49,40 @@ class DetachAllProjectsAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) {
         StatisticService.getInstance().addActionUsage(StatisticActionId.SPRING_BOOT_PANEL_REMOVE)
         val project = e.project ?: return
-        val projectsNode = ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID)
-            .mapNotNull { it.externalProjectStructure }
-        logger.info("Explyt detach all projects: ${projectsNode.size} linked project node(s) to detach")
-        for (projectNode in projectsNode) {
-            detachProjectNode(projectNode.data, project)
-        }
+        detachAllProjects(project)
         ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, SYSTEM_ID)
     }
 
     companion object {
+        fun detachAllProjects(project: Project) {
+            // getLinkedProjectsSettings() is a live view over the settings map, and detachProject
+            // removes entries from it, so iterate over a snapshot.
+            val linkedPaths = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
+                .linkedProjectsSettings.mapNotNull { it.externalProjectPath }
+            logger.info("Explyt detach all projects: ${linkedPaths.size} linked project(s) to detach")
+            for (linkedPath in linkedPaths) {
+                detachProject(project, linkedPath)
+            }
+        }
+
+        fun detachProject(project: Project, externalProjectPath: String) {
+            val projectData = ExternalSystemApiUtil.findProjectNode(project, SYSTEM_ID, externalProjectPath)?.data
+            if (projectData != null) {
+                detachProjectNode(projectData, project)
+                return
+            }
+            // Import data is absent when a refresh never succeeded or its cache was dropped, and the debug
+            // session entry never has it at all. Detaching by node would silently do nothing and leave the
+            // link in the settings file forever, so drop the link through the settings, which also
+            // publishes onProjectsUnlinked.
+            val unlinked = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
+                .unlinkExternalProject(externalProjectPath)
+            logger.info("Explyt detach project: no import data, unlinked through settings: $unlinked")
+            // The linked path identifies the user's machine and projects: keep it out of idea.log,
+            // which users routinely attach to public bug reports.
+            logger.debug { "Explyt detach project: path $externalProjectPath" }
+        }
+
         //the reflected signature is pinned by UnlinkProjectAwareTest.detachProjectSignatureIsStable
         fun detachProjectNode(projectData: ProjectData, project: Project) {
             val method = try {

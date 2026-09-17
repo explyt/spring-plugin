@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Make "Detach All Spring Boot Projects" enumerate the linked-project settings instead of the import-data cache: a project whose refresh never succeeded (or whose cached structure was dropped) was invisible to the action and stayed linked forever, and the debug-session link could never be detached at all
 - fix: Report why "Detach All Spring Boot Projects" did nothing instead of discarding the failure: the reflective call into the platform's internal detach action swallowed every exception, so a signature change or a failed detach left no trace in the log at all. The failure is now logged, the number of linked projects is logged before the loop, and a missing platform method is named explicitly
 - fix: Unlink an Explyt Spring project whose import data is absent — after a refresh that never succeeded, or once its cache was dropped, the detach found no project node and returned silently, leaving the link in the project settings forever. The link is now dropped through the external-system settings in that case
 - fix: Refresh the Explyt Spring tool window after unlinking a single project, which only "Detach All Spring Boot Projects" did: the detached node stayed in the tree until the next full structure update
