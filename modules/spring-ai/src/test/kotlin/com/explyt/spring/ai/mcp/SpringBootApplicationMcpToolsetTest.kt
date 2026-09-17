@@ -166,7 +166,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "GET"
         )
-        val endpoints = parseArray(result)
+        val endpoints = endpointsOf(result)
 
         assertEquals(1, endpoints.size())
         val endpoint = endpoints[0]
@@ -185,8 +185,72 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = ""
         )
-        val endpoints = parseArray(result)
-        assertEquals("Expected no matching endpoints, got $endpoints", 0, endpoints.size())
+        val root = mapper.readTree(result)
+        assertEquals("Expected no matching endpoints, got ${root["endpoints"]}", 0, root["endpoints"].size())
+        assertEquals(0, root["totalCount"].asInt())
+        assertEquals(false, root["truncated"].asBoolean())
+        assertEquals("A pattern sharing no leading segment with any route has no neighbourhood",
+            0, root["nearestByPrefix"].size())
+        assertTrue(root["sharedPrefix"].isNull)
+    }
+
+    /**
+     * A miss is the moment the tool is most useful to an agent about to add a route, and `[]` told it nothing.
+     * The routes sharing the longest leading path with the pattern name the controller the new route belongs
+     * to and the conventions it has to follow.
+     */
+    fun testFindEndpointMissListsTheNearestRoutes() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.findEndpoint(urlPattern = "/api/routes/export/preview", projectPath = projectPath(), httpMethod = "GET")
+        )
+
+        assertEquals(0, root["endpoints"].size())
+        assertEquals("/api/routes/export", root["sharedPrefix"].asText())
+        assertEquals(
+            "Expected the two /api/routes siblings and nothing from the other controllers",
+            listOf("/api/routes/export", "/api/routes/{id}"),
+            texts(root["nearestByPrefix"], "fullPath")
+        )
+        val nearest = root["nearestByPrefix"].first()
+        assertEquals("com.example.app.web.RouteController", nearest["controllerClass"].asText())
+        assertFalse("The neighbourhood is compact: no per-method signature", nearest.has("parameters"))
+    }
+
+    /** The neighbourhood is context, not an answer, so the HTTP method filter must not thin it out. */
+    fun testNearestRoutesIgnoreTheHttpMethodFilter() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.findEndpoint(urlPattern = "/api/demo/items/{id}/history", projectPath = projectPath(), httpMethod = "DELETE")
+        )
+
+        assertEquals(0, root["endpoints"].size())
+        assertEquals(
+            setOf("/api/demo/items/{id}"),
+            texts(root["nearestByPrefix"], "fullPath").toSet()
+        )
+    }
+
+    /**
+     * When a literal route and a `{template}` route both match one URL, Spring dispatches to the literal one.
+     * A caller asking "which handler serves this URL" reads the answer off the first element, so the order is
+     * part of the contract, not presentation.
+     */
+    fun testFindEndpointOrdersTheDispatchingRouteFirst() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = mapper.readTree(
+            toolset.findEndpoint(urlPattern = "/api/routes/export", projectPath = projectPath(), httpMethod = "GET")
+        )
+
+        assertEquals(
+            listOf("/api/routes/export", "/api/routes/{id}"),
+            texts(root["endpoints"], "fullPath")
+        )
+        assertEquals(2, root["totalCount"].asInt())
+        assertEquals("Nothing nearest is reported when something matched", 0, root["nearestByPrefix"].size())
     }
 
     fun testGetHttpEndpoints() = runBlocking<Unit> {
@@ -219,7 +283,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "GET"
         )
-        val contracts = parseArray(result)
+        val contracts = endpointsOf(result)
         assertEquals(1, contracts.size())
         val contract = contracts[0]
         assertEquals("/api/demo/items/{id}", contract["fullPath"].asText())
@@ -556,7 +620,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "GET"
         )
-        val contract = parseArray(result)[0]
+        val contract = endpointsOf(result)[0]
         val parameters = contract["parameters"]
         val bySource = parameters.associate { it["name"].asText() to it["source"].asText() }
 
@@ -605,7 +669,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "GET"
         )
-        val parameters = parseArray(result)[0]["parameters"]
+        val parameters = endpointsOf(result)[0]["parameters"]
 
         val currentUser = parameters.first { it["name"].asText() == "currentUser" }
         assertTrue("Expected 'required' to be null for a resolver-bound parameter", currentUser["required"].isNull)
@@ -852,7 +916,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = ""
         )
-        val methodNames = texts(parseArray(result), "methodName").toSet()
+        val methodNames = texts(endpointsOf(result), "methodName").toSet()
         assertTrue(
             "Expected partial-url match to return getItem + createItem, got $methodNames",
             methodNames.containsAll(setOf("getItem", "createItem"))
@@ -867,7 +931,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "PUT"
         )
-        val endpoints = parseArray(result)
+        val endpoints = endpointsOf(result)
         assertEquals(
             "Expected no endpoints for PUT filter on GET/POST endpoints, got $endpoints",
             0, endpoints.size()
@@ -938,7 +1002,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             httpMethod = "POST"
         )
-        val contracts = parseArray(result)
+        val contracts = endpointsOf(result)
         assertEquals(1, contracts.size())
         val contract = contracts[0]
         assertEquals("createItem", contract["methodName"].asText())
