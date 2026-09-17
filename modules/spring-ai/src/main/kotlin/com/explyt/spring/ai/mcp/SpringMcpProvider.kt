@@ -23,6 +23,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
+import com.intellij.mcpserver.annotations.McpToolHintValue.TRUE
+import com.intellij.mcpserver.annotations.McpToolHints
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.module.ModuleUtilCore
@@ -61,8 +63,17 @@ private fun createMcpExpectedError(message: String): Throwable {
 
 class SpringBootApplicationMcpToolset : McpToolset {
 
-    @McpTool("explyt_get_spring_boot_applications")
-    @McpDescription(description = "Returns all SpringBootApplications - fully-qualified (e.g. 'java.util.List') Java class names in the project")
+    @McpTool("explyt_get_spring_boot_applications", title = "Spring Boot applications in the project")
+    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+    @McpDescription(
+        description = "Call first when entering a Spring workspace you do not know, and before any " +
+                "explyt_get_project_beans_by_spring_boot_application call, which needs one of these class names. " +
+                "A multi-module workspace can hold several @SpringBootApplication classes, and guessing the wrong one " +
+                "scopes every later bean question to the wrong module. " +
+                "Returns each application's fully-qualified class name, Spring Boot version, starters, module and " +
+                "build tool - the version and starters answer 'which Boot line and which features are on the " +
+                "classpath' without opening the build file."
+    )
     suspend fun getAllSpringBootApplications(
         @McpDescription("Path to the project root")
         projectPath: String
@@ -82,8 +93,18 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return mapper.writeValueAsString(applications)
     }
 
-    @McpTool("explyt_get_project_beans_by_spring_boot_application")
-    @McpDescription(description = "Returns all project's Spring Beans in SpringBootApplication by bean type")
+    @McpTool("explyt_get_project_beans_by_spring_boot_application", title = "Beans of a Spring Boot application by stereotype")
+    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+    @McpDescription(
+        description = "Call before adding a component, to see which beans of that stereotype already exist and " +
+                "what they are named; before injecting by type, to check that exactly one candidate exists; and " +
+                "when asked what a module contributes to the context. " +
+                "Lists the beans of one Spring Boot application, filtered by stereotype, from the IDE's bean " +
+                "model: it includes @Bean factory methods, meta-annotated stereotypes and @Import-ed configurations, " +
+                "which a text search for '@Service' or '@Component' never finds. " +
+                "Returns each bean's name, fully-qualified class and module. " +
+                "Take applicationClassName from explyt_get_spring_boot_applications."
+    )
     suspend fun applicationBeans(
         @McpDescription("Fully-qualified class name for the SpringBootApplication")
         applicationClassName: String,
@@ -143,16 +164,23 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
     }
 
-    @McpTool("explyt_find_spring_endpoint")
+    @McpTool("explyt_find_spring_endpoint", title = "Resolve a URL to its Spring handler")
+    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
     @McpDescription(
-        description = "Finds endpoints matching a URL pattern across all endpoint types: " +
-                "Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers (Kafka/RabbitMQ listeners), " +
-                "and event listeners. " +
-                "Resolves composed paths from class-level @RequestMapping and method-level @GetMapping/@PostMapping etc. " +
-                "Returns matching endpoints with full path, HTTP methods, controller class, method name, parameters, " +
-                "return type, file path, line number, and endpoint type. " +
-                "Supports partial URL matching (e.g. 'requests' matches '/api/.../requests') " +
-                "and path variable wildcards (e.g. '{id}' matches any path variable name)."
+        description = "Call when a task starts from a URL - a bug report, a frontend call, a log line, a curl - " +
+                "and right after adding or changing a mapping, to confirm the composed path and the bound parameters " +
+                "registered as intended. " +
+                "Resolves the URL against the IDE's endpoint model, not the source text: the path is composed from " +
+                "the class-level @RequestMapping and the method-level @GetMapping/@PostMapping, so it never appears " +
+                "as one string and a text search for it finds nothing, and a class-level prefix can silently give a " +
+                "new method a different URL than the one written on it. " +
+                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers " +
+                "(Kafka/RabbitMQ listeners) and event listeners. " +
+                "Returns each match with full path, HTTP methods, controller class, method name, parameters with " +
+                "their binding source, return type, file path, line and endpoint type. " +
+                "Matching is forgiving: 'requests' matches '/api/.../requests', and '{id}' matches any path variable. " +
+                "An empty result means no such route exists yet - call explyt_get_spring_http_endpoints with " +
+                "controllerFilter to see the routes the target controller already has."
     )
     suspend fun findEndpoint(
         @McpDescription(
@@ -307,9 +335,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     // ---- explyt_get_spring_http_endpoints ----
 
-    @McpTool("explyt_get_spring_http_endpoints")
+    @McpTool("explyt_get_spring_http_endpoints", title = "HTTP endpoints of one controller or the whole project")
+    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
     @McpDescription(
-        description = "Lists all HTTP endpoints in the project. " +
+        description = "Lists the HTTP endpoints of one controller (controllerFilter) or of the whole project. " +
+                "Call before extending an existing controller: the listing shows its class-level prefix, its sibling " +
+                "routes and the parameter conventions a new route must match, and a literal route that would " +
+                "compete with a '{template}' sibling. " +
+                "Call with compact=true for a first inventory of an API surface you do not know yet. " +
                 "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
                 "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
                 "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
@@ -324,8 +357,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
                 "and on a large project the full form can exceed 100 KB on a single line. " +
                 "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
-                "or request the next page with 'offset' = 'offset' + number of returned endpoints. " +
-                "Use optional filters to narrow results by controller class name or endpoint type."
+                "or request the next page with 'offset' = 'offset' + number of returned endpoints."
     )
     suspend fun getHttpEndpoints(
         @McpDescription("Path to the project root")
@@ -400,19 +432,24 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     // ---- explyt_get_spring_endpoint_contract ----
 
-    @McpTool("explyt_get_spring_endpoint_contract")
+    @McpTool("explyt_get_spring_endpoint_contract", title = "Full request/response contract of one endpoint")
+    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
     @McpDescription(
-        description = "Returns the full API contract for a specific endpoint. " +
-                "Includes HTTP method, full path, every declared handler parameter with its type, " +
-                "return type, response DTO field schema (recursively expanded up to 3 levels), " +
-                "produces/consumes media types, and the first service method called from the controller. " +
+        description = "Call before writing a client, a test, a frontend call or an OpenAPI description against one " +
+                "endpoint, and before changing its request or response shape, to see what callers currently depend " +
+                "on. " +
+                "Returns the full API contract of the endpoint: HTTP method, full path, every declared handler " +
+                "parameter with its type, return type, response DTO field schema (recursively expanded up to " +
+                "3 levels), produces/consumes media types, and the first service method called from the controller. " +
+                "Reading the handler signature by hand misses what Spring binds implicitly and what the DTO's nested " +
+                "types serialise to. " +
                 "Each parameter carries a 'source': PATH, QUERY, BODY, HEADER, COOKIE or MODEL for an " +
                 "annotation-bound one (whose 'name' is the wire name, not the Java name, and whose 'required' is " +
                 "declared); FRAMEWORK for one the container supplies, such as WebRequest or Principal; and " +
                 "UNKNOWN for one bound by a custom HandlerMethodArgumentResolver, whose wire format this tool " +
                 "cannot read - inspect the source before treating an UNKNOWN parameter as absent. " +
                 "'required' is null whenever nothing declares it. " +
-                "Use this after explyt_find_spring_endpoint or explyt_get_spring_http_endpoints to deeply inspect a single endpoint."
+                "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
     )
     suspend fun getEndpointContract(
         @McpDescription(
@@ -549,13 +586,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return DtoSchemaJson(className = fqn, fields = fields)
     }
 
-    @McpTool("explyt_trace_spring_call_chain")
+    @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
+    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
     @McpDescription(
-        description = "Traces the call chain from a given method through Spring layers (Controller → Service → Repository). " +
-                "Returns the chain of methods with their Spring stereotype (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION), " +
-                "parameters, called methods, file paths, and line numbers. " +
-                "Optionally finds test files that reference discovered methods. " +
-                "Useful for understanding cross-cutting concerns and planning parameter-threading changes."
+        description = "Call before changing a service method's signature or threading a new parameter through the " +
+                "layers, and after explyt_find_spring_endpoint when a task needs the logic behind a route, not only " +
+                "its handler. " +
+                "Traces the call chain from the method at filePath:line through the Spring layers " +
+                "(Controller → Service → Repository) by resolving the calls into injected beans - following an " +
+                "injected interface to its implementation is where a hand-made trace usually stops. " +
+                "Returns the chain of methods with their Spring stereotype (CONTROLLER, SERVICE, REPOSITORY, " +
+                "COMPONENT, CONFIGURATION), parameters, called methods, file paths and line numbers, and with " +
+                "includeTests the test files that reference the discovered methods - the tests a signature change " +
+                "will break."
     )
     suspend fun traceCallChain(
         @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
@@ -696,15 +739,18 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     // ---- explyt_get_spring_data_entities ----
 
-    @McpTool("explyt_get_spring_data_entities")
+    @McpTool("explyt_get_spring_data_entities", title = "JPA entities with their table mapping")
+    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
     @McpDescription(
-        description = "Returns all JPA entities (@Entity annotated classes) in the project with their schema metadata. " +
-                "Detects both javax.persistence and jakarta.persistence annotations. " +
-                "Each entity includes class name, file path and line, table name (from @Table or default), " +
-                "fields with column names, types, primary key flag, nullability, " +
-                "and JPA relationships (@OneToOne, @OneToMany, @ManyToOne, @ManyToMany) with joinColumn/mappedBy metadata. " +
-                "Also returns table indexes from @Table(indexes=[...]). " +
-                "Use this for schema understanding, migration planning, DTO design, and query writing."
+        description = "Call before writing a query, a migration, a DTO or a projection, and before adding a field to " +
+                "an entity, to see the table, column and relationship names the database actually uses. " +
+                "Lists the JPA entities (@Entity classes, javax.persistence and jakarta.persistence alike) of the " +
+                "project, optionally under one package, with their schema metadata: class name, file path and line, " +
+                "table name (from @Table or the default), fields with column names, types, primary key flag and " +
+                "nullability, JPA relationships (@OneToOne, @OneToMany, @ManyToOne, @ManyToMany) with " +
+                "joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
+                "A column name that differs from its field name, and a relationship's owning side, are exactly what " +
+                "a query written from the Java field names gets wrong."
     )
     suspend fun getSpringDataEntities(
         @McpDescription("Path to the project root")
