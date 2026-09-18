@@ -19,14 +19,13 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.externalSystem.autolink.ExternalSystemProjectLinkListener
 import com.intellij.openapi.externalSystem.autolink.ExternalSystemUnlinkedProjectAware
 import com.intellij.openapi.externalSystem.settings.ExternalSystemSettingsListener
-import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
+import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.projectImport.ProjectOpenProcessor
 import com.intellij.psi.PsiManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
 
 class UnlinkedProjectAware : ExternalSystemUnlinkedProjectAware {
     override val systemId = Constants.SYSTEM_ID
@@ -62,9 +61,9 @@ class UnlinkedProjectAware : ExternalSystemUnlinkedProjectAware {
     }
 
     override suspend fun unlinkProject(project: Project, externalProjectPath: String) {
-        val projectData = ExternalSystemApiUtil.findProjectNode(project, systemId, externalProjectPath)?.data ?: return
         withContext(Dispatchers.EDT) {
-            DetachAllProjectsAction.detachProjectNode(projectData, project)
+            DetachAllProjectsAction.detachProject(project, externalProjectPath)
+            ExternalSystemUtil.scheduleExternalViewStructureUpdate(project, systemId)
         }
     }
 }
