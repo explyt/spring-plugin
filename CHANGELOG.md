@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Spring Web
+- fix: List an Actuator endpoint once, with a server-relative path, instead of once per module that sets `management.server.port` and with the port pasted into the path: a shared endpoint appeared twice in the Explyt Endpoints tool window — the second row reading `http://localhost:0/...` when the port came from a test configuration binding an ephemeral port — and the host made the path unmatchable, so no URL string resolved to an Actuator endpoint whenever a management port was set
+
 ### Spring Core
 - fix: Make "Detach All Spring Boot Projects" enumerate the linked-project settings instead of the import-data cache: a project whose refresh never succeeded (or whose cached structure was dropped) was invisible to the action and stayed linked forever, and the debug-session link could never be detached at all
 - fix: Report why "Detach All Spring Boot Projects" did nothing instead of discarding the failure: the reflective call into the platform's internal detach action swallowed every exception, so a signature change or a failed detach left no trace in the log at all. The failure is now logged, the number of linked projects is logged before the loop, and a missing platform method is named explicitly
