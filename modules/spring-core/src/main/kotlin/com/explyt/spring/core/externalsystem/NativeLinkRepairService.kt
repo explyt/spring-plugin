@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.externalsystem
 
+import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.setting.NativeSettings
 import com.explyt.spring.core.externalsystem.utils.Constants
@@ -12,11 +13,15 @@ import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.debug
+import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -24,6 +29,8 @@ import com.intellij.util.concurrency.ThreadingAssertions
 import org.jetbrains.annotations.VisibleForTesting
 import java.util.concurrent.Callable
 import java.util.concurrent.atomic.AtomicBoolean
+
+private val logger = logger<NativeLinkRepairService>()
 
 /**
  * Re-binds Explyt Spring project links whose stored run configuration name no longer exists.
@@ -118,6 +125,98 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     }
 
     /**
+     * Handles a link whose stored run configuration name no longer exists, discovered mid-sync by
+     * [com.explyt.spring.core.externalsystem.SpringBeanNativeResolver]: the extractor deliberately returns nothing
+     * for a dangling name instead of fabricating a configuration, so without intervention every refresh fails the
+     * same way for a project that may be invisible in the tool window.
+     *
+     * Heal-first: when exactly one run configuration points at the link's main-class file, [executionSettings] is
+     * rebound to it and re-resolved through [reresolve]. The stored settings are updated only when that
+     * re-resolution succeeds — a candidate of a configuration type this link cannot launch would leave the stored
+     * name unresolvable. A rebinding that fails re-resolution is rolled back, so the sync error keeps naming the
+     * real stored name.
+     *
+     * Without a candidate, a link that has no import data is removed: it produces a sync error on every refresh and
+     * shows nothing in return. A link with import data keeps failing loudly instead — its stale tree node is visible
+     * and may still be wanted. Links whose stored name still resolves are out of scope here: a launch or build
+     * failure of an existing configuration is a transient application problem, not a broken link.
+     *
+     * Settings mutations are posted to the EDT, as in the rest of the link lifecycle, and revalidated there: a link
+     * healed or re-linked while this pass was in flight must not be removed. On the EDT itself (tests) they run
+     * inline, keeping the call synchronous.
+     *
+     * @return `true` when the link was healed and [executionSettings] carries the candidate's name
+     */
+    fun healOrPruneDanglingLink(
+        projectPath: String,
+        executionSettings: NativeExecutionSettings,
+        reresolve: () -> Boolean,
+    ): Boolean {
+        val storedName = executionSettings.runConfigurationName ?: return false
+        // The debug-session link is keyed by a transient session, never by a run configuration name.
+        if (projectPath == Constants.DEBUG_SESSION_NAME) return false
+        val runManager = RunManager.getInstance(project)
+        if (!isDanglingName(storedName, runManager)) return false
+        val candidates = runReadActionBlocking { findConfigurationsByMainFile(runManager, projectPath) }
+        // Several configurations on the same main-class file: guessing one would silently take another's profiles
+        // and environment, and deleting the link would destroy it — leave it untouched and failing loudly.
+        if (candidates.size > 1) return false
+        val candidate = candidates.singleOrNull()
+        if (candidate != null) {
+            executionSettings.runConfigurationName = candidate.name
+            if (reresolve()) {
+                logger.info("Explyt link repair: healed a dangling link during sync")
+                logger.debug { "Explyt link repair: rebind $storedName -> ${candidate.name} for $projectPath" }
+                persistHealedName(projectPath, storedName, candidate.name)
+                return true
+            }
+            executionSettings.runConfigurationName = storedName
+            logger.info("Explyt link repair: the healing candidate does not resolve for this link, keeping the stored name")
+            return false
+        }
+        if (hasImportData(projectPath)) return false
+        logger.info("Explyt link repair: pruning a dangling link that has no import data")
+        logger.debug { "Explyt link repair: pruning $storedName at $projectPath" }
+        pruneLink(projectPath, storedName)
+        return false
+    }
+
+    /** The tool window renders a project only from its imported structure, so stored data means the link is visible. */
+    private fun hasImportData(projectPath: String): Boolean =
+        ExternalSystemApiUtil.findProjectNode(project, Constants.SYSTEM_ID, projectPath)?.data != null
+
+    /**
+     * Written on the EDT like the other settings mutations in this class, and only after revalidation: the healing
+     * candidate was computed on a pooled thread, and the world may have moved on since.
+     */
+    private fun persistHealedName(projectPath: String, previousName: String, healedName: String) {
+        runOnEdt {
+            val linked = project.getService(NativeSettings::class.java).getLinkedProjectSettings(projectPath)
+                ?.takeIf { it.externalProjectPath == projectPath } ?: return@runOnEdt
+            if (linked.runConfigurationName != previousName) return@runOnEdt
+            if (RunManager.getInstance(project).allSettings.none { it.name == healedName }) return@runOnEdt
+            linked.runConfigurationName = healedName
+        }
+    }
+
+    private fun pruneLink(projectPath: String, storedName: String) {
+        runOnEdt {
+            val linked = project.getService(NativeSettings::class.java).getLinkedProjectSettings(projectPath)
+                ?.takeIf { it.externalProjectPath == projectPath } ?: return@runOnEdt
+            if (linked.runConfigurationName != storedName) return@runOnEdt
+            if (!isDanglingName(storedName, RunManager.getInstance(project))) return@runOnEdt
+            if (hasImportData(projectPath)) return@runOnEdt
+            ExternalSystemApiUtil.getSettings(project, Constants.SYSTEM_ID).unlinkExternalProject(projectPath)
+        }
+    }
+
+    /** Posts to the EDT from the resolver's pooled thread; runs inline on the EDT, which keeps tests synchronous. */
+    private fun runOnEdt(action: () -> Unit) {
+        val application = ApplicationManager.getApplication()
+        if (application.isDispatchThread) action() else application.invokeLater(action, project.disposed)
+    }
+
+    /**
      * Collects the links worth repairing. The `-DebugSession-` link is not a real project link: it is keyed by a
      * transient debug session, never by a run configuration name, so it is skipped.
      */
@@ -129,15 +228,8 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
         }
     }
 
-    /**
-     * A `null` stored name is **not** dangling: a link created without a run configuration uses it to mean "discover
-     * by main-class path or by the selected configuration", and `RunConfigurationExtractor` depends on that state.
-     * Only a name that was stored and no longer resolves marks a link as broken.
-     */
-    private fun isDangling(settings: NativeProjectSettings, runManager: RunManager): Boolean {
-        val storedName = settings.runConfigurationName ?: return false
-        return runManager.allSettings.none { it.name == storedName }
-    }
+    private fun isDangling(settings: NativeProjectSettings, runManager: RunManager): Boolean =
+        isDanglingName(settings.runConfigurationName, runManager)
 
     private fun computeRepairs(): List<Repair> {
         val danglingSettings = findDanglingSettings()
@@ -159,14 +251,6 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     }
 
     /**
-     * The main-class *file* is the identity a run configuration and a link agree on: for a Kotlin top-level `main()`
-     * the configuration holds the file facade (`...FooKt`) while the link stores the `@SpringBootApplication` class
-     * (`...Foo`), so their qualified names never match.
-     */
-    private fun mainFilePath(configuration: RunConfiguration): String? =
-        NativeBootUtils.getMainClass(configuration)?.containingFile?.virtualFile?.canonicalPath
-
-    /**
      * Runs on the EDT after a background computation, so the world may have moved on: a configuration can have been
      * removed or the link repaired meanwhile. Each repair is revalidated before it is written, otherwise a name that
      * no longer exists could be stored back into the settings.
@@ -186,5 +270,27 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
 
     companion object {
         fun getInstance(project: Project): NativeLinkRepairService = project.service()
+
+        /**
+         * A `null` stored name is **not** dangling: a link created without a run configuration uses it to mean
+         * "discover by main-class path or by the selected configuration", and `RunConfigurationExtractor` depends on
+         * that state. Only a name that was stored and no longer resolves marks a link as broken.
+         */
+        internal fun isDanglingName(storedName: String?, runManager: RunManager): Boolean {
+            storedName ?: return false
+            return runManager.allSettings.none { it.name == storedName }
+        }
+
+        /**
+         * The main-class *file* is the identity a run configuration and a link agree on: for a Kotlin top-level
+         * `main()` the configuration holds the file facade (`...FooKt`) while the link stores the
+         * `@SpringBootApplication` class (`...Foo`), so their qualified names never match.
+         */
+        internal fun mainFilePath(configuration: RunConfiguration): String? =
+            NativeBootUtils.getMainClass(configuration)?.containingFile?.virtualFile?.canonicalPath
+
+        /** All configurations pointing at the link's main-class file; the caller decides how many it can handle. */
+        internal fun findConfigurationsByMainFile(runManager: RunManager, mainFilePath: String): List<RunConfiguration> =
+            runManager.allConfigurationsList.filter { mainFilePath(it) == mainFilePath }
     }
 }
