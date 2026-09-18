@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.externalsystem
 
+import com.explyt.spring.core.externalsystem.setting.NativeExecutionSettings
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.setting.NativeSettings
 import com.explyt.spring.core.externalsystem.utils.Constants
@@ -16,6 +17,11 @@ import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
+import com.intellij.openapi.externalSystem.model.DataNode
+import com.intellij.openapi.externalSystem.model.ProjectKeys
+import com.intellij.openapi.externalSystem.model.internal.InternalExternalProjectInfo
+import com.intellij.openapi.externalSystem.model.project.ProjectData
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsDataStorage
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.testFramework.PlatformTestUtil
 
@@ -155,6 +161,129 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
         val debugSettings = nativeSettings.getLinkedProjectSettings(Constants.DEBUG_SESSION_NAME)
         assertNull(debugSettings?.runConfigurationName)
         assertEquals("Dashboard Staging", debugSettings?.runConfigurationId)
+    }
+
+    /** A dangling link with exactly one configuration on the same main-class file is rebound within the sync pass. */
+    fun testSyncHealRebindsUniqueCandidate() {
+        val mainFilePath = configureDemoApplication()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+        addSpringBootConfiguration("Dashboard Prod")
+
+        val executionSettings = NativeExecutionSettings(project).apply { runConfigurationName = "Dashboard VPC" }
+        val healed = NativeLinkRepairService.getInstance(project)
+            .healOrPruneDanglingLink(mainFilePath, executionSettings) { true }
+
+        assertTrue(healed)
+        assertEquals("Dashboard Prod", executionSettings.runConfigurationName)
+        assertEquals("Dashboard Prod", linkedName(mainFilePath))
+    }
+
+    /** A candidate that cannot drive this link (re-resolution failed) must not be persisted. */
+    fun testSyncHealIsRolledBackWhenReresolutionFails() {
+        val mainFilePath = configureDemoApplication()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+        addSpringBootConfiguration("Dashboard Prod")
+
+        val executionSettings = NativeExecutionSettings(project).apply { runConfigurationName = "Dashboard VPC" }
+        var reresolveCalled = false
+        val healed = NativeLinkRepairService.getInstance(project)
+            .healOrPruneDanglingLink(mainFilePath, executionSettings) { reresolveCalled = true; false }
+
+        assertFalse(healed)
+        assertTrue("The healing candidate must be verified by re-resolution before it is persisted", reresolveCalled)
+        assertEquals("Dashboard VPC", executionSettings.runConfigurationName)
+        assertEquals("Dashboard VPC", linkedName(mainFilePath))
+    }
+
+    /** Two configurations on the same main-class file: guessing one would silently take the other's environment. */
+    fun testSyncHealAmbiguousCandidatesKeepLink() {
+        val mainFilePath = configureDemoApplication()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+        addSpringBootConfiguration("Dashboard Prod")
+        addSpringBootConfiguration("Dashboard Staging")
+
+        val healed = healOrPrune(mainFilePath, "Dashboard VPC") { error("Ambiguous match must not be re-resolved") }
+
+        assertFalse(healed)
+        assertEquals("Dashboard VPC", linkedName(mainFilePath))
+        assertNotNull("An ambiguous link must stay linked", linkedSettings(mainFilePath))
+    }
+
+    /** A dangling link with no candidate and no import data only fails every sync — it is pruned. */
+    fun testSyncPrunesDanglingLinkWithoutImportData() {
+        val mainFilePath = configurePlainMainFile()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+        assertNotNull("Precondition: the link exists", linkedSettings(mainFilePath))
+
+        val healed = healOrPrune(mainFilePath, "Dashboard VPC")
+
+        assertFalse(healed)
+        assertNull("A dangling link without import data must be pruned", linkedSettings(mainFilePath))
+    }
+
+    /** A dangling link that still shows cached beans in the tool window is the user's data — keep it failing loudly. */
+    fun testSyncKeepsDanglingLinkWithImportData() {
+        val mainFilePath = configurePlainMainFile()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+        addImportData(mainFilePath)
+
+        val healed = healOrPrune(mainFilePath, "Dashboard VPC")
+
+        assertFalse(healed)
+        assertEquals("Dashboard VPC", linkedName(mainFilePath))
+        assertNotNull("A visible link must stay linked", linkedSettings(mainFilePath))
+    }
+
+    /** A stored name that still resolves is not dangling: nothing may happen, and re-resolution must not even run. */
+    fun testSyncKeepsLinkWithLiveStoredName() {
+        val mainFilePath = configureDemoApplication()
+        linkProject(mainFilePath, storedName = "Dashboard Prod")
+        addSpringBootConfiguration("Dashboard Prod")
+        assertNotNull("Precondition: the link exists", linkedSettings(mainFilePath))
+        assertTrue(
+            "Precondition: the stored name resolves",
+            RunManager.getInstance(project).allSettings.any { it.name == "Dashboard Prod" }
+        )
+
+        val healed = healOrPrune(mainFilePath, "Dashboard Prod") { error("A live link must not be re-resolved") }
+
+        assertFalse(healed)
+        assertEquals("Dashboard Prod", linkedName(mainFilePath))
+        assertNotNull(linkedSettings(mainFilePath))
+    }
+
+    /** The debug-session link is keyed by a transient session and is out of scope even with a dangling stored name. */
+    fun testSyncKeepsDebugSessionLink() {
+        val nativeSettings = project.getService(NativeSettings::class.java)
+        nativeSettings.linkProject(NativeProjectSettings().apply {
+            externalProjectPath = Constants.DEBUG_SESSION_NAME
+            runConfigurationName = "Dashboard VPC"
+        })
+        assertNotNull("Precondition: the link exists", linkedSettings(Constants.DEBUG_SESSION_NAME))
+
+        val healed = healOrPrune(Constants.DEBUG_SESSION_NAME, "Dashboard VPC")
+
+        assertFalse(healed)
+        assertNotNull(linkedSettings(Constants.DEBUG_SESSION_NAME))
+    }
+
+    private fun healOrPrune(
+        projectPath: String, storedName: String, reresolve: () -> Boolean = { true }
+    ): Boolean {
+        val executionSettings = NativeExecutionSettings(project).apply { runConfigurationName = storedName }
+        return NativeLinkRepairService.getInstance(project)
+            .healOrPruneDanglingLink(projectPath, executionSettings, reresolve)
+    }
+
+    private fun linkedSettings(mainFilePath: String): NativeProjectSettings? =
+        project.getService(NativeSettings::class.java).getLinkedProjectSettings(mainFilePath)
+
+    /** The tool window renders a project only from imported data, so a stored structure is what makes it visible. */
+    private fun addImportData(mainFilePath: String) {
+        val projectData = ProjectData(SYSTEM_ID, "PlainApp", project.basePath!!, mainFilePath)
+        val dataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
+        ExternalProjectsDataStorage.getInstance(project)
+            .update(InternalExternalProjectInfo(SYSTEM_ID, mainFilePath, dataNode))
     }
 
     private fun runManager() = RunManager.getInstance(project) as RunManagerImpl
