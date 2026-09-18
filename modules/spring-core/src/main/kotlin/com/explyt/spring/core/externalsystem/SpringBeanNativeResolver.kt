@@ -21,6 +21,7 @@ import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
 import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.externalsystem.utils.NativeClasspathValidator
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
 import com.explyt.spring.core.statistic.StatisticActionId
@@ -67,6 +68,7 @@ import com.intellij.psi.util.InheritanceUtil
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
 import com.intellij.util.execution.ParametersListUtil
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
@@ -78,6 +80,37 @@ import kotlin.io.path.name
 private val logger = logger<SpringBeanNativeResolver>()
 
 private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.config.ConfigData"
+
+/**
+ * The bean reader drives the application through `org.springframework.core.metrics.ApplicationStartup`, which
+ * Spring introduced in 5.3 (Spring Boot 2.4). Only these two types can be absent because the Boot version is too
+ * old: spring-core 5.2 ships no `org.springframework.core.metrics` package at all. Any other missing class means
+ * an incomplete classpath and must not be reported as an unsupported Boot version.
+ */
+private val SPRING_BOOT_PRE_2_4_CLASSES = setOf(
+    "org.springframework.core.metrics.ApplicationStartup",
+    "org.springframework.core.metrics.StartupStep"
+)
+
+/**
+ * A `NoClassDefFoundError` from the launched application means the Boot version is unsupported only when the
+ * absent class is one the bean reader needs from Spring itself; otherwise the classpath is incomplete, and the
+ * libraries whose files never reached the disk are the actionable part of the message.
+ */
+@VisibleForTesting
+fun missingClassMessage(missingClassName: String, librariesWithMissingFiles: List<String>): String {
+    if (missingClassName in SPRING_BOOT_PRE_2_4_CLASSES) {
+        return SpringCoreBundle.message("explyt.external.project.sync.old.error")
+    }
+    if (librariesWithMissingFiles.isEmpty()) {
+        return SpringCoreBundle.message("explyt.external.project.sync.class.not.found.error", missingClassName)
+    }
+    return SpringCoreBundle.message(
+        "explyt.external.project.sync.class.not.found.libraries.error",
+        missingClassName,
+        librariesWithMissingFiles.joinToString(", ")
+    )
+}
 
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
 
@@ -218,7 +251,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
-        executeRunConfiguration(id, runConfiguration, processAdapter)
+        executeRunConfiguration(id, runConfiguration, processAdapter, modules, listener)
 
         val contextInfo = processAdapter.getSpringContextInfo()
         val beans = contextInfo.beans
@@ -318,14 +351,18 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     }
 
     private fun executeRunConfiguration(
-        id: ExternalSystemTaskId, clone: RunConfiguration, processAdapter: ExplytCapturingProcessAdapter
+        id: ExternalSystemTaskId,
+        clone: RunConfiguration,
+        processAdapter: ExplytCapturingProcessAdapter,
+        modules: Array<Module>,
+        listener: ExternalSystemTaskNotificationListener
     ) {
         val descriptor = getDescriptor()
         val environment = getEnvironment(id, clone, processAdapter, descriptor)
         try {
             ProgramRunnerUtil.executeConfiguration(environment, false, false)
             processAdapter.await()
-            checkErrors(processAdapter)
+            checkErrors(processAdapter, modules, id, listener)
         } finally {
             Disposer.dispose(environment)
             Disposer.dispose(descriptor)
@@ -352,14 +389,44 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
     }
 
-    private fun checkErrors(processAdapter: ExplytCapturingProcessAdapter) {
-        if (!Registry.`is`("explyt.spring.native.old") && processAdapter.classNotFoundError) {
+    private fun checkErrors(
+        processAdapter: ExplytCapturingProcessAdapter,
+        modules: Array<Module>,
+        id: ExternalSystemTaskId,
+        listener: ExternalSystemTaskNotificationListener
+    ) {
+        val missingClassName = processAdapter.missingClassName
+        if (!Registry.`is`("explyt.spring.native.old") && missingClassName != null) {
             throw ExternalSystemException(
-                SYSTEM_ID.readableName + ": " + SpringCoreBundle.message("explyt.external.project.sync.old.error")
+                SYSTEM_ID.readableName + ": " + missingClassMessage(missingClassName, modules, id, listener)
             )
         } else if (processAdapter.getSpringContextInfo().beans.isEmpty()) {
             throw ExternalSystemException(SpringCoreBundle.message("explyt.external.project.sync.empty.error"))
         }
+    }
+
+    private fun missingClassMessage(
+        missingClassName: String,
+        modules: Array<Module>,
+        id: ExternalSystemTaskId,
+        listener: ExternalSystemTaskNotificationListener
+    ): String {
+        if (missingClassName in SPRING_BOOT_PRE_2_4_CLASSES) {
+            return SpringCoreBundle.message("explyt.external.project.sync.old.error")
+        }
+        val librariesWithMissingFiles = NativeClasspathValidator.findLibrariesWithMissingFiles(modules)
+        if (librariesWithMissingFiles.isNotEmpty()) {
+            // Reported, never fatal on its own: a library root may be legitimately absent on a working sync.
+            listener.onTaskOutput(
+                id,
+                SpringCoreBundle.message(
+                    "explyt.external.project.sync.missing.libraries.output",
+                    librariesWithMissingFiles.joinToString(System.lineSeparator() + "  ", "  ")
+                ) + System.lineSeparator(),
+                true
+            )
+        }
+        return missingClassMessage(missingClassName, librariesWithMissingFiles)
     }
 
     private fun getAspectBeanInfoMapByName(beans: List<BeanInfo>, aspects: List<AspectInfo>): Map<String, BeanInfo> {
