@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Fold a `@Value` placeholder and an `Environment.getProperty` key to the value defined in a production source root rather than one defined under `src/test/resources`: test configuration has been in scope since configuration files started being collected from dependencies, and a test `application.yaml` tied the profile-less ranking of its production namesake, so which of the two won was decided by index iteration order and could differ between sessions. A key defined only in test sources still folds
 - fix: Make "Detach All Spring Boot Projects" enumerate the linked-project settings instead of the import-data cache: a project whose refresh never succeeded (or whose cached structure was dropped) was invisible to the action and stayed linked forever, and the debug-session link could never be detached at all
 - fix: Report why "Detach All Spring Boot Projects" did nothing instead of discarding the failure: the reflective call into the platform's internal detach action swallowed every exception, so a signature change or a failed detach left no trace in the log at all. The failure is now logged, the number of linked projects is logged before the loop, and a missing platform method is named explicitly
 - fix: Unlink an Explyt Spring project whose import data is absent — after a refresh that never succeeded, or once its cache was dropped, the detach found no project node and returned silently, leaving the link in the project settings forever. The link is now dropped through the external-system settings in that case
