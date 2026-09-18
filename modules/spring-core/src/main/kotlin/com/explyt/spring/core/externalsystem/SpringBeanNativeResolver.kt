@@ -119,14 +119,18 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             logger.info("Explyt resolveProjectInfo: skipping DEBUG_SESSION_NAME path with null result")
             return null
         }
-        val runConfigurationHolder = findRunConfigurationReadAction(projectPath, settings)
+        val resolvedHolder = findRunConfigurationReadAction(projectPath, settings)
         if (isPreviewMode) {
             logger.info("Explyt resolveProjectInfo: PREVIEW MODE, returning empty project node")
-            return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfigurationHolder), null)
+            return DataNode(ProjectKeys.PROJECT, projectData(projectPath, resolvedHolder), null)
         }
         settings ?: throw ExternalSystemException("No settings")
-        runConfigurationHolder ?: nothingException(settings)
-        if (runConfigurationHolder.isEmpty()) nothingException(settings)
+        val runConfigurationHolder =
+            if (resolvedHolder == null || resolvedHolder.isEmpty()) {
+                healOrPruneDanglingLink(projectPath, settings) ?: nothingException(settings)
+            } else {
+                resolvedHolder
+            }
         logger.debug {
             "Explyt resolveProjectInfo: resolved runConfigurationHolder=" +
                     "explyt=${runConfigurationHolder.runConfiguration?.name}, " +
@@ -484,6 +488,24 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             ?: Constants.DEBUG_SESSION_NAME
         val projectData = ProjectData(SYSTEM_ID, projectName, directoryPath, projectPath)
         return projectData
+    }
+
+    /**
+     * A stored run configuration name that no longer resolves leaves the link dangling: the extractor deliberately
+     * returns nothing instead of fabricating a configuration, so every sync fails the same way while the project may
+     * be invisible in the tool window. Heal the link within this pass when exactly one configuration points at the
+     * same main-class file; without a candidate, a link that has no import data to show is pruned and the sync error
+     * is thrown one last time. Runtime failures of an existing configuration never reach here — they are thrown
+     * later by the build or the launched process.
+     */
+    private fun healOrPruneDanglingLink(projectPath: String, settings: NativeExecutionSettings): RunConfigurationHolder? {
+        var holder: RunConfigurationHolder? = null
+        val healed = NativeLinkRepairService.getInstance(settings.project)
+            .healOrPruneDanglingLink(projectPath, settings) {
+                holder = findRunConfigurationReadAction(projectPath, settings)
+                holder?.isEmpty() == false
+            }
+        return if (healed) holder else null
     }
 
     private fun findRunConfigurationReadAction(
