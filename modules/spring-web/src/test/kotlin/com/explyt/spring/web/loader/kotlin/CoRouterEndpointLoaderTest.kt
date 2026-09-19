@@ -143,6 +143,35 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/api" to "GET"), webFluxEndpoints())
     }
 
+    /**
+     * `router { }` and `coRouter { }` build the same route model and differ only in whether the handlers suspend, so a
+     * route declared through the non-coroutine DSL must be discovered identically.
+     */
+    fun testNonCoroutineReactiveRouterDslIsListed() {
+        myFixture.addFileToProject(
+            "ReactiveRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.ServerRequest
+            import org.springframework.web.reactive.function.server.router
+
+            @Configuration
+            class ReactiveRouterConfig {
+
+                @Bean
+                fun reactiveRoutes(): RouterFunction<ServerResponse> = router {
+                    GET("/api/users") { _: ServerRequest -> ServerResponse.ok().build() }
+                }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("/api/users" to "GET"), webFluxEndpoints())
+    }
+
     private fun addRouterConfig(routes: String, companionBody: String = "", imports: String = "") {
         val companion = if (companionBody.isBlank()) "" else """
             |
