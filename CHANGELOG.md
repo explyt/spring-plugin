@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Spring Web
+- fix: List an Actuator endpoint once, with a server-relative path, instead of once per module that sets `management.server.port` and with the port pasted into the path: a shared endpoint appeared twice in the Explyt Endpoints tool window — the second row reading `http://localhost:0/...` when the port came from a test configuration binding an ephemeral port — and the host made the path unmatchable, so no URL string resolved to an Actuator endpoint whenever a management port was set
+
 ### Spring Core
 - fix: Name the class that is actually missing when a Native Context Mode sync fails with `NoClassDefFoundError`, instead of always blaming an unsupported Spring Boot version: the "only since 2.4.0" hint now appears solely for the Spring startup classes the bean reader needs, and any other absent class is reported together with the libraries on the launch classpath whose file was never downloaded
 - fix: Make "Detach All Spring Boot Projects" enumerate the linked-project settings instead of the import-data cache: a project whose refresh never succeeded (or whose cached structure was dropped) was invisible to the action and stayed linked forever, and the debug-session link could never be detached at all
