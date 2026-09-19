@@ -96,6 +96,19 @@ object SpringGutterTestUtil {
     }
 
     /**
+     * Reads the separator `Navigate | Related Symbol` renders above the targets. That popup consumes
+     * [RelatedItemLineMarkerInfo.createGotoRelatedItems] and never the target renderer, so the group is the only
+     * part of the gutter its grouping can be asserted through.
+     */
+    fun getGutterTargetGroups(gutterMark: GutterMark?): Set<String> {
+        val lineMarkerInfo = (gutterMark as? LineMarkerInfo.LineMarkerGutterIconRenderer<*>)?.lineMarkerInfo
+            ?: throw AssertionError("Expected a line marker gutter, but got: $gutterMark")
+        val relatedItemInfo = lineMarkerInfo as? RelatedItemLineMarkerInfo<*>
+            ?: throw AssertionError("Expected a related item line marker, but got: $lineMarkerInfo")
+        return relatedItemInfo.createGotoRelatedItems().mapTo(mutableSetOf()) { it.group }
+    }
+
+    /**
      * Renders the targets the way the navigation popup will, so a test constrains the renderer the gutter actually
      * installs. Building a renderer in the test instead would stay green even when the gutter installs none and the
      * platform falls back to raw element text.

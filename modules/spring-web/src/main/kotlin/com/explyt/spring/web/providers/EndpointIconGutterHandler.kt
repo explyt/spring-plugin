@@ -82,7 +82,7 @@ class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : Gutter
         if (endpointUsages.isEmpty()) return null
 
         return NavigationGutterIconBuilder
-            .create(SpringIcons.ReadAccess)
+            .create(SpringIcons.ReadAccess, SpringWebBundle.message("explyt.spring.web.gutter.endpoint.group"))
             .setTargets(endpointUsages)
             .setTargetRenderer { SpringWebUtil.getTargetRenderer() }
             .setPopupTitle(SpringWebBundle.message("explyt.spring.web.gutter.endpoint.popup"))

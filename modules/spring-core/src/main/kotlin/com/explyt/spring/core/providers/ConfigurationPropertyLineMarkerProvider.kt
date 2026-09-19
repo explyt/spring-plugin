@@ -52,7 +52,10 @@ class ConfigurationPropertyLineMarkerProvider : RelatedItemLineMarkerProvider() 
         val targets = properties + hints
         if (targets.isEmpty()) return
 
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringSetting)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.SpringSetting,
+            SpringCoreBundle.message("explyt.spring.gutter.group.configuration.property")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy {
                 getTarget(targets)
