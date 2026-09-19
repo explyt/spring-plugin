@@ -48,7 +48,10 @@ class SpringAutoConfigurationLineMarkerProvider : RelatedItemLineMarkerProvider(
         val module = ModuleUtilCore.findModuleForPsiElement(element) ?: return
         val autoconfigureIPropertiesByStringKey = getAutoconfigureClassesCache(module)
         if (autoconfigureIPropertiesByStringKey.any { it.first.contains(qualifiedName) }) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringFactories)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringFactories,
+                SpringCoreBundle.message("explyt.spring.gutter.group.registration")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { findFactoriesMetadataFiles(qualifiedName, module) })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.factories.gutter.tooltip"))

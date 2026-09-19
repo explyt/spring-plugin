@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Name the navigation group of every Explyt gutter target, so `Navigate | Related Symbol` no longer lists Spring, AOP, SPI, configuration and Quarkus targets under a section header reading "XML": the single-argument `NavigationGutterIconBuilder.create(icon)` attaches the platform default group, which is the XML one, and that string is rendered as the popup separator (#411)
 - fix: Name the class that is actually missing when a Native Context Mode sync fails with `NoClassDefFoundError`, instead of always blaming an unsupported Spring Boot version: the "only since 2.4.0" hint now appears solely for the Spring startup classes the bean reader needs, and any other absent class is reported together with the libraries on the launch classpath whose file was never downloaded
 - fix: Make "Detach All Spring Boot Projects" enumerate the linked-project settings instead of the import-data cache: a project whose refresh never succeeded (or whose cached structure was dropped) was invisible to the action and stayed linked forever, and the debug-session link could never be detached at all
 - fix: Report why "Detach All Spring Boot Projects" did nothing instead of discarding the failure: the reflective call into the platform's internal detach action swallowed every exception, so a signature change or a failed detach left no trace in the log at all. The failure is now logged, the number of linked projects is logged before the loop, and a missing platform method is named explicitly
