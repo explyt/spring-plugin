@@ -10,6 +10,7 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.RoutePathResolver
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
 import com.intellij.codeInsight.daemon.LineMarkerInfo
@@ -24,7 +25,6 @@ import com.intellij.psi.util.parentOfType
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
-import org.jetbrains.uast.ULiteralExpression
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
@@ -100,8 +100,9 @@ class RouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
         uMethodCall.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
                 if (node.methodName in SpringWebClasses.URI_TYPE) {
-                    val uriArgument = node.valueArguments.getOrNull(0) as? ULiteralExpression
-                    path = uriArgument?.value as? String ?: return super.visitCallExpression(node)
+                    val uriArgument = node.valueArguments.getOrNull(0) ?: return super.visitCallExpression(node)
+                    path = RoutePathResolver.resolveUriValues(uriArgument).firstOrNull()
+                        ?: return super.visitCallExpression(node)
                 }
                 return super.visitCallExpression(node)
             }

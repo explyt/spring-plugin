@@ -37,10 +37,7 @@ class SpringWebCoRouterLoader : EndpointHandler {
                     lambdaExpression?.body?.accept(object : AbstractUastVisitor() {
                         override fun visitCallExpression(node: UCallExpression): Boolean {
                             if (node.methodName in SpringWebClasses.URI_TYPE) {
-                                val endpointElement = createEndpointElement(node, psiClass)
-                                if (endpointElement != null) {
-                                    endpoints.add(endpointElement)
-                                }
+                                endpoints += createEndpointElements(node, psiClass)
                             }
                             return super.visitCallExpression(node)
                         }
@@ -53,18 +50,26 @@ class SpringWebCoRouterLoader : EndpointHandler {
         return endpoints
     }
 
-    private fun createEndpointElement(callExpression: UCallExpression, psiClass: PsiClass): EndpointElement? {
-        val path = SpringWebUtil.getPathFromCallExpression(callExpression)
-        val requestMethods = listOf(callExpression.methodName ?: return null)
-        val psiElement = callExpression.sourcePsi ?: return null
+    /**
+     * A route whose URI does not resolve to a value yields no endpoint: an empty path is normalised to `/` downstream
+     * and would register the route as the application root.
+     */
+    private fun createEndpointElements(callExpression: UCallExpression, psiClass: PsiClass): List<EndpointElement> {
+        val requestMethods = listOf(callExpression.methodName ?: return emptyList())
+        val psiElement = callExpression.sourcePsi ?: return emptyList()
 
-        return EndpointElement(
-            path,
-            requestMethods,
-            psiElement,
-            psiClass,
-            null,
-            EndpointType.SPRING_WEBFLUX
-        )
+        return SpringWebUtil.getPathsFromCallExpression(callExpression).asSequence()
+            .filter { it.isNotEmpty() }
+            .map {
+                EndpointElement(
+                    it,
+                    requestMethods,
+                    psiElement,
+                    psiClass,
+                    null,
+                    EndpointType.SPRING_WEBFLUX
+                )
+            }
+            .toList()
     }
 }
