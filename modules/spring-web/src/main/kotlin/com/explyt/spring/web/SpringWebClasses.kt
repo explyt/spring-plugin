@@ -84,6 +84,19 @@ object SpringWebClasses {
 
     const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
-    val URI_TYPE = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
+    const val ROUTER_DSL_GENERIC_METHOD = "method"
+
+    /**
+     * Route methods of the Kotlin router DSL. `method` carries its verb in the argument instead of the name, so a
+     * caller matching on this list must read the verb rather than reuse the called name.
+     */
+    val ROUTER_DSL_ROUTE_METHODS = listOf(
+        "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", ROUTER_DSL_GENERIC_METHOD
+    )
+
+    /** HTTP verbs offered as tool window filter entries, kept in step with the icons rendered per verb. */
+    val HTTP_METHOD_FILTER = listOf(
+        "CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"
+    )
 
 }
