@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Explyt Ltd
+ * Copyright (c) 2026 Explyt Ltd
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -15,7 +15,12 @@ import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
-class SpringWebFluxEndpointsLoader(private val project: Project) : SpringWebEndpointsLoader {
+/**
+ * Functional routes of the servlet stack (WebMvc.fn). They are declared with the same DSL and builder as the reactive
+ * ones, but a Spring MVC project carries no Reactor, so they cannot be discovered by the WebFlux loader — its
+ * applicability check looks for `reactor.core.publisher.Flux`.
+ */
+class SpringWebMvcFnEndpointsLoader(private val project: Project) : SpringWebEndpointsLoader {
     private val cachedValuesManager = CachedValuesManager.getManager(project)
     private val handler = EndpointHandlerChain(
         listOf(
@@ -24,7 +29,7 @@ class SpringWebFluxEndpointsLoader(private val project: Project) : SpringWebEndp
         )
     )
 
-    override fun isApplicable(module: Module) = SpringWebUtil.isFluxWebModule(module)
+    override fun isApplicable(module: Module) = SpringWebUtil.isWebMvcFnModule(module)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {
@@ -36,7 +41,7 @@ class SpringWebFluxEndpointsLoader(private val project: Project) : SpringWebEndp
     }
 
     override fun getType(): EndpointType {
-        return EndpointType.SPRING_WEBFLUX
+        return EndpointType.SPRING_MVC
     }
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
@@ -47,7 +52,7 @@ class SpringWebFluxEndpointsLoader(private val project: Project) : SpringWebEndp
         return componentAnnotations.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, module.moduleWithDependenciesScope) }
             .flatMap { handler.handleEndpoints(it) }
-            .filter { it.type == EndpointType.SPRING_WEBFLUX }
+            .filter { it.type == EndpointType.SPRING_MVC }
             .toList()
     }
 }

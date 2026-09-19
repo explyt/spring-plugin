@@ -19,6 +19,9 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springTx_6_0_7 = TestLibrary("org.springframework:spring-tx:6.0.7")
         val springTest_6_0_7 = TestLibrary("org.springframework:spring-test:6.0.7")
         val springWeb_6_0_7 = TestLibrary("org.springframework:spring-web:6.0.7", true)
+
+        /** Spring MVC without Reactor, so a fixture can model a servlet-stack project that has no WebFlux. */
+        val springWebMvc_6_0_7 = TestLibrary("org.springframework:spring-webmvc:6.0.7", true)
         val springReactiveWeb_3_1_1 = TestLibrary("org.springframework.boot:spring-boot-starter-webflux:3.1.1", true)
         val springCloud_4_1_3 = TestLibrary("org.springframework.cloud:spring-cloud-starter-openfeign:4.1.3", true)
 
