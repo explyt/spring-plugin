@@ -49,7 +49,10 @@ class SpringRegistrarBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         result: MutableCollection<in RelatedItemLineMarkerInfo<*>>
     ) {
         val sourcePsi = method.uastAnchor?.sourcePsi ?: return
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBean)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.SpringBean,
+            SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy { findFieldsAndMethodsWithAutowired(method) })
             .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.autowired.candidate"))
