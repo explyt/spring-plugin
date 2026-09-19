@@ -111,13 +111,47 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(emptyList<Pair<String, String>>(), webFluxEndpoints())
     }
 
-    private fun addRouterConfig(routes: String, companionBody: String = "") {
+    fun testHeadAndOptionsRoutesAreListed() {
+        addRouterConfig(
+            routes = """
+                GET("/health", handler::handle)
+                HEAD("/health", handler::handle)
+                OPTIONS("/health", handler::handle)
+            """
+        )
+
+        assertEquals(
+            listOf(
+                "/health" to "GET",
+                "/health" to "HEAD",
+                "/health" to "OPTIONS"
+            ),
+            webFluxEndpoints()
+        )
+    }
+
+    fun testGenericMethodRouteTakesItsVerbFromTheArgumentAndItsPathFromNest() {
+        addRouterConfig(
+            routes = """
+                "/api".nest {
+                    method(HttpMethod.GET, handler::handle)
+                }
+            """,
+            imports = "import org.springframework.http.HttpMethod"
+        )
+
+        assertEquals(listOf("/api" to "GET"), webFluxEndpoints())
+    }
+
+    private fun addRouterConfig(routes: String, companionBody: String = "", imports: String = "") {
         val companion = if (companionBody.isBlank()) "" else """
             |
             |    companion object {
             |${companionBody.trimIndent().prependIndent("        ")}
             |    }
         """.trimMargin()
+
+        val extraImports = if (imports.isBlank()) "" else "\n|$imports"
 
         myFixture.addFileToProject(
             "GatewayProxyRouterConfig.kt",
@@ -126,7 +160,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
             |import org.springframework.context.annotation.Configuration
             |import org.springframework.web.reactive.function.server.RouterFunction
             |import org.springframework.web.reactive.function.server.ServerResponse
-            |import org.springframework.web.reactive.function.server.coRouter
+            |import org.springframework.web.reactive.function.server.coRouter$extraImports
             |
             |@Configuration
             |class GatewayProxyRouterConfig {

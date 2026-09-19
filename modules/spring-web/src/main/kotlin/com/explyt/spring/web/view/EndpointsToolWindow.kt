@@ -8,7 +8,7 @@ package com.explyt.spring.web.view
 import com.explyt.spring.core.statistic.StatisticActionId.*
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
-import com.explyt.spring.web.SpringWebClasses.URI_TYPE
+import com.explyt.spring.web.SpringWebClasses.HTTP_METHOD_FILTER
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
@@ -200,7 +200,7 @@ class EndpointsToolWindow(private val project: Project) :
 
         return (object : FilterField(title) {
             override fun buildActions(): Collection<AnAction> {
-                return URI_TYPE
+                return HTTP_METHOD_FILTER
                     .map { httpType ->
                         object : ToggleAction(httpType) {
 

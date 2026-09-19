@@ -36,7 +36,7 @@ class SpringWebCoRouterLoader : EndpointHandler {
                     val lambdaExpression = node.valueArguments.firstOrNull() as? ULambdaExpression
                     lambdaExpression?.body?.accept(object : AbstractUastVisitor() {
                         override fun visitCallExpression(node: UCallExpression): Boolean {
-                            if (node.methodName in SpringWebClasses.URI_TYPE) {
+                            if (node.methodName in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) {
                                 endpoints += createEndpointElements(node, psiClass)
                             }
                             return super.visitCallExpression(node)
@@ -55,7 +55,7 @@ class SpringWebCoRouterLoader : EndpointHandler {
      * and would register the route as the application root.
      */
     private fun createEndpointElements(callExpression: UCallExpression, psiClass: PsiClass): List<EndpointElement> {
-        val requestMethods = listOf(callExpression.methodName ?: return emptyList())
+        val requestMethods = listOf(SpringWebUtil.getRequestMethod(callExpression) ?: return emptyList())
         val psiElement = callExpression.sourcePsi ?: return emptyList()
 
         return SpringWebUtil.getPathsFromCallExpression(callExpression).asSequence()
