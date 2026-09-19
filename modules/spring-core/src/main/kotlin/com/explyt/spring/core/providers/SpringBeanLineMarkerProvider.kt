@@ -422,16 +422,16 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return if (matcher.matches()) matcher.group(2) else locationString
     }
 
-    fun getModuleTextWithIcon(value: Any?): TextWithIcon? {
-        val factory = ModuleRendererFactory.findInstance(value)
-        if (factory is PlatformModuleRendererFactory) {
-            return null
-        }
-        return factory.getModuleTextWithIcon(value)
-    }
-
     companion object {
         private val CONTAINER_PATTERN = Pattern.compile("(\\(in |\\()?([^)]*)(\\))?")
+
+        fun getModuleTextWithIcon(value: Any?): TextWithIcon? {
+            val factory = ModuleRendererFactory.findInstance(value)
+            if (factory is PlatformModuleRendererFactory) {
+                return null
+            }
+            return factory.getModuleTextWithIcon(value)
+        }
 
         fun isLombokAnnotatedClassFieldExpression(psiField: PsiField): Boolean {
             return psiField.containingClass?.let {
