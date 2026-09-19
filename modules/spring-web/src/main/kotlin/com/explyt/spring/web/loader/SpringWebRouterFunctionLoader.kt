@@ -7,11 +7,13 @@ package com.explyt.spring.web.loader
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.RoutePathResolver
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.psi.*
-import com.intellij.psi.util.PsiLiteralUtil
 import com.intellij.psi.util.childrenOfType
+import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.toUElementOfType
 
 class SpringWebRouterFunctionLoader : EndpointHandler {
 
@@ -44,20 +46,19 @@ class SpringWebRouterFunctionLoader : EndpointHandler {
         val methods = methodCallException.resolveMethod() ?: return emptyList()
 
         if (methods.containingClass?.qualifiedName == SpringWebClasses.ROUTE_FUNCTION_BUILDER) {
-            val psiLiteralExpression = methodCallException.argumentList.expressions.firstOrNull()
-            if (psiLiteralExpression != null && psiLiteralExpression is PsiLiteralExpression) {
-                val url = PsiLiteralUtil.getStringLiteralContent(psiLiteralExpression)
-                if (url != null) {
-                    result += EndpointElement(
-                        url,
-                        listOf(methods.name),
-                        psiMethod,
-                        containingClass,
-                        null,
-                        EndpointType.SPRING_WEBFLUX
-                    )
-                    result += findSimpleRouteMethod(methodCallException, psiMethod, containingClass)
-                }
+            val uriArgument = methodCallException.argumentList.expressions.firstOrNull()
+                ?.toUElementOfType<UExpression>()
+            val url = uriArgument?.let { RoutePathResolver.resolveUriValues(it).firstOrNull() }
+            if (!url.isNullOrEmpty()) {
+                result += EndpointElement(
+                    url,
+                    listOf(methods.name),
+                    psiMethod,
+                    containingClass,
+                    null,
+                    EndpointType.SPRING_WEBFLUX
+                )
+                result += findSimpleRouteMethod(methodCallException, psiMethod, containingClass)
             }
         }
         return result

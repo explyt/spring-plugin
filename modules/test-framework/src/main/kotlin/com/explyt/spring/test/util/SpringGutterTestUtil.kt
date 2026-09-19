@@ -10,6 +10,8 @@ import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.MergeableLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.navigation.NavigationGutterIconRenderer
+import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
+import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiElement
 import com.intellij.psi.presentation.java.SymbolPresentationUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
@@ -17,6 +19,7 @@ import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
 import com.intellij.util.Function
 import com.intellij.util.containers.ContainerUtil
 import junit.framework.TestCase
+import java.util.function.Supplier
 import javax.swing.Icon
 
 object SpringGutterTestUtil {
@@ -104,5 +107,54 @@ object SpringGutterTestUtil {
             ?: throw AssertionError("Expected a related item line marker, but got: $lineMarkerInfo")
         return relatedItemInfo.createGotoRelatedItems().mapTo(mutableSetOf()) { it.group }
     }
+
+    /**
+     * Renders the targets the way the navigation popup will, so a test constrains the renderer the gutter actually
+     * installs. Building a renderer in the test instead would stay green even when the gutter installs none and the
+     * platform falls back to raw element text.
+     */
+    fun getGutterTargetPresentations(gutterMark: GutterMark?): List<TargetPresentation> {
+        val gutterRenderer = toNavigationGutterIconRenderer(gutterMark)
+            ?: throw AssertionError("Expected a navigating gutter, but got: $gutterMark")
+        val targetRenderer = installedTargetRenderer(gutterRenderer)
+        return gutterRenderer.targetElements.map { targetRenderer.getPresentation(it) }
+    }
+
+    fun getGutterPopupTitle(gutterMark: GutterMark?): String? {
+        val gutterRenderer = toNavigationGutterIconRenderer(gutterMark)
+            ?: throw AssertionError("Expected a navigating gutter, but got: $gutterMark")
+        return readPlatformField(gutterRenderer, "myPopupTitle") as? String
+    }
+
+    private fun installedTargetRenderer(
+        gutterRenderer: NavigationGutterIconRenderer
+    ): PsiTargetPresentationRenderer<PsiElement> {
+        @Suppress("UNCHECKED_CAST")
+        val supplier = readPlatformField(gutterRenderer, "myTargetRenderer")
+            as? Supplier<PsiTargetPresentationRenderer<PsiElement>>
+            ?: throw AssertionError(
+                "The gutter installs no target renderer, so the platform presents targets by raw element text"
+            )
+        return supplier.get()
+    }
+
+    private fun readPlatformField(gutterRenderer: NavigationGutterIconRenderer, fieldName: String): Any? {
+        val field = try {
+            NavigationGutterIconRenderer::class.java.getDeclaredField(fieldName)
+        } catch (e: NoSuchFieldException) {
+            throw AssertionError("NavigationGutterIconRenderer.$fieldName is gone; update this helper", e)
+        }
+        field.isAccessible = true
+        return field.get(gutterRenderer)
+    }
+
+    private fun toNavigationGutterIconRenderer(gutterMark: GutterMark?): NavigationGutterIconRenderer? =
+        when (gutterMark) {
+            is NavigationGutterIconRenderer -> gutterMark
+            is LineMarkerInfo.LineMarkerGutterIconRenderer<*> ->
+                gutterMark.lineMarkerInfo.navigationHandler as? NavigationGutterIconRenderer
+
+            else -> null
+        }
 
 }
