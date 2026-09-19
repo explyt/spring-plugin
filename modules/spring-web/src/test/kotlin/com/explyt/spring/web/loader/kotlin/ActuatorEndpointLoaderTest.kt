@@ -14,7 +14,7 @@ import com.intellij.psi.PsiMethod
 
 /**
  * The reported case is Kotlin: the endpoint is an `internal class` that the annotation search sees as a light class,
- * and the management server runs on a port given by an unresolved placeholder.
+ * and the management server runs on its own port.
  */
 class ActuatorEndpointLoaderTest : ExplytKotlinLightTestCase() {
 
@@ -104,36 +104,34 @@ class ActuatorEndpointLoaderTest : ExplytKotlinLightTestCase() {
         )
     }
 
-    fun testUnresolvedManagementPortPlaceholderIsShownAsIs() {
+    /**
+     * A management port moves the endpoint to another origin, not to another path. Carrying the origin in the path
+     * made the same endpoint a different element per module, so a module declaring the port listed it a second time.
+     */
+    fun testManagementPortDoesNotChangeTheDisplayedPath() {
         addOutboxPublishersEndpoint()
-        myFixture.addFileToProject(
-            "application.properties",
-            "management.server.port=\${MANAGEMENT_SERVER_PORT}"
-        )
+        myFixture.addFileToProject("application.properties", "management.server.port=9090")
 
         assertEquals(
-            setOf(
-                "http://localhost:\${MANAGEMENT_SERVER_PORT}/actuator/outboxpublishers",
-                "http://localhost:\${MANAGEMENT_SERVER_PORT}/actuator/outboxpublishers/{registration}"
-            ),
+            setOf("/actuator/outboxpublishers", "/actuator/outboxpublishers/{registration}"),
             actuatorEndpoints().map { it.path }.toSet()
         )
     }
 
-    fun testManagementPortPlaceholderDefaultIsUsedWhenPresent() {
+    /**
+     * The path is what a URL literal is matched against, and a host in it survives `simplifyUrl` as a path segment,
+     * so a management port used to silently disable navigation from every URL string to its Actuator endpoint.
+     */
+    fun testUrlLiteralResolvesToTheEndpointWhenManagementPortIsSet() {
         addOutboxPublishersEndpoint()
-        myFixture.addFileToProject(
-            "application.properties",
-            "management.server.port=\${MANAGEMENT_SERVER_PORT:9090}"
-        )
+        myFixture.addFileToProject("application.properties", "management.server.port=9090")
 
-        assertEquals(
-            setOf(
-                "http://localhost:9090/actuator/outboxpublishers",
-                "http://localhost:9090/actuator/outboxpublishers/{registration}"
-            ),
-            actuatorEndpoints().map { it.path }.toSet()
-        )
+        val matched = SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project).asSequence()
+            .filter { it.getType() == EndpointType.ACTUATOR }
+            .flatMap { it.getEndpointElements("/actuator/outboxpublishers", module) }
+            .toList()
+
+        assertEquals(listOf("/actuator/outboxpublishers"), matched.map { it.path })
     }
 
     private fun addOutboxPublishersEndpoint() {
