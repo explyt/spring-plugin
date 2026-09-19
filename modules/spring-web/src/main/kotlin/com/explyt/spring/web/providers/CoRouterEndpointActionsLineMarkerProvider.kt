@@ -41,7 +41,7 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
 
         val uCallExpression = getUParentForIdentifier(psiElement) as? UCallExpression ?: return null
         val methodName = uCallExpression.methodName ?: return null
-        if (methodName !in SpringWebClasses.URI_TYPE) return null
+        if (methodName !in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) return null
 
         val method = findContainingMethod(uCallExpression) ?: return null
         if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
@@ -51,7 +51,7 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
         val fullPath = SpringWebUtil.getPathsFromCallExpression(uCallExpression).firstOrNull() ?: return null
         if (fullPath.isEmpty()) return null
 
-        val requestMethods = listOf(methodName)
+        val requestMethods = listOf(SpringWebUtil.getRequestMethod(uCallExpression) ?: return null)
 
         val description = uCallExpression.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = "java.lang.String"
