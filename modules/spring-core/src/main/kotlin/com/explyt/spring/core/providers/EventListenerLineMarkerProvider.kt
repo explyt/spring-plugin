@@ -29,10 +29,15 @@ import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
+import com.intellij.codeInsight.navigation.fileStatusAttributes
+import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.Iconable
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
+import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
@@ -41,6 +46,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.uast.*
 import java.util.*
 
@@ -68,8 +74,9 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findPublishEvents(psiMethod) })
                     .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.event.publisher"))
-                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.event.publisher"))
+                    .setPopupTitle(publisherPopupTitle(psiMethod))
                     .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.event.publisher"))
+                    .setTargetRenderer { publisherTargetRenderer() }
 
                 result += builder.createLineMarkerInfo(element)
 
@@ -106,6 +113,47 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
      * UAST checks above yields nothing either way.
      */
     private fun isSuppressedByJetBrainsSpring() = PluginIds.SPRING_JB.isEnabledWithUltimate()
+
+    /**
+     * Only the declared parameter type is read here: the marker is created on a highlighting hot path, while the
+     * `@EventListener(classes = ...)` types need meta-annotation resolution and stay in the lazy target supplier.
+     */
+    private fun publisherPopupTitle(psiMethod: PsiMethod): String {
+        val eventType = psiMethod.parameterList.parameters.singleOrNull()?.type as? PsiClassType
+            ?: return SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.event.publisher")
+        return SpringCoreBundle.message(
+            "explyt.spring.gutter.popup.title.choose.event.publisher.typed", eventType.presentableText
+        )
+    }
+
+    private fun publisherTargetRenderer(): PsiTargetPresentationRenderer<PsiElement> {
+        return object : PsiTargetPresentationRenderer<PsiElement>() {
+
+            override fun getPresentation(element: PsiElement): TargetPresentation {
+                val project = element.project
+                val file = element.containingFile?.virtualFile
+                val moduleTextWithIcon = SpringBeanLineMarkerProvider.getModuleTextWithIcon(element)
+                return TargetPresentation
+                    .builder(getElementText(element))
+                    .backgroundColor(file?.let { VfsPresentationUtil.getFileBackgroundColor(project, it) })
+                    .icon(element.getIcon(Iconable.ICON_FLAG_VISIBILITY or Iconable.ICON_FLAG_READ_STATUS))
+                    .containerText(getContainerText(element), file?.let { fileStatusAttributes(project, it) })
+                    .locationText(moduleTextWithIcon?.text, moduleTextWithIcon?.icon)
+                    .presentation()
+            }
+
+            override fun getElementText(element: PsiElement): String {
+                val uMethod = element.toUElement()?.getParentOfType<UMethod>() ?: return super.getElementText(element)
+                val className = uMethod.javaPsi.containingClass?.name ?: return uMethod.name
+                return "$className#${uMethod.name}"
+            }
+
+            override fun getContainerText(element: PsiElement): String? {
+                val fileName = element.containingFile?.virtualFile?.name ?: return null
+                return "$fileName:${element.getLineNumber() + 1}"
+            }
+        }
+    }
 
     private fun isMethodModifierForEvent(psiMethod: PsiMethod): Boolean {
         return psiMethod.isPublic && !psiMethod.isStatic && !psiMethod.isConstructor
