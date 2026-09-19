@@ -69,7 +69,10 @@ class PropertyLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         if (targets.isEmpty()) return
 
-        val builder = NavigationGutterIconBuilder.create(SpringIcons.Hint)
+        val builder = NavigationGutterIconBuilder.create(
+            SpringIcons.Hint,
+            SpringCoreBundle.message("explyt.spring.gutter.group.metadata.hint")
+        )
             .setAlignment(GutterIconRenderer.Alignment.LEFT)
             .setTargets(NotNullLazyValue.lazy {
                 StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_TARGET_ADDITIONAL_METADATA)
