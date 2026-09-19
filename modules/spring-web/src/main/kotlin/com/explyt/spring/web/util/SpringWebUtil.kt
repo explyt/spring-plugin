@@ -76,6 +76,15 @@ object SpringWebUtil {
             .findClass(SpringWebClasses.FLUX, module.moduleWithLibrariesScope) != null
     }
 
+    /**
+     * Keyed on the servlet `RouterFunction` itself rather than on a web-stack marker, because functional routing is an
+     * opt-in API: a Spring MVC project that never declares one has no such endpoints to find.
+     */
+    fun isWebMvcFnModule(module: Module): Boolean {
+        return JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringWebClasses.SERVLET_ROUTE_FUNCTION, module.moduleWithLibrariesScope) != null
+    }
+
     fun isRsWebModule(module: Module): Boolean {
         return isJakartaModule(module)
                 || JavaPsiFacade.getInstance(module.project)
