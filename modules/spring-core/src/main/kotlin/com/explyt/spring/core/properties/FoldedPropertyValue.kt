@@ -9,6 +9,7 @@ import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.completion.properties.DefinedConfigurationProperty
 import com.explyt.spring.core.service.ProfilesService
+import com.explyt.util.ExplytPsiUtil.isTestFiles
 import com.intellij.openapi.module.Module
 
 /**
@@ -42,7 +43,12 @@ class FoldedPropertyValue(
             val profilesService = ProfilesService.getInstance(module.project)
             return properties.asSequence()
                 .map { FoldedPropertyValue(it, profileOf(it.sourceFile)) }
-                .sortedWith(compareBy({ it.priority(profilesService) }, { it.property.sourceFile }))
+                .sortedWith(
+                    compareBy(
+                        { it.sourceRootPriority() },
+                        { it.priority(profilesService) },
+                        { it.property.sourceFile })
+                )
                 .firstOrNull()
         }
 
@@ -63,7 +69,21 @@ class FoldedPropertyValue(
         else -> INACTIVE_PROFILE
     }
 
+    /**
+     * A test source root is absent from the classpath the application runs with, so it is ranked below every
+     * production file regardless of profile. It is ranked, not filtered: a key defined only under `src/test` still
+     * folds, which is what issue #381 brought those files into scope for.
+     *
+     * Without this rank the two are usually indistinguishable — both are named `application.yaml` and both are
+     * profile-less, tying every other comparator and leaving the winner to index iteration order.
+     */
+    private fun sourceRootPriority(): Int =
+        if (isTestFiles(property.psiElement)) TEST_SOURCE else PRODUCTION_SOURCE
+
 }
+
+private const val PRODUCTION_SOURCE = 0
+private const val TEST_SOURCE = 1
 
 private const val ACTIVE_PROFILE = 0
 private const val PROFILE_LESS = 1
