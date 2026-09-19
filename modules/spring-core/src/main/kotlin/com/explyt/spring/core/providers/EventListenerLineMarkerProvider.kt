@@ -59,7 +59,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (isMethodModifierForEvent(psiMethod) &&
                 (isEventListenerMethod(psiMethod) || isApplicationEventMethod(psiMethod))
             ) {
-                val builder = NavigationGutterIconBuilder.create(SpringIcons.EventPublisher)
+                val builder = NavigationGutterIconBuilder.create(
+                    SpringIcons.EventPublisher,
+                    SpringCoreBundle.message("explyt.spring.gutter.group.event.publisher")
+                )
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findPublishEvents(psiMethod) })
                     .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.event.publisher"))
@@ -79,7 +82,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val sourceElement = uCallExpression.methodIdentifier.sourcePsiElement
                 if (sourceElement != null && sourcePsi != null
                 ) {
-                    val builder = NavigationGutterIconBuilder.create(SpringIcons.EventListener)
+                    val builder = NavigationGutterIconBuilder.create(
+                        SpringIcons.EventListener,
+                        SpringCoreBundle.message("explyt.spring.gutter.group.event.listener")
+                    )
                         .setAlignment(GutterIconRenderer.Alignment.LEFT)
                         .setTargets(NotNullLazyValue.createValue { findEventListeners(sourcePsi) })
                         .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.event.listener"))
