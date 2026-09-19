@@ -9,6 +9,7 @@ import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.isMapWithStringKey
+import com.explyt.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.SpringWebClasses.REQUEST_MAPPING
 import com.explyt.spring.web.SpringWebClasses.RETROFIT_HEADER_PARAM
@@ -596,11 +597,19 @@ object SpringWebUtil {
         }
     }
 
-    fun getPathsFromCallExpression(callExpression: UCallExpression): List<String> {
-        val uriArgument = callExpression.valueArguments.firstOrNull() ?: return emptyList()
+    /**
+     * The verb of a router DSL route: the called name for `GET`/`POST`/…, and the argument for the generic
+     * `method(HttpMethod.GET, handler)` form, whose name carries no verb.
+     */
+    fun getRequestMethod(callExpression: UCallExpression): String? {
+        val methodName = callExpression.methodName ?: return null
+        if (methodName != SpringWebClasses.ROUTER_DSL_GENERIC_METHOD) return methodName
 
-        var paths = RoutePathResolver.resolveUriValues(uriArgument)
-        if (paths.isEmpty()) return emptyList()
+        return callExpression.getArgumentValueAsEnumName(0)
+    }
+
+    fun getPathsFromCallExpression(callExpression: UCallExpression): List<String> {
+        var paths = getOwnPaths(callExpression) ?: return emptyList()
 
         var currentNode = callExpression.uastParent
         while (currentNode != null) {
@@ -613,6 +622,17 @@ object SpringWebUtil {
             currentNode = currentNode.uastParent
         }
         return paths
+    }
+
+    /**
+     * `method(HttpMethod.GET, handler)` takes no URI and serves whatever path encloses it, so it contributes an empty
+     * segment rather than no path at all — returning no path would drop the route.
+     */
+    private fun getOwnPaths(callExpression: UCallExpression): List<String>? {
+        if (callExpression.methodName == SpringWebClasses.ROUTER_DSL_GENERIC_METHOD) return listOf("")
+
+        val uriArgument = callExpression.valueArguments.firstOrNull() ?: return null
+        return RoutePathResolver.resolveUriValues(uriArgument).takeIf { it.isNotEmpty() }
     }
 
     private fun getNestPrefixes(nestCall: UCallExpression): List<String> {
