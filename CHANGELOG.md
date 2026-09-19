@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Web
+- fix: List a WebFlux functional route under the path it actually serves when the route URI is not a string literal spelled out in the call: a path held in a constant, or a list of constants declared once and registered with `PROXIED_PATHS.forEach { GET(it, handler::handle) }`, resolved to nothing, so the Explyt Endpoints tool window showed a bare `GET`/`POST` row with an empty path and ten routes collapsed into two. A route whose path still cannot be resolved no longer reaches the endpoint model at all — it used to be normalised to `/` and answer lookups for the application root in the gutter, in endpoint usage search and in the MCP endpoint tools (#414)
 - fix: List an Actuator endpoint once, with a server-relative path, instead of once per module that sets `management.server.port` and with the port pasted into the path: a shared endpoint appeared twice in the Explyt Endpoints tool window — the second row reading `http://localhost:0/...` when the port came from a test configuration binding an ephemeral port — and the host made the path unmatchable, so no URL string resolved to an Actuator endpoint whenever a management port was set
 
 ### Spring Core
