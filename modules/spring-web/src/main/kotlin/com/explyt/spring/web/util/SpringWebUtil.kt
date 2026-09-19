@@ -40,8 +40,6 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.util.parentsOfType
 import org.jetbrains.kotlin.lombok.utils.decapitalize
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -598,44 +596,28 @@ object SpringWebUtil {
         }
     }
 
-    fun getPathFromCallExpression(callExpression: UCallExpression): String {
-        var path = ""
+    fun getPathsFromCallExpression(callExpression: UCallExpression): List<String> {
+        val uriArgument = callExpression.valueArguments.firstOrNull() ?: return emptyList()
 
-        var currentNode = callExpression as? UElement
+        var paths = RoutePathResolver.resolveUriValues(uriArgument)
+        if (paths.isEmpty()) return emptyList()
+
+        var currentNode = callExpression.uastParent
         while (currentNode != null) {
-            if (currentNode is UCallExpression) {
-                if (currentNode.methodName == "nest") {
-                    val currentNodeParent = currentNode.uastParent
-                    if (currentNodeParent is UExpression) {
-                        val qualifiedExpression = currentNodeParent.sourcePsi
-                        if (qualifiedExpression is KtDotQualifiedExpression) {
-                            path = getUri(qualifiedExpression, path)
-                        }
-                    }
-                } else {
-                    val argument = currentNode.valueArguments.firstOrNull()
-                    if (argument is UPolyadicExpression) {
-                        val operand = argument.operands.firstOrNull()
-                        if (operand is ULiteralExpression) {
-                            path = "$path${operand.value}"
-                        }
-                    } else if (argument is ULiteralExpression) {
-                        path = "$path${argument.value}"
-                    }
-                }
+            ProgressManager.checkCanceled()
+            if (currentNode is UCallExpression && currentNode.methodName == NEST) {
+                val prefixes = getNestPrefixes(currentNode)
+                if (prefixes.isEmpty()) return emptyList()
+                paths = prefixes.flatMap { prefix -> paths.map { prefix + it } }
             }
             currentNode = currentNode.uastParent
         }
-        return path
+        return paths
     }
 
-    private fun getUri(statement: KtDotQualifiedExpression, path: String): String {
-        val receiver = statement.receiverExpression
-        if (receiver is KtStringTemplateExpression) {
-            val uri = receiver.entries.joinToString("") { it.text }
-            return "$uri$path"
-        }
-        return path
+    private fun getNestPrefixes(nestCall: UCallExpression): List<String> {
+        val receiver = nestCall.receiver ?: return emptyList()
+        return RoutePathResolver.resolveUriValues(receiver)
     }
 
     fun simplifyUrl(urlPath: String): String {
@@ -679,6 +661,8 @@ object SpringWebUtil {
                 it.name in URL_TEMPLATE_NAMES
                         && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING
             }
+
+    private const val NEST = "nest"
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
