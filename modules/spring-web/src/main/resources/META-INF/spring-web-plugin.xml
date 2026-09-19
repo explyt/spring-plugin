@@ -30,6 +30,8 @@
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebFluxEndpointsLoader"/>
         <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringWebMvcFnEndpointsLoader"/>
+        <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebFeignClientLoader"/>
