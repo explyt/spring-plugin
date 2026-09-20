@@ -18,6 +18,9 @@ object SpringWebClasses {
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
     const val REQUEST_PARAM = "org.springframework.web.bind.annotation.RequestParam"
+    const val REQUEST_PART = "org.springframework.web.bind.annotation.RequestPart"
+    const val MVC_DISPATCHER_SERVLET = "org.springframework.web.servlet.DispatcherServlet"
+    const val WEBFLUX_DISPATCHER_HANDLER = "org.springframework.web.reactive.DispatcherHandler"
     const val REQUEST_HEADER = "org.springframework.web.bind.annotation.RequestHeader"
     const val COOKIE_VALUE = "org.springframework.web.bind.annotation.CookieValue"
     const val REQUEST_BODY = "org.springframework.web.bind.annotation.RequestBody"
@@ -64,6 +67,9 @@ object SpringWebClasses {
 
     const val JAVAX_HTTP_SERVLET_RESPONSE: String = "javax.servlet.http.HttpServletResponse"
     const val JAKARTA_HTTP_SERVLET_RESPONSE: String = "jakarta.servlet.http.HttpServletResponse"
+
+    const val JAVAX_HTTP_PART: String = "javax.servlet.http.Part"
+    const val JAKARTA_HTTP_PART: String = "jakarta.servlet.http.Part"
 
     const val JAVAX_HTTP_SESSION: String = "javax.servlet.http.HttpSession"
     const val JAKARTA_HTTP_SESSION: String = "jakarta.servlet.http.HttpSession"
