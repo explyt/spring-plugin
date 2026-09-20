@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.jpa.JpaClasses
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringBootUtil
@@ -43,8 +44,15 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.idea.base.util.projectScope
+import org.jetbrains.kotlin.asJava.elements.KtLightField
+import org.jetbrains.kotlin.asJava.elements.KtLightMethod
+import org.jetbrains.kotlin.psi.KtCallableDeclaration
+import org.jetbrains.kotlin.psi.KtNullableType
+import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.getUastParentOfType
@@ -261,8 +269,23 @@ class SpringBootApplicationMcpToolset : McpToolset {
         for (info in SpringWebUtil.collectPathVariables(psiMethod)) {
             result += EndpointParameterJson(info.name, "PATH", info.typeFqn, info.isRequired)
         }
+        val multipartRequestNames = psiMethod.parameterList.parameters.asSequence()
+            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
+            .map(::wireNameOf)
+            .toSet()
+        val servletMvc = isConfirmedServletMvc(psiMethod)
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
-            result += EndpointParameterJson(info.name, "QUERY", info.typeFqn, info.isRequired, info.defaultValue)
+            val source = if (servletMvc && info.name in multipartRequestNames) "PART" else "QUERY"
+            result += EndpointParameterJson(info.name, source, info.typeFqn, info.isRequired, info.defaultValue)
+        }
+        for (param in psiMethod.parameterList.parameters) {
+            val part = param.findFirstAnnotation(listOf(SpringWebClasses.REQUEST_PART)) ?: continue
+            result += EndpointParameterJson(
+                name = wireNameOf(param),
+                source = "PART",
+                type = param.type.canonicalText,
+                required = part.getBooleanAttribute("required") ?: true,
+            )
         }
         val body = SpringWebUtil.getRequestBodyInfo(psiMethod)
         if (body != null) {
@@ -276,8 +299,28 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return result
     }
 
+    private fun isConfirmedServletMvc(psiMethod: PsiMethod): Boolean {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
+        val scope = module.moduleWithLibrariesScope
+        val facade = JavaPsiFacade.getInstance(psiMethod.project)
+        val hasServletMvc = facade.findClass(SpringWebClasses.MVC_DISPATCHER_SERVLET, scope) != null
+        val hasWebFlux = facade.findClass(SpringWebClasses.WEBFLUX_DISPATCHER_HANDLER, scope) != null
+        return hasServletMvc && !hasWebFlux
+    }
+
+    private fun isMultipartPart(type: PsiType): Boolean = when (type) {
+        is PsiArrayType -> isMultipartPart(type.componentType)
+        is PsiClassType -> {
+            val className = type.resolve()?.qualifiedName ?: type.canonicalText
+            className in MULTIPART_PART_TYPES ||
+                    InheritanceUtil.isInheritor(type, "java.util.Collection")
+                    && type.parameters.any(::isMultipartPart)
+        }
+        else -> false
+    }
+
     /**
-     * The handler parameters none of the four annotation collectors claims.
+     * The handler parameters none of the annotation collectors claims.
      *
      * Enumerating only annotated parameters drops everything bound by a `HandlerMethodArgumentResolver`, and a
      * dropped parameter is indistinguishable from one that was never declared. That is the dangerous half: a
@@ -294,7 +337,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     name = wireNameOf(param),
                     source = sourceOfUncollected(param),
                     type = param.type.canonicalText,
-                    // Not null-by-omission: the four annotations above declare their requiredness, whereas a
+                    // Not null-by-omission: the collected annotations declare requiredness, whereas a
                     // resolver's contract is private to the resolver. Defaulting to `true` or `false` here would
                     // invent a fact about the wire format, which is the failure this method exists to avoid.
                     required = null,
@@ -303,7 +346,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     /**
      * The name the client sends, which is not always the Java name: `@CookieValue("sid") String sessionId` is
-     * `sid` on the wire. The four collectors above already report the annotation's name, so reporting the
+     * `sid` on the wire. The collectors above already report the annotation's name, so reporting the
      * declared identifier here instead would make one parameter list speak two different vocabularies — and the
      * wire name is the one a generated client or a test fixture has to use.
      *
@@ -430,10 +473,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "on. " +
                 "Returns the full API contract of the endpoint: HTTP method, full path, every declared handler " +
                 "parameter with its type, return type, response DTO field schema (recursively expanded up to " +
-                "3 levels), produces/consumes media types, and the first service method called from the controller. " +
-                "Reading the handler signature by hand misses what Spring binds implicitly and what the DTO's nested " +
+                "3 levels), produces/consumes media types, and the first resolved call on an injected Spring bean " +
+                "(null when no such call can be confirmed). Reading the handler signature by hand misses what Spring " +
+                "binds implicitly and what the DTO's nested " +
                 "types serialise to. " +
-                "Each parameter carries a 'source': PATH, QUERY, BODY, HEADER, COOKIE or MODEL for an " +
+                "Each parameter carries a 'source': PATH, QUERY, PART, BODY, HEADER, COOKIE or MODEL for an " +
                 "annotation-bound one (whose 'name' is the wire name, not the Java name, and whose 'required' is " +
                 "declared); FRAMEWORK for one the container supplies, such as WebRequest or Principal; and " +
                 "UNKNOWN for one bound by a custom HandlerMethodArgumentResolver, whose wire format this tool " +
@@ -495,15 +539,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 .mapNotNull { it.evaluateString() }
         }
 
-        // First service call target
-        val calledMethods = findCalledMethods(psiMethod)
-        val serviceCall = calledMethods.firstOrNull()?.let { callee ->
-            val calleeClass = callee.containingClass
-            CallTargetJson(
-                target = "${calleeClass?.qualifiedName ?: calleeClass?.name ?: "?"}.${callee.name}",
-                line = lineOf(callee),
-            )
-        }
+        val serviceCall = module?.let { findServiceCall(psiMethod, uMethod, it, project) }
         val position = sourcePositionOf(psiMethod, project)
 
         return EndpointContractJson(
@@ -521,6 +557,81 @@ class SpringBootApplicationMcpToolset : McpToolset {
             serviceCall = serviceCall,
             endpointType = endpoint.type.readable,
         )
+    }
+
+    private fun findServiceCall(
+        psiMethod: PsiMethod,
+        uMethod: UMethod,
+        module: com.intellij.openapi.module.Module,
+        project: Project,
+    ): ServiceCallJson? {
+        val controllerClass = psiMethod.containingClass ?: return null
+        val beanClasses = SpringSearchService.getInstance(project).getProjectBeans(module).map { it.psiClass }
+        val beanFields = controllerClass.allFields.filter { field ->
+            if (!isInjectedBeanField(field)) return@filter false
+            val fieldClass = (field.type as? PsiClassType)?.resolve() ?: return@filter false
+            beanClasses.any { InheritanceUtil.isInheritorOrSelf(it, fieldClass, true) }
+        }.toSet()
+        if (beanFields.isEmpty()) return null
+
+        var serviceMethod: PsiMethod? = null
+        uMethod.accept(object : AbstractUastVisitor() {
+            override fun visitCallExpression(node: UCallExpression): Boolean {
+                if (serviceMethod != null) return true
+                val receiver = (node.receiver as? UResolvable)?.resolve()
+                val field = when (receiver) {
+                    is PsiField -> receiver.takeIf { it in beanFields }
+                    is PsiParameter -> {
+                        val constructor = receiver.declarationScope as? PsiMethod
+                        beanFields.firstOrNull { it.name == receiver.name
+                                && it.type == receiver.type
+                                && constructor?.isConstructor == true
+                                && constructor.containingClass == it.containingClass }
+                    }
+                    else -> null
+                } ?: return false
+                val callee = node.resolve() ?: return false
+                val receiverClass = (field.type as? PsiClassType)?.resolve() ?: return false
+                val calleeClass = callee.containingClass ?: return false
+                val calleeFqn = calleeClass.qualifiedName ?: return false
+                if (!callee.hasModifierProperty(PsiModifier.STATIC)
+                    && !calleeFqn.startsWith("java.")
+                    && !calleeFqn.startsWith("kotlin.")
+                    && !calleeFqn.startsWith("org.springframework.")
+                    && InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
+                ) {
+                    serviceMethod = callee
+                    return true
+                }
+                return false
+            }
+        })
+        val callee = serviceMethod ?: return null
+        val position = sourcePositionOf(callee, project)
+        return ServiceCallJson(
+            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+            filePath = position.filePath,
+            line = position.line,
+        )
+    }
+
+    private fun isInjectedBeanField(field: PsiField): Boolean {
+        if (SpringBeanLineMarkerProvider.isAutowiredFieldExpression(field)) return true
+        if (field.initializer != null) return false
+        val constructors = field.containingClass?.constructors ?: return false
+        if ((field as? KtLightField)?.kotlinOrigin is KtParameter) {
+            return constructors.any { constructor ->
+                constructor.parameterList.parameters.any { it.name == field.name && it.type == field.type }
+            }
+        }
+        return constructors.any { constructor ->
+            constructor.body?.statements?.any { statement ->
+                val assignment = (statement as? PsiExpressionStatement)?.expression as? PsiAssignmentExpression
+                assignment != null &&
+                        (assignment.lExpression as? PsiReferenceExpression)?.resolve() == field &&
+                        (assignment.rExpression as? PsiReferenceExpression)?.resolve() in constructor.parameterList.parameters
+            } == true
+        }
     }
 
     private fun expandType(psiType: PsiType, project: Project, depth: Int): DtoSchemaJson? {
@@ -545,7 +656,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             val nested = expandType(fieldType, project, depth - 1)
             fields += DtoFieldJson(
                 name = field.name,
-                type = fieldType.canonicalText,
+                type = renderDtoType(fieldType, (field as? KtLightField)?.kotlinOrigin as? KtCallableDeclaration),
                 nullable = fieldType is PsiPrimitiveType && fieldType == PsiTypes.nullType()
                         || field.annotations.any { it.qualifiedName?.contains("Nullable") == true },
                 nested = nested,
@@ -566,7 +677,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val nested = expandType(retType, project, depth - 1)
                 fields += DtoFieldJson(
                     name = propName,
-                    type = retType.canonicalText,
+                    type = renderDtoType(retType, (method as? KtLightMethod)?.kotlinOrigin as? KtCallableDeclaration),
                     nullable = false,
                     nested = nested,
                 )
@@ -574,6 +685,24 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
 
         return DtoSchemaJson(className = fqn, fields = fields)
+    }
+
+    private fun renderDtoType(type: PsiType, origin: KtCallableDeclaration?): String =
+        renderDtoType(type, origin?.typeReference)
+
+    private fun renderDtoType(type: PsiType, source: KtTypeReference?): String {
+        val element = source?.typeElement ?: return type.canonicalText
+        val typeArguments = (type as? PsiClassType)?.parameters.orEmpty()
+        val sourceArguments = element.typeArgumentsAsTypes
+        val name = if (typeArguments.isNotEmpty() && typeArguments.size == sourceArguments.size) {
+            val arguments = typeArguments.indices.joinToString(",") {
+                renderDtoType(typeArguments[it], sourceArguments[it])
+            }
+            "${type.canonicalText.substringBefore('<')}<$arguments>"
+        } else {
+            type.canonicalText
+        }
+        return name + if (element is KtNullableType) "?" else ""
     }
 
     @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
@@ -934,18 +1063,26 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private const val ATTR_UNIQUE = "unique"
         private const val NOT_NULL_SIMPLE_NAME = "NotNull"
 
-        /** The binding annotations the four `SpringWebUtil` collectors in [extractParameters] already report. */
+        /** Binding annotations whose parameters [extractParameters] already reports. */
         private val COLLECTED_BINDING_ANNOTATIONS = listOf(
             SpringWebClasses.PATH_VARIABLE,
             SpringWebClasses.REQUEST_PARAM,
+            SpringWebClasses.REQUEST_PART,
             SpringWebClasses.REQUEST_BODY,
             SpringWebClasses.REQUEST_HEADER,
         )
 
-        /** The uncollected annotations that carry a client-visible name of their own. */
         private val NAMED_BINDING_ANNOTATIONS = listOf(
             SpringWebClasses.COOKIE_VALUE,
             SpringWebClasses.MODEL_ATTRIBUTE,
+            SpringWebClasses.REQUEST_PARAM,
+            SpringWebClasses.REQUEST_PART,
+        )
+
+        private val MULTIPART_PART_TYPES = setOf(
+            SpringWebUtil.MULTIPART_FILE,
+            SpringWebClasses.JAVAX_HTTP_PART,
+            SpringWebClasses.JAKARTA_HTTP_PART,
         )
 
         /**
@@ -1116,6 +1253,12 @@ data class CallTargetJson(
     val line: Int?,
 )
 
+data class ServiceCallJson(
+    val target: String,
+    val filePath: String?,
+    val line: Int?,
+)
+
 data class TestReferenceJson(
     val filePath: String,
     val referencedMethods: List<TestMethodReferenceJson>,
@@ -1139,7 +1282,7 @@ data class EndpointContractJson(
     val responseSchema: DtoSchemaJson?,
     val produces: List<String>,
     val consumes: List<String>,
-    val serviceCall: CallTargetJson?,
+    val serviceCall: ServiceCallJson?,
     val endpointType: String,
 )
 

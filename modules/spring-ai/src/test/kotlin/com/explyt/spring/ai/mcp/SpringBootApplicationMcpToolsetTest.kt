@@ -10,12 +10,18 @@ import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.impl.FakePsiElement
 import com.intellij.psi.impl.light.LightMethod
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.visitor.AbstractUastVisitor
 
 class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
@@ -23,8 +29,9 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1,
-        TestLibrary.springWeb_6_0_7,
+        TestLibrary.springWebMvc_6_0_7,
         TestLibrary.jakarta_persistence_3_1_0,
+        TestLibrary.kotlin_1_9_22,
     )
 
     private val toolset = SpringBootApplicationMcpToolset()
@@ -38,6 +45,48 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         node.mapNotNull { it[field]?.asText() }
 
     private fun endpointsOf(json: String): JsonNode = mapper.readTree(json)["endpoints"]
+
+    private fun addKotlinController() {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/KotlinController.kt", """
+            package com.example.app.web
+
+            import com.example.app.service.DemoService
+            import org.springframework.http.ResponseEntity
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.stereotype.Service
+
+            interface RecordLookup {
+                fun findById(id: Long): com.example.app.dto.DemoDto
+            }
+
+            @Service
+            class RecordLookupImpl(private val demoService: DemoService) : RecordLookup {
+                override fun findById(id: Long) = demoService.findById(id)
+            }
+
+            @RestController
+            @RequestMapping("/api/kotlin")
+            class KotlinController(private val service: DemoService, private val records: RecordLookup) {
+                @GetMapping("/wrapped/{id}")
+                fun wrapped(id: Long) = ResponseEntity.ok(service.findById(id))
+
+                @GetMapping("/interface/{id}")
+                fun viaInterface(id: Long) = ResponseEntity.ok(records.findById(id))
+
+                @GetMapping("/trimmed")
+                fun trimmed(sourceKey: String): ResponseEntity<*> {
+                    val key = sourceKey.trim()
+                    return ResponseEntity.ok(service.findById(key.toLong()))
+                }
+
+                @GetMapping("/no-service")
+                fun noService(sourceKey: String) = ResponseEntity.ok(sourceKey.trim())
+            }
+        """.trimIndent())
+    }
 
     fun testGetAllSpringBootApplications() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
@@ -183,6 +232,311 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         val pathParam = parameters.firstOrNull { it["source"].asText() == "PATH" }
         assertNotNull("Expected PATH parameter in $parameters", pathParam)
         assertEquals("id", pathParam!!["name"].asText())
+    }
+
+    fun testEndpointContractFindsServiceInsideResponseEntity() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/demo/wrapped/{id}",
+            projectPath = projectPath(),
+            httpMethod = "GET",
+        ))[0]
+        val serviceCall = contract["serviceCall"]
+
+        assertEquals("com.example.app.service.DemoService.findById", serviceCall["target"].asText())
+        assertTrue(serviceCall["filePath"].asText().endsWith("com/example/app/service/DemoService.java"))
+        assertEquals(33, serviceCall["line"].asInt())
+    }
+
+    fun testEndpointContractFindsServiceInKotlinExpressionBody() = runBlocking<Unit> {
+        addKotlinController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/wrapped/{id}",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
+    }
+
+    fun testEndpointContractSkipsTrimBeforeServiceCall() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/demo/trimmed",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
+    }
+
+    fun testEndpointContractSkipsKotlinTrimBeforeServiceCall() = runBlocking<Unit> {
+        addKotlinController()
+        val controller = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.app.web.KotlinController", GlobalSearchScope.allScope(project))!!
+        val method = controller.findMethodsByName("trimmed", false).single().toUElement() as UMethod
+        val trimTargets = mutableListOf<String>()
+        method.accept(object : AbstractUastVisitor() {
+            override fun visitCallExpression(node: UCallExpression): Boolean {
+                if (node.methodName == "trim") {
+                    node.resolve()?.let { trimTargets += "${it.containingClass?.qualifiedName}.${it.name}" }
+                }
+                return false
+            }
+        })
+        assertTrue("Fixture must resolve kotlin.text.StringsKt.trim, got $trimTargets",
+            "kotlin.text.StringsKt.trim" in trimTargets)
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/trimmed",
+            projectPath = projectPath(),
+        )).single()
+
+        assertEquals("com.example.app.service.DemoService.findById", contract["serviceCall"]["target"].asText())
+    }
+
+    fun testEndpointContractHasNoServiceCallForFrameworkOnlyHandler() = runBlocking<Unit> {
+        addKotlinController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/no-service",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertTrue(contract["serviceCall"].isNull)
+    }
+
+    fun testEndpointContractFindsServiceThroughInjectedInterface() = runBlocking<Unit> {
+        addKotlinController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/kotlin/interface/{id}",
+            projectPath = projectPath(),
+        ))[0]
+
+        val serviceCall = contract["serviceCall"]
+        assertEquals("com.example.app.web.RecordLookup.findById", serviceCall["target"].asText())
+        assertTrue(serviceCall["filePath"].asText().endsWith("com/example/app/web/KotlinController.kt"))
+        assertEquals(11, serviceCall["line"].asInt())
+    }
+
+    fun testEndpointContractRejectsManuallyCreatedServiceField() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/demo/manually-created/{id}",
+            projectPath = projectPath(),
+        ))[0]
+
+        assertTrue(contract["serviceCall"].isNull)
+    }
+
+    fun testEndpointContractRejectsServiceFieldBuiltInsideConstructor() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/LocallyCreatedController.java", """
+            package com.example.app.web;
+
+            import com.example.app.dto.DemoDto;
+            import com.example.app.service.DemoService;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class LocallyCreatedController {
+                private final DemoService service;
+
+                public LocallyCreatedController(DemoService service) {
+                    this.service = new DemoService(null);
+                }
+
+                @GetMapping("/api/local/{id}")
+                public DemoDto get(Long id) {
+                    return service.findById(id);
+                }
+            }
+        """.trimIndent())
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/local/{id}",
+            projectPath = projectPath(),
+        )).single()
+
+        assertTrue(contract["serviceCall"].isNull)
+    }
+
+    fun testEndpointContractPreservesNestedKotlinGenericNullability() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/SchemaController.kt", """
+            package com.example.app.web
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            data class RecordsDto(
+                val rows: List<List<String?>>,
+                val solid: List<List<String>>,
+                val nullableRow: List<List<String>?>,
+            )
+
+            @RestController
+            class SchemaController {
+                @GetMapping("/api/schema/rows")
+                fun rows(): RecordsDto = RecordsDto(emptyList(), emptyList(), emptyList())
+            }
+        """.trimIndent())
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/schema/rows",
+            projectPath = projectPath(),
+        )).single()
+        val fields = contract["responseSchema"]["fields"].associateBy { it["name"].asText() }
+
+        assertEquals("java.util.List<java.util.List<java.lang.String?>>", fields.getValue("rows")["type"].asText())
+        assertEquals("java.util.List<java.util.List<java.lang.String>>", fields.getValue("solid")["type"].asText())
+        assertEquals("java.util.List<java.util.List<java.lang.String>?>", fields.getValue("nullableRow")["type"].asText())
+        assertFalse(fields.getValue("rows")["nullable"].asBoolean())
+    }
+
+    private fun addMultipartController() {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/MultipartController.java", """
+            package com.example.app.web;
+
+            import com.example.app.dto.DemoDto;
+            import java.util.List;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PostMapping;
+            import org.springframework.web.bind.annotation.RequestParam;
+            import org.springframework.web.bind.annotation.RequestPart;
+            import org.springframework.web.bind.annotation.RestController;
+            import org.springframework.web.multipart.MultipartFile;
+
+            @RestController
+            public class MultipartController {
+                @PostMapping("/api/multipart/upload")
+                public String upload(
+                        @RequestParam("file") MultipartFile upload,
+                        @RequestParam("files") List<MultipartFile> files,
+                        @RequestParam("images") MultipartFile[] images,
+                        @RequestPart("metadata") DemoDto dto,
+                        @RequestPart(value = "optional", required = false) DemoDto opt) {
+                    return "ok";
+                }
+
+                @GetMapping("/api/multipart/find")
+                public String find(@RequestParam("q") String query) {
+                    return query;
+                }
+
+                @PostMapping("/api/multipart/servlet")
+                public String servlet(@RequestParam("servletPart") jakarta.servlet.http.Part part) {
+                    return part.getName();
+                }
+
+                @PostMapping("/api/multipart/named-map")
+                public String namedMap(@RequestParam("values") java.util.Map<String, MultipartFile> values) {
+                    return "ok";
+                }
+            }
+        """.trimIndent())
+    }
+
+    fun testEndpointContractReportsKotlinMultipartFile() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/KotlinMultipartController.kt", """
+            package com.example.app.web
+
+            import org.springframework.web.bind.annotation.PostMapping
+            import org.springframework.web.bind.annotation.RequestParam
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.web.multipart.MultipartFile
+
+            @RestController
+            class KotlinMultipartController {
+                @PostMapping("/api/multipart/kotlin")
+                fun upload(@RequestParam("file") upload: MultipartFile): String = upload.name
+            }
+        """.trimIndent())
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/kotlin",
+            projectPath = projectPath(),
+        )).single()
+        val parameters = contract["parameters"]
+
+        assertEquals(1, parameters.size())
+        assertEquals("file", parameters[0]["name"].asText())
+        assertEquals("PART", parameters[0]["source"].asText())
+        assertEquals("org.springframework.web.multipart.MultipartFile", parameters[0]["type"].asText())
+    }
+
+    fun testEndpointContractReportsMultipartParts() = runBlocking<Unit> {
+        addMultipartController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/upload",
+            projectPath = projectPath(),
+        )).single()
+        val parameters = contract["parameters"]
+        val byName = parameters.associateBy { it["name"].asText() }
+
+        assertEquals(5, parameters.size())
+        assertEquals("PART", byName.getValue("file")["source"].asText())
+        assertEquals(setOf("file", "files", "images", "metadata", "optional"), byName.keys)
+        assertEquals("PART", byName.getValue("files")["source"].asText())
+        assertEquals("PART", byName.getValue("images")["source"].asText())
+        assertEquals("PART", byName.getValue("metadata")["source"].asText())
+        assertEquals("PART", byName.getValue("optional")["source"].asText())
+        assertTrue(byName.getValue("metadata")["required"].asBoolean())
+        assertFalse(byName.getValue("optional")["required"].asBoolean())
+        assertEquals("org.springframework.web.multipart.MultipartFile", byName.getValue("file")["type"].asText())
+        assertEquals("com.example.app.dto.DemoDto", byName.getValue("metadata")["type"].asText())
+    }
+
+    fun testNamedMapOfMultipartFilesIsNotAFilePart() = runBlocking<Unit> {
+        addMultipartController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/named-map",
+            projectPath = projectPath(),
+        )).single()
+        val parameter = contract["parameters"].single()
+
+        assertEquals("values", parameter["name"].asText())
+        assertEquals("QUERY", parameter["source"].asText())
+    }
+
+    fun testEndpointContractReportsServletMultipartPart() = runBlocking<Unit> {
+        addMultipartController()
+
+        val contract = endpointsOf(toolset.getEndpointContract(
+            urlPattern = "/api/multipart/servlet",
+            projectPath = projectPath(),
+        )).single()
+        val parameter = contract["parameters"].single()
+
+        assertEquals("servletPart", parameter["name"].asText())
+        assertEquals("PART", parameter["source"].asText())
+        assertEquals("jakarta.servlet.http.Part", parameter["type"].asText())
+        assertTrue(parameter["required"].asBoolean())
+    }
+
+    fun testHttpEndpointListingKeepsMultipartAndQuerySources() = runBlocking<Unit> {
+        addMultipartController()
+
+        val endpoints = endpointsOf(toolset.getHttpEndpoints(
+            projectPath = projectPath(),
+            controllerFilter = "MultipartController",
+        ))
+        val upload = endpoints.single { it["methodName"].asText() == "upload" }
+        val find = endpoints.single { it["methodName"].asText() == "find" }
+        val uploadParams = upload["parameters"]
+
+        assertEquals("Expected upload parameters in $upload", 5, uploadParams.size())
+        assertEquals(5, uploadParams.count { it["source"].asText() == "PART" })
+        assertEquals("QUERY", find["parameters"].single()["source"].asText())
+        assertEquals("q", find["parameters"].single()["name"].asText())
     }
 
     /**
