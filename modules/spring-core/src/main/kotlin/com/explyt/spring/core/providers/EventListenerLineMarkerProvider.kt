@@ -8,9 +8,11 @@ package com.explyt.spring.core.providers
 import com.explyt.base.LibraryClassCache
 import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.SpringCoreClasses.APPLICATION_CONTEXT_EVENT
 import com.explyt.spring.core.SpringCoreClasses.APPLICATION_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_PUBLISHER
+import com.explyt.spring.core.SpringCoreClasses.SPRING_APPLICATION_EVENT
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties.ON_APPLICATION_EVENT
 import com.explyt.spring.core.SpringProperties.PUBLISH_EVENT_METHOD
@@ -37,6 +39,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.Iconable
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.*
@@ -220,8 +223,44 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val eventPsiClassByAnnotation = getPsiClassesByAnnotationCached(module, psiMethod)
 
         val methodArgumentTypes = getMethodArgumentTypes(module)
-        return getPublishMethodCalls(methodArgumentTypes, eventPsiType, eventPsiClassByAnnotation)
+        val publishCalls = getPublishMethodCalls(methodArgumentTypes, eventPsiType, eventPsiClassByAnnotation)
+        return publishCalls + containerPublishedEventDeclarations(
+            module, eventPsiType, eventPsiClassByAnnotation
+        )
     }
+
+    /**
+     * The container publishes its own lifecycle events from inside a jar, and a library sources root is outside
+     * every module scope, so no reference search can reach that call: the event declaration is the only target
+     * that can be offered for it.
+     */
+    private fun containerPublishedEventDeclarations(
+        module: Module, eventPsiType: PsiType?, eventPsiClassByAnnotation: Set<PsiClass>
+    ): List<PsiElement> {
+        val eventClasses = eventPsiClassByAnnotation + listOfNotNull(eventPsiType?.resolveBeanPsiClass)
+        return eventClasses
+            .filter { isContainerPublishedEvent(module, it) }
+            .map { it.navigationElement }
+    }
+
+    /**
+     * Inheritance alone would also match an application event that merely extends a lifecycle base — the
+     * testdata's `BlockedListStartedEvent extends ContextStartedEvent` is published by application code and
+     * must keep resolving to that call. The container publishes only the classes it declares itself, so the
+     * event has to come from a library as well.
+     */
+    private fun isContainerPublishedEvent(module: Module, eventClass: PsiClass): Boolean {
+        val virtualFile = eventClass.containingFile?.virtualFile ?: return false
+        val fileIndex = ProjectFileIndex.getInstance(module.project)
+        if (!fileIndex.isInLibrary(virtualFile)) return false
+        return containerEventBaseClasses(module).any { eventClass.isEqualOrInheritor(it) }
+    }
+
+    private fun containerEventBaseClasses(module: Module): List<PsiClass> =
+        listOfNotNull(
+            LibraryClassCache.searchForLibraryClass(module, SPRING_APPLICATION_EVENT),
+            LibraryClassCache.searchForLibraryClass(module, APPLICATION_CONTEXT_EVENT)
+        )
 
     private fun getPsiClassesByAnnotationCached(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
         val cacheManager = CachedValuesManager.getManager(module.project)
