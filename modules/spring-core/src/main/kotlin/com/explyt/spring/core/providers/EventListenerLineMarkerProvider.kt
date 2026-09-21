@@ -8,11 +8,10 @@ package com.explyt.spring.core.providers
 import com.explyt.base.LibraryClassCache
 import com.explyt.plugin.PluginIds
 import com.explyt.spring.core.SpringCoreBundle
-import com.explyt.spring.core.SpringCoreClasses.APPLICATION_CONTEXT_EVENT
+import com.explyt.spring.core.SpringCoreClasses.APPLICATION_EVENT
 import com.explyt.spring.core.SpringCoreClasses.APPLICATION_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_PUBLISHER
-import com.explyt.spring.core.SpringCoreClasses.SPRING_APPLICATION_EVENT
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.core.SpringProperties.ON_APPLICATION_EVENT
 import com.explyt.spring.core.SpringProperties.PUBLISH_EVENT_METHOD
@@ -218,43 +217,39 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         val methodArgumentTypes = getMethodArgumentTypes(module)
         val publishCalls = getPublishMethodCalls(methodArgumentTypes, eventPsiType, eventPsiClassByAnnotation)
-        return publishCalls + containerPublishedEventDeclarations(
-            module, eventPsiType, eventPsiClassByAnnotation
+        return publishCalls + libraryPublishedEventDeclarations(
+            module, eventPsiType, eventPsiClassByAnnotation, methodArgumentTypes
         )
     }
 
     /**
-     * The container publishes its own lifecycle events from inside a jar, and a library sources root is outside
-     * every module scope, so no reference search can reach that call: the event declaration is the only target
-     * that can be offered for it.
+     * Spring and its ecosystem publish their own events from inside a jar, and a library sources root is
+     * outside every module scope, so no reference search can reach those calls: the event declaration is the
+     * only target that can be offered.
+     *
+     * An event is attributed to a library publisher only when the project itself never publishes it. That
+     * keeps the real call for an application event extending a library base, for a library event the
+     * application raises on its own, and for anything Spring wrapped in `PayloadApplicationEvent`. The check
+     * is per event class, because one listener can declare several via `@EventListener(classes = ...)`.
      */
-    private fun containerPublishedEventDeclarations(
-        module: Module, eventPsiType: PsiType?, eventPsiClassByAnnotation: Set<PsiClass>
+    private fun libraryPublishedEventDeclarations(
+        module: Module,
+        eventPsiType: PsiType?,
+        eventPsiClassByAnnotation: Set<PsiClass>,
+        methodArgumentTypes: List<MethodCallArgumentTypes>
     ): List<PsiElement> {
+        val applicationEvent =
+            LibraryClassCache.searchForLibraryClass(module, APPLICATION_EVENT) ?: return emptyList()
+        val fileIndex = ProjectFileIndex.getInstance(module.project)
         val eventClasses = eventPsiClassByAnnotation + listOfNotNull(eventPsiType?.resolveBeanPsiClass)
         return eventClasses
-            .filter { isContainerPublishedEvent(module, it) }
+            .filter { it.isEqualOrInheritor(applicationEvent) }
+            .filter { it.containingFile?.virtualFile?.let(fileIndex::isInLibrary) == true }
+            .filter { eventClass ->
+                methodArgumentTypes.none { isAcceptableType(null, it.argumentType, setOf(eventClass)) }
+            }
             .map { it.navigationElement }
     }
-
-    /**
-     * Inheritance alone would also match an application event that merely extends a lifecycle base — the
-     * testdata's `BlockedListStartedEvent extends ContextStartedEvent` is published by application code and
-     * must keep resolving to that call. The container publishes only the classes it declares itself, so the
-     * event has to come from a library as well.
-     */
-    private fun isContainerPublishedEvent(module: Module, eventClass: PsiClass): Boolean {
-        val virtualFile = eventClass.containingFile?.virtualFile ?: return false
-        val fileIndex = ProjectFileIndex.getInstance(module.project)
-        if (!fileIndex.isInLibrary(virtualFile)) return false
-        return containerEventBaseClasses(module).any { eventClass.isEqualOrInheritor(it) }
-    }
-
-    private fun containerEventBaseClasses(module: Module): List<PsiClass> =
-        listOfNotNull(
-            LibraryClassCache.searchForLibraryClass(module, SPRING_APPLICATION_EVENT),
-            LibraryClassCache.searchForLibraryClass(module, APPLICATION_CONTEXT_EVENT)
-        )
 
     private fun getPsiClassesByAnnotationCached(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
         val cacheManager = CachedValuesManager.getManager(module.project)
