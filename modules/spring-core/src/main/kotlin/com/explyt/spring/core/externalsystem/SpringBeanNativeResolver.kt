@@ -41,7 +41,6 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.importing.ProjectResolverPolicy
@@ -60,6 +59,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.isFile
@@ -68,6 +68,7 @@ import com.intellij.psi.util.InheritanceUtil
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
 import com.intellij.util.execution.ParametersListUtil
+import com.intellij.util.indexing.DumbModeAccessType
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
@@ -111,6 +112,26 @@ fun missingClassMessage(missingClassName: String, librariesWithMissingFiles: Lis
         librariesWithMissingFiles.joinToString(", ")
     )
 }
+
+/**
+ * Runs an index-backed read action that must survive the dumb mode a sync starts on itself: the resolver builds the
+ * project mid-resolve, and the build output triggers a VFS refresh whose scanning task makes every open project dumb
+ * while PSI is still being read.
+ *
+ * Waiting for smart mode here would deadlock. The platform wraps the whole resolution in
+ * `ExternalSystemResolveProjectTask.suspendScanningAndIndexingThenRun`, which holds a suspension token for its entire
+ * duration; a dumb task entered under that token stays paused, so the dumb queue cannot drain and smart mode never
+ * arrives.
+ *
+ * `RELIABLE_DATA_ONLY` is what keeps this correct rather than merely quiet: it serves only up-to-date index data, and
+ * it is the sole access type `StubIndex` honours.
+ */
+@Suppress("UnstableApiUsage")
+@VisibleForTesting
+fun <T> withIndexAccessDuringSync(compute: () -> T): T =
+    ApplicationManager.getApplication().runReadAction(Computable {
+        DumbModeAccessType.RELIABLE_DATA_ONLY.ignoreDumbMode(ThrowableComputable { compute() })
+    })
 
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
 
@@ -208,14 +229,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val projectData = projectData(projectPath, Constants.DEBUG_SESSION_NAME)
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
 
-        detectMessageMapping(settings)
-        val springBeanData = readInSmartMode(settings.project) {
-            settings.aspectExist = LibraryClassCache.searchForLibraryClass(
-                settings.project, SpringCoreClasses.ASPECT
-            ) != null
-            beans.mapNotNull { toSpringBeanData(it, id, settings, listener) }
-        }
-        springBeanData.forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
+        detectContextCapabilities(settings)
+        beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
+            .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
         return projectDataNode
@@ -265,14 +281,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         fillRunConfigurationData(projectDataNode, settings)
         fillBeanSearch(projectDataNode, settings)
 
-        detectMessageMapping(settings)
-        val springBeanData = readInSmartMode(settings.project) {
-            settings.aspectExist = LibraryClassCache.searchForLibraryClass(
-                settings.project, SpringCoreClasses.ASPECT
-            ) != null
-            beans.mapNotNull { toSpringBeanData(it, id, settings, listener) }
-        }
-        springBeanData.forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
+        detectContextCapabilities(settings)
+        beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
+            .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
             .forEach { projectDataNode.createChild(SpringAspectData.KEY, it) }
         return projectDataNode
@@ -286,10 +297,10 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     ) {
         val explytRunConfiguration = runConfigurationHolder.runConfiguration ?: throw RuntimeException()
 
-        val mainClassName = readInSmartMode(explytRunConfiguration.project) {
-            NativeBootUtils.getMainClass(explytRunConfiguration)?.qualifiedName
-        } ?: throw ExternalSystemException("No main class run configuration found")
-        explytRunConfiguration.envs["explyt.spring.appClassName"] = mainClassName
+        val mainClass = withIndexAccessDuringSync { NativeBootUtils.getMainClass(explytRunConfiguration) }
+            ?: throw ExternalSystemException("No main class run configuration found")
+        explytRunConfiguration.envs["explyt.spring.appClassName"] =
+            withIndexAccessDuringSync { mainClass.qualifiedName }
         explytRunConfiguration.mainClassName = getMainClassName(modules, id, listener)
         explytRunConfiguration.classpathModifications.add(getClasspathExplytModification())
     }
@@ -333,9 +344,16 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
     }
 
-    private fun detectMessageMapping(settings: NativeExecutionSettings) {
-        settings.messageMappingExist = readInSmartMode(settings.project) {
-            LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.MESSAGE_MAPPING) != null
+    /**
+     * Resolved once per sync rather than per bean: both flags are properties of the module classpath, which cannot
+     * change while the launched application is being read.
+     */
+    private fun detectContextCapabilities(settings: NativeExecutionSettings) {
+        withIndexAccessDuringSync {
+            settings.messageMappingExist =
+                LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.MESSAGE_MAPPING) != null
+            settings.aspectExist =
+                LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.ASPECT) != null
         }
     }
 
@@ -375,8 +393,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         listener: ExternalSystemTaskNotificationListener
     ): String {
         if (!Registry.`is`("explyt.spring.native.old")) return SpringBootBeanReaderStarter::class.qualifiedName!!
-        val project = modules.firstOrNull()?.project ?: return SpringBootBeanReaderStarter::class.qualifiedName!!
-        val isSpringBoot24 = readInSmartMode(project) {
+        val isSpringBoot24 = withIndexAccessDuringSync {
             modules.any { LibraryClassCache.searchForLibraryClass(it, SPRING_BOOT_2_4_CLASS) != null }
         }
         return if (isSpringBoot24) {
@@ -486,11 +503,12 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     }
 
 
-    private fun <T> readInSmartMode(project: Project, action: () -> T): T {
-        return ReadAction.nonBlocking<T> { action() }
-            .inSmartMode(project)
-            .executeSynchronously()
-    }
+    private fun toSpringBeanDataInReadAction(
+        bean: BeanInfo,
+        id: ExternalSystemTaskId,
+        settings: NativeExecutionSettings,
+        listener: ExternalSystemTaskNotificationListener
+    ): SpringBeanData? = withIndexAccessDuringSync { toSpringBeanData(bean, id, settings, listener) }
 
     private fun toSpringBeanData(
         bean: BeanInfo,
@@ -578,11 +596,8 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
 
     private fun findRunConfigurationReadAction(
         projectPath: String, settings: NativeExecutionSettings?
-    ): RunConfigurationHolder? {
-        settings ?: return null
-        return readInSmartMode(settings.project) {
-            RunConfigurationExtractor.findRunConfiguration(projectPath, settings)
-        }
+    ): RunConfigurationHolder? = withIndexAccessDuringSync {
+        RunConfigurationExtractor.findRunConfiguration(projectPath, settings)
     }
 
     private fun getEnvironment(
