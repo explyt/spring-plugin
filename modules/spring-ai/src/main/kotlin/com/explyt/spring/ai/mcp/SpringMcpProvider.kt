@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.EndpointPathPatterns
 import com.explyt.spring.web.util.SpringWebUtil
@@ -22,6 +23,7 @@ import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringAttribute
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.codeInspection.isInheritorOf
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
@@ -50,10 +52,12 @@ import org.jetbrains.kotlin.psi.KtNullableType
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 import org.jetbrains.uast.evaluateString
+import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
 
@@ -173,9 +177,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
-                "file path, line and endpoint type. 'endpoints' is ordered the way Spring picks a handler - literal " +
-                "before '{template}', fewer wildcards first - so when several match one URL the first is the one " +
-                "that dispatches. " +
+                "file path, line and endpoint type. 'endpoints' lists the closest match to the pattern first: an " +
+                "exact path, then one matching it as a pattern, then one merely containing it, and within each " +
+                "group the way Spring picks a handler - literal before '{template}', fewer wildcards first - so " +
+                "when several match one URL the first is the one that dispatches. " +
+                "Covers annotation-declared handlers and functional routes alike; for a functional route the " +
+                "controller class and method name are the bean factory that registers it, and 'parameters' holds " +
+                "the path variables its URL template declares. " +
                 "Matching is forgiving: 'requests' matches '/api/.../requests', and '{id}' matches any path variable. " +
                 "When 'endpoints' is empty, no such route exists yet, and 'nearestByPrefix' lists the existing routes " +
                 "that share the longest leading path with the pattern - the controller and the conventions a new " +
@@ -207,16 +215,17 @@ class SpringBootApplicationMcpToolset : McpToolset {
     /**
      * The single-URL lookup shared by the find and contract tools.
      *
-     * Matches are ordered by [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}`
-     * route both match the pattern, the first element is the one Spring dispatches to. A pattern that matches
-     * nothing is not a dead end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing the longest
-     * leading path with it, which is where a route that does not exist yet would be added.
+     * Matches are ordered by how closely they answer the pattern ([matchRank]) and then by
+     * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match the
+     * pattern, the first element is the one Spring dispatches to. A pattern that matches nothing is not a dead
+     * end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing the longest leading path with it,
+     * which is where a route that does not exist yet would be added.
      */
     private suspend fun <T> lookupEndpoints(
         urlPattern: String,
         projectPath: String,
         httpMethod: String,
-        toJson: (EndpointElement, Project) -> T?,
+        toJson: (EndpointElement, Project) -> T,
     ): EndpointLookupJson<T> {
         if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
         val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
@@ -228,13 +237,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
 
                 val matching = allEndpoints
-                    .filter { matchesUrlPattern(it, normalizedPattern) }
-                    .filter { methodFilter == null || it.requestMethods.isEmpty() || it.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
-                    .sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+                    .mapNotNull { endpoint -> matchRank(endpoint, normalizedPattern)?.let { endpoint to it } }
+                    .filter { (endpoint, _) -> methodFilter == null || endpoint.requestMethods.isEmpty() || endpoint.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
+                    .sortedWith(
+                        compareBy<Pair<EndpointElement, Int>> { it.second }
+                            .thenBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.first.path) }
+                    )
+                    .map { it.first }
+                // Every counted endpoint is converted: `toJson` returns a value for any endpoint element, so a
+                // caller reading `totalCount` against `endpoints.size` cannot see them disagree while
+                // `truncated` is false.
                 val page = matching.asSequence()
                     .take(MAX_ENDPOINT_RESULTS)
                     .onEach { ProgressManager.checkCanceled() }
-                    .mapNotNull { toJson(it, project) }
+                    .map { toJson(it, project) }
                     .toList()
 
                 // The neighbourhood of a miss is context, not an answer, so the method filter does not apply to
@@ -276,18 +292,28 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return EndpointPathPatterns.prefixOf(normalizedPattern, sharedSegments) to compact
     }
 
-    private fun matchesUrlPattern(endpoint: EndpointElement, normalizedPattern: String): Boolean {
+    /**
+     * How closely [endpoint] answers [normalizedPattern], lowest first, or `null` when it does not answer it.
+     *
+     * Matching is deliberately forgiving - a bare `items` finds `/api/demo/items` - so a long unrelated path that
+     * merely contains the pattern matches too. Ordering those by path specificity alone puts such a path *above*
+     * the route matching the pattern exactly, because specificity breaks ties by descending length. The caller
+     * reads its answer off the first element, so how well an endpoint fits the query has to outrank how Spring
+     * would dispatch between the endpoints that fit it equally well.
+     */
+    private fun matchRank(endpoint: EndpointElement, normalizedPattern: String): Int? {
         val endpointPath = SpringWebUtil.simplifyUrl(endpoint.path)
-        // Exact/regex match (handles {param} wildcards)
-        if (SpringWebUtil.isEndpointMatches(endpointPath, normalizedPattern)) return true
-        // Substring match for partial URLs
-        if (endpointPath.contains(normalizedPattern)) return true
-        return false
+        return when {
+            endpointPath == normalizedPattern -> EXACT_MATCH
+            SpringWebUtil.isEndpointMatches(endpointPath, normalizedPattern) -> PATTERN_MATCH
+            endpointPath.contains(normalizedPattern) -> SUBSTRING_MATCH
+            else -> null
+        }
     }
 
     private fun toCompactEndpointJson(endpoint: EndpointElement, project: Project): CompactEndpointJson {
-        val psiMethod = endpoint.psiElement as? PsiMethod
-        val controllerClass = endpoint.containingClass ?: psiMethod?.containingClass
+        val declaringMethod = declaringMethodOf(endpoint)
+        val controllerClass = endpoint.containingClass ?: declaringMethod?.containingClass
         val position = sourcePositionOf(endpoint.psiElement, project)
         // A loader may know the declaring file of an endpoint whose element has no source position of its own.
         val filePath = position.filePath
@@ -297,7 +323,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
             fullPath = endpoint.path,
             controllerClass = controllerClass?.qualifiedName,
-            methodName = psiMethod?.name,
+            methodName = declaringMethod?.name,
             filePath = filePath,
             line = position.line,
             endpointType = endpoint.type.readable,
@@ -305,7 +331,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     private fun toEndpointJson(endpoint: EndpointElement, project: Project): EndpointJson {
-        val psiMethod = endpoint.psiElement as? PsiMethod
+        val handler = requestHandlerOf(endpoint)
         val core = toCompactEndpointJson(endpoint, project)
 
         return EndpointJson(
@@ -315,11 +341,50 @@ class SpringBootApplicationMcpToolset : McpToolset {
             methodName = core.methodName,
             filePath = core.filePath,
             line = core.line,
-            parameters = if (psiMethod != null) extractParameters(psiMethod) else emptyList(),
-            returnType = psiMethod?.returnType?.canonicalText,
+            parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
+            returnType = handler?.returnType?.canonicalText,
             endpointType = core.endpointType,
         )
     }
+
+    /**
+     * The method whose declaration carries [endpoint], handler or not.
+     *
+     * A functional route is a call inside a `@Bean` factory rather than a member of its own, so the element the
+     * loader reports is an expression. Naming the enclosing factory is what makes such a route reachable: its path
+     * appears nowhere else in the project, and without the method a caller is left with a file and a line.
+     */
+    private fun declaringMethodOf(endpoint: EndpointElement): PsiMethod? =
+        endpoint.psiElement as? PsiMethod
+            ?: endpoint.psiElement.toUElement()?.getParentOfType<UMethod>()?.javaPsi
+
+    /**
+     * The method Spring invokes for [endpoint], or `null` when the endpoint has none to read a signature from.
+     *
+     * A functional route is registered by a `@Bean` factory returning a `RouterFunction`, and that factory's
+     * signature describes the *registration*: reading parameters off it reports the injected handler bean as a
+     * request parameter and `RouterFunction<ServerResponse>` as the response type. Both are invented facts about
+     * the wire format, and a caller generating a client cannot tell them from real ones - the reason this is
+     * rejected rather than reported with a caveat.
+     */
+    private fun requestHandlerOf(endpoint: EndpointElement): PsiMethod? =
+        (endpoint.psiElement as? PsiMethod)?.takeUnless { it.returnType.isRouteRegistration() }
+
+    private fun PsiType?.isRouteRegistration(): Boolean =
+        this != null && ROUTE_FUNCTION_TYPES.any { isInheritorOf(it) }
+
+    /**
+     * The parameters the URL template itself declares, for an endpoint with no handler signature to read.
+     *
+     * The type is the wire type of a path segment rather than a target type: nothing has been found that converts
+     * it, so naming anything narrower than `String` would state more than is known.
+     */
+    private fun pathTemplateParameters(path: String): List<EndpointParameterJson> =
+        SpringWebUtil.NameInBracketsRx.findAll(path)
+            .mapNotNull { it.groups[TEMPLATE_NAME_GROUP]?.value?.substringBefore(':')?.takeIf(String::isNotBlank) }
+            .distinct()
+            .map { EndpointParameterJson(it, "PATH", CommonClassNames.JAVA_LANG_STRING, required = true) }
+            .toList()
 
     private fun extractParameters(psiMethod: PsiMethod): List<EndpointParameterJson> {
         val result = mutableListOf<EndpointParameterJson>()
@@ -539,9 +604,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "UNKNOWN for one bound by a custom HandlerMethodArgumentResolver, whose wire format this tool " +
                 "cannot read - inspect the source before treating an UNKNOWN parameter as absent. " +
                 "'required' is null whenever nothing declares it. " +
+                "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
+                "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
+                "such signature: a PARTIAL contract still names the path, the verb, the declaring bean factory, " +
+                "the handler function as 'serviceCall' and the path variables the URL template declares, and " +
+                "'contractUnavailableReason' says what has to be read at the source - an empty 'parameters' there " +
+                "means 'not declared here', never 'the endpoint takes nothing'. " +
                 "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
-                "'endpoints' ordered as Spring dispatches, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
-                "matched - with a contract in place of each endpoint. " +
+                "'endpoints' with the closest match to the pattern first, and 'nearestByPrefix' with " +
+                "'sharedPrefix' when nothing matched - with a contract in place of each endpoint; every counted " +
+                "endpoint is returned, so endpoints.size equals totalCount unless truncated. " +
                 "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
     )
     suspend fun getEndpointContract(
@@ -561,45 +633,97 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return mapper.writeValueAsString(result)
     }
 
-    private fun buildContract(endpoint: EndpointElement, project: Project): EndpointContractJson? {
-        val psiMethod = endpoint.psiElement as? PsiMethod ?: return null
-        val uMethod = psiMethod.toUElement() as? UMethod ?: return null
-        val controllerClass = endpoint.containingClass ?: psiMethod.containingClass
-        val parameters = extractParameters(psiMethod)
-        val returnTypeFqn = psiMethod.returnType?.canonicalText
+    /**
+     * The contract of [endpoint], complete when a request-handling method declares it and partial otherwise.
+     *
+     * A partial contract is deliberately still a contract: dropping the endpoint instead would leave the caller
+     * with a `totalCount` naming an endpoint it cannot see, which reads as "the route does not exist" - the
+     * opposite of what the endpoint model found. What is knowable without a handler signature - the path, the
+     * verb, the declaring bean factory, and the parameters the URL template itself declares - is reported, and
+     * [EndpointContractJson.contractUnavailableReason] names what is missing rather than leaving the caller to
+     * infer it from empty fields.
+     */
+    private fun buildContract(endpoint: EndpointElement, project: Project): EndpointContractJson {
+        val handler = requestHandlerOf(endpoint)
+        val uHandler = handler?.toUElement() as? UMethod
+        val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
+        val mediaTypes = mediaTypesOf(uHandler, module, project)
+        val core = toCompactEndpointJson(endpoint, project)
 
-        // Response DTO schema
-        val responseSchema = psiMethod.returnType?.let { expandType(it, project, depth = 3) }
-
-        // Produces / consumes from @RequestMapping via UAST API
-        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
-        var produces = emptyList<String>()
-        var consumes = emptyList<String>()
-        if (module != null) {
-            val mah = SpringSearchService.getInstance(project).getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
-            produces = mah.getAnnotationValues(uMethod, setOf("produces"))
-                .mapNotNull { it.evaluateString() }
-            consumes = mah.getAnnotationValues(uMethod, setOf("consumes"))
-                .mapNotNull { it.evaluateString() }
+        val serviceCall = when {
+            handler != null && uHandler != null && module != null ->
+                findServiceCall(handler, uHandler, module, project)
+            else -> routeHandlerCall(endpoint, project)
         }
 
-        val serviceCall = module?.let { findServiceCall(psiMethod, uMethod, it, project) }
-        val position = sourcePositionOf(psiMethod, project)
-
         return EndpointContractJson(
-            httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
-            fullPath = endpoint.path,
-            controllerClass = controllerClass?.qualifiedName,
-            methodName = psiMethod.name,
-            filePath = position.filePath,
-            line = position.line,
-            parameters = parameters,
-            returnType = returnTypeFqn,
-            responseSchema = responseSchema,
-            produces = produces,
-            consumes = consumes,
+            httpMethods = core.httpMethods,
+            fullPath = core.fullPath,
+            controllerClass = core.controllerClass,
+            methodName = core.methodName,
+            filePath = core.filePath,
+            line = core.line,
+            parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
+            returnType = handler?.returnType?.canonicalText,
+            responseSchema = handler?.returnType?.let { expandType(it, project, depth = 3) },
+            produces = mediaTypes.produces,
+            consumes = mediaTypes.consumes,
             serviceCall = serviceCall,
             endpointType = endpoint.type.readable,
+            contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
+            contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
+        )
+    }
+
+    private data class MediaTypes(val produces: List<String>, val consumes: List<String>)
+
+    private fun mediaTypesOf(
+        uHandler: UMethod?,
+        module: com.intellij.openapi.module.Module?,
+        project: Project,
+    ): MediaTypes {
+        if (uHandler == null || module == null) return MediaTypes(emptyList(), emptyList())
+        val mah = SpringSearchService.getInstance(project)
+            .getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
+        return MediaTypes(
+            produces = mah.getAnnotationValues(uHandler, setOf("produces")).mapNotNull { it.evaluateString() },
+            consumes = mah.getAnnotationValues(uHandler, setOf("consumes")).mapNotNull { it.evaluateString() },
+        )
+    }
+
+    /**
+     * What a caller has to read itself, in the terms of the endpoint kind rather than as a generic failure.
+     *
+     * "No contract" and "the request shape lives somewhere this tool does not read" call for different next
+     * steps, and a caller that cannot tell them apart treats both as "the endpoint takes nothing".
+     */
+    private fun contractUnavailableReason(endpoint: EndpointElement): String = when (endpoint.type) {
+        EndpointType.OPENAPI ->
+            "The endpoint is declared in an OpenAPI document; its request and response schema live in the " +
+                    "specification, not in a handler signature"
+
+        else ->
+            "The route is registered functionally, so its request and response shape is read from ServerRequest " +
+                    "inside the handler function rather than declared by a handler signature"
+    }
+
+    /**
+     * The handler function a functional route delegates to, as the endpoint's service call.
+     *
+     * `handler::handle` in `GET(path, handler::handle)` is the one thing a functional route states about its own
+     * behaviour, and it is where the request shape is actually read. Reporting it as `serviceCall` keeps the
+     * partial contract navigable instead of ending at the registration.
+     */
+    private fun routeHandlerCall(endpoint: EndpointElement, project: Project): ServiceCallJson? {
+        val route = endpoint.psiElement.toUElement()?.getParentOfType<UCallExpression>(strict = false) ?: return null
+        val callee = route.valueArguments
+            .firstNotNullOfOrNull { (it as? UCallableReferenceExpression)?.resolve() as? PsiMethod }
+            ?: return null
+        val position = sourcePositionOf(callee, project)
+        return ServiceCallJson(
+            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+            filePath = position.filePath,
+            line = position.line,
         )
     }
 
@@ -1101,6 +1225,23 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private const val MAX_ENTITY_RESULTS = 500
         private val mapper = ObjectMapper()
 
+        // Match quality of an endpoint against the queried pattern, lowest first: the forgiving substring match
+        // exists to find a route from a fragment, never to outrank the route that matches the pattern itself.
+        private const val EXACT_MATCH = 0
+        private const val PATTERN_MATCH = 1
+        private const val SUBSTRING_MATCH = 2
+
+        private const val COMPLETE_CONTRACT = "COMPLETE"
+        private const val PARTIAL_CONTRACT = "PARTIAL"
+
+        private const val TEMPLATE_NAME_GROUP = "name"
+
+        /** Return types of a route-registration bean, whose signature describes the registration, not a request. */
+        private val ROUTE_FUNCTION_TYPES = listOf(
+            SpringWebClasses.ROUTE_FUNCTION,
+            SpringWebClasses.SERVLET_ROUTE_FUNCTION,
+        )
+
         private const val ATTR_NAME = "name"
         private const val ATTR_NULLABLE = "nullable"
         private const val ATTR_MAPPED_BY = "mappedBy"
@@ -1347,6 +1488,17 @@ data class EndpointContractJson(
     val consumes: List<String>,
     val serviceCall: ServiceCallJson?,
     val endpointType: String,
+    /**
+     * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
+     * no such signature to read - a functional route or an OpenAPI declaration.
+     *
+     * A `PARTIAL` contract reports only what the declaration states: the path, the verb, the declaring element and
+     * the parameters the URL template names. Its empty `parameters` or null `returnType` mean "not declared here",
+     * never "the endpoint takes nothing".
+     */
+    val contractStatus: String,
+    /** What has to be read elsewhere, and where. `null` for a `COMPLETE` contract. */
+    val contractUnavailableReason: String?,
 )
 
 data class DtoSchemaJson(
