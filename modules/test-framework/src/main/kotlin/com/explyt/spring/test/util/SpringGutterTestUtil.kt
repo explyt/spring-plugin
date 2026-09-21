@@ -126,6 +126,16 @@ object SpringGutterTestUtil {
         return readPlatformField(gutterRenderer, "myPopupTitle") as? String
     }
 
+    /**
+     * Reads the balloon text the gutter shows when it resolves no target. Lazy targets keep the icon installed
+     * even with nothing to navigate to, so this string is the whole answer a user gets in that case.
+     */
+    fun getGutterEmptyText(gutterMark: GutterMark?): String? {
+        val gutterRenderer = toNavigationGutterIconRenderer(gutterMark)
+            ?: throw AssertionError("Expected a navigating gutter, but got: $gutterMark")
+        return readPlatformField(gutterRenderer, "myEmptyText") as? String
+    }
+
     private fun installedTargetRenderer(
         gutterRenderer: NavigationGutterIconRenderer
     ): PsiTargetPresentationRenderer<PsiElement> {

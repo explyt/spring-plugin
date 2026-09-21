@@ -21,6 +21,8 @@ object SpringCoreClasses {
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val APPLICATION_LISTENER = "org.springframework.context.ApplicationListener"
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
+    const val APPLICATION_CONTEXT_EVENT = "org.springframework.context.event.ApplicationContextEvent"
+    const val SPRING_APPLICATION_EVENT = "org.springframework.boot.context.event.SpringApplicationEvent"
     const val APPLICATION_CONTEXT = "org.springframework.context.ApplicationContext"
 
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
