@@ -30,6 +30,7 @@ import com.intellij.mcpserver.annotations.McpTool
 import com.intellij.mcpserver.mcpFail
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -40,6 +41,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.util.InheritanceUtil
+import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
@@ -881,6 +883,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Traces the call chain from the method at filePath:line through the Spring layers " +
                 "(Controller → Service → Repository) by resolving the calls into injected beans - following an " +
                 "injected interface to its implementation is where a hand-made trace usually stops. " +
+                "Any line of the method identifies it - its signature, an annotation on it, or a line of its " +
+                "body - so the line explyt_find_spring_endpoint reports for a handler can be passed straight in; " +
+                "a line belonging to no method is refused with the nearest method declarations in that file. " +
                 "Returns the chain of methods with their Spring stereotype (CONTROLLER, SERVICE, REPOSITORY, " +
                 "COMPONENT, CONFIGURATION), parameters, called methods, file paths and line numbers, and with " +
                 "includeTests the test files that reference the discovered methods - the tests a signature change " +
@@ -889,7 +894,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
     suspend fun traceCallChain(
         @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
         filePath: String,
-        @McpDescription("1-based line number within the method to start tracing from")
+        @McpDescription(
+            "1-based line number of the method to start tracing from. Any line of the method works - its " +
+                    "signature, an annotation on it, or a line of its body - so the line another Explyt tool " +
+                    "reports for a handler can be passed through unchanged."
+        )
         line: Int,
         @McpDescription("Path to the project root")
         projectPath: String,
@@ -914,13 +923,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val document = PsiDocumentManager.getInstance(project).getDocument(psiFile)
                     ?: mcpFail("cannot get document for: $filePath")
 
-                val offset = document.getLineStartOffset((line - 1).coerceIn(0, document.lineCount - 1))
-                val elementAtLine = psiFile.findElementAt(offset)
-                // Use UAST to support both Java (PsiMethod) and Kotlin (KtNamedFunction)
-                val psiMethod = elementAtLine
-                    ?.getUastParentOfType<UMethod>()
-                    ?.javaPsi
-                    ?: mcpFail("no method found at $filePath:$line")
+                val psiMethod = methodAtLine(psiFile, document, line)
+                    ?: mcpFail(noMethodAtLineMessage(psiFile, document, filePath, line))
 
                 val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
                 val visited = mutableSetOf<PsiMethod>()
@@ -937,6 +941,64 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
 
         return mapper.writeValueAsString(result)
+    }
+
+    /**
+     * The method declared on [line], whether that line carries its signature, its body or its annotations.
+     *
+     * Only the line's *first* offset used to be examined, and that offset is the indentation whitespace. Inside a
+     * body that whitespace is a child of the method, so a body line resolved; on a declaration line it is a
+     * sibling of the method under the class body, so the search reached the class and reported that no method
+     * exists. The declaration line is the one every other tool hands out - `explyt_find_spring_endpoint` reports
+     * a handler at its declaration - so the two tools disagreed about the same method.
+     *
+     * Scanning the line leaf by leaf rather than widening the parent search keeps a blank line between two methods
+     * unresolved, which is a genuine miss and must not silently trace a neighbour.
+     */
+    private fun methodAtLine(psiFile: PsiFile, document: Document, line: Int): PsiMethod? {
+        val lineIndex = (line - 1).coerceIn(0, document.lineCount - 1)
+        val lineEnd = document.getLineEndOffset(lineIndex)
+        var offset = document.getLineStartOffset(lineIndex)
+
+        while (offset <= lineEnd) {
+            ProgressManager.checkCanceled()
+            val leaf = psiFile.findElementAt(offset) ?: return null
+            leaf.getUastParentOfType<UMethod>()?.javaPsi?.let { return it }
+            offset = maxOf(leaf.textRange.endOffset, offset + 1)
+        }
+        return null
+    }
+
+    /**
+     * A miss names the methods around [line], because the caller cannot see which line convention was expected.
+     *
+     * A bare "no method found" is indistinguishable from "the file has no methods" and from "the line belongs to a
+     * method this tool cannot read", and it leaves the caller re-reading the file by hand.
+     */
+    private fun noMethodAtLineMessage(psiFile: PsiFile, document: Document, filePath: String, line: Int): String {
+        val nearest = methodDeclarationLines(psiFile, document)
+            .sortedBy { abs(it.second - line) }
+            .take(MAX_SUGGESTED_METHODS)
+            .sortedBy { it.second }
+            .joinToString { "${it.first} (line ${it.second})" }
+
+        return if (nearest.isEmpty()) "no method found at $filePath:$line, and the file declares no methods"
+        else "no method found at $filePath:$line. Nearest methods in this file: $nearest"
+    }
+
+    private fun methodDeclarationLines(psiFile: PsiFile, document: Document): List<Pair<String, Int>> {
+        val declarations = mutableListOf<Pair<String, Int>>()
+        psiFile.toUElement()?.accept(object : AbstractUastVisitor() {
+            override fun visitMethod(node: UMethod): Boolean {
+                ProgressManager.checkCanceled()
+                val anchor = (node.uastAnchor?.sourcePsi ?: node.sourcePsi)?.textRange
+                if (anchor != null && anchor.startOffset <= document.textLength) {
+                    declarations += node.name to document.getLineNumber(anchor.startOffset) + 1
+                }
+                return false
+            }
+        })
+        return declarations
     }
 
     private fun buildChain(
@@ -1235,6 +1297,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private const val PARTIAL_CONTRACT = "PARTIAL"
 
         private const val TEMPLATE_NAME_GROUP = "name"
+
+        // Enough to show the caller which line convention the file uses; the whole method list would bury it.
+        private const val MAX_SUGGESTED_METHODS = 5
 
         /** Return types of a route-registration bean, whose signature describes the registration, not a request. */
         private val ROUTE_FUNCTION_TYPES = listOf(
