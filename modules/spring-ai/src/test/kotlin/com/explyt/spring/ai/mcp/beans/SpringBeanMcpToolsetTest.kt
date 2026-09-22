@@ -162,6 +162,53 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals(BeanLookupService.PROJECT_NOT_FOUND, root["error"]["code"].asText())
     }
 
+    /** With one project open there is no wrong project to substitute, so an omitted path is answered. */
+    fun testAnOmittedProjectPathIsAnsweredFromTheOnlyOpenProject() = runBlocking {
+        copyBeanQueryFixture()
+
+        val json = toolset().findSpringBean(
+            applicationClassName = "com.explyt.demo.App",
+            source = "STATIC",
+            beanName = "systemClock"
+        )
+        val root = mapper.readTree(json)
+
+        assertEquals("OK", root["status"].asText())
+        assertEquals(1, root["totalCount"].asInt())
+    }
+
+    /** A blank path is an omitted one, not a path that matches nothing. */
+    fun testABlankProjectPathIsTreatedAsOmitted() = runBlocking {
+        copyBeanQueryFixture()
+
+        val json = toolset().findSpringBean(
+            projectPath = "   ",
+            applicationClassName = "com.explyt.demo.App",
+            source = "STATIC",
+            beanName = "systemClock"
+        )
+        val root = mapper.readTree(json)
+
+        assertEquals("OK", root["status"].asText())
+        assertEquals(1, root["totalCount"].asInt())
+    }
+
+    /** A path differing only in a trailing separator names the same project. */
+    fun testATrailingSeparatorStillNamesTheProject() = runBlocking {
+        copyBeanQueryFixture()
+
+        val json = toolset().findSpringBean(
+            projectPath = projectPath() + "/",
+            applicationClassName = "com.explyt.demo.App",
+            source = "STATIC",
+            beanName = "systemClock"
+        )
+        val root = mapper.readTree(json)
+
+        assertEquals("OK", root["status"].asText())
+        assertEquals(1, root["totalCount"].asInt())
+    }
+
     /**
      * The default answer has to fit the budget a client applies to it, not merely be short.
      *

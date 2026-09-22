@@ -9,6 +9,7 @@ import com.explyt.spring.core.service.beans.BeanQueryException
 import com.explyt.spring.core.service.beans.BeanSourcePreference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -117,6 +118,20 @@ class BeanLookupRequestTest {
         assertEquals(query, request(beanName = "clock").normalizedQuery())
     }
 
+    /**
+     * An omitted project is a question the resolver answers, not one this request refuses.
+     *
+     * The path reached here only to be checked for blankness, which would have rejected the very input the
+     * single-open-project default accepts.
+     */
+    @Test
+    fun `the request does not carry the project path`() {
+        assertTrue(
+            "projectPath belongs to the resolver, not to the question",
+            BeanLookupRequest::class.java.declaredFields.none { it.name == "projectPath" }
+        )
+    }
+
     private fun rejected(request: BeanLookupRequest) =
         assertThrows(BeanQueryException::class.java) { request.validate() }.problem
 
@@ -131,7 +146,6 @@ class BeanLookupRequestTest {
         column: Int? = null,
         includeDetails: Boolean = false
     ) = BeanLookupRequest(
-        projectPath = "/tmp/project",
         applicationClassName = applicationClassName,
         source = source,
         contextId = contextId,
