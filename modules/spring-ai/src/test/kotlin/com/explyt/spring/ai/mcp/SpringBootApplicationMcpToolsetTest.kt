@@ -882,13 +882,14 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
         val result = toolset.getSpringDataEntities(
             projectPath = projectPath(),
-            packageFilter = "com.example.app"
+            packageFilter = "com.example.app",
+            includeDetails = true
         )
-        val entities = parseArray(result)
-        assertEquals(1, entities.size())
-        val entity = entities[0]
+        val page = parseArray(result)
+        assertEquals("The fixture declares four entities under 'com.example.app'", 4, page["totalCount"].asInt())
+        val entities = page["entities"]
+        val entity = entities.first { it["className"].asText() == "com.example.app.entity.DemoEntity" }
         assertEquals("DemoEntity", entity["name"].asText())
-        assertEquals("com.example.app.entity.DemoEntity", entity["className"].asText())
         assertEquals("demo_table", entity["tableName"].asText())
 
         val fields = entity["fields"]
@@ -1076,10 +1077,11 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             projectPath = projectPath(),
             packageFilter = "com.example.does.not.exist"
         )
-        val entities = parseArray(result)
+        val page = parseArray(result)
         assertEquals(
-            "Expected no entities for unrelated package filter, got $entities",
-            0, entities.size()
+            "Expected no entities for unrelated package filter, got $page",
+            0, page["totalCount"].asInt()
         )
+        assertEquals(0, page["entities"].size())
     }
 }
