@@ -15,10 +15,10 @@ import com.explyt.spring.core.service.beans.BeanSourcePreference
  * The two modes are kept apart deliberately: a request naming both a selector and an injection point asks two
  * different questions, and answering either one would look equally correct to a caller who meant the other.
  * Paging arguments are absent on purpose - the writer owns their bounds, and a second definition here would
- * drift from it.
+ * drift from it; the project is likewise absent, because choosing it is the resolver's rule and a blank check
+ * here would refuse the omission that rule accepts.
  */
 data class BeanLookupRequest(
-    val projectPath: String,
     val applicationClassName: String? = null,
     val source: String = "AUTO",
     val contextId: String? = null,
@@ -31,7 +31,6 @@ data class BeanLookupRequest(
 ) {
 
     fun validate() {
-        rejectBlank(projectPath, "projectPath")
         rejectBlank(applicationClassName, "applicationClassName")
         rejectBlank(contextId, "contextId")
         rejectBlank(typeFqn, "typeFqn")

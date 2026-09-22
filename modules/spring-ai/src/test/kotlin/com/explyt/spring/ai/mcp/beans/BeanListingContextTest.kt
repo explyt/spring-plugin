@@ -129,14 +129,44 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
         }
     }
 
+    /**
+     * A supplied path that names no open project is refused, even though the class name would have found one.
+     *
+     * The class-name search exists to disambiguate an omitted path; letting it rescue a supplied one would
+     * answer about a codebase the caller did not name, which is exactly what a wrong path looks like.
+     */
+    fun testASuppliedPathIsNotRescuedByTheClassNameSearch() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+
+        try {
+            listing(beanType = "COMPONENT", projectPath = "/nowhere/at/all")
+            fail("A path naming no open project must be refused, not resolved by application class name")
+        } catch (e: Exception) {
+            assertTrue(
+                "The failure must name the path that matched nothing, got: ${e.message}",
+                e.message?.contains("/nowhere/at/all") == true
+            )
+        }
+    }
+
+    /** With one project open, an omitted path is the question the resolver answers rather than refuses. */
+    fun testAnOmittedPathIsAnsweredFromTheOnlyOpenProject() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+
+        val beans = listing(beanType = "COMPONENT", projectPath = null)
+
+        assertTrue("The listing must answer without a path", names(beans).contains("systemClock"))
+    }
+
     private suspend fun listing(
         beanType: String,
         source: String = "STATIC",
-        contextId: String? = null
+        contextId: String? = null,
+        projectPath: String? = project.basePath!!
     ): List<JsonNode> = mapper.readTree(
         toolset.applicationBeans(
             applicationClassName = APPLICATION,
-            projectPath = project.basePath!!,
+            projectPath = projectPath,
             beanType = beanType,
             source = source,
             contextId = contextId
