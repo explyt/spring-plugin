@@ -136,3 +136,41 @@ data class ScopedBeanSnapshot(
     val records: List<ScopedBeanRecord>,
     val limitations: Set<String>
 )
+
+/** What a lookup asks for. Both filters may be set, and then they intersect rather than widen. */
+data class BeanLookupSelector(val typeFqn: String?, val beanName: String?)
+
+/**
+ * Whether the match could be computed at all.
+ *
+ * `PARTIAL` means some record could be neither matched nor excluded - typically a native bean whose class is
+ * not resolvable in the selected application's classpath. The known matches are still reported, but no verdict
+ * built on completeness may be claimed over them.
+ */
+enum class MatchCompleteness { COMPLETE, PARTIAL }
+
+/**
+ * The records a selector matched, and what could not be decided.
+ *
+ * [unresolvedCount] counts records whose membership is unknown; it is not an estimate of beans the model never
+ * captured.
+ */
+data class BeanMatch(
+    val records: List<ScopedBeanRecord>,
+    val completeness: MatchCompleteness,
+    val unresolvedCount: Int,
+    val limitations: Set<String>
+)
+
+/**
+ * The verdict of one query, relative to the selected model.
+ *
+ * `NONE` means nothing matched *in that model* - never that no declaration exists in the repository - and
+ * `INDETERMINATE` is returned instead of a confident verdict whenever the match was `PARTIAL`.
+ */
+enum class BeanOutcome {
+    NONE, SINGLE, MULTIPLE, RESOLVED, NO_CANDIDATE, AMBIGUOUS,
+    CANDIDATE_SET, DEFERRED, INDETERMINATE
+}
+
+data class BeanSelection(val outcome: BeanOutcome, val match: BeanMatch)
