@@ -65,6 +65,14 @@ import org.jetbrains.uast.getParentOfType
 import org.jetbrains.uast.getUastParentOfType
 import org.jetbrains.uast.toUElement
 
+/**
+ * What every tool of this family says about its project argument.
+ *
+ * One text for all of them: a caller who learns the rule from one tool can rely on it for the rest.
+ */
+private const val PROJECT_PATH_DESCRIPTION =
+    "Path to the project root. Omit it when a single project is open; when several are, it is required, " +
+            "and a path naming none of them is refused rather than answered from another one."
 
 class SpringBootApplicationMcpToolset : McpToolset {
 
@@ -79,10 +87,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "classpath' without opening the build file."
     )
     suspend fun getAllSpringBootApplications(
-        @McpDescription("Path to the project root")
-        projectPath: String
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val applications = withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val springBootAppAnnotations = PackageScanService.getInstance(project).getSpringBootAppAnnotations()
@@ -118,8 +126,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
     suspend fun applicationBeans(
         @McpDescription("Fully-qualified class name for the SpringBootApplication")
         applicationClassName: String,
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription(
             "Filter results by a Bean Type. Possible values: " +
                     "ASPECT - for org.aspectj.lang.annotation.Aspect, \n" +
@@ -141,8 +149,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         contextId: String? = null,
     ): String {
         val project = getCurrentProject(projectPath)
+            ?: projectPath?.takeIf { it.isNotBlank() }?.let { mcpFail(projectProblem(it)) }
             ?: getCurrentProjectForClass(applicationClassName)
-            ?: mcpFail("project not found")
+            ?: mcpFail(projectProblem(projectPath))
         val mcpBeanType = getMcpBeanType(beanType) ?: mcpFail("bean type not found $beanType")
         val preference = getBeanSourcePreference(source) ?: mcpFail("unknown source $source")
         val springBeans = withContext(Dispatchers.IO) {
@@ -225,8 +234,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "Path variables like {orgId} are treated as wildcards matching any segment."
         )
         urlPattern: String,
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription(
             "Optional HTTP method filter: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. " +
                     "Leave empty to match all methods."
@@ -250,12 +259,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
      */
     private suspend fun <T> lookupEndpoints(
         urlPattern: String,
-        projectPath: String,
+        projectPath: String?,
         httpMethod: String,
         toJson: (EndpointElement, Project) -> T,
     ): EndpointLookupJson<T> {
         if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val normalizedPattern = SpringWebUtil.simplifyUrl(urlPattern)
         val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
 
@@ -542,8 +551,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "or request the next page with 'offset' = 'offset' + number of returned endpoints."
     )
     suspend fun getHttpEndpoints(
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription("Optional substring filter on controller class name (e.g. 'Coverage'). Leave empty for all.")
         controllerFilter: String = "",
         @McpDescription(
@@ -565,7 +574,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
         compact: Boolean = false,
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
         val typeFilter = endpointType.trim().uppercase().takeIf { it.isNotEmpty() }
         val pageStart = offset.coerceAtLeast(0)
@@ -649,8 +658,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "Should match a single endpoint. If several match, all are returned, the dispatching one first."
         )
         urlPattern: String,
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription("Optional HTTP method filter: GET, POST, PUT, DELETE, etc. Leave empty for all.")
         httpMethod: String = "",
     ): String {
@@ -925,8 +934,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "reports for a handler can be passed through unchanged."
         )
         line: Int,
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription("How many layers deep to trace (default 3). Each layer follows method calls into injected beans.")
         depth: Int = 3,
         @McpDescription("Whether to find test files that reference the discovered methods (default true)")
@@ -934,7 +943,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     ): String {
         if (filePath.isBlank()) mcpFail("filePath must not be empty")
         if (line < 1) mcpFail("line must be >= 1")
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val effectiveDepth = depth.coerceIn(1, 10)
 
         val result = withContext(Dispatchers.IO) {
@@ -1125,12 +1134,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "a query written from the Java field names gets wrong."
     )
     suspend fun getSpringDataEntities(
-        @McpDescription("Path to the project root")
-        projectPath: String,
+        @McpDescription(PROJECT_PATH_DESCRIPTION)
+        projectPath: String? = null,
         @McpDescription("Optional fully-qualified package prefix to restrict results (e.g. 'com.example.domain'). Leave empty for all packages.")
         packageFilter: String = "",
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFail("project not found")
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val packagePrefix = packageFilter.trim().takeIf { it.isNotEmpty() }
 
         val entities = withContext(Dispatchers.IO) {
@@ -1416,26 +1425,38 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 }
 
-private fun getCurrentProject(projectPath: String?): Project? {
-    projectPath ?: return null
-    val openProjects = ProjectManager.getInstance().openProjects
-        .filter { !it.isDefault }
-    if (openProjects.size == 1) return openProjects[0]
+/**
+ * The project a tool call is about, or a message saying why none could be chosen.
+ *
+ * The rule lives in [McpProjectResolver]; here it is only mapped onto this tool family's failure channel.
+ */
+private fun getCurrentProject(projectPath: String?): Project? =
+    (McpProjectResolver.resolve(projectPath) as? McpProjectChoice.Resolved)?.project
 
-    return openProjects.find { it.basePath == projectPath }
-}
-
-private suspend fun getCurrentProjectForClass(applicationClassName: String? = null): Project? {
-    if (applicationClassName != null) {
-        val openProjects = ProjectManager.getInstance().openProjects.filter { !it.isDefault }
-        for (project in openProjects) {
-            val applicationPsiClass = readAction {
-                JavaPsiFacade.getInstance(project).findClass(applicationClassName, project.projectScope())
-            }
-            if (applicationPsiClass != null) return project
-        }
+private fun projectProblem(projectPath: String?): String =
+    when (val choice = McpProjectResolver.resolve(projectPath)) {
+        is McpProjectChoice.Resolved -> "project not found"
+        is McpProjectChoice.NotFound -> choice.message
+        is McpProjectChoice.Ambiguous -> choice.message
     }
-    return null
+
+/**
+ * The single open project declaring [applicationClassName], used only when no path was supplied.
+ *
+ * An explicit path always wins: searching other projects for the class name would answer about a codebase the
+ * caller did not name, which is the very substitution [McpProjectResolver] exists to prevent. With the class in
+ * several open projects the caller is asked for a path instead of being given the first match.
+ */
+private suspend fun getCurrentProjectForClass(applicationClassName: String? = null): Project? {
+    applicationClassName ?: return null
+    val declaring = ProjectManager.getInstance().openProjects
+        .filter { !it.isDefault }
+        .filter { project ->
+            readAction {
+                JavaPsiFacade.getInstance(project).findClass(applicationClassName, project.projectScope())
+            } != null
+        }
+    return declaring.singleOrNull()
 }
 
 data class SpringBootApplicationJson(
