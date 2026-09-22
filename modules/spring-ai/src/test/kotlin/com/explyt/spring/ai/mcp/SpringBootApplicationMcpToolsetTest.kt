@@ -885,10 +885,9 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
             packageFilter = "com.example.app"
         )
         val entities = parseArray(result)
-        assertEquals(1, entities.size())
-        val entity = entities[0]
+        assertEquals("The fixture declares four entities under 'com.example.app'", 4, entities.size())
+        val entity = entities.first { it["className"].asText() == "com.example.app.entity.DemoEntity" }
         assertEquals("DemoEntity", entity["name"].asText())
-        assertEquals("com.example.app.entity.DemoEntity", entity["className"].asText())
         assertEquals("demo_table", entity["tableName"].asText())
 
         val fields = entity["fields"]
