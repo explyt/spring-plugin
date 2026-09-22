@@ -39,6 +39,18 @@ class ProfilesService(private val project: Project) {
         return profileChanged || mainClassChanged
     }
 
+    /**
+     * The profile inputs a bean query was answered under, for fingerprinting only.
+     *
+     * Read-only by design: a query must never change which profiles are active, and the origin is reported so a
+     * static answer can say whether the profiles came from a selected run configuration or from the sources.
+     */
+    fun beanQueryProfileInputs(): List<String> {
+        val fromRunConfiguration = activeProfilesFromRunConfiguration.isNotEmpty()
+        val origin = if (fromRunConfiguration) "RUN_CONFIGURATION" else "CODE_AND_CONFIG"
+        return getActiveProfiles().sorted() + listOf("main:${currentMainClass ?: ""}", "origin:$origin")
+    }
+
     private fun getActiveProfiles(): Set<String> {
         if (activeProfilesFromRunConfiguration.isNotEmpty()) return activeProfilesFromRunConfiguration
 
