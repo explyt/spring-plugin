@@ -10,6 +10,9 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.ai.mcp.entities.EntityInventory
+import com.explyt.spring.ai.mcp.entities.EntityRecord
+import com.explyt.spring.ai.mcp.entities.EntitySchema
 import com.explyt.spring.core.service.beans.BeanQueryException
 import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.core.util.SpringBootUtil
@@ -1136,61 +1139,127 @@ class SpringBootApplicationMcpToolset : McpToolset {
     @McpDescription(
         description = "Call before writing a query, a migration, a DTO or a projection, and before adding a field to " +
                 "an entity, to see the table, column and relationship names the database actually uses. " +
-                "Lists the JPA entities (@Entity classes, javax.persistence and jakarta.persistence alike) of the " +
-                "project, optionally under one package, with their schema metadata: class name, file path and line, " +
-                "table name (from @Table or the default), fields with column names, types, primary key flag and " +
-                "nullability, JPA relationships (@OneToOne, @OneToMany, @ManyToOne, @ManyToMany) with " +
-                "joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
                 "A column name that differs from its field name, and a relationship's owning side, are exactly what " +
-                "a query written from the Java field names gets wrong."
+                "a query written from the Java field names gets wrong. " +
+                "Answers in two steps: by default an inventory of the JPA entities (@Entity classes, " +
+                "javax.persistence and jakarta.persistence alike) carrying only name, className, tableName (from " +
+                "@Table or the class name) and source location - enough to pick one without expanding any schema. " +
+                "Pass includeDetails=true, and className to name the entity, to add its fields with column names, " +
+                "types, primary key flag and nullability, its @OneToOne/@OneToMany/@ManyToOne/@ManyToMany " +
+                "relationships with joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
+                "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
+                "requested' as 'this entity has none'. " +
+                "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
+                "both is rejected, and a className nothing declares is an empty answer rather than an error. " +
+                "Returns {status, revision, totalCount, offset, truncated, nextOffset, entities}: at most 'limit' " +
+                "entities (5 by default) within 'maxChars' of compact JSON (1800 by default), and a page can end " +
+                "earlier because the budget is measured on the finished document rather than on a number of " +
+                "entities. When 'truncated' is true, repeat the call with 'offset' = 'nextOffset' and " +
+                "'expectedRevision' = 'revision' to continue the same answer; every entity stays reachable that " +
+                "way. A single entity too large for the budget is reported as RESPONSE_TOO_LARGE naming the " +
+                "maxChars that would fetch it, never silently shortened."
     )
     suspend fun getSpringDataEntities(
         @McpDescription(PROJECT_PATH_DESCRIPTION)
         projectPath: String? = null,
-        @McpDescription("Optional fully-qualified package prefix to restrict results (e.g. 'com.example.domain'). Leave empty for all packages.")
+        @McpDescription("Optional fully-qualified package prefix to restrict the inventory (e.g. 'com.example.domain'); cannot be combined with className")
         packageFilter: String = "",
+        @McpDescription("Exact FQN of one entity, as reported by the inventory; cannot be combined with packageFilter")
+        className: String? = null,
+        @McpDescription("Adds fields, relationships and indexes to every entity of the page")
+        includeDetails: Boolean = false,
+        @McpDescription("Index of the first entity to return; needs expectedRevision when above 0")
+        offset: Int = 0,
+        @McpDescription("Maximum entities on this page, 1..50, 5 by default")
+        limit: Int = 5,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, 1800 by default")
+        maxChars: Int = 1800,
+        @McpDescription("The 'revision' of the first page, required to continue that same answer")
+        expectedRevision: String? = null,
     ): String {
-        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
+        val writer = BoundedPageWriter()
         val packagePrefix = packageFilter.trim().takeIf { it.isNotEmpty() }
-
-        val entities = withContext(Dispatchers.IO) {
-            smartReadAction(project) {
-                val projectScope = project.projectScope()
-                val librariesScope = GlobalSearchScope.allScope(project)
-                val javaPsiFacade = JavaPsiFacade.getInstance(project)
-                val entityClasses = ENTITY_ANNOTATION_FQNS.asSequence()
-                    .mapNotNull { javaPsiFacade.findClass(it, librariesScope) }
-                    .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope).findAll().asSequence() }
-                    .distinctBy { it.qualifiedName }
-                    .filter { cls ->
-                        packagePrefix == null || cls.qualifiedName?.startsWith(packagePrefix) == true
-                    }
-                    .take(MAX_ENTITY_RESULTS)
-                    .toList()
-
-                entityClasses.mapNotNull { toEntityJson(it, project) }
-            }
+        val entityName = className?.trim()?.takeIf { it.isNotEmpty() }
+        if (packagePrefix != null && entityName != null) {
+            return writer.writeError(
+                BoundedPageWriter.INVALID_ARGUMENT,
+                "packageFilter and className narrow the same choice; pass one of them.",
+                maxChars = BoundedPageWriter.FALLBACK_BUDGET
+            )
         }
 
-        return mapper.writeValueAsString(entities)
+        val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
+        val page = PageRequest(
+            offset = offset,
+            limit = limit,
+            maxChars = maxChars,
+            expectedRevision = expectedRevision
+        )
+        val inventory = EntityInventory(mapper)
+
+        return withContext(Dispatchers.IO) {
+            smartReadAction(project) {
+                val records = inventory.ordered(entityRecords(project, packagePrefix, entityName))
+                val revision = EntityInventory.revision(
+                    project,
+                    mapOf(
+                        "packageFilter" to packagePrefix,
+                        "className" to entityName,
+                        "includeDetails" to includeDetails.toString()
+                    )
+                )
+                writer.write(
+                    envelope = mapper.createObjectNode(),
+                    itemsField = "entities",
+                    totalCount = records.size,
+                    itemAt = { index ->
+                        records[index].let { if (includeDetails) inventory.details(it) else inventory.compact(it) }
+                    },
+                    revision = revision,
+                    page = page
+                )
+            }
+        }
     }
 
-    private fun toEntityJson(psiClass: PsiClass, project: Project): SpringDataEntityJson? {
+    /**
+     * Every entity the query selects, each able to read its own schema but none having read it yet.
+     *
+     * Expanding fields, relationships and indexes is the expensive half of this tool, and a page of ten names
+     * must not pay for it across the whole project: the schema is read by [EntityInventory.details], for the
+     * records of the requested page only, inside this same read action.
+     */
+    private fun entityRecords(project: Project, packagePrefix: String?, entityName: String?): List<EntityRecord> {
+        val javaPsiFacade = JavaPsiFacade.getInstance(project)
+        val librariesScope = GlobalSearchScope.allScope(project)
+        val projectScope = project.projectScope()
+        return ENTITY_ANNOTATION_FQNS.asSequence()
+            .mapNotNull { javaPsiFacade.findClass(it, librariesScope) }
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectScope).findAll().asSequence() }
+            .distinctBy { it.qualifiedName }
+            .filter { cls ->
+                val qualifiedName = cls.qualifiedName
+                when {
+                    entityName != null -> qualifiedName == entityName
+                    packagePrefix != null -> qualifiedName?.startsWith(packagePrefix) == true
+                    else -> true
+                }
+            }
+            .mapNotNull { toEntityRecord(it, project) }
+            .toList()
+    }
+
+    private fun toEntityRecord(psiClass: PsiClass, project: Project): EntityRecord? {
         val qualifiedName = psiClass.qualifiedName ?: return null
         val simpleName = psiClass.name ?: qualifiedName.substringAfterLast('.')
-        val tableName = resolveTableName(psiClass, simpleName)
-        val fields = collectEntityFields(psiClass)
-        val indexes = collectEntityIndexes(psiClass)
-
         val position = sourcePositionOf(psiClass, project)
-        return SpringDataEntityJson(
+        return EntityRecord(
             name = simpleName,
             className = qualifiedName,
+            tableName = resolveTableName(psiClass, simpleName),
             filePath = position.filePath,
             line = position.line,
-            tableName = tableName,
-            fields = fields,
-            indexes = indexes,
+            readSchema = { EntitySchema(collectEntityFields(psiClass), collectEntityIndexes(psiClass)) }
         )
     }
 
@@ -1329,7 +1398,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // Default page size: high enough to return every endpoint of a typical project in one call, low enough
         // that a broad call on a large/generated API stays cheap. Callers page via 'offset'.
         private const val DEFAULT_ENDPOINT_PAGE_SIZE = 500
-        private const val MAX_ENTITY_RESULTS = 500
         private val mapper = ObjectMapper()
 
         // Match quality of an endpoint against the queried pattern, lowest first: the forgiving substring match
@@ -1633,17 +1701,6 @@ data class DtoFieldJson(
     val type: String,
     val nullable: Boolean,
     val nested: DtoSchemaJson?,
-)
-
-data class SpringDataEntityJson(
-    val name: String,
-    val className: String,
-    val filePath: String?,
-    /** `null` when the entity class has no physical declaration to point at. */
-    val line: Int?,
-    val tableName: String,
-    val fields: List<EntityFieldJson>,
-    val indexes: List<EntityIndexJson>,
 )
 
 data class EntityFieldJson(
