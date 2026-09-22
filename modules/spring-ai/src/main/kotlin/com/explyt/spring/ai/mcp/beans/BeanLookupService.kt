@@ -14,9 +14,10 @@ import com.explyt.spring.core.service.beans.ScopedBeanInjectionResolver
 import com.explyt.spring.core.service.beans.ScopedBeanMatcher
 import com.explyt.spring.core.service.beans.SpringInjectionPoint
 import com.explyt.spring.core.service.beans.SpringInjectionPointResolver
+import com.explyt.spring.ai.mcp.McpProjectChoice
+import com.explyt.spring.ai.mcp.McpProjectResolver
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -25,8 +26,6 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.nio.file.InvalidPathException
-import java.nio.file.Path
 
 /**
  * Runs one bean query end to end and hands back the finished JSON.
@@ -119,29 +118,19 @@ class BeanLookupService(private val project: Project) {
         fun getInstance(project: Project): BeanLookupService = BeanLookupService(project)
 
         /**
-         * The open project at [projectPath], and no other.
+         * The project this query is about, reported through the tool's own error channel.
          *
-         * A single open project is deliberately not treated as the answer: a caller who mistypes the path, or
-         * addresses a project that is not open, would otherwise receive a confident answer about a different
-         * codebase that reads exactly like a correct one.
+         * The rule itself lives in [McpProjectResolver] so that every tool applies the same one; only the
+         * shape of the refusal is this tool's own.
          */
-        fun resolveProject(projectPath: String): Project {
-            val wanted = normalize(projectPath)
-                ?: throw BeanQueryException(
-                    BeanQueryProblem(PROJECT_NOT_FOUND, "'$projectPath' is not a valid path.")
-                )
-            return ProjectManager.getInstance().openProjects
-                .filter { !it.isDefault }
-                .firstOrNull { normalize(it.basePath) == wanted }
-                ?: throw BeanQueryException(
-                    BeanQueryProblem(PROJECT_NOT_FOUND, "No open project at '$projectPath'.")
-                )
-        }
+        fun resolveProject(projectPath: String?): Project =
+            when (val choice = McpProjectResolver.resolve(projectPath)) {
+                is McpProjectChoice.Resolved -> choice.project
+                is McpProjectChoice.NotFound -> throw projectNotFound(choice.message)
+                is McpProjectChoice.Ambiguous -> throw projectNotFound(choice.message)
+            }
 
-        private fun normalize(path: String?): String? = try {
-            path?.let { Path.of(it).normalize().toString().trimEnd('/') }
-        } catch (_: InvalidPathException) {
-            null
-        }
+        private fun projectNotFound(message: String) =
+            BeanQueryException(BeanQueryProblem(PROJECT_NOT_FOUND, message))
     }
 }

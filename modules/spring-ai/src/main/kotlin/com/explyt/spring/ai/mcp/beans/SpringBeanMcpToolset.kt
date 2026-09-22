@@ -43,8 +43,11 @@ class SpringBeanMcpToolset : McpToolset {
                 "answering about one bean or one injection point."
     )
     suspend fun findSpringBean(
-        @McpDescription("Path to the root of the open project; another open project is never answered instead")
-        projectPath: String,
+        @McpDescription(
+            "Path to the root of the open project; another open project is never answered instead. " +
+                    "Omit it when a single project is open; when several are, it is required"
+        )
+        projectPath: String? = null,
         @McpDescription("FQN of the @SpringBootApplication; required when the scope holds more than one")
         applicationClassName: String? = null,
         @McpDescription("Which model answers: AUTO (default), STATIC, or NATIVE")
@@ -73,7 +76,6 @@ class SpringBeanMcpToolset : McpToolset {
         includeDetails: Boolean = false
     ): String {
         val request = BeanLookupRequest(
-            projectPath = projectPath,
             applicationClassName = applicationClassName,
             source = source,
             contextId = contextId,
