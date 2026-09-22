@@ -158,6 +158,33 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         }
     }
 
+    /**
+     * A `@Bean` whose return type comes from the JDK belongs to the application just as much as a `@Service`.
+     *
+     * The listing used to take the declaring module from the bean's *type*, so `java.time.Clock` resolved to no
+     * project module and the bean was dropped - invisible to a caller asking what the application declares.
+     */
+    fun testApplicationBeansKeepsALibraryTypedFactoryBean() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+
+        val result = toolset.applicationBeans(
+            applicationClassName = "com.explyt.demo.App",
+            projectPath = projectPath(),
+            beanType = "COMPONENT"
+        )
+
+        val beans = parseArray(result)
+        assertTrue("The listing must stay a plain array", beans.isArray)
+        val clock = beans.firstOrNull { it["beanName"].asText() == "systemClock" }
+        assertNotNull("Expected systemClock among ${texts(beans, "beanName")}", clock)
+        assertEquals("java.time.Clock", clock!!["className"].asText())
+        assertEquals(
+            "The successful schema must not gain or lose fields",
+            setOf("beanName", "className", "moduleName"),
+            clock.fieldNames().asSequence().toSet()
+        )
+    }
+
     fun testFindEndpoint() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
