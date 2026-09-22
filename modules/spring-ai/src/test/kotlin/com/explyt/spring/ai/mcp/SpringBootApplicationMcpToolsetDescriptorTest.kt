@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.ai.mcp.beans.SpringBeanMcpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
 import com.intellij.mcpserver.annotations.McpToolHintValue
@@ -24,8 +25,15 @@ import kotlin.reflect.full.hasAnnotation
  */
 class SpringBootApplicationMcpToolsetDescriptorTest {
 
+    /**
+     * Every tool the plugin publishes, not one toolset's worth.
+     *
+     * The checks below are contracts of the tools an agent sees, so a second toolset that skipped them would be
+     * exactly as broken while this test stayed green.
+     */
     private val tools: List<KFunction<*>> =
-        SpringBootApplicationMcpToolset::class.functions.filter { it.hasAnnotation<McpTool>() }
+        listOf(SpringBootApplicationMcpToolset::class, SpringBeanMcpToolset::class)
+            .flatMap { toolset -> toolset.functions.filter { it.hasAnnotation<McpTool>() } }
 
     private val KFunction<*>.toolName: String get() = findAnnotation<McpTool>()!!.name
 
@@ -42,6 +50,7 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
                 "explyt_get_spring_endpoint_contract",
                 "explyt_trace_spring_call_chain",
                 "explyt_get_spring_data_entities",
+                "explyt_find_spring_bean",
             ),
             tools.map { it.toolName }.toSet()
         )
