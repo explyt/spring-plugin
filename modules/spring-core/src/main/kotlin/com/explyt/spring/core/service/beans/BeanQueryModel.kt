@@ -7,6 +7,7 @@ package com.explyt.spring.core.service.beans
 
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiType
+import com.intellij.psi.PsiVariable
 
 /** Which bean model the caller asks for. `AUTO` prefers a native snapshot and falls back to the static model. */
 enum class BeanSourcePreference { AUTO, STATIC, NATIVE }
@@ -174,3 +175,41 @@ enum class BeanOutcome {
 }
 
 data class BeanSelection(val outcome: BeanOutcome, val match: BeanMatch)
+
+/**
+ * The dependency form Spring sees at an injection point.
+ *
+ * `UNKNOWN` is returned whenever the element type cannot be proven - a raw `Optional`, a `Map` with a non-String
+ * key, a raw provider - because guessing the form would misreport what Spring resolves.
+ */
+enum class InjectionShape { SINGLE, OPTIONAL, COLLECTION, PROVIDER, UNKNOWN }
+
+/**
+ * What the declaration itself says about a dependency, before any bean is looked up.
+ *
+ * [required] and [hasDefaultValue] are independent of whether a candidate exists: a missing bean for an optional
+ * parameter is not a startup failure, and a present bean does not make a parameter required. `null` means the
+ * fact could not be established - never "not required". [basis] names the evidence behind [required] so a caller
+ * can tell a proven optional from an unproven one.
+ */
+data class InjectionFacts(
+    val shape: InjectionShape,
+    val required: Boolean?,
+    val hasDefaultValue: Boolean?,
+    val basis: String,
+    val limitations: Set<String> = emptySet()
+)
+
+/**
+ * A supported injection point: the declaration Spring would inject into, and the type it would resolve.
+ *
+ * [beanType] is the element type behind the shape - `T` of a `List<T>` - which is what a candidate search must
+ * match; [declaredType] keeps the type as written.
+ */
+data class SpringInjectionPoint(
+    val name: String,
+    val declaredType: PsiType,
+    val beanType: PsiType?,
+    val variable: PsiVariable,
+    val facts: InjectionFacts
+)
