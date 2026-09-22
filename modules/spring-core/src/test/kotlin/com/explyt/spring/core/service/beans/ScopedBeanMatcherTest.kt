@@ -99,6 +99,61 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
         assertEquals(MatchCompleteness.COMPLETE, result.match.completeness)
     }
 
+    /**
+     * A query carrying type arguments is held to them, and says so when it cannot be.
+     *
+     * Comparing the raw classes would answer a `Repository<Foo>` query with a `Repository<Bar>` bean, which
+     * Spring would never inject there. The project's bean-type rule compares arguments at one level only, so a
+     * bean typed `FooRepository` - whose argument lives in the `Repository<Foo>` supertype - can be neither
+     * confirmed nor denied. Claiming "not compatible" would state something never established, so such a record
+     * is counted as unresolved and the inventory reports itself PARTIAL.
+     */
+    fun testTypeArgumentsNarrowTheInventoryAndUnprovableOnesAreNotDenied() {
+        myFixture.addClass("package com.explyt.demo; public interface Repository<T> {}")
+        myFixture.addClass("package com.explyt.demo; public class Foo {}")
+        myFixture.addClass("package com.explyt.demo; public class Bar {}")
+        myFixture.addClass("package com.explyt.demo; public class FooRepository implements Repository<Foo> {}")
+        myFixture.addClass("package com.explyt.demo; public class BarRepository implements Repository<Bar> {}")
+        val direct = snapshotOf(
+            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.Repository", "com.explyt.demo.Foo")),
+            record("bean-bar", "bar", setOf("bar"), declaredType = typeOf("com.explyt.demo.Repository", "com.explyt.demo.Bar"))
+        )
+
+        val forFoo = ScopedBeanMatcher(project)
+            .matchType(direct.records, typeOf("com.explyt.demo.Repository", "com.explyt.demo.Foo"))
+
+        assertEquals(
+            "A Repository<Bar> bean must not answer a Repository<Foo> query",
+            listOf("bean-foo"), forFoo.records.map { it.id }
+        )
+        assertEquals(MatchCompleteness.COMPLETE, forFoo.completeness)
+
+        val viaSupertype = snapshotOf(
+            record("bean-foo", "foo", setOf("foo"), declaredType = typeOf("com.explyt.demo.FooRepository"))
+        )
+
+        val unprovable = ScopedBeanMatcher(project)
+            .matchType(viaSupertype.records, typeOf("com.explyt.demo.Repository", "com.explyt.demo.Foo"))
+
+        assertTrue("An unprovable argument is not a confirmed match", unprovable.records.isEmpty())
+        assertEquals(
+            "...and not a denial either - the inventory admits it is incomplete",
+            MatchCompleteness.PARTIAL, unprovable.completeness
+        )
+        assertEquals(1, unprovable.unresolvedCount)
+        assertTrue(
+            ScopedBeanMatcher.TYPE_ARGUMENTS_NOT_COMPARABLE in unprovable.limitations
+        )
+
+        val raw = ScopedBeanMatcher(project).matchType(viaSupertype.records, typeOf("com.explyt.demo.Repository"))
+
+        assertEquals(
+            "A raw query still asks for every repository",
+            listOf("bean-foo"), raw.records.map { it.id }
+        )
+        assertEquals(MatchCompleteness.COMPLETE, raw.completeness)
+    }
+
     /** A type nobody declares is a different answer than a type that exists and matches no bean. */
     fun testUnknownTypeIsReportedAsNotFoundRatherThanEmpty() {
         val snapshot = snapshotOf(record("bean-clock", "clock", setOf("clock"), declaredType = typeOf("java.time.Clock")))
@@ -174,16 +229,17 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
     )
 
     private fun snapshotOf(vararg records: ScopedBeanRecord) = ScopedBeanSnapshot(
-        application = BeanApplicationIdentity("com.explyt.demo.App", "demo.main", "app-source"),
+        application = BeanApplicationIdentity("com.explyt.demo.App", module.name, "app-source"),
         selection = BeanContextSelection(BeanModelSource.NATIVE_SNAPSHOT, null, emptySet()),
         modelStamp = "stamp",
         records = records.toList(),
         limitations = emptySet()
     )
 
-    private fun typeOf(fqn: String): PsiType {
+    private fun typeOf(fqn: String, vararg argumentFqns: String): PsiType {
         val psiClass = JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
             ?: error("No PSI for $fqn")
-        return JavaPsiFacade.getElementFactory(project).createType(psiClass)
+        val arguments = argumentFqns.map { typeOf(it) }.toTypedArray()
+        return JavaPsiFacade.getElementFactory(project).createType(psiClass, *arguments)
     }
 }

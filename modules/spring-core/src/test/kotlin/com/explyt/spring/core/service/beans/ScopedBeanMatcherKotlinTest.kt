@@ -85,7 +85,7 @@ class ScopedBeanMatcherKotlinTest : ExplytKotlinLightTestCase() {
     )
 
     private fun snapshotOf(vararg records: ScopedBeanRecord) = ScopedBeanSnapshot(
-        application = BeanApplicationIdentity("com.explyt.demo.App", "demo.main", "app-source"),
+        application = BeanApplicationIdentity("com.explyt.demo.App", module.name, "app-source"),
         selection = BeanContextSelection(BeanModelSource.NATIVE_SNAPSHOT, null, emptySet()),
         modelStamp = "stamp",
         records = records.toList(),
