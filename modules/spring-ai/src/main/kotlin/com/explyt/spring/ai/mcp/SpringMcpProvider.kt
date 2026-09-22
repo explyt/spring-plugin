@@ -10,6 +10,8 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.beans.BeanQueryException
+import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
@@ -103,7 +105,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Lists the beans of one Spring Boot application, filtered by stereotype, from the IDE's bean " +
                 "model: it includes @Bean factory methods, meta-annotated stereotypes and @Import-ed configurations, " +
                 "which a text search for '@Service' or '@Component' never finds. " +
-                "Returns each bean's name, fully-qualified class and module. " +
+                "Returns each bean's name, fully-qualified class and module, one row per name a bean answers to. " +
+                "An empty 'moduleName' means the bean has no module in this project - a library bean, or one a " +
+                "loaded context reports without project sources; the bean is still listed. " +
+                "By default the answer comes from a loaded application context when one is available and from the " +
+                "static model otherwise, where it is an estimate of the module rather than of a running context; " +
+                "pass source=STATIC or source=NATIVE to choose, and contextId to name one of several loaded " +
+                "contexts. For one bean by type or name, or for a single injection point, use " +
+                "explyt_find_spring_bean instead. " +
                 "Take applicationClassName from explyt_get_spring_boot_applications."
     )
     suspend fun applicationBeans(
@@ -123,19 +132,32 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "COMPONENT - for Spring Components/Service and other beans. \n"
         )
         beanType: String,
+        @McpDescription(
+            "Which bean model answers: AUTO (default) prefers a loaded application context and falls back to " +
+                    "the static model, STATIC always uses the static model, NATIVE requires a loaded context."
+        )
+        source: String = "AUTO",
+        @McpDescription("Id of the loaded context to answer from, when several are loaded for this application.")
+        contextId: String? = null,
     ): String {
         val project = getCurrentProject(projectPath)
             ?: getCurrentProjectForClass(applicationClassName)
             ?: mcpFail("project not found")
         val mcpBeanType = getMcpBeanType(beanType) ?: mcpFail("bean type not found $beanType")
+        val preference = getBeanSourcePreference(source) ?: mcpFail("unknown source $source")
         val springBeans = withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val applicationPsiClass = JavaPsiFacade.getInstance(project)
                     .findClass(applicationClassName, project.projectScope())
                     ?: mcpFail("Spring Boot Application class not found $applicationClassName")
-                val module = ModuleUtilCore.findModuleForPsiElement(applicationPsiClass)
-                    ?: mcpFail("Module not found for $applicationClassName")
-                McpBeanSearchService.getInstance(project).getProjectBeansMcp(module)
+                try {
+                    McpBeanSearchService.getInstance(project)
+                        .getProjectBeansMcp(applicationPsiClass, preference, contextId)
+                } catch (e: BeanQueryException) {
+                    // A context that cannot be chosen is not an application without beans: an empty array would
+                    // read as the latter, so the caller is told what to disambiguate instead.
+                    mcpFail("${e.problem.code}: ${e.problem.message}")
+                }
             }
         }
         val beans = springBeans.asSequence()
@@ -144,6 +166,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .toList()
         return mapper.writeValueAsString(beans)
     }
+
+    private fun getBeanSourcePreference(source: String): BeanSourcePreference? =
+        BeanSourcePreference.entries.firstOrNull { it.name.equals(source.trim(), ignoreCase = true) }
 
     private fun toSpringBootApplicationDto(psiClass: PsiClass): SpringBootApplicationJson? {
         val qualifiedName = psiClass.qualifiedName ?: return null
