@@ -95,8 +95,8 @@ class SpringInjectionPointResolver(private val project: Project) {
             val atColumn = candidates.filter { it.textRange.containsOffset(offset) }
             if (atColumn.size == 1) return atColumn.single()
             if (atColumn.isEmpty() && candidates.size == 1) return candidates.single()
-            if (atColumn.isEmpty()) throw injectionPointRequired(candidates, line, lineStart)
-            return atColumn.first()
+            // Several declarations containing one offset means the column names none of them on its own.
+            throw injectionPointRequired(atColumn.ifEmpty { candidates }, line, lineStart)
         }
         if (candidates.size == 1) return candidates.single()
         throw injectionPointRequired(candidates, line, lineStart)
