@@ -47,7 +47,6 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.text.PlaceholderTextRanges
-import com.intellij.webSymbols.utils.NameCaseUtils
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
