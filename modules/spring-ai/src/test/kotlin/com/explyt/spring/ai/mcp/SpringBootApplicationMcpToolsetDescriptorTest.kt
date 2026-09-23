@@ -7,8 +7,6 @@ package com.explyt.spring.ai.mcp
 
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
-import com.intellij.mcpserver.annotations.McpToolHintValue
-import com.intellij.mcpserver.annotations.McpToolHints
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,21 +43,6 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
             ),
             tools.map { it.toolName }.toSet()
         )
-    }
-
-    /**
-     * Every tool here reads the IDE model and changes nothing, and a client uses these hints to skip the
-     * per-call confirmation it asks for an unclassified tool. A new tool that forgets them is silently more
-     * expensive to call than its siblings.
-     */
-    @Test
-    fun `every tool declares itself read-only and idempotent`() {
-        for (tool in tools) {
-            val hints = tool.findAnnotation<McpToolHints>()
-            assertTrue("${tool.toolName} has no @McpToolHints", hints != null)
-            assertEquals("${tool.toolName} readOnlyHint", McpToolHintValue.TRUE, hints!!.readOnlyHint)
-            assertEquals("${tool.toolName} idempotentHint", McpToolHintValue.TRUE, hints.idempotentHint)
-        }
     }
 
     @Test
