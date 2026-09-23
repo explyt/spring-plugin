@@ -27,8 +27,7 @@ import com.intellij.codeInspection.isInheritorOf
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
-import com.intellij.mcpserver.annotations.McpToolHintValue.TRUE
-import com.intellij.mcpserver.annotations.McpToolHints
+
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.editor.Document
@@ -79,7 +78,7 @@ private fun createMcpExpectedError(message: String): Throwable {
 class SpringBootApplicationMcpToolset : McpToolset {
 
     @McpTool("explyt_get_spring_boot_applications", title = "Spring Boot applications in the project")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+
     @McpDescription(
         description = "Call first when entering a Spring workspace you do not know, and before any " +
                 "explyt_get_project_beans_by_spring_boot_application call, which needs one of these class names. " +
@@ -109,7 +108,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     @McpTool("explyt_get_project_beans_by_spring_boot_application", title = "Beans of a Spring Boot application by stereotype")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+
     @McpDescription(
         description = "Call before adding a component, to see which beans of that stereotype already exist and " +
                 "what they are named; before injecting by type, to check that exactly one candidate exists; and " +
@@ -180,7 +179,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     @McpTool("explyt_find_spring_endpoint", title = "Resolve a URL to its Spring handler")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+
     @McpDescription(
         description = "Call when a task starts from a URL - a bug report, a frontend call, a log line, a curl - " +
                 "and right after adding or changing a mapping, to confirm the composed path and the bound parameters " +
@@ -509,7 +508,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     // ---- explyt_get_spring_http_endpoints ----
 
     @McpTool("explyt_get_spring_http_endpoints", title = "HTTP endpoints of one controller or the whole project")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+
     @McpDescription(
         description = "Lists the HTTP endpoints of one controller (controllerFilter) or of the whole project. " +
                 "Call before extending an existing controller: the listing shows its class-level prefix, its sibling " +
@@ -606,7 +605,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     // ---- explyt_get_spring_endpoint_contract ----
 
     @McpTool("explyt_get_spring_endpoint_contract", title = "Full request/response contract of one endpoint")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+
     @McpDescription(
         description = "Call before writing a client, a test, a frontend call or an OpenAPI description against one " +
                 "endpoint, and before changing its request or response shape, to see what callers currently depend " +
@@ -893,7 +892,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+
     @McpDescription(
         description = "Call before changing a service method's signature or threading a new parameter through the " +
                 "layers, and after explyt_find_spring_endpoint when a task needs the logic behind a route, not only " +
@@ -1106,7 +1105,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     // ---- explyt_get_spring_data_entities ----
 
     @McpTool("explyt_get_spring_data_entities", title = "JPA entities with their table mapping")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+
     @McpDescription(
         description = "Call before writing a query, a migration, a DTO or a projection, and before adding a field to " +
                 "an entity, to see the table, column and relationship names the database actually uses. " +
