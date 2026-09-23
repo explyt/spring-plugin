@@ -138,6 +138,8 @@ object SpringCoreClasses {
 
     const val MOCK_BEAN = "org.springframework.boot.test.mock.mockito.MockBean"
     const val SPY_BEAN = "org.springframework.boot.test.mock.mockito.SpyBean"
+    const val MOCKITO_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoBean"
+    const val MOCKITO_SPY_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoSpyBean"
 
     const val HIBERNATE_CFG_AVAILABLE_SETTING = "org.hibernate.cfg.AvailableSettings"
 
@@ -150,4 +152,5 @@ object SpringCoreClasses {
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns
     val AOP_ANNOTATION = listOf(TRANSACTIONAL, ASYNC) + ANNOTATIONS_CACHE
+    val MOCK_BEANS_ANNOTATIONS = listOf(MOCK_BEAN, SPY_BEAN, MOCKITO_BEAN, MOCKITO_SPY_BEAN)
 }
