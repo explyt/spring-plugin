@@ -80,6 +80,7 @@ object SpringWebClasses {
 
     const val ROUTE_FUNCTION = "org.springframework.web.reactive.function.server.RouterFunction"
     const val ROUTE_FUNCTION_BUILDER = "org.springframework.web.reactive.function.server.RouterFunctions.Builder"
+    const val SERVLET_ROUTE_FUNCTION = "org.springframework.web.servlet.function.RouterFunction"
 
     const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
