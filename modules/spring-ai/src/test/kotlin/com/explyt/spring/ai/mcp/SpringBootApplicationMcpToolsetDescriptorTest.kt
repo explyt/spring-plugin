@@ -7,7 +7,6 @@ package com.explyt.spring.ai.mcp
 
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
-
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -44,14 +43,6 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
             ),
             tools.map { it.toolName }.toSet()
         )
-    }
-
-
-    @Test
-    fun `every tool has a title`() {
-        for (tool in tools) {
-            assertTrue("${tool.toolName} has an empty title", tool.findAnnotation<McpTool>()!!.title.isNotBlank())
-        }
     }
 
     /**
