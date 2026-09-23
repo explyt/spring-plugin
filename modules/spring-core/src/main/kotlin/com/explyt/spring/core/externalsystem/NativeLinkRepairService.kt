@@ -157,7 +157,7 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
         if (projectPath == Constants.DEBUG_SESSION_NAME) return false
         val runManager = RunManager.getInstance(project)
         if (!isDanglingName(storedName, runManager)) return false
-        val candidates = runReadActionBlocking { findConfigurationsByMainFile(runManager, projectPath) }
+        val candidates = runReadAction { findConfigurationsByMainFile(runManager, projectPath) }
         // Several configurations on the same main-class file: guessing one would silently take another's profiles
         // and environment, and deleting the link would destroy it — leave it untouched and failing loudly.
         if (candidates.size > 1) return false
