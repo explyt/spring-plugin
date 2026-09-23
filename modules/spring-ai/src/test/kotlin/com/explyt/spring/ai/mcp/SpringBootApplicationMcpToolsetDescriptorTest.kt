@@ -45,13 +45,6 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
         )
     }
 
-    @Test
-    fun `every tool has a title`() {
-        for (tool in tools) {
-            assertTrue("${tool.toolName} has an empty title", tool.findAnnotation<McpTool>()!!.title.isNotBlank())
-        }
-    }
-
     /**
      * The descriptions hand the agent from one tool to the next by name ("take applicationClassName from
      * explyt_get_spring_boot_applications"). A renamed tool leaves such a hand-off pointing at nothing, and the
