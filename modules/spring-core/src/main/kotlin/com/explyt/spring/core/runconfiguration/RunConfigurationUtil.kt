@@ -51,6 +51,7 @@ object RunConfigurationUtil {
             // below would. It is kept only to mirror the newer lines, where the two differ and the
             // distinction is load-bearing.
             is KotlinRunConfiguration -> runConfiguration.runClass
+            is ApplicationConfiguration -> runConfiguration.mainClassName
             is CommonJavaRunConfigurationParameters -> runConfiguration.runClass
             else -> null
         }
