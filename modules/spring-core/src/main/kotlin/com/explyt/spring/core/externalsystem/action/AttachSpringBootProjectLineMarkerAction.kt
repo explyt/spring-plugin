@@ -29,7 +29,7 @@ import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
-import com.intellij.openapi.application.runReadActionBlocking
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
@@ -211,9 +211,9 @@ class AttachProjectIconGutterHandler(private val canonicalPath: String, private 
      * would never match one.
      */
     private fun mainClassNamesOf(project: Project, mainClassFile: VirtualFile): Set<String> {
-        return runReadActionBlocking {
+        return runReadAction {
             val classOwner = PsiManager.getInstance(project).findFile(mainClassFile) as? PsiClassOwner
-                ?: return@runReadActionBlocking emptySet()
+                ?: return@runReadAction emptySet()
             classOwner.classes.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
         }
     }
