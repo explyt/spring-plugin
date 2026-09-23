@@ -40,7 +40,7 @@ Legend: ✅ first-class · ◐ partial / setup-dependent · ❌ not available
 | **Native context mode** — real bean metadata via javaagent (conditional/factory/library beans) | ✅ | ◐ static model; runtime via Actuator | ◐ needs running app + Actuator | ❌ |
 | **Spring Debugger** — context tree, transactions, runtime property resolution | ✅ | ◐ | ◐ | ❌ |
 | **Swagger UI HTTP client + `.http`/`.rest` runners** in CE | ✅ | ◐ | ◐ via extensions | ❌ |
-| **Spring-aware MCP tools** for AI agents (7 tools, 2025.2+) | ✅ | ❌ | ❌ | ❌ |
+| **Spring-aware MCP tools** for AI agents (8 tools, 2025.2+) | ✅ | ❌ | ❌ | ❌ |
 | **Kotlin-first Spring inspections** — `internal`/`object` beans, `coRouter` | ✅ | ◐ | ◐ | ❌ |
 
 <!-- ASSET-TODO [P1] Static analysis vs Native mode — side-by-side proof
@@ -89,7 +89,7 @@ The **Explyt Endpoints** tool window lists MVC/WebFlux endpoints, router functio
 
 ### 🤖 Kotlin-first & AI-agent ready
 
-Kotlin-specific Spring inspections catch an `internal` `@Bean` whose JVM name is mangled and an `object` declared as `@Component`, with quick-fixes. Kotlin `coRouter` endpoints are supported. For agentic clients, Explyt ships **7 Spring-aware MCP tools** on the bundled JetBrains MCP Server (IDEA 2025.2+).
+Kotlin-specific Spring inspections catch an `internal` `@Bean` whose JVM name is mangled and an `object` declared as `@Component`, with quick-fixes. Kotlin `coRouter` endpoints are supported. For agentic clients, Explyt ships **8 Spring-aware MCP tools** on the bundled JetBrains MCP Server (IDEA 2025.2+).
 
 → [MCP tools](https://github.com/explyt/spring-plugin/wiki/MCP-Tools)
 
