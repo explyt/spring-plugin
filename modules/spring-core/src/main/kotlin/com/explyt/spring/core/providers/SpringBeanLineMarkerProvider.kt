@@ -6,6 +6,7 @@
 package com.explyt.spring.core.providers
 
 import com.explyt.spring.core.*
+import com.explyt.spring.core.SpringCoreClasses.MOCK_BEANS_ANNOTATIONS
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
@@ -405,8 +406,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
-                    || javaPsi.isAnnotatedBy(SpringCoreClasses.MOCK_BEAN)
-                    || javaPsi.isAnnotatedBy(SpringCoreClasses.SPY_BEAN)
+                    || javaPsi.isAnnotatedBy(MOCK_BEANS_ANNOTATIONS)
         }
 
         fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {
