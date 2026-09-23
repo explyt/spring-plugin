@@ -9,13 +9,10 @@ import com.explyt.spring.core.service.beans.BeanQueryException
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
 import com.intellij.mcpserver.annotations.McpTool
-import com.intellij.mcpserver.annotations.McpToolHintValue.TRUE
-import com.intellij.mcpserver.annotations.McpToolHints
 
 class SpringBeanMcpToolset : McpToolset {
 
-    @McpTool("explyt_find_spring_bean", title = "Find Spring beans or resolve an injection point")
-    @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
+    @McpTool("explyt_find_spring_bean")
     @McpDescription(
         description = "Call before adding a bean by type or name, to see which beans already answer to it and " +
                 "whether one already exists; and after writing a constructor or field, to check what Spring " +
