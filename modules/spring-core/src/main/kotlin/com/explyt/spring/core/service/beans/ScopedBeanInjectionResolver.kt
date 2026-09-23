@@ -113,6 +113,7 @@ internal fun outcome(shape: InjectionShape, match: BeanMatch): BeanOutcome {
         return BeanOutcome.INDETERMINATE
     }
     return when (shape) {
+        InjectionShape.UNKNOWN -> BeanOutcome.INDETERMINATE
         InjectionShape.COLLECTION -> BeanOutcome.CANDIDATE_SET
         InjectionShape.PROVIDER -> BeanOutcome.DEFERRED
         InjectionShape.SINGLE, InjectionShape.OPTIONAL -> when (match.records.size) {
