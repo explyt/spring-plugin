@@ -6,6 +6,7 @@
 package com.explyt.spring.core.providers
 
 import com.explyt.spring.core.*
+import com.explyt.spring.core.SpringCoreClasses.MOCK_BEANS_ANNOTATIONS
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
@@ -83,7 +84,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val processor = getLineMarkerElementProcessor(element) ?: return
 
         if (processor.isComponentClassOrBeanMethod()) {
-            val builder = NavigationGutterIconBuilder.create(getComponentIcon(processor))
+            val builder = NavigationGutterIconBuilder.create(
+                getComponentIcon(processor),
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findFieldsAndMethodsWithAutowired() })
                 .setTooltipText(getTooltipMessage(processor))
@@ -92,7 +96,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setTargetRenderer { getTargetRender() }
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isClassForBeanMethod()) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringBeanDependencies,
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.findBeanDeclarations() })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
@@ -100,7 +107,10 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
             result.add(builder.createLineMarkerInfo(element))
         } else if (processor.isFieldOrAutowiredParameter()) {
-            val builder = NavigationGutterIconBuilder.create(SpringIcons.SpringBeanDependencies)
+            val builder = NavigationGutterIconBuilder.create(
+                SpringIcons.SpringBeanDependencies,
+                SpringCoreBundle.message("explyt.spring.gutter.group.bean")
+            )
                 .setAlignment(GutterIconRenderer.Alignment.LEFT)
                 .setTargets(NotNullLazyValue.lazy { processor.getBeanDeclarations() })
                 .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.bean.candidate"))
@@ -386,16 +396,16 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return if (matcher.matches()) matcher.group(2) else locationString
     }
 
-    fun getModuleTextWithIcon(value: Any?): TextWithIcon? {
-        val factory = ModuleRendererFactory.findInstance(value)
-        if (factory is PlatformModuleRendererFactory) {
-            return null
-        }
-        return factory.getModuleTextWithIcon(value)
-    }
-
     companion object {
         private val CONTAINER_PATTERN = Pattern.compile("(\\(in |\\()?([^)]*)(\\))?")
+
+        fun getModuleTextWithIcon(value: Any?): TextWithIcon? {
+            val factory = ModuleRendererFactory.findInstance(value)
+            if (factory is PlatformModuleRendererFactory) {
+                return null
+            }
+            return factory.getModuleTextWithIcon(value)
+        }
 
         fun isLombokAnnotatedClassFieldExpression(psiField: PsiField): Boolean {
             return psiField.containingClass?.let {
@@ -408,8 +418,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             return javaPsi.isMetaAnnotatedBy(SpringCoreClasses.AUTOWIRED)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.INJECT.allFqns)
                     || javaPsi.isAnnotatedBy(JavaEeClasses.RESOURCE.allFqns)
-                    || javaPsi.isAnnotatedBy(SpringCoreClasses.MOCK_BEAN)
-                    || javaPsi.isAnnotatedBy(SpringCoreClasses.SPY_BEAN)
+                    || javaPsi.isAnnotatedBy(MOCK_BEANS_ANNOTATIONS)
         }
 
         fun isAutowiredMethodExpression(javaPsi: PsiMethod): Boolean {

@@ -7,6 +7,7 @@ package com.explyt.spring.core.providers
 
 import com.explyt.spring.core.JavaEeClasses
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringCoreClasses.MOCK_BEANS_ANNOTATIONS
 import com.explyt.util.ExplytPsiUtil.isAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isOrdinaryClass
@@ -37,7 +38,7 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
             return element.isMetaAnnotatedBy(IMPLICIT_METHOD_ANNOTATIONS)
         }
         if (element is PsiField) {
-            return element.isAnnotatedBy(MOCK_BEANS)
+            return element.isAnnotatedBy(MOCK_BEANS_ANNOTATIONS)
         }
         return false
     }
@@ -91,11 +92,6 @@ class SpringImplicitUsageProvider : ImplicitUsageProvider {
                 JavaEeClasses.RESOURCE.allFqns +
                 JavaEeClasses.POST_CONSTRUCT.allFqns +
                 JavaEeClasses.PRE_DESTROY.allFqns
-
-        private val MOCK_BEANS = listOf(
-            SpringCoreClasses.MOCK_BEAN,
-            SpringCoreClasses.SPY_BEAN
-        )
 
     }
 

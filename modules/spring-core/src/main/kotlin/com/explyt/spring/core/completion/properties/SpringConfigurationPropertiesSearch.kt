@@ -59,7 +59,21 @@ class SpringConfigurationPropertiesSearch {
     }
 
     fun findProperty(module: Module, propertyName: String): ConfigurationProperty? {
-        return getAllProperties(module).find { isSameProperty(it.name, propertyName, it.type) }
+        return getPropertyIndex(module).findProperty(propertyName)
+    }
+
+    /**
+     * The catalogue runs to thousands of entries, and the scan this replaces re-normalised every one of them on
+     * every lookup — `isSameProperty` lowercases and strips separators on both sides per candidate. The names on
+     * the catalogue side never change between lookups, so they are normalised once per module instead.
+     */
+    private fun getPropertyIndex(module: Module): ConfigurationPropertyIndex {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                ConfigurationPropertyIndex.of(getAllProperties(module)),
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+            )
+        }
     }
 
     fun findHint(module: Module, propertyName: String): PropertyHint? {
@@ -69,6 +83,19 @@ class SpringConfigurationPropertiesSearch {
     fun getAllHints(module: Module): List<PropertyHint> {
         return ConfigurationPropertiesLoader.EP_NAME.getExtensions(module.project)
             .flatMap { it.loadPropertyHints(module) }
+    }
+
+    /**
+     * Hint lookups by exact name, for callers that would otherwise walk [getAllHints] once per configuration key.
+     * Most keys have no hint, so those walks always ran to the end of the list.
+     */
+    fun getHintIndex(module: Module): PropertyHintIndex {
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                PropertyHintIndex.of(getAllHints(module)),
+                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+            )
+        }
     }
 
     fun getElementNameHints(module: Module): List<ElementHint> {
