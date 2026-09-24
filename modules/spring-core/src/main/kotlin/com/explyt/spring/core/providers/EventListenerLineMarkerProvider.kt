@@ -35,21 +35,17 @@ import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.Iconable
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
-import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.ClassInheritorsSearch
-import com.intellij.psi.util.CachedValue
-import com.intellij.psi.util.CachedValueProvider
-import com.intellij.psi.util.CachedValuesManager
-import com.intellij.psi.util.InheritanceUtil
-import com.intellij.psi.util.parentOfType
+import com.intellij.psi.util.*
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.uast.*
 import java.util.*
@@ -419,7 +415,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val argumentType = methodArgumentClasses.argumentType
         val argumentClasses = methodArgumentClasses.argumentClasses
         return if (argumentType != null) {
-            eventPsiType.isAssignableFrom(argumentType)
+            argumentType.isAssignableFrom(eventPsiType)
         } else if (argumentClasses.isNotEmpty()) {
             argumentClasses.any { eventPsiType.resolveBeanPsiClass?.isEqualOrInheritor(it) ?: false }
         } else {

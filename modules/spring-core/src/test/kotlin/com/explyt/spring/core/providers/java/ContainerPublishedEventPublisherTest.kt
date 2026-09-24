@@ -8,10 +8,10 @@ package com.explyt.spring.core.providers.java
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringIcons
-import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.SpringGutterTestUtil
+import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.intellij.codeInsight.daemon.GutterMark
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
@@ -26,7 +26,7 @@ import org.intellij.lang.annotations.Language
 class ContainerPublishedEventPublisherTest : ExplytJavaLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
-        TestLibrary.springContext_6_0_7, TestLibrary.springBoot_3_5_0, TestLibrary.springSecurityCore_6_0_7
+        TestLibrary.springContext_6_0_7, TestLibrary.springBoot_3_1_1, TestLibrary.springSecurityCore_6_0_7
     )
 
     fun testBootLifecycleEventResolvesToItsDeclaration() {
