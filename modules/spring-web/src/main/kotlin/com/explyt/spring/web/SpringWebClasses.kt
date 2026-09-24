@@ -18,6 +18,9 @@ object SpringWebClasses {
     const val REQUEST_MAPPING = "org.springframework.web.bind.annotation.RequestMapping"
     const val PATH_VARIABLE = "org.springframework.web.bind.annotation.PathVariable"
     const val REQUEST_PARAM = "org.springframework.web.bind.annotation.RequestParam"
+    const val REQUEST_PART = "org.springframework.web.bind.annotation.RequestPart"
+    const val MVC_DISPATCHER_SERVLET = "org.springframework.web.servlet.DispatcherServlet"
+    const val WEBFLUX_DISPATCHER_HANDLER = "org.springframework.web.reactive.DispatcherHandler"
     const val REQUEST_HEADER = "org.springframework.web.bind.annotation.RequestHeader"
     const val COOKIE_VALUE = "org.springframework.web.bind.annotation.CookieValue"
     const val REQUEST_BODY = "org.springframework.web.bind.annotation.RequestBody"
@@ -32,6 +35,7 @@ object SpringWebClasses {
     const val RETROFIT_HTTP = "retrofit2.http.HTTP"
 
     const val MOCK_MVC_REQUEST_BUILDERS = "org.springframework.test.web.servlet.request.MockMvcRequestBuilders"
+    const val MOCK_MVC = "org.springframework.test.web.servlet.MockMvc"
     private const val WEB_CLIENT = "org.springframework.web.reactive.function.client.WebClient"
     const val WEB_TEST_CLIENT = "org.springframework.test.web.reactive.server.WebTestClient"
     const val WEB_TEST_CLIENT_URI_SPEC = "$WEB_TEST_CLIENT.UriSpec"
@@ -64,6 +68,9 @@ object SpringWebClasses {
     const val JAVAX_HTTP_SERVLET_RESPONSE: String = "javax.servlet.http.HttpServletResponse"
     const val JAKARTA_HTTP_SERVLET_RESPONSE: String = "jakarta.servlet.http.HttpServletResponse"
 
+    const val JAVAX_HTTP_PART: String = "javax.servlet.http.Part"
+    const val JAKARTA_HTTP_PART: String = "jakarta.servlet.http.Part"
+
     const val JAVAX_HTTP_SESSION: String = "javax.servlet.http.HttpSession"
     const val JAKARTA_HTTP_SESSION: String = "jakarta.servlet.http.HttpSession"
 
@@ -74,8 +81,32 @@ object SpringWebClasses {
     const val ROUTE_FUNCTION = "org.springframework.web.reactive.function.server.RouterFunction"
     const val ROUTE_FUNCTION_BUILDER = "org.springframework.web.reactive.function.server.RouterFunctions.Builder"
 
+    const val SERVLET_ROUTE_FUNCTION = "org.springframework.web.servlet.function.RouterFunction"
+    const val SERVLET_ROUTE_FUNCTION_BUILDER = "org.springframework.web.servlet.function.RouterFunctions.Builder"
+
+    val ROUTE_FUNCTION_BUILDERS = listOf(ROUTE_FUNCTION_BUILDER, SERVLET_ROUTE_FUNCTION_BUILDER)
+
+    /**
+     * Entry points of the Kotlin router DSL. `router` names both the reactive and the servlet DSL, so the stack is
+     * told apart by the enclosing bean's type rather than by this name.
+     */
+    val ROUTER_DSL_ENTRY_POINTS = listOf("coRouter", "router")
+
     const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
-    val URI_TYPE = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
+    const val ROUTER_DSL_GENERIC_METHOD = "method"
+
+    /**
+     * Route methods of the Kotlin router DSL. `method` carries its verb in the argument instead of the name, so a
+     * caller matching on this list must read the verb rather than reuse the called name.
+     */
+    val ROUTER_DSL_ROUTE_METHODS = listOf(
+        "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", ROUTER_DSL_GENERIC_METHOD
+    )
+
+    /** HTTP verbs offered as tool window filter entries, kept in step with the icons rendered per verb. */
+    val HTTP_METHOD_FILTER = listOf(
+        "CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"
+    )
 
 }

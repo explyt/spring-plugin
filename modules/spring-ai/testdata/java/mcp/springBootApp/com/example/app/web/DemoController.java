@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DemoController {
 
     private final DemoService service;
+    private final DemoService manuallyCreated = new DemoService(null);
 
     public DemoController(DemoService service) {
         this.service = service;
@@ -44,5 +45,21 @@ public class DemoController {
     @PostMapping(value = "/items", consumes = "application/json", produces = "application/json")
     public DemoDto createItem(@RequestBody DemoDto body) {
         return service.save(body);
+    }
+
+    @GetMapping("/wrapped/{id}")
+    public org.springframework.http.ResponseEntity<DemoDto> wrapped(@PathVariable("id") Long id) {
+        return org.springframework.http.ResponseEntity.ok(service.findById(id));
+    }
+
+    @GetMapping("/trimmed")
+    public DemoDto trimmed(String sourceKey) {
+        String key = sourceKey.trim();
+        return service.findById(Long.parseLong(key));
+    }
+
+    @GetMapping("/manually-created/{id}")
+    public DemoDto manuallyCreated(@PathVariable("id") Long id) {
+        return manuallyCreated.findById(id);
     }
 }

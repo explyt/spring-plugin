@@ -47,6 +47,7 @@ class SpringWebFluxEndpointsLoader(private val project: Project) : SpringWebEndp
         return componentAnnotations.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, module.moduleWithDependenciesScope) }
             .flatMap { handler.handleEndpoints(it) }
+            .filter { it.type == EndpointType.SPRING_WEBFLUX }
             .toList()
     }
 }

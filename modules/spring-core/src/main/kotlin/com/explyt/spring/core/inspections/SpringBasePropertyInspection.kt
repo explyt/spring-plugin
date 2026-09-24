@@ -101,6 +101,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         val properties = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .getAllProperties(module)
 
+        val reportedCanonicalFormRanges = mutableSetOf<Pair<PsiElement?, TextRange?>>()
         for (fileProperty in fileProperties) {
             val elementFileProperty = fileProperty.psiElement ?: continue
             val psiKey = elementFileProperty.propertyKeyPsiElement() ?: continue
@@ -118,8 +119,14 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             }
 
             val key = fileProperty.key
-            if (PropertyUtil.isNotKebabCase(key) && !PropertyUtil.isKebabCaseInMapKey(key, properties)) {
-                problems += keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key)
+            val nonCanonical = PropertyUtil.firstNonCanonicalSegment(key)
+            if (nonCanonical != null && !PropertyUtil.isKebabCaseInMapKey(key, properties)) {
+                // Every leaf under one non-canonical ancestor resolves to that ancestor's element, so without this
+                // guard a mapping with N children stacked N identical problems on the ancestor's line.
+                val descriptor = keyShouldBeKebabProblemDescriptor(manager, psiKey, isOnTheFly, key, nonCanonical)
+                if (reportedCanonicalFormRanges.add(descriptor.psiElement to descriptor.textRangeInElement)) {
+                    problems += descriptor
+                }
             }
 
             val foundProperties = properties.filter { PropertyUtil.isSameProperty(it.name, key, it.type) }
@@ -166,11 +173,19 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return problems
     }
 
+    /**
+     * @param psiKey the key element of the property being inspected — the leaf, which may be a descendant of the
+     *   element that owns [nonCanonical]
+     * @param key the full dot-separated key
+     * @param nonCanonical the segment of [key] that deviates from Spring's canonical form, which is what the problem
+     *   has to be reported on
+     */
     abstract fun keyShouldBeKebabProblemDescriptor(
         manager: InspectionManager,
         psiKey: PsiElement,
         isOnTheFly: Boolean,
-        key: String
+        key: String,
+        nonCanonical: PropertyUtil.Segment
     ): ProblemDescriptor
 
     private fun getProblemPropertyDeprecated(
@@ -212,7 +227,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         isOnTheFly: Boolean,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
-        val hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getAllHints(module)
+        val hints = SpringConfigurationPropertiesSearch.getInstance(module.project).getHintIndex(module)
         val problems = mutableListOf<ProblemDescriptor>()
         problems += getProblemValues(manager, isOnTheFly, hints, fileProperties)
         problems += getProblemClassReference(module, manager, isOnTheFly, hints, fileProperties)
@@ -226,17 +241,22 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     private fun getProblemValues(
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val findInFileProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                (property.key == hint.name || property.key.substringBeforeLast(".") + POSTFIX_KEYS == hint.name)
-                        && hint.values.isNotEmpty()
+            val declaresValues: (PropertyHint) -> Boolean = { hint ->
+                hint.values.isNotEmpty()
                         && (hint.providers.isEmpty()
                         || hint.providers.filter { it.name != null }.any { it.name != SpringProperties.ANY })
             }
+            // The gate must consult the same hint the values are validated against below: `<prefix>.values`
+            // declares the closed value set of a map property, while `<prefix>.keys` (e.g. `logging.level.keys`)
+            // enumerates allowed map KEYS and says nothing about values - its `logger-name` provider would
+            // otherwise license an `Invalid value` error that the `any` provider of `.values` forbids.
+            hints.hintsNamed(property.key).any(declaresValues)
+                    || hints.hintsNamed(property.key.substringBeforeLast(".") + POSTFIX_VALUES).any(declaresValues)
         }
         if (findInFileProperties.isEmpty()) {
             return problems
@@ -250,12 +270,10 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
                 continue
             }
 
-            val hintValues = hints.asSequence()
-                .filter { it.name == key || it.name == key.substringBeforeLast(".") + POSTFIX_VALUES }
-                .distinctBy { it.name }
+            val hintValues = hints
+                .firstPerName(key, key.substringBeforeLast(".") + POSTFIX_VALUES)
                 .flatMap { it.values }
                 .mapNotNull { it.value }
-                .toList()
 
             if (value !in hintValues) {
                 problems += manager.createProblemDescriptor(
@@ -278,14 +296,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val classReferenceProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.CLASS_REFERENCE }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }.any { it.name == SpringProperties.CLASS_REFERENCE }
             }
         }
         if (classReferenceProperties.isEmpty()) {
@@ -350,14 +367,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val handleAsProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
             }
         }
         if (handleAsProperties.isEmpty()) {
@@ -371,11 +387,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             val key = elementFileProperty.propertyKey() ?: continue
             val value = elementFileProperty.propertyValue() ?: continue
 
-            val providerHints = hints.asSequence()
-                .filter { it.name == key }
-                .distinctBy { it.name }
-                .flatMap { it.providers }
-                .toList()
+            val providerHints = hints.firstPerName(key).flatMap { it.providers }
 
             val configurationProperty = propertiesSearch.findProperty(module, key)
             val propertyType = configurationProperty?.type?.replace('$', '.')
@@ -409,14 +421,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         module: Module,
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val springBeanReferenceProperties = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }
                     .any { it.name == SpringProperties.SPRING_BEAN_REFERENCE }
             }
         }
@@ -455,7 +466,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
             val elementFileProperty = property.psiElement ?: continue
             val psiValue = elementFileProperty.propertyValuePsiElement() ?: continue
             val configurationProperty = getConfigurationProperty(module, property) ?: continue
-            val propertyType = getPropertyType(configurationProperty) ?: continue
+            val propertyType = PropertyUtil.valueTypeOf(configurationProperty) ?: continue
             val values = getPropertyValue(property, configurationProperty)
             for (value in values) {
                 val resultConvert = tryConvert(propertyType, value)
@@ -486,14 +497,13 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
     private fun getProblemResource(
         manager: InspectionManager,
         isOnTheFly: Boolean,
-        hints: List<PropertyHint>,
+        hints: PropertyHintIndex,
         fileProperties: List<DefinedConfigurationProperty>,
     ): MutableList<ProblemDescriptor> {
         val problems = mutableListOf<ProblemDescriptor>()
         val resources = fileProperties.filter { property ->
-            hints.any { hint ->
-                property.key == hint.name
-                        && hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
+            hints.hintsNamed(property.key).any { hint ->
+                hint.providers.filter { it.name != null }.any { it.name == SpringProperties.HANDLE_AS }
                         && hint.providers.any { it.parameters?.target == IO_RESOURCE }
             }
         }
@@ -541,21 +551,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         return resultEncoding
     }
 
-    private fun getPropertyType(configurationProperty: ConfigurationProperty): String? {
-        val propertyType = configurationProperty.type ?: return null
-        return when {
-            configurationProperty.isList() ->
-                propertyType.substringAfter("<").substringBefore(">")
 
-            configurationProperty.isMap() ->
-                propertyType.substringAfter(",").substringBefore(">")
-
-            configurationProperty.isArray() ->
-                propertyType.substringBefore("[]")
-
-            else -> propertyType.replace('$', '.')
-        }
-    }
 
     private fun isProblemPropertyType(propertyType: String, value: String): Boolean {
         return when (propertyType) {
@@ -624,9 +620,7 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         value: String
     ): List<ProblemDescriptor> {
         val propertyTypeClass = getCachedPropertyTypeClass(module, propertyType) ?: return emptyList()
-        if (propertyTypeClass.isEnum
-            && !propertyTypeClass.fields.map { it.name.lowercase() }.any { it == value.lowercase() }
-        ) {
+        if (propertyTypeClass.isEnum && PropertyUtil.findEnumConstant(propertyTypeClass, value) == null) {
             return listOf(
                 manager.createProblemDescriptor(
                     psiElement,
@@ -664,22 +658,29 @@ abstract class SpringBasePropertyInspection : SpringBaseLocalInspectionTool() {
         }.distinct()
 
 
+    /**
+     * The declared maps that would accept [fileProperty] as an entry. A map entry name is arbitrary, so a key with
+     * no declaration of its own is still legal when a map owns it — but only when ownership ends at a segment
+     * boundary. A bare prefix match makes the map `foo.bar` legalise the misspelled `foo.barbaz`, suppressing the
+     * unresolved-key report the inspection exists to produce.
+     */
     private fun getMapKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
         val commonFormKey = PropertyUtil.toCommonPropertyForm(fileProperty.key)
         return properties.asSequence().filter { it.isMap() }
-            .filter { commonFormKey.startsWith(PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
+            .filter { PropertyUtil.isOwnedBy(commonFormKey, PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
     }
 
+    /** The declared collections that would accept [fileProperty] as an element. See [getMapKeys] on the boundary. */
     private fun getListKeys(
         fileProperty: DefinedConfigurationProperty,
         properties: List<ConfigurationProperty>
     ): List<ConfigurationProperty> {
         val commonFormKey = PropertyUtil.toCommonPropertyForm(fileProperty.key)
         return properties.asSequence().filter { it.isList() || it.isArray() }
-            .filter { commonFormKey.startsWith(PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
+            .filter { PropertyUtil.isOwnedBy(commonFormKey, PropertyUtil.toCommonPropertyForm(it.name)) }.toList()
     }
 
     private fun checkDuplicateKeys(

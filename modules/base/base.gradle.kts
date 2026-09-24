@@ -20,7 +20,6 @@ ext {
 
 evaluationDependsOn(":test-framework")
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 intellijPlatform {
@@ -46,6 +45,8 @@ dependencies {
         }
         bundledPlugins(intellijPlugins)
     }
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 }
 
 kotlin {

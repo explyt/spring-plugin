@@ -8,7 +8,6 @@ package com.explyt.spring.web.service
 import com.explyt.spring.web.jsonSchema.OpenApiJsonSchemaReader
 import com.explyt.spring.web.model.OpenApiSpecificationType
 import com.intellij.json.JsonLanguage
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.util.io.FileUtil
@@ -21,26 +20,28 @@ import java.util.concurrent.ConcurrentHashMap
 @Service(Service.Level.PROJECT)
 class OpenApiSpecificationManager {
 
-    private val schemas: MutableMap<OpenApiSpecificationType, FileSchemaPair?> = ConcurrentHashMap()
+    private val schemas: MutableMap<OpenApiSpecificationType, FileSchemaPair> = ConcurrentHashMap()
 
+    /**
+     * Builds the schema outside the map so that the first caller does not hold a [ConcurrentHashMap] bin lock while
+     * the JSON schema validator loads its classes — `com.networknt.schema.ValidatorTypeCode` alone takes seconds on
+     * first touch, and every other thread asking for the same specification would queue behind it.
+     *
+     * Losing the race merely discards a duplicate schema, which is cheaper than serialising the callers.
+     */
     fun getSchemaByFile(specificationType: OpenApiSpecificationType): FileSchemaPair? {
-        return if (specificationType is OpenApiSpecificationType.OpenApiUndefined) null
-        else schemas.computeIfAbsent(specificationType) {
-            getSchemasByType(it)
-        }
+        if (specificationType is OpenApiSpecificationType.OpenApiUndefined) return null
+
+        schemas[specificationType]?.let { return it }
+        val computed = getSchemasByType(specificationType) ?: return null
+        return schemas.putIfAbsent(specificationType, computed) ?: computed
     }
 
     private fun getSchemasByType(specificationType: OpenApiSpecificationType): FileSchemaPair? {
         val schemaFile = getSchemaFileByType(specificationType) ?: return null
-        val schemaObject = getSchemaObject(schemaFile) ?: return null
+        val schemaObject = OpenApiJsonSchemaReader.INSTANCE.readFromFile(schemaFile) ?: return null
         return FileSchemaPair(schemaFile, schemaObject)
     }
-
-    private fun getSchemaObject(schemaFile: VirtualFile): JsonSchema? =
-        runReadAction {
-            val jsonSchema = OpenApiJsonSchemaReader.INSTANCE.readFromFile(schemaFile) ?: return@runReadAction null
-            return@runReadAction jsonSchema
-        }
 
     private fun getSchemaFileByType(specificationType: OpenApiSpecificationType): VirtualFile? {
         val schemaPath = getSchemaPath(specificationType) ?: return null
@@ -55,6 +56,7 @@ class OpenApiSpecificationManager {
         return when (specificationType) {
             is OpenApiSpecificationType.OpenApiV30 -> "schema/openapi_3_0_0.json"
             is OpenApiSpecificationType.OpenApiV31 -> "schema/openapi_3_1_0.json"
+            is OpenApiSpecificationType.OpenApiV32 -> "schema/openapi_3_2_0.json"
             else -> null
         }
     }
