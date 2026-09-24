@@ -45,6 +45,8 @@ dependencies {
         jetbrainsRuntime()
         bundledPlugins(intellijPlugins)
     }
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 }
 
 kotlin {

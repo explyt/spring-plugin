@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     java
     id("org.jetbrains.intellij.platform.module")
@@ -43,7 +45,12 @@ dependencies {
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
         jetbrainsRuntime()
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
+        // Without a test framework the `test` task cannot resolve the IDE distribution it runs against and fails
+        // with "Cannot resolve 'product-info.json'", which is why this module had no tests at all.
+        testFramework(TestFrameworkType.Platform)
     }
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 }
 
 kotlin {
