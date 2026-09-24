@@ -22,7 +22,9 @@ enum class PluginIds(val pluginId: String) {
     SPRING_BOOT_JB("com.intellij.spring.boot"),
     ;
 
-    fun findEnabled() = PluginManager.getInstance().findEnabledPlugin(PluginId.getId(pluginId))
+    private val id = PluginId.getId(pluginId)
+
+    fun findEnabled() = PluginManager.getInstance().findEnabledPlugin(id)
 
     fun isEnabled() = findEnabled() != null
 

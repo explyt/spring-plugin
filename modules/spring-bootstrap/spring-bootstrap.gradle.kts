@@ -79,8 +79,6 @@ val distFilePostfix = rootProject.optProperty("distFilePostfix") ?: version
 
 val buildArchiveName = "${springPluginName}-${distFilePostfix}.zip"
 
-val launchUltimate = rootProject.hasProperty("launchUltimate")
-
 val springBootstrapModule = project(":spring-bootstrap")
 val testFramework = project(":test-framework")
 
@@ -139,7 +137,6 @@ configurations {
     }
 }
 
-val defaultIdeaType: String by rootProject
 val defaultIdeaVersion: String by rootProject
 
 dependencies {

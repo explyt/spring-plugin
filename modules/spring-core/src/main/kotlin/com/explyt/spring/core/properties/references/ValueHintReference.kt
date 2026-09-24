@@ -17,7 +17,6 @@ import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.core.util.PropertyUtil.propertyKey
 import com.explyt.spring.core.util.PropertyUtil.propertyValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
-import com.explyt.util.ExplytPsiUtil.isPrivate
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.Module
@@ -72,16 +71,17 @@ class ValueHintReference(
         }
 
         val javaPsiFacade = JavaPsiFacade.getInstance(module.project)
-        val configurationProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
-            .findProperty(module, propertyKey) ?: return emptyResolveResult()
-        val propertyType = configurationProperty.type?.replace('$', '.') ?: return emptyResolveResult()
+        val configurationProperty = PropertyUtil.findValueOwner(module, propertyKey) ?: return emptyResolveResult()
+        val propertyType = PropertyUtil.valueTypeOf(configurationProperty) ?: return emptyResolveResult()
         val propertyTypeClass = javaPsiFacade.findClass(propertyType, GlobalSearchScope.allScope(module.project))
         if (propertyTypeClass?.isEnum == true) {
-            val field = propertyTypeClass.findFieldByName(propertyValue, true) ?: return emptyResolveResult()
-            return ResolveResultContainer(arrayOf(PsiElementResolveResult(field)), ResultType.ENUM)
+            val constant = PropertyUtil.findEnumConstant(propertyTypeClass, propertyValue)
+                ?: return emptyResolveResult()
+            return ResolveResultContainer(arrayOf(PsiElementResolveResult(constant)), ResultType.ENUM)
         }
         return emptyResolveResult()
     }
+
 
     private fun processProvider(
         module: Module,
@@ -149,7 +149,7 @@ class ValueHintReference(
             ?: SpringPropertiesCompletionContributor.getDynamicMapProperties(module, propertyKey)
                 .firstOrNull { it.name == propertyKey }
 
-        configurationProperty?.type?.replace('$', '.')?.let {
+        configurationProperty?.let { PropertyUtil.valueTypeOf(it) }?.let {
             result.addAll(getVariantsByPropertyType(it))
         }
 
@@ -162,8 +162,16 @@ class ValueHintReference(
         val result = mutableListOf<Any>()
         result.addAll(
             propertyHint.values
-            .filter { it.value != null }
-            .map { LookupElementBuilder.create(it, it.value!!).withRenderer(PropertyValueRenderer()) })
+                .filter { it.value != null }
+                .map {
+                    val literal = it.value!!
+                    // Hint resolution matches a literal ignoring case, so completion has to offer it for a prefix in
+                    // any case too. Case sensitivity has to stay on: it is what makes the platform insert the declared
+                    // literal verbatim instead of echoing the case of the typed prefix.
+                    LookupElementBuilder.create(it, literal)
+                        .withLookupStrings(PropertyUtil.hintValueSpellings(literal))
+                        .withRenderer(PropertyValueRenderer())
+                })
 
         propertyHint.providers.flatMapTo(result) { providerHint ->
             processProviderHints(providerHint)
@@ -210,8 +218,14 @@ class ValueHintReference(
                     .findClass(propertyType, GlobalSearchScope.allScope(project))
                 if (propertyTypeClass?.isEnum == true) {
                     return propertyTypeClass.fields.asSequence()
-                        .filter { !it.isPrivate }
-                        .mapToList { LookupElementBuilder.create(it) }
+                        .filterIsInstance<PsiEnumConstant>()
+                        .mapToList { constant ->
+                            // Case sensitivity has to stay on: it is what makes the platform insert this literal
+                            // verbatim instead of echoing the case of the typed prefix.
+                            LookupElementBuilder.create(constant, PropertyUtil.recommendedValueSpelling(constant.name))
+                                .withLookupStrings(PropertyUtil.relaxedValueSpellings(constant.name) + constant.name)
+                                .withTailText(" ${constant.name}", true)
+                        }
                 }
                 emptyList()
             }

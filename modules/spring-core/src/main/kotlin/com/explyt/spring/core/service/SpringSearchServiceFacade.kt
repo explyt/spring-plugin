@@ -8,6 +8,9 @@ package com.explyt.spring.core.service
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.NativeSearchService.Companion.getLoadedProjects
 import com.explyt.spring.core.service.NativeSearchService.Companion.isActiveDiPredicate
+import com.explyt.spring.core.service.beans.BeanSnapshotService
+import com.explyt.spring.core.service.beans.BeanSourcePreference
+import com.explyt.spring.core.service.beans.ScopedBeanSnapshot
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -41,11 +44,30 @@ class SpringSearchServiceFacade(private val project: Project) {
         return springSearchService.getAllBeansClassesConsideringContext(project)
     }
 
+    /**
+     * The beans of one explicitly chosen model, for callers that must not depend on the selected editor.
+     *
+     * Separate from [getAllActiveBeans] on purpose: that one answers the editor-driven question "what is in
+     * context here", and its native branch merges every loaded root. A query that names its application needs the
+     * opposite guarantee - one root, chosen before any bean is read - so it gets its own entry point rather than a
+     * changed meaning for the existing callers.
+     *
+     * Must run under a read action.
+     */
+    fun getBeanSnapshot(
+        application: PsiClass,
+        source: BeanSourcePreference = BeanSourcePreference.AUTO,
+        contextId: String? = null,
+        injectionFile: PsiFile? = null
+    ): ScopedBeanSnapshot = BeanSnapshotService(project).read(application, source, contextId, injectionFile)
+
     fun getAllActiveBeans(module: Module, isNative: Boolean = false): Set<PsiBean> {
         return if (isNative || isExternalProjectExist(project)) {
             nativeSearchService.getAllActiveBeans()
         } else {
-            springSearchService.getActiveBeansClasses(module)
+            // The source path caches beans too, so it can hand out a bean whose PSI was invalidated by an edit just
+            // like the native path can. Filter it here as well: callers dereference `psiClass` without a guard.
+            nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
         }
     }
 
@@ -102,7 +124,7 @@ class SpringSearchServiceFacade(private val project: Project) {
             nativeSearchService.findActiveBeanDeclarations(beans, byBeanName, language, byBeanPsiType, qualifier)
         } else {
             val isTestSource = ExplytPsiUtil.isTestFiles(psiElement)
-            val beans = springSearchService.getActiveBeansClasses(module)
+            val beans = nativeSearchService.filterValidBeans(springSearchService.getActiveBeansClasses(module))
             nativeSearchService.findActiveBeanDeclarations(
                 beans, byBeanName, language, byBeanPsiType, qualifier, module
             ).filter { filterBeanByTest(it, psiElement, isTestSource) }

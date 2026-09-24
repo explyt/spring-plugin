@@ -5,9 +5,13 @@
 
 package com.explyt.spring.core.inspections.kotlin
 
+import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.inspections.SpringYamlInspection
 import com.explyt.spring.test.ExplytMultiModuleTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.openapi.module.JavaModuleType
+import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.testFramework.PsiTestUtil
 import org.intellij.lang.annotations.Language
 
 /**
@@ -107,6 +111,75 @@ explyt.known:
             """.trimIndent()
         )
         myFixture.testHighlighting("application.yaml")
+    }
+
+    /**
+     * Regression for issue #381, the mirror image of #276: a key consumed only from a DEPENDENT
+     * module — the shape of a Gradle `foo.test` source-set module, which depends on `foo.main` and
+     * has no dependents of its own. Configuration files were collected with
+     * `moduleWithDependentsScope` only, so the dependent module's `@Value` never saw the main
+     * `application.yaml`: it neither navigated to the key nor counted as its usage, and the main
+     * YAML reported `Cannot resolve key property`.
+     */
+    fun testKeyConsumedOnlyFromDependentModuleResolves() {
+        val library = addDependencyModule("library")
+        addFileToModule(library, "com/example/library/KnownProperties.kt", KNOWN_PROPERTIES)
+
+        val dependent = addDependentModule("apptest")
+        @Language("kotlin") val testConsumer = """
+            package com.example.apptest
+
+            import org.springframework.beans.factory.annotation.Value
+            import org.springframework.stereotype.Component
+
+            @Component
+            class TestConsumer(
+                @Value("\${'$'}{explyt.notifications.secret-key}") val secretKey: String
+            )
+        """.trimIndent()
+        addFileToModule(dependent, "com/example/apptest/TestConsumer.kt", testConsumer)
+
+        // Negative control: a module with no dependency edge defines the same key and must stay
+        // invisible to the dependent module's references.
+        val unrelatedRoot = myFixture.tempDirFixture.findOrCreateDir("unrelated/src")
+        val unrelated = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), "unrelated", unrelatedRoot)
+        ModuleRootModificationUtil.setSdkInherited(unrelated)
+        addFileToModule(
+            unrelated,
+            "application.yaml",
+            """
+explyt:
+  notifications:
+    secret-key: unrelated-value
+            """.trimIndent()
+        )
+
+        // The expected warning on `never-declared` is the control proving the inspection runs on
+        // this fixture; the consumed `secret-key` must stay clean.
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt.known:
+  enabled: true
+explyt.notifications:
+  secret-key: my-secret-key
+  <warning descr="Cannot resolve key property 'explyt.notifications.never-declared'">never-declared</warning>: x
+            """.trimIndent()
+        )
+        myFixture.testHighlighting("application.yaml")
+
+        val definitions = DefinedConfigurationPropertiesSearch.getInstance(project)
+            .getAllProperties(dependent)
+            .filter { it.key == "explyt.notifications.secret-key" }
+        assertTrue(
+            "a dependent module must see the main module configuration",
+            definitions.isNotEmpty()
+        )
+        assertEquals(
+            "only the main module definition is visible, the unrelated module stays out",
+            listOf(myFixture.file),
+            definitions.map { it.psiElement?.containingFile }
+        )
     }
 
     private companion object {
