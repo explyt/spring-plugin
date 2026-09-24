@@ -82,6 +82,7 @@
 - feat: Navigate from a SpEL bean reference in `@Value` and `@Scheduled` to the bean and to the property it reads, so `#{@myProps.cron}` resolves both halves and completes the property name (#44)
 - fix: Require a configuration key's owning declaration to end at a segment boundary, so a declared `foo.bar` no longer owns the unrelated `foo.barbaz` — it decided the value type, the map-entry completion, the kebab-case exemption and whether an unknown key was reported at all
 - fix: support spring boot4 test annotations MockitoSpyBean/MockitoBean (#418)
+- fix: Event publisher navigation not working for child class if EvenListener has parent class (#419)
 
 ### Spring Initializr
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
