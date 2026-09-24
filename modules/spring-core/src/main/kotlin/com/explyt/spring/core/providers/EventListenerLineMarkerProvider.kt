@@ -21,6 +21,7 @@ import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
+import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isPublic
@@ -341,9 +342,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val uCallExpression = psiElement.toUElementOfType<UCallExpression>() ?: return Collections.emptyList()
         if (uCallExpression.valueArgumentCount != 1) return Collections.emptyList()
         val eventPsiType = uCallExpression.valueArguments[0].getExpressionType() ?: return Collections.emptyList()
+        val allTypes = eventPsiType.allSupers().filter { it.canonicalText != "java.lang.Object" }
 
         return listenerMethods(module, anchoredInLibrary = elementModule == null).asSequence()
-            .filter { isEqualsTypeOrClass(it, eventPsiType) }
+            .filter { allTypes.any { psiType -> isEqualsTypeOrClass(it, psiType) } }
             .map { it.element.navigationElement }
             .toList()
     }
