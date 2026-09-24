@@ -13,6 +13,7 @@ import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettin
 import com.intellij.execution.RunManager
 import com.intellij.execution.application.ApplicationConfiguration
 import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
@@ -21,6 +22,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClassOwner
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiMethodUtil
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.uast.UClass
@@ -57,6 +59,18 @@ object RunConfigurationExtractor {
                 val runConfiguration = mapToSpringBootRunConfiguration(runConfig, settings) ?: return null
                 return RunConfigurationHolder(runConfiguration)
             }
+        }
+        if (settings.runConfigurationType == RunConfigurationType.EXTERNAL_SYSTEM) {
+            val runConfig = allConfigurationsList
+                .filterIsInstance<ExternalSystemRunConfiguration>()
+                .find { it.name == settings.runConfigurationName }
+            // A dangling Gradle link must not fall through to the path match below: that would silently relink
+            // the auto-detected configuration with an empty environment — the failure this type exists to fix.
+                ?: return null
+            val mainClassFile = settings.externalProjectMainFilePath
+                ?.let { VfsUtil.findFile(Path(it), false) } ?: return null
+            return mapExternalSystemRunConfiguration(runConfig, mainClassFile, settings)
+                ?.let { RunConfigurationHolder(it) }
         }
         val runConfigByName = settings.runConfigurationName?.let { name ->
             allConfigurationsList.find { it is SpringBootRunConfiguration && it.name == name }
@@ -120,9 +134,34 @@ object RunConfigurationExtractor {
         return runConfiguration
     }
 
+    /**
+     * A Gradle task cannot host the bean-reader main class, so the application is always launched through a
+     * fabricated Spring Boot configuration carrying the linked environment — including in java-agent mode, which
+     * has no patch for this configuration type. Split from [findRunConfiguration] because the path-based entry
+     * point resolves the file through the local filesystem, which cannot see a light fixture's in-memory files.
+     */
+    @VisibleForTesting
+    fun mapExternalSystemRunConfiguration(
+        runConfig: ExternalSystemRunConfiguration, mainClassFile: VirtualFile, settings: NativeExecutionSettings
+    ): SpringBootRunConfiguration? {
+        val runConfiguration = createDefaultRunConfiguration(settings, mainClassFile) ?: return null
+        runConfiguration.envs = HashMap(runConfig.settings.env)
+        runConfig.settings.vmOptions?.takeIf { it.isNotBlank() }?.let {
+            runConfiguration.vmParameters = it
+        }
+        runConfiguration.isPassParentEnvs = runConfig.settings.isPassParentEnvs
+        return runConfiguration
+    }
+
     private fun createDefaultRunConfiguration(settings: NativeExecutionSettings): SpringBootRunConfiguration? {
         val externalProjectMainFilePath = settings.externalProjectMainFilePath ?: return null
         val virtualFile = VfsUtil.findFile(Path(externalProjectMainFilePath), false) ?: return null
+        return createDefaultRunConfiguration(settings, virtualFile)
+    }
+
+    private fun createDefaultRunConfiguration(
+        settings: NativeExecutionSettings, virtualFile: VirtualFile
+    ): SpringBootRunConfiguration? {
         val module = ModuleUtilCore.findModuleForFile(virtualFile, settings.project) ?: return null
         // The stored qualified name is the `@SpringBootApplication` class, which for a Kotlin top-level `main()` is
         // not the launchable class: running it fails with "Main method not found in class ...". Resolve the class that

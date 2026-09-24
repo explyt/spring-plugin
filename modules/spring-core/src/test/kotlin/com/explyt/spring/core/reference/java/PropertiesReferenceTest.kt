@@ -7,6 +7,7 @@ package com.explyt.spring.core.reference.java
 
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
+import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.properties.references.PropertiesKeyMapValueReference
 import com.explyt.spring.core.properties.references.ValueHintReference
 import com.explyt.spring.test.ExplytJavaLightTestCase
@@ -111,6 +112,21 @@ class PropertiesReferenceTest : ExplytJavaLightTestCase() {
         assertEquals(1, multiResolve.size)
         val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
         assertEquals(name, "setEnabled")
+    }
+
+    fun testRefKeyBracketMapValue() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].owner-<caret>application=x"
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
     }
 
     fun testRefValueResource() {
@@ -364,5 +380,108 @@ logging.level.org.hibernate.SQL=deb<caret>ug
         val resolveResult = multiResolve[0]
         val name = (resolveResult.element as? JsonPropertyImpl)?.name
         assertEquals(name, "value")
+    }
+
+    fun testRefKeyListElementMember() {
+        myFixture.copyFileToProject("S3LogsProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "ingest.s3-logs.sources[0].ena<caret>bled=true"
+        )
+
+        assertEquals("setEnabled", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementCollectionItself() {
+        myFixture.copyFileToProject("S3LogsProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "ingest.s3-logs.sour<caret>ces[0]=first"
+        )
+
+        assertEquals("setSources", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyMapValueConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers.my-registration.owner-<caret>application=my-app"
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? PropertiesKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals("ownerApplication", name)
+    }
+
+    fun testRefKeyListElementConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.routes[0].payload-<caret>type=my.event"
+        )
+
+        assertEquals("payloadType", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementUnderBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].routes[0].payload-<caret>type=my.event"
+        )
+
+        assertEquals("setPayloadType", mapValueReferenceName())
+    }
+
+    fun testRefKeyListElementUnderMapKeyConstructorBoundRecord() {
+        myFixture.copyFileToProject("ConstructorBoundRecordProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].routes[0].payload-<caret>type=my.event"
+        )
+
+        assertEquals("payloadType", mapValueReferenceName())
+    }
+
+    fun testRefKeyListElementUnderMapKeyUnknownMemberIsNotResolved() {
+        myFixture.copyFileToProject("BracketMapProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].routes[0].unkn<caret>own=my.event"
+        )
+
+        assertNull(mapValueReferenceName())
+    }
+
+    private fun mapValueReferenceName(): String? = mapValueReference()
+        .multiResolve(true)
+        .singleOrNull()
+        ?.let { (it.element as? ConfigKeyPsiElement)?.name }
+
+    private fun mapValueReference(): PropertiesKeyMapValueReference {
+        val found = file.findReferenceAt(myFixture.caretOffset)
+        val reference = when (found) {
+            is PsiMultiReference -> found.references.filterIsInstance<PropertiesKeyMapValueReference>().lastOrNull()
+            is PropertiesKeyMapValueReference -> found
+            else -> null
+        }
+        assertNotNull("map value reference must be contributed", reference)
+        return reference!!
+    }
+
+    private fun resolveListElementReferenceName(): String? {
+        val reference = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references
+            ?.filterIsInstance<ConfigurationPropertyListElementReference>()
+            ?.singleOrNull()
+        assertNotNull("list element reference must be contributed", reference)
+
+        return reference!!.multiResolve(true)
+            .singleOrNull()
+            ?.let { (it.element as? ConfigKeyPsiElement)?.name }
     }
 }

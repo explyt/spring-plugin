@@ -145,6 +145,7 @@ class OpenApiFileUtil {
             !isOpenApiFile(file, psiFile) -> OpenApiSpecificationType.OpenApiUndefined
             isOpenApiV30File(file, psiFile) -> OpenApiSpecificationType.OpenApiV30.INSTANCE
             isOpenApiV31File(file, psiFile) -> OpenApiSpecificationType.OpenApiV31.INSTANCE
+            isOpenApiV32File(file, psiFile) -> OpenApiSpecificationType.OpenApiV32.INSTANCE
             else -> OpenApiSpecificationType.OpenApiUndefined
         }
     }
@@ -155,6 +156,10 @@ class OpenApiFileUtil {
 
     private fun isOpenApiV31File(file: VirtualFile, psiFile: PsiFile): Boolean {
         return isSpecificationFileType(file, psiFile, reg31)
+    }
+
+    private fun isOpenApiV32File(file: VirtualFile, psiFile: PsiFile): Boolean {
+        return isSpecificationFileType(file, psiFile, reg32)
     }
 
     private fun isSpecificationFileType(
@@ -181,10 +186,12 @@ class OpenApiFileUtil {
 
         private var reg30: Regex
         private var reg31: Regex
+        private var reg32: Regex
 
         init {
             reg30 = createRegex(SpringWebUtil.OPEN_API, "3\\.0\\.\\d+(-.+)?")
             reg31 = createRegex(SpringWebUtil.OPEN_API, "3\\.1\\.\\d+(-.+)?")
+            reg32 = createRegex(SpringWebUtil.OPEN_API, "3\\.2\\.\\d+(-.+)?")
         }
 
         private fun createRegex(placeholder: String, versionPattern: String): Regex {

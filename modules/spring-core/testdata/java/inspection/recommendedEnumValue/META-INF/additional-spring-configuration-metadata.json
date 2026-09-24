@@ -1,0 +1,23 @@
+{
+  "groups": [],
+  "properties": [
+    {
+      "name": "explyt.hinted.include",
+      "type": "com.explyt.RecordingInclude",
+      "description": "An enum-typed property whose accepted literals are also declared as metadata hints."
+    }
+  ],
+  "hints": [
+    {
+      "name": "explyt.hinted.include",
+      "values": [
+        {
+          "value": "TIME_TAKEN"
+        },
+        {
+          "value": "REQUEST_HEADERS"
+        }
+      ]
+    }
+  ]
+}

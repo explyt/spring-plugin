@@ -18,6 +18,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
+import org.jetbrains.jps.model.java.JavaSourceRootType
 
 /**
  * Base class for tests that need **several** modules with real dependencies between them.
@@ -78,6 +79,25 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
     }
 
     /**
+     * Creates a module named [name] that depends on the main [module], mirroring a Gradle test
+     * source-set module (`foo.test` depends on `foo.main`). The new module gets the same
+     * [libraries] and inherits the project SDK.
+     *
+     * @return the created module, to be passed to [addFileToModule].
+     */
+    protected fun addDependentModule(name: String): Module {
+        val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
+        val dependent = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
+
+        ModuleRootModificationUtil.setSdkInherited(dependent)
+        attachLibraries(dependent)
+        ModuleRootModificationUtil.addDependency(dependent, module, DependencyScope.COMPILE, false)
+
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return dependent
+    }
+
+    /**
      * Writes [text] to [relativePath] inside the source root of [module] and returns the created
      * [PsiFile]. [relativePath] is relative to that source root, e.g. `com/example/Bean.kt`.
      */
@@ -88,6 +108,31 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         return PsiManager.getInstance(project).findFile(file)
             ?: error("No PSI for '$relativePath' in module '${module.name}'")
+    }
+
+    /**
+     * Writes [text] to [relativePath] inside a **test** source root of [module], creating that root on first use.
+     * Mirrors `src/test/resources`, which is on the classpath of the tests but not of the running application — the
+     * distinction anything calling [com.intellij.openapi.roots.TestSourcesFilter] depends on, and which a fixture
+     * with a single production source root cannot express.
+     */
+    protected fun addTestSourceFileToModule(module: Module, relativePath: String, text: String): PsiFile {
+        val file = createFile(testSourceRootOf(module), relativePath, text)
+
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return PsiManager.getInstance(project).findFile(file)
+            ?: error("No PSI for test-source '$relativePath' in module '${module.name}'")
+    }
+
+    private fun testSourceRootOf(module: Module): VirtualFile {
+        ModuleRootManager.getInstance(module).getSourceRoots(JavaSourceRootType.TEST_SOURCE)
+            .firstOrNull()
+            ?.let { return it }
+
+        val testRoot = myFixture.tempDirFixture.findOrCreateDir("${module.name}/testSrc")
+        PsiTestUtil.addSourceRoot(module, testRoot, true)
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return testRoot
     }
 
     private fun createFile(sourceRoot: VirtualFile, relativePath: String, text: String): VirtualFile =

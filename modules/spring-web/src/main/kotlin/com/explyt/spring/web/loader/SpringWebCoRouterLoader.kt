@@ -11,6 +11,7 @@ import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiType
 import org.jetbrains.uast.*
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
@@ -19,28 +20,39 @@ class SpringWebCoRouterLoader : EndpointHandler {
     override fun handleEndpoints(componentPsiClass: PsiClass): List<EndpointElement> {
         val uClass = componentPsiClass.toUElementOfType<UClass>() ?: return emptyList()
 
-        val routeFunctionMethods = uClass.methods.asSequence()
+        return uClass.methods.asSequence()
             .filter { it.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
-            .filter { it.returnType?.isInheritorOf(SpringWebClasses.ROUTE_FUNCTION) == true }
+            .mapNotNull { method -> endpointTypeOf(method.returnType)?.let { method to it } }
             .toSet()
-
-        return routeFunctionMethods.flatMap { extractEndpoints(it, componentPsiClass) }
+            .flatMap { (method, endpointType) -> extractEndpoints(method, componentPsiClass, endpointType) }
     }
 
-    private fun extractEndpoints(uMethod: UMethod, psiClass: PsiClass): List<EndpointElement> {
+    /**
+     * The same DSL shape serves both stacks, so the bean's own type decides which one a route belongs to — the DSL
+     * entry point is named `router` in each of them.
+     */
+    private fun endpointTypeOf(returnType: PsiType?): EndpointType? = when {
+        returnType == null -> null
+        returnType.isInheritorOf(SpringWebClasses.ROUTE_FUNCTION) -> EndpointType.SPRING_WEBFLUX
+        returnType.isInheritorOf(SpringWebClasses.SERVLET_ROUTE_FUNCTION) -> EndpointType.SPRING_MVC
+        else -> null
+    }
+
+    private fun extractEndpoints(
+        uMethod: UMethod,
+        psiClass: PsiClass,
+        endpointType: EndpointType
+    ): List<EndpointElement> {
         val endpoints = mutableListOf<EndpointElement>()
 
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
-                if (node.methodName == "coRouter") {
+                if (node.methodName in SpringWebClasses.ROUTER_DSL_ENTRY_POINTS) {
                     val lambdaExpression = node.valueArguments.firstOrNull() as? ULambdaExpression
                     lambdaExpression?.body?.accept(object : AbstractUastVisitor() {
                         override fun visitCallExpression(node: UCallExpression): Boolean {
-                            if (node.methodName in SpringWebClasses.URI_TYPE) {
-                                val endpointElement = createEndpointElement(node, psiClass)
-                                if (endpointElement != null) {
-                                    endpoints.add(endpointElement)
-                                }
+                            if (node.methodName in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) {
+                                endpoints += createEndpointElements(node, psiClass, endpointType)
                             }
                             return super.visitCallExpression(node)
                         }
@@ -53,18 +65,30 @@ class SpringWebCoRouterLoader : EndpointHandler {
         return endpoints
     }
 
-    private fun createEndpointElement(callExpression: UCallExpression, psiClass: PsiClass): EndpointElement? {
-        val path = SpringWebUtil.getPathFromCallExpression(callExpression)
-        val requestMethods = listOf(callExpression.methodName ?: return null)
-        val psiElement = callExpression.sourcePsi ?: return null
+    /**
+     * A route whose URI does not resolve to a value yields no endpoint: an empty path is normalised to `/` downstream
+     * and would register the route as the application root.
+     */
+    private fun createEndpointElements(
+        callExpression: UCallExpression,
+        psiClass: PsiClass,
+        endpointType: EndpointType
+    ): List<EndpointElement> {
+        val requestMethods = listOf(SpringWebUtil.getRequestMethod(callExpression) ?: return emptyList())
+        val psiElement = callExpression.sourcePsi ?: return emptyList()
 
-        return EndpointElement(
-            path,
-            requestMethods,
-            psiElement,
-            psiClass,
-            null,
-            EndpointType.SPRING_WEBFLUX
-        )
+        return SpringWebUtil.getPathsFromCallExpression(callExpression).asSequence()
+            .filter { it.isNotEmpty() }
+            .map {
+                EndpointElement(
+                    it,
+                    requestMethods,
+                    psiElement,
+                    psiClass,
+                    null,
+                    endpointType
+                )
+            }
+            .toList()
     }
 }

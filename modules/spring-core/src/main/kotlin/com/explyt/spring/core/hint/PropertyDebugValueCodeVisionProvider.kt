@@ -43,13 +43,14 @@ import java.util.concurrent.TimeUnit
 
 private val PROPERTY_FILE_TYPES = setOf(PropertiesFileType.INSTANCE, YAMLFileType.YML)
 
-class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile> {
+class PropertyDebugValueCodeVisionProvider : CodeVisionProvider<VirtualFile?> {
 
     override fun isAvailableFor(project: Project) = true
 
-    override fun precomputeOnUiThread(editor: Editor) = editor.virtualFile!!
+    override fun precomputeOnUiThread(editor: Editor) = editor.virtualFile
 
-    override fun computeCodeVision(editor: Editor, virtualFile: VirtualFile): CodeVisionState {
+    override fun computeCodeVision(editor: Editor, virtualFile: VirtualFile?): CodeVisionState {
+        if (virtualFile == null) return READY_EMPTY
         val project = editor.project ?: return READY_EMPTY
         if (virtualFile.fileType !in PROPERTY_FILE_TYPES) return READY_EMPTY
         if (!SpringCoreUtil.isExplytDebug(project)) return READY_EMPTY

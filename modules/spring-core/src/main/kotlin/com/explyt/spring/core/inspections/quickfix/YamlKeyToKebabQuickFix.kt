@@ -15,14 +15,11 @@ import com.intellij.codeInspection.LocalQuickFixAndIntentionActionOnPsiElement
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.editor.EditorModificationUtil
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.searches.ReferencesSearch
-import org.jetbrains.kotlin.idea.KotlinLanguage
-import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.impl.YAMLKeyValueImpl
 
@@ -49,56 +46,42 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
             PREVIEW_YAML_SWITCH_KEY_TO_KEBAB_CASE
         )
 
+        val fullName = YAMLUtil.getConfigFullName(startElement)
+        val newFullName = toKebabCase(fullName)
+        // Collected before the key is renamed: afterwards a `${...}` placeholder no longer resolves to it.
+        val usages = ReferencesSearch.search(startElement).findAll().toList()
+
         WriteCommandAction.runWriteCommandAction(project, "Replace Key", null, {
-            if (editor != null) {
-                var current: YAMLKeyValueImpl? = startElement
-                var isRenamed = false
-                while (current != null) {
-                    val key = current.key
-                    if (key != null) {
-                        val textToUpdate = key.text
-                        val startOffset = key.textRange.startOffset
-                        val end = startOffset + textToUpdate.length
-                        val newKey = toKebabCase(textToUpdate)
+            if (!renameKeySegments(project, startElement)) return@runWriteCommandAction
 
-                        if (key.text != newKey) {
-                            isRenamed = true
-                            editor.caretModel.moveToOffset(startOffset)
-                            editor.selectionModel.setSelection(startOffset, end)
-                            EditorModificationUtil.insertStringAtCaret(editor, newKey)
-                        }
-                    }
-                    current = current.parent?.parent as? YAMLKeyValueImpl
-                }
-                if (isRenamed) {
-                    val fullName = YAMLUtil.getConfigFullName(startElement)
-                    renameUsages(startElement, toKebabCase(fullName))
-                    RenameUtil.renameSameProperty(project, startElement, fullName, toKebabCase(fullName))
-                }
-            }
+            QuickFixUsageRenamer.renameKeyInUsages(project, usages, newFullName)
+            RenameUtil.renameSameProperty(project, startElement, fullName, newFullName)
         }, containingFile)
-
     }
 
-    private fun renameUsages(elementToRename: YAMLKeyValueImpl, newFullName: String) {
-        val usages = ReferencesSearch.search(elementToRename).findAll().toList()
-        if (usages.isEmpty()) return
+    /**
+     * Renames the flagged key and every ancestor segment, returning whether anything changed.
+     *
+     * The segments are rewritten through the document rather than by typing into the editor, so the fix also works
+     * in batch mode (`Fix all`, `Code | Inspect Code`), where no editor exists. Deepest segment first: rewriting an
+     * ancestor first would shift the offsets of the keys nested below it.
+     */
+    private fun renameKeySegments(project: Project, startElement: YAMLKeyValueImpl): Boolean {
+        val documentManager = PsiDocumentManager.getInstance(project)
+        val document = documentManager.getDocument(startElement.containingFile) ?: return false
 
-        val project = elementToRename.project
-        for (usage in usages) {
-            val usageElement = usage.element
-            val oldText = usageElement.text.substringAfter("{").substringBefore("}").substringBefore(":")
-            val newText = usageElement.text.replace(oldText, newFullName)
-            val newElement = if (usageElement.language == KotlinLanguage.INSTANCE) {
-                val factory = KtPsiFactory(usageElement.project)
-                factory.createExpression(newText)
-            } else {
-                PsiElementFactory.getInstance(usageElement.project)
-                    .createExpressionFromText(newText, usageElement.context)
-            }
-            WriteCommandAction.runWriteCommandAction(project) {
-                usageElement.replace(newElement)
-            }
+        val renames = generateSequence(startElement) { it.parent?.parent as? YAMLKeyValueImpl }
+            .mapNotNull { it.key }
+            .map { it.textRange to toKebabCase(it.text) }
+            .filter { (range, newKey) -> document.getText(range) != newKey }
+            .toList()
+        if (renames.isEmpty()) return false
+
+        documentManager.doPostponedOperationsAndUnblockDocument(document)
+        for ((range, newKey) in renames.sortedByDescending { it.first.startOffset }) {
+            document.replaceString(range.startOffset, range.endOffset, newKey)
         }
+        documentManager.commitDocument(document)
+        return true
     }
 }

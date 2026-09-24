@@ -13,6 +13,11 @@
     <xi:include href="spring-core-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
     <xi:include href="jpa-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
 
+    <!-- In production this file is loaded by an optional dependency on com.intellij.mcpServer. Including it here
+         is what lets a test resolve a tool the way a client does, through the extension point: a toolset missing
+         from it is invisible to every client, and a test that instantiated the class directly would not notice. -->
+    <xi:include href="mcp-server-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+
     <extensions defaultExtensionNs="com.intellij">
 
     </extensions>

@@ -17,6 +17,7 @@ import com.explyt.spring.core.completion.properties.ConfigurationPropertiesLoade
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetriever
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetrieverFactory
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
+import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.references.FileReferenceSetWithPrefixSupport
 import com.explyt.spring.core.references.ReferenceType
 import com.explyt.spring.core.service.SpringSearchService
@@ -39,7 +40,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.polySymbols.utils.NameCaseUtils
+
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.search.GlobalSearchScope
@@ -47,10 +48,12 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.text.PlaceholderTextRanges
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLValue
+import java.util.Locale
 
 object PropertyUtil {
     const val DOT = "."
@@ -202,8 +205,120 @@ object PropertyUtil {
     }
 
 
+    /**
+     * The type of a single value of [configurationProperty]: the element type for a collection or array, the value
+     * type for a map, and the declared type otherwise.
+     *
+     * A metadata `type` such as `java.util.Set<...Include>` names the container, so resolving it verbatim finds no
+     * class. Every consumer that inspects or resolves an individual value has to unwrap it the same way, otherwise
+     * the inspection and the reference disagree about the same property.
+     */
+    fun valueTypeOf(configurationProperty: ConfigurationProperty): String? {
+        val propertyType = configurationProperty.type ?: return null
+        return when {
+            configurationProperty.isList() -> propertyType.substringAfter("<").substringBefore(">")
+            configurationProperty.isMap() -> propertyType.substringAfter(",").substringBefore(">")
+            configurationProperty.isArray() -> propertyType.substringBefore("[]")
+            else -> propertyType
+        }.replace('$', '.').trim()
+    }
+
+    /**
+     * The property whose value type governs [propertyKey].
+     *
+     * A map entry key is arbitrary (`explyt.recording.by-name.first`), so it is absent from the metadata and an exact
+     * lookup fails; the declared map property owns the value type instead. Matching is done on the canonical form so
+     * a relaxed-cased key finds its declaration too.
+     */
+    fun findValueOwner(module: Module, propertyKey: String): ConfigurationProperty? {
+        val search = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        search.findProperty(module, propertyKey)?.let { return it }
+
+        val commonKey = toCommonPropertyForm(propertyKey)
+        return search.getAllProperties(module).asSequence()
+            .filter { it.isMap() }
+            .filter { isOwnedBy(commonKey, toCommonPropertyForm(it.name)) }
+            // The longest declared prefix is the closest declaration; a shorter one may be an unrelated ancestor.
+            .maxByOrNull { it.name.length }
+    }
+
+    /**
+     * The constant of the enum [enumClass] that [value] denotes under Spring's relaxed binding, or `null` when the
+     * enum declares none.
+     *
+     * Relaxed binding accepts a constant in any case with `-` and `_` interchangeable, and Spring's own metadata
+     * ships the dashed form as the default value (`management.httpexchanges.recording.include` defaults to
+     * `request-headers`), so comparing names verbatim rejects the spelling the framework itself recommends.
+     */
+    fun findEnumConstant(enumClass: PsiClass, value: String): PsiEnumConstant? {
+        if (!enumClass.isEnum) return null
+        val relaxedValue = toCommonPropertyForm(value)
+        return enumClass.fields.asSequence()
+            .filterIsInstance<PsiEnumConstant>()
+            .firstOrNull { toCommonPropertyForm(it.name) == relaxedValue }
+    }
+
+    /**
+     * The spellings of the enum constant [constantName] that a user types and [findEnumConstant] accepts.
+     *
+     * The canonical form compared by [findEnumConstant] has its separators stripped, so it is not a literal anyone
+     * types; completion needs the typable alternatives instead, and Spring's own metadata ships the kebab-case one as
+     * the default value.
+     */
+    fun relaxedValueSpellings(constantName: String): Set<String> {
+        return setOf(constantName.lowercase(), recommendedValueSpelling(constantName))
+    }
+
+    /**
+     * The spellings of the metadata hint literal [literal] that a user types and hint resolution accepts.
+     *
+     * A hint literal is an arbitrary string, not an enum constant name, so [relaxedValueSpellings] does not apply: it
+     * maps `_` to `-`, a rewrite hint matching does not perform. Only the case is free, which is why the alternatives
+     * are the case variants of the literal itself.
+     */
+    fun hintValueSpellings(literal: String): Set<String> = setOf(literal.lowercase(), literal.uppercase())
+
+    /**
+     * The spelling of the enum constant [constantName] that Spring itself recommends: lower-case kebab-case.
+     *
+     * Measured on `spring-boot-autoconfigure-3.5.13`, every enum-typed property with a string `defaultValue` ships it
+     * in that form (51 single-word such as `never`, 13 dashed such as `read-uncommitted`, none in the declared
+     * `SCREAMING_SNAKE`), so this is the form to insert and to suggest.
+     */
+    fun recommendedValueSpelling(constantName: String): String = constantName.lowercase().replace('_', '-')
+
     fun findSourceMember(propertyKey: String, sourceType: String, project: Project): PsiMember? {
-        val javaPsiFacade = JavaPsiFacade.getInstance(project)
+        val foundClass = findSourceTypeClass(sourceType, project) ?: return null
+        return findDeclaringMember(foundClass, propertyKey, sourceType) ?: foundClass
+    }
+
+    /**
+     * The member declaring [propertyKey] in [sourceType], falling back to the value type of
+     * [configurationProperty] and only then to the `sourceType` class itself.
+     *
+     * Endpoint infrastructure keys such as `management.endpoint.<id>.access` are synthesised by Spring: the class
+     * named by `sourceType` declares no matching field or setter, so the `sourceType` fallback lands on a declaration
+     * where the key never appears. The value type answers what the key actually asks — for `access` it is the `Access`
+     * enum listing the permitted constants.
+     */
+    fun findSourceMember(
+        propertyKey: String,
+        sourceType: String,
+        configurationProperty: ConfigurationProperty,
+        project: Project
+    ): PsiMember? {
+        val foundClass = findSourceTypeClass(sourceType, project) ?: return null
+        return findDeclaringMember(foundClass, propertyKey, sourceType)
+            ?: findValueTypeClass(configurationProperty, project)
+            ?: foundClass
+    }
+
+    private fun findSourceTypeClass(sourceType: String, project: Project): PsiClass? {
+        val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
+        return JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
+    }
+
+    private fun findDeclaringMember(foundClass: PsiClass, propertyKey: String, sourceType: String): PsiMember? {
         var memberName = sourceType.substringAfterLast('#', "")
         var setterName = memberName
         if (memberName.isEmpty()) {
@@ -217,9 +332,19 @@ object PropertyUtil {
             setterName = "set${StringUtil.capitalize(memberName)}"
         }
 
-        val qualifiedName = sourceType.substringBeforeLast('#').replace('$', '.')
-        val foundClass = javaPsiFacade.findClass(qualifiedName, GlobalSearchScope.allScope(project)) ?: return null
-        return findMember(foundClass, memberName, setterName) ?: foundClass
+        return findMember(foundClass, memberName, setterName)
+    }
+
+    /**
+     * A built-in type such as `java.lang.String` or `java.time.Duration` carries no declaration worth navigating to,
+     * so those types are not treated as a target.
+     */
+    private fun findValueTypeClass(configurationProperty: ConfigurationProperty, project: Project): PsiClass? {
+        val valueType = valueTypeOf(configurationProperty) ?: return null
+        val valueClass = JavaPsiFacade.getInstance(project)
+            .findClass(valueType, GlobalSearchScope.allScope(project)) ?: return null
+        val packageName = valueClass.qualifiedName?.substringBeforeLast(DOT) ?: return null
+        return valueClass.takeUnless { packageName in BUILT_IN_VALUE_TYPE_PACKAGES }
     }
 
     fun PsiElement.propertyKey(): String? {
@@ -287,6 +412,31 @@ object PropertyUtil {
         val property1 = toBooleanAlias(propertyName1, type)
         val property2 = toBooleanAlias(propertyName2, type)
         return toCommonPropertyForm(property1) == toCommonPropertyForm(property2)
+    }
+
+    /**
+     * Whether [propertyKey] belongs to the declaration [declaredName] — the same key, or a key that continues with a
+     * new segment.
+     *
+     * The relation cannot be a plain `startsWith`: that accepts `foo.bar` as the owner of `foo.barbaz`, two keys
+     * sharing seven characters and no relation. A bogus owner then decides the value type, the map-entry completion
+     * and whether an unknown key is reported at all, so the over-match turns into both false positives and
+     * suppressed warnings.
+     *
+     * The boundary is not the dot alone. A collection element and a bracket-notation map entry open with `[`, so
+     * `ingest.s3-logs.sources[0].enabled` belongs to `ingest.s3-logs.sources`; requiring `.` would drop collection
+     * ownership entirely.
+     *
+     * Callers that honour relaxed binding pass both arguments through [toCommonPropertyForm] first — it strips `-`
+     * and `_` but leaves both boundary characters intact, so the rule holds on canonical forms too.
+     */
+    fun isOwnedBy(propertyKey: String, declaredName: String): Boolean {
+        if (!propertyKey.startsWith(declaredName)) return false
+        if (propertyKey.length == declaredName.length) return true
+        // An empty declaration would otherwise own every key whose first character happens to be a boundary.
+        if (declaredName.isEmpty()) return false
+        val boundary = propertyKey[declaredName.length]
+        return boundary == DOT.single() || boundary == ConfigurationPropertyListElementReference.INDEX_START
     }
 
     fun guessTypeFromValue(value: String?): String {
@@ -385,14 +535,68 @@ object PropertyUtil {
         return placeholder.any { it.isUpperCase() || it == '_' }
     }
 
+    /**
+     * The first dot-separated segment of [key] that is not in Spring's canonical form, or `null` when every segment
+     * already is.
+     *
+     * The check has to run per segment rather than over the whole key: the canonical-form problem is reported on the
+     * segment that actually deviates, and a key such as `explyt.camel.camelWritten.items[0].name` deviates only in
+     * `camelWritten`. A collection index is part of the key text but never part of a name, so it is dropped before
+     * judging a segment.
+     */
+    fun firstNonCanonicalSegment(key: String): Segment? {
+        var offset = 0
+        for (segment in key.split('.')) {
+            val name = segment.substringBefore('[')
+            if (isNotKebabCase(name)) return Segment(name, offset)
+            offset += segment.length + 1
+        }
+        return null
+    }
+
+    /** A dot-separated part of a configuration key, with its start offset inside the full key. */
+    data class Segment(val text: String, val startOffset: Int) {
+        val endOffset: Int get() = startOffset + text.length
+    }
+
+    /**
+     * Mirrors `ConventionUtils.toDashedCase` of the Spring Boot configuration processor, which is what produces the
+     * canonical key in the metadata: a dash is inserted for each `-`/`_` separator and before each uppercase letter,
+     * and the result is lowercased.
+     *
+     * `NameCaseUtils.toKebabCase` cannot stand in for it. That utility implements the `camelcase` npm convention and
+     * also dashes at a digit boundary, so it rewrote `v4` to `v-4` — a key Spring never generates and that the
+     * kebab-case inspection does not even flag.
+     */
     fun toKebabCase(from: String): String {
         return from.splitToSequence('.')
-            .map { NameCaseUtils.toKebabCase(it) }
+            .map(::toDashedCase)
             .joinToString(".")
     }
 
+    private fun toDashedCase(segment: String): String {
+        val dashed = StringBuilder(segment.length)
+        var previous: Char? = null
+        for (current in segment) {
+            when {
+                current in KEY_SEPARATORS -> dashed.append('-')
+                current.isUpperCase() && previous != null && previous !in KEY_SEPARATORS ->
+                    dashed.append('-').append(current)
+
+                else -> dashed.append(current)
+            }
+            previous = current
+        }
+        return dashed.toString().lowercase(Locale.ENGLISH)
+    }
+
+    /**
+     * Whether [key] is an entry of a declared map, whose entry names are arbitrary and so exempt from the
+     * kebab-case rule. Ownership has to respect the segment boundary: a map `foo.bar` does not make `foo.barBaz`
+     * an entry, and treating it as one silently drops a genuine warning.
+     */
     fun isKebabCaseInMapKey(key: String, properties: List<ConfigurationProperty>): Boolean {
-        return properties.any { it.isMap() && key.startsWith(it.name) && key != it.name }
+        return properties.any { it.isMap() && isOwnedBy(key, it.name) && key != it.name }
     }
 
     fun getValueClassNameInMap(propertyType: String?): String? {
@@ -401,6 +605,67 @@ object PropertyUtil {
             return getClassNameFromInnerTypeInMap(propertyType)
         }
         return null
+    }
+
+    /**
+     * The element type of a `java.util.List<T>` or array type text, or `null` for any other type.
+     * A Kotlin `List<T>` arrives as a wildcard light type (`java.util.List<? extends T>`), so the variance
+     * keyword is dropped to keep the result a plain qualified name.
+     */
+    fun getListElementClassName(propertyType: String?): String? {
+        if (propertyType == null) return null
+        val elementType = when {
+            propertyType.endsWith("[]") -> propertyType.substringBeforeLast("[]")
+            propertyType.substringBefore("<") == JavaCoreClasses.LIST ->
+                propertyType.substringAfter("<", "").substringBeforeLast(">")
+
+            else -> return null
+        }
+        return elementType.substringAfterLast(' ').takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * The member addressed by [memberPath] inside [mapValueType]: `owner-application` directly, or `payload-type`
+     * through an intermediate segment such as `routes[0]` (properties files) or `routes` (YAML full keys carry no
+     * list index). Each level is resolved by name in the declaring class, because map-value members are not declared
+     * as configuration properties of their own; an intermediate collection segment descends into its element type.
+     */
+    fun findMapValueMember(module: Module, mapValueType: String, memberPath: String): PsiMember? {
+        val segments = keySegments(memberPath)
+        var currentType = mapValueType
+        for ((index, segment) in segments.withIndex()) {
+            val memberName = segment.substringBefore('[')
+            val member = getMembersOfType(module, currentType, memberName)
+                .firstOrNull { isPropertyMemberName(it.name, memberName) } ?: return null
+            if (index == segments.lastIndex) return member
+            val memberType = memberTypeText(member) ?: return null
+            currentType = getListElementClassName(memberType) ?: memberType
+        }
+        return null
+    }
+
+    private fun memberTypeText(member: PsiMember): String? = when (member) {
+        is PsiField -> member.type.canonicalText
+        is PsiMethod -> (member.parameterList.parameters.singleOrNull()?.type
+            ?: member.returnType)?.canonicalText
+
+        else -> null
+    }
+
+    /**
+     * The element type of a list or array property, or `null` for any other property.
+     *
+     * A Kotlin `List<T>` reaches us as a wildcard light type (`java.util.List<? extends T>`), so the variance
+     * keyword is dropped to keep the result a plain qualified name.
+     */
+    fun getCollectionElementType(property: ConfigurationProperty): String? {
+        val propertyType = property.type ?: return null
+        val elementType = when {
+            property.isArray() -> propertyType.substringBefore("[]")
+            property.isList() -> propertyType.substringAfter("<", "").substringBeforeLast(">")
+            else -> return null
+        }
+        return elementType.substringAfterLast(' ').takeIf { it.isNotBlank() }
     }
 
     private fun getClassNameFromInnerTypeInMap(propertyType: String): String? {
@@ -641,11 +906,28 @@ object PropertyUtil {
         val findProperty = SpringConfigurationPropertiesSearch.getInstance(module.project)
             .findProperty(module, propertyKey)
         if (findProperty == null) {
-            return SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module)
-                .find { propertyKey.startsWith(it.name) }
+            return longestPrefixProperty(
+                SpringConfigurationPropertiesSearch.getInstance(module.project).getAllProperties(module),
+                propertyKey
+            )
         }
         return findProperty
     }
+
+    /**
+     * The declared property that owns [propertyKey] when no exact declaration exists — a map or collection entry
+     * such as `logging.level.sql`, whose arbitrary suffix is absent from the metadata.
+     *
+     * Several declarations can be prefixes of the same key, and only the longest is the owner: a shorter one is an
+     * unrelated ancestor that happens to share a namespace. [findValueOwner] already selects that way; this one used
+     * `find`, which returns whichever candidate the catalogue happened to list first.
+     */
+    @VisibleForTesting
+    fun longestPrefixProperty(
+        properties: List<ConfigurationProperty>, propertyKey: String
+    ): ConfigurationProperty? = properties.asSequence()
+        .filter { isOwnedBy(propertyKey, it.name) }
+        .maxByOrNull { it.name.length }
 
     fun resolveResults(sourceMember: PsiMember): Array<ResolveResult> {
         val uElement = sourceMember.toUElement() ?: return emptyArray()
@@ -657,7 +939,7 @@ object PropertyUtil {
         }
     }
 
-    fun getMethodsTypeByMap(module: Module, valueType: String, prefix: String): List<PsiMember> {
+    fun getMembersOfType(module: Module, valueType: String, prefix: String): List<PsiMember> {
         val result = hashMapOf<String, ConfigurationProperty>()
         val project = module.project
         val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
@@ -676,15 +958,18 @@ object PropertyUtil {
             .filterNotNullTo(mutableListOf())
     }
 
-    fun isNameSetMethod(name: String?, propertyMapValue: String): Boolean {
-        return name?.lowercase() ==
-                "set${
-                    propertyMapValue
-                        .substringAfterLast(".")
-                        .replace("-", "")
-                        .replace("_", "")
-                        .lowercase()
-                }"
+    fun isPropertyMemberName(memberName: String?, propertyName: String): Boolean {
+        if (memberName == null) return false
+        val accessorlessName = when {
+            memberName.length > 3 && memberName[3].isUpperCase()
+                    && (memberName.startsWith("set") || memberName.startsWith("get")) -> memberName.substring(3)
+
+            memberName.length > 2 && memberName[2].isUpperCase()
+                    && memberName.startsWith("is") -> memberName.substring(2)
+
+            else -> memberName
+        }
+        return isSameProperty(accessorlessName, propertyName.substringAfterLast("."))
     }
 
     fun findPropertyByConfigurationPropertyElement(element: PsiElement): PropertySearchResult? {
@@ -708,13 +993,54 @@ object PropertyUtil {
         return DeprecationInfo(DeprecationInfoLevel.WARNING, reason = annotationDeprecated.asRenderString())
     }
 
-    fun getKeyValuePair(propertyKey: String, foundProperty: ConfigurationProperty): Pair<String, String> {
-        if (propertyKey == propertyKey.substringAfter("${foundProperty.name}.")) return Pair("", "")
-        val propertyMapKey = propertyKey.substringAfter("${foundProperty.name}.").substringBefore(".")
-        var propertyMapValue = propertyKey.substringAfter("$propertyMapKey.")
-        if (propertyMapValue == propertyKey) propertyMapValue = ""
-        return Pair(propertyMapKey, propertyMapValue)
+    /**
+     * Segments of a configuration key with bracket groups kept atomic: in Spring's bracket notation
+     * (`app.publishers[my.registration].owner-application`, YAML `app.publishers.[my.registration].owner-application`)
+     * a `[...]` group is a single map key and may itself contain dots, so a plain `split(".")` shatters it.
+     */
+    fun keySegments(key: String): List<String> {
+        val segments = mutableListOf<String>()
+        val current = StringBuilder()
+        var depth = 0
+        for (c in key) {
+            when (c) {
+                '[' -> {
+                    depth++
+                    current.append(c)
+                }
+                ']' -> {
+                    if (depth > 0) depth--
+                    current.append(c)
+                }
+                '.' -> if (depth == 0) {
+                    segments += current.toString()
+                    current.clear()
+                } else {
+                    current.append(c)
+                }
+                else -> current.append(c)
+            }
+        }
+        segments += current.toString()
+        return segments
     }
+
+    fun getKeyValuePair(propertyKey: String, foundProperty: ConfigurationProperty): Pair<String, String> {
+        if (!propertyKey.startsWith(foundProperty.name)) return Pair("", "")
+        val remainder = propertyKey.substring(foundProperty.name.length)
+        if (remainder.isEmpty() || (remainder[0] != '.' && remainder[0] != '[')) return Pair("", "")
+        val segments = keySegments(remainder.removePrefix("."))
+        return Pair(segments.first(), segments.drop(1).joinToString("."))
+    }
+
+    private val BUILT_IN_VALUE_TYPE_PACKAGES = setOf(
+        JavaCoreClasses.PACKAGE_JAVA_LANG,
+        JavaCoreClasses.PACKAGE_JAVA_TIME,
+        JavaCoreClasses.PACKAGE_KOTLIN
+    )
+
+    /** Both characters Spring's `ConventionUtils.toDashedCase` treats as word separators. */
+    private val KEY_SEPARATORS = setOf('-', '_')
 
     val VALUE_REGEX = """\$\{([^:]*):?(.*)?\}""".toRegex()
     private val PROPERTY_WORDS_SEPARATOR_REGEX = """[_\-]""".toRegex()
