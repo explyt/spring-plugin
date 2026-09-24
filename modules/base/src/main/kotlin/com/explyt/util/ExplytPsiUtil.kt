@@ -139,6 +139,11 @@ object ExplytPsiUtil {
         return superPsiClass + this
     }
 
+    fun PsiType.allSupers(): Set<PsiType> {
+        val superPsiTypes = this.superTypes.asSequence().flatMap { it.allSupers() }.toMutableSet()
+        return superPsiTypes + this
+    }
+
     fun PsiClass.onlyAllSupers(): Set<PsiClass> {
         return this.supers.asSequence().flatMap { it.allSupers() }.toMutableSet()
     }

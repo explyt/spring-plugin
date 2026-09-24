@@ -81,4 +81,42 @@ class EventListenerLineMarkerProviderTest : ExplytKotlinLightTestCase() {
         }
     }
 
+
+    fun testSuperClassEventListenerLineMarker() {
+        @Language("kotlin") val code = """  
+            class EventListenerTest(private val eventPublisher: org.springframework.context.ApplicationEventPublisher) {     
+                            
+                fun registerUser() {
+                    eventPublisher.publishEvent(Child2Class())
+                    eventPublisher.publishEvent(Child1Class())
+                    eventPublisher.publishEvent(BaseClass())
+                }
+            
+                @org.springframework.context.event.EventListener
+                fun test(baseClass: BaseClass) {} 
+            }
+            
+            class BaseClass 
+            
+            class Child1Class : BaseClass 
+            
+            class Child2Class : Child1Class
+            """
+        myFixture.configureByText(
+            "EventListenerTest.kt",
+            code.trimIndent()
+        )
+
+        myFixture.doHighlighting()
+
+        val allEventGutters = myFixture.findAllGutters().filter { it.icon == SpringIcons.EventListener }
+
+        assertTrue("Expected to find event gutters", allEventGutters.isNotEmpty())
+
+        // Verify that gutters have targets
+        val gutterTargetString = allEventGutters.map { SpringGutterTestUtil.getGutterTargetsStrings(it) }
+        for (targets in gutterTargetString) {
+            assertTrue("Expected gutter to have targets", targets.isNotEmpty())
+        }
+    }
 }
