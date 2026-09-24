@@ -21,7 +21,7 @@ import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ProjectKeys
 import com.intellij.openapi.externalSystem.model.internal.InternalExternalProjectInfo
 import com.intellij.openapi.externalSystem.model.project.ProjectData
-import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsDataStorage
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.testFramework.PlatformTestUtil
 
@@ -282,8 +282,8 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
     private fun addImportData(mainFilePath: String) {
         val projectData = ProjectData(SYSTEM_ID, "PlainApp", project.basePath!!, mainFilePath)
         val dataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
-        ExternalProjectsDataStorage.getInstance(project)
-            .update(InternalExternalProjectInfo(SYSTEM_ID, mainFilePath, dataNode))
+        ExternalProjectsManagerImpl.getInstance(project)
+            .updateExternalProjectData(InternalExternalProjectInfo(SYSTEM_ID, mainFilePath, dataNode))
     }
 
     private fun runManager() = RunManager.getInstance(project) as RunManagerImpl
