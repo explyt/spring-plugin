@@ -71,7 +71,13 @@ class SpringValueAnnotationInspection : SpringBaseUastLocalInspectionTool() {
         val attributeValue = annotation.findAttributeValue(annoParameterName) ?: return null
         val sourcePsi = attributeValue.sourcePsi ?: return null
         val valueText = attributeValue.evaluateString() ?: return null
-        if (valueText.isEmpty() || valueText.startsWith("\${") || valueText.startsWith("#{")) return null
+        // A SpEL value is not a bare property key that needs wrapping: `EmbeddedValueResolver` evaluates the
+        // expression after placeholder resolution, so `#{@myProps.cron}` is already a working shape. Reporting it
+        // would flag idiomatic code; its bean and member get references instead (issue #44).
+        if (valueText.isEmpty()
+            || valueText.startsWith(SpringProperties.PLACEHOLDER_PREFIX)
+            || valueText.startsWith(SpringProperties.SPEL_PREFIX)
+        ) return null
         val module = ModuleUtilCore.findModuleForPsiElement(sourcePsi) ?: return null
 
         val findProperties = DefinedConfigurationPropertiesSearch.getInstance(sourcePsi.project)

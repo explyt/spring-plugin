@@ -7,7 +7,9 @@ package com.explyt.spring.core.reference.kotlin
 
 import com.explyt.spring.core.properties.providers.ConfigKeyPsiElement
 import com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference
+import com.explyt.spring.core.properties.references.ConfigurationPropertyListElementReference
 import com.explyt.spring.core.properties.references.ValueHintReference
+import com.explyt.spring.core.properties.references.YamlKeyMapValueReference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.lang.properties.psi.impl.PropertiesFileImpl
@@ -141,6 +143,238 @@ main:
         val resolveResult = multiResolve[0]
         val name = (resolveResult.element as? PsiEnumConstant)?.name
         assertEquals(name, "TUESDAY")
+    }
+
+    fun testRefKeyMapValuePlainKey() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    my-registration:
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapValue() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull { it as? YamlKeyMapValueReference }
+            ?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setOwnerApplication")
+    }
+
+    fun testRefKeyBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.reg<caret>istration]":
+      owner-application: my-app
+            """.trimIndent()
+        )
+
+        val ref = file.findReferenceAt(myFixture.caretOffset) as? YamlKeyMapValueReference
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals(name, "setPublishers")
+    }
+
+    fun testRefKeyListElementMember() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3-logs:
+    sources:
+      - ena<caret>bled: true
+            """.trimIndent()
+        )
+
+        assertEquals("setEnabled", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementMemberCamelCaseWritten() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3Logs:
+    sources:
+      - ena<caret>bled: true
+            """.trimIndent()
+        )
+
+        assertEquals("setEnabled", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementPicksTheMatchingMember() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3-logs:
+    sources:
+      - na<caret>me: first
+        enabled: true
+            """.trimIndent()
+        )
+
+        assertEquals("setName", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementUnknownMemberIsNotResolved() {
+        myFixture.copyFileToProject("S3LogsProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+ingest:
+  s3-logs:
+    sources:
+      - unkn<caret>own: first
+            """.trimIndent()
+        )
+
+        // The reference is still contributed, so the empty result proves the member lookup rejected the key
+        // rather than the reference never having been created.
+        assertEmpty(listElementReference().multiResolve(true).toList())
+    }
+
+    fun testRefKeyMapValueConstructorBoundDataClass() {
+        myFixture.copyFileToProject("ConstructorBoundProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    my-registration:
+      owner-<caret>application: my-app
+            """.trimIndent()
+        )
+
+        val ref = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references?.asSequence()
+            ?.mapNotNull {
+                it as? YamlKeyMapValueReference
+            }?.firstOrNull()
+
+        assertNotNull(ref)
+        val multiResolve = ref!!.multiResolve(true)
+        assertEquals(1, multiResolve.size)
+        val name = (multiResolve[0].element as? ConfigKeyPsiElement)?.name
+        assertEquals("ownerApplication", name)
+    }
+
+    fun testRefKeyListElementConstructorBoundDataClass() {
+        myFixture.copyFileToProject("ConstructorBoundProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  routes:
+    - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("payloadType", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementUnderBracketMapKey() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      routes:
+        - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("setPayloadType", mapValueReferenceName())
+    }
+
+    fun testRefKeyListElementUnderMapKeyConstructorBoundDataClass() {
+        myFixture.copyFileToProject("ConstructorBoundProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+app:
+  publishers:
+    "[my.registration]":
+      routes:
+        - payload-<caret>type: my.event
+            """.trimIndent()
+        )
+
+        assertEquals("payloadType", mapValueReferenceName())
+    }
+
+    private fun mapValueReferenceName(): String? = mapValueReference()
+        .multiResolve(true)
+        .singleOrNull()
+        ?.let { (it.element as? ConfigKeyPsiElement)?.name }
+
+    private fun mapValueReference(): YamlKeyMapValueReference {
+        val found = file.findReferenceAt(myFixture.caretOffset)
+        val reference = when (found) {
+            is PsiMultiReference -> found.references.filterIsInstance<YamlKeyMapValueReference>().firstOrNull()
+            is YamlKeyMapValueReference -> found
+            else -> null
+        }
+        assertNotNull("map value reference must be contributed", reference)
+        return reference!!
+    }
+
+    private fun resolveListElementReferenceName(): String? = listElementReference()
+        .multiResolve(true)
+        .singleOrNull()
+        ?.let { (it.element as? ConfigKeyPsiElement)?.name }
+
+    private fun listElementReference(): ConfigurationPropertyListElementReference {
+        val reference = (file.findReferenceAt(myFixture.caretOffset) as? PsiMultiReference)
+            ?.references
+            ?.filterIsInstance<ConfigurationPropertyListElementReference>()
+            ?.singleOrNull()
+        assertNotNull("list element reference must be contributed", reference)
+        return reference!!
     }
 
 }

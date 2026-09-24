@@ -108,6 +108,7 @@ object ExplytPsiUtil {
                 && (method.containingFile?.name !in setOf("Annotation.class", "Object.class"))
 
     fun PsiClass.isEqualOrInheritor(baseClass: PsiClass, checkDeep: Boolean = true): Boolean {
+        if (!isValid || !baseClass.isValid) return false
         return this.qualifiedName == baseClass.qualifiedName || this.isInheritor(baseClass, checkDeep)
     }
 
@@ -136,6 +137,11 @@ object ExplytPsiUtil {
     fun PsiClass.allSupers(): Set<PsiClass> {
         val superPsiClass = this.supers.asSequence().flatMap { it.allSupers() }.toMutableSet()
         return superPsiClass + this
+    }
+
+    fun PsiType.allSupers(): Set<PsiType> {
+        val superPsiTypes = this.superTypes.asSequence().flatMap { it.allSupers() }.toMutableSet()
+        return superPsiTypes + this
     }
 
     fun PsiClass.onlyAllSupers(): Set<PsiClass> {

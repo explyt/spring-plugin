@@ -9,10 +9,15 @@ import com.explyt.spring.core.inspections.SpringBoot4MockBeanMigrationInspection
 import com.explyt.spring.test.ExplytInspectionJavaTestCase
 import com.explyt.spring.test.TestLibrary
 
+/**
+ * The upper end of the deprecation window: on Spring Boot 3.5 the legacy annotations are still on the classpath (the
+ * fixture stubs them accordingly) and both they and the replacements resolve, so the migration is reported as a weak
+ * warning. The state after the Spring Boot 4 removal is covered by [SpringBoot4MockBeanMigrationUnresolvedImportTest].
+ */
 class SpringBoot4MockBeanMigrationInspectionTest : ExplytInspectionJavaTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springContext_6_0_7,
-        TestLibrary.springBoot_4_0_0
+        TestLibrary.springBoot_3_5_0
     )
 
     override fun setUp() {
@@ -68,7 +73,7 @@ class SpringBoot4MockBeanMigrationInspectionTest : ExplytInspectionJavaTestCase(
             import org.springframework.boot.test.mock.mockito.MockBean;
             
             public class MyTest {
-                <warning descr="This annotation was removed in Spring Boot 4. Use '@MockitoBean'">@MockBean</warning>
+                <weak_warning descr="This annotation is deprecated since Spring Boot 3.4 and removed in Spring Boot 4. Use '@MockitoBean'">@MockBean</weak_warning>
                 private UserService userService;
             }
             """.trimIndent()
@@ -83,7 +88,7 @@ class SpringBoot4MockBeanMigrationInspectionTest : ExplytInspectionJavaTestCase(
             import org.springframework.boot.test.mock.mockito.SpyBean;
             
             public class MyTest {
-                <warning descr="This annotation was removed in Spring Boot 4. Use '@MockitoSpyBean'">@SpyBean</warning>
+                <weak_warning descr="This annotation is deprecated since Spring Boot 3.4 and removed in Spring Boot 4. Use '@MockitoSpyBean'">@SpyBean</weak_warning>
                 private UserService userService;
             }
             """.trimIndent()

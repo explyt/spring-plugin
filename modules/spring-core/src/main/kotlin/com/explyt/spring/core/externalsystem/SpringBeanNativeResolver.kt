@@ -21,6 +21,7 @@ import com.explyt.spring.core.externalsystem.setting.RunConfigurationType
 import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.spring.core.externalsystem.utils.NativeBootUtils
+import com.explyt.spring.core.externalsystem.utils.NativeClasspathValidator
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.profile.SpringProfilesService.Companion.DEFAULT_PROFILE_LIST
 import com.explyt.spring.core.statistic.StatisticActionId
@@ -58,6 +59,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.isFile
@@ -66,6 +68,8 @@ import com.intellij.psi.util.InheritanceUtil
 import com.intellij.task.ProjectTaskManager
 import com.intellij.util.PathUtil
 import com.intellij.util.execution.ParametersListUtil
+import com.intellij.util.indexing.DumbModeAccessType
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.run.KotlinRunConfiguration
 import java.awt.BorderLayout
 import java.util.concurrent.ConcurrentHashMap
@@ -77,6 +81,57 @@ import kotlin.io.path.name
 private val logger = logger<SpringBeanNativeResolver>()
 
 private const val SPRING_BOOT_2_4_CLASS = "org.springframework.boot.context.config.ConfigData"
+
+/**
+ * The bean reader drives the application through `org.springframework.core.metrics.ApplicationStartup`, which
+ * Spring introduced in 5.3 (Spring Boot 2.4). Only these two types can be absent because the Boot version is too
+ * old: spring-core 5.2 ships no `org.springframework.core.metrics` package at all. Any other missing class means
+ * an incomplete classpath and must not be reported as an unsupported Boot version.
+ */
+private val SPRING_BOOT_PRE_2_4_CLASSES = setOf(
+    "org.springframework.core.metrics.ApplicationStartup",
+    "org.springframework.core.metrics.StartupStep"
+)
+
+/**
+ * A `NoClassDefFoundError` from the launched application means the Boot version is unsupported only when the
+ * absent class is one the bean reader needs from Spring itself; otherwise the classpath is incomplete, and the
+ * libraries whose files never reached the disk are the actionable part of the message.
+ */
+@VisibleForTesting
+fun missingClassMessage(missingClassName: String, librariesWithMissingFiles: List<String>): String {
+    if (missingClassName in SPRING_BOOT_PRE_2_4_CLASSES) {
+        return SpringCoreBundle.message("explyt.external.project.sync.old.error")
+    }
+    if (librariesWithMissingFiles.isEmpty()) {
+        return SpringCoreBundle.message("explyt.external.project.sync.class.not.found.error", missingClassName)
+    }
+    return SpringCoreBundle.message(
+        "explyt.external.project.sync.class.not.found.libraries.error",
+        missingClassName,
+        librariesWithMissingFiles.joinToString(", ")
+    )
+}
+
+/**
+ * Runs an index-backed read action that must survive the dumb mode a sync starts on itself: the resolver builds the
+ * project mid-resolve, and the build output triggers a VFS refresh whose scanning task makes every open project dumb
+ * while PSI is still being read.
+ *
+ * Waiting for smart mode here would deadlock. The platform wraps the whole resolution in
+ * `ExternalSystemResolveProjectTask.suspendScanningAndIndexingThenRun`, which holds a suspension token for its entire
+ * duration; a dumb task entered under that token stays paused, so the dumb queue cannot drain and smart mode never
+ * arrives.
+ *
+ * `RELIABLE_DATA_ONLY` is what keeps this correct rather than merely quiet: it serves only up-to-date index data, and
+ * it is the sole access type `StubIndex` honours.
+ */
+@Suppress("UnstableApiUsage")
+@VisibleForTesting
+fun <T> withIndexAccessDuringSync(compute: () -> T): T =
+    ApplicationManager.getApplication().runReadAction(Computable {
+        DumbModeAccessType.RELIABLE_DATA_ONLY.ignoreDumbMode(ThrowableComputable { compute() })
+    })
 
 class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSettings> {
 
@@ -119,14 +174,18 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
             logger.info("Explyt resolveProjectInfo: skipping DEBUG_SESSION_NAME path with null result")
             return null
         }
-        val runConfigurationHolder = findRunConfigurationReadAction(projectPath, settings)
+        val resolvedHolder = findRunConfigurationReadAction(projectPath, settings)
         if (isPreviewMode) {
             logger.info("Explyt resolveProjectInfo: PREVIEW MODE, returning empty project node")
-            return DataNode(ProjectKeys.PROJECT, projectData(projectPath, runConfigurationHolder), null)
+            return DataNode(ProjectKeys.PROJECT, projectData(projectPath, resolvedHolder), null)
         }
         settings ?: throw ExternalSystemException("No settings")
-        runConfigurationHolder ?: nothingException(settings)
-        if (runConfigurationHolder.isEmpty()) nothingException(settings)
+        val runConfigurationHolder =
+            if (resolvedHolder == null || resolvedHolder.isEmpty()) {
+                healOrPruneDanglingLink(projectPath, settings) ?: nothingException(settings)
+            } else {
+                resolvedHolder
+            }
         logger.debug {
             "Explyt resolveProjectInfo: resolved runConfigurationHolder=" +
                     "explyt=${runConfigurationHolder.runConfiguration?.name}, " +
@@ -170,7 +229,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         val projectData = projectData(projectPath, Constants.DEBUG_SESSION_NAME)
         val projectDataNode = DataNode(ProjectKeys.PROJECT, projectData, null)
 
-        detectMessageMapping(settings)
+        detectContextCapabilities(settings)
         beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
             .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
@@ -208,7 +267,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
 
         val processAdapter = ExplytCapturingProcessAdapter(id, listener)
-        executeRunConfiguration(id, runConfiguration, processAdapter)
+        executeRunConfiguration(id, runConfiguration, processAdapter, modules, listener)
 
         val contextInfo = processAdapter.getSpringContextInfo()
         val beans = contextInfo.beans
@@ -222,7 +281,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         fillRunConfigurationData(projectDataNode, settings)
         fillBeanSearch(projectDataNode, settings)
 
-        detectMessageMapping(settings)
+        detectContextCapabilities(settings)
         beans.mapNotNull { toSpringBeanDataInReadAction(it, id, settings, listener) }
             .forEach { projectDataNode.createChild(SpringBeanData.KEY, it) }
         aspects.mapNotNull { toSpringAspectData(it, aspectBeanInfoByName) }
@@ -238,11 +297,10 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     ) {
         val explytRunConfiguration = runConfigurationHolder.runConfiguration ?: throw RuntimeException()
 
-        val mainClass = ApplicationManager.getApplication()
-            .runReadAction(Computable { NativeBootUtils.getMainClass(explytRunConfiguration) })
+        val mainClass = withIndexAccessDuringSync { NativeBootUtils.getMainClass(explytRunConfiguration) }
             ?: throw ExternalSystemException("No main class run configuration found")
-        explytRunConfiguration.envs["explyt.spring.appClassName"] = ApplicationManager.getApplication()
-            .runReadAction(Computable { mainClass.qualifiedName })
+        explytRunConfiguration.envs["explyt.spring.appClassName"] =
+            withIndexAccessDuringSync { mainClass.qualifiedName }
         explytRunConfiguration.mainClassName = getMainClassName(modules, id, listener)
         explytRunConfiguration.classpathModifications.add(getClasspathExplytModification())
     }
@@ -286,12 +344,17 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
     }
 
-    private fun detectMessageMapping(settings: NativeExecutionSettings) {
-        val messageMappingExist = ApplicationManager.getApplication()
-            .runReadAction(Computable {
+    /**
+     * Resolved once per sync rather than per bean: both flags are properties of the module classpath, which cannot
+     * change while the launched application is being read.
+     */
+    private fun detectContextCapabilities(settings: NativeExecutionSettings) {
+        withIndexAccessDuringSync {
+            settings.messageMappingExist =
                 LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.MESSAGE_MAPPING) != null
-            })
-        settings.messageMappingExist = messageMappingExist
+            settings.aspectExist =
+                LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.ASPECT) != null
+        }
     }
 
     private fun buildProject(
@@ -306,14 +369,18 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     }
 
     private fun executeRunConfiguration(
-        id: ExternalSystemTaskId, clone: RunConfiguration, processAdapter: ExplytCapturingProcessAdapter
+        id: ExternalSystemTaskId,
+        clone: RunConfiguration,
+        processAdapter: ExplytCapturingProcessAdapter,
+        modules: Array<Module>,
+        listener: ExternalSystemTaskNotificationListener
     ) {
         val descriptor = getDescriptor()
         val environment = getEnvironment(id, clone, processAdapter, descriptor)
         try {
             ProgramRunnerUtil.executeConfiguration(environment, false, false)
             processAdapter.await()
-            checkErrors(processAdapter)
+            checkErrors(processAdapter, modules, id, listener)
         } finally {
             Disposer.dispose(environment)
             Disposer.dispose(descriptor)
@@ -326,10 +393,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         listener: ExternalSystemTaskNotificationListener
     ): String {
         if (!Registry.`is`("explyt.spring.native.old")) return SpringBootBeanReaderStarter::class.qualifiedName!!
-        val isSpringBoot24 = ApplicationManager.getApplication()
-            .runReadAction(Computable {
-                modules.any { LibraryClassCache.searchForLibraryClass(it, SPRING_BOOT_2_4_CLASS) != null }
-            }) ?: false
+        val isSpringBoot24 = withIndexAccessDuringSync {
+            modules.any { LibraryClassCache.searchForLibraryClass(it, SPRING_BOOT_2_4_CLASS) != null }
+        }
         return if (isSpringBoot24) {
             SpringBootBeanReaderStarter::class.qualifiedName!!
         } else {
@@ -340,14 +406,44 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         }
     }
 
-    private fun checkErrors(processAdapter: ExplytCapturingProcessAdapter) {
-        if (!Registry.`is`("explyt.spring.native.old") && processAdapter.classNotFoundError) {
+    private fun checkErrors(
+        processAdapter: ExplytCapturingProcessAdapter,
+        modules: Array<Module>,
+        id: ExternalSystemTaskId,
+        listener: ExternalSystemTaskNotificationListener
+    ) {
+        val missingClassName = processAdapter.missingClassName
+        if (!Registry.`is`("explyt.spring.native.old") && missingClassName != null) {
             throw ExternalSystemException(
-                SYSTEM_ID.readableName + ": " + SpringCoreBundle.message("explyt.external.project.sync.old.error")
+                SYSTEM_ID.readableName + ": " + missingClassMessage(missingClassName, modules, id, listener)
             )
         } else if (processAdapter.getSpringContextInfo().beans.isEmpty()) {
             throw ExternalSystemException(SpringCoreBundle.message("explyt.external.project.sync.empty.error"))
         }
+    }
+
+    private fun missingClassMessage(
+        missingClassName: String,
+        modules: Array<Module>,
+        id: ExternalSystemTaskId,
+        listener: ExternalSystemTaskNotificationListener
+    ): String {
+        if (missingClassName in SPRING_BOOT_PRE_2_4_CLASSES) {
+            return SpringCoreBundle.message("explyt.external.project.sync.old.error")
+        }
+        val librariesWithMissingFiles = NativeClasspathValidator.findLibrariesWithMissingFiles(modules)
+        if (librariesWithMissingFiles.isNotEmpty()) {
+            // Reported, never fatal on its own: a library root may be legitimately absent on a working sync.
+            listener.onTaskOutput(
+                id,
+                SpringCoreBundle.message(
+                    "explyt.external.project.sync.missing.libraries.output",
+                    librariesWithMissingFiles.joinToString(System.lineSeparator() + "  ", "  ")
+                ) + System.lineSeparator(),
+                true
+            )
+        }
+        return missingClassMessage(missingClassName, librariesWithMissingFiles)
     }
 
     private fun getAspectBeanInfoMapByName(beans: List<BeanInfo>, aspects: List<AspectInfo>): Map<String, BeanInfo> {
@@ -412,13 +508,7 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         id: ExternalSystemTaskId,
         settings: NativeExecutionSettings,
         listener: ExternalSystemTaskNotificationListener
-    ): SpringBeanData? {
-        settings.aspectExist = ApplicationManager.getApplication().runReadAction(Computable {
-            LibraryClassCache.searchForLibraryClass(settings.project, SpringCoreClasses.ASPECT) != null
-        })
-        return ApplicationManager.getApplication()
-            .runReadAction(Computable { toSpringBeanData(bean, id, settings, listener) })
-    }
+    ): SpringBeanData? = withIndexAccessDuringSync { toSpringBeanData(bean, id, settings, listener) }
 
     private fun toSpringBeanData(
         bean: BeanInfo,
@@ -486,11 +576,28 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
         return projectData
     }
 
+    /**
+     * A stored run configuration name that no longer resolves leaves the link dangling: the extractor deliberately
+     * returns nothing instead of fabricating a configuration, so every sync fails the same way while the project may
+     * be invisible in the tool window. Heal the link within this pass when exactly one configuration points at the
+     * same main-class file; without a candidate, a link that has no import data to show is pruned and the sync error
+     * is thrown one last time. Runtime failures of an existing configuration never reach here — they are thrown
+     * later by the build or the launched process.
+     */
+    private fun healOrPruneDanglingLink(projectPath: String, settings: NativeExecutionSettings): RunConfigurationHolder? {
+        var holder: RunConfigurationHolder? = null
+        val healed = NativeLinkRepairService.getInstance(settings.project)
+            .healOrPruneDanglingLink(projectPath, settings) {
+                holder = findRunConfigurationReadAction(projectPath, settings)
+                holder?.isEmpty() == false
+            }
+        return if (healed) holder else null
+    }
+
     private fun findRunConfigurationReadAction(
         projectPath: String, settings: NativeExecutionSettings?
-    ): RunConfigurationHolder? {
-        return ApplicationManager.getApplication()
-            .runReadAction(Computable { RunConfigurationExtractor.findRunConfiguration(projectPath, settings) })
+    ): RunConfigurationHolder? = withIndexAccessDuringSync {
+        RunConfigurationExtractor.findRunConfiguration(projectPath, settings)
     }
 
     private fun getEnvironment(

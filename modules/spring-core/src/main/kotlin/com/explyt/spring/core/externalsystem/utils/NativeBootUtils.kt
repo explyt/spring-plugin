@@ -78,10 +78,6 @@ object NativeBootUtils {
         return result
     }
 
-    fun isSupportRunConfiguration(runConfiguration: RunConfiguration?): Boolean {
-        return runConfiguration?.let { getMainClass(it) != null } ?: false
-    }
-
     fun getMainClass(runConfiguration: RunConfiguration): PsiClass? {
         val psiClassList = RunConfigurationUtil.getRunPsiClass(runConfiguration)
         if (psiClassList.size == 1) return psiClassList.first()

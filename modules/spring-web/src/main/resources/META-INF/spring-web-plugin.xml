@@ -14,10 +14,12 @@
     </extensionPoints>
 
 
-    <extensions defaultExtensionNs="com.explyt.spring.web">
+    <extensions defaultExtensionNs="com.explyt.spring.core">
         <additionalBeansDiscoverer
                 implementation="com.explyt.spring.web.service.beans.discoverer.SpringWebAdditionalBeansDiscoverer"/>
+    </extensions>
 
+    <extensions defaultExtensionNs="com.explyt.spring.web">
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebControllerLoader"/>
         <springWebEndpointsLoader
@@ -26,6 +28,8 @@
                 implementation="com.explyt.spring.web.loader.JaxRsExchangeLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebFluxEndpointsLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.SpringWebMvcFnEndpointsLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.SpringWebOpenApiEndpointsLoader"/>
         <springWebEndpointsLoader
@@ -36,6 +40,8 @@
                 implementation="com.explyt.spring.web.loader.SpringBootEndpointLoader"/>
         <springWebEndpointsLoader
                 implementation="com.explyt.spring.web.loader.EventListenersEndpointLoader"/>
+        <springWebEndpointsLoader
+                implementation="com.explyt.spring.web.loader.ActuatorEndpointLoader"/>
 
 
     </extensions>
@@ -244,6 +250,7 @@
 
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiResourcesRequestHandler"/>
         <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiProxyRequestHandler"/>
+        <httpRequestHandler implementation="com.explyt.spring.web.editor.openapi.OpenApiOAuth2RedirectRequestHandler"/>
 
         <notificationGroup id="com.explyt.spring.notification.web"
                            displayType="BALLOON"

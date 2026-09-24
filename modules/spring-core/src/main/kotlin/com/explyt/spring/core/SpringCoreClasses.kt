@@ -7,6 +7,13 @@ package com.explyt.spring.core
 
 object SpringCoreClasses {
     const val SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication"
+    const val ACTUATOR_ENDPOINT = "org.springframework.boot.actuate.endpoint.annotation.Endpoint"
+    const val ACTUATOR_ENDPOINT_ACCESS = "org.springframework.boot.actuate.endpoint.Access"
+    const val ACTUATOR_JMX_ENDPOINT = "org.springframework.boot.actuate.endpoint.jmx.annotation.JmxEndpoint"
+    const val ACTUATOR_READ_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.ReadOperation"
+    const val ACTUATOR_WRITE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.WriteOperation"
+    const val ACTUATOR_DELETE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.DeleteOperation"
+    const val ACTUATOR_SELECTOR = "org.springframework.boot.actuate.endpoint.annotation.Selector"
     const val SPRING_APPLICATION = "org.springframework.boot.SpringApplication"
     const val BOOT_AUTO_CONFIGURATION = "org.springframework.boot.autoconfigure.AutoConfiguration"
 
@@ -14,6 +21,7 @@ object SpringCoreClasses {
     const val EVENT_LISTENER = "org.springframework.context.event.EventListener"
     const val APPLICATION_LISTENER = "org.springframework.context.ApplicationListener"
     const val EVENT_PUBLISHER = "org.springframework.context.ApplicationEventPublisher"
+    const val APPLICATION_EVENT = "org.springframework.context.ApplicationEvent"
     const val APPLICATION_CONTEXT = "org.springframework.context.ApplicationContext"
 
     const val COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan"
@@ -130,6 +138,8 @@ object SpringCoreClasses {
 
     const val MOCK_BEAN = "org.springframework.boot.test.mock.mockito.MockBean"
     const val SPY_BEAN = "org.springframework.boot.test.mock.mockito.SpyBean"
+    const val MOCKITO_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoBean"
+    const val MOCKITO_SPY_BEAN = "org.springframework.test.context.bean.override.mockito.MockitoSpyBean"
 
     const val HIBERNATE_CFG_AVAILABLE_SETTING = "org.hibernate.cfg.AvailableSettings"
 
@@ -142,4 +152,5 @@ object SpringCoreClasses {
 
     val QUALIFIERS = listOf(QUALIFIER) + JavaEeClasses.QUALIFIER.allFqns
     val AOP_ANNOTATION = listOf(TRANSACTIONAL, ASYNC) + ANNOTATIONS_CACHE
+    val MOCK_BEANS_ANNOTATIONS = listOf(MOCK_BEAN, SPY_BEAN, MOCKITO_BEAN, MOCKITO_SPY_BEAN)
 }
