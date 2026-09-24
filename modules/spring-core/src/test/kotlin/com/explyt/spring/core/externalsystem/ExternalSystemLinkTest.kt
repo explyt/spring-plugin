@@ -19,6 +19,7 @@ import com.intellij.execution.impl.RunManagerImpl
 import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
+import com.intellij.openapi.externalSystem.model.project.ModuleData
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemRunConfiguration
 import javax.swing.Icon
 
@@ -27,13 +28,14 @@ import javax.swing.Icon
  * configuration's environment and VM options travel into the fabricated launch configuration, and any ambiguity
  * resolves to nothing rather than to a guessed module or a silently substituted configuration.
  */
+private val GRADLE = ProjectSystemId("GRADLE")
+
 class ExternalSystemLinkTest : ExplytKotlinLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     override fun tearDown() {
         try {
-            ExternalSystemModulePropertyManager.getInstance(myFixture.module).setLinkedProjectId(null)
-            ExternalSystemModulePropertyManager.getInstance(myFixture.module).setLinkedProjectPath(null)
+            ExternalSystemModulePropertyManager.getInstance(myFixture.module).unlinkExternalOptions()
         } finally {
             super.tearDown()
         }
@@ -132,7 +134,10 @@ class ExternalSystemLinkTest : ExplytKotlinLightTestCase() {
     }
 
     private fun linkModuleAs(linkedProjectId: String) {
-        ExternalSystemModulePropertyManager.getInstance(myFixture.module).setLinkedProjectId(linkedProjectId)
+        val moduleData = ModuleData(
+            linkedProjectId, GRADLE, myFixture.module.name, project.basePath!!, project.basePath!!, project.basePath!!
+        )
+        ExternalSystemModulePropertyManager.getInstance(myFixture.module).setExternalOptions(GRADLE, moduleData, null)
     }
 
     private fun nativeSettings(mainFilePath: String): NativeExecutionSettings {
@@ -178,7 +183,7 @@ class ExternalSystemLinkTest : ExplytKotlinLightTestCase() {
 
     private fun gradleRunConfiguration(name: String, vararg taskNames: String): ExternalSystemRunConfiguration {
         val configuration = ExternalSystemRunConfiguration(
-            ProjectSystemId("GRADLE"), project, StubConfigurationFactory, name
+            GRADLE, project, StubConfigurationFactory, name
         )
         configuration.settings.taskNames = taskNames.toMutableList()
         return configuration
@@ -195,6 +200,6 @@ class ExternalSystemLinkTest : ExplytKotlinLightTestCase() {
     private object StubConfigurationFactory : ConfigurationFactory(StubConfigurationType) {
         override fun getId() = "Stub"
         override fun createTemplateConfiguration(project: com.intellij.openapi.project.Project) =
-            ExternalSystemRunConfiguration(ProjectSystemId("GRADLE"), project, this, "Stub")
+            ExternalSystemRunConfiguration(GRADLE, project, this, "Stub")
     }
 }
