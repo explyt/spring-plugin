@@ -57,14 +57,19 @@ import java.util.concurrent.atomic.AtomicBoolean
 class NativeSearchService(private val project: Project) {
 
     fun getAllActiveBeans(): Set<PsiBean> {
-        return CachedValuesManager.getManager(project).getCachedValue(project) {
-            CachedValueProvider.Result(
-                getBeans(),
-                ModificationTrackerManager.getInstance(project).getExternalSystemTracker(),
-                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
-            )
-        }
+        return filterValidBeans(
+            CachedValuesManager.getManager(project).getCachedValue(project) {
+                CachedValueProvider.Result(
+                    getBeans(),
+                    ModificationTrackerManager.getInstance(project).getExternalSystemTracker(),
+                    ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
+                )
+            }
+        )
     }
+
+    internal fun filterValidBeans(beans: Collection<PsiBean>): Set<PsiBean> =
+        beans.filterTo(mutableSetOf()) { it.psiClass.isValid && it.psiMember.isValid }
 
     private fun getBeans(): Set<PsiBean> {
         val projectBeans = getProjectBeans()

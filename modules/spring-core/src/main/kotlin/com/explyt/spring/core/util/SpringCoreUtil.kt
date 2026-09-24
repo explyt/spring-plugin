@@ -44,6 +44,7 @@ import com.explyt.util.ExplytPsiUtil.psiClassType
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiClass
 import com.explyt.util.ExplytPsiUtil.returnPsiType
+import com.explyt.util.CacheKeyStore
 import com.explyt.util.ModuleUtil
 import com.explyt.util.SpringBaseClasses.CORE_ENVIRONMENT
 import com.explyt.util.runReadNonBlocking
@@ -65,7 +66,10 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.FileContextUtil
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.search.searches.ClassInheritorsSearch
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiUtil
 import com.intellij.xdebugger.XDebuggerManager
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -104,6 +108,30 @@ object SpringCoreUtil {
             return true
         }
 
+        return isPropertySourceFile(psiFile)
+    }
+
+    /**
+     * Only the index-backed tail of [isConfigurationPropertyFile] is cached: it is the part that searches every
+     * `@PropertySource` in the module. Line-marker providers ask once per PSI leaf, so without the cache an ordinary
+     * `messages.properties` triggers dozens of project-wide index searches per highlighting pass.
+     *
+     * Dependencies: [PsiModificationTracker.MODIFICATION_COUNT] covers editing or adding a `@PropertySource`,
+     * [ProjectRootManager] covers source-root and dependency changes that move the resolved file or the annotation
+     * class out of scope.
+     */
+    private fun isPropertySourceFile(psiFile: PsiFile): Boolean {
+        return CachedValuesManager.getCachedValue(psiFile) {
+            CachedValueProvider.Result.create(
+                computeIsPropertySourceFile(psiFile),
+                PsiModificationTracker.MODIFICATION_COUNT,
+                ProjectRootManager.getInstance(psiFile.project),
+                CacheKeyStore.cacheReset
+            )
+        }
+    }
+
+    private fun computeIsPropertySourceFile(psiFile: PsiFile): Boolean {
         return runReadNonBlocking {
             val propertySourceFilePaths = SpringPropertySourceSearch.getInstance(psiFile.project)
                 .findPropertySourceFilePaths(psiFile)

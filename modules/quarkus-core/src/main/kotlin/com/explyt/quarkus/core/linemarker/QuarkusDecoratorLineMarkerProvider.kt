@@ -52,7 +52,10 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (uClass.javaPsi.isMetaAnnotatedBy(QuarkusCoreClasses.DECORATOR.allFqns)) {
             val delegateClasses = QuarkusDelegateSearchService.Companion.getInstance(project).getDelegateClasses(uClass)
             if (isDecoratedMethod(uMethod, delegateClasses)) {
-                val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
+                val builder = NavigationGutterIconBuilder.create(
+                    QuarkusCoreIcons.Advice,
+                    message("explyt.quarkus.gutter.group.advice")
+                )
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findDecoratedMethods(uMethod, delegateClasses) })
                     .setTooltipText(message("explyt.quarkus.gutter.decorator.decorated.tooltip"))
@@ -63,7 +66,10 @@ class QuarkusDecoratorLineMarkerProvider : RelatedItemLineMarkerProvider() {
         } else {
             val classes = QuarkusDelegateSearchService.Companion.getInstance(project).allDelegatedClasses()
             if (isDecoratedMethod(uMethod, classes)) {
-                val builder = NavigationGutterIconBuilder.create(QuarkusCoreIcons.Advice)
+                val builder = NavigationGutterIconBuilder.create(
+                    QuarkusCoreIcons.Advice,
+                    message("explyt.quarkus.gutter.group.advice")
+                )
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findDecorator(uMethod) })
                     .setTooltipText(message("explyt.quarkus.gutter.decorator.goto.tooltip"))

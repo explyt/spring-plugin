@@ -7,6 +7,7 @@ package com.explyt.spring.core.providers
 
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.SpringCoreClasses.APPLICATION_EVENT
 import com.explyt.spring.core.SpringCoreClasses.APPLICATION_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_LISTENER
 import com.explyt.spring.core.SpringCoreClasses.EVENT_PUBLISHER
@@ -19,6 +20,7 @@ import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
+import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isPublic
@@ -27,20 +29,45 @@ import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerProvider
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
+import com.intellij.codeInsight.navigation.fileStatusAttributes
+import com.intellij.codeInsight.navigation.impl.PsiTargetPresentationRenderer
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.util.Iconable
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.newvfs.VfsPresentationUtil
+import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.ClassInheritorsSearch
+import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.parentOfType
+import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.uast.*
 import java.util.*
+
+private class MethodArgumentClasses(val element: PsiMethod, psiClassesFromAnnotation: Set<PsiClass>? = null) {
+    var argumentClasses: Set<PsiClass> = emptySet()
+    var argumentType: PsiType? = null
+
+    init {
+        if (element.parameterList.parametersCount == 1) {
+            argumentType = element.parameterList.parameters[0].type
+        } else if (psiClassesFromAnnotation != null) {
+            argumentClasses += psiClassesFromAnnotation
+        }
+    }
+}
+
+private val PROJECT_WIDE_LISTENER_METHODS =
+    Key.create<CachedValue<Collection<MethodArgumentClasses>>>("explyt.spring.event.listeners.projectWide")
 
 class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     override fun collectNavigationMarkers(
@@ -53,12 +80,16 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             if (isMethodModifierForEvent(psiMethod) &&
                 (isEventListenerMethod(psiMethod) || isApplicationEventMethod(psiMethod))
             ) {
-                val builder = NavigationGutterIconBuilder.create(SpringIcons.EventPublisher)
+                val builder = NavigationGutterIconBuilder.create(
+                    SpringIcons.EventPublisher,
+                    SpringCoreBundle.message("explyt.spring.gutter.group.event.publisher")
+                )
                     .setAlignment(GutterIconRenderer.Alignment.LEFT)
                     .setTargets(NotNullLazyValue.lazy { findPublishEvents(psiMethod) })
                     .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.event.publisher"))
-                    .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.event.publisher"))
+                    .setPopupTitle(publisherPopupTitle(psiMethod))
                     .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.event.publisher"))
+                    .setTargetRenderer { publisherTargetRenderer() }
 
                 result += builder.createLineMarkerInfo(element)
 
@@ -72,7 +103,10 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
                 val sourceElement = uCallExpression.methodIdentifier.sourcePsiElement
                 if (sourceElement != null && sourcePsi != null
                 ) {
-                    val builder = NavigationGutterIconBuilder.create(SpringIcons.EventListener)
+                    val builder = NavigationGutterIconBuilder.create(
+                        SpringIcons.EventListener,
+                        SpringCoreBundle.message("explyt.spring.gutter.group.event.listener")
+                    )
                         .setAlignment(GutterIconRenderer.Alignment.LEFT)
                         .setTargets(NotNullLazyValue.createValue { findEventListeners(sourcePsi) })
                         .setTooltipText(SpringCoreBundle.message("explyt.spring.gutter.tooltip.title.choose.event.listener"))
@@ -81,6 +115,47 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
                     result.add(builder.createLineMarkerInfo(sourceElement))
                 }
+            }
+        }
+    }
+
+    /**
+     * Only the declared parameter type is read here: the marker is created on a highlighting hot path, while the
+     * `@EventListener(classes = ...)` types need meta-annotation resolution and stay in the lazy target supplier.
+     */
+    private fun publisherPopupTitle(psiMethod: PsiMethod): String {
+        val eventType = psiMethod.parameterList.parameters.singleOrNull()?.type as? PsiClassType
+            ?: return SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.event.publisher")
+        return SpringCoreBundle.message(
+            "explyt.spring.gutter.popup.title.choose.event.publisher.typed", eventType.presentableText
+        )
+    }
+
+    private fun publisherTargetRenderer(): PsiTargetPresentationRenderer<PsiElement> {
+        return object : PsiTargetPresentationRenderer<PsiElement>() {
+
+            override fun getPresentation(element: PsiElement): TargetPresentation {
+                val project = element.project
+                val file = element.containingFile?.virtualFile
+                val moduleTextWithIcon = SpringBeanLineMarkerProvider.getModuleTextWithIcon(element)
+                return TargetPresentation
+                    .builder(getElementText(element))
+                    .backgroundColor(file?.let { VfsPresentationUtil.getFileBackgroundColor(project, it) })
+                    .icon(element.getIcon(Iconable.ICON_FLAG_VISIBILITY or Iconable.ICON_FLAG_READ_STATUS))
+                    .containerText(getContainerText(element), file?.let { fileStatusAttributes(project, it) })
+                    .locationText(moduleTextWithIcon?.text, moduleTextWithIcon?.icon)
+                    .presentation()
+            }
+
+            override fun getElementText(element: PsiElement): String {
+                val uMethod = element.toUElement()?.getParentOfType<UMethod>() ?: return super.getElementText(element)
+                val className = uMethod.javaPsi.containingClass?.name ?: return uMethod.name
+                return "$className#${uMethod.name}"
+            }
+
+            override fun getContainerText(element: PsiElement): String? {
+                val fileName = element.containingFile?.virtualFile?.name ?: return null
+                return "$fileName:${element.getLineNumber() + 1}"
             }
         }
     }
@@ -126,7 +201,39 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val eventPsiClassByAnnotation = getPsiClassesByAnnotationCached(module, psiMethod)
 
         val methodArgumentTypes = getMethodArgumentTypes(module)
-        return getPublishMethodCalls(methodArgumentTypes, eventPsiType, eventPsiClassByAnnotation)
+        val publishCalls = getPublishMethodCalls(methodArgumentTypes, eventPsiType, eventPsiClassByAnnotation)
+        return publishCalls + libraryPublishedEventDeclarations(
+            module, eventPsiType, eventPsiClassByAnnotation, methodArgumentTypes
+        )
+    }
+
+    /**
+     * Spring and its ecosystem publish their own events from inside a jar, and a library sources root is
+     * outside every module scope, so no reference search can reach those calls: the event declaration is the
+     * only target that can be offered.
+     *
+     * An event is attributed to a library publisher only when the project itself never publishes it. That
+     * keeps the real call for an application event extending a library base, for a library event the
+     * application raises on its own, and for anything Spring wrapped in `PayloadApplicationEvent`. The check
+     * is per event class, because one listener can declare several via `@EventListener(classes = ...)`.
+     */
+    private fun libraryPublishedEventDeclarations(
+        module: Module,
+        eventPsiType: PsiType?,
+        eventPsiClassByAnnotation: Set<PsiClass>,
+        methodArgumentTypes: List<MethodCallArgumentTypes>
+    ): List<PsiElement> {
+        val applicationEvent =
+            LibraryClassCache.searchForLibraryClass(module, APPLICATION_EVENT) ?: return emptyList()
+        val fileIndex = ProjectFileIndex.getInstance(module.project)
+        val eventClasses = eventPsiClassByAnnotation + listOfNotNull(eventPsiType?.resolveBeanPsiClass)
+        return eventClasses
+            .filter { it.isEqualOrInheritor(applicationEvent) }
+            .filter { it.containingFile?.virtualFile?.let(fileIndex::isInLibrary) == true }
+            .filter { eventClass ->
+                methodArgumentTypes.none { isAcceptableType(null, it.argumentType, setOf(eventClass)) }
+            }
+            .map { it.navigationElement }
     }
 
     private fun getPsiClassesByAnnotationCached(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
@@ -195,21 +302,51 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         return containClass != null && InheritanceUtil.isInheritor(containClass, EVENT_PUBLISHER)
     }
 
+    /**
+     * [ModuleUtilCore.findModuleForPsiElement] reaches its library branch only for a [PsiFileSystemItem], so an
+     * expression inside a dependency — where Spring itself publishes most lifecycle events — resolves to no
+     * module. Asking about the containing file instead takes that branch and answers with a module the library
+     * is attached to.
+     */
+    private fun findLibraryOwnerModule(psiElement: PsiElement): Module? =
+        psiElement.containingFile?.originalFile?.let { ModuleUtilCore.findModuleForPsiElement(it) }
+
     private fun findEventListeners(psiElement: PsiElement): Collection<PsiElement> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_TARGET_EVENT_LISTENER)
-        val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return Collections.emptyList()
+        val elementModule = ModuleUtilCore.findModuleForPsiElement(psiElement)
+        val module = elementModule
+            ?: findLibraryOwnerModule(psiElement)
+            ?: return Collections.emptyList()
         val uCallExpression = psiElement.toUElementOfType<UCallExpression>() ?: return Collections.emptyList()
         if (uCallExpression.valueArgumentCount != 1) return Collections.emptyList()
         val eventPsiType = uCallExpression.valueArguments[0].getExpressionType() ?: return Collections.emptyList()
+        val allTypes = eventPsiType.allSupers().filter { it.canonicalText != "java.lang.Object" }
 
-        val eventListenerMethods = mutableListOf<MethodArgumentClasses>()
-        eventListenerMethods += getMethodsByApplicationEventCached(module)
-        eventListenerMethods += getMethodsByEventListenerCached(module)
-
-        return eventListenerMethods.asSequence()
-            .filter { isEqualsTypeOrClass(it, eventPsiType) }
+        return listenerMethods(module, anchoredInLibrary = elementModule == null).asSequence()
+            .filter { allTypes.any { psiType -> isEqualsTypeOrClass(it, psiType) } }
             .map { it.element.navigationElement }
             .toList()
+    }
+
+    /**
+     * A call inside a library belongs to no module: the platform answers with whichever attached module sorts
+     * first by dependency order, so that module's dependency closure is an arbitrary slice of the project and
+     * would hide listeners declared in sibling modules. Only an element that really belongs to a module can be
+     * searched through that module.
+     */
+    private fun listenerMethods(module: Module, anchoredInLibrary: Boolean): Collection<MethodArgumentClasses> {
+        if (!anchoredInLibrary) {
+            return getMethodsByApplicationEventCached(module) + getMethodsByEventListenerCached(module)
+        }
+        return CachedValuesManager.getManager(module.project).getCachedValue(
+            module, PROJECT_WIDE_LISTENER_METHODS, {
+                val scope = GlobalSearchScope.projectScope(module.project)
+                CachedValueProvider.Result.create(
+                    getMethodsByApplicationEvent(module, scope) + getMethodsByEventListener(module, scope),
+                    ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                )
+            }, false
+        )
     }
 
     private fun getMethodsByApplicationEventCached(module: Module): Collection<MethodArgumentClasses> {
@@ -217,7 +354,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         return cacheManager.getCachedValue(module) {
             CachedValueProvider.Result.create(
-                getMethodsByApplicationEvent(module),
+                getMethodsByApplicationEvent(module, GlobalSearchScope.moduleWithDependenciesScope(module)),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
@@ -228,14 +365,13 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         return cacheManager.getCachedValue(module) {
             CachedValueProvider.Result.create(
-                getMethodsByEventListener(module),
+                getMethodsByEventListener(module, GlobalSearchScope.moduleWithDependenciesScope(module)),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
     }
 
-    private fun getMethodsByApplicationEvent(module: Module): List<MethodArgumentClasses> {
-        val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+    private fun getMethodsByApplicationEvent(module: Module, scope: GlobalSearchScope): List<MethodArgumentClasses> {
         val listenerClass = SpringSearchUtils.findAnnotationClassesByQualifiedName(module, APPLICATION_LISTENER)
         return listenerClass.asSequence()
             .flatMap { ClassInheritorsSearch.search(it, scope, true).findAll() }
@@ -246,8 +382,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .toList()
     }
 
-    private fun getMethodsByEventListener(module: Module): List<MethodArgumentClasses> {
-        val scope = GlobalSearchScope.moduleWithDependenciesScope(module)
+    private fun getMethodsByEventListener(module: Module, scope: GlobalSearchScope): List<MethodArgumentClasses> {
         val listenerClass = SpringSearchUtils.findAnnotationClassesByQualifiedName(module, EVENT_LISTENER)
         val listenerMethods = listenerClass.asSequence()
             .flatMap { AnnotatedElementsSearch.searchPsiMethods(it, scope) }
@@ -273,18 +408,5 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
     }
 
     private class MethodCallArgumentTypes(val element: UCallExpression, val argumentType: PsiType)
-
-    private class MethodArgumentClasses(val element: PsiMethod, psiClassesFromAnnotation: Set<PsiClass>? = null) {
-        var argumentClasses: Set<PsiClass> = emptySet()
-        var argumentType: PsiType? = null
-
-        init {
-            if (element.parameterList.parametersCount == 1) {
-                argumentType = element.parameterList.parameters[0].type
-            } else if (psiClassesFromAnnotation != null) {
-                argumentClasses += psiClassesFromAnnotation
-            }
-        }
-    }
 
 }
