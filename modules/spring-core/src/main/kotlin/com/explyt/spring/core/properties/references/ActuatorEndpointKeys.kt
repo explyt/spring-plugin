@@ -55,14 +55,9 @@ object ActuatorEndpointKeys {
     /** The endpoints [module] declares, by id. An id may be declared twice, which is a project error, not ours. */
     fun endpointsById(module: Module): Map<String, List<ActuatorEndpoint>> {
         if (DumbService.isDumb(module.project)) return emptyMap()
-        val accessAvailable = JavaPsiFacade.getInstance(module.project)
-            .findClass(
-                SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS,
-                GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-            ) != null
         return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result(
-                findEndpoints(module, accessAvailable),
+                findEndpoints(module),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
@@ -106,7 +101,15 @@ object ActuatorEndpointKeys {
         return references.toTypedArray()
     }
 
-    private fun findEndpoints(module: Module, accessAvailable: Boolean): Map<String, List<ActuatorEndpoint>> {
+    private fun findEndpoints(module: Module): Map<String, List<ActuatorEndpoint>> {
+        // Read inside the provider, never captured by it: the provider of the first call is the one the platform
+        // keeps for the lifetime of the module, so a gate evaluated outside would answer for the classpath as it
+        // was when the cache was first populated - `.access` staying unresolved for the rest of the session.
+        val accessAvailable = JavaPsiFacade.getInstance(module.project).findClass(
+            SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS,
+            GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+        ) != null
+
         // `@Endpoint` is the linking meta-annotation of `@WebEndpoint`, `@JmxEndpoint` and the controller endpoints,
         // so matching it covers every specialization, including ones a project or a future Boot release declares.
         val annotations = MetaAnnotationUtil
