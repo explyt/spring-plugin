@@ -5,12 +5,16 @@
 
 package com.explyt.spring.core.completion.properties.java
 
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.completion.properties.ActuatorEndpointConfigurationPropertiesLoader
 import com.explyt.spring.core.inspections.SpringPropertiesInspection
 import com.explyt.spring.core.properties.references.ActuatorEndpointValueTypeReference
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiReference
+import com.intellij.psi.search.GlobalSearchScope
 
 class ActuatorEndpointConfigurationPropertiesLoaderPre34Test : ExplytJavaLightTestCase() {
 
@@ -54,6 +58,25 @@ class ActuatorEndpointConfigurationPropertiesLoaderPre34Test : ExplytJavaLightTe
         assertEquals(1, unresolved.size)
     }
 
+    /**
+     * The capability gate must follow the classpath the module has now, not the one it had when the endpoint
+     * cache was first populated - a cached provider is reused for the lifetime of the module, so a gate
+     * evaluated outside it stays frozen at whatever the first caller saw.
+     */
+    fun testAccessIsSynthesizedOnceTheAccessClassAppears() {
+        addEndpoint()
+        assertFalse("the fixture must start without the Access class", accessClassExists())
+        assertFalse("access must be absent before the class appears", synthesizedNames().contains(ACCESS_KEY))
+
+        addAccessClass()
+
+        assertTrue("the added Access class must be resolvable", accessClassExists())
+        assertTrue(
+            "access must be synthesized once Access is on the classpath, got: ${synthesizedNames()}",
+            synthesizedNames().contains(ACCESS_KEY)
+        )
+    }
+
     fun testAccessHasNoActuatorReferenceBeforeSpringBoot34() {
         addEndpoint()
         myFixture.configureByText(
@@ -76,6 +99,24 @@ class ActuatorEndpointConfigurationPropertiesLoaderPre34Test : ExplytJavaLightTe
         return myFixture.file.findReferenceAt(offset)
     }
 
+    private fun synthesizedNames(): Set<String> = ActuatorEndpointConfigurationPropertiesLoader()
+        .loadProperties(myFixture.module)
+        .mapTo(mutableSetOf()) { it.name }
+
+    private fun accessClassExists() = JavaPsiFacade.getInstance(project)
+        .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS, GlobalSearchScope.allScope(project)) != null
+
+    private fun addAccessClass() {
+        myFixture.addClass(
+            """
+            package org.springframework.boot.actuate.endpoint;
+
+            public enum Access { NONE, READ_ONLY, UNRESTRICTED }
+            """.trimIndent()
+        )
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+    }
+
     private fun addEndpoint() {
         myFixture.addClass(
             """
@@ -85,5 +126,9 @@ class ActuatorEndpointConfigurationPropertiesLoaderPre34Test : ExplytJavaLightTe
             public class LegacyEndpoint {}
             """.trimIndent()
         )
+    }
+
+    private companion object {
+        const val ACCESS_KEY = "management.endpoint.legacy.access"
     }
 }
