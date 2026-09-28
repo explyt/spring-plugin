@@ -26,3 +26,15 @@ class FieldConsumer {
 
 @Service
 class TwoOnOneLine(val clock: Clock = Clock.systemUTC(), val other: Clock)
+
+@Service
+class KotlinCollectionConsumer(val kotlinClocks: List<Clock>)
+
+@Service
+class KotlinProviderConsumer(val kotlinProvider: org.springframework.beans.factory.ObjectProvider<Clock>)
+
+@Service
+class NullableFieldConsumer {
+    @Autowired
+    var nullableField: Clock? = null
+}

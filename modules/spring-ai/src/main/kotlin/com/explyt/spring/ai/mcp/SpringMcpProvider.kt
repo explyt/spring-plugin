@@ -27,6 +27,7 @@ import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringAttribute
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.mcpserver.McpToolset
@@ -35,7 +36,7 @@ import com.intellij.mcpserver.annotations.McpTool
 import com.intellij.mcpserver.annotations.McpToolHintValue.TRUE
 import com.intellij.mcpserver.annotations.McpToolHints
 import com.intellij.mcpserver.mcpFail
-import com.intellij.openapi.application.readAction
+
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.module.ModuleUtilCore
@@ -52,7 +53,7 @@ import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.idea.base.psi.getLineNumber
+
 import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.kotlin.asJava.elements.KtLightField
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
@@ -121,6 +122,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "model: it includes @Bean factory methods, meta-annotated stereotypes and @Import-ed configurations, " +
                 "which a text search for '@Service' or '@Component' never finds. " +
                 "Returns each bean's name, fully-qualified class and module, one row per name a bean answers to. " +
+                "Every row also names the model that answered in 'source' - STATIC or NATIVE_SNAPSHOT - with " +
+                "'contextId' for a loaded context and 'limitations' for what that model cannot promise. " +
                 "An empty 'moduleName' means the bean has no module in this project - a library bean, or one a " +
                 "loaded context reports without project sources; the bean is still listed. " +
                 "By default the answer comes from a loaded application context when one is available and from the " +
@@ -178,7 +181,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
         val beans = springBeans.asSequence()
             .filter { it.beanType == mcpBeanType }
-            .map { McpSpringBean(it.beanName, it.className, it.moduleName) }
+            .map { McpSpringBean(it.beanName, it.className, it.moduleName, it.source, it.contextId, it.limitations) }
             .toList()
         return mapper.writeValueAsString(beans)
     }
@@ -1140,8 +1143,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "A column name that differs from its field name, and a relationship's owning side, are exactly what " +
                 "a query written from the Java field names gets wrong. " +
                 "Answers in two steps: by default an inventory of the JPA entities (@Entity classes, " +
-                "javax.persistence and jakarta.persistence alike) carrying only name, className, tableName (from " +
-                "@Table or the class name) and source location - enough to pick one without expanding any schema. " +
+                "javax.persistence and jakarta.persistence alike) carrying only name, className, tableName and " +
+                "source location - enough to pick one without expanding any schema. tableName is @Table(name) " +
+                "when declared, otherwise the JPA default - the @Entity(name) entity name, then the class name - " +
+                "before any physical naming strategy of the application is applied. " +
                 "Pass includeDetails=true, and className to name the entity, to add its fields with column names, " +
                 "types, primary key flag and nullability, its @OneToOne/@OneToMany/@ManyToOne/@ManyToMany " +
                 "relationships with joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
@@ -1352,33 +1357,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
     private data class SourcePosition(val filePath: String?, val line: Int?)
 
     private fun sourcePositionOf(element: PsiElement, project: Project): SourcePosition {
-        val anchor = sourceAnchorOf(element) ?: return SourcePosition(null, null)
-        return SourcePosition(relativePathOf(anchor, project), lineOfAnchor(anchor))
+        val anchor = McpSourcePositions.sourceAnchorOf(element) ?: return SourcePosition(null, null)
+        return SourcePosition(relativePathOf(anchor, project), McpSourcePositions.lineOfAnchor(anchor))
     }
-
-    /**
-     * Physical element a source position may be reported for.
-     *
-     * Light and synthetic members - a Kotlin `data class` `copy()`, an enum `values()`, or any light method
-     * whose origin declaration is absent - have no text range, and reading a line number from them fails.
-     * Such a member is reported through its declaring class, and through nothing at all when that class is
-     * synthetic too.
-     */
-    private fun sourceAnchorOf(element: PsiElement): PsiElement? =
-        element.withSourcePosition()
-            ?: (element as? PsiMember)?.containingClass?.withSourcePosition()
-
-    private fun PsiElement.withSourcePosition(): PsiElement? =
-        takeIf { it.hasSourcePosition() } ?: navigationElement?.takeIf { it.hasSourcePosition() }
-
-    private fun PsiElement.hasSourcePosition(): Boolean = textRange != null && containingFile != null
-
-    private fun lineOfAnchor(anchor: PsiElement): Int? =
-        anchor.getLineNumber(start = true).takeIf { it >= 0 }?.plus(1)
 
     /** 1-based line of [element], or `null` when it has no physical declaration to point at. */
     @VisibleForTesting
-    internal fun lineOf(element: PsiElement): Int? = sourceAnchorOf(element)?.let(::lineOfAnchor)
+    internal fun lineOf(element: PsiElement): Int? =
+        McpSourcePositions.sourceAnchorOf(element)?.let(McpSourcePositions::lineOfAnchor)
 
     companion object {
         // Guard cap for single-target lookups (find / contract): a URL pattern is not
@@ -1529,7 +1515,8 @@ private suspend fun getCurrentProjectForClass(applicationClassName: String? = nu
     val declaring = ProjectManager.getInstance().openProjects
         .filter { !it.isDefault }
         .filter { project ->
-            readAction {
+            // Waits for this project's indexing instead of failing the whole call because some other one is dumb.
+            smartReadAction(project) {
                 JavaPsiFacade.getInstance(project).findClass(applicationClassName, project.projectScope())
             } != null
         }
@@ -1552,6 +1539,11 @@ data class McpSpringBean(
     @param:McpDescription("Spring Bean name") val beanName: String,
     @param:McpDescription("full qualified java class name for Spring Bean") val className: String,
     @param:McpDescription("project module name where Spring Bean located") val moduleName: String,
+    @param:McpDescription("model that answered: STATIC or NATIVE_SNAPSHOT") val source: String,
+    @param:McpDescription("loaded context the row comes from; absent for STATIC")
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val contextId: String?,
+    @param:McpDescription("what the answering model cannot promise about this row")
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val limitations: List<String>,
 )
 
 data class EndpointJson(

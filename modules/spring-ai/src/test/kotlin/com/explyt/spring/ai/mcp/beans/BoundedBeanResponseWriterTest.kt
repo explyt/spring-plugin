@@ -153,6 +153,23 @@ class BoundedBeanResponseWriterTest {
         }
     }
 
+    /** The budget covers an error too: a message quoting a long path must not push the document past it. */
+    @Test
+    fun `an error with a long message fits the requested budget`() {
+        val problem = com.explyt.spring.core.service.beans.BeanQueryProblem(
+            "FILE_NOT_FOUND", "No file '" + "very/long/segment/".repeat(200) + "Clock.java' in the project."
+        )
+
+        val json = BoundedBeanResponseWriter().writeError(problem, 600)
+
+        assertTrue("Serialized ${json.length} chars", json.length <= 600)
+        val root = mapper.readTree(json)
+        assertEquals("ERROR", root["status"].asText())
+        assertEquals("FILE_NOT_FOUND", root["error"]["code"].asText())
+        assertTrue(root["error"]["message"].asText().startsWith("No file 'very/long/segment/"))
+        assertEquals(true, root["error"]["truncated"].asBoolean())
+    }
+
     @Test
     fun `escaped characters are counted as the client receives them`() {
         val escaped = BeanResponseContent(

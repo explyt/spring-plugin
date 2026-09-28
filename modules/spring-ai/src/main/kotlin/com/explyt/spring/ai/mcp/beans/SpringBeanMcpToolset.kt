@@ -27,9 +27,10 @@ class SpringBeanMcpToolset : McpToolset {
                 "Two modes: supply typeFqn and/or beanName to look beans up, or filePath and line (and column " +
                 "when several declarations share the line) to inspect an injection point; mixing them is " +
                 "rejected rather than guessed. " +
-                "The answer is relative to one explicitly chosen model, named in 'model': STATIC is the IDE's " +
-                "estimate for the application's module and does not prove component-scan or profile isolation, " +
-                "NATIVE_SNAPSHOT is a recorded context that may be out of date - neither proves the " +
+                "Choose the model with 'source': STATIC is the IDE's estimate for the application's module and " +
+                "does not prove component-scan or profile isolation, NATIVE is a recorded context that may be out " +
+                "of date, and AUTO prefers a recorded context when one is loaded. The answer names the model that " +
+                "actually answered in 'model.source' - STATIC or NATIVE_SNAPSHOT - and neither proves the " +
                 "application starts or that injection succeeds at runtime. " +
                 "'outcome' is INDETERMINATE, and 'matchCompleteness' PARTIAL, whenever something could not be " +
                 "decided; 'NONE' means nothing matched in that model, never that no declaration exists. " +
@@ -56,7 +57,10 @@ class SpringBeanMcpToolset : McpToolset {
         contextId: String? = null,
         @McpDescription("LOOKUP: exact FQN of a class or interface; compatible beans are listed, not substrings")
         typeFqn: String? = null,
-        @McpDescription("LOOKUP: exact case-sensitive bean name; an alias resolves to its canonical bean")
+        @McpDescription(
+            "LOOKUP: exact case-sensitive bean name; an alias the model knows resolves to its canonical bean, " +
+                    "and a miss is INDETERMINATE where a recorded context did not export aliases"
+        )
         beanName: String? = null,
         @McpDescription("INJECTION: project-relative path of the file holding the injection point")
         filePath: String? = null,

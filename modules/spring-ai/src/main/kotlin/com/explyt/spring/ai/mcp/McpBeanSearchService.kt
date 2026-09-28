@@ -44,11 +44,19 @@ class McpBeanSearchService(private val project: Project) {
             ?.let { MessageMappingEndpointLoader.searchMessageMappingClasses(it, it.moduleWithDependenciesScope) }
             ?: emptyList()
 
+        val provenance = Provenance(
+            source = snapshot.selection.source.name,
+            contextId = snapshot.selection.nativeContext?.id,
+            limitations = snapshot.selection.limitations
+        )
         return snapshot.records.asSequence()
             .onEach { ProgressManager.checkCanceled() }
-            .flatMap { record -> record.rows(mappingClasses) }
+            .flatMap { record -> record.rows(mappingClasses, provenance) }
             .toList()
     }
+
+    /** Which model answered, so a static estimate is never read as a recorded context. */
+    private data class Provenance(val source: String, val contextId: String?, val limitations: Set<String>)
 
     /**
      * One row per known name.
@@ -57,12 +65,16 @@ class McpBeanSearchService(private val project: Project) {
      * each of its names; the lookup tool counts it as one identity instead. Both are right for their own
      * question, so the two enumerations are kept deliberately different rather than silently unified.
      */
-    private fun ScopedBeanRecord.rows(mappingClasses: Collection<PsiClass>): Sequence<SpringBean> {
+    private fun ScopedBeanRecord.rows(
+        mappingClasses: Collection<PsiClass>,
+        provenance: Provenance
+    ): Sequence<SpringBean> {
         val className = typeName ?: return emptySequence()
         val type = beanType(mappingClasses)
         val module = declarationModule ?: declaration?.projectModule() ?: ""
+        val rowLimitations = (provenance.limitations + limitations).sorted()
         return knownNames.ifEmpty { setOf(name) }.asSequence()
-            .map { SpringBean(it, className, type, module) }
+            .map { SpringBean(it, className, type, module, provenance.source, provenance.contextId, rowLimitations) }
     }
 
     private fun PsiMember.projectModule(): String? =
@@ -130,7 +142,13 @@ class McpBeanSearchService(private val project: Project) {
 }
 
 data class SpringBean(
-    val beanName: String, val className: String, val beanType: McpBeanTypes, val moduleName: String,
+    val beanName: String,
+    val className: String,
+    val beanType: McpBeanTypes,
+    val moduleName: String,
+    val source: String,
+    val contextId: String?,
+    val limitations: List<String>,
 )
 
 enum class McpBeanTypes {

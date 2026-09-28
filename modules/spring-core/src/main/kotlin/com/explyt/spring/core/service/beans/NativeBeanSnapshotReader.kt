@@ -5,11 +5,15 @@
 
 package com.explyt.spring.core.service.beans
 
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.externalsystem.model.BeanSearch
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
+import com.explyt.spring.core.externalsystem.model.SpringBeanType
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
@@ -84,17 +88,19 @@ class NativeBeanSnapshotReader(private val project: Project) {
             exportedType?.psiClass != null -> elementFactory().createType(exportedType.psiClass)
             else -> factory?.returnType
         }
+        val declaredNames = factory?.let(::declaredBeanNames).orEmpty()
+        val provenAliases = declaredNames.takeIf { bean.beanName in it }.orEmpty()
         val limitations = declaringClass.limitations +
                 (exportedType?.limitations ?: emptySet()) +
                 setOfNotNull(NO_DECLARATION_IN_SCOPE.takeIf { declaringClass.psiClass == null }) +
-                ALIASES_NOT_EXPORTED
+                setOfNotNull(ALIASES_NOT_EXPORTED.takeIf { provenAliases.isEmpty() })
 
         return ScopedBeanRecord(
             id = BeanSnapshotIdentity.hash(listOf(context.id, bean.className, bean.methodName ?: "", bean.beanName)),
             name = bean.beanName,
-            knownNames = setOf(bean.beanName),
+            knownNames = linkedSetOf(bean.beanName) + provenAliases,
             typeName = bean.methodType ?: declaredType?.canonicalText ?: bean.className,
-            kind = if (bean.methodName == null) BeanKind.COMPONENT else BeanKind.BEAN_METHOD,
+            kind = kindOf(bean),
             declaration = factory ?: declaringClass.psiClass,
             declaredType = declaredType,
             declarationModule = null,
@@ -107,6 +113,29 @@ class NativeBeanSnapshotReader(private val project: Project) {
     }
 
     private fun elementFactory() = JavaPsiFacade.getElementFactory(project)
+
+    /**
+     * The export carries no aliases, but a `@Bean(name = {"a", "b"})` factory in the selected classpath still says
+     * which names it registers. They are taken only when the exported canonical name is one of them, so a factory
+     * that no longer matches what the application reported adds nothing.
+     */
+    private fun declaredBeanNames(factory: PsiMethod): Set<String> {
+        val annotation = factory.getMetaAnnotation(SpringCoreClasses.BEAN) ?: return emptySet()
+        return (annotation.getStringMemberValues("value") + annotation.getStringMemberValues("name"))
+            .filterTo(LinkedHashSet()) { it.isNotBlank() }
+    }
+
+    /**
+     * Read from what the export recorded, not from the selected classpath: a class outside the project sources was
+     * contributed by a library. `OTHER` means the sync recognised no stereotype on the class - it may have been
+     * imported, registered programmatically or carry a custom stereotype - so no declaration kind is claimed.
+     */
+    private fun kindOf(bean: SpringBeanData): BeanKind = when {
+        bean.methodName != null -> BeanKind.BEAN_METHOD
+        !bean.projectBean -> BeanKind.LIBRARY
+        bean.type == SpringBeanType.OTHER -> BeanKind.UNKNOWN
+        else -> BeanKind.COMPONENT
+    }
 
     /**
      * Resolves [fqn] inside the selected application's classpath.

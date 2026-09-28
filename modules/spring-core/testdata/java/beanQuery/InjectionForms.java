@@ -14,7 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import java.util.function.Supplier;
 
 @Service
 class SingleConsumer {
@@ -96,5 +98,43 @@ class QualifiedConsumer {
 
     @Autowired
     void injectMissing(@Qualifier("missing") Clock unmatched) {
+    }
+
+    @Autowired
+    void injectByAnnotation(@Qualifier("utc") Clock annotated) {
+    }
+}
+
+@Configuration
+class QualifiedClockConfiguration {
+    @Bean
+    @Qualifier("utc")
+    Clock utcClock() {
+        return Clock.systemUTC();
+    }
+}
+
+@Service
+class NullableConsumer {
+    NullableConsumer(@Nullable Clock nullableClock) {
+    }
+}
+
+@Service
+class CollectionConstructorConsumer {
+    CollectionConstructorConsumer(List<Clock> constructorClocks) {
+    }
+}
+
+@Configuration
+class NestedScopeConfiguration {
+    @Bean
+    Supplier<Clock> supplier(Clock outer) {
+        java.util.function.Function<Clock, Clock> identity = (Clock lambdaClock) -> lambdaClock;
+        try {
+            return () -> identity.apply(outer);
+        } catch (RuntimeException caught) {
+            return null;
+        }
     }
 }

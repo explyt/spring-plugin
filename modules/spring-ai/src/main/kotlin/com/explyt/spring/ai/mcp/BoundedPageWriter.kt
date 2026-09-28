@@ -90,6 +90,7 @@ class BoundedPageWriter {
         error.put("message", message)
         val choiceArray = error.putArray("choices")
         error.put(FIELD_TRUNCATED, false)
+        fitMessage(root, error, message, maxChars)
 
         for ((index, choice) in choices.withIndex()) {
             choiceArray.add(mapper.valueToTree<ObjectNode>(choice))
@@ -101,6 +102,22 @@ class BoundedPageWriter {
             }
         }
         return mapper.writeValueAsString(root)
+    }
+
+    /**
+     * Shortens a message that alone would push the error past [maxChars], such as one quoting a long path.
+     *
+     * Measured on the encoded document like every other response, so escaped characters count as the client
+     * receives them; a surrogate pair is never split.
+     */
+    private fun fitMessage(root: ObjectNode, error: ObjectNode, message: String, maxChars: Int) {
+        var kept = message.length
+        while (encodedLength(root) > maxChars && kept > 0) {
+            kept = (kept - (encodedLength(root) - maxChars) - ELLIPSIS.length).coerceAtLeast(0)
+            if (kept > 0 && message[kept - 1].isHighSurrogate()) kept--
+            error.put("message", message.take(kept) + ELLIPSIS)
+            error.put(FIELD_TRUNCATED, true)
+        }
     }
 
     /**
@@ -197,6 +214,7 @@ class BoundedPageWriter {
         /** Budget for an error that reports a broken budget; small enough to fit any client's floor. */
         const val FALLBACK_BUDGET = 512
 
+        private const val ELLIPSIS = "…"
         private const val STATUS_OK = "OK"
         private const val STATUS_ERROR = "ERROR"
         private const val FIELD_STATUS = "status"
