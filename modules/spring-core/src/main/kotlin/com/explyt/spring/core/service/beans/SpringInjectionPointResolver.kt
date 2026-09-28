@@ -20,7 +20,6 @@ import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiParameter
 import com.intellij.psi.PsiVariable
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UDeclaration
 import org.jetbrains.uast.UField
@@ -123,10 +122,9 @@ class SpringInjectionPointResolver(private val project: Project) {
      */
     private fun isSupportedPlace(variable: PsiVariable): Boolean = when (variable) {
         is PsiField -> variable.hasInjectionAnnotation()
-        is PsiParameter -> {
-            val method = PsiTreeUtil.getParentOfType(variable, PsiMethod::class.java)
-            method != null && method.acceptsInjectedParameters()
-        }
+        // The declaring scope, not the nearest enclosing method: a lambda or `catch` parameter inside a `@Bean`
+        // method belongs to that method's body, and Spring never injects into it.
+        is PsiParameter -> (variable.declarationScope as? PsiMethod)?.acceptsInjectedParameters() == true
 
         else -> false
     }

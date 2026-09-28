@@ -93,6 +93,26 @@ class ScopedBeanInjectionResolverTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("bean-slow"), result.match.records.map { it.id })
     }
 
+    /**
+     * `@Bean @Qualifier("utc") Clock utcClock()` answers to its qualifier although no bean is named `utc`: Spring
+     * compares the annotation on the declaration, not only the bean names.
+     */
+    fun testQualifierMatchesTheAnnotationOnTheDeclaration() {
+        val file = injectionForms()
+        val point = resolveAt(file, "@Qualifier(\"utc\") Clock annotated", "@Qualifier(\"utc\") Clock ".length)
+        val factory = JavaPsiFacade.getInstance(project)
+            .findClass("com.explyt.demo.QualifiedClockConfiguration", GlobalSearchScope.allScope(project))
+            ?.findMethodsByName("utcClock", false)?.singleOrNull()
+        assertNotNull("Precondition: the qualified factory must exist", factory)
+        val qualified = record("bean-utc", "utcClock", setOf("utcClock"), declaredType = typeOf("java.time.Clock"))
+            .copy(declaration = factory)
+
+        val result = ScopedBeanInjectionResolver(project).resolve(snapshotOf(qualified, fastClock()), point)
+
+        assertEquals(BeanOutcome.RESOLVED, result.outcome)
+        assertEquals(listOf("bean-utc"), result.match.records.map { it.id })
+    }
+
     /** A qualifier naming nothing in this context resolves to nothing - it must not fall back to the set. */
     fun testUnmatchedQualifierLeavesNoCandidate() {
         val point = resolveAt(injectionForms(), "@Qualifier(\"missing\") Clock unmatched", "@Qualifier(\"missing\") Clock ".length)

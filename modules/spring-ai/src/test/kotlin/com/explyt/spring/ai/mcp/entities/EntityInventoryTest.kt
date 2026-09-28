@@ -147,6 +147,20 @@ class EntityInventoryTest : ExplytJavaLightTestCase() {
         assertEquals("Paging parameters are not part of the question", base, paged)
     }
 
+    /**
+     * Both paginated tools fingerprint through one function, so a change to how a query is encoded cannot give the
+     * entity and bean tools two incompatible notions of "the same answer".
+     */
+    fun testRevisionIsTheSharedQueryFingerprint() {
+        val stamp = com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount.toString()
+        val question = query(packageFilter = "com.example.app")
+
+        assertEquals(
+            com.explyt.spring.ai.mcp.beans.BeanQueryRevision.compute(stamp, question),
+            EntityInventory.revision(project, question + mapOf("offset" to "5"))
+        )
+    }
+
     private fun query(
         packageFilter: String? = null,
         className: String? = null,

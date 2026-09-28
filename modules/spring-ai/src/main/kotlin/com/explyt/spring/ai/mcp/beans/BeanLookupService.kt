@@ -16,7 +16,8 @@ import com.explyt.spring.core.service.beans.SpringInjectionPoint
 import com.explyt.spring.core.service.beans.SpringInjectionPointResolver
 import com.explyt.spring.ai.mcp.McpProjectChoice
 import com.explyt.spring.ai.mcp.McpProjectResolver
-import com.intellij.openapi.application.smartReadAction
+import com.intellij.openapi.application.ReadConstraint
+import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -34,6 +35,9 @@ import kotlinx.coroutines.withContext
  * serves - happens inside a single smart read action, and only a String leaves it. A projection deferred past
  * that boundary would dereference PSI the platform is free to have invalidated by then.
  *
+ * The read action also waits for committed documents: an injection point is addressed by line and column, and
+ * the tool is called right after an agent typed the declaration, when the document may still be ahead of PSI.
+ *
  * Only an expected selection problem is turned into an error document. Cancellation and infrastructure failures
  * propagate: reporting them as an empty result would read as "this application has no such bean".
  */
@@ -44,7 +48,10 @@ class BeanLookupService(private val project: Project) {
         return try {
             request.validate()
             withContext(Dispatchers.IO) {
-                smartReadAction(project) { answer(request, page, writer) }
+                constrainedReadAction(
+                    ReadConstraint.inSmartMode(project),
+                    ReadConstraint.withDocumentsCommitted(project)
+                ) { answer(request, page, writer) }
             }
         } catch (e: BeanQueryException) {
             writer.writeError(e.problem, page.maxChars.coerceIn(MIN_ERROR_BUDGET, MAX_ERROR_BUDGET))

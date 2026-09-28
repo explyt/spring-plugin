@@ -45,7 +45,22 @@ class ScopedBeanMatcher(private val project: Project) {
             ?.let { typeFqn -> matchType(named, resolveQueryType(typeFqn, snapshot.application)) }
             ?: BeanMatch(named, MatchCompleteness.COMPLETE, 0, emptySet())
 
-        return BeanSelection(outcomeOf(match), match)
+        val decided = if (selector.beanName != null && named.isEmpty()) unexportedAliasesOf(snapshot, match) else match
+        return BeanSelection(outcomeOf(decided), decided)
+    }
+
+    /**
+     * A name that matched nothing may still be an alias of a record whose aliases were never exported: absence is
+     * proven only when every record carries its full set of names.
+     */
+    private fun unexportedAliasesOf(snapshot: ScopedBeanSnapshot, match: BeanMatch): BeanMatch {
+        val unaliased = snapshot.records.count { NativeBeanSnapshotReader.ALIASES_NOT_EXPORTED in it.limitations }
+        if (unaliased == 0) return match
+        return match.copy(
+            completeness = MatchCompleteness.PARTIAL,
+            unresolvedCount = match.unresolvedCount + unaliased,
+            limitations = match.limitations + NativeBeanSnapshotReader.ALIASES_NOT_EXPORTED
+        )
     }
 
     /**
