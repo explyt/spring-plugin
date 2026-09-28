@@ -62,6 +62,11 @@ class SpringConfigurationPropertiesSearch {
         return getPropertyIndex(module).findProperty(propertyName)
     }
 
+    /** Every map property of the catalogue with its normalised name, from the same cached index as [findProperty]. */
+    fun getMapPropertiesByCommonName(module: Module): List<Pair<String, ConfigurationProperty>> {
+        return getPropertyIndex(module).mapProperties()
+    }
+
     /**
      * The catalogue runs to thousands of entries, and the scan this replaces re-normalised every one of them on
      * every lookup — `isSameProperty` lowercases and strips separators on both sides per candidate. The names on
