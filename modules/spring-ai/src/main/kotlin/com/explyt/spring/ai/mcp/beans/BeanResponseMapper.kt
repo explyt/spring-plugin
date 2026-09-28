@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
+import com.explyt.spring.ai.mcp.McpSourcePositions
 import com.explyt.spring.core.service.beans.BeanAnnotationEvidence
 import com.explyt.spring.core.service.beans.BeanDetailsReader
 import com.explyt.spring.core.service.beans.BeanLookupSelector
@@ -16,9 +17,7 @@ import com.explyt.spring.core.service.beans.SpringInjectionPoint
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
-import com.intellij.psi.util.PsiUtilCore
 
 /**
  * Turns one answer into the fixed JSON projection the tool promises.
@@ -86,8 +85,12 @@ class BeanResponseMapper(private val project: Project) {
     private fun matchedName(record: ScopedBeanRecord, lookup: BeanLookupSelector?): String? =
         lookup?.beanName?.takeIf { it != record.name && it in record.knownNames }
 
+    /**
+     * Anchored by the rule every tool shares, so a light member is reported through its declaring class here as it
+     * is elsewhere. A library declaration is named by `sourceUrl`, because it has no path relative to the project.
+     */
     private fun declaration(member: PsiMember?): ObjectNode? {
-        val anchor = member?.takeIf { it.isValid }?.sourceAnchor() ?: return null
+        val anchor = member?.takeIf { it.isValid }?.let(McpSourcePositions::sourceAnchorOf) ?: return null
         val file = anchor.containingFile?.virtualFile ?: return null
         val node = mapper.createObjectNode()
 
@@ -97,27 +100,8 @@ class BeanResponseMapper(private val project: Project) {
         } else {
             node.put("sourceUrl", file.url)
         }
-        lineOf(anchor)?.let { node.put("line", it) }
+        McpSourcePositions.lineOfAnchor(anchor)?.let { node.put("line", it) }
         return node
-    }
-
-    /**
-     * A physical element to point at, or nothing.
-     *
-     * A light or synthetic member - a Kotlin `copy()`, a generated accessor - has no text range, and reading a
-     * position from it fails; such a bean keeps its record and simply carries no declaration.
-     */
-    private fun PsiElement.sourceAnchor(): PsiElement? =
-        takeIf { it.textRange != null && it.containingFile != null }
-            ?: navigationElement?.takeIf { it.textRange != null && it.containingFile != null }
-
-    private fun lineOf(anchor: PsiElement): Int? {
-        val file = anchor.containingFile ?: return null
-        val document = PsiUtilCore.getVirtualFile(file)
-            ?.let { com.intellij.psi.PsiDocumentManager.getInstance(project).getDocument(file) }
-            ?: return null
-        val offset = anchor.textRange?.startOffset ?: return null
-        return if (offset <= document.textLength) document.getLineNumber(offset) + 1 else null
     }
 
     /**

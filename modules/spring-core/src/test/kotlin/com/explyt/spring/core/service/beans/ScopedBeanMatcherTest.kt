@@ -48,6 +48,25 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
         assertTrue(crowded.match.records.isEmpty())
     }
 
+    /**
+     * A recorded context exports no aliases, so a name that matched nothing may be an alias of a bean it does
+     * hold. Absence is proven only where every record carries its full set of names.
+     */
+    fun testUnknownNameIsIndeterminateWhenAliasesWereNotExported() {
+        val unaliased = record("bean-clock", "clock", setOf("clock"))
+            .copy(limitations = setOf(NativeBeanSnapshotReader.ALIASES_NOT_EXPORTED))
+        assertEquals(
+            "Precondition: the canonical name still matches",
+            BeanOutcome.SINGLE,
+            ScopedBeanMatcher(project).lookup(snapshotOf(unaliased), BeanLookupSelector(null, "clock")).outcome
+        )
+
+        val result = ScopedBeanMatcher(project).lookup(snapshotOf(unaliased), BeanLookupSelector(null, "utcClock"))
+
+        assertEquals(BeanOutcome.INDETERMINATE, result.outcome)
+        assertTrue(NativeBeanSnapshotReader.ALIASES_NOT_EXPORTED in result.match.limitations)
+    }
+
     /** An alias is a name the bean answers to, so it must reach the same record - not a second one. */
     fun testSecondKnownNameFindsTheSameRecord() {
         val snapshot = snapshotOf(record("bean-clock", "clock", setOf("clock", "utcClock")))

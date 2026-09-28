@@ -6,6 +6,7 @@
 package com.explyt.spring.core.service.beans
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.util.ExplytAnnotationUtil.computeConstantExpression
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.intellij.openapi.module.ModuleUtilCore
@@ -13,7 +14,6 @@ import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiArrayInitializerMemberValue
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifierListOwner
@@ -89,14 +89,13 @@ object BeanDetailsReader {
         )
     }
 
+    /**
+     * A compile-time constant is reported by the value the compiler sees - a string with its escapes decoded, a
+     * referenced `static final` - and anything else, such as a class literal or an enum reference, as unknown.
+     */
     private fun PsiAnnotationMemberValue?.asStrings(): List<String> = when (this) {
         null -> emptyList()
         is PsiArrayInitializerMemberValue -> initializers.flatMap { it.asStrings() }
-        else -> listOfNotNull(constantText())
+        else -> listOfNotNull(computeConstantExpression() as? String)
     }
-
-    /** Only a string literal is a value we can report; anything computed is reported as unknown instead. */
-    private fun PsiElement.constantText(): String? = text
-        ?.takeIf { it.length >= 2 && it.startsWith("\"") && it.endsWith("\"") }
-        ?.removeSurrounding("\"")
 }
