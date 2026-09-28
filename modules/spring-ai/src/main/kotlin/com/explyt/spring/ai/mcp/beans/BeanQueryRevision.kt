@@ -13,7 +13,10 @@ import com.explyt.spring.core.service.beans.BeanSnapshotIdentity
  * A continuation is only the next page of the same answer when both still hold, so the caller sends it back and
  * a changed filter or a re-read model is reported as `RESULT_CHANGED` instead of silently serving a page of a
  * different result set. Paging parameters are deliberately excluded - `limit` and `maxChars` may change between
- * pages, and binding them would invalidate a continuation that describes the very same result.
+ * pages, and binding them would invalidate a continuation that describes the very same result - so the caller hands
+ * over a query that no longer carries them.
+ *
+ * Every paginated MCP tool fingerprints its answers here, so the encoding of a query cannot drift between tools.
  */
 object BeanQueryRevision {
 

@@ -11,6 +11,7 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
@@ -47,13 +48,31 @@ class StaticBeanSnapshotReader(private val project: Project) {
             // A production query must not see test-only beans. The decision follows the file the query is about,
             // never the selected editor, so the same request answers the same way.
             .filter { fromTestSource || !it.isFromTestSource() }
-            .map { toRecord(it, module) }
+            .map { DeclaredBean(it, declaredNamesOf(it, module)) }
             .toList()
+            .groupBy { it.identity }
+            .map { (_, declarations) -> toRecord(canonicalOf(declarations), module) }
     }
 
-    private fun toRecord(bean: PsiBean, module: Module): ScopedBeanRecord {
+    /**
+     * `@Bean({"a", "b"})` reaches the model as one [PsiBean] per name, while Spring registers one bean with aliases.
+     * Only names the member itself declares are folded together: two beans that merely share a class stay two.
+     */
+    private class DeclaredBean(val bean: PsiBean, val declaredNames: Set<String>) {
+        val identity: Any = if (bean.name in declaredNames) bean.psiMember else bean
+    }
+
+    private fun canonicalOf(declarations: List<DeclaredBean>): DeclaredBean {
+        val canonicalName = declarations.first().declaredNames.firstOrNull()
+        return declarations.firstOrNull { it.bean.name == canonicalName } ?: declarations.first()
+    }
+
+    private fun toRecord(declared: DeclaredBean, module: Module): ScopedBeanRecord {
+        val bean = declared.bean
         val factory = bean.psiMember as? PsiMethod
-        val knownNames = knownNamesOf(bean, module)
+        val knownNames = (listOf(bean.name) + declared.declaredNames).filterTo(LinkedHashSet()) { it.isNotBlank() }
+        // The active model builds its beans without reading `@Primary`, so the flag is taken from the declaration.
+        val primary = bean.isPrimary || bean.psiMember.isMetaAnnotatedBy(SpringCoreClasses.PRIMARY)
 
         return ScopedBeanRecord(
             id = BeanSnapshotIdentity.hash(
@@ -68,9 +87,9 @@ class StaticBeanSnapshotReader(private val project: Project) {
             // The declaring module comes from the member, not from the type: a `@Bean Clock` is declared in the
             // project even though `java.time.Clock` belongs to the JDK.
             declarationModule = ModuleUtilCore.findModuleForPsiElement(bean.psiMember)?.name,
-            primary = bean.isPrimary,
+            primary = primary,
             priority = null,
-            details = BeanDetailsEvidence(aliases = knownNames.toList(), primary = bean.isPrimary),
+            details = BeanDetailsEvidence(aliases = knownNames.toList(), primary = primary),
             limitations = emptySet()
         )
     }
@@ -81,11 +100,9 @@ class StaticBeanSnapshotReader(private val project: Project) {
      * Reading them here is what lets an exact-name query match an alias without a second lookup; the canonical
      * name stays the one the model already chose.
      */
-    private fun knownNamesOf(bean: PsiBean, module: Module): Set<String> {
-        val declared: Set<String> = bean.psiMember.resolveBeanName(module)
-        return (listOf(bean.name) + declared + declaredBeanAliases(bean))
+    private fun declaredNamesOf(bean: PsiBean, module: Module): Set<String> =
+        (bean.psiMember.resolveBeanName(module) + declaredBeanAliases(bean))
             .filterTo(LinkedHashSet()) { it.isNotBlank() }
-    }
 
     /**
      * `@Bean` declares its names under either `value` or `name` - they are aliases of one attribute in Spring.

@@ -7,7 +7,7 @@ package com.explyt.spring.ai.mcp.entities
 
 import com.explyt.spring.ai.mcp.EntityFieldJson
 import com.explyt.spring.ai.mcp.EntityIndexJson
-import com.explyt.spring.core.service.beans.BeanSnapshotIdentity
+import com.explyt.spring.ai.mcp.beans.BeanQueryRevision
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -84,19 +84,11 @@ class EntityInventory(private val mapper: ObjectMapper = ObjectMapper()) {
          * Paging parameters are stripped rather than trusted to be absent: binding `limit` would turn every
          * page-size change into `RESULT_CHANGED` for an answer that did not change at all.
          */
-        fun revision(project: Project, normalizedQuery: Map<String, String?>): String {
-            val stamp = PsiModificationTracker.getInstance(project).modificationCount.toString()
-            return BeanSnapshotIdentity.hash(
-                listOf(stamp) + normalizedQuery.entries
-                    .filterNot { it.key in PAGING_KEYS }
-                    .sortedBy { it.key }
-                    .flatMap { listOf(it.key, it.value ?: NULL_MARKER) }
-            )
-        }
+        fun revision(project: Project, normalizedQuery: Map<String, String?>): String = BeanQueryRevision.compute(
+            PsiModificationTracker.getInstance(project).modificationCount.toString(),
+            normalizedQuery.filterKeys { it !in PAGING_KEYS }
+        )
 
         private val PAGING_KEYS = setOf("offset", "limit", "maxChars", "expectedRevision")
-
-        /** Distinguishes an absent key from one explicitly set to the string "null". */
-        private const val NULL_MARKER = "\u0000null"
     }
 }

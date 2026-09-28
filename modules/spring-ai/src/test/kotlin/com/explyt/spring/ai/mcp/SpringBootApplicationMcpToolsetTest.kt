@@ -179,9 +179,14 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertNotNull("Expected systemClock among ${texts(beans, "beanName")}", clock)
         assertEquals("java.time.Clock", clock!!["className"].asText())
         assertEquals(
-            "The successful schema must not gain or lose fields",
-            setOf("beanName", "className", "moduleName"),
+            "A row names the bean and the model that answered, and nothing else",
+            setOf("beanName", "className", "moduleName", "source", "limitations"),
             clock.fieldNames().asSequence().toSet()
+        )
+        assertEquals("STATIC", clock["source"].asText())
+        assertTrue(
+            "A static answer must say it is a module estimate",
+            clock["limitations"].map { it.asText() }.contains("STATIC_CONTEXT_APPROXIMATE")
         )
     }
 

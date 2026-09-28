@@ -7,9 +7,11 @@ package com.explyt.spring.core.service.beans
 
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
+import com.explyt.util.ExplytAnnotationUtil
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiAnnotation
+import com.intellij.psi.PsiMember
 
 /**
  * Decides what an injection point receives from an already selected snapshot.
@@ -43,9 +45,10 @@ class ScopedBeanInjectionResolver(private val project: Project) {
      * Keeps the candidates the qualifier names, and nothing when it names none of them.
      *
      * The name is compared against every name a record is known to answer to, so a qualifier pointing at an
-     * alias selects the same bean its canonical name would. A qualifier whose value is not a constant names
-     * nothing this model can read, so the set is reported as undecided rather than silently unfiltered - a
-     * caller told "ambiguous" would look for a second bean that the qualifier may well have excluded.
+     * alias selects the same bean its canonical name would; a declaration carrying an equal qualifier annotation
+     * is selected too, as Spring selects `@Bean @Qualifier("utc") Clock utcClock()`. A qualifier whose value is
+     * not a constant names nothing this model can read, so the set is reported as undecided rather than silently
+     * unfiltered - a caller told "ambiguous" would look for a second bean that the qualifier may well have excluded.
      */
     private fun narrowByQualifier(match: BeanMatch, qualifier: PsiAnnotation): BeanMatch {
         val wanted = qualifier.resolveBeanName()
@@ -56,9 +59,15 @@ class ScopedBeanInjectionResolver(private val project: Project) {
 
         val kept = match.records.filter {
             ProgressManager.checkCanceled()
-            wanted in it.knownNames
+            wanted in it.knownNames || it.declaration.carriesQualifier(qualifier)
         }
         return match.copy(records = kept)
+    }
+
+    private fun PsiMember?.carriesQualifier(qualifier: PsiAnnotation): Boolean {
+        val member = this?.takeIf { it.isValid } ?: return false
+        val qualifierName = qualifier.qualifiedName ?: return false
+        return ExplytAnnotationUtil.equal(qualifier, member.getAnnotation(qualifierName))
     }
 
     /**
