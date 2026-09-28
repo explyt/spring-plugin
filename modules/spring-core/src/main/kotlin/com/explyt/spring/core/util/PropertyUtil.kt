@@ -11,7 +11,7 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_PREFIX
 import com.explyt.spring.core.SpringProperties.PLACEHOLDER_SUFFIX
-import com.explyt.spring.core.SpringProperties.POSTFIX_VALUES
+
 import com.explyt.spring.core.completion.properties.*
 import com.explyt.spring.core.completion.properties.ConfigurationPropertiesLoader.Companion.getKeyPsiClass
 import com.explyt.spring.core.properties.dataRetriever.ConfigurationPropertyDataRetriever
@@ -44,8 +44,12 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.childrenOfType
+import com.intellij.util.containers.ConcurrentFactoryMap
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.text.PlaceholderTextRanges
 import org.jetbrains.annotations.VisibleForTesting
@@ -98,21 +102,9 @@ object PropertyUtil {
     fun getPropertyHint(
         module: Module,
         propertyKey: String
-    ): PropertyHint? {
-        val propertyHint = SpringConfigurationPropertiesSearch.getInstance(module.project)
-            .getAllHints(module).find { hint ->
-                val hintName = hint.name
-                if (hintName == propertyKey) {
-                    return@find true
-                }
-                val valuesIdx = hintName.lastIndexOf(POSTFIX_VALUES)
-                if (valuesIdx == -1) {
-                    return@find false
-                }
-                propertyKey.startsWith(hintName.substring(0, valuesIdx))
-            }
-        return propertyHint
-    }
+    ): PropertyHint? = SpringConfigurationPropertiesSearch.getInstance(module.project)
+        .getHintIndex(module)
+        .hintFor(propertyKey)
 
     fun getReferenceByFilePrefix(
         text: String,
@@ -235,9 +227,9 @@ object PropertyUtil {
         search.findProperty(module, propertyKey)?.let { return it }
 
         val commonKey = toCommonPropertyForm(propertyKey)
-        return search.getAllProperties(module).asSequence()
-            .filter { it.isMap() }
-            .filter { isOwnedBy(commonKey, toCommonPropertyForm(it.name)) }
+        return search.getMapPropertiesByCommonName(module).asSequence()
+            .filter { (commonName, _) -> isOwnedBy(commonKey, commonName) }
+            .map { it.second }
             // The longest declared prefix is the closest declaration; a shorter one may be an unrelated ancestor.
             .maxByOrNull { it.name.length }
     }
@@ -940,16 +932,13 @@ object PropertyUtil {
     }
 
     fun getMembersOfType(module: Module, valueType: String, prefix: String): List<PsiMember> {
-        val result = hashMapOf<String, ConfigurationProperty>()
         val project = module.project
         val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
         val foundClass =
             JavaPsiFacade.getInstance(project).findClass(qualifiedName, GlobalSearchScope.allScope(project))
                 ?: return emptyList()
 
-        collectConfigurationProperty(module, foundClass, foundClass, "", result)
-
-        return result.asSequence()
+        return configurationPropertiesOf(foundClass, module).asSequence()
             .filter {
                 isSameProperty(it.key.substringAfter("."), prefix)
                         || isSameProperty(it.key, prefix)
@@ -957,6 +946,25 @@ object PropertyUtil {
             .map { value -> value.value.sourceType?.let { findSourceMember(prefix, it, project) } }
             .filterNotNullTo(mutableListOf())
     }
+
+    /**
+     * The configuration model of [psiClass] as seen from [module], built once per PSI state instead of once per key
+     * segment: a map key resolves segment by segment, and every segment used to walk the fields, setters and nested
+     * classes of the whole type again.
+     *
+     * The module is a key of the cached map, not a capture of the provider: the platform keeps the first provider for
+     * the lifetime of the holder, so a captured module would answer every later module with the first one's model.
+     */
+    private fun configurationPropertiesOf(psiClass: PsiClass, module: Module): Map<String, ConfigurationProperty> =
+        CachedValuesManager.getCachedValue(psiClass) {
+            CachedValueProvider.Result.create(
+                ConcurrentFactoryMap.createMap<Module, Map<String, ConfigurationProperty>> { forModule ->
+                    hashMapOf<String, ConfigurationProperty>()
+                        .also { collectConfigurationProperty(forModule, psiClass, psiClass, "", it) }
+                },
+                PsiModificationTracker.MODIFICATION_COUNT
+            )
+        }.getValue(module)
 
     fun isPropertyMemberName(memberName: String?, propertyName: String): Boolean {
         if (memberName == null) return false

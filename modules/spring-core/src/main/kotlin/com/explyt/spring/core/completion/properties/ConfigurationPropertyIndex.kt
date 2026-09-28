@@ -28,9 +28,17 @@ import com.explyt.spring.core.util.PropertyUtil
 class ConfigurationPropertyIndex private constructor(
     private val plain: Map<String, Entry>,
     private val booleanAliased: Map<String, Entry>,
+    private val mapsByCommonName: List<Pair<String, ConfigurationProperty>>,
 ) {
 
     private class Entry(val order: Int, val property: ConfigurationProperty)
+
+    /**
+     * The map properties in their normalised form, for a key that no declaration names exactly: a map entry key
+     * (`logging.level.org.springframework`) is owned by the map property it extends. Normalised once here instead of
+     * once per catalogue entry per looked-up key.
+     */
+    fun mapProperties(): List<Pair<String, ConfigurationProperty>> = mapsByCommonName
 
     fun findProperty(propertyName: String): ConfigurationProperty? {
         val plainHit = plain[PropertyUtil.toCommonPropertyForm(propertyName)]
@@ -57,7 +65,8 @@ class ConfigurationPropertyIndex private constructor(
                 val target = if (property.isBooleanType()) booleanAliased else plain
                 target.putIfAbsent(key, Entry(order, property))
             }
-            return ConfigurationPropertyIndex(plain, booleanAliased)
+            val maps = properties.filter { it.isMap() }.map { PropertyUtil.toCommonPropertyForm(it.name) to it }
+            return ConfigurationPropertyIndex(plain, booleanAliased, maps)
         }
     }
 }

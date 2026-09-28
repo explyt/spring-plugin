@@ -35,9 +35,14 @@ class FoldedPropertyValue(
 
     companion object {
 
-        fun resolve(module: Module, key: String): FoldedPropertyValue? {
-            val properties = DefinedConfigurationPropertiesSearch.getInstance(module.project)
-                .findProperties(module, key)
+        fun resolve(module: Module, key: String): FoldedPropertyValue? =
+            choose(module, DefinedConfigurationPropertiesSearch.getInstance(module.project).findProperties(module, key))
+
+        /**
+         * The value that wins among [properties], all definitions of one key. A caller resolving many keys reads the
+         * module's definitions once and passes each key's share, instead of rescanning every configuration file per key.
+         */
+        fun choose(module: Module, properties: List<DefinedConfigurationProperty>): FoldedPropertyValue? {
             if (properties.isEmpty()) return null
 
             val profilesService = ProfilesService.getInstance(module.project)

@@ -89,6 +89,28 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/api/v1/models" to "GET"), webFluxEndpoints())
     }
 
+    /**
+     * `accept(APPLICATION_JSON).nest { }` is the reference-doc form: its receiver is a request predicate, not a path,
+     * so it contributes no prefix - and its routes must stay in the model rather than vanish with it.
+     */
+    fun testRoutesInsideAPredicateNestAreListedWithoutAPrefix() {
+        addRouterConfig(
+            routes = """
+                accept(MediaType.APPLICATION_JSON).nest {
+                    GET("/person/{id}", handler::handle)
+                }
+                "/api".nest {
+                    accept(MediaType.APPLICATION_JSON).nest {
+                        POST("/person", handler::handle)
+                    }
+                }
+            """,
+            imports = "import org.springframework.http.MediaType"
+        )
+
+        assertEquals(listOf("/api/person" to "POST", "/person/{id}" to "GET"), webFluxEndpoints())
+    }
+
     fun testUnresolvablePathIsNotListedAtAll() {
         myFixture.addFileToProject(
             "UnresolvableRouterConfig.kt",

@@ -202,6 +202,35 @@ class YamlKeyToKebabQuickFixTest : ExplytInspectionJavaTestCase() {
         assertFalse("A stale non-kebab spelling survived:\n$text", text.contains("export_enabled"))
     }
 
+    /**
+     * A key inside a list element has a sequence item and a sequence between it and its enclosing key. Walking the
+     * grandparent stopped there, so the fix for a non-canonical key above the list renamed nothing at all.
+     */
+    fun testRenamesAKeyAboveAListElement() {
+        val yaml = myFixture.addFileToProject(
+            "application.yaml",
+            """
+            explyt:
+              rateLimits:
+                - name: api
+            """.trimIndent()
+        )
+        val leaf = keyValueOf(yaml, "name")
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            YamlKeyToKebabQuickFix(leaf).invoke(project, yaml, null, leaf, leaf)
+        }
+
+        assertEquals(
+            """
+            explyt:
+              rate-limits:
+                - name: api
+            """.trimIndent(),
+            PsiDocumentManager.getInstance(project).getDocument(yaml)?.text
+        )
+    }
+
     private fun keyValueOf(yaml: PsiFile, keyText: String): YAMLKeyValueImpl =
         PsiTreeUtil.findChildrenOfType(yaml, YAMLKeyValueImpl::class.java)
             .first { it.keyText == keyText }

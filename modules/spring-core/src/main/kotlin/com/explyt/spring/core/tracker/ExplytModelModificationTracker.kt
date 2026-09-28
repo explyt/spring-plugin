@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.tracker
 
+import com.explyt.spring.core.SpringProperties.ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.lang.properties.psi.PropertiesFile
 import com.intellij.openapi.project.Project
@@ -116,6 +117,11 @@ internal class MyUastPsiTreeChangeAdapter(
         if (psiFile is YAMLFile) {
             modelTracker.incModificationCount()
             propertyTracker.incModificationCount()
+            return
+        }
+        // The project's own metadata feeds the property and hint catalogues cached against this tracker.
+        if (psiFile?.name == ADDITIONAL_CONFIGURATION_METADATA_FILE_NAME) {
+            modelTracker.incModificationCount()
             return
         }
         if (psiFile !is PsiClassOwner) {

@@ -49,7 +49,8 @@ import org.jetbrains.yaml.psi.YAMLScalar
  *   lower case (`never`, `graceful`) or kebab-case (`read-uncommitted`, `path-pattern-parser`).
  *
  * A value that matches nothing is never reported here: it is either free-form (a hint whose provider is `any`) or a
- * genuine error, which [SpringBasePropertyInspection] owns.
+ * genuine error, which [SpringBasePropertyInspection] owns - and so is every value of a hint declaring a closed value
+ * set, which that inspection compares verbatim.
  */
 class SpringRecommendedEnumValueInspection : SpringBaseLocalInspectionTool() {
 
@@ -90,6 +91,9 @@ class SpringRecommendedEnumValueInspection : SpringBaseLocalInspectionTool() {
         // A hint states the literals of this very property, so it outranks the value type: an enum-typed property that
         // also ships hints has already declared which spelling to write.
         val hint = PropertyUtil.getPropertyHint(module, property.key)
+        // A closed value set is validated verbatim by SpringBasePropertyInspection, which reports a case-only
+        // difference as an invalid value; calling the same value a mere spelling here would contradict that verdict.
+        if (hint != null && hint.declaresClosedValueSet()) return emptyList()
         val recommend = hintRecommendation(hint)
             ?: enumRecommendation(module, configurationProperty)
             ?: return emptyList()
