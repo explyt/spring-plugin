@@ -21,7 +21,7 @@ import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanPsiClass
-import com.explyt.util.ExplytPsiUtil.allSupers
+
 import com.explyt.util.ExplytPsiUtil.isEqualOrInheritor
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.isPublic
@@ -220,7 +220,7 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (psiMethod.parameterList.parametersCount == 1) {
             eventPsiType = psiMethod.parameterList.parameters[0].type
         }
-        val eventPsiClassByAnnotation = getPsiClassesByAnnotationCached(module, psiMethod)
+        val eventPsiClassByAnnotation = getPsiClassesByAnnotationCached(psiMethod)
 
         val methodArgumentTypes = getMethodArgumentTypes(module)
         val publishCalls = getPublishMethodCalls(methodArgumentTypes, eventPsiType, eventPsiClassByAnnotation)
@@ -258,13 +258,22 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
             .map { it.navigationElement }
     }
 
-    private fun getPsiClassesByAnnotationCached(module: Module, psiMethod: PsiMethod): Set<PsiClass> {
-        val cacheManager = CachedValuesManager.getManager(module.project)
-
-        return cacheManager.getCachedValue(psiMethod) {
+    /**
+     * The event classes a listener method declares through `@EventListener(classes = ...)`.
+     *
+     * Resolved in the method's own module, which is derived from the method inside the provider: the platform keeps
+     * the provider of the first call for the lifetime of the holder, so a module passed in by the caller - the
+     * initiating module of a project-wide search - would freeze that caller's module into every later answer.
+     */
+    private fun getPsiClassesByAnnotationCached(psiMethod: PsiMethod): Set<PsiClass> {
+        return CachedValuesManager.getCachedValue(psiMethod) {
+            val project = psiMethod.project
+            val classes = ModuleUtilCore.findModuleForPsiElement(psiMethod)
+                ?.let { getPsiClassesByAnnotation(it, psiMethod) }
+                .orEmpty()
             CachedValueProvider.Result.create(
-                getPsiClassesByAnnotation(module, psiMethod),
-                ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+                classes,
+                ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
         }
     }
@@ -342,10 +351,9 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
         val uCallExpression = psiElement.toUElementOfType<UCallExpression>() ?: return Collections.emptyList()
         if (uCallExpression.valueArgumentCount != 1) return Collections.emptyList()
         val eventPsiType = uCallExpression.valueArguments[0].getExpressionType() ?: return Collections.emptyList()
-        val allTypes = eventPsiType.allSupers().filter { it.canonicalText != "java.lang.Object" }
 
         return listenerMethods(module, anchoredInLibrary = elementModule == null).asSequence()
-            .filter { allTypes.any { psiType -> isEqualsTypeOrClass(it, psiType) } }
+            .filter { isEqualsTypeOrClass(it, eventPsiType) }
             .map { it.element.navigationElement }
             .toList()
     }
@@ -411,17 +419,21 @@ class EventListenerLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
         val methodArguments = mutableListOf<MethodArgumentClasses>()
         for (element in listenerMethods) {
-            val byAnnotation = getPsiClassesByAnnotationCached(module, element)
+            val byAnnotation = getPsiClassesByAnnotationCached(element)
             methodArguments.add(MethodArgumentClasses(element, byAnnotation))
         }
         return methodArguments
     }
 
+    /**
+     * Spring invokes a listener when the published event is assignable to what it declares - the declared type is
+     * the event or one of its supertypes, never a subtype of it.
+     */
     private fun isEqualsTypeOrClass(methodArgumentClasses: MethodArgumentClasses, eventPsiType: PsiType): Boolean {
         val argumentType = methodArgumentClasses.argumentType
         val argumentClasses = methodArgumentClasses.argumentClasses
         return if (argumentType != null) {
-            eventPsiType.isAssignableFrom(argumentType)
+            argumentType.isAssignableFrom(eventPsiType)
         } else if (argumentClasses.isNotEmpty()) {
             argumentClasses.any { eventPsiType.resolveBeanPsiClass?.isEqualOrInheritor(it) ?: false }
         } else {

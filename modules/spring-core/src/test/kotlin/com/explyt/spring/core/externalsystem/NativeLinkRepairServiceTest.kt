@@ -23,6 +23,7 @@ import com.intellij.openapi.externalSystem.model.internal.InternalExternalProjec
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsDataStorage
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.PlatformTestUtil
 
 /**
@@ -176,6 +177,23 @@ class NativeLinkRepairServiceTest : ExplytKotlinLightTestCase() {
         assertTrue(healed)
         assertEquals("Dashboard Prod", executionSettings.runConfigurationName)
         assertEquals("Dashboard Prod", linkedName(mainFilePath))
+    }
+
+    /**
+     * The sync builds the project, and the build output starts indexing: the candidate search runs in exactly that
+     * window, where a main class that cannot be read looks like no candidate at all. Absence is proven only in smart
+     * mode, so the link is kept for a sync that can decide instead of being deleted.
+     */
+    fun testSyncDoesNotPruneWhileIndexing() {
+        val mainFilePath = configurePlainMainFile()
+        linkProject(mainFilePath, storedName = "Dashboard VPC")
+
+        val healed = DumbModeTestUtils.computeInDumbModeSynchronously(project) {
+            healOrPrune(mainFilePath, "Dashboard VPC")
+        }
+
+        assertFalse(healed)
+        assertNotNull("A link must not be pruned on data read during indexing", linkedSettings(mainFilePath))
     }
 
     /** A candidate that cannot drive this link (re-resolution failed) must not be persisted. */
