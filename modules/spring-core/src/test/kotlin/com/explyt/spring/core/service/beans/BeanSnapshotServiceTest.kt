@@ -156,6 +156,53 @@ class BeanSnapshotServiceTest : ExplytKotlinLightTestCase() {
     }
 
     /**
+     * `@Primary` is read from the declaration: the active model builds its beans without it, and a record that
+     * reported every bean as non-primary made a plain `@Primary` pair ambiguous.
+     */
+    fun testStaticSnapshotReadsPrimaryFromTheDeclaration() {
+        val application = applicationClass("App", "com.explyt.demo")
+        addClockConfig(
+            """
+            @Bean @Primary
+            public Clock utcClock() { return Clock.systemUTC(); }
+
+            @Bean
+            public Clock fixedClock() { return Clock.systemUTC(); }
+            """
+        )
+
+        val records = staticSnapshot(application).records.filter { it.typeName == "java.time.Clock" }
+
+        assertEquals(
+            "Precondition: both clocks must be enumerated",
+            setOf("utcClock", "fixedClock"), records.map { it.name }.toSet()
+        )
+        assertEquals(true, records.single { it.name == "utcClock" }.primary)
+        assertEquals(false, records.single { it.name == "fixedClock" }.primary)
+        assertEquals(true, records.single { it.name == "utcClock" }.details.primary)
+    }
+
+    /**
+     * The positional `@Bean({"a", "b"})` form reaches the model once per name, but it is one bean: two records
+     * sharing an id would make a type lookup answer `MULTIPLE` for a single declaration.
+     */
+    fun testPositionalBeanNamesAreOneRecord() {
+        val application = applicationClass("App", "com.explyt.demo")
+        addClockConfig(
+            """
+            @Bean({"systemClock", "utcClock"})
+            public Clock systemClock() { return Clock.systemUTC(); }
+            """
+        )
+
+        val clocks = staticSnapshot(application).records.filter { it.typeName == "java.time.Clock" }
+
+        assertEquals("One declaration must be one record, got ${clocks.map { it.name }}", 1, clocks.size)
+        assertEquals("systemClock", clocks.single().name)
+        assertEquals(setOf("systemClock", "utcClock"), clocks.single().knownNames)
+    }
+
+    /**
      * The same query must answer the same way regardless of which tab is focused.
      *
      * An editor-driven stamp would tell a caller paging through results that the model changed when only the UI
@@ -183,6 +230,28 @@ class BeanSnapshotServiceTest : ExplytKotlinLightTestCase() {
         assertEquals("The model stamp must not follow the editor", before.modelStamp, after.modelStamp)
         assertEquals(before.selection.source, after.selection.source)
         assertEquals(before.records.map { it.id }, after.records.map { it.id })
+    }
+
+    private fun staticSnapshot(application: PsiClass) =
+        SpringSearchServiceFacade.getInstance(project).getBeanSnapshot(application, BeanSourcePreference.STATIC)
+
+    private fun addClockConfig(body: String) {
+        myFixture.addFileToProject(
+            "com/explyt/demo/ClockConfig.java",
+            """
+            |package com.explyt.demo;
+            |
+            |import org.springframework.context.annotation.Bean;
+            |import org.springframework.context.annotation.Configuration;
+            |import org.springframework.context.annotation.Primary;
+            |import java.time.Clock;
+            |
+            |@Configuration
+            |public class ClockConfig {
+            |${body.trimIndent().prependIndent("    ")}
+            |}
+            """.trimMargin()
+        )
     }
 
     private fun applicationClass(name: String, packageName: String): PsiClass {

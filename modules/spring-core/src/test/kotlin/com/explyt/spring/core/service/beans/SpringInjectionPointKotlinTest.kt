@@ -84,6 +84,31 @@ open class SpringInjectionPointKotlinTest : ExplytKotlinLightTestCase() {
         assertEquals("other", point.name)
     }
 
+    /**
+     * Kotlin publishes `List<Clock>` of an open type as `List<? extends Clock>`; the upper bound is the element
+     * Spring resolves, so the shape must not collapse to unknown.
+     */
+    fun testKotlinCollectionAndProviderOfAnInterfaceKeepTheirElementType() {
+        val file = defaultClock()
+
+        val list = resolveAt(file, "kotlinClocks: List<Clock>")
+        val provider = resolveAt(file, "kotlinProvider: org.springframework")
+
+        assertEquals(InjectionShape.COLLECTION, list.facts.shape)
+        assertEquals("java.time.Clock", list.beanType?.canonicalText)
+        assertEquals(InjectionShape.PROVIDER, provider.facts.shape)
+        assertEquals("java.time.Clock", provider.beanType?.canonicalText)
+    }
+
+    /** A nullable Kotlin property is optional for Spring exactly like a nullable constructor parameter. */
+    fun testKotlinNullableFieldIsOptional() {
+        val point = resolveAt(defaultClock(), "var nullableField: Clock?", "var ".length)
+
+        assertEquals("nullableField", point.name)
+        assertEquals(false, point.facts.required)
+        assertEquals(InjectionCapabilityPolicy.KOTLIN_NULLABLE_SUPPORTED, point.facts.basis)
+    }
+
     fun testAnnotatedFieldIsAnInjectionPoint() {
         val file = defaultClock()
 

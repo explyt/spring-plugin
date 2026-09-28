@@ -35,6 +35,52 @@ class SpringInjectionPointJavaTest : ExplytJavaLightTestCase() {
         assertEquals("java.time.Clock", point.beanType?.canonicalText)
     }
 
+    /**
+     * Spring declares an empty collection only for the arguments of the constructor or factory it calls, so an
+     * autowired collection field with no bean fails at startup: it is required. The constructor argument is not.
+     */
+    fun testCollectionIsRequiredOnAFieldAndOptionalOnTheSoleConstructor() {
+        val file = forms()
+
+        val field = resolveAt(file, "List<Clock> allClocks", "List<Clock> ".length)
+        val constructor = resolveAt(file, "List<Clock> constructorClocks", "List<Clock> ".length)
+
+        assertEquals(InjectionShape.COLLECTION, field.facts.shape)
+        assertEquals(true, field.facts.required)
+        assertEquals(InjectionShape.COLLECTION, constructor.facts.shape)
+        assertEquals(false, constructor.facts.required)
+        assertEquals(InjectionCapabilityPolicy.CONTAINER_TYPE, constructor.facts.basis)
+    }
+
+    /** Spring treats a declaration annotated with any runtime-retained `@Nullable` as an optional dependency. */
+    fun testNullableParameterIsNotRequired() {
+        val point = resolveAt(forms(), "@Nullable Clock nullableClock", "@Nullable Clock ".length)
+
+        assertEquals(false, point.facts.required)
+        assertEquals(InjectionCapabilityPolicy.JAVA_NULLABLE, point.facts.basis)
+    }
+
+    /**
+     * A lambda or `catch` parameter lives inside a `@Bean` method but belongs to its body; Spring injects only the
+     * method's own parameters, and a verdict for the others would describe a variable nothing ever injects.
+     */
+    fun testLambdaAndCatchParametersInsideABeanMethodAreNotInjectionPoints() {
+        val file = forms()
+        assertEquals(
+            "Precondition: the method's own parameter must stay an injection point",
+            "outer", resolveAt(file, "Clock outer", "Clock ".length).name
+        )
+
+        val nested = listOf(
+            "(Clock lambdaClock)" to "(Clock ".length,
+            "RuntimeException caught" to "RuntimeException ".length
+        )
+        for ((marker, offset) in nested) {
+            val failure = queryProblem { resolveAt(file, marker, offset) }
+            assertEquals(marker, SpringInjectionPointResolver.UNSUPPORTED_INJECTION_POINT, failure.problem.code)
+        }
+    }
+
     fun testCollectionFormsCarryTheirElementType() {
         val file = forms()
 
