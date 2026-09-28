@@ -101,6 +101,26 @@ class ActionBreadcrumbSanitizerTest {
         assertEquals(Date(first).toString(), result.getData("first_seen"))
     }
 
+    /**
+     * Repeats suppressed at the producer arrive as one breadcrumb carrying their number; collapsing it into the first
+     * occurrence must add that number, not count the summary as a single repeat.
+     */
+    @Test
+    fun `a producer summary of suppressed repeats adds its count to the group`() {
+        val eventTime = Date(DAY)
+        val first = eventTime.time - 3 * MINUTE
+        val breadcrumbs = listOf(
+            action("GotoDeclaration", first),
+            action("GotoDeclaration", eventTime.time - MINUTE).apply { setData("count", 4) },
+        )
+
+        val result = ActionBreadcrumbSanitizer.sanitize(breadcrumbs, eventTime).single()
+
+        assertEquals(5, result.getData("count"))
+        assertEquals(Date(eventTime.time - MINUTE), result.timestamp)
+        assertEquals(Date(first).toString(), result.getData("first_seen"))
+    }
+
     @Test
     fun `carries every data key into a collapsed group`() {
         val eventTime = Date(DAY)

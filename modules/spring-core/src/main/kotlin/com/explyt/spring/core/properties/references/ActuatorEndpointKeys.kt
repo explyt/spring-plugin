@@ -77,8 +77,12 @@ object ActuatorEndpointKeys {
         // segment absent from the element text belongs to an enclosing key and is covered there.
         val elementText = element.text
         var searchFrom = 0
+        // A whole dotted segment only: `web` must not be found inside `web-access` of `management.endpoint.web-access`.
         fun rangeOf(segment: String): TextRange? {
-            val start = elementText.indexOf(segment, searchFrom)
+            var start = elementText.indexOf(segment, searchFrom)
+            while (start >= 0 && !elementText.isSegmentAt(start, segment.length)) {
+                start = elementText.indexOf(segment, start + 1)
+            }
             if (start < 0) return null
             searchFrom = start + segment.length
             return TextRange(start, start + segment.length)
@@ -149,6 +153,13 @@ object ActuatorEndpointKeys {
         }
         return ActuatorEndpoint(id, psiClass, defaultAccess)
     }
+
+    private fun String.isSegmentAt(start: Int, length: Int): Boolean {
+        val end = start + length
+        return (start == 0 || !this[start - 1].isKeyCharacter()) && (end == this.length || !this[end].isKeyCharacter())
+    }
+
+    private fun Char.isKeyCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_'
 
     private fun parse(propertyKey: String): ParsedKey? {
         val prefix = "$MANAGEMENT_ENDPOINT$DOT"
