@@ -474,7 +474,9 @@ class SpringBeanNativeResolver : ExternalSystemProjectResolver<NativeExecutionSe
     ) {
         if (settings.runConfigurationType != RunConfigurationType.EXPLYT) return
         val module = getModule(projectPath, settings.project) ?: return
-        val profiles = SpringProfilesService.getInstance(settings.project).loadExistingProfiles(module)
+        val profiles = withIndexAccessDuringSync {
+            SpringProfilesService.getInstance(settings.project).loadExistingProfiles(module)
+        }
         if (profiles == DEFAULT_PROFILE_LIST) return
         profiles.asSequence().filter { it.isNotEmpty() }
             .map { SpringProfileData(it, runConfiguration.name) }

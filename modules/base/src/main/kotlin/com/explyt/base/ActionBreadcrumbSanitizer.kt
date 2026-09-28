@@ -15,8 +15,10 @@ object ActionBreadcrumbSanitizer {
 
     const val ACTION_CATEGORY = "action"
 
-    private const val PLACE_KEY = "place"
-    private const val COUNT_KEY = "count"
+    const val PLACE_KEY = "place"
+
+    /** How many occurrences a breadcrumb stands for; absent means one. */
+    const val COUNT_KEY = "count"
     private const val FIRST_SEEN_KEY = "first_seen"
 
     private val MAX_AGE_MILLIS = 15.minutes.inWholeMilliseconds
@@ -102,13 +104,15 @@ object ActionBreadcrumbSanitizer {
      * and keeps the start of the run under [FIRST_SEEN_KEY].
      */
     private fun collapse(group: Breadcrumb, next: Breadcrumb): Breadcrumb {
-        val count = (group.getData(COUNT_KEY) as? Number)?.toInt() ?: 1
         val firstSeen = group.getData(FIRST_SEEN_KEY) ?: group.timestamp.toString()
         return copyOf(group, next.timestamp).apply {
-            setData(COUNT_KEY, count + 1)
+            setData(COUNT_KEY, group.occurrences() + next.occurrences())
             setData(FIRST_SEEN_KEY, firstSeen)
         }
     }
+
+    /** A breadcrumb standing for repeats suppressed at the producer carries their number. */
+    private fun Breadcrumb.occurrences(): Int = (getData(COUNT_KEY) as? Number)?.toInt() ?: 1
 
     @Suppress("UnstableApiUsage")
     private fun copyOf(source: Breadcrumb, timestamp: Date): Breadcrumb =

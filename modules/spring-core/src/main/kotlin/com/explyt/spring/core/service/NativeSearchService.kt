@@ -68,8 +68,17 @@ class NativeSearchService(private val project: Project) {
         )
     }
 
+    /**
+     * Runs per injection point on the highlighting path, where an invalid bean is the exception: the cached set is
+     * handed back as it is unless one of its beans actually became invalid.
+     */
     internal fun filterValidBeans(beans: Collection<PsiBean>): Set<PsiBean> =
-        beans.filterTo(mutableSetOf()) { it.psiClass.isValid && it.psiMember.isValid }
+        beans.keepValid { it.psiClass.isValid && it.psiMember.isValid }
+
+    private inline fun <T> Collection<T>.keepValid(crossinline isValid: (T) -> Boolean): Set<T> {
+        if (this is Set<T> && all { isValid(it) }) return this
+        return filterTo(mutableSetOf()) { isValid(it) }
+    }
 
     private fun getBeans(): Set<PsiBean> {
         val projectBeans = getProjectBeans()
@@ -77,6 +86,7 @@ class NativeSearchService(private val project: Project) {
         return (projectBeans + libraryBeans).toSet()
     }
 
+    /** Derived from the filtered beans but cached separately, so it filters again on read like its source does. */
     fun getAllBeanClasses(): Set<PsiClass> {
         synchronized(this) {
             return CachedValuesManager.getManager(project).getCachedValue(project) {
@@ -85,7 +95,7 @@ class NativeSearchService(private val project: Project) {
                     ModificationTrackerManager.getInstance(project).getExternalSystemTracker(),
                     ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
                 )
-            }
+            }.keepValid { it.isValid }
         }
     }
 
@@ -106,7 +116,7 @@ class NativeSearchService(private val project: Project) {
                 ModificationTrackerManager.getInstance(project).getExternalSystemTracker(),
                 ModificationTrackerManager.getInstance(project).getUastModelAndLibraryTracker()
             )
-        }
+        }.keepValid { it.isValid }
     }
 
     fun searchArrayPsiClassesByBeanMethods(): Set<PsiBean> {

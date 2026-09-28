@@ -150,6 +150,44 @@ class ActuatorEndpointKeyTest : ExplytJavaLightTestCase() {
         assertEquals("OutboxPublishersEndpoint", (targets.single() as? PsiClass)?.name)
     }
 
+    /**
+     * A YAML key nested under `management:` carries only `endpoint.point.enabled`, and the id `point` also occurs
+     * inside `endpoint`. The range must cover the id segment itself, not the tail of a different word.
+     */
+    fun testIdRangeCoversTheWholeSegmentNotAPrefixOfAnother() {
+        myFixture.addClass(
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint;
+
+            @WebEndpoint(id = "point")
+            public class PointEndpoint {
+                @ReadOperation
+                public String status() { return "ok"; }
+            }
+            """.trimIndent()
+        )
+        myFixture.configureByText(
+            "application.yaml",
+            """
+            management:
+              endpoint.point.enabled: true
+            """.trimIndent()
+        )
+        val text = myFixture.file.text
+        val idSegment = text.indexOf(".point.") + 1
+        val insideEndpoint = text.indexOf("endpoint") + "end".length
+
+        assertEquals(
+            "The id must resolve at its own segment",
+            "PointEndpoint", (resolveAt(idSegment).singleOrNull() as? PsiClass)?.name
+        )
+        assertTrue(
+            "No endpoint reference inside the `endpoint` segment",
+            resolveAt(insideEndpoint).none { it is PsiClass && it.name == "PointEndpoint" }
+        )
+    }
+
     fun testBuiltInEndpointIdKeepsOneTargetPerSegment() {
         myFixture.configureByText("application.properties", "management.endpoint.env.access=unrestricted")
 
