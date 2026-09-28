@@ -16,13 +16,14 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.concurrency.ThreadingAssertions
@@ -121,7 +122,7 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
     @VisibleForTesting
     fun repairNow() {
         if (findDanglingSettings().isEmpty()) return
-        applyRepairs(runReadAction { computeRepairs() })
+        applyRepairs(runReadActionBlocking { computeRepairs() })
     }
 
     /**
@@ -157,7 +158,9 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
         if (projectPath == Constants.DEBUG_SESSION_NAME) return false
         val runManager = RunManager.getInstance(project)
         if (!isDanglingName(storedName, runManager)) return false
-        val candidates = runReadAction { findConfigurationsByMainFile(runManager, projectPath) }
+        // Runs mid-sync, where indexing may have started: a main class read in dumb mode resolves to nothing, and a
+        // link that was healable would be pruned on the strength of that nothing.
+        val candidates = withIndexAccessDuringSync { findConfigurationsByMainFile(runManager, projectPath) }
         // Several configurations on the same main-class file: guessing one would silently take another's profiles
         // and environment, and deleting the link would destroy it — leave it untouched and failing loudly.
         if (candidates.size > 1) return false
@@ -175,6 +178,9 @@ class NativeLinkRepairService(private val project: Project) : Disposable {
             return false
         }
         if (hasImportData(projectPath)) return false
+        // Not every main class is readable while indexing runs - a Kotlin file facade is not - so "no candidate" is
+        // proven only in smart mode; the next sync decides instead of deleting a link that may have been healable.
+        if (DumbService.isDumb(project)) return false
         logger.info("Explyt link repair: pruning a dangling link that has no import data")
         logger.debug { "Explyt link repair: pruning $storedName at $projectPath" }
         pruneLink(projectPath, storedName)

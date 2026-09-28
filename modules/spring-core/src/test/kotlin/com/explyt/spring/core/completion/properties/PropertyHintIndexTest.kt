@@ -50,6 +50,32 @@ class PropertyHintIndexTest {
         Assert.assertEquals(linear, indexed)
     }
 
+    /**
+     * `hintFor` replaces the per-key scan `hints.find { it.name == key || key.startsWith(<prefix of .values>) }`, so
+     * the first matching hint in catalogue order must win, whichever of the two rules matched it.
+     */
+    @Test
+    fun testHintForMatchesTheLinearScanItReplaces() {
+        val levels = hint("logging.level.values", "info")
+        val exact = hint("logging.level.root", "trace")
+        val mode = hint("app.mode", "a")
+        val hints = listOf(levels, exact, mode)
+        val index = PropertyHintIndex.of(hints)
+
+        fun linear(key: String) = hints.find { hint ->
+            val valuesIndex = hint.name.lastIndexOf(".values")
+            hint.name == key || valuesIndex != -1 && key.startsWith(hint.name.substring(0, valuesIndex))
+        }
+
+        for (key in listOf("logging.level.root", "logging.level.org.springframework", "app.mode", "app.other")) {
+            Assert.assertEquals(key, linear(key), index.hintFor(key))
+        }
+        Assert.assertEquals(
+            "Precondition: the prefix rule must win over a later exact hint",
+            levels, linear("logging.level.root")
+        )
+    }
+
     @Test
     fun testFirstPerNameKeepsOnlyTheFirstDeclarationOfEachName() {
         val firstValues = hint("app.mode", "a")

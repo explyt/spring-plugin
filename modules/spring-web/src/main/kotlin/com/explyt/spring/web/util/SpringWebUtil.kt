@@ -624,9 +624,10 @@ object SpringWebUtil {
         while (currentNode != null) {
             ProgressManager.checkCanceled()
             if (currentNode is UCallExpression && currentNode.methodName == NEST) {
+                // A receiver that is not a path - `accept(APPLICATION_JSON).nest { }` - narrows the routes without
+                // prefixing them, so the routes stay; only this route's own unresolved path drops it.
                 val prefixes = getNestPrefixes(currentNode)
-                if (prefixes.isEmpty()) return emptyList()
-                paths = prefixes.flatMap { prefix -> paths.map { prefix + it } }
+                if (prefixes.isNotEmpty()) paths = prefixes.flatMap { prefix -> paths.map { prefix + it } }
             }
             currentNode = currentNode.uastParent
         }
