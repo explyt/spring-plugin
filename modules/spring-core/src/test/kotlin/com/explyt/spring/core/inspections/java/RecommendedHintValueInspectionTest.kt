@@ -33,6 +33,28 @@ class RecommendedHintValueInspectionTest : ExplytInspectionJavaTestCase() {
 
     fun testUnknownValueNotReported() = assertNotReported("logging.level.root=NOT_A_LEVEL")
 
+    /**
+     * A hint without an `any` provider is a closed value set, which the property inspection compares verbatim and
+     * reports `READ-ONLY` against `read-only` as an invalid value. Calling that value a mere spelling as well would
+     * give it two verdicts, one of them false.
+     */
+    fun testClosedValueSetIsLeftToTheValueCheck() {
+        myFixture.addFileToProject(
+            "META-INF/additional-spring-configuration-metadata.json",
+            """
+            {
+              "properties": [{ "name": "explyt.mode", "type": "java.lang.String" }],
+              "hints": [{ "name": "explyt.mode", "values": [{ "value": "read-only" }, { "value": "read-write" }] }]
+            }
+            """.trimIndent()
+        )
+        myFixture.configureByText("application.properties", "explyt.mode=READ-ONLY")
+        val hint = com.explyt.spring.core.util.PropertyUtil.getPropertyHint(module, "explyt.mode")
+        assertTrue("Precondition: the closed hint must be loaded", hint?.declaresClosedValueSet() == true)
+
+        assertEmpty("a closed value set belongs to the value check alone", recommendationProblems())
+    }
+
     fun testQuickFixRewritesValue() {
         myFixture.configureByText("application.properties", "logging.level.root=IN<caret>FO")
 
