@@ -75,11 +75,22 @@ class SpringMetadataLibraryConfigurationPropertiesLoader(project: Project) :
         }
     }
 
+    /** Library metadata changes only with the libraries, so it is read once per module like its sibling loaders. */
     override fun loadMetadataElements(module: Module): List<ElementHint> {
-        return findMetadataFiles(module).asSequence()
-            .filterIsInstance<JsonFile>()
-            .flatMap { collectElementMetadataName(it, HINTS) }
-            .toList()
+        val project = module.project
+        val key = CacheKeyStore.getInstance(project).getKey<List<ElementHint>>(
+            "SpringMetadataConfigurationHintElementsLoaderCache(${module.name})"
+        )
+        return CachedValuesManager
+            .getManager(project)
+            .getCachedValue(module, key, {
+                CachedValueProvider.Result.create(
+                    findMetadataFiles(module)
+                        .filterIsInstance<JsonFile>()
+                        .flatMap { collectElementMetadataName(it, HINTS) },
+                    JavaLibraryModificationTracker.getInstance(project)
+                )
+            }, false)
     }
 
     override fun findMetadataValueElement(module: Module, propertyName: String, propertyValue: String): ElementHint? {

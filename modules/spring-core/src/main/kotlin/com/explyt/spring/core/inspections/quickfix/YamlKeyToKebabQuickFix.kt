@@ -20,6 +20,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.impl.YAMLKeyValueImpl
 
@@ -70,7 +71,8 @@ class YamlKeyToKebabQuickFix(element: PsiElement) : LocalQuickFixAndIntentionAct
         val documentManager = PsiDocumentManager.getInstance(project)
         val document = documentManager.getDocument(startElement.containingFile) ?: return false
 
-        val renames = generateSequence(startElement) { it.parent?.parent as? YAMLKeyValueImpl }
+        // The enclosing key, not the grandparent: under a list the next key sits beyond a sequence item and sequence.
+        val renames = generateSequence(startElement) { PsiTreeUtil.getParentOfType(it, YAMLKeyValueImpl::class.java) }
             .mapNotNull { it.key }
             .map { it.textRange to toKebabCase(it.text) }
             .filter { (range, newKey) -> document.getText(range) != newKey }

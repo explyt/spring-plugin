@@ -7,6 +7,7 @@ package com.explyt.spring.web.loader
 
 import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.completion.properties.DefinedConfigurationPropertiesSearch
 import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.explyt.spring.core.properties.references.ActuatorEndpoint
 import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
@@ -54,20 +55,26 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val endpoints = ActuatorEndpointKeys.endpointsById(module).values.flatten()
         if (endpoints.isEmpty()) return emptyList()
 
-        val basePath = propertyValue(module, BASE_PATH_KEY) ?: DEFAULT_BASE_PATH
+        // Read once: resolving each key on its own rescans every configuration file of the module and its dependencies.
+        val definitions = DefinedConfigurationPropertiesSearch.getInstance(project).getAllProperties(module)
+            .groupBy { it.key }
+        val propertyValue = { key: String ->
+            FoldedPropertyValue.choose(module, definitions[key].orEmpty())?.value?.takeIf { it.isNotBlank() }
+        }
+        val basePath = propertyValue(BASE_PATH_KEY) ?: DEFAULT_BASE_PATH
 
-        return endpoints.flatMap { endpointElements(module, it, basePath) }
+        return endpoints.flatMap { endpointElements(it, basePath, propertyValue) }
     }
 
     private fun endpointElements(
-        module: Module,
         endpoint: ActuatorEndpoint,
-        basePath: String
+        basePath: String,
+        propertyValue: (String) -> String?
     ): List<EndpointElement> {
         // A JMX-only endpoint is not published over HTTP at all, so any path shown for it would be invented.
         if (endpoint.psiClass.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_JMX_ENDPOINT)) return emptyList()
 
-        val mappedId = propertyValue(module, "$PATH_MAPPING_KEY.${endpoint.id}") ?: endpoint.id
+        val mappedId = propertyValue("$PATH_MAPPING_KEY.${endpoint.id}") ?: endpoint.id
         val endpointPath = joinPath(basePath, mappedId)
 
         val operations = endpoint.psiClass.allMethods.mapNotNull { operationElement(it, endpoint, endpointPath) }
@@ -101,8 +108,6 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         endpoint: ActuatorEndpoint
     ) = EndpointElement(path, listOf(requestMethod), psiElement, endpoint.psiClass, null, getType())
 
-    private fun propertyValue(module: Module, key: String): String? =
-        FoldedPropertyValue.resolve(module, key)?.value?.takeIf { it.isNotBlank() }
 
     private fun joinPath(vararg segments: String): String =
         segments.asSequence()

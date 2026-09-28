@@ -103,6 +103,50 @@ class EventListenerLineMarkerProviderTest : ExplytJavaLightTestCase() {
         }
     }
 
+    /**
+     * Spring calls a listener when the published event is assignable to the type it declares, so a listener of a
+     * subtype is not a target of a base event, and one declaring a supertype every event shares (here
+     * `java.io.Serializable`) is not a target of an unrelated event.
+     */
+    fun testListenerTargetsFollowTheDeclaredTypeOnly() {
+        @Language("java") val code = """
+            public class EventListenerTest {
+                private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+                public void register() {
+                    eventPublisher.publishEvent(new ChildEvent());
+                    eventPublisher.publishEvent(new BaseEvent());
+                }
+
+                @org.springframework.context.event.EventListener
+                public void onBase(BaseEvent event) {}
+
+                @org.springframework.context.event.EventListener
+                public void onChild(ChildEvent event) {}
+
+                @org.springframework.context.event.EventListener
+                public void onOther(OtherEvent event) {}
+            }
+
+            class BaseEvent implements java.io.Serializable {}
+
+            class ChildEvent extends BaseEvent {}
+
+            class OtherEvent implements java.io.Serializable {}
+            """
+        myFixture.configureByText("EventListenerTest.java", code.trimIndent())
+        myFixture.doHighlighting()
+
+        val targetsPerPublisher = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.EventListener }
+            .map { gutter ->
+                SpringGutterTestUtil.getGutterTargetsStrings(gutter).map { it.substringBefore('(') }.sorted()
+            }
+            .sortedBy { it.size }
+
+        assertEquals(listOf(listOf("onBase"), listOf("onBase", "onChild")), targetsPerPublisher)
+    }
+
     fun testSuperClassEventListenerLineMarker() {
         @Language("java") val code = """  
             public class EventListenerTest {     
