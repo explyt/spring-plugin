@@ -216,10 +216,9 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
 
         val head = result["chain"].first { it["methodName"].asText() == "getItem" }
         val callee = result["chain"].first { it["methodName"].asText() == "findById" }
-        assertEquals(
-            declarationLine,
-            head["callsInto"].single { it["target"].asText().endsWith("DemoService.findById") }["line"].asInt()
-        )
+        val call = head["callsInto"].single { it["target"].asText().endsWith("DemoService.findById") }
+        assertEquals("A call is reported where it is made", callLine, call["line"].asInt())
+        assertEquals("The call points at the node of the method it reaches", callee["id"].asInt(), call["node"].asInt())
         assertEquals(declarationLine, callee["line"].asInt())
     }
 
@@ -275,9 +274,11 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
 
         val head = result["chain"].first { it["methodName"].asText() == "rename" }
         val copyTarget = head["callsInto"].single { it["target"].asText().endsWith("Item.copy") }
+        assertEquals("A call is reported where it is made", callLine, copyTarget["line"].asInt())
+        val copyNode = result["chain"].single { it["id"].asInt() == copyTarget["node"].asInt() }
         assertEquals(
             "Expected the generated copy() to be reported at its declaring data class",
-            itemClassLine, copyTarget["line"].asInt()
+            itemClassLine, copyNode["line"].asInt()
         )
     }
 

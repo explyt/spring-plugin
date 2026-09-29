@@ -21,6 +21,7 @@ import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.EndpointPathPatterns
+import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
 import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
@@ -232,13 +233,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "controller class and method name are the bean factory that registers it, and 'parameters' holds " +
                 "the path variables its URL template declares. " +
                 "Matching is forgiving: 'requests' matches '/api/.../requests', and '{id}' matches any path variable. " +
-                "When 'endpoints' is empty, no such route exists yet, and 'nearestByPrefix' lists the existing routes " +
-                "that share the longest leading path with the pattern - the controller and the conventions a new " +
-                "route has to fit; 'sharedPrefix' names that common path."
+                "A deployed URL can be passed as it is: the scheme, host, query and fragment are ignored, and when " +
+                "no route answers the path as written, leading segments are dropped until one does - a servlet " +
+                "context path or a gateway prefix usually lives only in deployment configuration - and the dropped " +
+                "part is reported as 'assumedPrefix' (null when the path matched as written). " +
+                "When 'endpoints' is empty, no route answers the URL even without a leading prefix, and " +
+                "'nearestByPrefix' lists the existing routes that share the longest leading path with it - the " +
+                "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path."
     )
     suspend fun findEndpoint(
         @McpDescription(
-            "URL pattern to search for. Can be: " +
+            "URL or URL pattern to search for. Can be: " +
+                    "a URL copied from a browser, a log line or a curl, like " +
+                    "'https://example.com/ctx/api/orgs/42/drilldown/7/requests?from=1d', " +
                     "a full path like '/api/orgs/{orgId}/drilldown/{metricId}/requests', " +
                     "a partial path like '/drilldown/requests' or just 'requests', " +
                     "or a path with wildcards like '/{id}/requests'. " +
@@ -262,11 +269,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
     /**
      * The single-URL lookup shared by the find and contract tools.
      *
-     * Matches are ordered by how closely they answer the pattern ([matchRank]) and then by
-     * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match the
-     * pattern, the first element is the one Spring dispatches to. A pattern that matches nothing is not a dead
-     * end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing the longest leading path with it,
-     * which is where a route that does not exist yet would be added.
+     * The URL is reduced to its request path and read as written first, then under ever longer leading prefixes no
+     * route declares ([EndpointPathPatterns.readingsOf]); the first reading any route answers is the answer, and
+     * the prefix it dropped is reported rather than hidden. A deployed URL carries its context path, and without
+     * this a real, working URL answered "no such route" - which invites the caller to write a duplicate.
+     *
+     * A URL that matches nothing is not a dead end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing
+     * the longest leading path with it, which is where a route that does not exist yet would be added.
      */
     private suspend fun <T> lookupEndpoints(
         urlPattern: String,
@@ -276,21 +285,22 @@ class SpringBootApplicationMcpToolset : McpToolset {
     ): EndpointLookupJson<T> {
         if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
-        val normalizedPattern = SpringWebUtil.simplifyUrl(urlPattern)
+        val readings = EndpointPathPatterns.readingsOf(EndpointPathPatterns.requestPathOf(urlPattern)).toList()
         val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
 
         return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
 
-                val matching = allEndpoints
-                    .mapNotNull { endpoint -> matchRank(endpoint, normalizedPattern)?.let { endpoint to it } }
-                    .filter { (endpoint, _) -> methodFilter == null || endpoint.requestMethods.isEmpty() || endpoint.requestMethods.any { m -> m.equals(methodFilter, ignoreCase = true) } }
-                    .sortedWith(
-                        compareBy<Pair<EndpointElement, Int>> { it.second }
-                            .thenBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.first.path) }
-                    )
-                    .map { it.first }
+                // The reading is settled by the path alone: a URL that resolves only for another verb has been found,
+                // and dropping one more segment of it to satisfy the method filter would answer a different URL.
+                val answered = readings.firstNotNullOfOrNull { reading ->
+                    matchesOf(allEndpoints, reading).takeIf { it.isNotEmpty() }?.let { reading to it }
+                }
+                val matching = answered?.second.orEmpty().filter { endpoint ->
+                    methodFilter == null || endpoint.requestMethods.isEmpty()
+                            || endpoint.requestMethods.any { it.equals(methodFilter, ignoreCase = true) }
+                }
                 // Every counted endpoint is converted: `toJson` returns a value for any endpoint element, so a
                 // caller reading `totalCount` against `endpoints.size` cannot see them disagree while
                 // `truncated` is false.
@@ -302,60 +312,99 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
                 // The neighbourhood of a miss is context, not an answer, so the method filter does not apply to
                 // it: a POST sibling under the same prefix still names the controller a new GET route belongs to.
-                val nearest = if (matching.isEmpty()) nearestByPrefix(allEndpoints, normalizedPattern, project) else null
+                val nearest = if (matching.isEmpty()) {
+                    nearestByPrefix(allEndpoints, answered?.first?.let(::listOf) ?: readings, project)
+                } else {
+                    null
+                }
 
                 EndpointLookupJson(
                     totalCount = matching.size,
                     truncated = matching.size > MAX_ENDPOINT_RESULTS,
                     endpoints = page,
-                    sharedPrefix = nearest?.first,
-                    nearestByPrefix = nearest?.second ?: emptyList(),
+                    assumedPrefix = (answered?.first ?: nearest?.reading)?.assumedPrefix,
+                    sharedPrefix = nearest?.sharedPrefix,
+                    nearestByPrefix = nearest?.routes.orEmpty(),
                 )
             }
         }
     }
 
     /**
-     * The routes sharing the longest leading path with [normalizedPattern], as compact endpoints, with that path.
+     * The endpoints answering [reading], closest match first.
      *
-     * Nothing is returned when the longest shared path is empty: every route in the project "shares" the root,
-     * and listing all of them would say nothing about where the pattern belongs.
+     * Matches are ordered by how closely they answer the path ([matchRank]) and then by
+     * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match, the first
+     * element is the one Spring dispatches to.
+     */
+    private fun matchesOf(endpoints: List<EndpointElement>, reading: PathReading): List<EndpointElement> =
+        endpoints.asSequence()
+            .onEach { ProgressManager.checkCanceled() }
+            .map { it to SpringWebUtil.simplifyUrl(it.path) }
+            .filter { (_, path) -> reading.admits(path) }
+            .mapNotNull { (endpoint, path) -> matchRank(path, reading)?.let { RankedEndpoint(endpoint, path, it) } }
+            .sortedWith(compareBy<RankedEndpoint> { it.rank }.thenBy(EndpointPathPatterns.SPECIFICITY) { it.path })
+            .map { it.endpoint }
+            .toList()
+
+    private data class RankedEndpoint(val endpoint: EndpointElement, val path: String, val rank: Int)
+
+    /**
+     * The routes around a URL no route answers, read the way that shares the longest leading path with them.
+     *
+     * Each reading is scored by its longest shared path, and the reading dropping the fewest segments wins a tie:
+     * a context path the caller included would otherwise leave the neighbourhood empty, because no route opens
+     * with it. Nothing is returned when no reading shares a segment: every route in the project "shares" the root,
+     * and listing all of them would say nothing about where the URL belongs.
      */
     private fun nearestByPrefix(
         endpoints: List<EndpointElement>,
-        normalizedPattern: String,
+        readings: List<PathReading>,
         project: Project,
-    ): Pair<String, List<CompactEndpointJson>>? {
-        val bySharedSegments = endpoints
-            .groupBy { EndpointPathPatterns.sharedLeadingSegments(SpringWebUtil.simplifyUrl(it.path), normalizedPattern) }
-        val (sharedSegments, nearest) = bySharedSegments.maxByOrNull { it.key } ?: return null
-        if (sharedSegments == 0) return null
+    ): Neighbourhood? {
+        val (reading, sharedSegments, nearest) = readings.asSequence()
+            .mapNotNull { reading ->
+                endpoints
+                    .filter { reading.admits(SpringWebUtil.simplifyUrl(it.path)) }
+                    .groupBy { EndpointPathPatterns.sharedLeadingSegments(SpringWebUtil.simplifyUrl(it.path), reading.path) }
+                    .maxByOrNull { it.key }
+                    ?.takeIf { it.key > 0 }
+                    ?.let { Triple(reading, it.key, it.value) }
+            }
+            .maxByOrNull { it.second }
+            ?: return null
 
         val compact = nearest
             .sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
             .take(MAX_NEAREST_ROUTES)
             .onEach { ProgressManager.checkCanceled() }
             .map { toCompactEndpointJson(it, project) }
-        return EndpointPathPatterns.prefixOf(normalizedPattern, sharedSegments) to compact
+        return Neighbourhood(reading, EndpointPathPatterns.prefixOf(reading.path, sharedSegments), compact)
     }
 
+    private data class Neighbourhood(
+        val reading: PathReading,
+        val sharedPrefix: String,
+        val routes: List<CompactEndpointJson>,
+    )
+
     /**
-     * How closely [endpoint] answers [normalizedPattern], lowest first, or `null` when it does not answer it.
+     * How closely a route at [endpointPath] answers [reading], lowest first, or `null` when it does not answer it.
      *
      * Matching is deliberately forgiving - a bare `items` finds `/api/demo/items` - so a long unrelated path that
      * merely contains the pattern matches too. Ordering those by path specificity alone puts such a path *above*
      * the route matching the pattern exactly, because specificity breaks ties by descending length. The caller
      * reads its answer off the first element, so how well an endpoint fits the query has to outrank how Spring
      * would dispatch between the endpoints that fit it equally well.
+     *
+     * The substring match finds a route from a fragment the caller wrote. Under an assumed prefix the fragment is
+     * one the tool cut out itself, so only a route matching the rest of the URL whole counts as an answer.
      */
-    private fun matchRank(endpoint: EndpointElement, normalizedPattern: String): Int? {
-        val endpointPath = SpringWebUtil.simplifyUrl(endpoint.path)
-        return when {
-            endpointPath == normalizedPattern -> EXACT_MATCH
-            SpringWebUtil.isEndpointMatches(endpointPath, normalizedPattern) -> PATTERN_MATCH
-            endpointPath.contains(normalizedPattern) -> SUBSTRING_MATCH
-            else -> null
-        }
+    private fun matchRank(endpointPath: String, reading: PathReading): Int? = when {
+        endpointPath == reading.path -> EXACT_MATCH
+        SpringWebUtil.isEndpointMatches(endpointPath, reading.path) -> PATTERN_MATCH
+        reading.assumedPrefix == null && endpointPath.contains(reading.path) -> SUBSTRING_MATCH
+        else -> null
     }
 
     private fun toCompactEndpointJson(endpoint: EndpointElement, project: Project): CompactEndpointJson {
@@ -660,9 +709,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'contractUnavailableReason' says what has to be read at the source - an empty 'parameters' there " +
                 "means 'not declared here', never 'the endpoint takes nothing'. " +
                 "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
-                "'endpoints' with the closest match to the pattern first, and 'nearestByPrefix' with " +
-                "'sharedPrefix' when nothing matched - with a contract in place of each endpoint; every counted " +
-                "endpoint is returned, so endpoints.size equals totalCount unless truncated. " +
+                "'endpoints' with the closest match to the pattern first, 'assumedPrefix' when a leading context " +
+                "path had to be dropped from the URL, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
+                "matched - with a contract in place of each endpoint; every counted endpoint is returned, so " +
+                "endpoints.size equals totalCount unless truncated. " +
                 "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
     )
     suspend fun getEndpointContract(
@@ -929,15 +979,21 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "layers, and after explyt_find_spring_endpoint when a task needs the logic behind a route, not only " +
                 "its handler. " +
                 "Traces the call chain from the method at filePath:line through the Spring layers " +
-                "(Controller → Service → Repository) by resolving the calls into injected beans - following an " +
-                "injected interface to its implementation is where a hand-made trace usually stops. " +
+                "(Controller → Service → Repository), following the calls into project code only - a call " +
+                "written against an interface is followed to each of its implementations in the project, which " +
+                "is where a hand-made trace usually stops. Calls into the JDK, the Kotlin standard library and " +
+                "framework jars are left out, except a framework interface method called on a project type, such " +
+                "as a Spring Data repository's findById, which is listed but not followed. " +
                 "Any line of the method identifies it - its signature, an annotation on it, or a line of its " +
                 "body - so the line explyt_find_spring_endpoint reports for a handler can be passed straight in; " +
                 "a line belonging to no method is refused with the nearest method declarations in that file. " +
-                "Returns the chain of methods with their Spring stereotype (CONTROLLER, SERVICE, REPOSITORY, " +
-                "COMPONENT, CONFIGURATION), parameters, called methods, file paths and line numbers, and with " +
-                "includeTests the test files that reference the discovered methods - the tests a signature change " +
-                "will break."
+                "Returns 'chain', the traced methods with an 'id', their Spring stereotype (CONTROLLER, SERVICE, " +
+                "REPOSITORY, COMPONENT, CONFIGURATION), parameters, file path and declaration line, and " +
+                "'callsInto' - every call with the line of the call itself, 'node' naming the id of the traced " +
+                "method it reaches (null when it is not traced), and 'via' naming the interface method it is " +
+                "written against when it reaches an implementation; 'truncated' is true when the chain hit its " +
+                "size limit of $MAX_TRACED_METHODS methods. With includeTests, 'testReferences' lists the test files " +
+                "calling a traced method - the tests a signature change will break."
     )
     suspend fun traceCallChain(
         @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
@@ -950,9 +1006,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
         line: Int,
         @McpDescription(PROJECT_PATH_DESCRIPTION)
         projectPath: String? = null,
-        @McpDescription("How many layers deep to trace (default 3). Each layer follows method calls into injected beans.")
+        @McpDescription(
+            "How many layers deep to trace (default 3, at most 10). A layer is a call into another class; a call " +
+                    "to the same class, its supertypes, its nested classes or a top-level function of the same " +
+                    "file does not use one up."
+        )
         depth: Int = 3,
-        @McpDescription("Whether to find test files that reference the discovered methods (default true)")
+        @McpDescription("Whether to find the test files that call a traced method (default true)")
         includeTests: Boolean = true,
     ): String {
         if (filePath.isBlank()) mcpFail("filePath must not be empty")
@@ -975,16 +1035,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     ?: mcpFail(noMethodAtLineMessage(psiFile, document, filePath, line))
 
                 val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
-                val visited = mutableSetOf<PsiMethod>()
-                val chain = buildChain(psiMethod, effectiveDepth, visited, project)
+                val chain = CallChainTracer(project, MAX_TRACED_METHODS).trace(psiMethod, effectiveDepth)
 
                 val testReferences = if (includeTests && module != null) {
-                    findTestReferences(visited, module, project)
+                    findTestReferences(chain.methods.map { it.method }, module, project)
                 } else {
                     emptyList()
                 }
 
-                CallChainResultJson(chain = chain, testReferences = testReferences)
+                CallChainResultJson(
+                    chain = chain.methods.mapIndexed { id, traced -> toCallChainNodeJson(id, traced, chain, project) },
+                    truncated = chain.truncated,
+                    testReferences = testReferences,
+                )
             }
         }
 
@@ -1049,60 +1112,31 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return declarations
     }
 
-    private fun buildChain(
-        psiMethod: PsiMethod,
-        remainingDepth: Int,
-        visited: MutableSet<PsiMethod>,
-        project: Project,
-    ): List<CallChainNodeJson> {
-        if (remainingDepth <= 0 || !visited.add(psiMethod)) return emptyList()
-
-        val containingClass = psiMethod.containingClass
-        val calledMethods = findCalledMethods(psiMethod)
-
-        val callsInto = calledMethods.map { callee ->
-            CallTargetJson(
-                target = "${callee.containingClass?.name ?: "?"}.${callee.name}",
-                line = lineOf(callee),
-            )
-        }
-
-        val position = sourcePositionOf(psiMethod, project)
-        val node = CallChainNodeJson(
+    private fun toCallChainNodeJson(id: Int, traced: TracedMethod, chain: CallChain, project: Project): CallChainNodeJson {
+        val method = traced.method
+        val containingClass = method.containingClass
+        val position = sourcePositionOf(method, project)
+        return CallChainNodeJson(
+            id = id,
             layer = containingClass?.let { detectSpringLayer(it) },
             className = containingClass?.qualifiedName ?: containingClass?.name,
-            methodName = psiMethod.name,
+            methodName = CallChainTracer.sourceNameOf(method),
             filePath = position.filePath,
             line = position.line,
-            parameters = psiMethod.parameterList.parameters.map { it.name },
-            callsInto = callsInto,
+            parameters = method.parameterList.parameters.map { it.name },
+            callsInto = traced.calls.map { call ->
+                CallTargetJson(
+                    target = call.target,
+                    line = call.line,
+                    node = call.reached?.let(chain::idOf),
+                    via = call.via,
+                )
+            },
         )
-
-        val childNodes = calledMethods.flatMap { callee ->
-            buildChain(callee, remainingDepth - 1, visited, project)
-        }
-
-        return listOf(node) + childNodes
-    }
-
-    private fun findCalledMethods(psiMethod: PsiMethod): List<PsiMethod> {
-        val uMethod = psiMethod.toUElement() as? UMethod ?: return emptyList()
-        val calls = mutableListOf<UCallExpression>()
-        uMethod.accept(object : AbstractUastVisitor() {
-            override fun visitCallExpression(node: UCallExpression): Boolean {
-                calls += node
-                return false // keep descending so nested calls are discovered too
-            }
-        })
-        return calls.asSequence()
-            .mapNotNull { it.resolve() }
-            .filter { it != psiMethod } // skip self-recursion
-            .distinctBy { (it.containingClass?.qualifiedName ?: "") + "#" + it.name + "#" + it.parameterList.parametersCount }
-            .toList()
     }
 
     private fun findTestReferences(
-        methods: Set<PsiMethod>,
+        methods: List<PsiMethod>,
         module: com.intellij.openapi.module.Module,
         project: Project,
     ): List<TestReferenceJson> {
@@ -1112,11 +1146,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
         for (method in methods) {
             val refs = MethodReferencesSearch.search(method, testScope, true).findAll()
             for (ref in refs) {
+                ProgressManager.checkCanceled()
                 val refElement = ref.element
                 val position = sourcePositionOf(refElement, project)
                 val refFile = position.filePath ?: continue
                 val refLine = position.line ?: continue
-                val methodKey = "${method.containingClass?.name ?: "?"}.${method.name}"
+                val methodKey = "${method.containingClass?.name ?: "?"}.${CallChainTracer.sourceNameOf(method)}"
                 byFile.getOrPut(refFile) { mutableMapOf() }
                     .getOrPut(methodKey) { mutableListOf() }
                     .add(refLine)
@@ -1398,6 +1433,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // Enough to show the caller which line convention the file uses; the whole method list would bury it.
         private const val MAX_SUGGESTED_METHODS = 5
 
+        // Guard cap for one trace: the project methods reachable from a handler within ten layers can be the whole
+        // application, and a chain that long no longer tells the caller which path a change travels.
+        private const val MAX_TRACED_METHODS = 50
+
         /** Return types of a route-registration bean, whose signature describes the registration, not a request. */
         private val ROUTE_FUNCTION_TYPES = listOf(
             SpringWebClasses.ROUTE_FUNCTION,
@@ -1587,16 +1626,19 @@ data class EndpointListJson<T>(
 /**
  * The result of resolving one URL pattern, for the find and contract tools.
  *
- * [endpoints] is ordered by [EndpointPathPatterns.SPECIFICITY], the order Spring picks a handler in, so its
- * first element is the one that dispatches when several routes match. [nearestByPrefix] is filled only when
- * [endpoints] is empty: the routes sharing the longest leading path ([sharedPrefix]) with the pattern, which is
- * where a route that does not exist yet would be added. The two lists are empty rather than null so a client
- * can always iterate them; [sharedPrefix] is null exactly when [nearestByPrefix] is empty.
+ * [endpoints] lists the closest match first, and among equally close ones the order Spring picks a handler in,
+ * so its first element is the one that dispatches when several routes match. [assumedPrefix] is the leading path
+ * dropped from the URL to reach the routes answering it - a context path or a gateway prefix no route declares -
+ * and null when the URL matched as written. [nearestByPrefix] is filled only when [endpoints] is empty: the routes
+ * sharing the longest leading path ([sharedPrefix]) with the URL, which is where a route that does not exist yet
+ * would be added. The two lists are empty rather than null so a client can always iterate them; [sharedPrefix] is
+ * null exactly when [nearestByPrefix] is empty.
  */
 data class EndpointLookupJson<T>(
     val totalCount: Int,
     val truncated: Boolean,
     val endpoints: List<T>,
+    val assumedPrefix: String?,
     val sharedPrefix: String?,
     val nearestByPrefix: List<CompactEndpointJson>,
 )
@@ -1610,17 +1652,26 @@ data class EndpointParameterJson(
      */
     val source: String,
     val type: String,
-    /** `null` when nothing declares it, which is every source the tool cannot read the contract of. */
+    /**
+     * Whether Spring rejects a request that omits the value. A query parameter or a header with a `defaultValue`,
+     * or one declared `Optional`, `@Nullable`, Kotlin-nullable or with a Kotlin default, is `false` whatever its
+     * `required` attribute says. `null` when nothing declares it, which is every source the tool cannot read the
+     * contract of.
+     */
     val required: Boolean?,
     val defaultValue: String? = null,
 )
 
 data class CallChainResultJson(
     val chain: List<CallChainNodeJson>,
+    /** Whether project methods reachable within the depth were left out because the chain hit its size limit. */
+    val truncated: Boolean,
     val testReferences: List<TestReferenceJson>,
 )
 
 data class CallChainNodeJson(
+    /** Position of the node in the chain, which [CallTargetJson.node] refers to. */
+    val id: Int,
     val layer: String?,
     val className: String?,
     val methodName: String,
@@ -1633,8 +1684,12 @@ data class CallChainNodeJson(
 
 data class CallTargetJson(
     val target: String,
-    /** `null` for a light or synthetic call target with no physical declaration. */
+    /** Line of the call in the calling method, where a change to its arguments is made. */
     val line: Int?,
+    /** Id of the chain node the call reaches; `null` for a framework method or one the trace did not expand. */
+    val node: Int?,
+    /** The interface or abstract method the call is written against, when [target] is an implementation of it. */
+    val via: String?,
 )
 
 data class ServiceCallJson(
