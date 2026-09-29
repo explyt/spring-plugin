@@ -41,6 +41,8 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.PsiClassReferenceType
 import com.intellij.psi.util.parentsOfType
 import org.jetbrains.kotlin.lombok.utils.decapitalize
+import org.jetbrains.kotlin.psi.KtNullableType
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.*
 import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLKeyValue
@@ -138,15 +140,16 @@ object SpringWebUtil {
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
-            val isOptional = !isMap && paramType.isOptional
+            val isOptional = !isMap && param.acceptsMissingValue()
             val typeFqn = getTypeFqn(paramType, psiMethod.language)
 
-            val isRequired = mahRequestParam.getAnnotationMemberValues(annotation, setOf("required"))
-                .map { it.getBooleanValue() }
-                .firstOrNull() ?: true
             val defaultValue = mahRequestParam.getAnnotationMemberValues(annotation, setOf("defaultValue"))
                 .map { it.getStringValue() }
                 .firstOrNull()
+            val declaredRequired = mahRequestParam.getAnnotationMemberValues(annotation, setOf("required"))
+                .map { it.getBooleanValue() }
+                .firstOrNull() ?: true
+            val isRequired = declaredRequired && defaultValue == null
 
             val memberValues = mahRequestParam.getAnnotationMemberValues(annotation, setOf("value", "name"))
             if (memberValues.isEmpty()) {
@@ -195,15 +198,16 @@ object SpringWebUtil {
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
-            val isOptional = !isMap && paramType.isOptional
+            val isOptional = !isMap && param.acceptsMissingValue()
             val typeFqn = getTypeFqn(paramType, psiMethod.language)
 
-            val isRequired = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("required"))
-                .map { it.getBooleanValue() }
-                .firstOrNull() ?: true
             val defaultValue = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("defaultValue"))
                 .map { it.getStringValue() }
                 .firstOrNull()
+            val declaredRequired = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("required"))
+                .map { it.getBooleanValue() }
+                .firstOrNull() ?: true
+            val isRequired = declaredRequired && defaultValue == null
 
             val memberValues = mahRequestHeader.getAnnotationMemberValues(annotation, setOf("value", "name"))
             if (memberValues.isEmpty()) {
@@ -286,6 +290,18 @@ object SpringWebUtil {
             }
         }
         return pathVariableInfos
+    }
+
+    /**
+     * Whether Spring binds an absent request value to this parameter instead of rejecting the request, which is
+     * `MethodParameter.isOptional`: an `Optional`, a parameter annotated `@Nullable`, and in Kotlin a nullable type
+     * or a parameter with a default value.
+     */
+    private fun PsiParameter.acceptsMissingValue(): Boolean {
+        if (type.isOptional) return true
+        if (annotations.any { it.qualifiedName?.substringAfterLast('.') == NULLABLE_SIMPLE_NAME }) return true
+        val kotlinParameter = toUElementOfType<UParameter>()?.sourcePsi as? KtParameter ?: return false
+        return kotlinParameter.typeReference?.typeElement is KtNullableType || kotlinParameter.hasDefaultValue()
     }
 
     fun getRequestBodyInfo(psiMethod: PsiMethod): PathArgumentInfo? {
@@ -693,6 +709,7 @@ object SpringWebUtil {
             }
 
     private const val NEST = "nest"
+    private const val NULLABLE_SIMPLE_NAME = "Nullable"
 
     private val MultipleSlashes = Regex("//+")
     val NameInBracketsRx = Regex("""\{(?<name>[^{}]+)}""")
