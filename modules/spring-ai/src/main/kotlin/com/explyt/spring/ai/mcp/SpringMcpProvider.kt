@@ -7,7 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.jpa.JpaClasses
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.providers.SpringBeanLineMarkerProvider
+
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.ai.mcp.entities.EntityInventory
@@ -60,7 +60,7 @@ import org.jetbrains.kotlin.asJava.elements.KtLightField
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtNullableType
-import org.jetbrains.kotlin.psi.KtParameter
+
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
@@ -239,7 +239,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "part is reported as 'assumedPrefix' (null when the path matched as written). " +
                 "When 'endpoints' is empty, no route answers the URL even without a leading prefix, and " +
                 "'nearestByPrefix' lists the existing routes that share the longest leading path with it - the " +
-                "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path."
+                "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path as " +
+                "the routes declare it, with their '{templates}'."
     )
     suspend fun findEndpoint(
         @McpDescription(
@@ -356,6 +357,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * a context path the caller included would otherwise leave the neighbourhood empty, because no route opens
      * with it. Nothing is returned when no reading shares a segment: every route in the project "shares" the root,
      * and listing all of them would say nothing about where the URL belongs.
+     *
+     * The shared path is spelled the way the most specific neighbour declares it: the URL of a request carries values
+     * where a route has `{templates}`, and echoing `/api/short-links/15a4a137` would read as if a route with that
+     * literal id existed.
      */
     private fun nearestByPrefix(
         endpoints: List<EndpointElement>,
@@ -374,12 +379,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .maxByOrNull { it.second }
             ?: return null
 
-        val compact = nearest
-            .sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+        val ordered = nearest.sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+        val compact = ordered
             .take(MAX_NEAREST_ROUTES)
             .onEach { ProgressManager.checkCanceled() }
             .map { toCompactEndpointJson(it, project) }
-        return Neighbourhood(reading, EndpointPathPatterns.prefixOf(reading.path, sharedSegments), compact)
+        val sharedPrefix = EndpointPathPatterns.prefixOf(SpringWebUtil.simplifyUrl(ordered.first().path), sharedSegments)
+        return Neighbourhood(reading, sharedPrefix, compact)
     }
 
     private data class Neighbourhood(
@@ -835,7 +841,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val controllerClass = psiMethod.containingClass ?: return null
         val beanClasses = SpringSearchService.getInstance(project).getProjectBeans(module).map { it.psiClass }
         val beanFields = controllerClass.allFields.filter { field ->
-            if (!isInjectedBeanField(field)) return@filter false
+            if (!InjectedDependencies.isInjected(field)) return@filter false
             val fieldClass = (field.type as? PsiClassType)?.resolve() ?: return@filter false
             beanClasses.any { InheritanceUtil.isInheritorOrSelf(it, fieldClass, true) }
         }.toSet()
@@ -882,24 +888,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
     }
 
-    private fun isInjectedBeanField(field: PsiField): Boolean {
-        if (SpringBeanLineMarkerProvider.isAutowiredFieldExpression(field)) return true
-        if (field.initializer != null) return false
-        val constructors = field.containingClass?.constructors ?: return false
-        if ((field as? KtLightField)?.kotlinOrigin is KtParameter) {
-            return constructors.any { constructor ->
-                constructor.parameterList.parameters.any { it.name == field.name && it.type == field.type }
-            }
-        }
-        return constructors.any { constructor ->
-            constructor.body?.statements?.any { statement ->
-                val assignment = (statement as? PsiExpressionStatement)?.expression as? PsiAssignmentExpression
-                assignment != null &&
-                        (assignment.lExpression as? PsiReferenceExpression)?.resolve() == field &&
-                        (assignment.rExpression as? PsiReferenceExpression)?.resolve() in constructor.parameterList.parameters
-            } == true
-        }
-    }
 
     private fun expandType(psiType: PsiType, project: Project, depth: Int): DtoSchemaJson? {
         if (depth <= 0) return null
@@ -982,16 +970,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "(Controller → Service → Repository), following the calls into project code only - a call " +
                 "written against an interface is followed to each of its implementations in the project, which " +
                 "is where a hand-made trace usually stops. Calls into the JDK, the Kotlin standard library and " +
-                "framework jars are left out, except a framework interface method called on a project type, such " +
-                "as a Spring Data repository's findById, which is listed but not followed. " +
+                "framework jars are left out, except where the request leaves the application: a library method " +
+                "called on an injected dependency, such as JdbcTemplate.query, and a method the framework " +
+                "implements, such as a Spring Data repository method, are listed as EXTERNAL and not followed. " +
                 "Any line of the method identifies it - its signature, an annotation on it, or a line of its " +
                 "body - so the line explyt_find_spring_endpoint reports for a handler can be passed straight in; " +
                 "a line belonging to no method is refused with the nearest method declarations in that file. " +
-                "Returns 'chain', the traced methods with an 'id', their Spring stereotype (CONTROLLER, SERVICE, " +
-                "REPOSITORY, COMPONENT, CONFIGURATION), parameters, file path and declaration line, and " +
-                "'callsInto' - every call with the line of the call itself, 'node' naming the id of the traced " +
-                "method it reaches (null when it is not traced), and 'via' naming the interface method it is " +
-                "written against when it reaches an implementation; 'truncated' is true when the chain hit its " +
+                "Returns 'chain', the traced methods with an 'id', the Spring stereotype of their class in 'layer' " +
+                "(CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; null for a class that is not a bean, " +
+                "such as a Kotlin object), 'reachedBy' (INTERNAL for a helper of its caller's class, PROJECT for a " +
+                "call from another class, null for the starting method), parameters as declared, file path and " +
+                "declaration line, and 'callsInto' - every call with its 'kind' (INTERNAL, PROJECT or EXTERNAL), " +
+                "the line of the call itself, 'node' naming the id of the traced method it reaches (null when it " +
+                "is not traced), and 'via' naming the interface method it is written against when it reaches an " +
+                "implementation; 'truncated' is true when the chain hit its " +
                 "size limit of $MAX_TRACED_METHODS methods. With includeTests, 'testReferences' lists the test files " +
                 "calling a traced method - the tests a signature change will break."
     )
@@ -1119,14 +1111,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return CallChainNodeJson(
             id = id,
             layer = containingClass?.let { detectSpringLayer(it) },
+            reachedBy = traced.reachedBy?.name,
             className = containingClass?.qualifiedName ?: containingClass?.name,
             methodName = CallChainTracer.sourceNameOf(method),
             filePath = position.filePath,
             line = position.line,
-            parameters = method.parameterList.parameters.map { it.name },
+            parameters = CallChainTracer.sourceParametersOf(method),
             callsInto = traced.calls.map { call ->
                 CallTargetJson(
                     target = call.target,
+                    kind = call.kind.name,
                     line = call.line,
                     node = call.reached?.let(chain::idOf),
                     via = call.via,
@@ -1672,7 +1666,13 @@ data class CallChainResultJson(
 data class CallChainNodeJson(
     /** Position of the node in the chain, which [CallTargetJson.node] refers to. */
     val id: Int,
+    /** Stereotype of the declaring class; `null` when that class is not a Spring bean, e.g. a Kotlin `object`. */
     val layer: String?,
+    /**
+     * `INTERNAL` for a helper of the unit of code that called it, `PROJECT` for a method of another class, `null` for
+     * the method the trace started from.
+     */
+    val reachedBy: String?,
     val className: String?,
     val methodName: String,
     val filePath: String?,
@@ -1684,9 +1684,15 @@ data class CallChainNodeJson(
 
 data class CallTargetJson(
     val target: String,
+    /**
+     * `INTERNAL` for a helper of the caller's own unit of code, `PROJECT` for a method of another project class, and
+     * `EXTERNAL` where the request leaves the application: a library method called on an injected dependency, or a
+     * method the framework implements, such as a Spring Data repository method.
+     */
+    val kind: String,
     /** Line of the call in the calling method, where a change to its arguments is made. */
     val line: Int?,
-    /** Id of the chain node the call reaches; `null` for a framework method or one the trace did not expand. */
+    /** Id of the chain node the call reaches; `null` for an `EXTERNAL` call or a method the trace did not expand. */
     val node: Int?,
     /** The interface or abstract method the call is written against, when [target] is an implementation of it. */
     val via: String?,
