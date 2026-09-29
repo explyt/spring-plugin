@@ -124,6 +124,20 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
     }
 
     /**
+     * The shared path of a miss is spelled as the routes declare it. The URL carries a value where the route has a
+     * `{template}`, and echoing the value would read as if a route with that literal segment existed.
+     */
+    fun testSharedPrefixOfAMissKeepsTheRouteTemplate() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val root = find("https://example.com/t/api/demo/items/42/history")
+
+        assertEquals(0, root["totalCount"].asInt())
+        assertEquals("/api/demo/items/{id}", root["sharedPrefix"].asText())
+        assertEquals(listOf("/api/demo/items/{id}"), paths(root["nearestByPrefix"]))
+    }
+
+    /**
      * A route opening with a `{template}` would absorb whatever the dropped prefix left over, so under an assumed
      * prefix it proves nothing about which route was requested: `/t/acme/reports` is not `/{tenant}/reports`
      * served under `/t`. Read as written, the template route still answers.
