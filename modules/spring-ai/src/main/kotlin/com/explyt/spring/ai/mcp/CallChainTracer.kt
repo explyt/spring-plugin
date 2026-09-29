@@ -8,7 +8,6 @@ package com.explyt.spring.ai.mcp
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
-
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
@@ -22,6 +21,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.USuperExpression
 import org.jetbrains.uast.UThisExpression
 import org.jetbrains.uast.toUElement
@@ -30,11 +30,16 @@ import org.jetbrains.uast.visitor.AbstractUastVisitor
 /**
  * The project methods a method reaches, in the order `explyt_trace_spring_call_chain` reports them.
  *
- * Only project sources are traced. A call into the JDK, the Kotlin standard library or a framework jar names nothing
- * a caller can change, and following every resolvable call buried the few project methods under `Instant.now` and
- * `trim`, spent the depth on them, and listed every test calling `Instant.now` as a test the trace would break. The
- * one framework call kept is a member called on a project type - `repository.findById` inherited from `CrudRepository`
- * - because the repository layer of a Spring Data application consists of nothing else; it is listed, not traced.
+ * Only methods with a body in project sources are traced. A call into the JDK, the Kotlin standard library or a
+ * framework jar names nothing a caller can change, and following every resolvable call buried the few project methods
+ * under `Instant.now` and `trim`, spent the depth on them, and listed every test calling `Instant.now` as a test the
+ * trace would break.
+ *
+ * A call where the request leaves the application is kept as an [CallKind.EXTERNAL] leaf, because that is where the
+ * I/O happens: a library method called on an injected dependency - `jdbcTemplate.query`, `kafkaTemplate.send` - and a
+ * method the framework implements for a project interface - a Spring Data repository method, declared or inherited
+ * from `CrudRepository`, or an HTTP client interface method. The two repository shapes are reported alike, since
+ * neither has a body the trace could read.
  *
  * Depth counts calls into other classes. A private helper, a supertype, a companion or a top-level function of the
  * same file is still the same unit of code, and charging a level for it stopped a controller-to-repository trace
@@ -52,27 +57,26 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 
     fun trace(start: PsiMethod, depth: Int): CallChain {
         val traced = LinkedHashMap<String, TracedMethod>()
-        val pending = ArrayDeque<Pending>().apply { add(Pending(start, depth)) }
+        val pending = ArrayDeque<Pending>().apply { add(Pending(start, depth, reachedBy = null)) }
 
         while (pending.isNotEmpty() && traced.size < maxMethods) {
-            val (method, remainingDepth) = pending.removeFirst()
+            val (method, remainingDepth, reachedBy) = pending.removeFirst()
             val key = methodKey(method)
             if (key in traced) continue
             val calls = callsOf(method)
-            traced[key] = TracedMethod(method, calls)
+            traced[key] = TracedMethod(method, reachedBy, calls)
 
-            val reached = calls.mapNotNull { call -> call.reached?.let { it to call.internal } }
-            reached.filter { (_, internal) -> internal }.asReversed()
-                .forEach { (callee, _) -> pending.addFirst(Pending(callee, remainingDepth)) }
+            calls.filter { it.kind == CallKind.INTERNAL }.asReversed()
+                .forEach { pending.addFirst(Pending(it.reached!!, remainingDepth, CallKind.INTERNAL)) }
             if (remainingDepth > 1) {
-                reached.filterNot { (_, internal) -> internal }
-                    .forEach { (callee, _) -> pending.addLast(Pending(callee, remainingDepth - 1)) }
+                calls.filter { it.kind == CallKind.PROJECT }
+                    .forEach { pending.addLast(Pending(it.reached!!, remainingDepth - 1, CallKind.PROJECT)) }
             }
         }
         return CallChain(traced.values.toList(), truncated = pending.any { methodKey(it.method) !in traced })
     }
 
-    private data class Pending(val method: PsiMethod, val remainingDepth: Int)
+    private data class Pending(val method: PsiMethod, val remainingDepth: Int, val reachedBy: CallKind?)
 
     private fun callsOf(method: PsiMethod): List<TracedCall> {
         val uMethod = method.toUElement() as? UMethod ?: return emptyList()
@@ -93,16 +97,22 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         val line = (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
 
         if (!isProjectSource(callee)) {
-            return listOfNotNull(frameworkMemberOfProjectType(call, callee, line))
+            return listOfNotNull(
+                frameworkMemberOfProjectType(call, callee, line) ?: injectedDependencyCall(call, callee, caller, line)
+            )
         }
-        val implementations = if (callee.hasModifierProperty(PsiModifier.ABSTRACT)) implementationsOf(callee) else emptyList()
+        if (!callee.hasModifierProperty(PsiModifier.ABSTRACT)) {
+            return listOf(projectCall(nameOf(callee), line, callee, via = null, caller))
+        }
+        val implementations = implementationsOf(callee)
         if (implementations.isEmpty()) {
-            return listOf(TracedCall(nameOf(callee), line, callee, via = null, internal = isInternal(caller, callee)))
+            return listOf(TracedCall(nameOf(callee), line, reached = null, via = null, CallKind.EXTERNAL))
         }
-        return implementations.map {
-            TracedCall(nameOf(it), line, it, via = nameOf(callee), internal = isInternal(caller, it))
-        }
+        return implementations.map { projectCall(nameOf(it), line, it, via = nameOf(callee), caller) }
     }
+
+    private fun projectCall(target: String, line: Int?, callee: PsiMethod, via: String?, caller: PsiMethod) =
+        TracedCall(target, line, callee, via, if (isInternal(caller, callee)) CallKind.INTERNAL else CallKind.PROJECT)
 
     /**
      * A framework interface method called on a project type, named after that type: `DemoRepository.findById`, not
@@ -117,8 +127,25 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         if (receiver is UThisExpression || receiver is USuperExpression) return null
         val receiverClass = PsiUtil.resolveClassInClassTypeOnly(call.receiverType) ?: return null
         if (!isProjectSource(receiverClass)) return null
-        return TracedCall("${receiverClass.name}.${callee.name}", line, reached = null, via = null, internal = false)
+        return externalCall(receiverClass, callee, line)
     }
+
+    /**
+     * A library method called on a dependency the container injected into the caller's class, named after the declared
+     * type of the dependency: `JdbcTemplate.query`. JDK and Kotlin standard library members are left out - an
+     * injected `Clock` or a `List` of handlers is plumbing, not a point where the request leaves the application.
+     */
+    private fun injectedDependencyCall(call: UCallExpression, callee: PsiMethod, caller: PsiMethod, line: Int?): TracedCall? {
+        val calleeClass = callee.containingClass?.qualifiedName ?: return null
+        if (PLATFORM_PACKAGES.any(calleeClass::startsWith)) return null
+        val owner = caller.containingClass ?: return null
+        InjectedDependencies.fieldOf((call.receiver as? UResolvable)?.resolve(), owner) ?: return null
+        val receiverClass = PsiUtil.resolveClassInClassTypeOnly(call.receiverType) ?: return null
+        return externalCall(receiverClass, callee, line)
+    }
+
+    private fun externalCall(receiverClass: PsiClass, callee: PsiMethod, line: Int?) =
+        TracedCall("${receiverClass.name}.${callee.name}", line, reached = null, via = null, CallKind.EXTERNAL)
 
     private fun implementationsOf(method: PsiMethod): List<PsiMethod> =
         OverridingMethodsSearch.search(method, projectScope, true).findAll()
@@ -159,9 +186,33 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
          * The name a function is declared with, not the one the JVM sees: a Kotlin `internal` function compiles to
          * `activitySql$module_name`, a name that appears nowhere in the source a caller would search.
          */
-        fun sourceNameOf(method: PsiMethod): String =
-            ((method as? KtLightMethod)?.kotlinOrigin as? KtNamedFunction)?.name ?: method.name
+        fun sourceNameOf(method: PsiMethod): String = kotlinFunctionOf(method)?.name ?: method.name
+
+        /**
+         * The parameters a method is declared with. The JVM signature of a Kotlin function carries more: the receiver of
+         * an extension function as `$this$name`, and the continuation of a `suspend` function as `$completion`.
+         */
+        fun sourceParametersOf(method: PsiMethod): List<String> =
+            kotlinFunctionOf(method)?.valueParameters?.mapNotNull { it.name }
+                ?: method.parameterList.parameters.map { it.name }
+
+        private fun kotlinFunctionOf(method: PsiMethod): KtNamedFunction? =
+            (method as? KtLightMethod)?.kotlinOrigin as? KtNamedFunction
+
+        private val PLATFORM_PACKAGES = listOf("java.", "kotlin.")
     }
+}
+
+/** What a call made by a traced method reaches. */
+internal enum class CallKind {
+    /** A project method of the caller's own unit of code - a helper - traced without spending depth. */
+    INTERNAL,
+
+    /** A project method of another class, traced while depth remains. */
+    PROJECT,
+
+    /** A point where the request leaves the application, listed and not traced. */
+    EXTERNAL,
 }
 
 /**
@@ -177,22 +228,25 @@ internal class CallChain(val methods: List<TracedMethod>, val truncated: Boolean
     fun idOf(method: PsiMethod): Int? = ids[methodKey(method)]
 }
 
-internal class TracedMethod(val method: PsiMethod, val calls: List<TracedCall>)
+/**
+ * @property reachedBy the kind of call the method was first reached through, or `null` for the method the trace
+ *   started from.
+ */
+internal class TracedMethod(val method: PsiMethod, val reachedBy: CallKind?, val calls: List<TracedCall>)
 
 /**
  * One call a traced method makes.
  *
  * @property line the line of the call itself, where a change to its arguments is made.
- * @property reached the project method the call reaches, which the trace follows; `null` for a framework method.
+ * @property reached the project method the call reaches, which the trace follows; `null` for an external call.
  * @property via the declaration the call is written against when it reaches an implementation of it.
- * @property internal whether the call stays in the caller's own unit of code and so costs no depth.
  */
 internal data class TracedCall(
     val target: String,
     val line: Int?,
     val reached: PsiMethod?,
     val via: String?,
-    val internal: Boolean,
+    val kind: CallKind,
 )
 
 /**
