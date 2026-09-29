@@ -36,6 +36,50 @@ object EndpointPathPatterns {
     fun prefixOf(path: String, segmentCount: Int): String =
         segments(path).take(segmentCount).joinToString(separator = "/", prefix = "/")
 
+    /**
+     * The request path of a URL as a client writes it - in a browser, a log line or a curl: no route declares a
+     * scheme, a host, a query or a fragment, so `https://example.com/t/api/items?window=24h#top` is `/t/api/items`.
+     */
+    fun requestPathOf(url: String): String =
+        SpringWebUtil.simplifyUrl(url.trim().replace(ORIGIN, "").substringBefore('#'))
+
+    /**
+     * The ways a request [path] can meet the routes: as given first, then under a leading prefix no route declares,
+     * fewest dropped segments first - `/t/api/items` as given, as `/api/items` under `/t`, as `/items` under `/t/api`.
+     *
+     * A servlet context path, a gateway route or an ingress rule prepends such a prefix, and it usually lives in
+     * deployment configuration only, where no endpoint model can see it.
+     */
+    fun readingsOf(path: String): Sequence<PathReading> {
+        val segments = segments(path)
+        return sequenceOf(PathReading(assumedPrefix = null, path = path)) +
+                (1 until segments.size).asSequence().map { dropped ->
+                    PathReading(
+                        assumedPrefix = segments.take(dropped).joinToString(separator = "/", prefix = "/"),
+                        path = segments.drop(dropped).joinToString(separator = "/", prefix = "/"),
+                    )
+                }
+    }
+
+    /**
+     * A request path as it meets the routes, with the leading [assumedPrefix] dropped from it, or `null` when it is
+     * read as given.
+     */
+    data class PathReading(val assumedPrefix: String?, val path: String) {
+
+        /**
+         * Whether [route] may be what follows the dropped prefix: it opens with the literal segment [path] opens with.
+         *
+         * A route opening with a `{template}` would claim whatever a dropped prefix left over, which makes a match
+         * under an assumed prefix evidence of nothing. A path read as given admits every route.
+         */
+        fun admits(route: String): Boolean {
+            if (assumedPrefix == null) return true
+            val opening = segments(route).firstOrNull() ?: return false
+            return !isTemplateSegment(opening) && opening == segments(path).firstOrNull()
+        }
+    }
+
     private fun score(path: String): Int =
         segments(path).sumOf { segment ->
             when {
@@ -45,6 +89,7 @@ object EndpointPathPatterns {
             }
         }
 
+    private val ORIGIN = Regex("^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]*")
     private const val CATCH_ALL = "**"
     private const val WILDCARD_WEIGHT = 100
     private const val CAPTURE_WEIGHT = 1
