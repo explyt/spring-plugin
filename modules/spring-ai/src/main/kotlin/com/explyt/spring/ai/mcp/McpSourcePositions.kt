@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiNameIdentifierOwner
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 
 /**
@@ -23,9 +24,21 @@ object McpSourcePositions {
         element.withSourcePosition()
             ?: (element as? PsiMember)?.containingClass?.withSourcePosition()
 
-    /** 1-based line of an anchor returned by [sourceAnchorOf]. */
+    /**
+     * 1-based line of an anchor returned by [sourceAnchorOf]: the line its name is declared on, when it has a name.
+     *
+     * A declaration's text starts at its documentation comment, so the start of the element is the first line of a
+     * KDoc or a Javadoc - above the annotations and the signature a caller is looking for, and not the line
+     * `explyt_trace_spring_call_chain` names when it lists the methods of a file.
+     */
     fun lineOfAnchor(anchor: PsiElement): Int? =
-        anchor.getLineNumber(start = true).takeIf { it >= 0 }?.plus(1)
+        anchor.containingFile?.getLineNumber(declarationOffsetOf(anchor))?.plus(1)
+
+    private fun declarationOffsetOf(anchor: PsiElement): Int {
+        val range = anchor.textRange
+        val name = (anchor as? PsiNameIdentifierOwner)?.nameIdentifier?.textRange
+        return name?.takeIf { !it.isEmpty && range.contains(it) }?.startOffset ?: range.startOffset
+    }
 
     private fun PsiElement.withSourcePosition(): PsiElement? =
         takeIf { it.hasSourcePosition() } ?: navigationElement?.takeIf { it.hasSourcePosition() }
