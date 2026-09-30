@@ -358,7 +358,7 @@ object SpringWebUtil {
         val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
-        val fullPath = simplifyUrl("$prefix/${removeParams(path)}")
+        val fullPath = simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/${removeParams(path)}"))
 
         val requestMethods =
             requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
