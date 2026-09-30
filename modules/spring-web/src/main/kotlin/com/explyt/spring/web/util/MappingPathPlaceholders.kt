@@ -34,7 +34,7 @@ object MappingPathPlaceholders {
             resolve(value, valueOf, resolving + key)
         }
 
-    private const val PLACEHOLDER_START = "\${"
+    const val PLACEHOLDER_START = "\${"
     private const val MAX_DEPTH = 8
     private val PLACEHOLDER = Regex("""\$\{([^:{}]+)(?::([^{}]*))?}""")
 }
