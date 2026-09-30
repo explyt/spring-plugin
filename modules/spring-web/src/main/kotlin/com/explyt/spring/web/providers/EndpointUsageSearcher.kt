@@ -13,6 +13,8 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.loader.*
 import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.EndpointUrlMatcher
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.PATHS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS
@@ -200,6 +202,7 @@ object EndpointUsageSearcher {
         module: Module
     ): List<PsiElement> {
         val endpoint = SpringWebUtil.simplifyUrl(fullPath)
+        val basePath = ApplicationBasePath.cachedOf(module)
         val methods = mutableSetOf<PsiElement>()
 
         for (psiMethod in getMockMvcMethods(module)) {
@@ -222,7 +225,7 @@ object EndpointUsageSearcher {
                         uCallExpression.getArgumentForParameter(urlTemplateIndex)?.evaluateString()
                             ?: return@filterToSet false
 
-                    return@filterToSet SpringWebUtil.isEndpointMatches(endpoint, urlArg)
+                    return@filterToSet EndpointUrlMatcher.addresses(endpoint, urlArg, basePath)
                 }
                 .mapNotNull { it.sourcePsi }
         }
@@ -262,6 +265,7 @@ object EndpointUsageSearcher {
 
     fun findWebTestClientEndpointUsage(path: String, methodName: String, module: Module): List<PsiElement> {
         val endpoint = SpringWebUtil.simplifyUrl(path)
+        val basePath = ApplicationBasePath.cachedOf(module)
         return getGetWebTestMethods(module).asSequence()
             .filter { it.name.uppercase() == methodName || it.name == "method" }
             .flatMap {
@@ -285,7 +289,7 @@ object EndpointUsageSearcher {
             .filter {
                 val argument = it.valueArguments.firstOrNull()?.evaluate() as? String
                     ?: return@filter false
-                SpringWebUtil.isEndpointMatches(endpoint, argument)
+                EndpointUrlMatcher.addresses(endpoint, argument, basePath)
             }
             .mapNotNull { it.sourcePsi }
             .toList()
