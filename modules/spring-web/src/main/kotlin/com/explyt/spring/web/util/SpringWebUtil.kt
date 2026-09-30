@@ -365,8 +365,7 @@ object SpringWebUtil {
                 .map { it.text.split('.').last() }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = getTypeFqn(returnType, psiMethod.language)
+        val returnTypeFqn = getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         return EndpointInfo(
             fullPath,

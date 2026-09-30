@@ -12,6 +12,7 @@ import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.getRequestBodyInfo
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.collectJaxRsArgumentInfos
 import com.explyt.spring.web.util.SpringWebUtil.getJaxRsConsumes
@@ -84,8 +85,8 @@ class JaxRsEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
             val className = psiMethod.containingClass?.name ?: return null
 
             val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-            val returnType = uMethod.returnType
-            val returnTypeFqn = SpringWebUtil.getTypeFqn(returnType, psiMethod.language)
+            val returnTypeFqn =
+                SpringWebUtil.getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
             val argumentInfos = collectJaxRsArgumentInfos(psiMethod, module)
             val produces = getJaxRsProduces(psiMethod, module)
