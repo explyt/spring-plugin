@@ -102,17 +102,19 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
             )
         }
         if (!callee.hasModifierProperty(PsiModifier.ABSTRACT)) {
-            return listOf(projectCall(nameOf(callee), line, callee, via = null, caller))
+            return listOf(projectCall(line, callee, viaMethod = null, caller))
         }
         val implementations = implementationsOf(callee)
         if (implementations.isEmpty()) {
-            return listOf(TracedCall(nameOf(callee), line, reached = null, via = null, CallKind.EXTERNAL))
+            return listOf(TracedCall(nameOf(callee), line, reached = null, viaMethod = null, CallKind.EXTERNAL))
         }
-        return implementations.map { projectCall(nameOf(it), line, it, via = nameOf(callee), caller) }
+        return implementations.map { projectCall(line, it, viaMethod = callee, caller) }
     }
 
-    private fun projectCall(target: String, line: Int?, callee: PsiMethod, via: String?, caller: PsiMethod) =
-        TracedCall(target, line, callee, via, if (isInternal(caller, callee)) CallKind.INTERNAL else CallKind.PROJECT)
+    private fun projectCall(line: Int?, callee: PsiMethod, viaMethod: PsiMethod?, caller: PsiMethod) = TracedCall(
+        nameOf(callee), line, callee, viaMethod,
+        if (isInternal(caller, callee)) CallKind.INTERNAL else CallKind.PROJECT,
+    )
 
     /**
      * A framework interface method called on a project type, named after that type: `DemoRepository.findById`, not
@@ -145,7 +147,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
     }
 
     private fun externalCall(receiverClass: PsiClass, callee: PsiMethod, line: Int?) =
-        TracedCall("${receiverClass.name}.${callee.name}", line, reached = null, via = null, CallKind.EXTERNAL)
+        TracedCall("${receiverClass.name}.${callee.name}", line, reached = null, viaMethod = null, CallKind.EXTERNAL)
 
     private fun implementationsOf(method: PsiMethod): List<PsiMethod> =
         OverridingMethodsSearch.search(method, projectScope, true).findAll()
@@ -178,9 +180,10 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         return fileIndex.isInSourceContent(file)
     }
 
-    private fun nameOf(method: PsiMethod): String = "${method.containingClass?.name ?: "?"}.${sourceNameOf(method)}"
-
     companion object {
+
+        /** How a method is named in a trace: its declaring class and its source name, `ShortLinkService.activity`. */
+        fun nameOf(method: PsiMethod): String = "${method.containingClass?.name ?: "?"}.${sourceNameOf(method)}"
 
         /**
          * The name a function is declared with, not the one the JVM sees: a Kotlin `internal` function compiles to
@@ -224,8 +227,20 @@ internal class CallChain(val methods: List<TracedMethod>, val truncated: Boolean
 
     private val ids = methods.withIndex().associate { (index, traced) -> methodKey(traced.method) to index }
 
+    private val viaDeclarations: Map<String, List<PsiMethod>> = methods
+        .flatMap { it.calls }
+        .mapNotNull { call -> call.reached?.let { reached -> call.viaMethod?.let { methodKey(reached) to it } } }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, declarations) -> declarations.distinctBy(::methodKey) }
+
     /** Position of [method] in [methods], or `null` when the trace did not expand it. */
     fun idOf(method: PsiMethod): Int? = ids[methodKey(method)]
+
+    /**
+     * The interface or abstract declarations the trace reached [method] through. Code written against such a
+     * declaration - a caller, a mock - depends on [method] without naming it.
+     */
+    fun viaDeclarationsOf(method: PsiMethod): List<PsiMethod> = viaDeclarations[methodKey(method)].orEmpty()
 }
 
 /**
@@ -239,15 +254,17 @@ internal class TracedMethod(val method: PsiMethod, val reachedBy: CallKind?, val
  *
  * @property line the line of the call itself, where a change to its arguments is made.
  * @property reached the project method the call reaches, which the trace follows; `null` for an external call.
- * @property via the declaration the call is written against when it reaches an implementation of it.
+ * @property viaMethod the declaration the call is written against when it reaches an implementation of it.
  */
 internal data class TracedCall(
     val target: String,
     val line: Int?,
     val reached: PsiMethod?,
-    val via: String?,
+    val viaMethod: PsiMethod?,
     val kind: CallKind,
-)
+) {
+    val via: String? get() = viaMethod?.let(CallChainTracer::nameOf)
+}
 
 /**
  * Identity of a method across the PSI instances resolving to it: a Kotlin light method is re-created by every
