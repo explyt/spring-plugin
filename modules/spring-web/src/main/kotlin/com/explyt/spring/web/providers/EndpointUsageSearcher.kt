@@ -20,6 +20,7 @@ import com.explyt.spring.web.util.SpringWebUtil.PATHS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
 import com.explyt.spring.web.util.SpringWebUtil.getUrlTemplateIndex
+import com.explyt.spring.web.util.UrlArgumentText
 import com.explyt.util.CacheUtils.getCachedValue
 import com.explyt.util.ExplytKotlinUtil.filterToSet
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -220,10 +221,9 @@ object EndpointUsageSearcher {
                         ) return@filterToSet false
                     }
 
-                    val urlTemplateIndex = getUrlTemplateIndex(psiMethod)
-                    val urlArg =
-                        uCallExpression.getArgumentForParameter(urlTemplateIndex)?.evaluateString()
-                            ?: return@filterToSet false
+                    val urlArg = uCallExpression.getArgumentForParameter(urlArgumentIndex(psiMethod))
+                        ?.let(UrlArgumentText::of)
+                        ?: return@filterToSet false
 
                     return@filterToSet EndpointUrlMatcher.addresses(endpoint, urlArg, basePath)
                 }
@@ -242,8 +242,12 @@ object EndpointUsageSearcher {
             if (uppercaseName !in requestMethods) return false
         }
 
-        return getUrlTemplateIndex(psiMethod) != -1
+        return urlArgumentIndex(psiMethod) != -1
     }
+
+    /** The URL argument of a request builder: a URL template, or the `java.net.URI` of the overloads that take one. */
+    private fun urlArgumentIndex(psiMethod: PsiMethod): Int =
+        getUrlTemplateIndex(psiMethod).takeIf { it != -1 } ?: UrlArgumentText.uriParameterIndex(psiMethod)
 
     private fun getMockMvcMethods(module: Module): Array<PsiMethod> {
         val libraryModificationTracker = ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
@@ -287,7 +291,7 @@ object EndpointUsageSearcher {
             .mapNotNull { it.selector as? UCallExpression }
             .filter { it.methodName == "uri" }
             .filter {
-                val argument = it.valueArguments.firstOrNull()?.evaluate() as? String
+                val argument = it.valueArguments.firstOrNull()?.let(UrlArgumentText::of)
                     ?: return@filter false
                 EndpointUrlMatcher.addresses(endpoint, argument, basePath)
             }
