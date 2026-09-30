@@ -235,7 +235,12 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     fun testTestWrittenAgainstTheInterfaceIsListedOnTheImplementation() = runBlocking<Unit> {
         val references = implementationNode(traceFromHandler(includeTests = true)["chain"])["testReferences"]
 
-        val throughInterface = references.single { !it["via"].isNull }
+        val throughInterfaces = references.filter { !it["via"].isNull }
+        assertEquals(
+            "The interface-typed test is listed once, through the interface, got $references",
+            1, throughInterfaces.size
+        )
+        val throughInterface = throughInterfaces.single()
         assertEquals("ShortLinkActivityService.activity", throughInterface["via"].asText())
         assertEquals("$TEST_ROOT/com/example/links/ShortLinkInterfaceTest.kt", throughInterface["filePath"].asText())
         assertEquals(
@@ -265,7 +270,10 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     fun testTestFieldsAreAbsentWhenTestsAreNotRequested() = runBlocking<Unit> {
         val chain = traceFromHandler(includeTests = false)["chain"]
 
-        assertTrue(chain.none { it.has("testReferences") || it.has("testUrlReferences") })
+        assertTrue(
+            "Test fields must be absent when tests are not requested, got ${chain.filter { it.has("testReferences") }.map(::nameOf)}",
+            chain.none { it.has("testReferences") || it.has("testUrlReferences") }
+        )
         assertTrue(
             "Requested and not found is an empty list",
             traceFromHandler(includeTests = true)["chain"].all { it["testReferences"].isArray }
@@ -316,6 +324,26 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         val whole = CallChainTracer(project, maxMethods = 50).trace(handler, depth = 3)
         assertEquals(8, whole.methods.size)
         assertFalse(whole.truncated)
+    }
+
+    /**
+     * The tool reports the cut too, not only the tracer: a chain of same-class helpers costs no depth, so a class
+     * calling sixty of them in a row reaches the method cap.
+     */
+    fun testChainCutAtItsSizeLimitIsReportedByTheTool() = runBlocking<Unit> {
+        addSource(LONG_ROOT, "com/example/links/LongChain.kt", LONG_CHAIN_SOURCE)
+
+        val root = mapper.readTree(
+            toolset.traceCallChain(
+                filePath = "$LONG_ROOT/com/example/links/LongChain.kt",
+                line = lineOf(LONG_CHAIN_SOURCE, "fun start()"),
+                projectPath = project.basePath!!,
+                includeTests = false,
+            )
+        )
+
+        assertEquals("The chain stops at the 50-method cap", 50, root["totalCount"].asInt())
+        assertTrue("A chain cut at the cap must say so", root["chainLimitReached"].asBoolean())
     }
 
     /** The defaults hold an ordinary controller-to-repository chain, test references included, in one page. */
@@ -438,6 +466,17 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     private companion object {
         const val MAIN_ROOT = "traceMain"
         const val TEST_ROOT = "traceTest"
+        const val LONG_ROOT = "traceLong"
+
+        val LONG_CHAIN_SOURCE = buildString {
+            appendLine("package com.example.links")
+            appendLine()
+            appendLine("class LongChain {")
+            appendLine("    fun start(): Int = step1()")
+            for (step in 1 until 60) appendLine("    private fun step$step(): Int = step${step + 1}()")
+            appendLine("    private fun step60(): Int = 0")
+            appendLine("}")
+        }
 
         val LIBRARIES = listOf(
             TestLibrary.springWebMvc_6_0_7,
