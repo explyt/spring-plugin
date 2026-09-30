@@ -34,5 +34,5 @@ class RunInSwaggerAction(
     }
 
     @VisibleForTesting
-    fun endpointPaths(): List<String> = endpointInfos.map { it.path }
+    fun endpoints(): List<AddEndpointToOpenApiIntention.EndpointInfo> = endpointInfos
 }

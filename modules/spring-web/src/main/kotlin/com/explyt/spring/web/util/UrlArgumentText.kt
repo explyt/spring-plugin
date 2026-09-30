@@ -52,7 +52,7 @@ object UrlArgumentText {
         return when (expression) {
             is UInjectionHost -> expression.evaluateToString() ?: interpolated(expression)
             is UPolyadicExpression ->
-                if (expression.operator == UastBinaryOperator.PLUS) expression.operands.joinToString("") { textOf(unwrap(it)) }
+                if (isConcatenation(expression)) expression.operands.joinToString("") { textOf(unwrap(it)) }
                 else VARIABLE_SEGMENT
             is ULiteralExpression -> expression.value?.toString() ?: VARIABLE_SEGMENT
             else -> VARIABLE_SEGMENT
@@ -72,6 +72,10 @@ object UrlArgumentText {
         if (!method.isConstructor && method.name != URI_FACTORY) return null
         return call.valueArguments.singleOrNull()
     }
+
+    /** A `+` that joins text, not `page + 1` inside a template entry, which is one run-time value. */
+    private fun isConcatenation(expression: UPolyadicExpression): Boolean =
+        expression.operator == UastBinaryOperator.PLUS && isString(expression.getExpressionType())
 
     private fun unwrap(expression: UExpression): UExpression =
         if (expression is UParenthesizedExpression) unwrap(expression.expression) else expression
