@@ -11,6 +11,7 @@ import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
@@ -65,7 +66,7 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
         }
         if (OpenApiUtils.isAbsolutePath(prefix)) return null
 
-        val fullPath = SpringWebUtil.simplifyUrl("$prefix/$path")
+        val fullPath = SpringWebUtil.simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/$path"))
 
         val requestMethods =
             requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
