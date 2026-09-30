@@ -976,16 +976,31 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Any line of the method identifies it - its signature, an annotation on it, or a line of its " +
                 "body - so the line explyt_find_spring_endpoint reports for a handler can be passed straight in; " +
                 "a line belonging to no method is refused with the nearest method declarations in that file. " +
-                "Returns 'chain', the traced methods with an 'id', the Spring stereotype of their class in 'layer' " +
-                "(CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; null for a class that is not a bean, " +
-                "such as a Kotlin object), 'reachedBy' (INTERNAL for a helper of its caller's class, PROJECT for a " +
-                "call from another class, null for the starting method), parameters as declared, file path and " +
-                "declaration line, and 'callsInto' - every call with its 'kind' (INTERNAL, PROJECT or EXTERNAL), " +
-                "the line of the call itself, 'node' naming the id of the traced method it reaches (null when it " +
-                "is not traced), and 'via' naming the interface method it is written against when it reaches an " +
-                "implementation; 'truncated' is true when the chain hit its " +
-                "size limit of $MAX_TRACED_METHODS methods. With includeTests, 'testReferences' lists the test files " +
-                "calling a traced method - the tests a signature change will break."
+                "Returns {status, chainLimitReached, revision, totalCount, offset, truncated, nextOffset, chain}. " +
+                "'chain' holds the traced methods, the starting method first, each with an 'id', the Spring " +
+                "stereotype of its class in 'layer' (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; " +
+                "null for a class that is not a bean, such as a Kotlin object), 'reachedBy' (INTERNAL for a helper " +
+                "of its caller's class, PROJECT for a call from another class, null for the starting method), " +
+                "parameters as declared, file path and declaration line, 'aop' - the @Transactional, @Async and " +
+                "cache annotations declared on the method or its class, with 'declaredOn' METHOD or CLASS; Spring " +
+                "applies them through a proxy, so they do not take effect for a call reached INTERNAL, which is " +
+                "a self-invocation - and 'callsInto': every call with its 'kind' (INTERNAL, PROJECT or " +
+                "EXTERNAL), the line of the call itself, 'node' naming the id of the traced method it reaches " +
+                "(null when it is not traced), and 'via' naming the interface method it is written against when " +
+                "it reaches an implementation. 'chainLimitReached' is true when reachable methods were left out " +
+                "because the chain hit its size limit of $MAX_TRACED_METHODS methods. " +
+                "With includeTests, every node carries 'testReferences': the test files referring to the method, " +
+                "or to the interface method named in 'via' - the tests a signature change will break - and the " +
+                "starting method, when it handles an endpoint, also carries 'testUrlReferences': the MockMvc and " +
+                "WebTestClient calls in tests whose URL matches it, with the matched 'endpointPath'; a request " +
+                "sent by another HTTP client is not detected. Without includeTests both fields are absent, which " +
+                "means not requested; an empty list means that no test was found. " +
+                "A page holds at most 'limit' nodes ($TRACE_PAGE_LIMIT by default) within 'maxChars' of compact " +
+                "JSON ($TRACE_PAGE_CHARS by default) and can end earlier, because the budget is measured on the " +
+                "finished document. When 'truncated' is true, repeat the call with 'offset' = 'nextOffset' and " +
+                "'expectedRevision' = 'revision': the pages together serve every node once, and a 'node' id on " +
+                "one page refers to the same chain on another. A revision from a different query, or a project " +
+                "changed since the first page, is answered with RESULT_CHANGED."
     )
     suspend fun traceCallChain(
         @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
@@ -1006,13 +1021,22 @@ class SpringBootApplicationMcpToolset : McpToolset {
         depth: Int = 3,
         @McpDescription("Whether to find the test files that call a traced method (default true)")
         includeTests: Boolean = true,
+        @McpDescription("Index of the first chain node to return; needs expectedRevision when above 0")
+        offset: Int = 0,
+        @McpDescription("Maximum chain nodes on this page, 1..50, $TRACE_PAGE_LIMIT by default")
+        limit: Int = TRACE_PAGE_LIMIT,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $TRACE_PAGE_CHARS by default")
+        maxChars: Int = TRACE_PAGE_CHARS,
+        @McpDescription("The 'revision' of the first page, required to continue that same answer")
+        expectedRevision: String? = null,
     ): String {
         if (filePath.isBlank()) mcpFail("filePath must not be empty")
         if (line < 1) mcpFail("line must be >= 1")
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val effectiveDepth = depth.coerceIn(1, 10)
+        val page = PageRequest(offset = offset, limit = limit, maxChars = maxChars, expectedRevision = expectedRevision)
 
-        val result = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val basePath = project.basePath ?: mcpFail("project base path not found")
                 val absolutePath = "$basePath/$filePath"
@@ -1029,15 +1053,28 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
                 val chain = CallChainTracer(project, MAX_TRACED_METHODS).trace(psiMethod, effectiveDepth)
                 val tests = module?.takeIf { includeTests }?.let { CallChainTestReferences(it, project) }
+                val revision = EntityInventory.revision(
+                    project,
+                    mapOf(
+                        "filePath" to filePath,
+                        "line" to line.toString(),
+                        "depth" to effectiveDepth.toString(),
+                        "includeTests" to includeTests.toString(),
+                    )
+                )
 
-                CallChainResultJson(
-                    chain = chain.methods.mapIndexed { id, traced -> toCallChainNodeJson(id, traced, chain, tests, project) },
-                    truncated = chain.truncated,
+                BoundedPageWriter().write(
+                    envelope = mapper.createObjectNode().put(FIELD_CHAIN_LIMIT_REACHED, chain.truncated),
+                    itemsField = FIELD_CHAIN,
+                    totalCount = chain.methods.size,
+                    itemAt = { id ->
+                        mapper.valueToTree(toCallChainNodeJson(id, chain.methods[id], chain, tests, project))
+                    },
+                    revision = revision,
+                    page = page,
                 )
             }
         }
-
-        return mapper.writeValueAsString(result)
     }
 
     /**
@@ -1401,6 +1438,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // application, and a chain that long no longer tells the caller which path a change travels.
         private const val MAX_TRACED_METHODS = 50
 
+        private const val TRACE_PAGE_LIMIT = 20
+        private const val TRACE_PAGE_CHARS = 8000
+        private const val FIELD_CHAIN = "chain"
+        private const val FIELD_CHAIN_LIMIT_REACHED = "chainLimitReached"
+
         /** Return types of a route-registration bean, whose signature describes the registration, not a request. */
         private val ROUTE_FUNCTION_TYPES = listOf(
             SpringWebClasses.ROUTE_FUNCTION,
@@ -1626,11 +1668,6 @@ data class EndpointParameterJson(
     val defaultValue: String? = null,
 )
 
-data class CallChainResultJson(
-    val chain: List<CallChainNodeJson>,
-    /** Whether project methods reachable within the depth were left out because the chain hit its size limit. */
-    val truncated: Boolean,
-)
 
 data class CallChainNodeJson(
     /** Position of the node in the chain, which [CallTargetJson.node] refers to. */
@@ -1685,8 +1722,11 @@ data class NodeTestReferenceJson(
 data class UrlTestReferenceJson(
     val filePath: String,
     val lines: List<Int>,
-    /** The endpoint path the test's request URL matched. */
-    val url: String,
+    /**
+     * The mapping path of the endpoint the test's request matched, as the endpoint declares it - not the literal URL
+     * the test sends, which may carry concrete values in place of `{templates}`.
+     */
+    val endpointPath: String,
 )
 
 data class CallTargetJson(

@@ -250,7 +250,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
 
         val byUrl = chain[0]["testUrlReferences"]
         assertEquals(listOf("$TEST_ROOT/com/example/links/ShortLinkWebTest.kt"), byUrl.map { it["filePath"].asText() })
-        assertEquals("/api/short-links/{id}/activity", byUrl.single()["url"].asText())
+        assertEquals("/api/short-links/{id}/activity", byUrl.single()["endpointPath"].asText())
         assertEquals(
             listOf(lineOf(WEB_TEST_SOURCE, "get(\"/api/short-links/1/activity\")")),
             byUrl.single()["lines"].map { it.asInt() }
@@ -300,8 +300,11 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     private fun implementationNode(chain: JsonNode): JsonNode =
         chain.single { nameOf(it) == "ShortLinkActivityServiceImpl.activity" }
 
-    /** A chain stopped by its size limit says so, rather than reading as a request path that ends there. */
-    fun testChainCutAtItsSizeLimitIsReportedTruncated() {
+    /**
+     * A chain stopped by its size limit says so, rather than reading as a request path that ends there. The tool
+     * reports it as `chainLimitReached`, separate from the `truncated` of a page that continues.
+     */
+    fun testChainCutAtItsSizeLimitIsReported() {
         val handler = JavaPsiFacade.getInstance(project)
             .findClass("com.example.links.ShortLinkAdminController", GlobalSearchScope.projectScope(project))!!
             .findMethodsByName("activity", false).single()
@@ -314,6 +317,83 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         assertEquals(8, whole.methods.size)
         assertFalse(whole.truncated)
     }
+
+    /** The defaults hold an ordinary controller-to-repository chain, test references included, in one page. */
+    fun testDefaultPageHoldsTheWholeChain() = runBlocking<Unit> {
+        val root = traceFromHandler(includeTests = true)
+
+        assertEquals("OK", root["status"].asText())
+        assertEquals(8, root["totalCount"].asInt())
+        assertEquals((0 until 8).toList(), root["chain"].map { it["id"].asInt() })
+        assertFalse(root["truncated"].asBoolean())
+        assertTrue(root["nextOffset"].isNull)
+        assertFalse("The fixture is far below the method cap", root["chainLimitReached"].asBoolean())
+    }
+
+    /**
+     * A long chain is read in pages: each continuation names the revision of the first page, and together the pages
+     * serve every node exactly once, in chain order, so a `node` id on one page resolves on another.
+     */
+    fun testPagesContinueThroughTheWholeChain() = runBlocking<Unit> {
+        val first = tracePage(limit = 3)
+        assertTrue("Precondition: the chain must be longer than one page", first["truncated"].asBoolean())
+
+        val ids = mutableListOf<Int>()
+        var page = first
+        while (true) {
+            ids += page["chain"].map { it["id"].asInt() }
+            if (!page["truncated"].asBoolean()) break
+            page = tracePage(limit = 3, offset = page["nextOffset"].asInt(), expectedRevision = first["revision"].asText())
+        }
+
+        assertEquals((0 until first["totalCount"].asInt()).toList(), ids)
+    }
+
+    /** A page is measured on the finished answer, so a small budget ends it early instead of cutting a node. */
+    fun testCharacterBudgetEndsThePageBeforeTheLimit() = runBlocking<Unit> {
+        val root = tracePage(limit = 50, maxChars = 1200)
+
+        assertTrue(root["truncated"].asBoolean())
+        assertTrue("At least one node fits 1200 chars", root["chain"].size() in 1 until 8)
+        assertTrue(mapper.writeValueAsString(root).length <= 1200)
+    }
+
+    /** A revision belongs to one query: continuing a different trace with it would stitch two chains together. */
+    fun testRevisionOfAnotherQueryIsRejected() = runBlocking<Unit> {
+        val first = tracePage(limit = 3)
+
+        val other = tracePage(limit = 3, offset = 3, expectedRevision = first["revision"].asText(), depth = 2)
+
+        assertEquals("ERROR", other["status"].asText())
+        assertEquals("RESULT_CHANGED", other["error"]["code"].asText())
+    }
+
+    fun testContinuationWithoutRevisionIsRejected() = runBlocking<Unit> {
+        val root = tracePage(limit = 3, offset = 3)
+
+        assertEquals("ERROR", root["status"].asText())
+        assertEquals("INVALID_ARGUMENT", root["error"]["code"].asText())
+    }
+
+    private suspend fun tracePage(
+        limit: Int,
+        offset: Int = 0,
+        maxChars: Int = 16000,
+        expectedRevision: String? = null,
+        depth: Int = 3,
+    ): JsonNode = mapper.readTree(
+        toolset.traceCallChain(
+            filePath = "$MAIN_ROOT/com/example/links/ShortLinks.kt",
+            line = lineOf(MAIN_SOURCE, "fun activity(@PathVariable"),
+            projectPath = project.basePath!!,
+            depth = depth,
+            includeTests = false,
+            offset = offset,
+            limit = limit,
+            maxChars = maxChars,
+            expectedRevision = expectedRevision,
+        )
+    )
 
     private suspend fun repositoryNode(): JsonNode =
         traceFromHandler()["chain"].single { nameOf(it) == "ShortLinkStatsRepository.activity" }
