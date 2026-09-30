@@ -135,7 +135,7 @@ class MappingPathPlaceholderEndpointTest : ExplytJavaLightTestCase() {
         val action = info?.actions?.filterIsInstance<RunInSwaggerAction>()?.single()
             ?: error("Expected a Run in Swagger marker on the handler")
 
-        assertEquals(listOf("/l/{code}"), action.endpointPaths())
+        assertEquals(listOf("/l/{code}"), action.endpoints().map { it.path })
     }
 
     /** The "Endpoint Actions" gutter searches usages and builds the OpenAPI entry from the path it composes itself. */
