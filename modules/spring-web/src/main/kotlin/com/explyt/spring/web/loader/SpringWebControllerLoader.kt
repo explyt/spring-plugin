@@ -8,6 +8,7 @@ package com.explyt.spring.web.loader
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
@@ -48,12 +49,12 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
         return allAnnotations.asSequence().flatMap { searchAnnotatedClasses(it, module) }
-            .flatMap { getEndpoints(it, requestMappingMah) }
+            .flatMap { getEndpoints(it, requestMappingMah, module) }
             .toList()
     }
 
     private fun getEndpoints(
-        controllerPsiClass: PsiClass, requestMappingMah: MetaAnnotationsHolder
+        controllerPsiClass: PsiClass, requestMappingMah: MetaAnnotationsHolder, module: Module
     ): List<EndpointElement> {
         val prefixes = requestMappingMah.getAnnotationMemberValues(controllerPsiClass, TARGET_VALUE)
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
@@ -78,13 +79,15 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
 
             for (value in values) {
                 for (prefix in prefixes) {
+                    val declared = "$prefix/$value"
                     result += EndpointElement(
-                        SpringWebUtil.simplifyUrl("$prefix/$value"),
+                        SpringWebUtil.simplifyUrl(MappingPathPlaceholders.resolve(module, declared)),
                         requestMethods,
                         method,
                         controllerPsiClass,
                         null,
-                        EndpointType.SPRING_MVC
+                        EndpointType.SPRING_MVC,
+                        pathTemplate = SpringWebUtil.simplifyUrl(declared),
                     )
                 }
             }
