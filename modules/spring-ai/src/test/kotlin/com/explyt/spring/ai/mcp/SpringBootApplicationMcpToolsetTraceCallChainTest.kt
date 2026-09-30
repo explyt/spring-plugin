@@ -152,12 +152,9 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
             setOf(relativePath), filePaths
         )
 
-        // includeTests=false ⇒ testReferences must be empty.
-        val testRefs = result["testReferences"]
-        assertNotNull("Expected 'testReferences' field in $result", testRefs)
-        assertEquals(
-            "Expected empty testReferences when includeTests=false, got $testRefs",
-            0, testRefs.size()
+        assertTrue(
+            "No test reference may be reported when includeTests=false, got $chain",
+            chain.none { it.has("testReferences") || it.has("testUrlReferences") }
         )
     }
 

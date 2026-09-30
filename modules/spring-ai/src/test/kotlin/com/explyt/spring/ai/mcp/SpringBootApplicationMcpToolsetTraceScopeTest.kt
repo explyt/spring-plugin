@@ -48,6 +48,8 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         }
         addSource(MAIN_ROOT, "com/example/links/ShortLinks.kt", MAIN_SOURCE)
         addSource(TEST_ROOT, "com/example/links/ShortLinkActivityTest.kt", TEST_SOURCE, isTestSource = true)
+        addSource(TEST_ROOT, "com/example/links/ShortLinkInterfaceTest.kt", INTERFACE_TEST_SOURCE, isTestSource = true)
+        addSource(TEST_ROOT, "com/example/links/ShortLinkWebTest.kt", WEB_TEST_SOURCE, isTestSource = true)
     }
 
     /**
@@ -210,14 +212,93 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * of the project that reads the clock; only tests calling a traced project method belong here.
      */
     fun testTestReferencesCoverTracedProjectMethodsOnly() = runBlocking<Unit> {
-        val references = traceFromHandler(includeTests = true)["testReferences"]
+        val chain = traceFromHandler(includeTests = true)["chain"]
 
-        assertEquals(listOf("$TEST_ROOT/com/example/links/ShortLinkActivityTest.kt"), references.map { it["filePath"].asText() })
+        val referenced = chain.filter { node -> node["testReferences"].any { it["via"].isNull } }.map(::nameOf)
+        assertEquals(listOf("ShortLinkActivityServiceImpl.activity"), referenced)
         assertEquals(
-            listOf("ShortLinkActivityServiceImpl.activity"),
-            references.single()["referencedMethods"].map { it["method"].asText() }
+            "A reference is reported on the node of the method it names",
+            listOf("$TEST_ROOT/com/example/links/ShortLinkActivityTest.kt"),
+            implementationNode(chain)["testReferences"].filter { it["via"].isNull }.map { it["filePath"].asText() }
+        )
+        assertEquals(
+            "The test calls the implementation once",
+            listOf(lineOf(TEST_SOURCE, "service.activity(1, Duration.ofDays(7))")),
+            implementationNode(chain)["testReferences"].single { it["via"].isNull }["lines"].map { it.asInt() }
         )
     }
+
+    /**
+     * A test written against the interface the bean is injected by - a caller or a mock of it - breaks as surely when
+     * the implementation's signature changes, although it never names the implementation.
+     */
+    fun testTestWrittenAgainstTheInterfaceIsListedOnTheImplementation() = runBlocking<Unit> {
+        val references = implementationNode(traceFromHandler(includeTests = true)["chain"])["testReferences"]
+
+        val throughInterface = references.single { !it["via"].isNull }
+        assertEquals("ShortLinkActivityService.activity", throughInterface["via"].asText())
+        assertEquals("$TEST_ROOT/com/example/links/ShortLinkInterfaceTest.kt", throughInterface["filePath"].asText())
+        assertEquals(
+            listOf(lineOf(INTERFACE_TEST_SOURCE, "service.activity(2, Duration.ofDays(1))")),
+            throughInterface["lines"].map { it.asInt() }
+        )
+    }
+
+    /** A web test reaches a handler through its URL, never by calling it, so no reference search finds it. */
+    fun testWebTestCallingTheHandlerUrlIsListedOnTheHandler() = runBlocking<Unit> {
+        val chain = traceFromHandler(includeTests = true)["chain"]
+
+        val byUrl = chain[0]["testUrlReferences"]
+        assertEquals(listOf("$TEST_ROOT/com/example/links/ShortLinkWebTest.kt"), byUrl.map { it["filePath"].asText() })
+        assertEquals("/api/short-links/{id}/activity", byUrl.single()["url"].asText())
+        assertEquals(
+            listOf(lineOf(WEB_TEST_SOURCE, "get(\"/api/short-links/1/activity\")")),
+            byUrl.single()["lines"].map { it.asInt() }
+        )
+        assertTrue(
+            "Only the handler the trace started from is matched by URL",
+            chain.drop(1).none { it.has("testUrlReferences") }
+        )
+    }
+
+    /** Absent means "not requested"; an empty list would claim that no test depends on the method. */
+    fun testTestFieldsAreAbsentWhenTestsAreNotRequested() = runBlocking<Unit> {
+        val chain = traceFromHandler(includeTests = false)["chain"]
+
+        assertTrue(chain.none { it.has("testReferences") || it.has("testUrlReferences") })
+        assertTrue(
+            "Requested and not found is an empty list",
+            traceFromHandler(includeTests = true)["chain"].all { it["testReferences"].isArray }
+        )
+    }
+
+    /**
+     * The proxy annotations of a method are what makes a call behave differently from its body: a transaction, a
+     * cache hit, another thread. They are read from the method and from its class, and a project annotation carrying
+     * one as a meta-annotation is reported as the annotation it stands for.
+     */
+    fun testProxyAnnotationsAreListedWithWhereTheyAreDeclared() = runBlocking<Unit> {
+        val chain = traceFromHandler()["chain"]
+
+        assertEquals(
+            listOf("org.springframework.transaction.annotation.Transactional" to "CLASS"),
+            aopOf(implementationNode(chain))
+        )
+        assertEquals(
+            listOf(
+                "org.springframework.cache.annotation.Cacheable" to "METHOD",
+                "org.springframework.transaction.annotation.Transactional" to "METHOD",
+            ),
+            aopOf(chain.single { nameOf(it) == "ShortLinkStatsRepository.activity" })
+        )
+        assertEquals(emptyList<Pair<String, String>>(), aopOf(chain[0]))
+    }
+
+    private fun aopOf(node: JsonNode): List<Pair<String, String>> =
+        node["aop"].map { it["annotation"].asText() to it["declaredOn"].asText() }
+
+    private fun implementationNode(chain: JsonNode): JsonNode =
+        chain.single { nameOf(it) == "ShortLinkActivityServiceImpl.activity" }
 
     /** A chain stopped by its size limit says so, rather than reading as a request path that ends there. */
     fun testChainCutAtItsSizeLimitIsReportedTruncated() {
@@ -282,6 +363,9 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
             TestLibrary.springWebMvc_6_0_7,
             TestLibrary.springDataJpa_3_1_0,
             TestLibrary.springJdbc_6_2_5,
+            TestLibrary.springTx_6_0_7,
+            TestLibrary.springContext_6_0_7,
+            TestLibrary.springTest_6_0_7,
             TestLibrary.kotlin_1_9_22,
         )
 
@@ -291,10 +375,12 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
             import java.time.Clock
             import java.time.Duration
             import java.time.Instant
+            import org.springframework.cache.annotation.Cacheable
             import org.springframework.data.repository.CrudRepository
             import org.springframework.jdbc.core.JdbcTemplate
             import org.springframework.stereotype.Repository
             import org.springframework.stereotype.Service
+            import org.springframework.transaction.annotation.Transactional
             import org.springframework.web.bind.annotation.GetMapping
             import org.springframework.web.bind.annotation.PathVariable
             import org.springframework.web.bind.annotation.RequestMapping
@@ -313,8 +399,13 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
 
             fun Instant.minusWindow(window: Duration): Instant = minus(window)
 
+            @Transactional(readOnly = true)
+            annotation class ReadOnlyQuery
+
             @Repository
             class ShortLinkStatsRepository(private val links: ShortLinkRepository, private val jdbc: JdbcTemplate) {
+                @Cacheable("activity")
+                @ReadOnlyQuery
                 fun activity(id: Long, since: Instant): List<String> {
                     val link = links.findById(id).orElseThrow()
                     val canonical = links.findBySlug(link.slug)
@@ -329,6 +420,7 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
             }
 
             @Service
+            @Transactional
             class ShortLinkActivityServiceImpl(
                 private val stats: ShortLinkStatsRepository,
                 private val clock: Clock,
@@ -366,6 +458,31 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
                 fun activityOfAWeek(service: ShortLinkActivityServiceImpl) {
                     Instant.now()
                     service.activity(1, Duration.ofDays(7))
+                }
+            }
+        """.trimIndent()
+
+        val INTERFACE_TEST_SOURCE = """
+            package com.example.links
+
+            import java.time.Duration
+
+            class ShortLinkInterfaceTest {
+                fun activityOfADay(service: ShortLinkActivityService) {
+                    service.activity(2, Duration.ofDays(1))
+                }
+            }
+        """.trimIndent()
+
+        val WEB_TEST_SOURCE = """
+            package com.example.links
+
+            import org.springframework.test.web.servlet.MockMvc
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+
+            class ShortLinkWebTest {
+                fun activityOverHttp(mockMvc: MockMvc) {
+                    mockMvc.perform(get("/api/short-links/1/activity"))
                 }
             }
         """.trimIndent()
