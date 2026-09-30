@@ -52,13 +52,18 @@ data class Referrer(
     val psiElement: PsiElement
 )
 
+/**
+ * @property path the path the application serves, with configuration placeholders resolved.
+ * @property pathTemplate the path as declared, placeholders included; equal to [path] when nothing was resolved.
+ */
 data class EndpointElement(
     val path: String,
     val requestMethods: List<String>,
     val psiElement: PsiElement,
     val containingClass: PsiClass?,
     val containingFile: PsiFile?,
-    val type: EndpointType
+    val type: EndpointType,
+    val pathTemplate: String = path,
 )
 
 sealed class EndpointData {

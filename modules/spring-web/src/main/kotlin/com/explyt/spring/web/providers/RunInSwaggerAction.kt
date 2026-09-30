@@ -14,6 +14,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
+import org.jetbrains.annotations.VisibleForTesting
 
 class RunInSwaggerAction(
     private val endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
@@ -32,4 +33,6 @@ class RunInSwaggerAction(
         )
     }
 
+    @VisibleForTesting
+    fun endpointPaths(): List<String> = endpointInfos.map { it.path }
 }
