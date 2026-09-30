@@ -10,6 +10,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.core.util.UastUtil.getPropertyValue
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -117,12 +118,16 @@ class SpringWebFeignClientLoader(val project: Project) : SpringWebEndpointsLoade
 
             for (value in values) {
                 result += EndpointElement(
-                    simplifyUrl(prefix, value),
+                    simplifyUrl(
+                        MappingPathPlaceholders.resolve(module, prefix),
+                        MappingPathPlaceholders.resolve(module, value)
+                    ),
                     requestMethods,
                     method,
                     psiClass,
                     null,
-                    EndpointType.SPRING_OPEN_FEIGN
+                    EndpointType.SPRING_OPEN_FEIGN,
+                    pathTemplate = simplifyUrl(prefix, value),
                 )
             }
         }
