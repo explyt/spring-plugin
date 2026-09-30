@@ -4,7 +4,7 @@
 name: "Plugin bug"
 description: "Any problem in Explyt Spring plugin"
 title: "[BUG] "
-labels: ["plugin-bug"]
+type: Bug
 assignees: []
 
 body:
