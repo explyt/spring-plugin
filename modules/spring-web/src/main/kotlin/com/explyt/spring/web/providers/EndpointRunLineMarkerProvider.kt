@@ -13,6 +13,7 @@ import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER_HOST
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.removeParams
@@ -41,7 +42,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
-        val path = getUrlPath(requestMappingMah, psiMethod)
+        val path = MappingPathPlaceholders.resolve(module, getUrlPath(requestMappingMah, psiMethod))
 
         val fullPath = if (isAbsolutePath(path)) path else "$DEFAULT_SERVER/$path"
 
