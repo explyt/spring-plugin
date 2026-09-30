@@ -20,6 +20,7 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointPathPatterns
 import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
@@ -40,6 +41,7 @@ import com.intellij.mcpserver.mcpFail
 
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -50,6 +52,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.util.InheritanceUtil
+import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -233,10 +236,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "controller class and method name are the bean factory that registers it, and 'parameters' holds " +
                 "the path variables its URL template declares. " +
                 "Matching is forgiving: 'requests' matches '/api/.../requests', and '{id}' matches any path variable. " +
-                "A deployed URL can be passed as it is: the scheme, host, query and fragment are ignored, and when " +
-                "no route answers the path as written, leading segments are dropped until one does - a servlet " +
-                "context path or a gateway prefix usually lives only in deployment configuration - and the dropped " +
-                "part is reported as 'assumedPrefix' (null when the path matched as written). " +
+                "A deployed URL can be passed as it is: the scheme, host, query and fragment are ignored. When no " +
+                "route answers the path as written, a base path the module's configuration declares - " +
+                "server.servlet.context-path followed by spring.mvc.servlet.path, or spring.webflux.base-path - is " +
+                "stripped and reported as 'basePath', a declared fact; failing that, leading segments are dropped " +
+                "until a route answers - a context path or a gateway prefix living only in deployment " +
+                "configuration - and the dropped part is reported as 'assumedPrefix', a guess. Both are null when " +
+                "the path matched as written. " +
+                "'fullPath' is the path the application serves, with configuration placeholders such as " +
+                "'\${app.path:/l}' resolved; 'pathTemplate' holds the path as declared and is present only when it " +
+                "differs from 'fullPath'. " +
                 "When 'endpoints' is empty, no route answers the URL even without a leading prefix, and " +
                 "'nearestByPrefix' lists the existing routes that share the longest leading path with it - the " +
                 "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path as " +
@@ -270,9 +279,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
     /**
      * The single-URL lookup shared by the find and contract tools.
      *
-     * The URL is reduced to its request path and read as written first, then under ever longer leading prefixes no
-     * route declares ([EndpointPathPatterns.readingsOf]); the first reading any route answers is the answer, and
-     * the prefix it dropped is reported rather than hidden. A deployed URL carries its context path, and without
+     * The URL is reduced to its request path and read as written first, then under a base path a module's
+     * configuration declares ([DeclaredBasePaths]), then under ever longer leading prefixes no route declares
+     * ([EndpointPathPatterns.readingsOf]); the first reading any route answers is the answer, and the prefix it
+     * dropped is reported rather than hidden - as [EndpointLookupJson.basePath] when the configuration declares it,
+     * as [EndpointLookupJson.assumedPrefix] when it is a guess. A deployed URL carries its context path, and without
      * this a real, working URL answered "no such route" - which invites the caller to write a duplicate.
      *
      * A URL that matches nothing is not a dead end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing
@@ -286,17 +297,25 @@ class SpringBootApplicationMcpToolset : McpToolset {
     ): EndpointLookupJson<T> {
         if (urlPattern.isBlank()) mcpFail("urlPattern must not be empty")
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
-        val readings = EndpointPathPatterns.readingsOf(EndpointPathPatterns.requestPathOf(urlPattern)).toList()
+        val requestPath = EndpointPathPatterns.requestPathOf(urlPattern)
+        val pathReadings = EndpointPathPatterns.readingsOf(requestPath).toList()
         val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
 
         return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val allEndpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
+                val basePaths = DeclaredBasePaths(allEndpoints)
+                // Lazy: a URL matching as written never pays for reading the modules' configuration.
+                val readings = sequence {
+                    yield(LookupReading(pathReadings.first()))
+                    yieldAll(basePaths.readingsOf(requestPath))
+                    yieldAll(pathReadings.drop(1).map(::LookupReading))
+                }
 
                 // The reading is settled by the path alone: a URL that resolves only for another verb has been found,
                 // and dropping one more segment of it to satisfy the method filter would answer a different URL.
                 val answered = readings.firstNotNullOfOrNull { reading ->
-                    matchesOf(allEndpoints, reading).takeIf { it.isNotEmpty() }?.let { reading to it }
+                    matchesOf(allEndpoints, reading, basePaths).takeIf { it.isNotEmpty() }?.let { reading to it }
                 }
                 val matching = answered?.second.orEmpty().filter { endpoint ->
                     methodFilter == null || endpoint.requestMethods.isEmpty()
@@ -314,16 +333,18 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 // The neighbourhood of a miss is context, not an answer, so the method filter does not apply to
                 // it: a POST sibling under the same prefix still names the controller a new GET route belongs to.
                 val nearest = if (matching.isEmpty()) {
-                    nearestByPrefix(allEndpoints, answered?.first?.let(::listOf) ?: readings, project)
+                    nearestByPrefix(allEndpoints, answered?.first?.let(::listOf) ?: readings.toList(), basePaths, project)
                 } else {
                     null
                 }
+                val settled = answered?.first ?: nearest?.reading
 
                 EndpointLookupJson(
                     totalCount = matching.size,
                     truncated = matching.size > MAX_ENDPOINT_RESULTS,
                     endpoints = page,
-                    assumedPrefix = (answered?.first ?: nearest?.reading)?.assumedPrefix,
+                    basePath = settled?.basePath,
+                    assumedPrefix = settled?.pathReading?.assumedPrefix,
                     sharedPrefix = nearest?.sharedPrefix,
                     nearestByPrefix = nearest?.routes.orEmpty(),
                 )
@@ -338,17 +359,77 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match, the first
      * element is the one Spring dispatches to.
      */
-    private fun matchesOf(endpoints: List<EndpointElement>, reading: PathReading): List<EndpointElement> =
+    private fun matchesOf(
+        endpoints: List<EndpointElement>,
+        reading: LookupReading,
+        basePaths: DeclaredBasePaths,
+    ): List<EndpointElement> =
         endpoints.asSequence()
             .onEach { ProgressManager.checkCanceled() }
             .map { it to SpringWebUtil.simplifyUrl(it.path) }
-            .filter { (_, path) -> reading.admits(path) }
+            .filter { (endpoint, path) -> admits(reading, endpoint, path, basePaths) }
             .mapNotNull { (endpoint, path) -> matchRank(path, reading)?.let { RankedEndpoint(endpoint, path, it) } }
             .sortedWith(compareBy<RankedEndpoint> { it.rank }.thenBy(EndpointPathPatterns.SPECIFICITY) { it.path })
             .map { it.endpoint }
             .toList()
 
     private data class RankedEndpoint(val endpoint: EndpointElement, val path: String, val rank: Int)
+
+    /**
+     * One way a request path meets the routes: as written, under a [basePath] a module's configuration declares, or
+     * under a guessed prefix no route declares ([PathReading.assumedPrefix]).
+     */
+    private data class LookupReading(val pathReading: PathReading, val basePath: String? = null) {
+        val path: String get() = pathReading.path
+        val isAsWritten: Boolean get() = basePath == null && pathReading.assumedPrefix == null
+    }
+
+    /**
+     * Whether the route at [route] may answer [reading]: under a declared base path only a route of a module that
+     * declares that very base path does - another application does not serve under it, and matching its routes
+     * would report a fact about the wrong module. A guessed prefix keeps the rule of [PathReading.admits].
+     */
+    private fun admits(
+        reading: LookupReading,
+        endpoint: EndpointElement,
+        route: String,
+        basePaths: DeclaredBasePaths,
+    ): Boolean =
+        if (reading.basePath != null) basePaths.of(endpoint) == reading.basePath
+        else reading.pathReading.admits(route)
+
+    /**
+     * The base path each module's configuration declares ([ApplicationBasePath]), read at most once per module and
+     * per lookup: reading it scans the module's configuration files.
+     */
+    private class DeclaredBasePaths(private val endpoints: List<EndpointElement>) {
+
+        private val byModule = HashMap<Module, String>()
+        private val byEndpoint: Map<EndpointElement, String> by lazy {
+            endpoints.mapNotNull { endpoint -> declaredFor(endpoint)?.let { endpoint to it } }
+                .toMap(IdentityHashMap())
+        }
+
+        fun of(endpoint: EndpointElement): String? = byEndpoint[endpoint]
+
+        /**
+         * The readings of [requestPath] under each declared base path it opens with at a segment boundary, the
+         * longest base path first: `/t/api/items` under `/t/api` before `/t`.
+         */
+        fun readingsOf(requestPath: String): List<LookupReading> =
+            byEndpoint.values.distinct()
+                .filter { requestPath == it || requestPath.startsWith("$it/") }
+                .sortedByDescending { it.length }
+                .map { basePath ->
+                    val rest = requestPath.removePrefix(basePath).ifEmpty { "/" }
+                    LookupReading(PathReading(assumedPrefix = null, path = rest), basePath)
+                }
+
+        private fun declaredFor(endpoint: EndpointElement): String? {
+            val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: return null
+            return byModule.getOrPut(module) { ApplicationBasePath.of(module).orEmpty() }.ifEmpty { null }
+        }
+    }
 
     /**
      * The routes around a URL no route answers, read the way that shares the longest leading path with them.
@@ -364,13 +445,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
      */
     private fun nearestByPrefix(
         endpoints: List<EndpointElement>,
-        readings: List<PathReading>,
+        readings: List<LookupReading>,
+        basePaths: DeclaredBasePaths,
         project: Project,
     ): Neighbourhood? {
         val (reading, sharedSegments, nearest) = readings.asSequence()
             .mapNotNull { reading ->
                 endpoints
-                    .filter { reading.admits(SpringWebUtil.simplifyUrl(it.path)) }
+                    .filter { admits(reading, it, SpringWebUtil.simplifyUrl(it.path), basePaths) }
                     .groupBy { EndpointPathPatterns.sharedLeadingSegments(SpringWebUtil.simplifyUrl(it.path), reading.path) }
                     .maxByOrNull { it.key }
                     ?.takeIf { it.key > 0 }
@@ -389,7 +471,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     private data class Neighbourhood(
-        val reading: PathReading,
+        val reading: LookupReading,
         val sharedPrefix: String,
         val routes: List<CompactEndpointJson>,
     )
@@ -403,13 +485,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * reads its answer off the first element, so how well an endpoint fits the query has to outrank how Spring
      * would dispatch between the endpoints that fit it equally well.
      *
-     * The substring match finds a route from a fragment the caller wrote. Under an assumed prefix the fragment is
-     * one the tool cut out itself, so only a route matching the rest of the URL whole counts as an answer.
+     * The substring match finds a route from a fragment the caller wrote. Under a base path or an assumed prefix the
+     * rest of the URL is what the application routes on, not a fragment, so only a route matching it whole counts.
      */
-    private fun matchRank(endpointPath: String, reading: PathReading): Int? = when {
+    private fun matchRank(endpointPath: String, reading: LookupReading): Int? = when {
         endpointPath == reading.path -> EXACT_MATCH
         SpringWebUtil.isEndpointMatches(endpointPath, reading.path) -> PATTERN_MATCH
-        reading.assumedPrefix == null && endpointPath.contains(reading.path) -> SUBSTRING_MATCH
+        reading.isAsWritten && endpointPath.contains(reading.path) -> SUBSTRING_MATCH
         else -> null
     }
 
@@ -424,6 +506,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return CompactEndpointJson(
             httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
             fullPath = endpoint.path,
+            pathTemplate = endpoint.pathTemplate.takeIf { it != endpoint.path },
             controllerClass = controllerClass?.qualifiedName,
             methodName = declaringMethod?.name,
             filePath = filePath,
@@ -439,6 +522,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return EndpointJson(
             httpMethods = core.httpMethods,
             fullPath = core.fullPath,
+            pathTemplate = core.pathTemplate,
             controllerClass = core.controllerClass,
             methodName = core.methodName,
             filePath = core.filePath,
@@ -612,6 +696,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "\"parameters\":[{\"name\":\"id\",\"source\":\"PATH\",\"type\":\"java.lang.Long\"," +
                 "\"required\":true,\"defaultValue\":null}],\"returnType\":\"com.example.app.dto.DemoDto\"," +
                 "\"endpointType\":\"SPRING_MVC\"}. " +
+                "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
+                "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
+                "absent otherwise. " +
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
                 "and on a large project the full form can exceed 100 KB on a single line. " +
                 "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
@@ -696,7 +783,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         description = "Call before writing a client, a test, a frontend call or an OpenAPI description against one " +
                 "endpoint, and before changing its request or response shape, to see what callers currently depend " +
                 "on. " +
-                "Returns the full API contract of the endpoint: HTTP method, full path, every declared handler " +
+                "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
+                "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
                 "parameter with its type, return type, response DTO field schema (recursively expanded up to " +
                 "3 levels), produces/consumes media types, and the first resolved call on an injected Spring bean " +
                 "(null when no such call can be confirmed). Reading the handler signature by hand misses what Spring " +
@@ -715,8 +803,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'contractUnavailableReason' says what has to be read at the source - an empty 'parameters' there " +
                 "means 'not declared here', never 'the endpoint takes nothing'. " +
                 "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
-                "'endpoints' with the closest match to the pattern first, 'assumedPrefix' when a leading context " +
-                "path had to be dropped from the URL, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
+                "'endpoints' with the closest match to the pattern first, 'basePath' when a base path the " +
+                "configuration declares was stripped from the URL, 'assumedPrefix' when an undeclared leading path " +
+                "had to be guessed and dropped, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
                 "matched - with a contract in place of each endpoint; every counted endpoint is returned, so " +
                 "endpoints.size equals totalCount unless truncated. " +
                 "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
@@ -764,6 +853,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return EndpointContractJson(
             httpMethods = core.httpMethods,
             fullPath = core.fullPath,
+            pathTemplate = core.pathTemplate,
             controllerClass = core.controllerClass,
             methodName = core.methodName,
             filePath = core.filePath,
@@ -1582,6 +1672,7 @@ data class McpSpringBean(
 data class EndpointJson(
     val httpMethods: List<String>,
     val fullPath: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
     val filePath: String?,
@@ -1601,7 +1692,13 @@ data class EndpointJson(
  */
 data class CompactEndpointJson(
     val httpMethods: List<String>,
+    /** The path the application serves, configuration placeholders resolved. */
     val fullPath: String,
+    /**
+     * The path as declared, placeholders included - present only when it differs from [fullPath], so the common
+     * endpoint keeps its shape. A profile or an environment variable can override the resolved value at runtime.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
     val filePath: String?,
@@ -1621,9 +1718,12 @@ data class EndpointListJson<T>(
  * The result of resolving one URL pattern, for the find and contract tools.
  *
  * [endpoints] lists the closest match first, and among equally close ones the order Spring picks a handler in,
- * so its first element is the one that dispatches when several routes match. [assumedPrefix] is the leading path
- * dropped from the URL to reach the routes answering it - a context path or a gateway prefix no route declares -
- * and null when the URL matched as written. [nearestByPrefix] is filled only when [endpoints] is empty: the routes
+ * so its first element is the one that dispatches when several routes match. [basePath] is the leading path
+ * stripped from the URL because the configuration of the answering routes' module declares it - a servlet context
+ * path, a dispatcher servlet path or a WebFlux base path - a fact, not a guess. [assumedPrefix] is a leading path
+ * dropped from the URL although nothing declares it - a context path living only in deployment configuration or a
+ * gateway prefix - a guess. Both are null when the URL matched as written, and at most one of them is set.
+ * [nearestByPrefix] is filled only when [endpoints] is empty: the routes
  * sharing the longest leading path ([sharedPrefix]) with the URL, which is where a route that does not exist yet
  * would be added. The two lists are empty rather than null so a client can always iterate them; [sharedPrefix] is
  * null exactly when [nearestByPrefix] is empty.
@@ -1632,6 +1732,7 @@ data class EndpointLookupJson<T>(
     val totalCount: Int,
     val truncated: Boolean,
     val endpoints: List<T>,
+    val basePath: String?,
     val assumedPrefix: String?,
     val sharedPrefix: String?,
     val nearestByPrefix: List<CompactEndpointJson>,
@@ -1717,6 +1818,7 @@ data class TestMethodReferenceJson(
 data class EndpointContractJson(
     val httpMethods: List<String>,
     val fullPath: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
     val filePath: String?,
