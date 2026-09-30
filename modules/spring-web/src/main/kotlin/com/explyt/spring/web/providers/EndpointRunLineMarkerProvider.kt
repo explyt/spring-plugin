@@ -14,6 +14,7 @@ import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER_HOST
 import com.explyt.spring.web.util.SpringWebUtil
@@ -103,8 +104,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
                 .map { it.text.split('.').last() }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = SpringWebUtil.getTypeFqn(returnType, psiMethod.language)
+        val returnTypeFqn = SpringWebUtil.getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         return EndpointInfo(
             fullPath,
