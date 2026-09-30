@@ -6,9 +6,11 @@
 package com.explyt.spring.web.loader
 
 import com.explyt.spring.core.service.SpringSearchService
-import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.EndpointUrlMatcher
 import com.intellij.openapi.extensions.ProjectExtensionPointName
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -21,12 +23,23 @@ interface SpringWebEndpointsLoader {
 
     fun getType(): EndpointType
 
+    /**
+     * The endpoints a URL written in code addresses: relative, absolute against this machine
+     * (`http://localhost:8080/api/items`), or under the base path the endpoint's application declares. A URL naming
+     * another host addresses another service, and nothing here.
+     */
     fun getEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
         if (!getType().isWeb) return emptyList()
-        val searchUrl = SpringWebUtil.simplifyUrl(urlPath)
+        val basePaths = HashMap<Module, String?>()
 
-        return searchEndpoints(module)
-            .filter { SpringWebUtil.isEndpointMatches(it.path, searchUrl) }
+        return EndpointUrlMatcher.match(
+            searchEndpoints(module), urlPath, EndpointUrlMatcher.Policy.REFERENCE,
+            routeOf = { it.path },
+            basePathOf = { endpoint ->
+                val owner = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: module
+                basePaths.getOrPut(owner) { ApplicationBasePath.cachedOf(owner) }
+            },
+        ).endpoints
     }
 
     fun searchAnnotatedClasses(annotation: PsiClass, module: Module): List<PsiClass> =
@@ -52,13 +65,18 @@ data class Referrer(
     val psiElement: PsiElement
 )
 
+/**
+ * @property path the path the application serves, with configuration placeholders resolved.
+ * @property pathTemplate the path as declared, placeholders included; equal to [path] when nothing was resolved.
+ */
 data class EndpointElement(
     val path: String,
     val requestMethods: List<String>,
     val psiElement: PsiElement,
     val containingClass: PsiClass?,
     val containingFile: PsiFile?,
-    val type: EndpointType
+    val type: EndpointType,
+    val pathTemplate: String = path,
 )
 
 sealed class EndpointData {

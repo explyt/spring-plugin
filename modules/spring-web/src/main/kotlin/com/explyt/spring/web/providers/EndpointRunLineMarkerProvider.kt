@@ -13,6 +13,8 @@ import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER_HOST
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.removeParams
@@ -41,7 +43,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
-        val path = getUrlPath(requestMappingMah, psiMethod)
+        val path = MappingPathPlaceholders.resolve(module, getUrlPath(requestMappingMah, psiMethod))
 
         val fullPath = if (isAbsolutePath(path)) path else "$DEFAULT_SERVER/$path"
 
@@ -126,9 +128,14 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
             return applyServerPortSettings(psiElement, DEFAULT_SERVER)
         }
 
+        /**
+         * The servers a request to this module's endpoints goes to: `localhost` on each configured port, followed by
+         * the base path the application declares, so a generated request reaches the path Spring serves.
+         */
         private fun applyServerPortSettings(psiElement: PsiElement, server: String): List<String> {
             if (server != DEFAULT_SERVER) return listOf(server)
             val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return listOf(DEFAULT_SERVER)
+            val basePath = ApplicationBasePath.of(module).orEmpty()
 
             val ports = (DefinedConfigurationPropertiesSearch.getInstance(psiElement.project)
                 .findProperties(module, "server.port").asSequence()
@@ -140,7 +147,7 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
                         it
                     }
                 }
-                .map { DEFAULT_SERVER_HOST + it }
+                .map { DEFAULT_SERVER_HOST + it + basePath }
                 .distinct()
                 .toList()
                 .takeIf { it.isNotEmpty() } ?: listOf(DEFAULT_SERVER)
