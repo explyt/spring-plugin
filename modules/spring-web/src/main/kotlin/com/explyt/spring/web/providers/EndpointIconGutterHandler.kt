@@ -34,9 +34,12 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.ui.awt.RelativePoint
+import org.jetbrains.annotations.VisibleForTesting
 import java.awt.event.MouseEvent
 
-class EndpointIconGutterHandler(private val endpointInfo: EndpointInfo) : GutterIconNavigationHandler<PsiElement> {
+class EndpointIconGutterHandler(
+    @get:VisibleForTesting val endpointInfo: EndpointInfo
+) : GutterIconNavigationHandler<PsiElement> {
 
     override fun navigate(e: MouseEvent, psiElement: PsiElement) {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return
