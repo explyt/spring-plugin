@@ -11,6 +11,7 @@ import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.getServerFromPath
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.OpenApiFileUtil.Companion.DEFAULT_SERVER
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.SpringWebUtil.PathArgumentInfo
@@ -106,7 +107,7 @@ class JaxRsRunLineMarkerProvider : RunLineMarkerContributor() {
 
         fun getRequestBodyInfo(psiMethod: PsiMethod, requestMethods: List<String>): PathArgumentInfo? {
             if (requestMethods.size == 1 && requestMethods[0].lowercase() == "get") return null
-            val bodyParams = psiMethod.parameterList.parameters.filter { it.annotations.isEmpty() }
+            val bodyParams = HandlerSignature.requestParameters(psiMethod).filter { it.annotations.isEmpty() }
 
             for (param in bodyParams) {
                 val paramType = param.type
