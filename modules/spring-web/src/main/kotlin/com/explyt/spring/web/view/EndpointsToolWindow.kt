@@ -338,8 +338,9 @@ class EndpointsToolWindow(private val project: Project) :
             endpoints = SoftReference(endpointsLocal)
         }
         val urlFilter = searchTextField.text ?: ""
-        val filteredEndpointsMap = applyFilters(endpointsLocal, urlFilter, httpTypeState, endpointTypeState)
-            .groupBy { it.type }
+        val filteredEndpointsMap = EndpointsViewFilter.apply(
+            endpointsLocal, urlFilter, httpTypeState, endpointTypeState, EndpointsViewFilter.declaredBasePaths()
+        ).groupBy { it.type }
         val typeNodes = mutableListOf<EndpointViewByType>()
         for (type in EndpointType.entries) {
             val elements = filteredEndpointsMap[type] ?: continue
@@ -349,19 +350,6 @@ class EndpointsToolWindow(private val project: Project) :
         return typeNodes
     }
 
-    private fun applyFilters(
-        endpoints: List<EndpointElementViewData>,
-        urlFilter: String,
-        httpTypeState: Set<String>,
-        endpointTypeState: HashSet<EndpointType>
-    ): List<EndpointElementViewData> {
-        if (urlFilter.length < 2 && httpTypeState.isEmpty() && endpointTypeState.isEmpty()) return endpoints
-        return endpoints.asSequence()
-            .filter { urlFilter.length < 2 || it.path.contains(urlFilter, true) }
-            .filter { endpointTypeState.isEmpty() || it.type in endpointTypeState }
-            .filter { httpTypeState.isEmpty() || it.method in httpTypeState }
-            .toList()
-    }
 
     private fun getAllEndpoints(): List<EndpointElementViewData> {
         return SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
