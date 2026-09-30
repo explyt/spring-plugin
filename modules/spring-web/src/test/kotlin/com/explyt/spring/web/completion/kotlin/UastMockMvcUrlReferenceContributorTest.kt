@@ -7,6 +7,7 @@ package com.explyt.spring.web.completion.kotlin
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.TestUtil.findTypedReferenceAt
 import com.explyt.spring.web.references.ExplytControllerMethodReference
 import com.intellij.psi.PsiMember
 import junit.framework.TestCase
@@ -46,6 +47,27 @@ class UastMockMvcUrlReferenceContributorTest : ExplytKotlinLightTestCase() {
         val memberName = resolvedElement?.name
         val classFqn = resolvedElement?.containingClass?.qualifiedName
         TestCase.assertEquals("ProductController#update", "$classFqn#$memberName")
+    }
+
+    /** A URL literal with a host also carries the platform's web reference, so the endpoint one is picked by type. */
+    fun testAbsoluteUrlToThisMachineResolves() {
+        myFixture.copyFileToProject("ProductController.kt")
+        myFixture.configureByText(
+            "ProductControllerTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+
+            class ProductControllerTest {
+                fun justForTest() {
+                    MockMvcRequestBuilders.put("http://localhost:8080/product/{pro<caret>duct-id}")
+                }
+            }
+        """.trimIndent()
+        )
+
+        val ref = file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
+        assertNotNull("The absolute URL must carry an endpoint reference", ref)
+        val names = ref!!.multiResolve(true).mapNotNull { (it.element as? PsiMember)?.name }
+        assertEquals(listOf("update"), names)
     }
 
     fun testMultipartFirstArg() {

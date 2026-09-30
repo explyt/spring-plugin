@@ -6,7 +6,9 @@
 package com.explyt.spring.web.util
 
 import com.explyt.spring.core.properties.FoldedPropertyValue
+import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.util.CacheUtils
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 
@@ -37,6 +39,15 @@ object ApplicationBasePath {
             .ifEmpty { null }
             ?.let(SpringWebUtil::simplifyUrl)
     }
+
+    /**
+     * [of], kept until a configuration file, a class or a library of the project changes: reading it scans every
+     * configuration file of the module, and URL references resolve on every highlighting pass.
+     */
+    fun cachedOf(module: Module): String? =
+        CacheUtils.getCachedValue(
+            module, ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+        ) { of(module).orEmpty() }.ifEmpty { null }
 
     private fun stackOf(module: Module): WebStack? {
         val facade = JavaPsiFacade.getInstance(module.project)
