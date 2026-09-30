@@ -9,6 +9,10 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.psi.CommonClassNames
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.search.GlobalSearchScope
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -303,6 +307,84 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
         val expectedLine = source.lines().indexOfFirst { it.contains("public String status()") } + 1
         assertEquals(expectedLine, endpoint["line"].asInt())
     }
+
+    /**
+     * A Kotlin `suspend` handler compiles to a method with the coroutine continuation as one more, last parameter and
+     * the return type `Object`. Spring supplies the continuation and answers with the declared type, so reporting the
+     * compiled shape shows a request argument no client sends and a response nobody can generate a client for.
+     */
+    fun testSuspendHandlerIsReportedWithItsDeclaredSignature() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        addSuspendController()
+        val compiled = suspendHandler("find")
+        assertEquals(
+            "The compiled handler carries the continuation this test is about",
+            listOf("code", "principal", "\$completion"),
+            compiled.parameterList.parameters.map { it.name }
+        )
+        assertEquals(CommonClassNames.JAVA_LANG_OBJECT, compiled.returnType?.canonicalText)
+
+        val found = find("/api/suspend/abc")["endpoints"].single()
+        val listed = mapper.readTree(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "SuspendController")
+        )["endpoints"].single { it["methodName"].asText() == "find" }
+        val contract = mapper.readTree(
+            toolset.getEndpointContract(urlPattern = "/api/suspend/abc", projectPath = projectPath())
+        )["endpoints"].single()
+
+        for ((tool, endpoint) in listOf("find" to found, "list" to listed, "contract" to contract)) {
+            assertEquals("$tool parameters", listOf("code", "principal"), endpoint["parameters"].map { it["name"].asText() })
+            assertEquals(
+                "$tool return type",
+                "org.springframework.http.ResponseEntity<java.lang.String>",
+                endpoint["returnType"].asText()
+            )
+        }
+        assertEquals("COMPLETE", contract["contractStatus"].asText())
+        assertEquals("FRAMEWORK", contract["parameters"].single { it["name"].asText() == "principal" }["source"].asText())
+    }
+
+    /** A `suspend` handler declared to return `Unit` answers with no body, like a non-suspend Kotlin `Unit` function. */
+    fun testSuspendUnitHandlerReturnsVoid() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        addSuspendController()
+
+        val endpoint = find("/api/suspend/abc/touch")["endpoints"].single()
+
+        assertEquals("void", endpoint["returnType"].asText())
+        assertEquals(listOf("code"), endpoint["parameters"].map { it["name"].asText() })
+    }
+
+    private fun addSuspendController() {
+        myFixture.addFileToProject(
+            "com/example/app/web/SuspendController.kt", """
+            package com.example.app.web
+
+            import java.security.Principal
+            import org.springframework.http.ResponseEntity
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.PathVariable
+            import org.springframework.web.bind.annotation.PostMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class SuspendController {
+                @GetMapping("/api/suspend/{code}")
+                suspend fun find(@PathVariable code: String, principal: Principal): ResponseEntity<String> =
+                    ResponseEntity.ok(code)
+
+                @PostMapping("/api/suspend/{code}/touch")
+                suspend fun touch(@PathVariable code: String) {
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun suspendHandler(name: String): PsiMethod =
+        JavaPsiFacade.getInstance(project)
+            .findClass("com.example.app.web.SuspendController", GlobalSearchScope.projectScope(project))!!
+            .findMethodsByName(name, false).single()
 
     private suspend fun contractParameters(url: String): Map<String, JsonNode> =
         mapper.readTree(toolset.getEndpointContract(urlPattern = url, projectPath = projectPath()))["endpoints"]

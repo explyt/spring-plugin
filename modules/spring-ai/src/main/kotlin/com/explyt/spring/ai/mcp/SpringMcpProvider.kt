@@ -22,6 +22,7 @@ import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointPathPatterns
+import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
@@ -528,7 +529,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             filePath = core.filePath,
             line = core.line,
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
-            returnType = handler?.returnType?.canonicalText,
+            returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             endpointType = core.endpointType,
         )
     }
@@ -578,7 +579,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         for (info in SpringWebUtil.collectPathVariables(psiMethod)) {
             result += EndpointParameterJson(info.name, "PATH", info.typeFqn, info.isRequired)
         }
-        val multipartRequestNames = psiMethod.parameterList.parameters.asSequence()
+        val multipartRequestNames = HandlerSignature.requestParameters(psiMethod).asSequence()
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
             .map(::wireNameOf)
             .toSet()
@@ -587,7 +588,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             val source = if (servletMvc && info.name in multipartRequestNames) "PART" else "QUERY"
             result += EndpointParameterJson(info.name, source, info.typeFqn, info.isRequired, info.defaultValue)
         }
-        for (param in psiMethod.parameterList.parameters) {
+        for (param in HandlerSignature.requestParameters(psiMethod)) {
             val part = param.findFirstAnnotation(listOf(SpringWebClasses.REQUEST_PART)) ?: continue
             result += EndpointParameterJson(
                 name = wireNameOf(param),
@@ -639,7 +640,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * cannot classify", which is actionable; silence is not.
      */
     private fun parametersOutsideCollectors(psiMethod: PsiMethod): List<EndpointParameterJson> =
-        psiMethod.parameterList.parameters
+        HandlerSignature.requestParameters(psiMethod)
             .filter { param -> COLLECTED_BINDING_ANNOTATIONS.none { param.isMetaAnnotatedBy(it) } }
             .map { param ->
                 EndpointParameterJson(
@@ -859,8 +860,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             filePath = core.filePath,
             line = core.line,
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
-            returnType = handler?.returnType?.canonicalText,
-            responseSchema = handler?.returnType?.let { expandType(it, project, depth = 3) },
+            returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
+            responseSchema = handler?.let(HandlerSignature::declaredReturnType)
+                ?.let { expandType(it, project, depth = 3) },
             produces = mediaTypes.produces,
             consumes = mediaTypes.consumes,
             serviceCall = serviceCall,

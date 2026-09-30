@@ -266,6 +266,25 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         )
     }
 
+    /**
+     * A request found by its URL is reported once, under `testUrlReferences`. The URL string does resolve to the
+     * handler, but that reference answers `isReferenceTo` with `false`, so a reference search never returns it; a
+     * reference that did would count one test as two.
+     */
+    fun testRequestFoundByUrlIsNotRepeatedAsAReference() = runBlocking<Unit> {
+        val head = traceFromHandler(includeTests = true)["chain"][0]
+        val requestLine = lineOf(WEB_TEST_SOURCE, "get(\"/api/short-links/1/activity\")")
+        val webTest = "$TEST_ROOT/com/example/links/ShortLinkWebTest.kt"
+        assertTrue(
+            "Precondition: the request is found by URL",
+            head["testUrlReferences"].any { it["filePath"].asText() == webTest }
+        )
+
+        val repeated = head["testReferences"]
+            .filter { it["filePath"].asText() == webTest && it["lines"].any { line -> line.asInt() == requestLine } }
+        assertEquals("A request found by URL must not be listed again as a reference", emptyList<JsonNode>(), repeated)
+    }
+
     /** Absent means "not requested"; an empty list would claim that no test depends on the method. */
     fun testTestFieldsAreAbsentWhenTestsAreNotRequested() = runBlocking<Unit> {
         val chain = traceFromHandler(includeTests = false)["chain"]
