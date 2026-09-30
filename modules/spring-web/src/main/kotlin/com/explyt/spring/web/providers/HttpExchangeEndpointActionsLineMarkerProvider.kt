@@ -11,6 +11,7 @@ import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -72,8 +73,7 @@ class HttpExchangeEndpointActionsLineMarkerProvider : LineMarkerProviderDescript
         if (requestMethods.isEmpty()) return null
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
-        val returnType = uMethod.returnType
-        val returnTypeFqn = SpringWebUtil.getTypeFqn(returnType, psiMethod.language)
+        val returnTypeFqn = SpringWebUtil.getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
 
         val endpointElement = EndpointInfo(
             fullPath,
