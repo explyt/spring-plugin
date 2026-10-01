@@ -74,7 +74,7 @@ class TemplateUrlEndpointUsageTest : ExplytKotlinLightTestCase() {
         )
 
         assertEquals(
-            listOf("blockTemplate", "constant", "interpolatedBase", "simpleTemplate", "uriConstructor", "uriCreate"),
+            listOf("blockTemplate", "constant", "interpolatedBase", "otherHost", "simpleTemplate", "uriConstructor", "uriCreate"),
             callersOf("/api/items/{id}")
         )
     }
