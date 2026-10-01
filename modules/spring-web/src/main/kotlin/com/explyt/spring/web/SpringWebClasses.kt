@@ -27,6 +27,14 @@ object SpringWebClasses {
     const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
     const val FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
     const val JAVA_HTTP_CLIENT = "java.net.http.HttpClient"
+    const val JAVA_HTTP_REQUEST = "java.net.http.HttpRequest"
+    const val JAVA_HTTP_REQUEST_BUILDER = "$JAVA_HTTP_REQUEST.Builder"
+    const val REST_OPERATIONS = "org.springframework.web.client.RestOperations"
+    const val REST_TEMPLATE = "org.springframework.web.client.RestTemplate"
+
+    const val TEST_REST_TEMPLATE = "org.springframework.boot.test.web.client.TestRestTemplate"
+    const val REST_CLIENT_URI_SPEC = "org.springframework.web.client.RestClient.UriSpec"
+    const val HTTP_METHOD = "org.springframework.http.HttpMethod"
     const val HTTP_EXCHANGE = "org.springframework.web.service.annotation.HttpExchange"
 
     const val RETROFIT_PATH_PARAM = "retrofit2.http.Path"
