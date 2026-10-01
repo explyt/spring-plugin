@@ -11,10 +11,10 @@ import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findMockMvcEndpointUsage
+
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findWebTestClientEndpointUsage
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findTestRequestUsage
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -51,9 +51,7 @@ class EndpointIconGutterHandler(
         val openapiEndpoints = findOpenApiJsonEndpoints(path, requestMethods, module) +
                 findOpenApiYamlEndpoints(path, requestMethods, module)
 
-        val testEndpointUsages =
-            findMockMvcEndpointUsage(path, requestMethods, module) +
-                    findWebTestClientEndpointUsage(path, requestMethods, module)
+        val testEndpointUsages = findTestRequestUsage(path, requestMethods, module)
 
         val navigatableLineMarker = createNavigatableLinemarker(openapiEndpoints + testEndpointUsages, psiElement)
 
