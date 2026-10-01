@@ -10,12 +10,27 @@ import com.explyt.spring.test.addFromMaven
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.patterns.PlatformPatterns
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiReference
+import com.intellij.psi.PsiReferenceBase
+import com.intellij.psi.PsiReferenceProvider
+import com.intellij.psi.PsiReferenceRegistrar
+import com.intellij.psi.impl.source.resolve.reference.PsiReferenceRegistrarImpl
+import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.MethodReferencesSearch
+import com.intellij.util.ProcessingContext
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
@@ -267,22 +282,109 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     }
 
     /**
-     * A request found by its URL is reported once, under `testUrlReferences`. The URL string does resolve to the
-     * handler, but that reference answers `isReferenceTo` with `false`, so a reference search never returns it; a
-     * reference that did would count one test as two.
+     * A request found by its URL is reported once, under `testUrlReferences`, also when the URL string carries a
+     * reference that resolves to the handler - the bundled JetBrains Spring MVC plugin puts one there, so in IntelliJ
+     * IDEA Ultimate the reference search returned the request line too. The test sandbox disables that plugin, so the
+     * fixture registers a reference of the same shape itself.
      */
     fun testRequestFoundByUrlIsNotRepeatedAsAReference() = runBlocking<Unit> {
-        val head = traceFromHandler(includeTests = true)["chain"][0]
+        registerUrlReferencesToTheHandler()
         val requestLine = lineOf(WEB_TEST_SOURCE, "get(\"/api/short-links/1/activity\")")
         val webTest = "$TEST_ROOT/com/example/links/ShortLinkWebTest.kt"
         assertTrue(
-            "Precondition: the request is found by URL",
-            head["testUrlReferences"].any { it["filePath"].asText() == webTest }
+            "Precondition: the reference search returns the URL string of the request",
+            urlStringReferencesToTheHandler().isNotEmpty()
         )
 
+        val head = traceFromHandler(includeTests = true)["chain"][0]
+        assertEquals(
+            "The request is listed by URL",
+            listOf(requestLine),
+            head["testUrlReferences"].single { it["filePath"].asText() == webTest }["lines"].map { it.asInt() }
+        )
         val repeated = head["testReferences"]
             .filter { it["filePath"].asText() == webTest && it["lines"].any { line -> line.asInt() == requestLine } }
         assertEquals("A request found by URL must not be listed again as a reference", emptyList<JsonNode>(), repeated)
+    }
+
+    /**
+     * A MockMvc request never leaves the JVM: the host it names - a brand, a tenant - becomes the request's server
+     * name, so the request still reaches the handler under test.
+     */
+    fun testMockMvcRequestToAnyHostIsListedOnTheHandler() = runBlocking<Unit> {
+        addSource(BRAND_ROOT, "com/example/links/ShortLinkBrandTest.kt", BRAND_TEST_SOURCE, isTestSource = true)
+
+        val head = traceFromHandler(includeTests = true)["chain"][0]
+
+        assertEquals(
+            listOf(lineOf(BRAND_TEST_SOURCE, "brand-a.example"), lineOf(BRAND_TEST_SOURCE, ".also { controller")),
+            head["testUrlReferences"].single { it["filePath"].asText() == BRAND_TEST }["lines"].map { it.asInt() }
+        )
+    }
+
+    /**
+     * A `RANDOM_PORT` test sends its request over the network to this machine, so it reaches the handler; the same
+     * request to another host is a call to another service.
+     */
+    fun testRealClientToThisMachineIsListedOnTheHandler() = runBlocking<Unit> {
+        addSource(BRAND_ROOT, "com/example/links/ShortLinkClientTest.kt", CLIENT_TEST_SOURCE, isTestSource = true)
+
+        val head = traceFromHandler(includeTests = true)["chain"][0]
+
+        assertEquals(
+            listOf(lineOf(CLIENT_TEST_SOURCE, "localhost:")),
+            head["testUrlReferences"].single { it["filePath"].asText() == CLIENT_TEST }["lines"].map { it.asInt() }
+        )
+    }
+
+    /**
+     * Dropping a request from the references must not drop a call of the handler: a test calling it directly breaks
+     * on a signature change, also when a request to its URL sits on the same line.
+     */
+    fun testDirectCallOfTheHandlerStaysAReference() = runBlocking<Unit> {
+        addSource(BRAND_ROOT, "com/example/links/ShortLinkBrandTest.kt", BRAND_TEST_SOURCE, isTestSource = true)
+        registerUrlReferencesToTheHandler()
+
+        val head = traceFromHandler(includeTests = true)["chain"][0]
+
+        assertEquals(
+            listOf(lineOf(BRAND_TEST_SOURCE, "controller.activity(1, \"7d\")"), lineOf(BRAND_TEST_SOURCE, ".also { controller")),
+            head["testReferences"].single { it["filePath"].asText() == BRAND_TEST && it["via"].isNull }["lines"].map { it.asInt() }
+        )
+    }
+
+    /**
+     * Gives every Kotlin string naming a `/api/short-links/` URL a reference to the handler, the way the bundled
+     * JetBrains Spring MVC plugin does for a MockMvc URL: it resolves to the handler and is a reference to it.
+     */
+    private fun registerUrlReferencesToTheHandler() {
+        val registrar = ReferenceProvidersRegistry.getInstance().getRegistrar(KotlinLanguage.INSTANCE) as PsiReferenceRegistrarImpl
+        registrar.registerReferenceProvider(
+            PlatformPatterns.psiElement(KtStringTemplateExpression::class.java),
+            object : PsiReferenceProvider() {
+                override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
+                    val template = element as KtStringTemplateExpression
+                    if (!template.text.contains("/api/short-links/")) return PsiReference.EMPTY_ARRAY
+                    return arrayOf(UrlToHandlerReference(template))
+                }
+            },
+            PsiReferenceRegistrar.DEFAULT_PRIORITY,
+            testRootDisposable,
+        )
+    }
+
+    private fun urlStringReferencesToTheHandler(): List<PsiElement> =
+        MethodReferencesSearch.search(handler(project), GlobalSearchScope.projectScope(project), true).findAll()
+            .map { it.element }
+            .filterIsInstance<KtStringTemplateExpression>()
+
+    private class UrlToHandlerReference(template: KtStringTemplateExpression) :
+        PsiReferenceBase<KtStringTemplateExpression>(template, TextRange(1, template.textLength - 1)) {
+
+        override fun resolve(): PsiElement = handler(element.project)
+
+        override fun isReferenceTo(element: PsiElement): Boolean =
+            element.manager.areElementsEquivalent(element.navigationElement, resolve().navigationElement)
     }
 
     /** Absent means "not requested"; an empty list would claim that no test depends on the method. */
@@ -486,6 +588,14 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         const val MAIN_ROOT = "traceMain"
         const val TEST_ROOT = "traceTest"
         const val LONG_ROOT = "traceLong"
+        const val BRAND_ROOT = "traceBrandTest"
+        const val BRAND_TEST = "$BRAND_ROOT/com/example/links/ShortLinkBrandTest.kt"
+        const val CLIENT_TEST = "$BRAND_ROOT/com/example/links/ShortLinkClientTest.kt"
+
+        fun handler(project: Project): PsiMethod =
+            JavaPsiFacade.getInstance(project)
+                .findClass("com.example.links.ShortLinkAdminController", GlobalSearchScope.allScope(project))!!
+                .findMethodsByName("activity", false).single()
 
         val LONG_CHAIN_SOURCE = buildString {
             appendLine("package com.example.links")
@@ -621,6 +731,41 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
             class ShortLinkWebTest {
                 fun activityOverHttp(mockMvc: MockMvc) {
                     mockMvc.perform(get("/api/short-links/1/activity"))
+                }
+            }
+        """.trimIndent()
+
+        val BRAND_TEST_SOURCE = """
+            package com.example.links
+
+            import java.net.URI
+            import org.springframework.test.web.servlet.MockMvc
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+
+            class ShortLinkBrandTest {
+                fun activityOfBrandA(mockMvc: MockMvc) {
+                    mockMvc.perform(get(URI.create("http://brand-a.example/api/short-links/1/activity")))
+                }
+
+                fun activityCalledDirectly(controller: ShortLinkAdminController) {
+                    controller.activity(1, "7d")
+                }
+
+                fun requestAndCallOnOneLine(mockMvc: MockMvc, controller: ShortLinkAdminController) {
+                    mockMvc.perform(get("/api/short-links/2/activity")).also { controller.activity(2, "1d") }
+                }
+            }
+        """.trimIndent()
+
+        val CLIENT_TEST_SOURCE = """
+            package com.example.links
+
+            import org.springframework.web.client.RestTemplate
+
+            class ShortLinkClientTest {
+                fun activityOverTheNetwork(rest: RestTemplate, port: Int) {
+                    rest.getForObject("http://localhost:${'$'}port/api/short-links/3/activity", String::class.java)
+                    rest.getForObject("http://payments.example.com/api/short-links/3/activity", String::class.java)
                 }
             }
         """.trimIndent()
