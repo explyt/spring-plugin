@@ -198,6 +198,9 @@ class AbsoluteUrlEndpointReferenceTest : ExplytJavaLightTestCase() {
             PsiTreeUtil.getParentOfType(it, PsiMethodCallExpression::class.java, false)
                 ?.let { call -> PsiTreeUtil.getParentOfType(call, com.intellij.psi.PsiMethod::class.java)?.name }
         }.sorted()
-        assertEquals(listOf("absolute", "underContextPath"), callers)
+        assertEquals(
+            "MockMvc dispatches inside the JVM, so a request naming another host still reaches the controller under test",
+            listOf("absolute", "otherHost", "underContextPath"), callers
+        )
     }
 }
