@@ -15,15 +15,17 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.searches.MethodReferencesSearch
+import com.intellij.psi.util.PsiTreeUtil
 
 /**
  * The test code that depends on the methods of a call chain, and so breaks when one of them changes.
  *
  * A test rarely names the implementation a trace reaches: it mocks or calls the interface the bean is injected by,
  * and a web test sends a request to the handler's URL instead of calling the handler. Both are searched - the
- * interface declarations the call chain reached a method through, and MockMvc and WebTestClient requests whose URL
- * matches the endpoint the chain started from. A URL match is weaker evidence than a resolved reference and is kept
- * apart from it.
+ * interface declarations the call chain reached a method through, and the test requests whose URL matches the
+ * endpoint the chain started from: MockMvc to any host, `WebTestClient`, and `java.net.http`, `RestTemplate`,
+ * `TestRestTemplate` and `RestClient` to this machine. A URL match is weaker evidence than a resolved reference and is
+ * kept apart from it.
  */
 internal class CallChainTestReferences(private val module: Module, private val project: Project) {
 
@@ -31,35 +33,57 @@ internal class CallChainTestReferences(private val module: Module, private val p
     private val fileIndex = ProjectFileIndex.getInstance(project)
     private val basePath = project.basePath
 
+    /** The tests of one traced method: the references to it, and - on a handler - the requests to its URL. */
+    data class NodeTests(val references: List<NodeTestReferenceJson>, val urlReferences: List<UrlTestReferenceJson>?)
+
     /**
+     * The tests of [method], with the requests to its URL when [withUrlReferences] is set.
+     *
      * A reference found both ways is a direct one: a search for an interface method also returns the calls written
      * against its implementations, and listing such a call twice would count one test as two.
+     *
+     * A request found by URL is not a reference to the handler, even when a URL reference resolves to it - the
+     * bundled JetBrains Spring MVC plugin puts one on the MockMvc URL string, so the same request line came back
+     * from the reference search too and one test was counted twice.
      */
-    fun referencesTo(method: PsiMethod, viaDeclarations: List<PsiMethod>): List<NodeTestReferenceJson> {
-        val direct = linesByFile(referencesOf(method))
+    fun of(method: PsiMethod, viaDeclarations: List<PsiMethod>, withUrlReferences: Boolean): NodeTests {
+        val requests = if (withUrlReferences) requestsTo(method) else emptyList()
+        val requestElements = requests.flatMap { it.second }
+        val notARequest = { reference: PsiElement -> requestElements.none { isWithin(reference, it) } }
+
+        val direct = linesByFile(referencesOf(method).filter(notARequest))
         val directLines = direct.flatMap { (file, lines) -> lines.map { file to it } }.toSet()
         val throughInterfaces = viaDeclarations.flatMap { declaration ->
             val via = CallChainTracer.nameOf(declaration)
-            linesByFile(referencesOf(declaration)).mapNotNull { (file, lines) ->
+            linesByFile(referencesOf(declaration).filter(notARequest)).mapNotNull { (file, lines) ->
                 lines.filter { (file to it) !in directLines }.takeIf { it.isNotEmpty() }
                     ?.let { NodeTestReferenceJson(file, it, via) }
             }
         }
-        return (direct.map { (file, lines) -> NodeTestReferenceJson(file, lines, via = null) } + throughInterfaces)
+        val references = (direct.map { (file, lines) -> NodeTestReferenceJson(file, lines, via = null) } + throughInterfaces)
             .sortedWith(compareBy({ it.filePath }, { it.via }))
+
+        val urlReferences = if (!withUrlReferences) null else requests
+            .flatMap { (path, usages) -> linesByFile(usages).map { (file, lines) -> UrlTestReferenceJson(file, lines, path) } }
+            .distinct()
+            .sortedBy { it.filePath }
+        return NodeTests(references, urlReferences)
     }
 
-    fun urlReferencesTo(handler: PsiMethod): List<UrlTestReferenceJson> {
+    /** The requests tests send to the endpoints [handler] serves, by the endpoint's mapping path. */
+    private fun requestsTo(handler: PsiMethod): List<Pair<String, List<PsiElement>>> {
         val psiManager = PsiManager.getInstance(project)
         val handlerDeclaration = handler.navigationElement
-        val endpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+        return SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
             .filter { endpoint -> psiManager.areElementsEquivalent(endpoint.psiElement.navigationElement, handlerDeclaration) }
-        return endpoints.flatMap { endpoint ->
-            val usages = EndpointUsageSearcher.findMockMvcEndpointUsage(endpoint.path, endpoint.requestMethods, module) +
-                    EndpointUsageSearcher.findWebTestClientEndpointUsage(endpoint.path, endpoint.requestMethods, module)
-            linesByFile(usages).map { (file, lines) -> UrlTestReferenceJson(file, lines, endpoint.path) }
-        }.distinct().sortedBy { it.filePath }
+            .map { endpoint ->
+                endpoint.path to EndpointUsageSearcher.findTestRequestUsage(endpoint.path, endpoint.requestMethods, module)
+            }
     }
+
+    /** Whether [reference] is part of the request [request] - its URL argument, or anything else inside the call. */
+    private fun isWithin(reference: PsiElement, request: PsiElement): Boolean =
+        request.containingFile == reference.containingFile && PsiTreeUtil.isAncestor(request, reference, false)
 
     private fun referencesOf(method: PsiMethod): List<PsiElement> =
         MethodReferencesSearch.search(method, testScope, true).findAll().map { it.element }

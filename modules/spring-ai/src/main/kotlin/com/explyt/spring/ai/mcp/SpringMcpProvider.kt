@@ -1083,9 +1083,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "because the chain hit its size limit of $MAX_TRACED_METHODS methods. " +
                 "With includeTests, every node carries 'testReferences': the test files referring to the method, " +
                 "or to the interface method named in 'via' - the tests a signature change will break - and the " +
-                "starting method, when it handles an endpoint, also carries 'testUrlReferences': the MockMvc and " +
-                "WebTestClient calls in tests whose URL matches it, with the matched 'endpointPath'; a request " +
-                "sent by another HTTP client is not detected. Without includeTests both fields are absent, which " +
+                "starting method, when it handles an endpoint, also carries 'testUrlReferences': the test requests " +
+                "whose URL matches it, with the matched 'endpointPath' - MockMvc to any host, since it never leaves " +
+                "the JVM, WebTestClient, and java.net.http, RestTemplate, TestRestTemplate and RestClient to this " +
+                "machine only; a request built inside a test helper from a parameter is not detected. A request " +
+                "listed there is not repeated in 'testReferences'. Without includeTests both fields are absent, which " +
                 "means not requested; an empty list means that no test was found. " +
                 "A page holds at most 'limit' nodes ($TRACE_PAGE_LIMIT by default) within 'maxChars' of compact " +
                 "JSON ($TRACE_PAGE_CHARS by default) and can end earlier, because the budget is measured on the " +
@@ -1237,6 +1239,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val method = traced.method
         val containingClass = method.containingClass
         val position = sourcePositionOf(method, project)
+        val nodeTests = tests?.of(method, chain.viaDeclarationsOf(method), withUrlReferences = traced.reachedBy == null)
         return CallChainNodeJson(
             id = id,
             layer = containingClass?.let { detectSpringLayer(it) },
@@ -1256,8 +1259,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     via = call.via,
                 )
             },
-            testReferences = tests?.referencesTo(method, chain.viaDeclarationsOf(method)),
-            testUrlReferences = tests?.takeIf { traced.reachedBy == null }?.urlReferencesTo(method),
+            testReferences = nodeTests?.references,
+            testUrlReferences = nodeTests?.urlReferences,
         )
     }
 
@@ -1801,8 +1804,9 @@ data class CallChainNodeJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL)
     val testReferences: List<NodeTestReferenceJson>? = null,
     /**
-     * On the method the trace started from, when it handles an endpoint: MockMvc and WebTestClient calls in tests
-     * whose URL matches the endpoint. Absent on every other node and when tests were not requested.
+     * On the method the trace started from, when it handles an endpoint: the test requests whose URL matches the
+     * endpoint - MockMvc to any host, `WebTestClient`, and real HTTP clients to this machine. Absent on every other node
+     * and when tests were not requested.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL)
     val testUrlReferences: List<UrlTestReferenceJson>? = null,
