@@ -36,6 +36,15 @@ object EndpointUrlMatcher {
          */
         REFERENCE(anyHost = false, guessPrefixes = false, fragments = false),
 
+        /**
+         * A URL handed to a client that dispatches inside the JVM - a MockMvc request, a `WebTestClient` bound to a
+         * controller or an application context. Such a request reaches the application under test whatever host it
+         * names: the host only becomes the request's server name and `Host` header, and a test often sets it on
+         * purpose, to exercise a tenant or a brand resolved from it. Everything else stays as certain as
+         * [REFERENCE].
+         */
+        IN_PROCESS(anyHost = true, guessPrefixes = false, fragments = false),
+
         /** A URL a person pasted from a browser, a log line or a curl, or a path being typed into a search field. */
         SEARCH(anyHost = true, guessPrefixes = true, fragments = true),
     }
@@ -69,8 +78,8 @@ object EndpointUrlMatcher {
     }
 
     /** Whether a URL written in code addresses the endpoint at [route], served under [basePath]. */
-    fun addresses(route: String, url: String, basePath: String?): Boolean =
-        match(listOf(route), url, Policy.REFERENCE, { it }, { basePath }).endpoints.isNotEmpty()
+    fun addresses(route: String, url: String, basePath: String?, policy: Policy = Policy.REFERENCE): Boolean =
+        match(listOf(route), url, policy, { it }, { basePath }).endpoints.isNotEmpty()
 
     /**
      * The request path of [url], or `null` when the [policy] does not let a URL naming another host address the
