@@ -20,6 +20,7 @@ import com.explyt.spring.web.util.SpringWebUtil.PATHS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS
 import com.explyt.spring.web.util.SpringWebUtil.REQUEST_METHODS_WITH_TYPE
 import com.explyt.spring.web.util.SpringWebUtil.getUrlTemplateIndex
+import com.explyt.spring.web.util.TestRequestReceivers
 import com.explyt.spring.web.util.UrlArgumentText
 import com.explyt.util.CacheUtils.getCachedValue
 import com.explyt.util.ExplytKotlinUtil.filterToSet
@@ -33,6 +34,7 @@ import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
@@ -225,13 +227,73 @@ object EndpointUsageSearcher {
                         ?.let(UrlArgumentText::of)
                         ?: return@filterToSet false
 
-                    return@filterToSet EndpointUrlMatcher.addresses(endpoint, urlArg, basePath)
+                    return@filterToSet EndpointUrlMatcher.addresses(
+                        endpoint, urlArg, basePath, EndpointUrlMatcher.Policy.IN_PROCESS
+                    )
                 }
                 .mapNotNull { it.sourcePsi }
         }
 
         return methods.toList()
     }
+
+    /**
+     * Every request a test sends to the endpoint at [fullPath]: through MockMvc, through `WebTestClient` and through
+     * a real HTTP client to this machine.
+     */
+    fun findTestRequestUsage(fullPath: String, requestMethods: List<String>, module: Module): List<PsiElement> =
+        (findMockMvcEndpointUsage(fullPath, requestMethods, module) +
+                findWebTestClientEndpointUsage(fullPath, requestMethods, module) +
+                findHttpClientEndpointUsage(fullPath, requestMethods, module)).distinct()
+
+    /**
+     * The requests a test sends to the endpoint at [fullPath] through a real HTTP client - `java.net.http`,
+     * `RestTemplate`, `TestRestTemplate`, `RestClient` - to this machine; a request to another host is a call to
+     * another service.
+     */
+    fun findHttpClientEndpointUsage(
+        fullPath: String,
+        requestMethods: List<String>,
+        module: Module
+    ): List<PsiElement> {
+        val endpoint = SpringWebUtil.simplifyUrl(fullPath)
+        val basePath = ApplicationBasePath.cachedOf(module)
+        val testScope = GlobalSearchScopesCore.projectTestScope(module.project)
+
+        return TestRequestReceivers.NETWORK.asSequence()
+            .flatMap { receiver -> receiverMethods(receiver, module).map { receiver to it } }
+            .filter { (_, method) -> TestRequestReceivers.urlParameterIndex(method) != -1 }
+            .flatMap { (receiver, method) ->
+                SpringSearchUtils.searchReferenceByMethod(module, method, testScope).asSequence()
+                    .mapNotNull { it.element.context.toUElementOfType<UCallExpression>() }
+                    .filter { call ->
+                        val sent = TestRequestReceivers.httpMethodOf(call, method, receiver.verb)
+                        if (requestMethods.isNotEmpty() && sent != null && sent !in requestMethods) return@filter false
+                        val url = call.getArgumentForParameter(TestRequestReceivers.urlParameterIndex(method))
+                            ?.let(UrlArgumentText::of)
+                            ?: return@filter false
+                        EndpointUrlMatcher.addresses(endpoint, url, basePath)
+                    }
+            }
+            .mapNotNull { it.sourcePsi }
+            .distinct()
+            .toList()
+    }
+
+    private fun receiverMethods(receiver: TestRequestReceivers.Receiver, module: Module): List<PsiMethod> {
+        val libraryTracker = ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
+        val methodsByOwner = getCachedValue(module, libraryTracker) { networkReceiverMethods(module) }
+        return methodsByOwner[receiver.owner].orEmpty().filter { it.name == receiver.method }
+    }
+
+    private fun networkReceiverMethods(module: Module): Map<String, List<PsiMethod>> =
+        TestRequestReceivers.NETWORK.map { it.owner }.distinct().associateWith { owner ->
+            SpringCoreUtil.getClassMethodsFromLibraries(owner, module)?.toList()
+                ?: JavaPsiFacade.getInstance(module.project)
+                    .findClass(owner, module.getModuleWithDependenciesAndLibrariesScope(true))
+                    ?.methods?.toList()
+                ?: emptyList()
+        }
 
     private fun isInRequestMethods(psiMethod: PsiMethod, requestMethods: List<String>): Boolean {
         val name = psiMethod.name
