@@ -57,7 +57,10 @@ class SpringBeanMcpToolset : McpToolset {
         projectPath: String? = null,
         @McpDescription("FQN of the @SpringBootApplication; required when the scope holds more than one")
         applicationClassName: String? = null,
-        @McpDescription("Which model answers: AUTO (default), STATIC, or NATIVE")
+        @McpDescription(
+            "Which model answers, case-insensitive: AUTO (default), STATIC, or NATIVE. Any other value is " +
+                    "rejected with the list of valid values"
+        )
         source: String = "AUTO",
         @McpDescription("Opaque id of a loaded native context, taken from a CONTEXT_REQUIRED answer")
         contextId: String? = null,

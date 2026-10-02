@@ -80,6 +80,15 @@ private const val PROJECT_PATH_DESCRIPTION =
     "Path to the project root. Omit it when a single project is open; when several are, it is required, " +
             "and a path naming none of them is refused rather than answered from another one."
 
+private val HTTP_METHODS = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
+
+private const val HTTP_METHOD_DESCRIPTION =
+    "Optional HTTP method filter, case-insensitive: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. Leave empty to " +
+            "match all methods. Any other value is rejected with the list of valid values."
+
+/** The values `explyt_get_spring_http_endpoints` can filter by: the endpoint types it lists at all. */
+private val WEB_ENDPOINT_TYPES = EndpointType.entries.filter { it.isWeb }.map { it.name }
+
 class SpringBootApplicationMcpToolset : McpToolset {
 
     @McpTool("explyt_get_spring_boot_applications", title = "Spring Boot applications in the project")
@@ -150,12 +159,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "CONFIGURATION_PROPERTIES - for org.springframework.boot.context.properties.ConfigurationProperties and inheritors , \n" +
                     "CONFIGURATION - for org.springframework.context.annotation.Configuration and inheritors , \n" +
                     "REPOSITORY - for Spring Data Repositories and org.springframework.stereotype.Repository , \n" +
-                    "COMPONENT - for Spring Components/Service and other beans. \n"
+                    "COMPONENT - for Spring Components/Service and other beans. \n" +
+                    "Case-insensitive; any other value is rejected with the list of valid values."
         )
         beanType: String,
         @McpDescription(
-            "Which bean model answers: AUTO (default) prefers a loaded application context and falls back to " +
-                    "the static model, STATIC always uses the static model, NATIVE requires a loaded context."
+            "Which bean model answers, case-insensitive: AUTO (default) prefers a loaded application context and " +
+                    "falls back to the static model, STATIC always uses the static model, NATIVE requires a loaded " +
+                    "context. Any other value is rejected with the list of valid values."
         )
         source: String = "AUTO",
         @McpDescription("Id of the loaded context to answer from, when several are loaded for this application.")
@@ -165,8 +176,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
             ?: projectPath?.takeIf { it.isNotBlank() }?.let { mcpFail(projectProblem(it)) }
             ?: getCurrentProjectForClass(applicationClassName)
             ?: mcpFail(projectProblem(projectPath))
-        val mcpBeanType = getMcpBeanType(beanType) ?: mcpFail("bean type not found $beanType")
-        val preference = getBeanSourcePreference(source) ?: mcpFail("unknown source $source")
+        val mcpBeanType = McpBeanTypes.valueOf(
+            McpChoiceArguments.required(beanType, "beanType", McpBeanTypes.entries.map { it.name })
+        )
+        val preference = BeanSourcePreference.valueOf(
+            McpChoiceArguments.required(source, "source", BeanSourcePreference.entries.map { it.name })
+        )
         val springBeans = withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val applicationPsiClass = JavaPsiFacade.getInstance(project)
@@ -194,8 +209,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return mapper.writeValueAsString(beans)
     }
 
-    private fun getBeanSourcePreference(source: String): BeanSourcePreference? =
-        BeanSourcePreference.entries.firstOrNull { it.name.equals(source.trim(), ignoreCase = true) }
 
     private fun toSpringBootApplicationDto(psiClass: PsiClass): SpringBootApplicationJson? {
         val qualifiedName = psiClass.qualifiedName ?: return null
@@ -209,13 +222,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
     }
 
-    private fun getMcpBeanType(beanType: String): McpBeanTypes? {
-        return try {
-            McpBeanTypes.valueOf(beanType.uppercase())
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     @McpTool("explyt_find_spring_endpoint", title = "Resolve a URL to its Spring handler")
     @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
@@ -276,10 +282,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         urlPattern: String,
         @McpDescription(PROJECT_PATH_DESCRIPTION)
         projectPath: String? = null,
-        @McpDescription(
-            "Optional HTTP method filter: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. " +
-                    "Leave empty to match all methods."
-        )
+        @McpDescription(HTTP_METHOD_DESCRIPTION)
         httpMethod: String = "",
     ): String {
         val result = lookupEndpoints(urlPattern, projectPath, httpMethod) { endpoint, project ->
@@ -311,7 +314,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val requestPath = EndpointPathPatterns.requestPathOf(urlPattern)
         val pathReadings = EndpointPathPatterns.readingsOf(requestPath).toList()
-        val methodFilter = httpMethod.trim().uppercase().takeIf { it.isNotEmpty() }
+        val methodFilter = McpChoiceArguments.optional(httpMethod, "httpMethod", HTTP_METHODS)
 
         return withContext(Dispatchers.IO) {
             smartReadAction(project) {
@@ -753,8 +756,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         @McpDescription("Optional substring filter on controller class name (e.g. 'Coverage'). Leave empty for all.")
         controllerFilter: String = "",
         @McpDescription(
-            "Optional endpoint type filter. Possible values: SPRING_MVC, SPRING_WEBFLUX, SPRING_JAX_RS, " +
-                    "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, ACTUATOR. Leave empty for all."
+            "Optional endpoint type filter, case-insensitive. Possible values: SPRING_MVC, SPRING_WEBFLUX, " +
+                    "SPRING_JAX_RS, SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, ACTUATOR. Leave empty for all. " +
+                    "Any other value is rejected with the list of valid values."
         )
         endpointType: String = "",
         @McpDescription("Index of the first endpoint to return, for paging through large projects. Defaults to 0.")
@@ -773,7 +777,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     ): String {
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
-        val typeFilter = endpointType.trim().uppercase().takeIf { it.isNotEmpty() }
+        val typeFilter = McpChoiceArguments.optional(endpointType, "endpointType", WEB_ENDPOINT_TYPES)
         val pageStart = offset.coerceAtLeast(0)
         val pageSize = limit.coerceIn(1, MAX_ENDPOINT_LIST_RESULTS)
 
@@ -871,7 +875,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         urlPattern: String,
         @McpDescription(PROJECT_PATH_DESCRIPTION)
         projectPath: String? = null,
-        @McpDescription("Optional HTTP method filter: GET, POST, PUT, DELETE, etc. Leave empty for all.")
+        @McpDescription(HTTP_METHOD_DESCRIPTION)
         httpMethod: String = "",
     ): String {
         val result = lookupEndpoints(urlPattern, projectPath, httpMethod) { endpoint, project ->
