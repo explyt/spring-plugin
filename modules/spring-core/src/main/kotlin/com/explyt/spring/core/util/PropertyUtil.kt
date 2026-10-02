@@ -600,51 +600,6 @@ object PropertyUtil {
     }
 
     /**
-     * The element type of a `java.util.List<T>` or array type text, or `null` for any other type.
-     * A Kotlin `List<T>` arrives as a wildcard light type (`java.util.List<? extends T>`), so the variance
-     * keyword is dropped to keep the result a plain qualified name.
-     */
-    fun getListElementClassName(propertyType: String?): String? {
-        if (propertyType == null) return null
-        val elementType = when {
-            propertyType.endsWith("[]") -> propertyType.substringBeforeLast("[]")
-            propertyType.substringBefore("<") == JavaCoreClasses.LIST ->
-                propertyType.substringAfter("<", "").substringBeforeLast(">")
-
-            else -> return null
-        }
-        return elementType.substringAfterLast(' ').takeIf { it.isNotBlank() }
-    }
-
-    /**
-     * The member addressed by [memberPath] inside [mapValueType]: `owner-application` directly, or `payload-type`
-     * through an intermediate segment such as `routes[0]` (properties files) or `routes` (YAML full keys carry no
-     * list index). Each level is resolved by name in the declaring class, because map-value members are not declared
-     * as configuration properties of their own; an intermediate collection segment descends into its element type.
-     */
-    fun findMapValueMember(module: Module, mapValueType: String, memberPath: String): PsiMember? {
-        val segments = keySegments(memberPath)
-        var currentType = mapValueType
-        for ((index, segment) in segments.withIndex()) {
-            val memberName = segment.substringBefore('[')
-            val member = getMembersOfType(module, currentType, memberName)
-                .firstOrNull { isPropertyMemberName(it.name, memberName) } ?: return null
-            if (index == segments.lastIndex) return member
-            val memberType = memberTypeText(member) ?: return null
-            currentType = getListElementClassName(memberType) ?: memberType
-        }
-        return null
-    }
-
-    private fun memberTypeText(member: PsiMember): String? = when (member) {
-        is PsiField -> member.type.canonicalText
-        is PsiMethod -> (member.parameterList.parameters.singleOrNull()?.type
-            ?: member.returnType)?.canonicalText
-
-        else -> null
-    }
-
-    /**
      * The element type of a list or array property, or `null` for any other property.
      *
      * A Kotlin `List<T>` reaches us as a wildcard light type (`java.util.List<? extends T>`), so the variance
@@ -931,6 +886,24 @@ object PropertyUtil {
         }
     }
 
+    /**
+     * The member of [psiClass] binding the single key segment [propertyName] under relaxed binding, or `null` when the
+     * class declares none. Unlike [getMembersOfType], a member of a nested type never answers: `model-name` is not a
+     * member of a class that reaches it only through `model-info`.
+     *
+     * A `@NestedConfigurationProperty` member has no key of its own in the model, only the keys of its type
+     * (`.limits.max-tokens`), so the first segment of every key is what names a member of [psiClass].
+     */
+    fun findPropertyMember(module: Module, psiClass: PsiClass, propertyName: String): PsiMember? =
+        configurationPropertiesOf(psiClass, module).values.asSequence()
+            .map { it to it.name.removePrefix(DOT) }
+            .filter { (_, key) -> isSameProperty(key.substringBefore(DOT), propertyName) }
+            .sortedBy { (_, key) -> DOT in key }
+            .firstNotNullOfOrNull { (property, key) ->
+                val declaredBy = property.sourceType.takeUnless { DOT in key } ?: ""
+                findDeclaringMember(psiClass, key.substringBefore(DOT), declaredBy)
+            }
+
     fun getMembersOfType(module: Module, valueType: String, prefix: String): List<PsiMember> {
         val project = module.project
         val qualifiedName = valueType.substringBeforeLast('#').replace('$', '.')
@@ -966,19 +939,6 @@ object PropertyUtil {
             )
         }.getValue(module)
 
-    fun isPropertyMemberName(memberName: String?, propertyName: String): Boolean {
-        if (memberName == null) return false
-        val accessorlessName = when {
-            memberName.length > 3 && memberName[3].isUpperCase()
-                    && (memberName.startsWith("set") || memberName.startsWith("get")) -> memberName.substring(3)
-
-            memberName.length > 2 && memberName[2].isUpperCase()
-                    && memberName.startsWith("is") -> memberName.substring(2)
-
-            else -> memberName
-        }
-        return isSameProperty(accessorlessName, propertyName.substringAfterLast("."))
-    }
 
     fun findPropertyByConfigurationPropertyElement(element: PsiElement): PropertySearchResult? {
         if (!SpringCoreUtil.isSpringProject(element.project)) return null
