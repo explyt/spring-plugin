@@ -457,6 +457,36 @@ logging.level.org.hibernate.SQL=deb<caret>ug
         assertNull(mapValueReferenceName())
     }
 
+    fun testRefKeyMapValueMemberUnderListElement() {
+        myFixture.copyFileToProject("CatalogProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.catalog.providers[0].models.free.available-for-<caret>personal=true"
+        )
+
+        assertEquals("setAvailableForPersonal", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyObjectMemberUnderListElementBracketMapKey() {
+        myFixture.copyFileToProject("CatalogProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.catalog.providers[0].models[free].model-info.model-<caret>name=free"
+        )
+
+        assertEquals("setModelName", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyMapValueMemberUnderMapValue() {
+        myFixture.copyFileToProject("CatalogProperties.java")
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.catalog.regions.eu.models.free.available-for-<caret>personal=true"
+        )
+
+        assertEquals("setAvailableForPersonal", mapValueReferenceName())
+    }
+
     private fun mapValueReferenceName(): String? = mapValueReference()
         .multiResolve(true)
         .singleOrNull()
