@@ -33,6 +33,7 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
         val springBootActuatorAutoConfigure_4_1_0: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-actuator-autoconfigure:4.1.0")
+        val springBootHealth_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-health:4.1.0")
         val springBootTestAutoConfigure_3_1_1: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-test-autoconfigure:3.1.1")
         val springDataJpa_3_1_0 = TestLibrary("org.springframework.data:spring-data-jpa:3.1.0", true)
@@ -51,6 +52,7 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springSecurityCore_6_0_7 = TestLibrary("org.springframework.security:spring-security-core:6.0.7", true)
 
         val kotlin_1_9_22 = TestLibrary("org.jetbrains.kotlin:kotlin-stdlib:1.9.22", true)
+        val jacksonAnnotations_2_15_2 = TestLibrary("com.fasterxml.jackson.core:jackson-annotations:2.15.2", false)
         val kotlin_coroutines_1_7_1 = TestLibrary("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1", true)
 
         val springAop_6_0_7 = TestLibrary("org.springframework:spring-aop:6.0.7", true)

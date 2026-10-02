@@ -25,6 +25,7 @@ import com.explyt.spring.web.util.EndpointPathPatterns
 import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
 import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
@@ -60,12 +61,6 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 
 import org.jetbrains.kotlin.idea.base.util.projectScope
-import org.jetbrains.kotlin.asJava.elements.KtLightField
-import org.jetbrains.kotlin.asJava.elements.KtLightMethod
-import org.jetbrains.kotlin.psi.KtCallableDeclaration
-import org.jetbrains.kotlin.psi.KtNullableType
-
-import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UMethod
@@ -233,14 +228,22 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "as one string and a text search for it finds nothing, and a class-level prefix can silently give a " +
                 "new method a different URL than the one written on it. " +
                 "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers " +
-                "(Kafka/RabbitMQ listeners) and event listeners. " +
+                "(Kafka/RabbitMQ listeners), event listeners and Actuator - the project's own @Endpoint classes " +
+                "and, when Spring Boot's endpoint auto-configuration is on the classpath, the built-in ones such as " +
+                "'/actuator/health'. An Actuator endpoint carries 'exposed': EXPOSED or NOT_EXPOSED as " +
+                "management.endpoints.web.exposure.include/exclude decide it (by default only health), UNKNOWN " +
+                "when a value cannot be read from the configuration files; it is found whatever 'exposed' says, " +
+                "since a profile or an environment variable can change exposure at run time. " +
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
-                "file path, line and endpoint type. 'endpoints' lists the closest match to the pattern first: an " +
-                "exact path, then one matching it as a pattern, then one merely containing it, and within each " +
-                "group the way Spring picks a handler - literal before '{template}', fewer wildcards first - so " +
-                "when several match one URL the first is the one that dispatches. " +
+                "file path, line and endpoint type, and 'consumes'/'produces' when the mapping declares media " +
+                "types. 'endpoints' lists the closest match to the pattern first: an exact path, then one matching " +
+                "it as a pattern, then one merely containing it, and within each group by path specificity, the " +
+                "way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of routes " +
+                "with different paths matching one URL the first is the one that dispatches. Handlers sharing one " +
+                "path and verb are not ordered by dispatch: the request's Content-Type and Accept choose among " +
+                "them, by the 'consumes' and 'produces' each record carries. " +
                 "Covers annotation-declared handlers and functional routes alike; for a functional route the " +
                 "controller class and method name are the bean factory that registers it, and 'parameters' holds " +
                 "the path variables its URL template declares. " +
@@ -366,7 +369,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
      *
      * Matches are ordered by how closely they answer the path ([matchRank]) and then by
      * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match, the first
-     * element is the one Spring dispatches to.
+     * element is the one Spring dispatches to. Handlers sharing one path keep no dispatch order: Spring chooses among
+     * them by the request's media types, which [CompactEndpointJson.consumes] and [CompactEndpointJson.produces] show.
      */
     private fun matchesOf(
         endpoints: List<EndpointElement>,
@@ -435,9 +439,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 }
 
         private fun declaredFor(endpoint: EndpointElement): String? {
-            val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: return null
+            val module = moduleOf(endpoint) ?: return null
             return byModule.getOrPut(module) { ApplicationBasePath.of(module).orEmpty() }.ifEmpty { null }
         }
+
+        /**
+         * The module an endpoint is served by. A built-in Actuator endpoint is declared in a jar, where
+         * `findModuleForPsiElement` answers `null` for anything but a file, so its file is asked instead. That names one
+         * of the modules the library is attached to - the first in dependency order - and the endpoint is read under
+         * that module's base path; in a project whose applications share the jar but declare different base paths, the
+         * others are not tried.
+         */
+        private fun moduleOf(endpoint: EndpointElement): Module? =
+            ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
+                ?: endpoint.psiElement.containingFile?.originalFile?.let { ModuleUtilCore.findModuleForPsiElement(it) }
     }
 
     /**
@@ -511,6 +526,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // A loader may know the declaring file of an endpoint whose element has no source position of its own.
         val filePath = position.filePath
             ?: endpoint.containingFile?.let { relativePathOf(it, project) }
+        val mediaTypes = mediaTypesOf(
+            requestHandlerOf(endpoint)?.toUElement() as? UMethod,
+            ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement),
+            project,
+        )
 
         return CompactEndpointJson(
             httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
@@ -521,6 +541,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             filePath = filePath,
             line = position.line,
             endpointType = endpoint.type.readable,
+            consumes = mediaTypes.consumes,
+            produces = mediaTypes.produces,
+            exposed = endpoint.exposure?.name,
         )
     }
 
@@ -539,6 +562,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             endpointType = core.endpointType,
+            consumes = core.consumes,
+            produces = core.produces,
+            exposed = core.exposed,
         )
     }
 
@@ -591,9 +617,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
             .map(::wireNameOf)
             .toSet()
-        val servletMvc = isConfirmedServletMvc(psiMethod)
+        val servletApplication = isServletApplication(psiMethod)
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
-            val source = if (servletMvc && info.name in multipartRequestNames) "PART" else "QUERY"
+            val source = if (servletApplication && info.name in multipartRequestNames) "PART" else "QUERY"
             result += EndpointParameterJson(info.name, source, info.typeFqn, info.isRequired, info.defaultValue)
         }
         for (param in HandlerSignature.requestParameters(psiMethod)) {
@@ -617,13 +643,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return result
     }
 
-    private fun isConfirmedServletMvc(psiMethod: PsiMethod): Boolean {
+    /**
+     * Whether the handler's application runs on servlet MVC, where `@RequestParam` also binds a multipart part.
+     * A project carrying WebFlux next to it - usually only for `WebClient` - is still a servlet application.
+     */
+    private fun isServletApplication(psiMethod: PsiMethod): Boolean {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
-        val scope = module.moduleWithLibrariesScope
-        val facade = JavaPsiFacade.getInstance(psiMethod.project)
-        val hasServletMvc = facade.findClass(SpringWebClasses.MVC_DISPATCHER_SERVLET, scope) != null
-        val hasWebFlux = facade.findClass(SpringWebClasses.WEBFLUX_DISPATCHER_HANDLER, scope) != null
-        return hasServletMvc && !hasWebFlux
+        return WebApplicationStack.of(module) == WebApplicationStack.SERVLET
     }
 
     private fun isMultipartPart(type: PsiType): Boolean = when (type) {
@@ -694,7 +720,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "routes and the parameter conventions a new route must match, and a literal route that would " +
                 "compete with a '{template}' sibling. " +
                 "Call with compact=true for a first inventory of an API surface you do not know yet. " +
-                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
+                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign and Actuator: the project's own " +
+                "@Endpoint classes and, when Spring Boot's endpoint auto-configuration is on the classpath, the " +
+                "built-in ones (health, info, metrics...). An Actuator endpoint carries 'exposed': EXPOSED or " +
+                "NOT_EXPOSED as management.endpoints.web.exposure.include/exclude decide it (by default only " +
+                "health), UNKNOWN when a value cannot be read from the configuration files. Nothing is hidden: a " +
+                "profile or an environment variable can change exposure at run time. Other endpoints have no " +
+                "'exposed' key. " +
                 "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
                 "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
                 "'endpoints'. One endpoint looks exactly like this - note 'httpMethods' is an array, and the keys " +
@@ -704,7 +736,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "\"filePath\":\"src/main/java/com/example/app/web/DemoController.java\",\"line\":40," +
                 "\"parameters\":[{\"name\":\"id\",\"source\":\"PATH\",\"type\":\"java.lang.Long\"," +
                 "\"required\":true,\"defaultValue\":null}],\"returnType\":\"com.example.app.dto.DemoDto\"," +
-                "\"endpointType\":\"SPRING_MVC\"}. " +
+                "\"endpointType\":\"Spring MVC\"}. " +
+                "'consumes' and 'produces' are present only when the mapping declares media types: two handlers " +
+                "sharing a path and a verb are told apart by them, not by their order. " +
                 "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
                 "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
                 "absent otherwise. " +
@@ -720,7 +754,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         controllerFilter: String = "",
         @McpDescription(
             "Optional endpoint type filter. Possible values: SPRING_MVC, SPRING_WEBFLUX, SPRING_JAX_RS, " +
-                    "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, SPRING_BOOT, OPENAPI. Leave empty for all."
+                    "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, ACTUATOR. Leave empty for all."
         )
         endpointType: String = "",
         @McpDescription("Index of the first endpoint to return, for paging through large projects. Defaults to 0.")
@@ -794,9 +828,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "on. " +
                 "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
                 "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
-                "parameter with its type, return type, response DTO field schema (recursively expanded up to " +
-                "3 levels), produces/consumes media types, and the first resolved call on an injected Spring bean " +
-                "(null when no such call can be confirmed). Reading the handler signature by hand misses what Spring " +
+                "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
+                "expanded up to 3 levels: a @JsonProperty name in 'name' with the declared one in 'declaredName', " +
+                "no transient or @JsonIgnore members, an enum as 'enumValues' or, with @JsonValue, as the " +
+                "'jsonValue' member and its 'valueType'), produces/consumes media types, and 'serviceCalls': every " +
+                "call the handler makes on an injected project bean, in source order, each with its 'target', the " +
+                "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
+                "there is none). 'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
+                "resolver called before the service that handles the request, not that service; to follow the " +
+                "request through the layers, call explyt_trace_spring_call_chain on the handler. Calls into the " +
+                "JDK, Kotlin and Spring are never listed. Reading the handler signature by hand misses what Spring " +
                 "binds implicitly and what the DTO's nested " +
                 "types serialise to. " +
                 "Each parameter carries a 'source': PATH, QUERY, PART, BODY, HEADER, COOKIE or MODEL for an " +
@@ -808,7 +849,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
                 "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
                 "such signature: a PARTIAL contract still names the path, the verb, the declaring bean factory, " +
-                "the handler function as 'serviceCall' and the path variables the URL template declares, and " +
+                "the handler function as the one entry of 'serviceCalls' and as 'serviceCall', and the path " +
+                "variables the URL template declares, and " +
                 "'contractUnavailableReason' says what has to be read at the source - an empty 'parameters' there " +
                 "means 'not declared here', never 'the endpoint takes nothing'. " +
                 "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
@@ -822,7 +864,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
     suspend fun getEndpointContract(
         @McpDescription(
             "URL pattern of the endpoint to inspect (e.g. '/api/orgs/{orgId}/project-success/v1/coverage/users'). " +
-                    "Should match a single endpoint. If several match, all are returned, the dispatching one first."
+                    "Should match a single endpoint. If several match, all are returned, the most specific path " +
+                    "first; handlers sharing a path and a verb differ by 'consumes'/'produces', and the request's " +
+                    "Content-Type and Accept choose among them."
         )
         urlPattern: String,
         @McpDescription(PROJECT_PATH_DESCRIPTION)
@@ -850,13 +894,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val handler = requestHandlerOf(endpoint)
         val uHandler = handler?.toUElement() as? UMethod
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
-        val mediaTypes = mediaTypesOf(uHandler, module, project)
         val core = toCompactEndpointJson(endpoint, project)
 
-        val serviceCall = when {
+        val serviceCalls = when {
             handler != null && uHandler != null && module != null ->
-                findServiceCall(handler, uHandler, module, project)
-            else -> routeHandlerCall(endpoint, project)
+                injectedBeanCallsOf(handler, uHandler, module, project)
+            else -> listOfNotNull(routeHandlerCall(endpoint, project))
         }
 
         return EndpointContractJson(
@@ -870,11 +913,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
-                ?.let { expandType(it, project, depth = 3) },
-            produces = mediaTypes.produces,
-            consumes = mediaTypes.consumes,
-            serviceCall = serviceCall,
+                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3) },
+            produces = core.produces,
+            consumes = core.consumes,
+            serviceCall = serviceCalls.firstOrNull(),
+            serviceCalls = serviceCalls,
             endpointType = endpoint.type.readable,
+            exposed = core.exposed,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
         )
@@ -932,25 +977,30 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
     }
 
-    private fun findServiceCall(
+    /**
+     * Every call the handler makes on an injected project bean, in source order, one entry per callee and line.
+     *
+     * All of them, because the first is often not the one that handles the request: a handler commonly resolves a
+     * tenant, checks access or normalises an argument through another bean before it calls the service.
+     */
+    private fun injectedBeanCallsOf(
         psiMethod: PsiMethod,
         uMethod: UMethod,
         module: com.intellij.openapi.module.Module,
         project: Project,
-    ): ServiceCallJson? {
-        val controllerClass = psiMethod.containingClass ?: return null
+    ): List<ServiceCallJson> {
+        val controllerClass = psiMethod.containingClass ?: return emptyList()
         val beanClasses = SpringSearchService.getInstance(project).getProjectBeans(module).map { it.psiClass }
         val beanFields = controllerClass.allFields.filter { field ->
             if (!InjectedDependencies.isInjected(field)) return@filter false
             val fieldClass = (field.type as? PsiClassType)?.resolve() ?: return@filter false
             beanClasses.any { InheritanceUtil.isInheritorOrSelf(it, fieldClass, true) }
         }.toSet()
-        if (beanFields.isEmpty()) return null
+        if (beanFields.isEmpty()) return emptyList()
 
-        var serviceMethod: PsiMethod? = null
+        val calls = mutableListOf<ServiceCallJson>()
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
-                if (serviceMethod != null) return true
                 val receiver = (node.receiver as? UResolvable)?.resolve()
                 val field = when (receiver) {
                     is PsiField -> receiver.takeIf { it in beanFields }
@@ -973,92 +1023,23 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     && !calleeFqn.startsWith("org.springframework.")
                     && InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
                 ) {
-                    serviceMethod = callee
-                    return true
+                    val position = sourcePositionOf(callee, project)
+                    calls += ServiceCallJson(
+                        target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+                        filePath = position.filePath,
+                        line = position.line,
+                        callLine = callLineOf(node),
+                    )
                 }
                 return false
             }
         })
-        val callee = serviceMethod ?: return null
-        val position = sourcePositionOf(callee, project)
-        return ServiceCallJson(
-            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
-            filePath = position.filePath,
-            line = position.line,
-        )
+        return calls.distinctBy { it.target to it.callLine }
     }
 
+    private fun callLineOf(call: UCallExpression): Int? =
+        (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
 
-    private fun expandType(psiType: PsiType, project: Project, depth: Int): DtoSchemaJson? {
-        if (depth <= 0) return null
-        val resolved = (psiType as? PsiClassType)?.resolve() ?: return null
-        val fqn = resolved.qualifiedName ?: return null
-
-        // Skip JDK / framework wrapper types — unwrap generics instead
-        if (fqn.startsWith("java.") || fqn.startsWith("kotlin.") || fqn.startsWith("org.springframework.")) {
-            // For generic wrappers (ResponseEntity<T>, List<T>, Optional<T>), expand the type argument
-            val typeArgs = psiType.parameters
-            if (typeArgs.isNotEmpty()) {
-                return expandType(typeArgs[0], project, depth)
-            }
-            return null
-        }
-
-        val fields = mutableListOf<DtoFieldJson>()
-        for (field in resolved.allFields) {
-            if (field.hasModifierProperty(PsiModifier.STATIC)) continue
-            val fieldType = field.type
-            val nested = expandType(fieldType, project, depth - 1)
-            fields += DtoFieldJson(
-                name = field.name,
-                type = renderDtoType(fieldType, (field as? KtLightField)?.kotlinOrigin as? KtCallableDeclaration),
-                nullable = fieldType is PsiPrimitiveType && fieldType == PsiTypes.nullType()
-                        || field.annotations.any { it.qualifiedName?.contains("Nullable") == true },
-                nested = nested,
-            )
-        }
-
-        // Also include Kotlin data class properties via getter methods (for classes without Java fields)
-        if (fields.isEmpty()) {
-            for (method in resolved.allMethods) {
-                if (method.hasModifierProperty(PsiModifier.STATIC)) continue
-                if (!method.name.startsWith("get") && !method.name.startsWith("is")) continue
-                if (method.parameterList.parametersCount != 0) continue
-                if (method.containingClass?.qualifiedName?.startsWith("java.") == true) continue
-                val propName = method.name
-                    .removePrefix("get").removePrefix("is")
-                    .replaceFirstChar { it.lowercase() }
-                val retType = method.returnType ?: continue
-                val nested = expandType(retType, project, depth - 1)
-                fields += DtoFieldJson(
-                    name = propName,
-                    type = renderDtoType(retType, (method as? KtLightMethod)?.kotlinOrigin as? KtCallableDeclaration),
-                    nullable = false,
-                    nested = nested,
-                )
-            }
-        }
-
-        return DtoSchemaJson(className = fqn, fields = fields)
-    }
-
-    private fun renderDtoType(type: PsiType, origin: KtCallableDeclaration?): String =
-        renderDtoType(type, origin?.typeReference)
-
-    private fun renderDtoType(type: PsiType, source: KtTypeReference?): String {
-        val element = source?.typeElement ?: return type.canonicalText
-        val typeArguments = (type as? PsiClassType)?.parameters.orEmpty()
-        val sourceArguments = element.typeArgumentsAsTypes
-        val name = if (typeArguments.isNotEmpty() && typeArguments.size == sourceArguments.size) {
-            val arguments = typeArguments.indices.joinToString(",") {
-                renderDtoType(typeArguments[it], sourceArguments[it])
-            }
-            "${type.canonicalText.substringBefore('<')}<$arguments>"
-        } else {
-            type.canonicalText
-        }
-        return name + if (element is KtNullableType) "?" else ""
-    }
 
     @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
     @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
@@ -1708,6 +1689,12 @@ data class EndpointJson(
     val parameters: List<EndpointParameterJson>,
     val returnType: String?,
     val endpointType: String,
+    /** The media types the mapping accepts, present only when it declares some; see [CompactEndpointJson.consumes]. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
+    /** The media types the mapping produces, present only when it declares some. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
 )
 
 /**
@@ -1732,6 +1719,21 @@ data class CompactEndpointJson(
     /** `null` when the endpoint element has no physical declaration to point at. */
     val line: Int?,
     val endpointType: String,
+    /**
+     * The `Content-Type` values the mapping accepts. Two handlers sharing a path and a verb are told apart by these
+     * and [produces], not by their order. Absent rather than empty when the mapping declares none - any media type is
+     * accepted then - so the common endpoint keeps its shape.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
+    /** The media types the mapping produces, matched against the request's `Accept`; absent when it declares none. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /**
+     * For an Actuator endpoint only, whether `management.endpoints.web.exposure.include`/`exclude` let it answer over
+     * HTTP: `EXPOSED`, `NOT_EXPOSED`, or `UNKNOWN` when a value cannot be read from the configuration files. Absent for
+     * every other endpoint. A profile or an environment variable can change exposure at run time, so an endpoint is
+     * listed whatever this says.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
 )
 
 data class EndpointListJson<T>(
@@ -1744,8 +1746,10 @@ data class EndpointListJson<T>(
 /**
  * The result of resolving one URL pattern, for the find and contract tools.
  *
- * [endpoints] lists the closest match first, and among equally close ones the order Spring picks a handler in,
- * so its first element is the one that dispatches when several routes match. [basePath] is the leading path
+ * [endpoints] lists the closest match first, and among equally close ones the more specific path first, the way
+ * Spring ranks path patterns, so of routes with different paths its first element is the one that dispatches.
+ * Handlers sharing one path are chosen by the request's media types instead, which their `consumes` and `produces`
+ * show; their order says nothing about dispatch. [basePath] is the leading path
  * stripped from the URL because the configuration of the answering routes' module declares it - a servlet context
  * path, a dispatcher servlet path or a WebFlux base path - a fact, not a guess. [assumedPrefix] is a leading path
  * dropped from the URL although nothing declares it - a context path living only in deployment configuration or a
@@ -1864,8 +1868,12 @@ data class CallTargetJson(
 
 data class ServiceCallJson(
     val target: String,
+    /** Where [target] is declared. */
     val filePath: String?,
+    /** Declaration line of [target]. */
     val line: Int?,
+    /** Line of the call in the handler; absent for a functional route, whose handler is a reference, not a call. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val callLine: Int? = null,
 )
 
 
@@ -1883,8 +1891,16 @@ data class EndpointContractJson(
     val responseSchema: DtoSchemaJson?,
     val produces: List<String>,
     val consumes: List<String>,
+    /** The first of [serviceCalls]; kept for callers of the generation that had only it. */
     val serviceCall: ServiceCallJson?,
+    /**
+     * Every call on an injected project bean in source order, or the handler function of a functional route. Empty when
+     * the handler calls no such bean.
+     */
+    val serviceCalls: List<ServiceCallJson>,
     val endpointType: String,
+    /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
     /**
      * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
      * no such signature to read - a functional route or an OpenAPI declaration.
@@ -1898,13 +1914,26 @@ data class EndpointContractJson(
     val contractUnavailableReason: String?,
 )
 
+/**
+ * The shape of a value as Jackson writes it.
+ *
+ * An enum has no [fields]: it carries [enumValues] - the strings written for its constants - or, when it declares a
+ * `@JsonValue` member, [jsonValue] naming that member and [valueType] its type. The values of a `@JsonValue` member
+ * are computed in code, so they are not listed.
+ */
 data class DtoSchemaJson(
     val className: String,
-    val fields: List<DtoFieldJson>,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val fields: List<DtoFieldJson>?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumValues: List<String>? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val valueType: String? = null,
 )
 
 data class DtoFieldJson(
+    /** The name the field is written under: its `@JsonProperty` value when it has one. */
     val name: String,
+    /** The name the field is declared with, present only when `@JsonProperty` renames it. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val declaredName: String?,
     val type: String,
     val nullable: Boolean,
     val nested: DtoSchemaJson?,
