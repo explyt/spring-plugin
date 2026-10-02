@@ -355,6 +355,73 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
         assertEquals(listOf("code"), endpoint["parameters"].map { it["name"].asText() })
     }
 
+    /**
+     * Two handlers sharing a path and a verb are chosen by the request's `Content-Type`, not by their order: without
+     * `consumes` on the records they read as one mapping declared twice.
+     */
+    fun testHandlersSharingAPathCarryTheirConsumes() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject(
+            "com/example/app/web/OrderImportController.kt", """
+            package com.example.app.web
+
+            import org.springframework.http.MediaType
+            import org.springframework.web.bind.annotation.PostMapping
+            import org.springframework.web.bind.annotation.RequestBody
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class OrderImportController {
+                @PostMapping("/api/orders/import", consumes = [MediaType.APPLICATION_JSON_VALUE])
+                fun importJson(@RequestBody orders: List<String>): Int = orders.size
+
+                @PostMapping(
+                    "/api/orders/import",
+                    consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],
+                    produces = [MediaType.TEXT_PLAIN_VALUE],
+                )
+                fun importCsv(@RequestBody csv: String): Int = csv.length
+            }
+            """.trimIndent()
+        )
+        val expected = mapOf(
+            "importJson" to (listOf("application/json") to emptyList()),
+            "importCsv" to (listOf("multipart/form-data") to listOf("text/plain")),
+        )
+
+        val found = find("/api/orders/import", httpMethod = "POST")["endpoints"]
+        val listed = mapper.readTree(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "OrderImportController")
+        )["endpoints"]
+        val compact = mapper.readTree(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "OrderImportController", compact = true)
+        )["endpoints"]
+        val contract = mapper.readTree(
+            toolset.getEndpointContract(urlPattern = "/api/orders/import", projectPath = projectPath(), httpMethod = "POST")
+        )["endpoints"]
+
+        for ((tool, endpoints) in listOf("find" to found, "list" to listed, "compact" to compact, "contract" to contract)) {
+            assertEquals(
+                "$tool consumes/produces",
+                expected,
+                endpoints.associate { it["methodName"].asText() to (mediaTypes(it, "consumes") to mediaTypes(it, "produces")) }
+            )
+        }
+        for ((tool, endpoints) in listOf("find" to found, "compact" to compact)) {
+            assertFalse(
+                "A mapping declaring no media type has no 'produces' key in a $tool record, got ${endpoints.toList()}",
+                endpoints.single { it["methodName"].asText() == "importJson" }.has("produces")
+            )
+        }
+        assertTrue(
+            "The contract always carries both arrays",
+            contract.all { it["consumes"].isArray && it["produces"].isArray }
+        )
+    }
+
+    private fun mediaTypes(endpoint: JsonNode, field: String): List<String> =
+        endpoint[field]?.map { it.asText() }.orEmpty()
+
     private fun addSuspendController() {
         myFixture.addFileToProject(
             "com/example/app/web/SuspendController.kt", """
