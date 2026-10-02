@@ -779,20 +779,37 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     fun testListingFieldNamesMatchTheDocumentedContract() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
-        val endpoint = endpointsOf(
+        val endpoints = endpointsOf(
             toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "DemoController", endpointType = "")
-        ).first()
+        )
+        val withoutMediaTypes = endpoints.single { it["methodName"].asText() == "wrapped" }
+        val withMediaTypes = endpoints.single { it["methodName"].asText() == "createItem" }
 
-        val names = endpoint.fieldNames().asSequence().toSet()
+        val documented = setOf(
+            "httpMethods", "fullPath", "controllerClass", "methodName",
+            "filePath", "line", "parameters", "returnType", "endpointType",
+        )
         assertEquals(
             "Endpoint field names drifted from the documented contract",
-            setOf(
-                "httpMethods", "fullPath", "controllerClass", "methodName",
-                "filePath", "line", "parameters", "returnType", "endpointType",
-            ),
-            names
+            documented,
+            withoutMediaTypes.fieldNames().asSequence().toSet()
         )
-        assertTrue("'httpMethods' is an array, not a scalar", endpoint["httpMethods"].isArray)
+        assertEquals(
+            "A mapping declaring media types adds exactly 'consumes' and 'produces'",
+            documented + setOf("consumes", "produces"),
+            withMediaTypes.fieldNames().asSequence().toSet()
+        )
+        assertTrue("'httpMethods' is an array, not a scalar", withoutMediaTypes["httpMethods"].isArray)
+        assertTrue("'consumes' is an array, not a scalar", withMediaTypes["consumes"].isArray)
+
+        val compact = endpointsOf(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "DemoController", compact = true)
+        ).single { it["methodName"].asText() == "wrapped" }
+        assertEquals(
+            "A compact record of a mapping without media types keeps its shape",
+            documented - setOf("parameters", "returnType"),
+            compact.fieldNames().asSequence().toSet()
+        )
     }
 
     fun testTraceCallChainFileNotFoundFails() = runBlocking<Unit> {
