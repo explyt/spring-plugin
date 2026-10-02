@@ -87,6 +87,12 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
         val contract = contractsOf("/v1beta/models/{model}:generateContent", httpMethod = "POST").single()
 
         assertEquals("GatewayHandler.handle", contract["serviceCall"]["target"].asText())
+        assertEquals(
+            "A functional route lists its handler function as the one service call",
+            listOf("GatewayHandler.handle"),
+            contract["serviceCalls"].map { it["target"].asText() }
+        )
+        assertFalse("A handler reference is not a call, so it has no call line", contract["serviceCalls"][0].has("callLine"))
     }
 
     /**

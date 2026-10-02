@@ -801,9 +801,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
                 "expanded up to 3 levels: a @JsonProperty name in 'name' with the declared one in 'declaredName', " +
                 "no transient or @JsonIgnore members, an enum as 'enumValues' or, with @JsonValue, as the " +
-                "'jsonValue' member and its 'valueType'), produces/consumes media types, and the first resolved " +
-                "call on an injected Spring bean " +
-                "(null when no such call can be confirmed). Reading the handler signature by hand misses what Spring " +
+                "'jsonValue' member and its 'valueType'), produces/consumes media types, and 'serviceCalls': every " +
+                "call the handler makes on an injected project bean, in source order, each with its 'target', the " +
+                "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
+                "there is none). 'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
+                "resolver called before the service that handles the request, not that service; to follow the " +
+                "request through the layers, call explyt_trace_spring_call_chain on the handler. Calls into the " +
+                "JDK, Kotlin and Spring are never listed. Reading the handler signature by hand misses what Spring " +
                 "binds implicitly and what the DTO's nested " +
                 "types serialise to. " +
                 "Each parameter carries a 'source': PATH, QUERY, PART, BODY, HEADER, COOKIE or MODEL for an " +
@@ -815,7 +819,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
                 "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
                 "such signature: a PARTIAL contract still names the path, the verb, the declaring bean factory, " +
-                "the handler function as 'serviceCall' and the path variables the URL template declares, and " +
+                "the handler function as the one entry of 'serviceCalls' and as 'serviceCall', and the path " +
+                "variables the URL template declares, and " +
                 "'contractUnavailableReason' says what has to be read at the source - an empty 'parameters' there " +
                 "means 'not declared here', never 'the endpoint takes nothing'. " +
                 "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
@@ -861,10 +866,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
         val core = toCompactEndpointJson(endpoint, project)
 
-        val serviceCall = when {
+        val serviceCalls = when {
             handler != null && uHandler != null && module != null ->
-                findServiceCall(handler, uHandler, module, project)
-            else -> routeHandlerCall(endpoint, project)
+                injectedBeanCallsOf(handler, uHandler, module, project)
+            else -> listOfNotNull(routeHandlerCall(endpoint, project))
         }
 
         return EndpointContractJson(
@@ -881,7 +886,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 ?.let { ResponseSchemaReader.schemaOf(it, depth = 3) },
             produces = core.produces,
             consumes = core.consumes,
-            serviceCall = serviceCall,
+            serviceCall = serviceCalls.firstOrNull(),
+            serviceCalls = serviceCalls,
             endpointType = endpoint.type.readable,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
@@ -940,25 +946,30 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
     }
 
-    private fun findServiceCall(
+    /**
+     * Every call the handler makes on an injected project bean, in source order, one entry per callee and line.
+     *
+     * All of them, because the first is often not the one that handles the request: a handler commonly resolves a
+     * tenant, checks access or normalises an argument through another bean before it calls the service.
+     */
+    private fun injectedBeanCallsOf(
         psiMethod: PsiMethod,
         uMethod: UMethod,
         module: com.intellij.openapi.module.Module,
         project: Project,
-    ): ServiceCallJson? {
-        val controllerClass = psiMethod.containingClass ?: return null
+    ): List<ServiceCallJson> {
+        val controllerClass = psiMethod.containingClass ?: return emptyList()
         val beanClasses = SpringSearchService.getInstance(project).getProjectBeans(module).map { it.psiClass }
         val beanFields = controllerClass.allFields.filter { field ->
             if (!InjectedDependencies.isInjected(field)) return@filter false
             val fieldClass = (field.type as? PsiClassType)?.resolve() ?: return@filter false
             beanClasses.any { InheritanceUtil.isInheritorOrSelf(it, fieldClass, true) }
         }.toSet()
-        if (beanFields.isEmpty()) return null
+        if (beanFields.isEmpty()) return emptyList()
 
-        var serviceMethod: PsiMethod? = null
+        val calls = mutableListOf<ServiceCallJson>()
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
-                if (serviceMethod != null) return true
                 val receiver = (node.receiver as? UResolvable)?.resolve()
                 val field = when (receiver) {
                     is PsiField -> receiver.takeIf { it in beanFields }
@@ -981,20 +992,22 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     && !calleeFqn.startsWith("org.springframework.")
                     && InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
                 ) {
-                    serviceMethod = callee
-                    return true
+                    val position = sourcePositionOf(callee, project)
+                    calls += ServiceCallJson(
+                        target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+                        filePath = position.filePath,
+                        line = position.line,
+                        callLine = callLineOf(node),
+                    )
                 }
                 return false
             }
         })
-        val callee = serviceMethod ?: return null
-        val position = sourcePositionOf(callee, project)
-        return ServiceCallJson(
-            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
-            filePath = position.filePath,
-            line = position.line,
-        )
+        return calls.distinctBy { it.target to it.callLine }
     }
+
+    private fun callLineOf(call: UCallExpression): Int? =
+        (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
 
 
     @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
@@ -1813,8 +1826,12 @@ data class CallTargetJson(
 
 data class ServiceCallJson(
     val target: String,
+    /** Where [target] is declared. */
     val filePath: String?,
+    /** Declaration line of [target]. */
     val line: Int?,
+    /** Line of the call in the handler; absent for a functional route, whose handler is a reference, not a call. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val callLine: Int? = null,
 )
 
 
@@ -1832,7 +1849,13 @@ data class EndpointContractJson(
     val responseSchema: DtoSchemaJson?,
     val produces: List<String>,
     val consumes: List<String>,
+    /** The first of [serviceCalls]; kept for callers of the generation that had only it. */
     val serviceCall: ServiceCallJson?,
+    /**
+     * Every call on an injected project bean in source order, or the handler function of a functional route. Empty when
+     * the handler calls no such bean.
+     */
+    val serviceCalls: List<ServiceCallJson>,
     val endpointType: String,
     /**
      * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
