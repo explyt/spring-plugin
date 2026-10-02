@@ -318,8 +318,7 @@ class ScopedBeanInjectionResolverTest : ExplytJavaLightTestCase() {
         application = BeanApplicationIdentity("com.explyt.demo.App", module.name, "app-source"),
         selection = BeanContextSelection(BeanModelSource.STATIC, null, emptySet()),
         modelStamp = "stamp",
-        records = records.toList(),
-        limitations = emptySet()
+        records = records.toList()
     )
 
     private fun typeOf(fqn: String, vararg argumentFqns: String): PsiType {

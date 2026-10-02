@@ -15,6 +15,7 @@ import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.intellij.openapi.externalSystem.model.DataNode
+import com.intellij.openapi.externalSystem.model.ExternalProjectInfo
 import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -44,15 +45,15 @@ class NativeBeanSnapshotReader(private val project: Project) {
     fun contexts(): List<NativeBeanContext> {
         val linkedSettings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
         return ProjectDataManager.getInstance().getExternalProjectsData(project, SYSTEM_ID).asSequence()
-            .mapNotNull { it.externalProjectStructure }
-            .filter { it.data.externalName != Constants.DEBUG_SESSION_NAME }
-            .filter { !it.isIgnored }
-            .filter { it.beanSearchEnabled() }
+            .mapNotNull { info -> info.externalProjectStructure?.let { ImportedRoot(it, info.importedAt()) } }
+            .filter { it.root.data.externalName != Constants.DEBUG_SESSION_NAME }
+            .filter { !it.root.isIgnored }
+            .filter { it.root.beanSearchEnabled() }
             .onEach { ProgressManager.checkCanceled() }
-            .map { root ->
-                val linkedPath = root.data.linkedExternalProjectPath
+            .map { imported ->
+                val linkedPath = imported.root.data.linkedExternalProjectPath
                 val settings = linkedSettings.getLinkedProjectSettings(linkedPath) as? NativeProjectSettings
-                toContext(root, linkedPath, settings)
+                toContext(imported, linkedPath, settings)
             }
             .toList()
     }
@@ -108,9 +109,21 @@ class NativeBeanSnapshotReader(private val project: Project) {
             priority = null,
             details = BeanDetailsEvidence(primary = bean.primary),
             limitations = limitations,
-            runtimeRole = bean.type.name
+            runtimeRole = bean.type.name,
+            recordedTypeFqn = recordedBeanTypeOf(bean)
         )
     }
+
+    /**
+     * The bean's own type as the export named it: the class of a component, the exported return type of a
+     * factory. The declaring class of a factory is not the bean's type, so a factory exported without its return
+     * type has no recorded type at all.
+     */
+    private fun recordedBeanTypeOf(bean: SpringBeanData): String? =
+        (if (bean.methodName == null) bean.className else bean.methodType)
+            ?.substringBefore('<')
+            ?.replace('$', '.')
+            ?.takeIf { it.isNotBlank() }
 
     private fun elementFactory() = JavaPsiFacade.getElementFactory(project)
 
@@ -161,22 +174,28 @@ class NativeBeanSnapshotReader(private val project: Project) {
             .firstOrNull { it.data.linkedExternalProjectPath == context.linkedPath }
 
     private fun toContext(
-        root: DataNode<ProjectData>,
+        imported: ImportedRoot,
         linkedPath: String,
         settings: NativeProjectSettings?
     ): NativeBeanContext {
         val applicationClassName = settings?.qualifiedMainClassName
         return NativeBeanContext(
             id = "ctx-" + BeanSnapshotIdentity.hash(listOf(linkedPath)),
-            label = root.data.externalName,
+            label = imported.root.data.externalName,
             linkedPath = linkedPath,
             applicationClassName = applicationClassName,
             mainSourceKey = linkedPath,
             // A root with neither a linked application class nor a linked main file cannot be tied to an
             // application; an automatic choice would be a guess, so it is never matched.
-            identityProven = applicationClassName != null || linkedPath.isNotEmpty()
+            identityProven = applicationClassName != null || linkedPath.isNotEmpty(),
+            importedAt = imported.importedAt
         )
     }
+
+    /** The platform stores `-1` until an import succeeds; any non-positive value is not a time. */
+    private fun ExternalProjectInfo.importedAt(): Long? = lastSuccessfulImportTimestamp.takeIf { it > 0 }
+
+    private data class ImportedRoot(val root: DataNode<ProjectData>, val importedAt: Long?)
 
     private fun DataNode<ProjectData>.beanSearchEnabled(): Boolean =
         children.any { (it.data as? BeanSearch)?.enabled == true }
