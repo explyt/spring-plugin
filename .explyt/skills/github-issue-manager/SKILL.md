@@ -41,7 +41,7 @@ The following names were verified against the live `explyt/spring-plugin` label 
 |---|---|
 | Form/category | `compatibility`, `question`, `type:internal` |
 | Module/area | `in:spring-core`, `in:spring-web`, `in:spring-data`, `in:spring-messaging`, `in:spring-initializr`, `in:spring-debugger` |
-| Feature/topic | `inspection`, `properties`, `open-api`, `performance`, `native-link` |
+| Feature/topic | `inspection`, `properties`, `open-api`, `performance`, `native-link`, `spring-mcp-tools`, `kotlin`, `threading`, `navigation`, `actuator` |
 | Contributor/workflow | `good first issue`, `help wanted`, `state:in-progress`, `state:planned`, `state:review`, `duplicate`, `wontfix` |
 
 `feature-request` and area labels for modules not listed below are **not** in the current live catalog. Do not use them unless a fresh label fetch proves that they have been added.
@@ -82,8 +82,15 @@ For an unlabelled module, use a feature/topic label when it accurately describes
 - `inspection`: inspections and their quick fixes.
 - `properties`: Spring configuration/property metadata, resolution, completion, or navigation.
 - `open-api`: OpenAPI/Swagger support.
-- `performance`: slow operations, freezes, or other performance work when the issue is not specifically an EDT bug.
+- `performance`: slow operations or other performance work that is not a threading-rule violation.
 - `native-link`: Native Context Mode or native project linking.
+- `spring-mcp-tools`: an `explyt_*` MCP tool's contract or a new MCP tool (code under `modules/spring-ai/.../mcp/`). Not for an endpoint/bean-model defect that MCP merely exposes. Apply it to the PR as well: the 242/243/251 backports skip MCP PRs by this label.
+- `kotlin`: behaviour specific to Kotlin sources — Kotlin PSI/UAST, K2 mode, Kotlin DSLs, coroutines/suspend.
+- `threading`: EDT violations, read/write-action errors, dumb-mode/index-time access, freezes.
+- `navigation`: gutters, references, Go To, usages, Related Symbol.
+- `actuator`: Spring Boot Actuator endpoints and `management.*` keys.
+
+Component dropdown to label: `Navigation gutter`, `References`, `Usages` → `navigation`; `Inspection` → `inspection`; `Properties` → `properties`; `OpenAPI` → `open-api`; `MCP tools` → `spring-mcp-tools`; `Slow operation on EDT` → `threading`; `Autocompletion`, `Other` → no label.
 
 Use `compatibility`, `question`, and `type:internal` for issue category, not as feature labels. Apply `good first issue` only under the two-lane policy below; maintainers normally own the state and disposition labels.
 
@@ -110,7 +117,7 @@ The `Type` column names a type from `Issue types`; the `Labels to apply` column 
 | Task | no form | none | `Task` | `type:internal` + optional area/topic labels | Refactoring, docs, infrastructure, cleanup, engineering work; create as a plain issue with Description / Additional context sections |
 
 - If the user explicitly set a category, use it unless it is clearly wrong; if you correct it, explain why.
-- The bug and feature forms include a **Component** dropdown; pick one of: `Inspection`, `Navigation gutter`, `References`, `Autocompletion`, `Usages`, `Properties`, `OpenAPI`, `Slow operation on EDT`, `Other`.
+- The bug and feature forms include a **Component** dropdown; pick one of: `Inspection`, `Navigation gutter`, `References`, `Autocompletion`, `Usages`, `Properties`, `OpenAPI`, `MCP tools`, `Slow operation on EDT`, `Other`.
 
 ## Two-lane label policy (from CONTRIBUTING.md §2)
 
@@ -276,7 +283,7 @@ Fill unknown optional fields with `_No response_`. For a Bug, replace the requir
 6. **Prepare title, labels, and body**
    - Title: form prefix + concise problem/outcome statement (e.g. `[BUG] False positive SpringKotlinObjectInspection on @Component object`).
    - Type: take it from the `Classification rules` table; a Question has none.
-   - Labels: add `compatibility` or `question` for those categories and `type:internal` for a Task; add at most one matching area label and at most two relevant topic labels from the live list. A Bug and a Feature carry no category label. Add `good first issue` / `help wanted` only when the two-lane policy permits it.
+   - Labels: add `compatibility` or `question` for those categories and `type:internal` for a Task; add at most one matching area label and at most three relevant topic labels from the live list. A Bug and a Feature carry no category label. Add `good first issue` / `help wanted` only when the two-lane policy permits it.
    - Body: fill the matching template above; add investigated modules/classes and related issue links to `Additional context`.
    - If the prepared Type is not in the enabled list from step 3, go to step 8 with outcome `blocked` and the prepared payload; a Question skips this check.
 
