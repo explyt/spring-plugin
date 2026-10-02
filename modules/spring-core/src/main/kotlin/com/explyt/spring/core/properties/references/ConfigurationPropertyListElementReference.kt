@@ -18,8 +18,8 @@ import com.intellij.psi.ResolveResult
  *
  * The configuration property model registers the collection itself (`...sources`) but not the members of its
  * element type, so [com.explyt.spring.core.properties.providers.ConfigurationPropertyKeyReference] cannot
- * resolve anything below the index. The element member is therefore looked up in the collection's element
- * class by the key part that follows the index.
+ * resolve anything below the index. The key part that follows the index is therefore walked from the collection's
+ * element class by [BoundMemberPath], through any further members, indexes and map keys.
  *
  * Soft on purpose: a key this reference cannot resolve is left to the other key references instead of being
  * reported as an unresolved reference.
@@ -41,8 +41,7 @@ class ConfigurationPropertyListElementReference(
         if (elementKey.isEmpty()) return resolveCollection(collectionProperty)
 
         val elementType = PropertyUtil.getCollectionElementType(collectionProperty) ?: return emptyArray()
-        return PropertyUtil.getMembersOfType(module, elementType, elementKey)
-            .firstOrNull { PropertyUtil.isPropertyMemberName(it.name, elementKey) }
+        return BoundMemberPath.resolve(module, elementType, elementKey)
             ?.let { PropertyUtil.resolveResults(it) }
             ?: emptyArray()
     }

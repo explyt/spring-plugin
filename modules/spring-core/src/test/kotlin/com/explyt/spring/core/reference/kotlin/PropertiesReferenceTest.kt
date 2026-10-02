@@ -197,6 +197,46 @@ main.enum-value-additional=TUE<caret>SDAY
         assertNull(mapValueReferenceName())
     }
 
+    fun testRefKeyMapValueMemberUnderListElement() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.catalog.providers[0].models.free.available-for-<caret>personal=true"
+        )
+
+        assertEquals("availableForPersonal", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyObjectMemberUnderListElementBracketMapKey() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.catalog.providers[0].models[free].model-info.model-<caret>name=free"
+        )
+
+        assertEquals("modelName", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyListElementMemberWithoutIndexIsNotResolved() {
+        myFixture.copyFileToProject("BracketMapProperties.kt")
+        myFixture.configureByText(
+            "application.properties",
+            "app.publishers[my.registration].routes.payload-<caret>type=my.event"
+        )
+
+        assertNull(mapValueReferenceName())
+    }
+
+    fun testRefKeyMapValueMemberUnderMapValue() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.properties",
+            "explyt.catalog.regions.eu.models.free.available-for-<caret>personal=true"
+        )
+
+        assertEquals("availableForPersonal", mapValueReferenceName())
+    }
+
     private fun mapValueReferenceName(): String? = mapValueReference()
         .multiResolve(true)
         .singleOrNull()
