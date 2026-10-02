@@ -80,13 +80,12 @@ class BeanLookupRequestTest {
     }
 
     @Test
-    fun `source names one of the supported models`() {
+    fun `source names one of the supported models, case-insensitively`() {
         assertEquals(BeanSourcePreference.NATIVE, request(typeFqn = "A", source = "NATIVE").source())
-        assertEquals(BoundedBeanResponseWriter.INVALID_ARGUMENT, rejected(request(typeFqn = "A", source = "auto")).code)
-        assertEquals(
-            BoundedBeanResponseWriter.INVALID_ARGUMENT,
-            rejected(request(typeFqn = "A", source = "LATEST")).code
-        )
+        assertEquals(BeanSourcePreference.AUTO, request(typeFqn = "A", source = " auto ").source())
+        val unknown = rejected(request(typeFqn = "A", source = "LATEST"))
+        assertEquals(BoundedBeanResponseWriter.INVALID_ARGUMENT, unknown.code)
+        assertEquals("Unknown source 'LATEST'. Valid values: AUTO, STATIC, NATIVE.", unknown.message)
     }
 
     /** A static model has no loaded root to name, so a context id would silently do nothing. */
