@@ -61,12 +61,6 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 
 import org.jetbrains.kotlin.idea.base.util.projectScope
-import org.jetbrains.kotlin.asJava.elements.KtLightField
-import org.jetbrains.kotlin.asJava.elements.KtLightMethod
-import org.jetbrains.kotlin.psi.KtCallableDeclaration
-import org.jetbrains.kotlin.psi.KtNullableType
-
-import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UMethod
@@ -804,8 +798,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "on. " +
                 "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
                 "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
-                "parameter with its type, return type, response DTO field schema (recursively expanded up to " +
-                "3 levels), produces/consumes media types, and the first resolved call on an injected Spring bean " +
+                "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
+                "expanded up to 3 levels: a @JsonProperty name in 'name' with the declared one in 'declaredName', " +
+                "no transient or @JsonIgnore members, an enum as 'enumValues' or, with @JsonValue, as the " +
+                "'jsonValue' member and its 'valueType'), produces/consumes media types, and the first resolved " +
+                "call on an injected Spring bean " +
                 "(null when no such call can be confirmed). Reading the handler signature by hand misses what Spring " +
                 "binds implicitly and what the DTO's nested " +
                 "types serialise to. " +
@@ -881,7 +878,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
-                ?.let { expandType(it, project, depth = 3) },
+                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3) },
             produces = core.produces,
             consumes = core.consumes,
             serviceCall = serviceCall,
@@ -999,77 +996,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
     }
 
-
-    private fun expandType(psiType: PsiType, project: Project, depth: Int): DtoSchemaJson? {
-        if (depth <= 0) return null
-        val resolved = (psiType as? PsiClassType)?.resolve() ?: return null
-        val fqn = resolved.qualifiedName ?: return null
-
-        // Skip JDK / framework wrapper types — unwrap generics instead
-        if (fqn.startsWith("java.") || fqn.startsWith("kotlin.") || fqn.startsWith("org.springframework.")) {
-            // For generic wrappers (ResponseEntity<T>, List<T>, Optional<T>), expand the type argument
-            val typeArgs = psiType.parameters
-            if (typeArgs.isNotEmpty()) {
-                return expandType(typeArgs[0], project, depth)
-            }
-            return null
-        }
-
-        val fields = mutableListOf<DtoFieldJson>()
-        for (field in resolved.allFields) {
-            if (field.hasModifierProperty(PsiModifier.STATIC)) continue
-            val fieldType = field.type
-            val nested = expandType(fieldType, project, depth - 1)
-            fields += DtoFieldJson(
-                name = field.name,
-                type = renderDtoType(fieldType, (field as? KtLightField)?.kotlinOrigin as? KtCallableDeclaration),
-                nullable = fieldType is PsiPrimitiveType && fieldType == PsiTypes.nullType()
-                        || field.annotations.any { it.qualifiedName?.contains("Nullable") == true },
-                nested = nested,
-            )
-        }
-
-        // Also include Kotlin data class properties via getter methods (for classes without Java fields)
-        if (fields.isEmpty()) {
-            for (method in resolved.allMethods) {
-                if (method.hasModifierProperty(PsiModifier.STATIC)) continue
-                if (!method.name.startsWith("get") && !method.name.startsWith("is")) continue
-                if (method.parameterList.parametersCount != 0) continue
-                if (method.containingClass?.qualifiedName?.startsWith("java.") == true) continue
-                val propName = method.name
-                    .removePrefix("get").removePrefix("is")
-                    .replaceFirstChar { it.lowercase() }
-                val retType = method.returnType ?: continue
-                val nested = expandType(retType, project, depth - 1)
-                fields += DtoFieldJson(
-                    name = propName,
-                    type = renderDtoType(retType, (method as? KtLightMethod)?.kotlinOrigin as? KtCallableDeclaration),
-                    nullable = false,
-                    nested = nested,
-                )
-            }
-        }
-
-        return DtoSchemaJson(className = fqn, fields = fields)
-    }
-
-    private fun renderDtoType(type: PsiType, origin: KtCallableDeclaration?): String =
-        renderDtoType(type, origin?.typeReference)
-
-    private fun renderDtoType(type: PsiType, source: KtTypeReference?): String {
-        val element = source?.typeElement ?: return type.canonicalText
-        val typeArguments = (type as? PsiClassType)?.parameters.orEmpty()
-        val sourceArguments = element.typeArgumentsAsTypes
-        val name = if (typeArguments.isNotEmpty() && typeArguments.size == sourceArguments.size) {
-            val arguments = typeArguments.indices.joinToString(",") {
-                renderDtoType(typeArguments[it], sourceArguments[it])
-            }
-            "${type.canonicalText.substringBefore('<')}<$arguments>"
-        } else {
-            type.canonicalText
-        }
-        return name + if (element is KtNullableType) "?" else ""
-    }
 
     @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
     @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
@@ -1921,13 +1847,26 @@ data class EndpointContractJson(
     val contractUnavailableReason: String?,
 )
 
+/**
+ * The shape of a value as Jackson writes it.
+ *
+ * An enum has no [fields]: it carries [enumValues] - the strings written for its constants - or, when it declares a
+ * `@JsonValue` member, [jsonValue] naming that member and [valueType] its type. The values of a `@JsonValue` member
+ * are computed in code, so they are not listed.
+ */
 data class DtoSchemaJson(
     val className: String,
-    val fields: List<DtoFieldJson>,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val fields: List<DtoFieldJson>?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumValues: List<String>? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val valueType: String? = null,
 )
 
 data class DtoFieldJson(
+    /** The name the field is written under: its `@JsonProperty` value when it has one. */
     val name: String,
+    /** The name the field is declared with, present only when `@JsonProperty` renames it. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val declaredName: String?,
     val type: String,
     val nullable: Boolean,
     val nested: DtoSchemaJson?,
