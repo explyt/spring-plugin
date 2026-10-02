@@ -73,6 +73,66 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(listOf("com.example.app.web.OrdersService.count"), targets(contract))
     }
 
+    /**
+     * Kotlin copies a nullable bean into a local `val` to smart-cast it; the local is the bean, so its calls are the
+     * handler's service calls. The UAST visit lists an outer call before the calls in its arguments.
+     */
+    fun testCallsOnLocalCopiesOfNullableBeansAreListed() = runBlocking<Unit> {
+        val contract = contractOf("/api/items/{id}/activity")
+
+        assertEquals(
+            listOf(
+                "com.example.app.web.ItemGuard.requireVisible",
+                "com.example.app.web.TenantResolver.resolve",
+                "com.example.app.web.ItemStatsService.activity",
+                "com.example.app.web.TenantResolver.resolveAdmin",
+            ),
+            targets(contract)
+        )
+        assertEquals(lineOf("guard.requireVisible(id"), contract["serviceCalls"][0]["callLine"].asInt())
+        assertEquals(lineOf("stats.activity(id"), contract["serviceCalls"][2]["callLine"].asInt())
+    }
+
+    fun testElvisThrowAndNonNullAssertionKeepTheBean() = runBlocking<Unit> {
+        assertEquals(
+            listOf("com.example.app.web.ImageStore.put", "com.example.app.web.ItemStatsService.count"),
+            targets(contractOf("/api/items/{id}/image"))
+        )
+    }
+
+    /** A cast, in parentheses or not, changes the static type only: the local still holds the bean. */
+    fun testCastKeepsTheBean() = runBlocking<Unit> {
+        assertEquals(listOf("com.example.app.web.ImageStore.put"), targets(contractOf("/api/items/{id}/cast")))
+    }
+
+    /** A `var` can be pointed elsewhere and a local built from scratch is not the bean: neither is a service call. */
+    fun testReassignableOrUnrelatedLocalsAreNotTheBean() = runBlocking<Unit> {
+        assertEquals(emptyList<String>(), targets(contractOf("/api/items/{id}/other")))
+    }
+
+    /**
+     * An elvis whose right side is another value can hold either side, so the local is not a copy of the left one;
+     * only a right side that leaves the scope - `throw`, `return`, `error()` - makes the result the left side.
+     */
+    fun testElvisWithAFallbackValueIsNotACopy() = runBlocking<Unit> {
+        assertEquals(emptyList<String>(), targets(contractOf("/api/items/{id}/fallback")))
+    }
+
+    fun testFinalJavaLocalCopyIsTheBean() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/web/JavaItemsController.java", JAVA_SOURCE)
+
+        assertEquals(
+            listOf("com.example.app.web.ItemStatsService.count", "com.example.app.web.ItemStatsService.count"),
+            targets(contractOf("/api/java-items/{id}/copied"))
+        )
+    }
+
+    fun testReassignedJavaLocalIsNotTheBean() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/web/JavaItemsController.java", JAVA_SOURCE)
+
+        assertEquals(emptyList<String>(), targets(contractOf("/api/java-items/{id}/reassigned")))
+    }
+
     fun testHandlerWithoutBeanCallsHasAnEmptyList() = runBlocking<Unit> {
         val contract = contractOf("/api/stores/ping")
 
@@ -112,6 +172,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
             @Service
             class TenantResolver {
                 fun resolve(request: String): String = request
+                fun resolveAdmin(request: String): String = request
             }
 
             @Service
@@ -145,6 +206,103 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
 
                 @GetMapping("/ping")
                 fun ping() = ResponseEntity.ok("pong".trim())
+            }
+
+            @Service
+            class ItemGuard {
+                fun requireVisible(id: Long, tenant: String) = Unit
+            }
+
+            @Service
+            class ItemStatsService {
+                fun activity(id: Long, tenant: String): List<String> = listOf(tenant)
+                fun count(id: Long): Long = id
+            }
+
+            @Service
+            class ImageStore {
+                fun put(id: Long): Long = id
+            }
+
+            class Unrelated {
+                fun count(id: Long): Long = id
+            }
+
+            @RestController
+            @RequestMapping("/api/items")
+            class ItemsController(
+                private val tenantResolver: TenantResolver,
+                private val statsService: ItemStatsService?,
+                private val itemGuard: ItemGuard?,
+                private val imageStore: ImageStore?,
+            ) {
+                @GetMapping("/{id}/activity")
+                fun activity(@PathVariable id: Long, @RequestParam request: String): List<String> {
+                    val stats = statsService; val guard = itemGuard
+                    if (stats == null || guard == null) throw IllegalStateException("disabled")
+                    guard.requireVisible(id, tenantResolver.resolve(request))
+                    return stats.activity(id, tenantResolver.resolveAdmin(request))
+                }
+
+                @GetMapping("/{id}/image")
+                fun image(@PathVariable id: Long): Long {
+                    val store = imageStore ?: throw IllegalStateException("no store")
+                    val stats = statsService!!
+                    return store.put(id) + stats.count(id)
+                }
+
+                @GetMapping("/{id}/cast")
+                fun cast(@PathVariable id: Long): Long {
+                    val store = (imageStore as ImageStore)
+                    return store.put(id)
+                }
+
+                @GetMapping("/{id}/fallback")
+                fun fallback(@PathVariable id: Long): Long {
+                    val store = imageStore ?: ImageStore()
+                    return store.put(id)
+                }
+
+                @GetMapping("/{id}/other")
+                fun other(@PathVariable id: Long): Long {
+                    var stats: ItemStatsService? = statsService
+                    stats = ItemStatsService()
+                    val fresh = Unrelated()
+                    val replaced = stats.count(id)
+                    return replaced + fresh.count(id)
+                }
+            }
+        """.trimIndent()
+
+        val JAVA_SOURCE = """
+            package com.example.app.web;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PathVariable;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class JavaItemsController {
+                private final ItemStatsService statsService;
+
+                public JavaItemsController(ItemStatsService statsService) {
+                    this.statsService = statsService;
+                }
+
+                @GetMapping("/api/java-items/{id}/copied")
+                public long item(@PathVariable long id) {
+                    final ItemStatsService stats = statsService;
+                    ItemStatsService effectivelyFinal = statsService;
+                    long declared = stats.count(id);
+                    return declared + effectivelyFinal.count(id);
+                }
+
+                @GetMapping("/api/java-items/{id}/reassigned")
+                public long reassigned(@PathVariable long id) {
+                    ItemStatsService stats = statsService;
+                    stats = new ItemStatsService();
+                    return stats.count(id);
+                }
             }
         """.trimIndent()
     }
