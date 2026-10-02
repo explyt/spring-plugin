@@ -119,8 +119,7 @@ class ScopedBeanMatcherClasspathScopeTest : ExplytMultiModuleTestCase() {
                 details = BeanDetailsEvidence(),
                 limitations = emptySet()
             )
-        ),
-        limitations = emptySet()
+        )
     )
 
     private fun queryProblem(action: () -> Unit): BeanQueryException =
