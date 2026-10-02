@@ -220,7 +220,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "as one string and a text search for it finds nothing, and a class-level prefix can silently give a " +
                 "new method a different URL than the one written on it. " +
                 "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, OpenAPI, message brokers " +
-                "(Kafka/RabbitMQ listeners) and event listeners. " +
+                "(Kafka/RabbitMQ listeners), event listeners and Actuator - the project's own @Endpoint classes " +
+                "and, when Spring Boot's endpoint auto-configuration is on the classpath, the built-in ones such as " +
+                "'/actuator/health'. An Actuator endpoint carries 'exposed': EXPOSED or NOT_EXPOSED as " +
+                "management.endpoints.web.exposure.include/exclude decide it (by default only health), UNKNOWN " +
+                "when a value cannot be read from the configuration files; it is found whatever 'exposed' says, " +
+                "since a profile or an environment variable can change exposure at run time. " +
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
@@ -426,9 +431,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 }
 
         private fun declaredFor(endpoint: EndpointElement): String? {
-            val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: return null
+            val module = moduleOf(endpoint) ?: return null
             return byModule.getOrPut(module) { ApplicationBasePath.of(module).orEmpty() }.ifEmpty { null }
         }
+
+        /**
+         * The module an endpoint is served by. A built-in Actuator endpoint is declared in a jar, where
+         * `findModuleForPsiElement` answers `null` for anything but a file, so its file is asked instead. That names one
+         * of the modules the library is attached to - the first in dependency order - and the endpoint is read under
+         * that module's base path; in a project whose applications share the jar but declare different base paths, the
+         * others are not tried.
+         */
+        private fun moduleOf(endpoint: EndpointElement): Module? =
+            ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
+                ?: endpoint.psiElement.containingFile?.originalFile?.let { ModuleUtilCore.findModuleForPsiElement(it) }
     }
 
     /**
@@ -519,6 +535,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             endpointType = endpoint.type.readable,
             consumes = mediaTypes.consumes,
             produces = mediaTypes.produces,
+            exposed = endpoint.exposure?.name,
         )
     }
 
@@ -539,6 +556,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             endpointType = core.endpointType,
             consumes = core.consumes,
             produces = core.produces,
+            exposed = core.exposed,
         )
     }
 
@@ -694,9 +712,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "routes and the parameter conventions a new route must match, and a literal route that would " +
                 "compete with a '{template}' sibling. " +
                 "Call with compact=true for a first inventory of an API surface you do not know yet. " +
-                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign and the Actuator endpoints the " +
-                "project declares itself with @Endpoint; the built-in Actuator endpoints of the actuator jar, such " +
-                "as health, are not listed. " +
+                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign and Actuator: the project's own " +
+                "@Endpoint classes and, when Spring Boot's endpoint auto-configuration is on the classpath, the " +
+                "built-in ones (health, info, metrics...). An Actuator endpoint carries 'exposed': EXPOSED or " +
+                "NOT_EXPOSED as management.endpoints.web.exposure.include/exclude decide it (by default only " +
+                "health), UNKNOWN when a value cannot be read from the configuration files. Nothing is hidden: a " +
+                "profile or an environment variable can change exposure at run time. Other endpoints have no " +
+                "'exposed' key. " +
                 "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
                 "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
                 "'endpoints'. One endpoint looks exactly like this - note 'httpMethods' is an array, and the keys " +
@@ -889,6 +911,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             serviceCall = serviceCalls.firstOrNull(),
             serviceCalls = serviceCalls,
             endpointType = endpoint.type.readable,
+            exposed = core.exposed,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
         )
@@ -1660,6 +1683,8 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
     /** The media types the mapping produces, present only when it declares some. */
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
 )
 
 /**
@@ -1692,6 +1717,13 @@ data class CompactEndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
     /** The media types the mapping produces, matched against the request's `Accept`; absent when it declares none. */
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /**
+     * For an Actuator endpoint only, whether `management.endpoints.web.exposure.include`/`exclude` let it answer over
+     * HTTP: `EXPOSED`, `NOT_EXPOSED`, or `UNKNOWN` when a value cannot be read from the configuration files. Absent for
+     * every other endpoint. A profile or an environment variable can change exposure at run time, so an endpoint is
+     * listed whatever this says.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
 )
 
 data class EndpointListJson<T>(
@@ -1857,6 +1889,8 @@ data class EndpointContractJson(
      */
     val serviceCalls: List<ServiceCallJson>,
     val endpointType: String,
+    /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
     /**
      * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
      * no such signature to read - a functional route or an OpenAPI declaration.

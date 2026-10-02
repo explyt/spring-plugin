@@ -1,0 +1,173 @@
+/*
+ * Copyright (c) 2026 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.explyt.spring.ai.mcp
+
+import com.explyt.spring.test.ExplytKotlinLightTestCase
+import com.explyt.spring.test.TestLibrary
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
+import kotlinx.coroutines.runBlocking
+
+/**
+ * The built-in Actuator endpoints as the MCP endpoint tools report them: found by the URL a health check calls, and
+ * marked with whether the configuration exposes them over HTTP rather than hidden when it does not.
+ */
+class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() {
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springBootActuatorAutoConfigure_4_1_0,
+        TestLibrary.springBootHealth_4_1_0,
+        TestLibrary.springWebMvc_6_0_7,
+    )
+
+    private val toolset = SpringBootApplicationMcpToolset()
+    private val mapper = ObjectMapper()
+
+    override fun setUp() {
+        super.setUp()
+        val scope = GlobalSearchScope.allScope(project)
+        val facade = JavaPsiFacade.getInstance(project)
+        assertNotNull(
+            "precondition: Boot's HealthEndpoint is on the classpath",
+            facade.findClass("org.springframework.boot.health.actuate.endpoint.HealthEndpoint", scope)
+        )
+        assertNotNull(
+            "precondition: Boot's endpoint auto-configuration is on the classpath",
+            facade.findClass(
+                "org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration", scope
+            )
+        )
+        myFixture.addFileToProject(
+            "com/example/app/web/OrdersController.kt", """
+            package com.example.app.web
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class OrdersController {
+                @GetMapping("/api/orders")
+                fun orders(): List<String> = emptyList()
+            }
+            """.trimIndent()
+        )
+    }
+
+    /**
+     * `health` is two operations - `/actuator/health` and `/actuator/health/{path}` for one component - and the lookup
+     * lists the exact route first, the way it orders any other match.
+     */
+    fun testHealthIsFoundAndExposedByDefault() = runBlocking<Unit> {
+        val found = find("/actuator/health")
+
+        assertEquals(listOf("/actuator/health", "/actuator/health/{path}"), found.map { it["fullPath"].asText() })
+        val health = found.first()
+        assertEquals("Actuator", health["endpointType"].asText())
+        assertEquals("health", health["methodName"].asText())
+        assertEquals("EXPOSED", health["exposed"].asText())
+    }
+
+    fun testInfoIsFoundButNotExposedByDefault() = runBlocking<Unit> {
+        assertEquals("NOT_EXPOSED", exactMatch("/actuator/info")["exposed"].asText())
+    }
+
+    fun testIncludeListExposesTheListedEndpoints() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "application.yaml", """
+            management:
+              endpoints:
+                web:
+                  exposure:
+                    include: health,info
+            """.trimIndent()
+        )
+
+        assertEquals("EXPOSED", exactMatch("/actuator/info")["exposed"].asText())
+        assertEquals("NOT_EXPOSED", exactMatch("/actuator/env")["exposed"].asText())
+    }
+
+    /**
+     * A deployment health check calls the URL under the servlet context path, which no Actuator path declares. The
+     * endpoint is declared in a jar, so the module whose base path applies is found through the jar's file.
+     */
+    fun testHealthUnderTheDeclaredContextPathIsFoundWithItsBasePath() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "application.yaml", """
+            server:
+              servlet:
+                context-path: /shop
+            """.trimIndent()
+        )
+
+        val root = mapper.readTree(toolset.findEndpoint(urlPattern = "/shop/actuator/health", projectPath = projectPath()))
+
+        assertEquals("a declared base path, not a guess", "/shop", root["basePath"].asText())
+        assertTrue(root["assumedPrefix"].isNull)
+        assertEquals(listOf("/actuator/health"), root["endpoints"].map { it["fullPath"].asText() })
+        assertEquals("EXPOSED", root["endpoints"].single()["exposed"].asText())
+    }
+
+    fun testListingOfActuatorEndpointsCarriesExposureOnEveryRecord() = runBlocking<Unit> {
+        val listed = listActuator(compact = false)
+
+        val paths = listed.map { it["fullPath"].asText() }
+        assertTrue("health is listed, got $paths", "/actuator/health" in paths)
+        assertTrue("info is listed although not exposed, got $paths", "/actuator/info" in paths)
+        assertTrue(
+            "every Actuator record carries 'exposed', got ${listed.filter { !it.has("exposed") }}",
+            listed.all { it.has("exposed") }
+        )
+        assertEquals(
+            "the compact listing carries the same fact",
+            listed.associate { it["fullPath"].asText() to it["exposed"].asText() },
+            listActuator(compact = true).associate { it["fullPath"].asText() to it["exposed"].asText() }
+        )
+    }
+
+    /** `exposed` is a fact about Actuator endpoints; any other endpoint keeps its documented shape. */
+    fun testControllerEndpointHasNoExposedKey() = runBlocking<Unit> {
+        val listed = mapper.readTree(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "OrdersController")
+        )["endpoints"].single()
+
+        assertEquals(
+            setOf(
+                "httpMethods", "fullPath", "controllerClass", "methodName",
+                "filePath", "line", "parameters", "returnType", "endpointType",
+            ),
+            listed.fieldNames().asSequence().toSet()
+        )
+        assertFalse(find("/api/orders").single().has("exposed"))
+    }
+
+    fun testContractOfHealthCarriesExposure() = runBlocking<Unit> {
+        val contract = mapper.readTree(
+            toolset.getEndpointContract(urlPattern = "/actuator/health", projectPath = projectPath())
+        )["endpoints"].first()
+
+        assertEquals("/actuator/health", contract["fullPath"].asText())
+        assertEquals("EXPOSED", contract["exposed"].asText())
+        assertFalse(
+            "a controller contract has no 'exposed' key",
+            mapper.readTree(toolset.getEndpointContract(urlPattern = "/api/orders", projectPath = projectPath()))
+                ["endpoints"].single().has("exposed")
+        )
+    }
+
+    private fun projectPath(): String = project.basePath ?: ""
+
+    private suspend fun find(url: String): List<JsonNode> =
+        mapper.readTree(toolset.findEndpoint(urlPattern = url, projectPath = projectPath()))["endpoints"].toList()
+
+    private suspend fun exactMatch(url: String): JsonNode = find(url).single { it["fullPath"].asText() == url }
+
+    private suspend fun listActuator(compact: Boolean): List<JsonNode> =
+        mapper.readTree(
+            toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "ACTUATOR", compact = compact)
+        )["endpoints"].toList()
+}
