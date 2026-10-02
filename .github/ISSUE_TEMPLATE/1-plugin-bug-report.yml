@@ -25,6 +25,7 @@ body:
         - Usages
         - Properties
         - OpenAPI
+        - MCP tools
         - Slow operation on EDT
         - Other
       default: 0
