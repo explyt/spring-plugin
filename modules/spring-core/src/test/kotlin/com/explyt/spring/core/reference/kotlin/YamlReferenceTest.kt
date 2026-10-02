@@ -347,6 +347,129 @@ app:
         assertEquals("payloadType", mapValueReferenceName())
     }
 
+    fun testRefKeyMapValueMemberUnderListElement() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt:
+  catalog:
+    providers:
+      - models:
+          "free":
+            available-for-<caret>personal: true
+            """.trimIndent()
+        )
+
+        assertEquals("availableForPersonal", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyObjectMemberUnderListElementMapValue() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt:
+  catalog:
+    providers:
+      - models:
+          "free":
+            model-info:
+              model-<caret>name: free
+            """.trimIndent()
+        )
+
+        assertEquals("modelName", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyMapValueMemberUnderListElementBracketKeyWithDots() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt:
+  catalog:
+    providers:
+      - url: https://example.org
+      - models:
+          "[explyt://catalog/model-5.2/latest]":
+            model-info:
+              model-<caret>name: model-5.2
+            """.trimIndent()
+        )
+
+        assertEquals("modelName", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyMapKeyUnderListElement() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt:
+  catalog:
+    providers:
+      - models:
+          "fr<caret>ee":
+            available-for-personal: true
+            """.trimIndent()
+        )
+
+        assertEquals("models", resolveListElementReferenceName())
+    }
+
+    fun testRefKeyUnknownMemberUnderListElementMapValueIsNotResolved() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt:
+  catalog:
+    providers:
+      - models:
+          "free":
+            unkn<caret>own: true
+            """.trimIndent()
+        )
+
+        assertEmpty(listElementReference().multiResolve(true).toList())
+    }
+
+    fun testRefKeyMemberOfSkippedLevelUnderListElementIsNotResolved() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt:
+  catalog:
+    providers:
+      - models:
+          "free":
+            model-<caret>name: free
+            """.trimIndent()
+        )
+
+        assertEmpty(listElementReference().multiResolve(true).toList())
+    }
+
+    fun testRefKeyMapValueMemberUnderMapValue() {
+        myFixture.copyFileToProject("CatalogProperties.kt")
+        myFixture.configureByText(
+            "application.yaml",
+            """
+explyt:
+  catalog:
+    regions:
+      eu:
+        models:
+          "free":
+            available-for-<caret>personal: true
+            """.trimIndent()
+        )
+
+        assertEquals("availableForPersonal", mapValueReferenceName())
+    }
+
     private fun mapValueReferenceName(): String? = mapValueReference()
         .multiResolve(true)
         .singleOrNull()
