@@ -25,6 +25,7 @@ import com.explyt.spring.web.util.EndpointPathPatterns
 import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
 import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
@@ -229,10 +230,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
-                "file path, line and endpoint type. 'endpoints' lists the closest match to the pattern first: an " +
-                "exact path, then one matching it as a pattern, then one merely containing it, and within each " +
-                "group the way Spring picks a handler - literal before '{template}', fewer wildcards first - so " +
-                "when several match one URL the first is the one that dispatches. " +
+                "file path, line and endpoint type, and 'consumes'/'produces' when the mapping declares media " +
+                "types. 'endpoints' lists the closest match to the pattern first: an exact path, then one matching " +
+                "it as a pattern, then one merely containing it, and within each group by path specificity, the " +
+                "way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of routes " +
+                "with different paths matching one URL the first is the one that dispatches. Handlers sharing one " +
+                "path and verb are not ordered by dispatch: the request's Content-Type and Accept choose among " +
+                "them, by the 'consumes' and 'produces' each record carries. " +
                 "Covers annotation-declared handlers and functional routes alike; for a functional route the " +
                 "controller class and method name are the bean factory that registers it, and 'parameters' holds " +
                 "the path variables its URL template declares. " +
@@ -358,7 +362,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
      *
      * Matches are ordered by how closely they answer the path ([matchRank]) and then by
      * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match, the first
-     * element is the one Spring dispatches to.
+     * element is the one Spring dispatches to. Handlers sharing one path keep no dispatch order: Spring chooses among
+     * them by the request's media types, which [CompactEndpointJson.consumes] and [CompactEndpointJson.produces] show.
      */
     private fun matchesOf(
         endpoints: List<EndpointElement>,
@@ -503,6 +508,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         // A loader may know the declaring file of an endpoint whose element has no source position of its own.
         val filePath = position.filePath
             ?: endpoint.containingFile?.let { relativePathOf(it, project) }
+        val mediaTypes = mediaTypesOf(
+            requestHandlerOf(endpoint)?.toUElement() as? UMethod,
+            ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement),
+            project,
+        )
 
         return CompactEndpointJson(
             httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
@@ -513,6 +523,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             filePath = filePath,
             line = position.line,
             endpointType = endpoint.type.readable,
+            consumes = mediaTypes.consumes,
+            produces = mediaTypes.produces,
         )
     }
 
@@ -531,6 +543,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             endpointType = core.endpointType,
+            consumes = core.consumes,
+            produces = core.produces,
         )
     }
 
@@ -583,9 +597,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
             .map(::wireNameOf)
             .toSet()
-        val servletMvc = isConfirmedServletMvc(psiMethod)
+        val servletApplication = isServletApplication(psiMethod)
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
-            val source = if (servletMvc && info.name in multipartRequestNames) "PART" else "QUERY"
+            val source = if (servletApplication && info.name in multipartRequestNames) "PART" else "QUERY"
             result += EndpointParameterJson(info.name, source, info.typeFqn, info.isRequired, info.defaultValue)
         }
         for (param in HandlerSignature.requestParameters(psiMethod)) {
@@ -609,13 +623,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return result
     }
 
-    private fun isConfirmedServletMvc(psiMethod: PsiMethod): Boolean {
+    /**
+     * Whether the handler's application runs on servlet MVC, where `@RequestParam` also binds a multipart part.
+     * A project carrying WebFlux next to it - usually only for `WebClient` - is still a servlet application.
+     */
+    private fun isServletApplication(psiMethod: PsiMethod): Boolean {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
-        val scope = module.moduleWithLibrariesScope
-        val facade = JavaPsiFacade.getInstance(psiMethod.project)
-        val hasServletMvc = facade.findClass(SpringWebClasses.MVC_DISPATCHER_SERVLET, scope) != null
-        val hasWebFlux = facade.findClass(SpringWebClasses.WEBFLUX_DISPATCHER_HANDLER, scope) != null
-        return hasServletMvc && !hasWebFlux
+        return WebApplicationStack.of(module) == WebApplicationStack.SERVLET
     }
 
     private fun isMultipartPart(type: PsiType): Boolean = when (type) {
@@ -686,7 +700,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "routes and the parameter conventions a new route must match, and a literal route that would " +
                 "compete with a '{template}' sibling. " +
                 "Call with compact=true for a first inventory of an API surface you do not know yet. " +
-                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign, and Spring Boot actuator endpoints. " +
+                "Covers Spring MVC, WebFlux, JAX-RS, HttpExchange, OpenFeign and the Actuator endpoints the " +
+                "project declares itself with @Endpoint; the built-in Actuator endpoints of the actuator jar, such " +
+                "as health, are not listed. " +
                 "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
                 "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
                 "'endpoints'. One endpoint looks exactly like this - note 'httpMethods' is an array, and the keys " +
@@ -696,7 +712,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "\"filePath\":\"src/main/java/com/example/app/web/DemoController.java\",\"line\":40," +
                 "\"parameters\":[{\"name\":\"id\",\"source\":\"PATH\",\"type\":\"java.lang.Long\"," +
                 "\"required\":true,\"defaultValue\":null}],\"returnType\":\"com.example.app.dto.DemoDto\"," +
-                "\"endpointType\":\"SPRING_MVC\"}. " +
+                "\"endpointType\":\"Spring MVC\"}. " +
+                "'consumes' and 'produces' are present only when the mapping declares media types: two handlers " +
+                "sharing a path and a verb are told apart by them, not by their order. " +
                 "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
                 "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
                 "absent otherwise. " +
@@ -712,7 +730,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         controllerFilter: String = "",
         @McpDescription(
             "Optional endpoint type filter. Possible values: SPRING_MVC, SPRING_WEBFLUX, SPRING_JAX_RS, " +
-                    "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, SPRING_BOOT, OPENAPI. Leave empty for all."
+                    "SPRING_HTTP_EXCHANGE, SPRING_OPEN_FEIGN, ACTUATOR. Leave empty for all."
         )
         endpointType: String = "",
         @McpDescription("Index of the first endpoint to return, for paging through large projects. Defaults to 0.")
@@ -814,7 +832,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
     suspend fun getEndpointContract(
         @McpDescription(
             "URL pattern of the endpoint to inspect (e.g. '/api/orgs/{orgId}/project-success/v1/coverage/users'). " +
-                    "Should match a single endpoint. If several match, all are returned, the dispatching one first."
+                    "Should match a single endpoint. If several match, all are returned, the most specific path " +
+                    "first; handlers sharing a path and a verb differ by 'consumes'/'produces', and the request's " +
+                    "Content-Type and Accept choose among them."
         )
         urlPattern: String,
         @McpDescription(PROJECT_PATH_DESCRIPTION)
@@ -842,7 +862,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val handler = requestHandlerOf(endpoint)
         val uHandler = handler?.toUElement() as? UMethod
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
-        val mediaTypes = mediaTypesOf(uHandler, module, project)
         val core = toCompactEndpointJson(endpoint, project)
 
         val serviceCall = when {
@@ -863,8 +882,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
                 ?.let { expandType(it, project, depth = 3) },
-            produces = mediaTypes.produces,
-            consumes = mediaTypes.consumes,
+            produces = core.produces,
+            consumes = core.consumes,
             serviceCall = serviceCall,
             endpointType = endpoint.type.readable,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
@@ -1698,6 +1717,10 @@ data class EndpointJson(
     val parameters: List<EndpointParameterJson>,
     val returnType: String?,
     val endpointType: String,
+    /** The media types the mapping accepts, present only when it declares some; see [CompactEndpointJson.consumes]. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
+    /** The media types the mapping produces, present only when it declares some. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
 )
 
 /**
@@ -1722,6 +1745,14 @@ data class CompactEndpointJson(
     /** `null` when the endpoint element has no physical declaration to point at. */
     val line: Int?,
     val endpointType: String,
+    /**
+     * The `Content-Type` values the mapping accepts. Two handlers sharing a path and a verb are told apart by these
+     * and [produces], not by their order. Absent rather than empty when the mapping declares none - any media type is
+     * accepted then - so the common endpoint keeps its shape.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
+    /** The media types the mapping produces, matched against the request's `Accept`; absent when it declares none. */
+    @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
 )
 
 data class EndpointListJson<T>(
@@ -1734,8 +1765,10 @@ data class EndpointListJson<T>(
 /**
  * The result of resolving one URL pattern, for the find and contract tools.
  *
- * [endpoints] lists the closest match first, and among equally close ones the order Spring picks a handler in,
- * so its first element is the one that dispatches when several routes match. [basePath] is the leading path
+ * [endpoints] lists the closest match first, and among equally close ones the more specific path first, the way
+ * Spring ranks path patterns, so of routes with different paths its first element is the one that dispatches.
+ * Handlers sharing one path are chosen by the request's media types instead, which their `consumes` and `produces`
+ * show; their order says nothing about dispatch. [basePath] is the leading path
  * stripped from the URL because the configuration of the answering routes' module declares it - a servlet context
  * path, a dispatcher servlet path or a WebFlux base path - a fact, not a guess. [assumedPrefix] is a leading path
  * dropped from the URL although nothing declares it - a context path living only in deployment configuration or a
