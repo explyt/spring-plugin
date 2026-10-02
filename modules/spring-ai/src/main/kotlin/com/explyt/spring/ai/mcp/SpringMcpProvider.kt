@@ -61,12 +61,6 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 
 import org.jetbrains.kotlin.idea.base.util.projectScope
-import org.jetbrains.kotlin.asJava.elements.KtLightField
-import org.jetbrains.kotlin.asJava.elements.KtLightMethod
-import org.jetbrains.kotlin.psi.KtCallableDeclaration
-import org.jetbrains.kotlin.psi.KtNullableType
-
-import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UMethod
@@ -804,9 +798,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "on. " +
                 "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
                 "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
-                "parameter with its type, return type, response DTO field schema (recursively expanded up to " +
-                "3 levels), produces/consumes media types, and the first resolved call on an injected Spring bean " +
-                "(null when no such call can be confirmed). Reading the handler signature by hand misses what Spring " +
+                "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
+                "expanded up to 3 levels: a @JsonProperty name in 'name' with the declared one in 'declaredName', " +
+                "no transient or @JsonIgnore members, an enum as 'enumValues' or, with @JsonValue, as the " +
+                "'jsonValue' member and its 'valueType'), produces/consumes media types, and 'serviceCalls': every " +
+                "call the handler makes on an injected project bean, in source order, each with its 'target', the " +
+                "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
+                "there is none). 'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
+                "resolver called before the service that handles the request, not that service; to follow the " +
+                "request through the layers, call explyt_trace_spring_call_chain on the handler. Calls into the " +
+                "JDK, Kotlin and Spring are never listed. Reading the handler signature by hand misses what Spring " +
                 "binds implicitly and what the DTO's nested " +
                 "types serialise to. " +
                 "Each parameter carries a 'source': PATH, QUERY, PART, BODY, HEADER, COOKIE or MODEL for an " +
@@ -818,7 +819,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
                 "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
                 "such signature: a PARTIAL contract still names the path, the verb, the declaring bean factory, " +
-                "the handler function as 'serviceCall' and the path variables the URL template declares, and " +
+                "the handler function as the one entry of 'serviceCalls' and as 'serviceCall', and the path " +
+                "variables the URL template declares, and " +
                 "'contractUnavailableReason' says what has to be read at the source - an empty 'parameters' there " +
                 "means 'not declared here', never 'the endpoint takes nothing'. " +
                 "Returns the same object shape as explyt_find_spring_endpoint - 'totalCount', 'truncated', " +
@@ -864,10 +866,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement)
         val core = toCompactEndpointJson(endpoint, project)
 
-        val serviceCall = when {
+        val serviceCalls = when {
             handler != null && uHandler != null && module != null ->
-                findServiceCall(handler, uHandler, module, project)
-            else -> routeHandlerCall(endpoint, project)
+                injectedBeanCallsOf(handler, uHandler, module, project)
+            else -> listOfNotNull(routeHandlerCall(endpoint, project))
         }
 
         return EndpointContractJson(
@@ -881,10 +883,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
-                ?.let { expandType(it, project, depth = 3) },
+                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3) },
             produces = core.produces,
             consumes = core.consumes,
-            serviceCall = serviceCall,
+            serviceCall = serviceCalls.firstOrNull(),
+            serviceCalls = serviceCalls,
             endpointType = endpoint.type.readable,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
@@ -943,25 +946,30 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
     }
 
-    private fun findServiceCall(
+    /**
+     * Every call the handler makes on an injected project bean, in source order, one entry per callee and line.
+     *
+     * All of them, because the first is often not the one that handles the request: a handler commonly resolves a
+     * tenant, checks access or normalises an argument through another bean before it calls the service.
+     */
+    private fun injectedBeanCallsOf(
         psiMethod: PsiMethod,
         uMethod: UMethod,
         module: com.intellij.openapi.module.Module,
         project: Project,
-    ): ServiceCallJson? {
-        val controllerClass = psiMethod.containingClass ?: return null
+    ): List<ServiceCallJson> {
+        val controllerClass = psiMethod.containingClass ?: return emptyList()
         val beanClasses = SpringSearchService.getInstance(project).getProjectBeans(module).map { it.psiClass }
         val beanFields = controllerClass.allFields.filter { field ->
             if (!InjectedDependencies.isInjected(field)) return@filter false
             val fieldClass = (field.type as? PsiClassType)?.resolve() ?: return@filter false
             beanClasses.any { InheritanceUtil.isInheritorOrSelf(it, fieldClass, true) }
         }.toSet()
-        if (beanFields.isEmpty()) return null
+        if (beanFields.isEmpty()) return emptyList()
 
-        var serviceMethod: PsiMethod? = null
+        val calls = mutableListOf<ServiceCallJson>()
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
-                if (serviceMethod != null) return true
                 val receiver = (node.receiver as? UResolvable)?.resolve()
                 val field = when (receiver) {
                     is PsiField -> receiver.takeIf { it in beanFields }
@@ -984,92 +992,23 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     && !calleeFqn.startsWith("org.springframework.")
                     && InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
                 ) {
-                    serviceMethod = callee
-                    return true
+                    val position = sourcePositionOf(callee, project)
+                    calls += ServiceCallJson(
+                        target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+                        filePath = position.filePath,
+                        line = position.line,
+                        callLine = callLineOf(node),
+                    )
                 }
                 return false
             }
         })
-        val callee = serviceMethod ?: return null
-        val position = sourcePositionOf(callee, project)
-        return ServiceCallJson(
-            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
-            filePath = position.filePath,
-            line = position.line,
-        )
+        return calls.distinctBy { it.target to it.callLine }
     }
 
+    private fun callLineOf(call: UCallExpression): Int? =
+        (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
 
-    private fun expandType(psiType: PsiType, project: Project, depth: Int): DtoSchemaJson? {
-        if (depth <= 0) return null
-        val resolved = (psiType as? PsiClassType)?.resolve() ?: return null
-        val fqn = resolved.qualifiedName ?: return null
-
-        // Skip JDK / framework wrapper types — unwrap generics instead
-        if (fqn.startsWith("java.") || fqn.startsWith("kotlin.") || fqn.startsWith("org.springframework.")) {
-            // For generic wrappers (ResponseEntity<T>, List<T>, Optional<T>), expand the type argument
-            val typeArgs = psiType.parameters
-            if (typeArgs.isNotEmpty()) {
-                return expandType(typeArgs[0], project, depth)
-            }
-            return null
-        }
-
-        val fields = mutableListOf<DtoFieldJson>()
-        for (field in resolved.allFields) {
-            if (field.hasModifierProperty(PsiModifier.STATIC)) continue
-            val fieldType = field.type
-            val nested = expandType(fieldType, project, depth - 1)
-            fields += DtoFieldJson(
-                name = field.name,
-                type = renderDtoType(fieldType, (field as? KtLightField)?.kotlinOrigin as? KtCallableDeclaration),
-                nullable = fieldType is PsiPrimitiveType && fieldType == PsiTypes.nullType()
-                        || field.annotations.any { it.qualifiedName?.contains("Nullable") == true },
-                nested = nested,
-            )
-        }
-
-        // Also include Kotlin data class properties via getter methods (for classes without Java fields)
-        if (fields.isEmpty()) {
-            for (method in resolved.allMethods) {
-                if (method.hasModifierProperty(PsiModifier.STATIC)) continue
-                if (!method.name.startsWith("get") && !method.name.startsWith("is")) continue
-                if (method.parameterList.parametersCount != 0) continue
-                if (method.containingClass?.qualifiedName?.startsWith("java.") == true) continue
-                val propName = method.name
-                    .removePrefix("get").removePrefix("is")
-                    .replaceFirstChar { it.lowercase() }
-                val retType = method.returnType ?: continue
-                val nested = expandType(retType, project, depth - 1)
-                fields += DtoFieldJson(
-                    name = propName,
-                    type = renderDtoType(retType, (method as? KtLightMethod)?.kotlinOrigin as? KtCallableDeclaration),
-                    nullable = false,
-                    nested = nested,
-                )
-            }
-        }
-
-        return DtoSchemaJson(className = fqn, fields = fields)
-    }
-
-    private fun renderDtoType(type: PsiType, origin: KtCallableDeclaration?): String =
-        renderDtoType(type, origin?.typeReference)
-
-    private fun renderDtoType(type: PsiType, source: KtTypeReference?): String {
-        val element = source?.typeElement ?: return type.canonicalText
-        val typeArguments = (type as? PsiClassType)?.parameters.orEmpty()
-        val sourceArguments = element.typeArgumentsAsTypes
-        val name = if (typeArguments.isNotEmpty() && typeArguments.size == sourceArguments.size) {
-            val arguments = typeArguments.indices.joinToString(",") {
-                renderDtoType(typeArguments[it], sourceArguments[it])
-            }
-            "${type.canonicalText.substringBefore('<')}<$arguments>"
-        } else {
-            type.canonicalText
-        }
-        return name + if (element is KtNullableType) "?" else ""
-    }
 
     @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
     @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
@@ -1887,8 +1826,12 @@ data class CallTargetJson(
 
 data class ServiceCallJson(
     val target: String,
+    /** Where [target] is declared. */
     val filePath: String?,
+    /** Declaration line of [target]. */
     val line: Int?,
+    /** Line of the call in the handler; absent for a functional route, whose handler is a reference, not a call. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val callLine: Int? = null,
 )
 
 
@@ -1906,7 +1849,13 @@ data class EndpointContractJson(
     val responseSchema: DtoSchemaJson?,
     val produces: List<String>,
     val consumes: List<String>,
+    /** The first of [serviceCalls]; kept for callers of the generation that had only it. */
     val serviceCall: ServiceCallJson?,
+    /**
+     * Every call on an injected project bean in source order, or the handler function of a functional route. Empty when
+     * the handler calls no such bean.
+     */
+    val serviceCalls: List<ServiceCallJson>,
     val endpointType: String,
     /**
      * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
@@ -1921,13 +1870,26 @@ data class EndpointContractJson(
     val contractUnavailableReason: String?,
 )
 
+/**
+ * The shape of a value as Jackson writes it.
+ *
+ * An enum has no [fields]: it carries [enumValues] - the strings written for its constants - or, when it declares a
+ * `@JsonValue` member, [jsonValue] naming that member and [valueType] its type. The values of a `@JsonValue` member
+ * are computed in code, so they are not listed.
+ */
 data class DtoSchemaJson(
     val className: String,
-    val fields: List<DtoFieldJson>,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val fields: List<DtoFieldJson>?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumValues: List<String>? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val valueType: String? = null,
 )
 
 data class DtoFieldJson(
+    /** The name the field is written under: its `@JsonProperty` value when it has one. */
     val name: String,
+    /** The name the field is declared with, present only when `@JsonProperty` renames it. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val declaredName: String?,
     val type: String,
     val nullable: Boolean,
     val nested: DtoSchemaJson?,
