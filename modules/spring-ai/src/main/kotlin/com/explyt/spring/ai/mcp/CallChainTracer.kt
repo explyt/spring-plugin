@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.UResolvable
+
 import org.jetbrains.uast.USuperExpression
 import org.jetbrains.uast.UThisExpression
 import org.jetbrains.uast.toUElement
@@ -141,7 +141,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         val calleeClass = callee.containingClass?.qualifiedName ?: return null
         if (PLATFORM_PACKAGES.any(calleeClass::startsWith)) return null
         val owner = caller.containingClass ?: return null
-        InjectedDependencies.fieldOf((call.receiver as? UResolvable)?.resolve(), owner) ?: return null
+        InjectedDependencies.fieldOf(call.receiver, owner) ?: return null
         val receiverClass = PsiUtil.resolveClassInClassTypeOnly(call.receiverType) ?: return null
         return externalCall(receiverClass, callee, line)
     }
