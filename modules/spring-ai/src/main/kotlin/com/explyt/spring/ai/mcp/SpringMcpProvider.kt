@@ -837,7 +837,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
                 "which are not the wire values), produces/consumes media types, and 'serviceCalls': every " +
-                "call the handler makes on an injected project bean, in source order, each with its 'target', the " +
+                "call the handler makes on an injected project bean - including a bean method passed as a callable " +
+                "reference, such as 'validator::validate' - in source order, each with its 'target', the " +
                 "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
                 "there is none). 'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
                 "resolver called before the service that handles the request, not that service; to follow the " +
@@ -987,8 +988,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
      *
      * All of them, because the first is often not the one that handles the request: a handler commonly resolves a
      * tenant, checks access or normalises an argument through another bean before it calls the service. A call on a
-     * local alias of the bean - `val stats = statsService ?: throw ...` - is a call on the bean. Source order is the
-     * order of the UAST visit, so an outer call precedes the calls in its arguments.
+     * local alias of the bean - `val stats = statsService ?: throw ...` - is a call on the bean, and so is a bean
+     * method passed as a callable reference, `input.use(validator::validate)`, which the receiving function invokes.
+     * Source order is the order of the UAST visit, so an outer call precedes the calls and references in its
+     * arguments.
      */
     private fun injectedBeanCallsOf(
         psiMethod: PsiMethod,
@@ -1006,36 +1009,49 @@ class SpringBootApplicationMcpToolset : McpToolset {
         if (beanFields.isEmpty()) return emptyList()
 
         val calls = mutableListOf<ServiceCallJson>()
+        fun collect(site: MethodCallSite?) {
+            if (site != null) serviceCallOf(site, controllerClass, beanFields, project)?.let { calls += it }
+        }
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
-                val field = InjectedDependencies.fieldOf(node.receiver, controllerClass)
-                    ?.takeIf { it in beanFields } ?: return false
-                val callee = node.resolve() ?: return false
-                val receiverClass = (field.type as? PsiClassType)?.resolve() ?: return false
-                val calleeClass = callee.containingClass ?: return false
-                val calleeFqn = calleeClass.qualifiedName ?: return false
-                if (!callee.hasModifierProperty(PsiModifier.STATIC)
-                    && !calleeFqn.startsWith("java.")
-                    && !calleeFqn.startsWith("kotlin.")
-                    && !calleeFqn.startsWith("org.springframework.")
-                    && InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
-                ) {
-                    val position = sourcePositionOf(callee, project)
-                    calls += ServiceCallJson(
-                        target = "${callee.containingClass?.qualifiedName}.${callee.name}",
-                        filePath = position.filePath,
-                        line = position.line,
-                        callLine = callLineOf(node),
-                    )
-                }
+                collect(MethodCallSite.of(node))
+                return false
+            }
+
+            override fun visitCallableReferenceExpression(node: UCallableReferenceExpression): Boolean {
+                collect(MethodCallSite.of(node))
                 return false
             }
         })
         return calls.distinctBy { it.target to it.callLine }
     }
 
-    private fun callLineOf(call: UCallExpression): Int? =
-        (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
+    /** The service call [site] makes, when it invokes a project method of one of the controller's injected beans. */
+    private fun serviceCallOf(
+        site: MethodCallSite,
+        controllerClass: PsiClass,
+        beanFields: Set<PsiField>,
+        project: Project,
+    ): ServiceCallJson? {
+        val field = InjectedDependencies.fieldOf(site.receiver, controllerClass)?.takeIf { it in beanFields } ?: return null
+        val callee = site.callee
+        val receiverClass = (field.type as? PsiClassType)?.resolve() ?: return null
+        val calleeClass = callee.containingClass ?: return null
+        val calleeFqn = calleeClass.qualifiedName ?: return null
+        if (callee.hasModifierProperty(PsiModifier.STATIC)
+            || calleeFqn.startsWith("java.")
+            || calleeFqn.startsWith("kotlin.")
+            || calleeFqn.startsWith("org.springframework.")
+            || !InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
+        ) return null
+        val position = sourcePositionOf(callee, project)
+        return ServiceCallJson(
+            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+            filePath = position.filePath,
+            line = position.line,
+            callLine = site.line,
+        )
+    }
 
 
     @McpTool("explyt_trace_spring_call_chain", title = "Controller → Service → Repository call chain of a method")
@@ -1062,7 +1078,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "parameters as declared, file path and declaration line, 'aop' - the @Transactional, @Async and " +
                 "cache annotations declared on the method or its class, with 'declaredOn' METHOD or CLASS; Spring " +
                 "applies them through a proxy, so they do not take effect for a call reached INTERNAL, which is " +
-                "a self-invocation - and 'callsInto': every call with its 'kind' (INTERNAL, PROJECT or " +
+                "a self-invocation - and 'callsInto': every call, including a method passed as a callable " +
+                "reference such as 'repository::save', with its 'kind' (INTERNAL, PROJECT or " +
                 "EXTERNAL), the line of the call itself, 'node' naming the id of the traced method it reaches " +
                 "(null when it is not traced), and 'via' naming the interface method it is written against when " +
                 "it reaches an implementation. 'chainLimitReached' is true when reachable methods were left out " +

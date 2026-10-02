@@ -15,15 +15,13 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.OverridingMethodsSearch
 import com.intellij.psi.util.InheritanceUtil
-import com.intellij.psi.util.PsiUtil
+
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UMethod
-
-import org.jetbrains.uast.USuperExpression
-import org.jetbrains.uast.UThisExpression
 import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
@@ -49,6 +47,9 @@ import org.jetbrains.uast.visitor.AbstractUastVisitor
  * A call written against an interface or an abstract method reaches whatever implements it, which is where the
  * behaviour is: it is followed to every implementation in the project. A constructor call creates a value rather
  * than passing a request on, and is left out.
+ *
+ * A method passed as a callable reference - `input.use(validator::validate)`, `orders.forEach(repository::save)` - is
+ * invoked by the function it is passed to, so it is a call of the method that passes it ([MethodCallSite]).
  */
 internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 
@@ -84,21 +85,27 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
                 ProgressManager.checkCanceled()
-                calls += callsAt(node, method)
+                MethodCallSite.of(node)?.let { calls += callsAt(it, method) }
+                return false
+            }
+
+            override fun visitCallableReferenceExpression(node: UCallableReferenceExpression): Boolean {
+                ProgressManager.checkCanceled()
+                MethodCallSite.of(node)?.let { calls += callsAt(it, method) }
                 return false
             }
         })
         return calls.distinctBy { Triple(it.target, it.via, it.reached?.let(::methodKey)) }
     }
 
-    private fun callsAt(call: UCallExpression, caller: PsiMethod): List<TracedCall> {
-        val callee = call.resolve() ?: return emptyList()
+    private fun callsAt(site: MethodCallSite, caller: PsiMethod): List<TracedCall> {
+        val callee = site.callee
         if (callee.isConstructor || methodKey(callee) == methodKey(caller)) return emptyList()
-        val line = (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
+        val line = site.line
 
         if (!isProjectSource(callee)) {
             return listOfNotNull(
-                frameworkMemberOfProjectType(call, callee, line) ?: injectedDependencyCall(call, callee, caller, line)
+                frameworkMemberOfProjectType(site, line) ?: injectedDependencyCall(site, caller, line)
             )
         }
         if (!callee.hasModifierProperty(PsiModifier.ABSTRACT)) {
@@ -123,11 +130,11 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
      * Only interface methods qualify: that is the shape of a Spring Data repository, while a member inherited from a
      * class - `Object.toString`, `Enum.name`, a getter of a library base entity - says nothing about the project.
      */
-    private fun frameworkMemberOfProjectType(call: UCallExpression, callee: PsiMethod, line: Int?): TracedCall? {
+    private fun frameworkMemberOfProjectType(site: MethodCallSite, line: Int?): TracedCall? {
+        val callee = site.callee
         if (callee.hasModifierProperty(PsiModifier.STATIC) || callee.containingClass?.isInterface != true) return null
-        val receiver = call.receiver ?: return null
-        if (receiver is UThisExpression || receiver is USuperExpression) return null
-        val receiverClass = PsiUtil.resolveClassInClassTypeOnly(call.receiverType) ?: return null
+        if (site.receiver == null || site.isOnSelf) return null
+        val receiverClass = site.receiverClass ?: return null
         if (!isProjectSource(receiverClass)) return null
         return externalCall(receiverClass, callee, line)
     }
@@ -137,12 +144,13 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
      * type of the dependency: `JdbcTemplate.query`. JDK and Kotlin standard library members are left out - an
      * injected `Clock` or a `List` of handlers is plumbing, not a point where the request leaves the application.
      */
-    private fun injectedDependencyCall(call: UCallExpression, callee: PsiMethod, caller: PsiMethod, line: Int?): TracedCall? {
+    private fun injectedDependencyCall(site: MethodCallSite, caller: PsiMethod, line: Int?): TracedCall? {
+        val callee = site.callee
         val calleeClass = callee.containingClass?.qualifiedName ?: return null
         if (PLATFORM_PACKAGES.any(calleeClass::startsWith)) return null
         val owner = caller.containingClass ?: return null
-        InjectedDependencies.fieldOf(call.receiver, owner) ?: return null
-        val receiverClass = PsiUtil.resolveClassInClassTypeOnly(call.receiverType) ?: return null
+        InjectedDependencies.fieldOf(site.receiver, owner) ?: return null
+        val receiverClass = site.receiverClass ?: return null
         return externalCall(receiverClass, callee, line)
     }
 
