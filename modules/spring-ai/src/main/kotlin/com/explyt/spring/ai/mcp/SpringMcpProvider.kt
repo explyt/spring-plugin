@@ -834,8 +834,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
                 "expanded up to 3 levels: a @JsonProperty name in 'name' with the declared one in 'declaredName', " +
-                "no transient or @JsonIgnore members, an enum as 'enumValues' or, with @JsonValue, as the " +
-                "'jsonValue' member and its 'valueType'), produces/consumes media types, and 'serviceCalls': every " +
+                "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
+                "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
+                "which are not the wire values), produces/consumes media types, and 'serviceCalls': every " +
                 "call the handler makes on an injected project bean, in source order, each with its 'target', the " +
                 "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
                 "there is none). 'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
@@ -1915,7 +1916,11 @@ data class EndpointContractJson(
  *
  * An enum has no [fields]: it carries [enumValues] - the strings written for its constants - or, when it declares a
  * `@JsonValue` member, [jsonValue] naming that member and [valueType] its type. The values of a `@JsonValue` member
- * are computed in code, so they are not listed.
+ * are computed in code, so they are not listed; [enumConstants] lists the constants themselves instead.
+ *
+ * @property enumConstants the declared constant names of a `@JsonValue` enum - NOT the values written on the wire -
+ * so a caller knows how many values there are and which constant each comes from. Absent for an enum without
+ * `@JsonValue`, whose [enumValues] already are its wire values and would only be repeated or contradicted.
  */
 data class DtoSchemaJson(
     val className: String,
@@ -1923,6 +1928,7 @@ data class DtoSchemaJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumValues: List<String>? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val valueType: String? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumConstants: List<String>? = null,
 )
 
 data class DtoFieldJson(
