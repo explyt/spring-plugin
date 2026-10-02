@@ -17,6 +17,7 @@ import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.kotlin.asJava.elements.KtLightField
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.uast.UExpression
 
 /**
  * The dependencies a Spring container hands a bean, as opposed to the objects the bean builds for itself.
@@ -47,12 +48,17 @@ internal object InjectedDependencies {
     }
 
     /**
-     * The injected field of [owner] a call receiver resolves to, or `null` when the receiver is anything else.
+     * The injected field of [owner] a call receiver reads, or `null` when the receiver is anything else.
      *
-     * Inside a Kotlin class a primary-constructor property may resolve to the constructor parameter declaring it rather
-     * than to the field, so a parameter of one of [owner]'s constructors is mapped to the field of the same name.
+     * A local alias of the field counts as the field ([LocalAliases]): `val stats = statsService ?: throw ...` followed
+     * by `stats.activity()` calls the injected bean. Inside a Kotlin class a primary-constructor property may resolve
+     * to the constructor parameter declaring it rather than to the field, so a parameter of one of [owner]'s
+     * constructors is mapped to the field of the same name.
      */
-    fun fieldOf(receiver: PsiElement?, owner: PsiClass): PsiField? {
+    fun fieldOf(receiver: UExpression?, owner: PsiClass): PsiField? =
+        LocalAliases.originOf(receiver)?.let { fieldOf(it, owner) }
+
+    private fun fieldOf(receiver: PsiElement, owner: PsiClass): PsiField? {
         val field = when (receiver) {
             is PsiField -> receiver
             is PsiParameter -> {

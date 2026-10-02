@@ -981,7 +981,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * Every call the handler makes on an injected project bean, in source order, one entry per callee and line.
      *
      * All of them, because the first is often not the one that handles the request: a handler commonly resolves a
-     * tenant, checks access or normalises an argument through another bean before it calls the service.
+     * tenant, checks access or normalises an argument through another bean before it calls the service. A call on a
+     * local alias of the bean - `val stats = statsService ?: throw ...` - is a call on the bean. Source order is the
+     * order of the UAST visit, so an outer call precedes the calls in its arguments.
      */
     private fun injectedBeanCallsOf(
         psiMethod: PsiMethod,
@@ -1001,18 +1003,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val calls = mutableListOf<ServiceCallJson>()
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
-                val receiver = (node.receiver as? UResolvable)?.resolve()
-                val field = when (receiver) {
-                    is PsiField -> receiver.takeIf { it in beanFields }
-                    is PsiParameter -> {
-                        val constructor = receiver.declarationScope as? PsiMethod
-                        beanFields.firstOrNull { it.name == receiver.name
-                                && it.type == receiver.type
-                                && constructor?.isConstructor == true
-                                && constructor.containingClass == it.containingClass }
-                    }
-                    else -> null
-                } ?: return false
+                val field = InjectedDependencies.fieldOf(node.receiver, controllerClass)
+                    ?.takeIf { it in beanFields } ?: return false
                 val callee = node.resolve() ?: return false
                 val receiverClass = (field.type as? PsiClassType)?.resolve() ?: return false
                 val calleeClass = callee.containingClass ?: return false
