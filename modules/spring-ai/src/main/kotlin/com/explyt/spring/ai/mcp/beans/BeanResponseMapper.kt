@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiMember
+import java.time.Instant
 
 /**
  * Turns one answer into the fixed JSON projection the tool promises.
@@ -60,11 +61,18 @@ class BeanResponseMapper(private val project: Project) {
         )
         node.put("application", snapshot.application.className)
         node.put("module", snapshot.application.moduleName)
-        snapshot.selection.nativeContext?.let { node.put("contextId", it.id) }
+        snapshot.selection.nativeContext?.let { context ->
+            node.put("contextId", context.id)
+            context.importedAt?.let { node.put("snapshotImportedAt", Instant.ofEpochMilli(it).toString()) }
+        }
 
+        // What the model cannot promise as a whole, and what the records this answer depended on cannot - the
+        // candidates it returns and the records it could not decide about. The limitations of records the query
+        // never touched say nothing about this answer.
         val limitations = node.putArray("limitations")
-        (snapshot.limitations + snapshot.selection.limitations + selection.match.limitations)
-            .sorted()
+        (snapshot.selection.limitations + selection.match.limitations +
+                selection.match.records.flatMap { it.limitations })
+            .toSortedSet()
             .forEach { limitations.add(it) }
         return node
     }

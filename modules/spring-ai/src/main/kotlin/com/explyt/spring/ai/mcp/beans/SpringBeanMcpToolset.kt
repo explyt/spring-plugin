@@ -31,9 +31,15 @@ class SpringBeanMcpToolset : McpToolset {
                 "does not prove component-scan or profile isolation, NATIVE is a recorded context that may be out " +
                 "of date, and AUTO prefers a recorded context when one is loaded. The answer names the model that " +
                 "actually answered in 'model.source' - STATIC or NATIVE_SNAPSHOT - and neither proves the " +
-                "application starts or that injection succeeds at runtime. " +
-                "'outcome' is INDETERMINATE, and 'matchCompleteness' PARTIAL, whenever something could not be " +
-                "decided; 'NONE' means nothing matched in that model, never that no declaration exists. " +
+                "application starts or that injection succeeds at runtime. A NATIVE_SNAPSHOT answer carries " +
+                "'model.snapshotImportedAt' (ISO-8601 UTC, absent when unknown): when sources changed after it, " +
+                "pass source=STATIC for an answer read from them - AUTO never switches by itself. " +
+                "'outcome' is INDETERMINATE, and 'matchCompleteness' PARTIAL, whenever a record that could answer " +
+                "this query could not be decided, and 'unresolvedCount' counts those records; a record whose class " +
+                "is gone and that is not recorded as the queried type does not count. 'model.limitations' holds " +
+                "what the model cannot promise as a whole and what the returned and undecided records cannot, " +
+                "never the limitations of unrelated beans. " +
+                "'NONE' means nothing matched in that model, never that no declaration exists. " +
                 "For an injection point, 'required' and 'hasDefaultValue' are independent of whether a " +
                 "candidate exists, and null means unknown rather than optional. " +
                 "Returns at most 'limit' candidates (5 by default) within 'maxChars' of compact JSON (1800 by " +

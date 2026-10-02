@@ -127,8 +127,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "model: it includes @Bean factory methods, meta-annotated stereotypes and @Import-ed configurations, " +
                 "which a text search for '@Service' or '@Component' never finds. " +
                 "Returns each bean's name, fully-qualified class and module, one row per name a bean answers to. " +
-                "Every row also names the model that answered in 'source' - STATIC or NATIVE_SNAPSHOT - with " +
-                "'contextId' for a loaded context and 'limitations' for what that model cannot promise. " +
+                "Every row also names the model that answered in 'source': STATIC is an estimate of the module, " +
+                "NATIVE_SNAPSHOT a context recorded at 'snapshotImportedAt' (ISO-8601 UTC, absent when unknown) " +
+                "and never live, with 'contextId' naming it. 'limitations' appears only on a row whose own bean " +
+                "has one, such as ALIASES_NOT_EXPORTED (the bean may answer to names the context did not export). " +
+                "When sources changed after 'snapshotImportedAt', pass source=STATIC for an answer read from them. " +
                 "An empty 'moduleName' means the bean has no module in this project - a library bean, or one a " +
                 "loaded context reports without project sources; the bean is still listed. " +
                 "By default the answer comes from a loaded application context when one is available and from the " +
@@ -186,7 +189,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
         val beans = springBeans.asSequence()
             .filter { it.beanType == mcpBeanType }
-            .map { McpSpringBean(it.beanName, it.className, it.moduleName, it.source, it.contextId, it.limitations) }
+            .map {
+                McpSpringBean(
+                    it.beanName, it.className, it.moduleName, it.source, it.contextId, it.snapshotImportedAt,
+                    it.limitations
+                )
+            }
             .toList()
         return mapper.writeValueAsString(beans)
     }
@@ -1682,7 +1690,9 @@ data class McpSpringBean(
     @param:McpDescription("model that answered: STATIC or NATIVE_SNAPSHOT") val source: String,
     @param:McpDescription("loaded context the row comes from; absent for STATIC")
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val contextId: String?,
-    @param:McpDescription("what the answering model cannot promise about this row")
+    @param:McpDescription("when the loaded context was last imported, ISO-8601 UTC; absent for STATIC or when unknown")
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val snapshotImportedAt: String?,
+    @param:McpDescription("what the model cannot promise about this row's own bean; absent when nothing")
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val limitations: List<String>,
 )
 

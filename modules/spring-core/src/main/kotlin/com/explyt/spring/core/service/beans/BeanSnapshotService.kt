@@ -50,10 +50,7 @@ class BeanSnapshotService(private val project: Project) {
             application = identity,
             selection = selection,
             modelStamp = modelStampOf(selection),
-            records = records,
-            // The selector already stated what the chosen source cannot promise; the reader's own limitations are
-            // added to that set rather than replacing it.
-            limitations = selection.limitations + records.flatMapTo(mutableSetOf()) { it.limitations }
+            records = records
         )
     }
 
