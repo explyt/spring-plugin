@@ -10,6 +10,7 @@ import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.HTTP_METHOD_FILTER
 import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.loader.EndpointExposure
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.view.nodes.EndpointNavigable
@@ -362,7 +363,8 @@ class EndpointsToolWindow(private val project: Project) :
         return element.requestMethods.asSequence()
             .map {
                 EndpointElementViewData(
-                    element.type, element.psiElement.toSmartPointer(), classOrFileName, it, element.path
+                    element.type, element.psiElement.toSmartPointer(), classOrFileName, it, element.path,
+                    element.exposure
                 )
             }
             .sortedBy { it.classOrFileName + it.method }
@@ -388,7 +390,8 @@ data class EndpointElementViewData(
     val psiPointer: SmartPsiElementPointer<PsiElement>,
     val classOrFileName: String,
     val method: String,
-    val path: String
+    val path: String,
+    val exposure: EndpointExposure? = null,
 )
 
 data class EndpointViewWithContainerName(val classOrFileName: String, val list: List<EndpointElementViewData>)

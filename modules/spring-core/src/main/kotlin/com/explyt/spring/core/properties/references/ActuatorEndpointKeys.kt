@@ -57,8 +57,25 @@ object ActuatorEndpointKeys {
         if (DumbService.isDumb(module.project)) return emptyMap()
         return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result(
-                findEndpoints(module),
+                findEndpoints(module, GlobalSearchScope.moduleWithDependenciesScope(module)),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
+            )
+        }
+    }
+
+    /**
+     * The endpoints the libraries on [module]'s classpath declare, by id: Boot's own `health`, `info`, `env`... and any
+     * a starter adds. They are endpoints the application serves, so the endpoint model lists them; they are never
+     * a source of `management.endpoint.<id>.*` keys, which their library already ships as metadata.
+     *
+     * A library without the Actuator auto-configuration registers none of them, so none are reported for it.
+     */
+    fun libraryEndpointsById(module: Module): Map<String, List<ActuatorEndpoint>> {
+        if (DumbService.isDumb(module.project)) return emptyMap()
+        return CachedValuesManager.getManager(module.project).getCachedValue(module) {
+            CachedValueProvider.Result(
+                findLibraryEndpoints(module),
+                ModificationTrackerManager.getInstance(module.project).getLibraryTracker()
             )
         }
     }
@@ -105,7 +122,15 @@ object ActuatorEndpointKeys {
         return references.toTypedArray()
     }
 
-    private fun findEndpoints(module: Module): Map<String, List<ActuatorEndpoint>> {
+    private fun findLibraryEndpoints(module: Module): Map<String, List<ActuatorEndpoint>> {
+        val libraries = GlobalSearchScope.moduleWithLibrariesScope(module)
+            .intersectWith(GlobalSearchScope.notScope(GlobalSearchScope.moduleWithDependenciesScope(module)))
+        val autoConfigured = JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, libraries) != null
+        return if (autoConfigured) findEndpoints(module, libraries) else emptyMap()
+    }
+
+    private fun findEndpoints(module: Module, scope: GlobalSearchScope): Map<String, List<ActuatorEndpoint>> {
         // Read inside the provider, never captured by it: the provider of the first call is the one the platform
         // keeps for the lifetime of the module, so a gate evaluated outside would answer for the classpath as it
         // was when the cache was first populated - `.access` staying unresolved for the rest of the session.
@@ -124,14 +149,11 @@ object ActuatorEndpointKeys {
             val annotationName = annotationClass.qualifiedName ?: continue
             // An endpoint class is not a bean by virtue of the annotation - `@Endpoint` carries only `@Reflective` -
             // so it is found by annotation search, not through the bean model.
-            // The endpoint may live in a module the configuration module depends on — a shared starter
-            // declaring `@Endpoint` next to the application module holding `application.yaml` (issue #382).
-            // Dependencies are in, libraries are out: Boot's own endpoints already ship metadata, and
-            // synthesizing their keys again would duplicate every completion and navigation target.
-            AnnotatedElementsSearch.searchPsiClasses(
-                annotationClass,
-                GlobalSearchScope.moduleWithDependenciesScope(module)
-            ).forEach { psiClass ->
+            // For keys the scope is the module with its dependencies — a shared starter may declare `@Endpoint`
+            // next to the application module holding `application.yaml` (issue #382) — and never its libraries:
+            // Boot's own endpoints already ship metadata, and synthesizing their keys again would duplicate every
+            // completion and navigation target.
+            AnnotatedElementsSearch.searchPsiClasses(annotationClass, scope).forEach { psiClass ->
                 toEndpoint(psiClass, annotationName, accessAvailable)
                     ?.let { result.getOrPut(it.id) { mutableListOf() } += it }
             }
