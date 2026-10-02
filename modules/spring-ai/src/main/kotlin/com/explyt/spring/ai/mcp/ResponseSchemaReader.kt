@@ -54,10 +54,17 @@ internal object ResponseSchemaReader {
     }
 
     private fun enumSchemaOf(enum: PsiClass, fqn: String): DtoSchemaJson {
+        val constants = enum.fields.filterIsInstance<PsiEnumConstant>()
         jsonValueOf(enum)?.let { (member, valueType) ->
-            return DtoSchemaJson(className = fqn, fields = null, jsonValue = member, valueType = valueType)
+            return DtoSchemaJson(
+                className = fqn,
+                fields = null,
+                jsonValue = member,
+                valueType = valueType,
+                enumConstants = constants.map { it.name },
+            )
         }
-        val values = enum.fields.filterIsInstance<PsiEnumConstant>().map { constant ->
+        val values = constants.map { constant ->
             renamedTo(annotationOf(constant, JacksonClasses.JSON_PROPERTY)) ?: constant.name
         }
         return DtoSchemaJson(className = fqn, fields = null, enumValues = values)

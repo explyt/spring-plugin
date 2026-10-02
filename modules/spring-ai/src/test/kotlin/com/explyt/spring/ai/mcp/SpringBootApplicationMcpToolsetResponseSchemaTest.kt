@@ -46,7 +46,10 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
 
         val schema = responseSchema("/api/schema/status")
 
-        assertEquals(setOf("className", "enumValues"), schema.fieldNames().asSequence().toSet())
+        assertEquals(
+            "Its wire values are already listed, so no constant list repeats them",
+            setOf("className", "enumValues"), schema.fieldNames().asSequence().toSet()
+        )
         assertEquals(listOf("PAID", "SHIPPED"), schema["enumValues"].map { it.asText() })
     }
 
@@ -77,9 +80,12 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
 
         val schema = responseSchema("/api/schema/status")
 
-        assertEquals(setOf("className", "jsonValue", "valueType"), schema.fieldNames().asSequence().toSet())
+        assertEquals(
+            setOf("className", "jsonValue", "valueType", "enumConstants"), schema.fieldNames().asSequence().toSet()
+        )
         assertEquals("wireName", schema["jsonValue"].asText())
         assertEquals("java.lang.String", schema["valueType"].asText())
+        assertEquals(listOf("PAID", "SHIPPED"), schema["enumConstants"].map { it.asText() })
     }
 
     fun testJavaEnumWithJsonValueFieldNamesThatField() = runBlocking<Unit> {
@@ -98,9 +104,12 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
 
         val schema = responseSchema("/api/schema/status")
 
-        assertEquals(setOf("className", "jsonValue", "valueType"), schema.fieldNames().asSequence().toSet())
+        assertEquals(
+            setOf("className", "jsonValue", "valueType", "enumConstants"), schema.fieldNames().asSequence().toSet()
+        )
         assertEquals("code", schema["jsonValue"].asText())
         assertEquals("int", schema["valueType"].asText())
+        assertEquals(listOf("PAID", "SHIPPED"), schema["enumConstants"].map { it.asText() })
     }
 
     fun testKotlinEnumWithJsonValuePropertyNamesThatMember() = runBlocking<Unit> {
@@ -131,9 +140,15 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
 
         val basis = field(responseSchema("/api/schema/activity"), "basis")["nested"]
 
-        assertEquals(setOf("className", "jsonValue", "valueType"), basis.fieldNames().asSequence().toSet())
+        assertEquals(
+            setOf("className", "jsonValue", "valueType", "enumConstants"), basis.fieldNames().asSequence().toSet()
+        )
         assertEquals("wireName", basis["jsonValue"].asText())
         assertEquals("java.lang.String", basis["valueType"].asText())
+        assertEquals(
+            "The constant names, not the lower-cased wire values",
+            listOf("RENDERED", "HEURISTIC"), basis["enumConstants"].map { it.asText() }
+        )
         assertTrue("No JDK internals of java.lang.Enum, got $basis", basis["fields"] == null)
     }
 
