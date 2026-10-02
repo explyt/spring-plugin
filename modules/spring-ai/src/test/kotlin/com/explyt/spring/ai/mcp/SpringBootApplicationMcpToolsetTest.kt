@@ -179,15 +179,12 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertNotNull("Expected systemClock among ${texts(beans, "beanName")}", clock)
         assertEquals("java.time.Clock", clock!!["className"].asText())
         assertEquals(
-            "A row names the bean and the model that answered, and nothing else",
-            setOf("beanName", "className", "moduleName", "source", "limitations"),
+            "A row names the bean and the model that answered, and nothing else: what the model cannot promise " +
+                    "as a whole follows from 'source' and is not repeated on every row",
+            setOf("beanName", "className", "moduleName", "source"),
             clock.fieldNames().asSequence().toSet()
         )
-        assertEquals("STATIC", clock["source"].asText())
-        assertTrue(
-            "A static answer must say it is a module estimate",
-            clock["limitations"].map { it.asText() }.contains("STATIC_CONTEXT_APPROXIMATE")
-        )
+        assertEquals("A static answer says it is the module estimate through its source", "STATIC", clock["source"].asText())
     }
 
     fun testFindEndpoint() = runBlocking<Unit> {
