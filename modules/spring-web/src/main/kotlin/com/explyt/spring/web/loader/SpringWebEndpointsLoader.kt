@@ -68,6 +68,8 @@ data class Referrer(
 /**
  * @property path the path the application serves, with configuration placeholders resolved.
  * @property pathTemplate the path as declared, placeholders included; equal to [path] when nothing was resolved.
+ * @property exposure whether the configuration publishes the endpoint over HTTP; `null` for an endpoint that is
+ * served whenever it is declared, which is every kind but an Actuator endpoint.
  */
 data class EndpointElement(
     val path: String,
@@ -77,7 +79,17 @@ data class EndpointElement(
     val containingFile: PsiFile?,
     val type: EndpointType,
     val pathTemplate: String = path,
+    val exposure: EndpointExposure? = null,
 )
+
+/** Whether an Actuator endpoint answers over HTTP, as `management.endpoints.web.exposure` decides it. */
+enum class EndpointExposure {
+    EXPOSED,
+    NOT_EXPOSED,
+
+    /** The configuration holds a value the IDE cannot read, such as a placeholder no configuration file resolves. */
+    UNKNOWN,
+}
 
 sealed class EndpointData {
     data class ReferrerData(val referrer: Referrer) : EndpointData()
