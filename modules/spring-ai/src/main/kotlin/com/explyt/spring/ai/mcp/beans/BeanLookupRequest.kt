@@ -52,14 +52,17 @@ data class BeanLookupRequest(
             invalid("column narrows an injection point; it has no meaning for a bean selector.")
         }
 
-        val preference = SOURCES[source] ?: invalid("source must be one of ${SOURCES.keys.joinToString(", ")}.")
+        val preference = sourceOrNull() ?: invalid("Unknown source '${source.trim()}'. Valid values: ${SOURCES.keys.joinToString(", ")}.")
         if (contextId != null && preference == BeanSourcePreference.STATIC) {
             invalid("The static model has no loaded context, so contextId cannot apply to it.")
         }
     }
 
     /** Valid only after [validate]. */
-    fun source(): BeanSourcePreference = SOURCES.getValue(source)
+    fun source(): BeanSourcePreference = sourceOrNull()!!
+
+    /** Case-insensitive, as every other choice argument of the Spring MCP tools. */
+    private fun sourceOrNull(): BeanSourcePreference? = SOURCES[source.trim().uppercase()]
 
     fun mode(): String = if (filePath != null) MODE_INJECTION else MODE_LOOKUP
 
@@ -71,7 +74,7 @@ data class BeanLookupRequest(
      */
     fun normalizedQuery(): Map<String, String?> = mapOf(
         "application" to applicationClassName,
-        "source" to source,
+        "source" to source.trim().uppercase(),
         "contextId" to contextId,
         "typeFqn" to typeFqn,
         "beanName" to beanName,
