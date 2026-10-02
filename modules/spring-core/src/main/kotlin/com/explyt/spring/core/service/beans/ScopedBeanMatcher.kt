@@ -14,6 +14,7 @@ import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiType
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.TypeConversionUtil
 
 /**
  * Finds the beans of an already selected snapshot, by exact name or by assignable type.
@@ -70,9 +71,11 @@ class ScopedBeanMatcher(private val project: Project) {
      * receives. This asks which beans exist, so applying them would drop exactly the alternatives that make an
      * injection ambiguous. The injection resolver layers its own selection on top of this result.
      *
-     * A record whose declared type is absent from the selected classpath is neither kept nor dropped: it is
-     * counted as unresolved. Dropping it would report "this bean is not compatible", which the model never
-     * established - the class it names simply could not be read in this application's scope.
+     * A record whose compatibility cannot be decided is neither kept nor dropped: it is counted as unresolved, and
+     * only the limitations of such records are reported. Dropping it would report "this bean is not compatible",
+     * which the model never established. A record that cannot be read but also cannot be an answer to this query
+     * is excluded instead - see [couldBeCandidate] - so a broken bean elsewhere in the snapshot does not make the
+     * answer about a healthy type indeterminate.
      */
     fun matchType(records: List<ScopedBeanRecord>, target: PsiType): BeanMatch {
         val matched = mutableListOf<ScopedBeanRecord>()
@@ -85,13 +88,20 @@ class ScopedBeanMatcher(private val project: Project) {
             when (isAssignable(declaredType, target)) {
                 true -> matched += record
                 false -> Unit
-                null -> {
-                    unresolved++
-                    limitations += if (declaredType == null || declaredType.isUnreadable()) {
-                        TYPE_NOT_RESOLVABLE_IN_SCOPE
-                    } else {
-                        TYPE_ARGUMENTS_NOT_COMPARABLE
+                null -> when {
+                    declaredType != null && !declaredType.isUnreadable() -> {
+                        unresolved++
+                        limitations += TYPE_ARGUMENTS_NOT_COMPARABLE
+                        limitations += record.limitations
                     }
+
+                    couldBeCandidate(record, target) -> {
+                        unresolved++
+                        limitations += TYPE_NOT_RESOLVABLE_IN_SCOPE
+                        limitations += record.limitations
+                    }
+
+                    else -> Unit
                 }
             }
         }
@@ -161,6 +171,38 @@ class ScopedBeanMatcher(private val project: Project) {
     }
 
     private fun PsiType.isUnreadable(): Boolean = this is PsiClassType && resolve() == null
+
+    /**
+     * Whether a record whose declared type cannot be read in the application's classpath could still be one of
+     * [target]'s beans.
+     *
+     * The record is tested by the fully qualified type the model recorded for it, never by simple name:
+     * - the model never recorded the bean's own type ([ScopedBeanRecord.recordedTypeFqn] is `null`): it could
+     *   be anything, so it counts;
+     * - the recorded type is declared more than once in the classpath: it could be any of those declarations, so
+     *   it counts;
+     * - the recorded type is the queried type itself: it counts;
+     * - the recorded type is still declared somewhere in the project - in a module or library this application
+     *   does not depend on - and that declaration inherits from the queried type: it counts. The wider scope only
+     *   decides whether the record stays undecided; it never makes the record a match.
+     *
+     * Every other record is excluded: a class declared nowhere has no hierarchy to inspect, so whether it was a
+     * subtype when the snapshot was taken is something no reader can establish, and counting it would make every
+     * query over a stale snapshot indeterminate. Staleness of the snapshot as a whole is reported through its
+     * import time instead, so the caller can ask the static model when the sources changed after it.
+     */
+    private fun couldBeCandidate(record: ScopedBeanRecord, target: PsiType): Boolean {
+        val recorded = record.recordedTypeFqn ?: return true
+        if (NativeBeanSnapshotReader.AMBIGUOUS_TYPE_IN_SCOPE in record.limitations) return true
+        val targetFqn = erasedNameOf(target)
+        if (recorded == targetFqn) return true
+        return JavaPsiFacade.getInstance(project)
+            .findClasses(recorded, GlobalSearchScope.allScope(project))
+            .any { InheritanceUtil.isInheritor(it, true, targetFqn) }
+    }
+
+    private fun erasedNameOf(type: PsiType): String =
+        (type as? PsiClassType)?.resolve()?.qualifiedName ?: TypeConversionUtil.erasure(type).canonicalText
 
     /**
      * Whether the mismatch came from an argument the rule could not substitute rather than from an incompatible

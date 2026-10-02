@@ -20,6 +20,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiMember
 import com.intellij.psi.util.InheritanceUtil
+import java.time.Instant
 
 /**
  * The beans of one application, for the MCP listing.
@@ -47,7 +48,7 @@ class McpBeanSearchService(private val project: Project) {
         val provenance = Provenance(
             source = snapshot.selection.source.name,
             contextId = snapshot.selection.nativeContext?.id,
-            limitations = snapshot.selection.limitations
+            snapshotImportedAt = snapshot.selection.nativeContext?.importedAt?.let { Instant.ofEpochMilli(it).toString() }
         )
         return snapshot.records.asSequence()
             .onEach { ProgressManager.checkCanceled() }
@@ -55,8 +56,13 @@ class McpBeanSearchService(private val project: Project) {
             .toList()
     }
 
-    /** Which model answered, so a static estimate is never read as a recorded context. */
-    private data class Provenance(val source: String, val contextId: String?, val limitations: Set<String>)
+    /**
+     * Which model answered, so a static estimate is never read as a recorded context.
+     *
+     * What the model cannot promise as a whole follows from [source] alone - a static estimate of the module, or
+     * a recorded context that is never live - so it is not repeated as a limitation on every row.
+     */
+    private data class Provenance(val source: String, val contextId: String?, val snapshotImportedAt: String?)
 
     /**
      * One row per known name.
@@ -72,9 +78,14 @@ class McpBeanSearchService(private val project: Project) {
         val className = typeName ?: return emptySequence()
         val type = beanType(mappingClasses)
         val module = declarationModule ?: declaration?.projectModule() ?: ""
-        val rowLimitations = (provenance.limitations + limitations).sorted()
+        val rowLimitations = limitations.sorted()
         return knownNames.ifEmpty { setOf(name) }.asSequence()
-            .map { SpringBean(it, className, type, module, provenance.source, provenance.contextId, rowLimitations) }
+            .map {
+                SpringBean(
+                    it, className, type, module,
+                    provenance.source, provenance.contextId, provenance.snapshotImportedAt, rowLimitations
+                )
+            }
     }
 
     private fun PsiMember.projectModule(): String? =
@@ -148,6 +159,7 @@ data class SpringBean(
     val moduleName: String,
     val source: String,
     val contextId: String?,
+    val snapshotImportedAt: String?,
     val limitations: List<String>,
 )
 

@@ -108,7 +108,7 @@ class BeanSnapshotServiceTest : ExplytKotlinLightTestCase() {
         assertEquals(BeanModelSource.STATIC, snapshot.selection.source)
         assertTrue(
             "A static answer must say it is a module estimate",
-            BeanContextSelector.STATIC_CONTEXT_APPROXIMATE in snapshot.limitations
+            BeanContextSelector.STATIC_CONTEXT_APPROXIMATE in snapshot.selection.limitations
         )
     }
 

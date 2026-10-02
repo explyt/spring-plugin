@@ -97,8 +97,10 @@ class BeanResponseMapperTest : ExplytJavaLightTestCase() {
         assertFalse("An unread primary flag must stay absent", withoutFacts.has("primary"))
     }
 
+    /** The limitations of the bean the answer returns are part of it; those of beans it never touched are not. */
     fun testModelReportsSourcePrecisionAndSortedLimitations() {
-        val content = map(listOf(record("b-1", "clock")), includeDetails = false, native = true)
+        val returned = record("b-1", "clock").copy(limitations = setOf("ALIASES_NOT_EXPORTED"))
+        val content = map(listOf(returned), includeDetails = false, native = true)
 
         val model = content.model
         assertEquals("NATIVE_SNAPSHOT", model["source"].asText())
@@ -161,7 +163,6 @@ class BeanResponseMapperTest : ExplytJavaLightTestCase() {
             BeanContextSelection(BeanModelSource.STATIC, null, setOf("STATIC_CONTEXT_APPROXIMATE"))
         },
         modelStamp = "stamp",
-        records = records,
-        limitations = if (native) setOf("ALIASES_NOT_EXPORTED") else emptySet()
+        records = records
     )
 }

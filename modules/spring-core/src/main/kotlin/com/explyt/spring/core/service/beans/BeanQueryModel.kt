@@ -46,6 +46,9 @@ data class BeanApplicationIdentity(
  *
  * [identityProven] is false when the root cannot be tied to an application beyond doubt; such a root is never
  * selected automatically, because answering from the wrong application is worse than reporting an ambiguity.
+ *
+ * [importedAt] is when the root was last imported successfully, in epoch milliseconds, and `null` when the IDE
+ * does not know. A snapshot is never live, so this is the only way to tell whether sources changed after it.
  */
 data class NativeBeanContext(
     val id: String,
@@ -53,7 +56,8 @@ data class NativeBeanContext(
     val linkedPath: String,
     val applicationClassName: String?,
     val mainSourceKey: String?,
-    val identityProven: Boolean
+    val identityProven: Boolean,
+    val importedAt: Long? = null
 )
 
 /** The resolved model for one query: which source answers it, which native root, and what it cannot promise. */
@@ -107,6 +111,10 @@ data class BeanDetailsEvidence(
  * without a second lookup; [name] is the canonical one. [declaration] and [declaredType] stay null when the
  * model knows the bean but its PSI is not resolvable in the selected application's classpath - dropping such a
  * record would report a bean that exists as absent.
+ *
+ * [recordedTypeFqn] is the fully qualified name the model itself recorded for the bean's own type, independent
+ * of whether that name resolves today. It stays `null` when the model never named the type - a factory bean
+ * exported without its return type, or a record read from source - and [typeName] is then only a display name.
  */
 data class ScopedBeanRecord(
     val id: String,
@@ -121,11 +129,16 @@ data class ScopedBeanRecord(
     val priority: Int?,
     val details: BeanDetailsEvidence,
     val limitations: Set<String>,
-    val runtimeRole: String? = null
+    val runtimeRole: String? = null,
+    val recordedTypeFqn: String? = null
 )
 
 /**
- * The beans of one chosen model, with what that model cannot promise.
+ * The beans of one chosen model.
+ *
+ * What the model cannot promise as a whole is [BeanContextSelection.limitations]; what one record cannot promise
+ * stays on that record. Their union is deliberately not kept here: reporting every record's limitations with
+ * every answer blamed a query about a healthy type for the broken records it never depended on.
  *
  * [modelStamp] fingerprints the state the records were read from; a continuation computed against a different
  * stamp describes a different model and must not be served as the next page of this one.
@@ -134,8 +147,7 @@ data class ScopedBeanSnapshot(
     val application: BeanApplicationIdentity,
     val selection: BeanContextSelection,
     val modelStamp: String,
-    val records: List<ScopedBeanRecord>,
-    val limitations: Set<String>
+    val records: List<ScopedBeanRecord>
 )
 
 /** What a lookup asks for. Both filters may be set, and then they intersect rather than widen. */

@@ -251,8 +251,7 @@ class ScopedBeanMatcherTest : ExplytJavaLightTestCase() {
         application = BeanApplicationIdentity("com.explyt.demo.App", module.name, "app-source"),
         selection = BeanContextSelection(BeanModelSource.NATIVE_SNAPSHOT, null, emptySet()),
         modelStamp = "stamp",
-        records = records.toList(),
-        limitations = emptySet()
+        records = records.toList()
     )
 
     private fun typeOf(fqn: String, vararg argumentFqns: String): PsiType {
