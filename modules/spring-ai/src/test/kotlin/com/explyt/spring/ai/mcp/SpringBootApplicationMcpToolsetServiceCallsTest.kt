@@ -133,6 +133,44 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(emptyList<String>(), targets(contractOf("/api/java-items/{id}/reassigned")))
     }
 
+    /**
+     * A bean method passed as a callable reference is invoked by the function it is passed to, so it is a call of the
+     * handler on that bean - here through a local copy, after an ordinary call on another bean.
+     */
+    fun testBeanMethodPassedAsAReferenceIsListed() = runBlocking<Unit> {
+        val contract = contractOf("/api/logos/{id}/upload")
+
+        assertEquals(
+            listOf("com.example.app.web.LogoStore.exists", "com.example.app.web.LogoValidator.validate"),
+            targets(contract)
+        )
+        assertEquals(lineOf("input.use(validator::validate)"), contract["serviceCalls"][1]["callLine"].asInt())
+    }
+
+    fun testReferenceOnAConstructorInjectedFieldIsListed() = runBlocking<Unit> {
+        assertEquals(listOf("com.example.app.web.LogoStore.save"), targets(contractOf("/api/logos/batch")))
+    }
+
+    /**
+     * None of these is a call on an injected bean:
+     * - `String::trim` names a JDK method;
+     * - `this::normalize` names the controller's own helper;
+     * - `LogoStore::size` qualifies the method by a type, not by an injected instance;
+     * - `logoStore::capacity` reads a property of the bean, although it resolves to the getter.
+     */
+    fun testReferencesThatAreNotOnAnInjectedBeanAreNotListed() = runBlocking<Unit> {
+        assertEquals(emptyList<String>(), targets(contractOf("/api/logos/names")))
+    }
+
+    fun testJavaMethodReferenceOnAnInjectedFieldIsListed() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/web/JavaItemsController.java", JAVA_SOURCE)
+
+        assertEquals(
+            listOf("com.example.app.web.ItemStatsService.count", "com.example.app.web.ItemStatsService.count"),
+            targets(contractOf("/api/java-items/{id}/referenced"))
+        )
+    }
+
     fun testHandlerWithoutBeanCallsHasAnEmptyList() = runBlocking<Unit> {
         val contract = contractOf("/api/stores/ping")
 
@@ -272,6 +310,46 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
                     return replaced + fresh.count(id)
                 }
             }
+
+            @Service
+            class LogoValidator {
+                fun validate(input: java.io.InputStream): ByteArray = input.readBytes()
+            }
+
+            @Service
+            class LogoStore {
+                fun exists(id: Long): Boolean = id > 0
+                fun save(name: String) = Unit
+                fun size(): Int = 0
+                val capacity: Int get() = 10
+            }
+
+            @RestController
+            @RequestMapping("/api/logos")
+            class LogosController(private val logoValidator: LogoValidator?, private val logoStore: LogoStore) {
+                @GetMapping("/{id}/upload")
+                fun upload(@PathVariable id: Long, @RequestParam input: java.io.InputStream): Int {
+                    val validator = logoValidator ?: throw IllegalStateException("no validator")
+                    if (!logoStore.exists(id)) return 0
+                    val image = input.use(validator::validate)
+                    return image.size
+                }
+
+                @GetMapping("/batch")
+                fun batch(@RequestParam names: List<String>) {
+                    names.forEach(logoStore::save)
+                }
+
+                @GetMapping("/names")
+                fun names(@RequestParam names: List<String>, @RequestParam stores: List<LogoStore>): List<String> {
+                    val sizes = stores.map(LogoStore::size)
+                    val capacity = logoStore::capacity
+                    return names.map(String::trim).map(this::normalize) + sizes.map { it.toString() } +
+                        capacity.get().toString()
+                }
+
+                private fun normalize(name: String): String = name.lowercase()
+            }
         """.trimIndent()
 
         val JAVA_SOURCE = """
@@ -302,6 +380,13 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
                     ItemStatsService stats = statsService;
                     stats = new ItemStatsService();
                     return stats.count(id);
+                }
+
+                @GetMapping("/api/java-items/{id}/referenced")
+                public long referenced(@PathVariable long id) {
+                    java.util.function.LongUnaryOperator viaField = this.statsService::count;
+                    java.util.function.LongUnaryOperator viaName = statsService::count;
+                    return viaField.applyAsLong(id) + viaName.applyAsLong(id + 1);
                 }
             }
         """.trimIndent()
