@@ -7,10 +7,8 @@ package com.explyt.spring.web.util
 
 import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.explyt.spring.core.tracker.ModificationTrackerManager
-import com.explyt.spring.web.SpringWebClasses
 import com.explyt.util.CacheUtils
 import com.intellij.openapi.module.Module
-import com.intellij.psi.JavaPsiFacade
 
 /**
  * The path a Spring Boot application puts in front of every mapping, as its configuration declares it.
@@ -26,9 +24,9 @@ import com.intellij.psi.JavaPsiFacade
 object ApplicationBasePath {
 
     fun of(module: Module): String? {
-        val keys = when (stackOf(module)) {
-            WebStack.SERVLET -> SERVLET_KEYS
-            WebStack.REACTIVE -> REACTIVE_KEYS
+        val keys = when (WebApplicationStack.of(module)) {
+            WebApplicationStack.SERVLET -> SERVLET_KEYS
+            WebApplicationStack.REACTIVE -> REACTIVE_KEYS
             null -> return null
         }
         return keys.asSequence()
@@ -49,17 +47,6 @@ object ApplicationBasePath {
             module, ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
         ) { of(module).orEmpty() }.ifEmpty { null }
 
-    private fun stackOf(module: Module): WebStack? {
-        val facade = JavaPsiFacade.getInstance(module.project)
-        val scope = module.moduleWithLibrariesScope
-        return when {
-            facade.findClass(SpringWebClasses.MVC_DISPATCHER_SERVLET, scope) != null -> WebStack.SERVLET
-            facade.findClass(SpringWebClasses.WEBFLUX_DISPATCHER_HANDLER, scope) != null -> WebStack.REACTIVE
-            else -> null
-        }
-    }
-
-    private enum class WebStack { SERVLET, REACTIVE }
 
     private val SERVLET_KEYS = listOf("server.servlet.context-path", "spring.mvc.servlet.path")
     private val REACTIVE_KEYS = listOf("spring.webflux.base-path")
