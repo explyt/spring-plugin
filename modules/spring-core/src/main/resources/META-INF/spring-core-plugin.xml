@@ -837,6 +837,8 @@
 
         <lang.inspectionSuppressor language="Properties"
                                    implementationClass="com.explyt.spring.core.autoconfigure.AutoConfigureImportsPropertiesInspectionSuppressor"/>
+        <lang.inspectionSuppressor language="yaml"
+                                   implementationClass="com.explyt.spring.core.inspections.SpringConfigurationYamlInspectionSuppressor"/>
 
         <registryKey key="explyt.spring.root.runConfiguration" defaultValue="false"
                      description="Use root class from run configuration for bean search"/>
