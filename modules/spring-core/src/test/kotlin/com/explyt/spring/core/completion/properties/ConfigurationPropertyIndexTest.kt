@@ -174,4 +174,24 @@ class ConfigurationPropertyIndexTest {
         }
         assertSameAsLinear(properties, *queries.toTypedArray())
     }
+
+    @Test
+    fun testEveryProperPrefixOfADeclaredNameIsAGroup() {
+        val index = ConfigurationPropertyIndex.of(listOf(property("spring.security.oauth2.resourceserver.jwt.issuer-uri")))
+
+        listOf("spring", "spring.security.oauth2", "spring.security.oauth2.resourceserver.jwt").forEach {
+            Assert.assertTrue("'$it' leads to a declared property", index.isGroup(it))
+        }
+        Assert.assertFalse("a declared property is not a group", index.isGroup("spring.security.oauth2.resourceserver.jwt.issuer-uri"))
+        Assert.assertFalse("a segment-boundary prefix only", index.isGroup("spring.security.oauth2.resource"))
+    }
+
+    @Test
+    fun testGroupLookupFollowsRelaxedBinding() {
+        val index = ConfigurationPropertyIndex.of(listOf(property("spring.data.redis.client-type"), property("my.main-project.first-name")))
+
+        Assert.assertTrue(index.isGroup("SPRING.DATA.REDIS"))
+        Assert.assertTrue(index.isGroup("my.main_project"))
+        Assert.assertTrue(index.isGroup("my.mainProject"))
+    }
 }

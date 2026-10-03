@@ -70,6 +70,7 @@ dependencies {
             useInstaller = false
         }
         bundledPlugins(intellijPlugins)
+        testBundledPlugin("tanvd.grazi")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
     }

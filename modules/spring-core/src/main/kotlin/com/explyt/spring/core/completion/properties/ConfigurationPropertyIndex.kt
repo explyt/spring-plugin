@@ -29,6 +29,7 @@ class ConfigurationPropertyIndex private constructor(
     private val plain: Map<String, Entry>,
     private val booleanAliased: Map<String, Entry>,
     private val mapsByCommonName: List<Pair<String, ConfigurationProperty>>,
+    private val groups: Set<String>,
 ) {
 
     private class Entry(val order: Int, val property: ConfigurationProperty)
@@ -39,6 +40,12 @@ class ConfigurationPropertyIndex private constructor(
      * once per catalogue entry per looked-up key.
      */
     fun mapProperties(): List<Pair<String, ConfigurationProperty>> = mapsByCommonName
+
+    /**
+     * Whether [name] is a group: a key that no property declares itself but that leads to declared ones, such as
+     * `spring.security.oauth2.resourceserver` above `...resourceserver.jwt.issuer-uri`.
+     */
+    fun isGroup(name: String): Boolean = PropertyUtil.toCommonPropertyForm(name) in groups
 
     fun findProperty(propertyName: String): ConfigurationProperty? {
         val plainHit = plain[PropertyUtil.toCommonPropertyForm(propertyName)]
@@ -66,7 +73,15 @@ class ConfigurationPropertyIndex private constructor(
                 target.putIfAbsent(key, Entry(order, property))
             }
             val maps = properties.filter { it.isMap() }.map { PropertyUtil.toCommonPropertyForm(it.name) to it }
-            return ConfigurationPropertyIndex(plain, booleanAliased, maps)
+            return ConfigurationPropertyIndex(plain, booleanAliased, maps, groupsOf(properties))
         }
+
+        private fun groupsOf(properties: List<ConfigurationProperty>): Set<String> =
+            properties.flatMapTo(HashSet()) { property ->
+                PropertyUtil.keySegments(property.name)
+                    .runningReduce { prefix, segment -> "$prefix.$segment" }
+                    .dropLast(1)
+                    .map(PropertyUtil::toCommonPropertyForm)
+            }
     }
 }
