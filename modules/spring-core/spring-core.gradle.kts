@@ -70,6 +70,7 @@ dependencies {
         create(defaultIdeaType, defaultIdeaVersion, useInstaller = false)
         jetbrainsRuntime()
         bundledPlugins(intellijPlugins)
+        testBundledPlugin("tanvd.grazi")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
     }

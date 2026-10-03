@@ -10,6 +10,7 @@
     <depends>org.jetbrains.plugins.yaml</depends>
     <depends optional="true" config-file="spring-core-terminal.xml">org.jetbrains.plugins.terminal</depends>
     <depends optional="true" config-file="spring-core-sh.xml">com.jetbrains.sh</depends>
+    <depends optional="true" config-file="spring-core-spellchecker.xml">com.intellij.modules.spellchecker</depends>
 
     <extensionPoints>
         <extensionPoint qualifiedName="com.explyt.spring.core.configurationPropertiesLoader" dynamic="true"
