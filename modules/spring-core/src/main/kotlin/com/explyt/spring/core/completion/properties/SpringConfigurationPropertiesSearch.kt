@@ -62,6 +62,12 @@ class SpringConfigurationPropertiesSearch {
         return getPropertyIndex(module).findProperty(propertyName)
     }
 
+    /** Whether [key] is a declared property or a group leading to declared ones, under relaxed binding. */
+    fun isDeclaredKey(module: Module, key: String): Boolean {
+        val index = getPropertyIndex(module)
+        return index.findProperty(key) != null || index.isGroup(key)
+    }
+
     /** Every map property of the catalogue with its normalised name, from the same cached index as [findProperty]. */
     fun getMapPropertiesByCommonName(module: Module): List<Pair<String, ConfigurationProperty>> {
         return getPropertyIndex(module).mapProperties()
