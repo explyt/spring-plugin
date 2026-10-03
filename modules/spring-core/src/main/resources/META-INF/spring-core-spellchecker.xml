@@ -1,0 +1,13 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <spellchecker.support language="yaml" order="first"
+                              implementationClass="com.explyt.spring.core.properties.SpringConfigurationKeySpellcheckingStrategy"/>
+        <spellchecker.support language="Properties" order="first"
+                              implementationClass="com.explyt.spring.core.properties.SpringConfigurationKeySpellcheckingStrategy"/>
+    </extensions>
+</idea-plugin>
