@@ -69,8 +69,11 @@ class PackageScanService(private val project: Project) {
             .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { normalizePackage(it) } }
         val rootComponentQualified = moduleRootDataList.mapNotNullTo(mutableSetOf()) { it.rootComponentQualified }
         val importQualified = importClasses.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
+        val scannedRootsByModuleName = scanModuleData
+            .mapNotNull { data -> data.declaringClass?.let { data.moduleName to ScannedRoot(it, data.packages) } }
+            .groupBy({ it.first }, { it.second })
 
-        return RootDataHolder(packagesByModuleName, rootComponentQualified, importQualified)
+        return RootDataHolder(packagesByModuleName, rootComponentQualified, importQualified, scannedRootsByModuleName)
     }
 
     private fun getComponentScanClasses(
@@ -160,7 +163,7 @@ class PackageScanService(private val project: Project) {
 
         val allPackages = packages + packagesScans
         if (allPackages.isEmpty()) return null
-        return ModuleRootData(module.name, allPackages)
+        return ModuleRootData(module.name, allPackages, declaringClass = psiClass.qualifiedName)
     }
 
     private fun getImportClasses(psiClass: PsiClass): Set<PsiClass> {
@@ -314,8 +317,15 @@ class PackageScanService(private val project: Project) {
         }
     }
 
+    /**
+     * @property rootComponentQualified the application class, for an application's own root.
+     * @property declaringClass the configuration that declares the scan, for a root found on a scanned configuration.
+     */
     data class ModuleRootData(
-        val moduleName: String, val packages: Set<String>, val rootComponentQualified: String? = null
+        val moduleName: String,
+        val packages: Set<String>,
+        val rootComponentQualified: String? = null,
+        val declaringClass: String? = null,
     )
 
     private data class ScanAnnotationHolder(
@@ -325,10 +335,20 @@ class PackageScanService(private val project: Project) {
     )
 }
 
+/**
+ * The packages the application context of each module scans.
+ *
+ * @property packagesByModuleName every scan root, keyed by the module that declares it: an application's own root and
+ * the `@ComponentScan`/`@Import` roots of the configurations it reaches.
+ * @property scannedRootsByModuleName the `@ComponentScan` roots declared by scanned configurations, keyed by the
+ * configuration's module. These are what a dependency module adds to an application that scans it. A dependency module's
+ * own `@SpringBootApplication` root belongs to that other application and is never among them.
+ */
 data class RootDataHolder(
     private val packagesByModuleName: Map<String, Set<String>>,
     val rootComponentQualified: Set<String>,
-    val importQualified: Set<String>
+    val importQualified: Set<String>,
+    private val scannedRootsByModuleName: Map<String, List<ScannedRoot>> = emptyMap(),
 ) {
     fun isEmpty() = packagesByModuleName.isEmpty()
 
@@ -339,7 +359,7 @@ data class RootDataHolder(
         val dependentModules = ModuleManager.getInstance(module.project).getModuleDependentModules(module)
         val dependentPackages = dependentModules
             .flatMapTo(mutableSetOf()) { packagesByModuleName.getOrDefault(it.name, emptySet()) }
-        val resultPackages = dependentPackages + packages
+        val resultPackages = dependentPackages + packages + scannedPackagesOfDependencies(module, packages)
         if (resultPackages.isEmpty() && module.name.endsWith(".test")) {
             val mainModuleName = module.name.substringBeforeLast(".test") + ".main"
             val mainModule = ModuleManager.getInstance(module.project)
@@ -348,4 +368,20 @@ data class RootDataHolder(
         }
         return resultPackages
     }
+
+    /**
+     * The `@ComponentScan` roots that configurations in [module]'s dependencies declare, kept only where [module]'s own
+     * scan reaches the configuration that declares them: Spring follows a scan root only from a class it registered.
+     */
+    private fun scannedPackagesOfDependencies(module: Module, ownPackages: Set<String>): Set<String> {
+        if (ownPackages.isEmpty() || scannedRootsByModuleName.isEmpty()) return emptySet()
+        val dependencies = linkedSetOf<Module>().also { ModuleUtilCore.getDependencies(module, it) } - module
+        return dependencies.asSequence()
+            .flatMap { scannedRootsByModuleName[it.name].orEmpty() }
+            .filter { root -> ownPackages.any(root.declaringClass::startsWith) }
+            .flatMapTo(mutableSetOf()) { root -> root.packages.map(PackageScanService::normalizePackage) }
+    }
 }
+
+/** The packages a scanned configuration's `@ComponentScan` adds, and that configuration's qualified name. */
+data class ScannedRoot(val declaringClass: String, val packages: Set<String>)
