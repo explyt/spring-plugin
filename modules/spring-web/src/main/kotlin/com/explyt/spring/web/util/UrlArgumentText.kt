@@ -6,10 +6,13 @@
 package com.explyt.spring.web.util
 
 import com.intellij.psi.CommonClassNames
+import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiType
+import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.ULambdaExpression
 import org.jetbrains.uast.ULiteralExpression
 import org.jetbrains.uast.UParenthesizedExpression
 import org.jetbrains.uast.UPolyadicExpression
@@ -17,6 +20,7 @@ import org.jetbrains.uast.UQualifiedReferenceExpression
 import org.jetbrains.uast.UastBinaryOperator
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.expressions.UInjectionHost
+import org.jetbrains.uast.visitor.AbstractUastVisitor
 
 /**
  * The URL a test request is sent to, read from the expression that builds it.
@@ -25,6 +29,9 @@ import org.jetbrains.uast.expressions.UInjectionHost
  * `"/api/items/" + id` in Java - or wraps the text in `URI.create(...)` or `new URI(...)`. Evaluating such an
  * expression yields nothing, so the request looked like it addressed no endpoint. Every part that is not a compile-time
  * constant is read as one path segment, [VARIABLE_SEGMENT], which a route template matches like any `{name}`.
+ *
+ * A `Function<UriBuilder, URI>` - `uri { it.path("/api/items").queryParam("id", id).build() }` - names its path in
+ * the `path`, `pathSegment` and `replacePath` calls on the builder; the query takes no part in dispatching.
  */
 object UrlArgumentText {
 
@@ -38,14 +45,56 @@ object UrlArgumentText {
      */
     fun of(expression: UExpression): String? {
         val unwrapped = unwrap(expression)
+        if (unwrapped is ULambdaExpression) return uriBuilderPathOf(unwrapped)?.takeIf(::namesAPath)
         uriArgumentOf(unwrapped)?.let { return of(it) }
         if (!isString(unwrapped.getExpressionType())) return null
-        return textOf(unwrapped).takeIf { it.replace(VARIABLE_SEGMENT, "").trim('/').isNotBlank() }
+        return textOf(unwrapped).takeIf(::namesAPath)
     }
 
     /** Whether [method] takes the request URL as a `java.net.URI` argument, and at which index. */
     fun uriParameterIndex(method: PsiMethod): Int =
         method.parameterList.parameters.indexOfFirst { it.type.canonicalText == JAVA_NET_URI }
+
+    /** Whether [method] takes the request URL as a `Function<UriBuilder, URI>`, and at which index. */
+    fun uriBuilderFunctionParameterIndex(method: PsiMethod): Int =
+        method.parameterList.parameters.indexOfFirst { isUriBuilderFunction(it.type) }
+
+    private fun namesAPath(text: String): Boolean = text.replace(VARIABLE_SEGMENT, "").trim('/').isNotBlank()
+
+    /** The path the `path`, `pathSegment` and `replacePath` calls of a URI builder lambda compose, in source order. */
+    private fun uriBuilderPathOf(lambda: ULambdaExpression): String? {
+        val pathCalls = mutableListOf<UCallExpression>()
+        lambda.body.accept(object : AbstractUastVisitor() {
+            override fun visitCallExpression(node: UCallExpression): Boolean {
+                if (node.methodName in URI_BUILDER_PATH_CALLS && isUriBuilderMember(node)) pathCalls += node
+                return false
+            }
+        })
+        if (pathCalls.isEmpty()) return null
+        return pathCalls.fold("") { path, call ->
+            when (call.methodName) {
+                REPLACE_PATH -> call.valueArguments.joinToString("", transform = ::segmentText)
+                PATH_SEGMENT -> path + call.valueArguments.joinToString("") { "/" + segmentText(it) }
+                else -> path + call.valueArguments.joinToString("", transform = ::segmentText)
+            }
+        }
+    }
+
+    private fun segmentText(argument: UExpression): String {
+        val unwrapped = unwrap(argument)
+        return if (isString(unwrapped.getExpressionType())) textOf(unwrapped) else VARIABLE_SEGMENT
+    }
+
+    private fun isUriBuilderMember(call: UCallExpression): Boolean {
+        val owner = call.resolve()?.containingClass ?: return false
+        return owner.qualifiedName == URI_BUILDER || InheritanceUtil.isInheritor(owner, URI_BUILDER)
+    }
+
+    private fun isUriBuilderFunction(type: PsiType): Boolean {
+        val classType = type as? PsiClassType ?: return false
+        if (classType.resolve()?.qualifiedName != JAVA_FUNCTION) return false
+        return classType.parameters.firstOrNull()?.canonicalText == URI_BUILDER
+    }
 
     private fun textOf(expression: UExpression): String {
         expression.evaluateString()?.let { return it }
@@ -86,4 +135,10 @@ object UrlArgumentText {
     private const val JAVA_NET_URI = "java.net.URI"
     private const val URI_FACTORY = "create"
     private const val KOTLIN_STRING = "kotlin.String"
+    private const val JAVA_FUNCTION = "java.util.function.Function"
+    private const val URI_BUILDER = "org.springframework.web.util.UriBuilder"
+    private const val PATH = "path"
+    private const val PATH_SEGMENT = "pathSegment"
+    private const val REPLACE_PATH = "replacePath"
+    private val URI_BUILDER_PATH_CALLS = setOf(PATH, PATH_SEGMENT, REPLACE_PATH)
 }
