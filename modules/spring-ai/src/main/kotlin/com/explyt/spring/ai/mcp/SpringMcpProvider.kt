@@ -897,7 +897,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
                 "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
-                "expanded up to 3 levels: a @JsonProperty name in 'name' with the declared one in 'declaredName', " +
+                "expanded up to 3 levels: in 'name' a @JsonProperty name, else the name the declared Jackson naming " +
+                "strategy gives - @JsonNaming or spring.jackson.property-naming-strategy, reported as 'namingStrategy' " +
+                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared - with " +
+                "the declared one in 'declaredName'; 'nullable' null when an unannotated Java reference leaves it unknown; " +
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
                 "which are not the wire values), produces/consumes media types, and 'serviceCalls': every " +
@@ -988,7 +991,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
-                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3) },
+                ?.let { ResponseSchemaReader.schemaOf(it, depth = 3, module = module) },
             produces = core.produces,
             consumes = core.consumes,
             serviceCall = serviceCalls.firstOrNull(),
@@ -2048,15 +2051,23 @@ data class DtoSchemaJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val valueType: String? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumConstants: List<String>? = null,
+    /**
+     * The Jackson naming strategy that renamed the [fields]: a `PropertyNamingStrategies` constant such as
+     * `SNAKE_CASE`, or `UNKNOWN` when one is declared but cannot be read statically and the names are left as declared.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategy: String? = null,
+    /** Where [namingStrategy] is declared: `@JsonNaming` or `spring.jackson.property-naming-strategy`. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
 )
 
 data class DtoFieldJson(
-    /** The name the field is written under: its `@JsonProperty` value when it has one. */
+    /** The name the field is written under: its `@JsonProperty` value, else the name the naming strategy gives it. */
     val name: String,
-    /** The name the field is declared with, present only when `@JsonProperty` renames it. */
+    /** The name the field is declared with, present only when `@JsonProperty` or a naming strategy renames it. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val declaredName: String?,
     val type: String,
-    val nullable: Boolean,
+    /** `true` when `null` can be written, `false` when it cannot, `null` when an unannotated Java reference leaves it unknown. */
+    val nullable: Boolean?,
     val nested: DtoSchemaJson?,
 )
 
