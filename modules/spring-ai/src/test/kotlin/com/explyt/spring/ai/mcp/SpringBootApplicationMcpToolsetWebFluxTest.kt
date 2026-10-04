@@ -50,4 +50,40 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         assertEquals("QUERY", byName.getValue("file")["source"].asText())
         assertEquals("PART", byName.getValue("metadata")["source"].asText())
     }
+
+    /** A reactive publisher is a container: the client receives its payload, as from `ResponseEntity`. */
+    fun testPublishersAreDescribedByTheirPayload() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/web/Shipment.java", """
+            package com.example.app.web;
+
+            public class Shipment {
+                public long id;
+            }
+        """.trimIndent())
+        myFixture.addFileToProject("com/example/app/web/ShipmentController.java", """
+            package com.example.app.web;
+
+            import org.springframework.http.ResponseEntity;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+            import reactor.core.publisher.Flux;
+            import reactor.core.publisher.Mono;
+
+            @RestController
+            public class ShipmentController {
+                @GetMapping("/api/shipments/one")
+                public Mono<ResponseEntity<Shipment>> one() { return Mono.empty(); }
+
+                @GetMapping("/api/shipments")
+                public Flux<Shipment> all() { return Flux.empty(); }
+            }
+        """.trimIndent())
+
+        for (url in listOf("/api/shipments/one", "/api/shipments")) {
+            val schema = mapper.readTree(toolset.getEndpointContract(urlPattern = url, projectPath = projectPath()))["endpoints"]
+                .single { it["fullPath"].asText() == url }["responseSchema"]
+            assertEquals("$url is described by its payload", "com.example.app.web.Shipment", schema["className"].asText())
+            assertEquals(listOf("id"), schema["fields"].map { it["name"].asText() })
+        }
+    }
 }
