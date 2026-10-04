@@ -6,7 +6,10 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.core.JacksonClasses
+import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.openapi.module.Module
+import com.intellij.psi.PsiClassObjectAccessExpression
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
@@ -18,7 +21,6 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
-import com.intellij.psi.PsiTypes
 import com.intellij.psi.util.PropertyUtilBase
 import org.jetbrains.kotlin.asJava.classes.KtLightClass
 import org.jetbrains.kotlin.asJava.elements.KtLightField
@@ -46,22 +48,36 @@ import org.jetbrains.kotlin.psi.KtTypeReference
  */
 internal object ResponseSchemaReader {
 
-    fun schemaOf(type: PsiType, depth: Int): DtoSchemaJson? {
+    /**
+     * The schema of [type]. [module] is the module of the handler; the naming strategy its configuration declares
+     * applies to every class of the schema that does not declare its own `@JsonNaming`.
+     */
+    fun schemaOf(type: PsiType, depth: Int, module: Module? = null): DtoSchemaJson? =
+        schemaOf(type, depth, module?.let(JacksonNaming::configuredFor))
+
+    private fun schemaOf(type: PsiType, depth: Int, configured: JacksonNaming?): DtoSchemaJson? {
         if (depth <= 0) return null
         val resolved = (type as? PsiClassType)?.resolve() ?: return null
         val fqn = resolved.qualifiedName ?: return null
 
         if (isContainer(resolved, fqn)) {
-            return type.parameters.firstOrNull()?.let { schemaOf(it, depth) }
+            return type.parameters.firstOrNull()?.let { schemaOf(it, depth, configured) }
         }
         if (resolved.isEnum) return enumSchemaOf(resolved, fqn)
 
+        val naming = JacksonNaming.declaredOn(resolved) ?: configured
+        val names = Names(naming, configured)
         val fields = if (isJavaBean(resolved)) {
-            beanPropertiesOf(resolved, depth)
+            beanPropertiesOf(resolved, depth, names)
         } else {
-            fieldsOf(resolved, depth).ifEmpty { propertiesOf(resolved, depth) }
+            fieldsOf(resolved, depth, names).ifEmpty { propertiesOf(resolved, depth, names) }
         }
-        return DtoSchemaJson(className = fqn, fields = fields)
+        return DtoSchemaJson(
+            className = fqn,
+            fields = fields,
+            namingStrategy = naming?.name,
+            namingStrategySource = naming?.source,
+        )
     }
 
     /**
@@ -90,7 +106,7 @@ internal object ResponseSchemaReader {
      * A class with no accessor at all is read by its fields, as before: its accessors are generated at compile time
      * by an annotation processor the IDE does not model, or its mapper is configured for field visibility.
      */
-    private fun beanPropertiesOf(psiClass: PsiClass, depth: Int): List<DtoFieldJson> {
+    private fun beanPropertiesOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> {
         val getters = psiClass.allMethods.filter(::isWrittenGetter)
             .groupBy(::jacksonPropertyName)
             .mapValues { (_, overloads) -> overloads.first() }
@@ -104,8 +120,9 @@ internal object ResponseSchemaReader {
                 wireName = carriers.firstNotNullOfOrNull { renamedTo(it.getAnnotation(JacksonClasses.JSON_PROPERTY)) },
                 type = type,
                 origin = null,
-                nullable = isDeclaredNullable(carriers),
+                nullable = nullabilityOf(type, carriers, null),
                 depth = depth,
+                names = names,
             )
         }
         val publicFields = psiClass.allFields
@@ -117,11 +134,12 @@ internal object ResponseSchemaReader {
                     wireName = renamedTo(field.getAnnotation(JacksonClasses.JSON_PROPERTY)),
                     type = field.type,
                     origin = null,
-                    nullable = isDeclaredNullable(listOf(field)),
+                    nullable = nullabilityOf(field.type, listOf(field), null),
                     depth = depth,
+                    names = names,
                 )
             }
-        return (properties + publicFields).ifEmpty { fieldsOf(psiClass, depth) }
+        return (properties + publicFields).ifEmpty { fieldsOf(psiClass, depth, names) }
     }
 
     private fun isWrittenGetter(method: PsiMethod): Boolean =
@@ -141,8 +159,19 @@ internal object ResponseSchemaReader {
         return base.take(capitals).lowercase() + base.drop(capitals)
     }
 
-    private fun isDeclaredNullable(carriers: List<PsiModifierListOwner>): Boolean =
-        carriers.any { owner -> owner.annotations.any { it.qualifiedName?.contains("Nullable") == true } }
+    /**
+     * Whether `null` can be written for a property: `false` for a primitive, a Kotlin non-null type or a
+     * `@NotNull`-family annotation; `true` for a Kotlin `T?` or a `@Nullable`-family annotation; `null` - unknown -
+     * for an unannotated Java reference, which a client must not read as a guarantee either way.
+     */
+    private fun nullabilityOf(type: PsiType, carriers: List<PsiModifierListOwner>, origin: KtCallableDeclaration?): Boolean? {
+        if (type is PsiPrimitiveType) return false
+        origin?.typeReference?.typeElement?.let { return it is KtNullableType }
+        val annotations = carriers.flatMap { it.annotations.mapNotNull { annotation -> annotation.qualifiedName?.substringAfterLast('.') } }
+        if (annotations.any { it.contains("Nullable") }) return true
+        if (annotations.any { it in NON_NULL_ANNOTATIONS }) return false
+        return null
+    }
 
     private fun enumSchemaOf(enum: PsiClass, fqn: String): DtoSchemaJson {
         val constants = enum.fields.filterIsInstance<PsiEnumConstant>()
@@ -178,7 +207,7 @@ internal object ResponseSchemaReader {
         return field.name to renderDtoType(field.type, kotlinOriginOf(field))
     }
 
-    private fun fieldsOf(psiClass: PsiClass, depth: Int): List<DtoFieldJson> =
+    private fun fieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
         psiClass.allFields.filter(::isWrittenField).mapNotNull { field ->
             if (isIgnored(field)) return@mapNotNull null
             val type = field.type
@@ -187,14 +216,14 @@ internal object ResponseSchemaReader {
                 wireName = renamedTo(annotationOf(field, JacksonClasses.JSON_PROPERTY)),
                 type = type,
                 origin = kotlinOriginOf(field),
-                nullable = type is PsiPrimitiveType && type == PsiTypes.nullType()
-                        || field.annotations.any { it.qualifiedName?.contains("Nullable") == true },
+                nullable = nullabilityOf(type, carriersOf(field).toList(), kotlinOriginOf(field)),
                 depth = depth,
+                names = names,
             )
         }
 
     /** Kotlin data class properties read through their getters, for a class that exposes no Java fields. */
-    private fun propertiesOf(psiClass: PsiClass, depth: Int): List<DtoFieldJson> =
+    private fun propertiesOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
         psiClass.allMethods.mapNotNull { method ->
             if (method.hasModifierProperty(PsiModifier.STATIC)) return@mapNotNull null
             if (!method.name.startsWith("get") && !method.name.startsWith("is")) return@mapNotNull null
@@ -207,8 +236,9 @@ internal object ResponseSchemaReader {
                 wireName = renamedTo(method.getAnnotation(JacksonClasses.JSON_PROPERTY)),
                 type = type,
                 origin = kotlinOriginOf(method),
-                nullable = false,
+                nullable = nullabilityOf(type, listOf(method), kotlinOriginOf(method)),
                 depth = depth,
+                names = names,
             )
         }
 
@@ -217,15 +247,22 @@ internal object ResponseSchemaReader {
         wireName: String?,
         type: PsiType,
         origin: KtCallableDeclaration?,
-        nullable: Boolean,
+        nullable: Boolean?,
         depth: Int,
-    ) = DtoFieldJson(
-        name = wireName ?: declaredName,
-        declaredName = declaredName.takeIf { wireName != null && wireName != declaredName },
-        type = renderDtoType(type, origin),
-        nullable = nullable,
-        nested = schemaOf(type, depth - 1),
-    )
+        names: Names,
+    ): DtoFieldJson {
+        val written = wireName ?: names.own?.translate(declaredName) ?: declaredName
+        return DtoFieldJson(
+            name = written,
+            declaredName = declaredName.takeIf { written != declaredName },
+            type = renderDtoType(type, origin),
+            nullable = nullable,
+            nested = schemaOf(type, depth - 1, names.configured),
+        )
+    }
+
+    /** The naming that renames this class's properties, and the configured one its nested classes start from. */
+    private class Names(val own: JacksonNaming?, val configured: JacksonNaming?)
 
     private fun isWrittenField(field: PsiField): Boolean =
         field !is PsiEnumConstant &&
@@ -291,6 +328,8 @@ internal object ResponseSchemaReader {
     }
 
     private const val JDK_PACKAGE = "java."
+
+    private val NON_NULL_ANNOTATIONS = setOf("NotNull", "NonNull", "Nonnull")
 
     /** Packages whose library classes are described by their first type argument, or by nothing without one. */
     private val LIBRARY_CONTAINER_PACKAGES = listOf(JDK_PACKAGE, "kotlin.", "org.springframework.")
