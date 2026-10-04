@@ -12,6 +12,7 @@ import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.explyt.spring.core.properties.references.ActuatorEndpoint
 import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.core.service.MetaAnnotationsHolder
+import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.ActuatorAccess
@@ -21,10 +22,13 @@ import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
@@ -67,8 +71,13 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
     }
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
-        val declared = ActuatorEndpointKeys.endpointsById(module)
-        val builtIn = ActuatorEndpointKeys.libraryEndpointsById(module).filterKeys { it !in declared }
+        val application = isApplicationModule(module)
+        val declared = if (application) ActuatorEndpointKeys.endpointsById(module) else ownEndpointsById(module)
+        val builtIn = if (application) {
+            ActuatorEndpointKeys.libraryEndpointsById(module).filterKeys { it !in declared }
+        } else {
+            emptyMap()
+        }
         val endpoints = (declared.values + builtIn.values).flatten()
         if (endpoints.isEmpty()) return emptyList()
 
@@ -88,6 +97,45 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             endpointElements(it, basePath, propertyValue, gates) { requestMappingMah }
         }
     }
+
+    /**
+     * The endpoints a module without an application lists: only the ones it declares itself, and none at all once an
+     * application reaches it. An application decides the exposure and access of every endpoint its context holds, so
+     * the library's own reading under its defaults would contradict that verdict. A library no application reaches
+     * keeps its endpoints, under its own configuration, as the only reading there is.
+     */
+    private fun ownEndpointsById(module: Module): Map<String, List<ActuatorEndpoint>> {
+        if (isReachedByApplication(module)) return emptyMap()
+        return ActuatorEndpointKeys.endpointsById(module)
+            .mapValues { (_, endpoints) -> endpoints.filter { declaringModuleOf(it) == module } }
+            .filterValues { it.isNotEmpty() }
+    }
+
+    private fun declaringModuleOf(endpoint: ActuatorEndpoint): Module? =
+        ModuleUtilCore.findModuleForPsiElement(endpoint.psiClass)
+
+    private fun isReachedByApplication(module: Module): Boolean {
+        val moduleManager = ModuleManager.getInstance(project)
+        val visited = mutableSetOf(module)
+        val pending = ArrayDeque(moduleManager.getModuleDependentModules(module))
+        while (pending.isNotEmpty()) {
+            val dependent = pending.removeFirst()
+            if (!visited.add(dependent)) continue
+            if (isApplicationModule(dependent)) return true
+            pending += moduleManager.getModuleDependentModules(dependent)
+        }
+        return false
+    }
+
+    /**
+     * Whether [module] declares a Spring Boot application of its own. Built-in endpoints belong to the context an
+     * application starts, so only its module lists them, under its configuration: a library module that merely has
+     * the Actuator jar would list them again under the defaults, contradicting the application's verdict.
+     */
+    private fun isApplicationModule(module: Module): Boolean =
+        PackageScanService.getInstance(project).getSpringBootAppAnnotations().any {
+            AnnotatedElementsSearch.searchPsiClasses(it, module.moduleScope).findFirst() != null
+        }
 
     /** The two independent conditions under which Boot serves an endpoint: exposure and access. */
     private class Gates(val exposure: EndpointExposure, val access: EndpointAccess)

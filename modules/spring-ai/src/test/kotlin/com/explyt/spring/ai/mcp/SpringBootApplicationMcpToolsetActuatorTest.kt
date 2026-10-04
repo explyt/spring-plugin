@@ -43,6 +43,16 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
             )
         )
         myFixture.addFileToProject(
+            "com/example/app/DemoApplication.kt", """
+            package com.example.app
+
+            import org.springframework.boot.autoconfigure.SpringBootApplication
+
+            @SpringBootApplication
+            class DemoApplication
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
             "com/example/app/web/OrdersController.kt", """
             package com.example.app.web
 
