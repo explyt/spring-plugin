@@ -9,6 +9,7 @@ import com.explyt.spring.core.statistic.StatisticActionId.*
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.HTTP_METHOD_FILTER
+import com.explyt.spring.web.loader.EndpointAccess
 import com.explyt.spring.web.loader.EndpointExposure
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
@@ -358,6 +359,7 @@ data class EndpointElementViewData(
     val method: String,
     val path: String,
     val exposure: EndpointExposure? = null,
+    val access: EndpointAccess? = null,
 )
 
 data class EndpointViewWithContainerName(val classOrFileName: String, val list: List<EndpointElementViewData>)
