@@ -82,24 +82,14 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
         for (method in controllerPsiClass.allMethods) {
             if (!method.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) continue
 
-            val annotationMemberValues = requestMappingMah.getAnnotationMemberValues(method, TARGET_VALUE)
-            val values = if (annotationMemberValues.isEmpty()) {
-                listOf("")
-            } else {
-                annotationMemberValues.mapNotNull {
-                    AnnotationUtil.getStringAttributeValue(it)
-                }
-            }
+            val mapping = SpringWebUtil.requestMappingOf(method, requestMappingMah)
 
-            val requestMethods = requestMappingMah.getAnnotationMemberValues(method, TARGET_METHOD)
-                .map { it.text.split('.').last() }
-
-            for (value in values) {
+            for (value in mapping.paths) {
                 for (prefix in prefixes) {
                     val declared = "$prefix/$value"
                     result += EndpointElement(
                         SpringWebUtil.simplifyUrl(MappingPathPlaceholders.resolve(module, declared)),
-                        requestMethods,
+                        mapping.methods,
                         method,
                         controllerPsiClass,
                         null,
@@ -114,6 +104,5 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
 
     companion object {
         private val TARGET_VALUE = setOf("value")
-        private val TARGET_METHOD = setOf("method")
     }
 }
