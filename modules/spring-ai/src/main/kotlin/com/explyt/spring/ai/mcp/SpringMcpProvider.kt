@@ -239,7 +239,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'/actuator/health'. An Actuator endpoint carries 'exposed': EXPOSED or NOT_EXPOSED as " +
                 "management.endpoints.web.exposure.include/exclude decide it (by default only health), UNKNOWN " +
                 "when a value cannot be read from the configuration files; it is found whatever 'exposed' says, " +
-                "since a profile or an environment variable can change exposure at run time. " +
+                "since a profile or an environment variable can change exposure at run time. It also carries " +
+                "'access': UNRESTRICTED, READ_ONLY, NONE or UNKNOWN as management.endpoint.<id>.access, " +
+                "management.endpoints.access.default and .max-permitted grant it. Exposure and access are " +
+                "independent gates: an exposed operation with NONE answers 404, and under READ_ONLY a write or " +
+                "delete operation reads NONE. " +
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
@@ -545,8 +549,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             line = position.line,
             endpointType = endpoint.type.readable,
             consumes = mediaTypes.consumes,
-            produces = mediaTypes.produces,
+            produces = (endpoint.produces + mediaTypes.produces).distinct(),
             exposed = endpoint.exposure?.name,
+            access = endpoint.access?.name,
         )
     }
 
@@ -562,14 +567,53 @@ class SpringBootApplicationMcpToolset : McpToolset {
             methodName = core.methodName,
             filePath = core.filePath,
             line = core.line,
-            parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
+            parameters = parametersOf(endpoint, handler),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             endpointType = core.endpointType,
             consumes = core.consumes,
             produces = core.produces,
             exposed = core.exposed,
+            access = core.access,
         )
     }
+
+    private fun parametersOf(endpoint: EndpointElement, handler: PsiMethod?): List<EndpointParameterJson> = when {
+        handler == null -> pathTemplateParameters(endpoint.path)
+        endpoint.type == EndpointType.ACTUATOR && isActuatorOperation(handler) -> actuatorOperationParameters(handler)
+        else -> extractParameters(handler)
+    }
+
+    private fun isActuatorOperation(method: PsiMethod): Boolean =
+        ACTUATOR_OPERATION_SOURCES.keys.any { method.isMetaAnnotatedBy(it) }
+
+    /**
+     * The parameters of an Actuator operation, bound the way Boot's web operation mapping binds them: a `@Selector`
+     * is a path segment, the arguments of a `@WriteOperation` are fields of the JSON request body, and those of a read
+     * or delete operation are query parameters. A parameter Boot supplies itself - the security context, the server
+     * namespace, a producible media type, the API version - is not part of the request.
+     *
+     * An argument is mandatory unless it is nullable, which is Boot's `OperationMethodParameter.isMandatory`.
+     */
+    private fun actuatorOperationParameters(method: PsiMethod): List<EndpointParameterJson> {
+        val argumentSource = ACTUATOR_OPERATION_SOURCES.entries.first { method.isMetaAnnotatedBy(it.key) }.value
+        return method.parameterList.parameters.map { param ->
+            val source = when {
+                param.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) -> "PATH"
+                ACTUATOR_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(param.type, it) } -> "FRAMEWORK"
+                else -> argumentSource
+            }
+            val required = if (source == "FRAMEWORK") null else !isNullableArgument(param)
+            EndpointParameterJson(param.name, source, param.type.canonicalText, required)
+        }
+    }
+
+    /**
+     * Boot 4 reads nullness through `Nullness.forParameter`, which also sees JSpecify's type-use `@Nullable` - the one
+     * its own operations use, carried on the parameter's type rather than on its modifier list.
+     */
+    private fun isNullableArgument(param: PsiParameter): Boolean =
+        with(SpringWebUtil) { param.acceptsMissingValue() } ||
+                param.type.annotations.any { it.qualifiedName?.substringAfterLast('.') == NULLABLE_SIMPLE_NAME }
 
     /**
      * The method whose declaration carries [endpoint], handler or not.
@@ -728,8 +772,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "built-in ones (health, info, metrics...). An Actuator endpoint carries 'exposed': EXPOSED or " +
                 "NOT_EXPOSED as management.endpoints.web.exposure.include/exclude decide it (by default only " +
                 "health), UNKNOWN when a value cannot be read from the configuration files. Nothing is hidden: a " +
-                "profile or an environment variable can change exposure at run time. Other endpoints have no " +
-                "'exposed' key. " +
+                "profile or an environment variable can change exposure at run time. Each Actuator operation also " +
+                "carries 'access' (UNRESTRICTED, READ_ONLY, NONE, UNKNOWN), a gate independent of exposure: an " +
+                "exposed operation with NONE answers 404. Other endpoints have no 'exposed' or 'access' key. " +
                 "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
                 "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
                 "'endpoints'. One endpoint looks exactly like this - note 'httpMethods' is an array, and the keys " +
@@ -851,6 +896,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "declared); FRAMEWORK for one the container supplies, such as WebRequest or Principal; and " +
                 "UNKNOWN for one bound by a custom HandlerMethodArgumentResolver, whose wire format this tool " +
                 "cannot read - inspect the source before treating an UNKNOWN parameter as absent. " +
+                "An Actuator operation's @Selector argument is PATH, the other arguments of a @WriteOperation are " +
+                "BODY (fields of its JSON body) and of a read or delete operation QUERY; its record also carries " +
+                "'exposed' and 'access', two independent gates - with access NONE it answers 404 even when " +
+                "exposed. " +
                 "'required' is null whenever nothing declares it. " +
                 "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
                 "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
@@ -916,7 +965,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             methodName = core.methodName,
             filePath = core.filePath,
             line = core.line,
-            parameters = handler?.let { extractParameters(it) } ?: pathTemplateParameters(endpoint.path),
+            parameters = parametersOf(endpoint, handler),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
                 ?.let { ResponseSchemaReader.schemaOf(it, depth = 3) },
@@ -926,6 +975,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             serviceCalls = serviceCalls,
             endpointType = endpoint.type.readable,
             exposed = core.exposed,
+            access = core.access,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
         )
@@ -1556,6 +1606,22 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private const val NOT_NULL_SIMPLE_NAME = "NotNull"
 
         /** Binding annotations whose parameters [extractParameters] already reports. */
+        private const val NULLABLE_SIMPLE_NAME = "Nullable"
+
+        private val ACTUATOR_OPERATION_SOURCES = linkedMapOf(
+            SpringCoreClasses.ACTUATOR_WRITE_OPERATION to "BODY",
+            SpringCoreClasses.ACTUATOR_READ_OPERATION to "QUERY",
+            SpringCoreClasses.ACTUATOR_DELETE_OPERATION to "QUERY",
+        )
+
+        private val ACTUATOR_SUPPLIED_TYPES = listOf(
+            "org.springframework.boot.actuate.endpoint.SecurityContext",
+            "org.springframework.boot.actuate.endpoint.web.WebServerNamespace",
+            "org.springframework.boot.actuate.endpoint.Producible",
+            "org.springframework.boot.actuate.endpoint.ApiVersion",
+            "java.security.Principal",
+        )
+
         private val COLLECTED_BINDING_ANNOTATIONS = listOf(
             SpringWebClasses.PATH_VARIABLE,
             SpringWebClasses.REQUEST_PARAM,
@@ -1709,6 +1775,8 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
     /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
+    /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
 )
 
 /**
@@ -1748,6 +1816,12 @@ data class CompactEndpointJson(
      * listed whatever this says.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
+    /**
+     * For an Actuator operation only, the access the configuration grants it: `UNRESTRICTED`, `READ_ONLY`, `NONE`, or
+     * `UNKNOWN` when a value cannot be read. Independent of [exposed]: an exposed operation with `NONE` answers 404.
+     * Under `READ_ONLY` only read operations are served, so a write or delete operation of that endpoint reads `NONE`.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
 )
 
 data class EndpointListJson<T>(
@@ -1915,6 +1989,8 @@ data class EndpointContractJson(
     val endpointType: String,
     /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
+    /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
     /**
      * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
      * no such signature to read - a functional route or an OpenAPI declaration.
