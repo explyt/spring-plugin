@@ -16,7 +16,7 @@ object EndpointsTreeData {
     fun rowsOf(element: EndpointElement): List<EndpointElementViewData> {
         val classOrFileName = element.containingClass?.name
             ?: element.containingFile?.name ?: return emptyList()
-        return element.requestMethods.asSequence()
+        return rowVerbsOf(element).asSequence()
             .map {
                 EndpointElementViewData(
                     element.type, element.psiElement.toSmartPointer(), classOrFileName, it, element.path,
@@ -26,6 +26,12 @@ object EndpointsTreeData {
             .sortedBy { it.classOrFileName + it.method }
             .toList()
     }
+
+    /**
+     * The verbs [element] is listed under, one row each. An endpoint that names no verb - a bare `@RequestMapping`, or
+     * an Actuator endpoint that declares no operation - gets a single unnamed row rather than none, so it stays listed.
+     */
+    fun rowVerbsOf(element: EndpointElement): List<String> = element.requestMethods.ifEmpty { listOf(NO_VERB) }
 
     /** [rows] grouped by endpoint type, in the order of [EndpointType], then by class or file name. */
     fun byType(rows: List<EndpointElementViewData>): List<EndpointViewByType> {
@@ -40,4 +46,6 @@ object EndpointsTreeData {
             .map { (name, list) -> EndpointViewWithContainerName(name, list.sortedBy { it.method }) }
             .sortedBy { it.classOrFileName }
             .toList()
+
+    private const val NO_VERB = ""
 }
