@@ -53,6 +53,7 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
 
         val kotlin_1_9_22 = TestLibrary("org.jetbrains.kotlin:kotlin-stdlib:1.9.22", true)
         val jacksonAnnotations_2_15_2 = TestLibrary("com.fasterxml.jackson.core:jackson-annotations:2.15.2", false)
+        val jacksonDatabind_2_15_2 = TestLibrary("com.fasterxml.jackson.core:jackson-databind:2.15.2", false)
         val kotlin_coroutines_1_7_1 = TestLibrary("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1", true)
 
         val springAop_6_0_7 = TestLibrary("org.springframework:spring-aop:6.0.7", true)
