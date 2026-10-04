@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.ai.mcp.entities.EntityInventory
 import com.explyt.spring.ai.mcp.entities.EntityRecord
 import com.explyt.spring.ai.mcp.entities.EntitySchema
+import com.explyt.spring.core.service.beans.ApplicationClassName
 import com.explyt.spring.core.service.beans.BeanQueryException
 import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.core.util.SpringBootUtil
@@ -64,6 +65,7 @@ import org.jetbrains.kotlin.idea.base.util.projectScope
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UMethod
+import org.jetbrains.uast.UParameter
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 import org.jetbrains.uast.evaluateString
@@ -184,8 +186,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
         val springBeans = withContext(Dispatchers.IO) {
             smartReadAction(project) {
-                val applicationPsiClass = JavaPsiFacade.getInstance(project)
-                    .findClass(applicationClassName, project.projectScope())
+                val applicationPsiClass = ApplicationClassName
+                    .findClass(project, applicationClassName, project.projectScope())
                     ?: mcpFail("Spring Boot Application class not found $applicationClassName")
                 try {
                     McpBeanSearchService.getInstance(project)
@@ -614,7 +616,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val result = mutableListOf<EndpointParameterJson>()
 
         for (info in SpringWebUtil.collectPathVariables(psiMethod)) {
-            result += EndpointParameterJson(info.name, "PATH", info.typeFqn, info.isRequired)
+            result += EndpointParameterJson(info.name, "PATH", declaredTypeOf(info), info.isRequired)
         }
         val multipartRequestNames = HandlerSignature.requestParameters(psiMethod).asSequence()
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
@@ -623,7 +625,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val servletApplication = isServletApplication(psiMethod)
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
             val source = if (servletApplication && info.name in multipartRequestNames) "PART" else "QUERY"
-            result += EndpointParameterJson(info.name, source, info.typeFqn, info.isRequired, info.defaultValue)
+            result += EndpointParameterJson(info.name, source, declaredTypeOf(info), info.isRequired, info.defaultValue)
         }
         for (param in HandlerSignature.requestParameters(psiMethod)) {
             val part = param.findFirstAnnotation(listOf(SpringWebClasses.REQUEST_PART)) ?: continue
@@ -636,14 +638,27 @@ class SpringBootApplicationMcpToolset : McpToolset {
         }
         val body = SpringWebUtil.getRequestBodyInfo(psiMethod)
         if (body != null) {
-            result += EndpointParameterJson(body.name, "BODY", body.typeFqn, body.isRequired)
+            result += EndpointParameterJson(body.name, "BODY", declaredTypeOf(body), body.isRequired)
         }
         for (info in SpringWebUtil.collectRequestHeaders(psiMethod)) {
-            result += EndpointParameterJson(info.name, "HEADER", info.typeFqn, info.isRequired, info.defaultValue)
+            result += EndpointParameterJson(
+                info.name, "HEADER", declaredTypeOf(info), info.isRequired, info.defaultValue
+            )
         }
 
-        result += parametersOutsideCollectors(psiMethod)
+        result += parametersOutsideCollectors(psiMethod, servletApplication)
         return result
+    }
+
+    /**
+     * The type the handler declares. The collectors box a primitive for the OpenAPI and HTTP-client consumers, which
+     * need a reference type, but `int` and `java.lang.Integer` differ for a client: only the latter may be absent.
+     */
+    private fun declaredTypeOf(info: SpringWebUtil.PathArgumentInfo): String {
+        val parameter = info.psiElement as? PsiParameter
+            ?: info.psiElement.toUElement()?.getParentOfType(UParameter::class.java, false)?.javaPsi as? PsiParameter
+        val type = parameter?.type
+        return if (type is PsiPrimitiveType) type.canonicalText else info.typeFqn
     }
 
     /**
@@ -673,16 +688,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * dropped parameter is indistinguishable from one that was never declared. That is the dangerous half: a
      * `currentUser` argument absent from the output can mean either "the endpoint authenticates its caller" or
      * "the endpoint has no authorization at all", and those have opposite meanings for anyone reading the
-     * contract to audit it. Reporting the parameter with a source of `UNKNOWN` says "there is an argument here I
-     * cannot classify", which is actionable; silence is not.
+     * contract to audit it. Reporting the parameter - with Spring's default source, or `UNKNOWN` when even that
+     * cannot be told - says "there is an argument here", which is actionable; silence is not.
      */
-    private fun parametersOutsideCollectors(psiMethod: PsiMethod): List<EndpointParameterJson> =
+    private fun parametersOutsideCollectors(
+        psiMethod: PsiMethod,
+        servletApplication: Boolean,
+    ): List<EndpointParameterJson> =
         HandlerSignature.requestParameters(psiMethod)
             .filter { param -> COLLECTED_BINDING_ANNOTATIONS.none { param.isMetaAnnotatedBy(it) } }
             .map { param ->
                 EndpointParameterJson(
                     name = wireNameOf(param),
-                    source = sourceOfUncollected(param),
+                    source = sourceOfUncollected(param, servletApplication),
                     type = param.type.canonicalText,
                     // Not null-by-omission: the collected annotations declare requiredness, whereas a
                     // resolver's contract is private to the resolver. Defaulting to `true` or `false` here would
@@ -706,11 +724,57 @@ class SpringBootApplicationMcpToolset : McpToolset {
             ?: param.name
     }
 
-    private fun sourceOfUncollected(param: PsiParameter): String = when {
+    private fun sourceOfUncollected(param: PsiParameter, servletApplication: Boolean): String = when {
         param.isMetaAnnotatedBy(SpringWebClasses.COOKIE_VALUE) -> "COOKIE"
         param.isMetaAnnotatedBy(SpringWebClasses.MODEL_ATTRIBUTE) -> "MODEL"
         FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(param.type, it) } -> "FRAMEWORK"
-        else -> "UNKNOWN"
+        param.annotations.any { !isBindingNeutral(it) } -> "UNKNOWN"
+        else -> defaultSourceOf(param.type, servletApplication)
+    }
+
+    /**
+     * Where Spring's catch-all resolvers put a parameter no annotation claims - the tail of the resolver chain of
+     * both servlet MVC and WebFlux: `RequestParamMethodArgumentResolver(useDefaultResolution = true)` for a simple
+     * type, then the model-attribute resolver (`annotationNotRequired = true`) for any other.
+     *
+     * The types Spring claims ahead of that tail without an annotation keep their own source: an unannotated `Map`
+     * is the model, a multipart part is a request part on servlet MVC, and `HttpEntity`, `Pageable` and `Sort` stay
+     * `UNKNOWN` because their resolvers read a wire format of their own. A type that does not resolve stays
+     * `UNKNOWN` too: whether it is simple is the question that cannot be answered.
+     */
+    private fun defaultSourceOf(type: PsiType, servletApplication: Boolean): String {
+        val value = optionalValueOf(type)
+        return when {
+            !isResolved(value) -> "UNKNOWN"
+            OWN_WIRE_FORMAT_TYPES.any { InheritanceUtil.isInheritor(value, it) } -> "UNKNOWN"
+            value is PsiClassType && value.resolve()?.qualifiedName == CommonClassNames.JAVA_UTIL_MAP -> "FRAMEWORK"
+            isMultipartPart(value) -> if (servletApplication) "PART" else "UNKNOWN"
+            SpringSimpleValueTypes.isSimpleProperty(value) -> "QUERY"
+            else -> "MODEL"
+        }
+    }
+
+    /** `Optional<T>` is read as `T`, as `MethodParameter.nestedIfOptional` does for a request parameter. */
+    private fun optionalValueOf(type: PsiType): PsiType {
+        val classType = type as? PsiClassType ?: return type
+        if (classType.resolve()?.qualifiedName != CommonClassNames.JAVA_UTIL_OPTIONAL) return type
+        return classType.parameters.singleOrNull() ?: type
+    }
+
+    private fun isResolved(type: PsiType): Boolean = when (type) {
+        is PsiArrayType -> isResolved(type.componentType)
+        is PsiClassType -> type.resolve() != null
+        else -> true
+    }
+
+    /**
+     * An annotation that leaves the parameter to Spring's default binding: validation, formatting and nullability
+     * annotations do not claim a parameter. Any other one may be the key of a custom argument resolver.
+     */
+    private fun isBindingNeutral(annotation: PsiAnnotation): Boolean {
+        val qualifiedName = annotation.qualifiedName ?: return false
+        return BINDING_NEUTRAL_ANNOTATION_PACKAGES.any { qualifiedName.startsWith(it) } ||
+                qualifiedName.substringAfterLast('.') in BINDING_NEUTRAL_ANNOTATION_NAMES
     }
 
     // ---- explyt_get_spring_http_endpoints ----
@@ -848,9 +912,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "types serialise to. " +
                 "Each parameter carries a 'source': PATH, QUERY, PART, BODY, HEADER, COOKIE or MODEL for an " +
                 "annotation-bound one (whose 'name' is the wire name, not the Java name, and whose 'required' is " +
-                "declared); FRAMEWORK for one the container supplies, such as WebRequest or Principal; and " +
-                "UNKNOWN for one bound by a custom HandlerMethodArgumentResolver, whose wire format this tool " +
-                "cannot read - inspect the source before treating an UNKNOWN parameter as absent. " +
+                "declared); for an unannotated one, Spring's own default - QUERY, named after the parameter, for a " +
+                "simple type such as String, int, an enum or LocalDate, and MODEL, a form or query object bound " +
+                "field by field, for any other type, a List included; FRAMEWORK for one the container supplies, " +
+                "such as WebRequest or Principal; and UNKNOWN for one whose type does not resolve, that carries an " +
+                "annotation a custom HandlerMethodArgumentResolver may claim, or that is HttpEntity, Pageable or " +
+                "Sort - inspect the source before treating an UNKNOWN parameter as absent. A project " +
+                "HandlerMethodArgumentResolver registered for a type can still claim a QUERY or MODEL parameter. " +
+                "'type' is the declared type: int, not java.lang.Integer. " +
                 "'required' is null whenever nothing declares it. " +
                 "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
                 "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
@@ -1577,6 +1646,27 @@ class SpringBootApplicationMcpToolset : McpToolset {
             SpringWebClasses.JAKARTA_HTTP_PART,
         )
 
+        /** Resolved by Spring without an annotation, from a wire format of their own: the body or `?page=&sort=`. */
+        private val OWN_WIRE_FORMAT_TYPES = listOf(
+            "org.springframework.http.HttpEntity",
+            "org.springframework.data.domain.Pageable",
+            "org.springframework.data.domain.Sort",
+        )
+
+        private val BINDING_NEUTRAL_ANNOTATION_PACKAGES = listOf(
+            "jakarta.validation.",
+            "javax.validation.",
+            "org.springframework.validation.annotation.",
+            "org.springframework.format.annotation.",
+            "org.jetbrains.annotations.",
+            "kotlin.",
+        )
+
+        /** Matched by simple name too, so an annotation whose library is not on the classpath still reads as neutral. */
+        private val BINDING_NEUTRAL_ANNOTATION_NAMES = setOf(
+            "Valid", "Validated", "DateTimeFormat", "NumberFormat", "NotNull", "NonNull", "Nonnull", "Nullable",
+        )
+
         /**
          * Types Spring's own argument resolvers supply from the container rather than from a named place in the
          * request — the "Method Arguments" table of the Spring MVC reference.
@@ -1660,7 +1750,7 @@ private suspend fun getCurrentProjectForClass(applicationClassName: String? = nu
         .filter { project ->
             // Waits for this project's indexing instead of failing the whole call because some other one is dumb.
             smartReadAction(project) {
-                JavaPsiFacade.getInstance(project).findClass(applicationClassName, project.projectScope())
+                ApplicationClassName.findClass(project, applicationClassName, project.projectScope())
             } != null
         }
     return declaring.singleOrNull()
@@ -1786,11 +1876,14 @@ data class EndpointLookupJson<T>(
 data class EndpointParameterJson(
     val name: String,
     /**
-     * Where the value comes from: `PATH`, `QUERY`, `BODY`, `HEADER`, `COOKIE` or `MODEL` for an annotation-bound
-     * parameter, `FRAMEWORK` for one the container supplies, and `UNKNOWN` for one this tool cannot classify —
-     * typically bound by a project-local `HandlerMethodArgumentResolver`.
+     * Where the value comes from: `PATH`, `QUERY`, `PART`, `BODY`, `HEADER`, `COOKIE` or `MODEL` for an
+     * annotation-bound parameter; for an unannotated one, `QUERY` when its type is simple as `BeanUtils.isSimpleProperty`
+     * defines it and `MODEL` otherwise, which is where Spring's catch-all resolvers put it; `FRAMEWORK` for one the
+     * container supplies; and `UNKNOWN` for one this tool cannot classify - an unresolved type, or an annotation a
+     * project-local `HandlerMethodArgumentResolver` may claim.
      */
     val source: String,
+    /** The declared type: a primitive stays `int`, because only `java.lang.Integer` may be absent. */
     val type: String,
     /**
      * Whether Spring rejects a request that omits the value. A query parameter or a header with a `defaultValue`,
