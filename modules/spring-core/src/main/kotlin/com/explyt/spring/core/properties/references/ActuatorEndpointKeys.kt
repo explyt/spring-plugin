@@ -25,8 +25,18 @@ import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
-/** An Actuator endpoint declared in the project: the id it publishes and the class publishing it. */
-data class ActuatorEndpoint(val id: String, val psiClass: PsiClass, val defaultAccess: String?)
+/**
+ * An Actuator endpoint declared in the project: the id it publishes and the class publishing it.
+ *
+ * [defaultAccess] is the name of the `@Endpoint#defaultAccess` constant, `null` before Boot 3.4 introduced it;
+ * [enabledByDefault] is the legacy `@Endpoint#enableByDefault`, which Boot 3.x still honours and Boot 4 removed.
+ */
+data class ActuatorEndpoint(
+    val id: String,
+    val psiClass: PsiClass,
+    val defaultAccess: String?,
+    val enabledByDefault: Boolean = true,
+)
 
 /**
  * Spring declares `management.endpoint.<id>.*` metadata for built-in endpoint ids, but cannot declare ids supplied by
@@ -40,6 +50,7 @@ object ActuatorEndpointKeys {
     private const val DOT = "."
     private const val ID_ATTRIBUTE = "id"
     private const val DEFAULT_ACCESS_ATTRIBUTE = "defaultAccess"
+    private const val ENABLE_BY_DEFAULT_ATTRIBUTE = "enableByDefault"
     private const val DURATION = "java.time.Duration"
 
     /** The default of `@Endpoint#defaultAccess`, used when the annotation leaves the attribute out. */
@@ -173,7 +184,8 @@ object ActuatorEndpointKeys {
         } else {
             null
         }
-        return ActuatorEndpoint(id, psiClass, defaultAccess)
+        val enabledByDefault = AnnotationUtil.getBooleanAttributeValue(annotation, ENABLE_BY_DEFAULT_ATTRIBUTE) != false
+        return ActuatorEndpoint(id, psiClass, defaultAccess, enabledByDefault)
     }
 
     private fun String.isSegmentAt(start: Int, length: Int): Boolean {
