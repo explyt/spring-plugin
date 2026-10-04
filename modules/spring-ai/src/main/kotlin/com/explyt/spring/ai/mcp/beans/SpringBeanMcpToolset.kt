@@ -46,7 +46,7 @@ class SpringBeanMcpToolset : McpToolset {
                 "default); when 'truncated' is true, repeat the call with 'offset' = 'nextOffset' and " +
                 "'expectedRevision' = 'revision' to continue the same answer. " +
                 "Take applicationClassName from explyt_get_spring_boot_applications; " +
-                "explyt_get_project_beans_by_spring_boot_application lists a whole stereotype instead of " +
+                "explyt_get_spring_beans lists a whole stereotype instead of " +
                 "answering about one bean or one injection point."
     )
     suspend fun findSpringBean(
