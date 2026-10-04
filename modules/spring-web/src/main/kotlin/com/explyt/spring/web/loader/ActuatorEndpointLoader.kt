@@ -11,8 +11,13 @@ import com.explyt.spring.core.completion.properties.DefinedConfigurationProperti
 import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.explyt.spring.core.properties.references.ActuatorEndpoint
 import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
+import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.ActuatorExposure
+import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
@@ -73,15 +78,19 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         }
         val basePath = propertyValue(BASE_PATH_KEY) ?: DEFAULT_BASE_PATH
         val exposure = ActuatorExposure.of(module, definitions)
+        val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
 
-        return endpoints.flatMap { endpointElements(it, basePath, propertyValue, exposure.exposureOf(it.id)) }
+        return endpoints.flatMap {
+            endpointElements(it, basePath, propertyValue, exposure.exposureOf(it.id)) { requestMappingMah }
+        }
     }
 
     private fun endpointElements(
         endpoint: ActuatorEndpoint,
         basePath: String,
         propertyValue: (String) -> String?,
-        exposure: EndpointExposure
+        exposure: EndpointExposure,
+        requestMappingMah: () -> MetaAnnotationsHolder,
     ): List<EndpointElement> {
         // A JMX-only endpoint is not published over HTTP at all, so any path shown for it would be invented.
         if (endpoint.psiClass.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_JMX_ENDPOINT)) return emptyList()
@@ -89,13 +98,34 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val mappedId = propertyValue("$PATH_MAPPING_KEY.${endpoint.id}") ?: endpoint.id
         val endpointPath = joinPath(basePath, mappedId)
 
-        val operations = endpoint.psiClass.allMethods
-            .mapNotNull { operationElement(it, endpoint, endpointPath, exposure) }
-        // An endpoint without operations answers nothing, but hiding it would hide the declaration too.
+        val operations = if (endpoint.psiClass.isMetaAnnotatedBy(CONTROLLER_ENDPOINTS)) {
+            mappingElements(endpoint, endpointPath, exposure, requestMappingMah())
+        } else {
+            endpoint.psiClass.allMethods.mapNotNull { operationElement(it, endpoint, endpointPath, exposure) }
+        }
+        // An endpoint declaring no operation - a servlet endpoint, or one that declares none at all - stays listed so its
+        // declaration does, and names no verb because it declares none.
         return operations.ifEmpty {
-            listOf(endpointElement(endpointPath, getType().name, endpoint.psiClass, endpoint, exposure))
+            listOf(endpointElement(endpointPath, emptyList(), endpoint.psiClass, endpoint, exposure))
         }
     }
+
+    /**
+     * The operations of a controller endpoint: Boot serves its `@RequestMapping` methods under the endpoint path the
+     * way Spring MVC serves a controller's, and forbids it from declaring Actuator operations.
+     */
+    private fun mappingElements(
+        endpoint: ActuatorEndpoint,
+        endpointPath: String,
+        exposure: EndpointExposure,
+        requestMappingMah: MetaAnnotationsHolder,
+    ): List<EndpointElement> = endpoint.psiClass.allMethods
+        .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+        .flatMap { method ->
+            ProgressManager.checkCanceled()
+            val mapping = SpringWebUtil.requestMappingOf(method, requestMappingMah)
+            mapping.paths.map { endpointElement(joinPath(endpointPath, it), mapping.methods, method, endpoint, exposure) }
+        }
 
     private fun operationElement(
         method: PsiMethod,
@@ -112,17 +142,20 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
             .joinToString("") { "/{${it.name}}" }
 
-        return endpointElement(endpointPath + selectors, httpMethod, method, endpoint, exposure)
+        val produces = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod)).getStringMemberValues(PRODUCES)
+
+        return endpointElement(endpointPath + selectors, listOf(httpMethod), method, endpoint, exposure, produces.toList())
     }
 
     private fun endpointElement(
         path: String,
-        requestMethod: String,
+        requestMethods: List<String>,
         psiElement: PsiElement,
         endpoint: ActuatorEndpoint,
-        exposure: EndpointExposure
+        exposure: EndpointExposure,
+        produces: List<String> = emptyList(),
     ) = EndpointElement(
-        path, listOf(requestMethod), psiElement, endpoint.psiClass, null, getType(), exposure = exposure
+        path, requestMethods, psiElement, endpoint.psiClass, null, getType(), exposure = exposure, produces = produces
     )
 
 
@@ -137,8 +170,17 @@ private const val DEFAULT_BASE_PATH = "/actuator"
 private const val BASE_PATH_KEY = "management.endpoints.web.base-path"
 private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
 
+private const val PRODUCES = "produces"
+
 private val HTTP_METHOD_BY_OPERATION = mapOf(
     SpringCoreClasses.ACTUATOR_READ_OPERATION to "GET",
     SpringCoreClasses.ACTUATOR_WRITE_OPERATION to "POST",
     SpringCoreClasses.ACTUATOR_DELETE_OPERATION to "DELETE"
+)
+
+private val OPERATION_BY_METHOD = HTTP_METHOD_BY_OPERATION.entries.associate { (operation, method) -> method to operation }
+
+private val CONTROLLER_ENDPOINTS = listOf(
+    SpringCoreClasses.ACTUATOR_CONTROLLER_ENDPOINT,
+    SpringCoreClasses.ACTUATOR_REST_CONTROLLER_ENDPOINT,
 )

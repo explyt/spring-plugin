@@ -68,8 +68,11 @@ data class Referrer(
 /**
  * @property path the path the application serves, with configuration placeholders resolved.
  * @property pathTemplate the path as declared, placeholders included; equal to [path] when nothing was resolved.
+ * @property requestMethods the verbs the endpoint answers; empty when its declaration restricts none, such as a bare
+ * `@RequestMapping`.
  * @property exposure whether the configuration publishes the endpoint over HTTP; `null` for an endpoint that is
  * served whenever it is declared, which is every kind but an Actuator endpoint.
+ * @property produces the media types the endpoint declares it produces; empty when it declares none.
  */
 data class EndpointElement(
     val path: String,
@@ -80,6 +83,7 @@ data class EndpointElement(
     val type: EndpointType,
     val pathTemplate: String = path,
     val exposure: EndpointExposure? = null,
+    val produces: List<String> = emptyList(),
 )
 
 /** Whether an Actuator endpoint answers over HTTP, as `management.endpoints.web.exposure` decides it. */
