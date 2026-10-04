@@ -1019,6 +1019,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return calls.distinctBy { it.target to it.callLine }
     }
 
+    /**
+     * A member the JDK, the Kotlin standard library or Spring declares in a library: `toString`, or a method a Spring
+     * Data repository inherits. A class declared in the project is never one, whatever its package.
+     */
+    private fun isPlatformOrFrameworkLibraryMember(declaringClass: PsiClass): Boolean {
+        if (ProjectSources.declares(declaringClass)) return false
+        val fqn = declaringClass.qualifiedName ?: return true
+        return FRAMEWORK_PACKAGES.any(fqn::startsWith)
+    }
+
     /** The service call [site] makes, when it invokes a project method of one of the controller's injected beans. */
     private fun serviceCallOf(
         site: MethodCallSite,
@@ -1030,11 +1040,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val callee = site.callee
         val receiverClass = (field.type as? PsiClassType)?.resolve() ?: return null
         val calleeClass = callee.containingClass ?: return null
-        val calleeFqn = calleeClass.qualifiedName ?: return null
         if (callee.hasModifierProperty(PsiModifier.STATIC)
-            || calleeFqn.startsWith("java.")
-            || calleeFqn.startsWith("kotlin.")
-            || calleeFqn.startsWith("org.springframework.")
+            || isPlatformOrFrameworkLibraryMember(calleeClass)
             || !InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
         ) return null
         val position = sourcePositionOf(callee, project)
@@ -1517,6 +1524,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
         private const val COMPLETE_CONTRACT = "COMPLETE"
         private const val PARTIAL_CONTRACT = "PARTIAL"
+
+        private val FRAMEWORK_PACKAGES = listOf("java.", "kotlin.", "org.springframework.")
 
         private const val TEMPLATE_NAME_GROUP = "name"
 
