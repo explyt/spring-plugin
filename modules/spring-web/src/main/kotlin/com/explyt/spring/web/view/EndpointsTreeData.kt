@@ -20,7 +20,7 @@ object EndpointsTreeData {
             .map {
                 EndpointElementViewData(
                     element.type, element.psiElement.toSmartPointer(), classOrFileName, it, element.path,
-                    element.exposure
+                    element.exposure, element.access
                 )
             }
             .sortedBy { it.classOrFileName + it.method }
