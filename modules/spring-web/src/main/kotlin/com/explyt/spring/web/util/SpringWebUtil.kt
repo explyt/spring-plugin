@@ -297,7 +297,7 @@ object SpringWebUtil {
      * `MethodParameter.isOptional`: an `Optional`, a parameter annotated `@Nullable`, and in Kotlin a nullable type
      * or a parameter with a default value.
      */
-    private fun PsiParameter.acceptsMissingValue(): Boolean {
+    fun PsiParameter.acceptsMissingValue(): Boolean {
         if (type.isOptional) return true
         if (annotations.any { it.qualifiedName?.substringAfterLast('.') == NULLABLE_SIMPLE_NAME }) return true
         val kotlinParameter = toUElementOfType<UParameter>()?.sourcePsi as? KtParameter ?: return false

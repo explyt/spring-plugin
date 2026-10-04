@@ -169,6 +169,60 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         )
     }
 
+    /** Access is a gate independent of exposure: `shutdown` is exposed by `*` yet answers 404 without access. */
+    fun testAccessIsReportedNextToExposure() = runBlocking<Unit> {
+        myFixture.addFileToProject("application.properties", "management.endpoints.web.exposure.include=*")
+
+        val shutdown = exactMatch("/actuator/shutdown")
+        assertEquals("EXPOSED", shutdown["exposed"].asText())
+        assertEquals("NONE", shutdown["access"].asText())
+        assertEquals("UNRESTRICTED", exactMatch("/actuator/health")["access"].asText())
+        assertEquals(
+            "the listing carries the same fact",
+            "NONE",
+            listActuator(compact = true).single { it["fullPath"].asText() == "/actuator/shutdown" }["access"].asText()
+        )
+        assertEquals(
+            "the contract carries the same fact",
+            "NONE",
+            contractOf("/actuator/shutdown", "POST")["access"].asText()
+        )
+        assertFalse("a controller endpoint has no 'access' key", find("/api/orders").single().has("access"))
+    }
+
+    fun testReadOnlyAccessDeniesAWriteOperation() = runBlocking<Unit> {
+        myFixture.addFileToProject("application.properties", "management.endpoints.access.default=read-only")
+
+        val loggers = find("/actuator/loggers/{name}").filter { it["fullPath"].asText() == "/actuator/loggers/{name}" }
+        val accessByVerb = loggers.associate { it["httpMethods"].single().asText() to it["access"].asText() }
+        assertEquals(mapOf("GET" to "READ_ONLY", "POST" to "NONE"), accessByVerb)
+    }
+
+    /** `@ReadOperation(produces = ...)` reaches the record: the thread dump also answers as plain text. */
+    fun testOperationProducesIsReported() = runBlocking<Unit> {
+        val produces = find("/actuator/threaddump")
+            .filter { it["fullPath"].asText() == "/actuator/threaddump" }
+            .flatMap { record -> record["produces"]?.map { it.asText() }.orEmpty() }
+
+        assertTrue("the text dump's media type is reported, got $produces", produces.any { it.startsWith("text/plain") })
+    }
+
+    /** A `@Selector` is a path segment, and a write operation's other arguments are fields of its JSON body. */
+    fun testSelectorIsAPathParameterAndWriteArgumentsAreTheBody() = runBlocking<Unit> {
+        val write = contractOf("/actuator/loggers/{name}", "POST")["parameters"].associateBy { it["name"].asText() }
+        assertEquals("PATH", write.getValue("name")["source"].asText())
+        assertEquals("BODY", write.getValue("configuredLevel")["source"].asText())
+        assertFalse("a @Nullable argument is optional", write.getValue("configuredLevel")["required"].asBoolean())
+
+        val read = contractOf("/actuator/loggers/{name}", "GET")["parameters"].associateBy { it["name"].asText() }
+        assertEquals("PATH", read.getValue("name")["source"].asText())
+    }
+
+    private suspend fun contractOf(url: String, method: String): JsonNode =
+        mapper.readTree(
+            toolset.getEndpointContract(urlPattern = url, projectPath = projectPath(), httpMethod = method)
+        )["endpoints"].single { it["fullPath"].asText() == url }
+
     private fun projectPath(): String = project.basePath ?: ""
 
     private suspend fun find(url: String): List<JsonNode> =
