@@ -639,7 +639,8 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
      * enumeration driven purely by annotations dropped it silently — and a dropped parameter is
      * indistinguishable from one that was never declared. The two have opposite meanings when the parameter is
      * the one carrying authorization: reading the tool's output alone, an endpoint that authenticates its caller
-     * looks exactly like one that does not.
+     * looks exactly like one that does not. Without a resolver in sight, `currentUser` gets Spring's default:
+     * a non-simple type is a model attribute.
      */
     fun testEndpointContractReportsEveryParameterSource() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
@@ -659,7 +660,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
                 "id" to "PATH",
                 "q" to "QUERY",
                 "sid" to "COOKIE",
-                "currentUser" to "UNKNOWN",
+                "currentUser" to "MODEL",
                 "webRequest" to "FRAMEWORK",
                 "locale" to "FRAMEWORK",
             ),
