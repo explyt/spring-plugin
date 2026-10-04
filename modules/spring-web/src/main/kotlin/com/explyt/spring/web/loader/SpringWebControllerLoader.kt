@@ -10,6 +10,7 @@ import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
@@ -34,9 +35,21 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
         }
     }
 
+    /**
+     * The type this loader registers under. The annotations of a controller are the same on both stacks, so each of
+     * its endpoints carries the type of the stack its application runs on: see [endpointTypeOf].
+     */
     override fun getType(): EndpointType {
         return EndpointType.SPRING_MVC
     }
+
+    /**
+     * `SPRING_WEBFLUX` for an application that runs reactive, and `SPRING_MVC` otherwise: a classpath with both stacks
+     * runs servlet MVC, the way Spring Boot decides it.
+     */
+    private fun endpointTypeOf(module: Module): EndpointType =
+        if (WebApplicationStack.of(module) == WebApplicationStack.REACTIVE) EndpointType.SPRING_WEBFLUX
+        else EndpointType.SPRING_MVC
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
         val controllerAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
@@ -47,14 +60,18 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
             module, SpringWebClasses.SWAGGER_API, false
         )
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
+        val endpointType = endpointTypeOf(module)
 
         return allAnnotations.asSequence().flatMap { searchAnnotatedClasses(it, module) }
-            .flatMap { getEndpoints(it, requestMappingMah, module) }
+            .flatMap { getEndpoints(it, requestMappingMah, module, endpointType) }
             .toList()
     }
 
     private fun getEndpoints(
-        controllerPsiClass: PsiClass, requestMappingMah: MetaAnnotationsHolder, module: Module
+        controllerPsiClass: PsiClass,
+        requestMappingMah: MetaAnnotationsHolder,
+        module: Module,
+        endpointType: EndpointType,
     ): List<EndpointElement> {
         val prefixes = requestMappingMah.getAnnotationMemberValues(controllerPsiClass, TARGET_VALUE)
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
@@ -86,7 +103,7 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
                         method,
                         controllerPsiClass,
                         null,
-                        EndpointType.SPRING_MVC,
+                        endpointType,
                         pathTemplate = SpringWebUtil.simplifyUrl(declared),
                     )
                 }

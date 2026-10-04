@@ -59,10 +59,14 @@ object TestRequestReceivers {
     ) + listOf(SpringWebClasses.REST_OPERATIONS, SpringWebClasses.REST_TEMPLATE, SpringWebClasses.TEST_REST_TEMPLATE)
         .flatMap(::restOperationsOf)
 
-    /** The index of the request URL among the parameters of [method], or `-1` when it takes none. */
+    /**
+     * The index of the request URL among the parameters of [method] - a template, a `java.net.URI` or a
+     * `Function<UriBuilder, URI>` - or `-1` when it takes none.
+     */
     fun urlParameterIndex(method: PsiMethod): Int =
         SpringWebUtil.getUrlTemplateIndex(method).takeIf { it != -1 }
-            ?: method.parameterList.parameters.indexOfFirst { it.type.canonicalText in URL_TYPES }
+            ?: method.parameterList.parameters.indexOfFirst { it.type.canonicalText in URL_TYPES }.takeIf { it != -1 }
+            ?: UrlArgumentText.uriBuilderFunctionParameterIndex(method)
 
     /** The HTTP method [call] sends, upper-case, or `null` when it is not stated where [verb] says to look. */
     fun httpMethodOf(call: UCallExpression, method: PsiMethod, verb: Verb): String? = when (verb) {
