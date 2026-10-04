@@ -84,6 +84,7 @@ data class EndpointElement(
     val pathTemplate: String = path,
     val exposure: EndpointExposure? = null,
     val produces: List<String> = emptyList(),
+    val access: EndpointAccess? = null,
 )
 
 /** Whether an Actuator endpoint answers over HTTP, as `management.endpoints.web.exposure` decides it. */
@@ -92,6 +93,21 @@ enum class EndpointExposure {
     NOT_EXPOSED,
 
     /** The configuration holds a value the IDE cannot read, such as a placeholder no configuration file resolves. */
+    UNKNOWN,
+}
+
+/**
+ * Which requests an Actuator endpoint operation serves, as `management.endpoint.<id>.access` and its defaults grant it.
+ * Independent of [EndpointExposure]: an exposed endpoint without access answers 404.
+ */
+enum class EndpointAccess {
+    UNRESTRICTED,
+
+    /** Only read operations are served; a write or delete operation of the same endpoint reads [NONE]. */
+    READ_ONLY,
+    NONE,
+
+    /** The configuration holds a value the IDE cannot read, or one Boot rejects at startup. */
     UNKNOWN,
 }
 
