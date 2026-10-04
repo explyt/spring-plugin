@@ -55,7 +55,8 @@ class BeanApplicationResolver(private val project: Project) {
      * a missing one, and only the candidate list can tell them apart.
      */
     private fun pickNamed(candidates: List<PsiClass>, applicationClassName: String): PsiClass {
-        val named = candidates.filter { it.qualifiedName == applicationClassName }
+        val spellings = setOf(applicationClassName, ApplicationClassName.canonical(applicationClassName))
+        val named = candidates.filter { it.qualifiedName in spellings }
         return when (named.size) {
             1 -> named.single()
             0 -> throw BeanQueryException(
