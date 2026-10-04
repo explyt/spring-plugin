@@ -9,13 +9,13 @@ import com.explyt.spring.core.statistic.StatisticActionId.*
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses.HTTP_METHOD_FILTER
-import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.loader.EndpointAccess
 import com.explyt.spring.web.loader.EndpointExposure
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.view.nodes.EndpointNavigable
 import com.explyt.spring.web.view.nodes.RootEndpointNode
-import com.explyt.util.ExplytPsiUtil.toSmartPointer
+
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.treeView.AbstractTreeStructure
 import com.intellij.openapi.Disposable
@@ -339,49 +339,16 @@ class EndpointsToolWindow(private val project: Project) :
             endpoints = SoftReference(endpointsLocal)
         }
         val urlFilter = searchTextField.text ?: ""
-        val filteredEndpointsMap = EndpointsViewFilter.apply(
-            endpointsLocal, urlFilter, httpTypeState, endpointTypeState, EndpointsViewFilter.declaredBasePaths()
-        ).groupBy { it.type }
-        val typeNodes = mutableListOf<EndpointViewByType>()
-        for (type in EndpointType.entries) {
-            val elements = filteredEndpointsMap[type] ?: continue
-            val elementsByClass = groupElementsByClass(elements)
-            typeNodes.add(EndpointViewByType(type, elementsByClass))
-        }
-        return typeNodes
+        return EndpointsTreeData.byType(
+            EndpointsViewFilter.apply(
+                endpointsLocal, urlFilter, httpTypeState, endpointTypeState, EndpointsViewFilter.declaredBasePaths()
+            )
+        )
     }
-
 
     private fun getAllEndpoints(): List<EndpointElementViewData> {
         return SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints()
-            .flatMap { mapToEndpointElementViewData(it) }
-    }
-
-    private fun mapToEndpointElementViewData(element: EndpointElement): List<EndpointElementViewData> {
-        val classOrFileName = element.containingClass?.name
-            ?: element.containingFile?.name ?: return emptyList()
-        return element.requestMethods.asSequence()
-            .map {
-                EndpointElementViewData(
-                    element.type, element.psiElement.toSmartPointer(), classOrFileName, it, element.path,
-                    element.exposure
-                )
-            }
-            .sortedBy { it.classOrFileName + it.method }
-            .toList()
-    }
-
-    private fun groupElementsByClass(list: List<EndpointElementViewData>): List<EndpointViewWithContainerName> {
-        return list.groupBy { it.classOrFileName }.asSequence()
-            .map { toEndpointViewByClass(it) }
-            .sortedBy { it.classOrFileName }
-            .toList()
-    }
-
-    private fun toEndpointViewByClass(
-        entry: Map.Entry<String, List<EndpointElementViewData>>
-    ): EndpointViewWithContainerName {
-        return EndpointViewWithContainerName(entry.key, entry.value.sortedBy { it.method })
+            .flatMap(EndpointsTreeData::rowsOf)
     }
 }
 
@@ -392,6 +359,7 @@ data class EndpointElementViewData(
     val method: String,
     val path: String,
     val exposure: EndpointExposure? = null,
+    val access: EndpointAccess? = null,
 )
 
 data class EndpointViewWithContainerName(val classOrFileName: String, val list: List<EndpointElementViewData>)

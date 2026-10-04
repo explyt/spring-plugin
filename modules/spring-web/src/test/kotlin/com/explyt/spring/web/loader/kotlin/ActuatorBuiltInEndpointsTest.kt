@@ -36,6 +36,7 @@ class ActuatorBuiltInEndpointsTest : ExplytKotlinLightTestCase() {
 
     override fun setUp() {
         super.setUp()
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
         val scope = GlobalSearchScope.allScope(project)
         val facade = JavaPsiFacade.getInstance(project)
         assertNotNull(
@@ -240,3 +241,7 @@ class ActuatorBuiltInEndpointsTest : ExplytKotlinLightTestCase() {
             .flatMap { it.searchEndpoints(module) }
             .toList()
 }
+
+/** Built-in endpoints belong to an application's context, so the fixture module declares one. */
+internal const val APPLICATION =
+    "import org.springframework.boot.autoconfigure.SpringBootApplication\n\n@SpringBootApplication\nclass DemoApplication\n"

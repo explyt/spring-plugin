@@ -95,7 +95,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
     @McpDescription(
         description = "Call first when entering a Spring workspace you do not know, and before any " +
-                "explyt_get_project_beans_by_spring_boot_application call, which needs one of these class names. " +
+                "explyt_get_spring_beans call, which needs one of these class names. " +
                 "A multi-module workspace can hold several @SpringBootApplication classes, and guessing the wrong one " +
                 "scopes every later bean question to the wrong module. " +
                 "Returns each application's fully-qualified class name, Spring Boot version, starters, module and " +
@@ -121,7 +121,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return mapper.writeValueAsString(applications)
     }
 
-    @McpTool("explyt_get_project_beans_by_spring_boot_application", title = "Beans of a Spring Boot application by stereotype")
+    @McpTool("explyt_get_spring_beans", title = "Beans of a Spring Boot application by stereotype")
     @McpToolHints(readOnlyHint = TRUE, idempotentHint = TRUE)
     @McpDescription(
         description = "Call before adding a component, to see which beans of that stereotype already exist and " +
