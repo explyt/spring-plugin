@@ -14,6 +14,7 @@ import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.ActuatorAccess
 import com.explyt.spring.web.util.ActuatorExposure
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
@@ -33,7 +34,8 @@ import com.intellij.psi.util.CachedValuesManager
  *
  * Every endpoint is listed, an unexposed one included: the exposure is read from configuration that a profile or an
  * environment variable can override, so hiding an endpoint on a static reading would hide one the running application
- * may well serve.
+ * may well serve. The access the configuration grants is carried the same way, per operation: under `READ_ONLY` Boot
+ * serves an endpoint's read operations alone, so its other operations read `NONE`.
  *
  * Discovery is shared with `management.endpoint.<id>.*` key resolution: both answer "which endpoint ids does this
  * module declare", and two copies of that answer would disagree the first time the meta-annotation set changes.
@@ -78,18 +80,23 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         }
         val basePath = propertyValue(BASE_PATH_KEY) ?: DEFAULT_BASE_PATH
         val exposure = ActuatorExposure.of(module, definitions)
+        val access = ActuatorAccess.of(module, definitions)
         val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
 
         return endpoints.flatMap {
-            endpointElements(it, basePath, propertyValue, exposure.exposureOf(it.id)) { requestMappingMah }
+            val gates = Gates(exposure.exposureOf(it.id), access.accessOf(it))
+            endpointElements(it, basePath, propertyValue, gates) { requestMappingMah }
         }
     }
+
+    /** The two independent conditions under which Boot serves an endpoint: exposure and access. */
+    private class Gates(val exposure: EndpointExposure, val access: EndpointAccess)
 
     private fun endpointElements(
         endpoint: ActuatorEndpoint,
         basePath: String,
         propertyValue: (String) -> String?,
-        exposure: EndpointExposure,
+        gates: Gates,
         requestMappingMah: () -> MetaAnnotationsHolder,
     ): List<EndpointElement> {
         // A JMX-only endpoint is not published over HTTP at all, so any path shown for it would be invented.
@@ -99,14 +106,14 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val endpointPath = joinPath(basePath, mappedId)
 
         val operations = if (endpoint.psiClass.isMetaAnnotatedBy(CONTROLLER_ENDPOINTS)) {
-            mappingElements(endpoint, endpointPath, exposure, requestMappingMah())
+            mappingElements(endpoint, endpointPath, gates, requestMappingMah())
         } else {
-            endpoint.psiClass.allMethods.mapNotNull { operationElement(it, endpoint, endpointPath, exposure) }
+            endpoint.psiClass.allMethods.mapNotNull { operationElement(it, endpoint, endpointPath, gates) }
         }
         // An endpoint declaring no operation - a servlet endpoint, or one that declares none at all - stays listed so its
         // declaration does, and names no verb because it declares none.
         return operations.ifEmpty {
-            listOf(endpointElement(endpointPath, emptyList(), endpoint.psiClass, endpoint, exposure))
+            listOf(endpointElement(endpointPath, emptyList(), endpoint.psiClass, endpoint, gates.exposure, gates.access))
         }
     }
 
@@ -117,21 +124,27 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
     private fun mappingElements(
         endpoint: ActuatorEndpoint,
         endpointPath: String,
-        exposure: EndpointExposure,
+        gates: Gates,
         requestMappingMah: MetaAnnotationsHolder,
     ): List<EndpointElement> = endpoint.psiClass.allMethods
         .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
         .flatMap { method ->
             ProgressManager.checkCanceled()
             val mapping = SpringWebUtil.requestMappingOf(method, requestMappingMah)
-            mapping.paths.map { endpointElement(joinPath(endpointPath, it), mapping.methods, method, endpoint, exposure) }
+            // Boot's `ControllerEndpointHandlerMapping` keeps a read-only controller endpoint's GET and HEAD mappings
+            // alone, and narrows a mapping naming no method to those two.
+            val isRead = mapping.methods.isNotEmpty() && mapping.methods.all { it in READ_ONLY_REQUEST_METHODS }
+            val access = ActuatorAccess.ofOperation(gates.access, isRead)
+            mapping.paths.map {
+                endpointElement(joinPath(endpointPath, it), mapping.methods, method, endpoint, gates.exposure, access)
+            }
         }
 
     private fun operationElement(
         method: PsiMethod,
         endpoint: ActuatorEndpoint,
         endpointPath: String,
-        exposure: EndpointExposure
+        gates: Gates,
     ): EndpointElement? {
         ProgressManager.checkCanceled()
         val httpMethod = HTTP_METHOD_BY_OPERATION.entries
@@ -144,7 +157,10 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
 
         val produces = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod)).getStringMemberValues(PRODUCES)
 
-        return endpointElement(endpointPath + selectors, listOf(httpMethod), method, endpoint, exposure, produces.toList())
+        val access = ActuatorAccess.ofOperation(gates.access, isRead = httpMethod == READ_METHOD)
+        return endpointElement(
+            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates.exposure, access, produces.toList()
+        )
     }
 
     private fun endpointElement(
@@ -153,9 +169,11 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         psiElement: PsiElement,
         endpoint: ActuatorEndpoint,
         exposure: EndpointExposure,
+        access: EndpointAccess,
         produces: List<String> = emptyList(),
     ) = EndpointElement(
-        path, requestMethods, psiElement, endpoint.psiClass, null, getType(), exposure = exposure, produces = produces
+        path, requestMethods, psiElement, endpoint.psiClass, null, getType(),
+        exposure = exposure, produces = produces, access = access
     )
 
 
@@ -171,6 +189,8 @@ private const val BASE_PATH_KEY = "management.endpoints.web.base-path"
 private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
 
 private const val PRODUCES = "produces"
+private const val READ_METHOD = "GET"
+private val READ_ONLY_REQUEST_METHODS = setOf("GET", "HEAD")
 
 private val HTTP_METHOD_BY_OPERATION = mapOf(
     SpringCoreClasses.ACTUATOR_READ_OPERATION to "GET",
