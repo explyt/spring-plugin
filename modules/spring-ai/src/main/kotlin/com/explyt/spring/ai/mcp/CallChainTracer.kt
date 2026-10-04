@@ -7,7 +7,6 @@ package com.explyt.spring.ai.mcp
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
@@ -53,7 +52,6 @@ import org.jetbrains.uast.visitor.AbstractUastVisitor
  */
 internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 
-    private val fileIndex = ProjectFileIndex.getInstance(project)
     private val projectScope = GlobalSearchScope.projectScope(project)
 
     fun trace(start: PsiMethod, depth: Int): CallChain {
@@ -183,10 +181,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         return declaration.parent is KtFile && declaration.containingFile == caller.navigationElement.containingFile
     }
 
-    private fun isProjectSource(element: PsiElement): Boolean {
-        val file = element.navigationElement.containingFile?.virtualFile ?: return false
-        return fileIndex.isInSourceContent(file)
-    }
+    private fun isProjectSource(element: PsiElement): Boolean = ProjectSources.declares(element)
 
     companion object {
 

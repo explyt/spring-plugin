@@ -44,7 +44,7 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
         assertEquals(
             setOf(
                 "explyt_get_spring_boot_applications",
-                "explyt_get_project_beans_by_spring_boot_application",
+                "explyt_get_spring_beans",
                 "explyt_find_spring_endpoint",
                 "explyt_get_spring_http_endpoints",
                 "explyt_get_spring_endpoint_contract",
@@ -68,6 +68,21 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
             assertTrue("${tool.toolName} has no @McpToolHints", hints != null)
             assertEquals("${tool.toolName} readOnlyHint", McpToolHintValue.TRUE, hints!!.readOnlyHint)
             assertEquals("${tool.toolName} idempotentHint", McpToolHintValue.TRUE, hints.idempotentHint)
+        }
+    }
+
+    /**
+     * A client exposes a tool as its server prefix plus the tool name, and many cap that at 64 characters. A name
+     * over the cap is mangled - the prefix cut, the name cut short - so the agent can neither find the tool by the
+     * pattern its siblings follow nor guess it, and a guess fails as an unknown tool.
+     */
+    @Test
+    fun `every tool name leaves room for a client prefix`() {
+        for (tool in tools) {
+            assertTrue(
+                "${tool.toolName} is ${tool.toolName.length} characters, over the budget of $MAX_TOOL_NAME_LENGTH",
+                tool.toolName.length <= MAX_TOOL_NAME_LENGTH
+            )
         }
     }
 
@@ -115,5 +130,6 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
     private companion object {
         val TOOL_NAME = Regex("""explyt_[a-z_]+""")
         const val LEAD_SENTENCES = 2
+        const val MAX_TOOL_NAME_LENGTH = 40
     }
 }

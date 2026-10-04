@@ -20,6 +20,7 @@ import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiTypes
 import com.intellij.psi.util.PropertyUtilBase
+import org.jetbrains.kotlin.asJava.classes.KtLightClass
 import org.jetbrains.kotlin.asJava.elements.KtLightField
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
@@ -35,7 +36,13 @@ import org.jetbrains.kotlin.psi.KtTypeReference
  *   `@JsonValue` member when it declares one, a value computed in code that cannot be listed;
  * - a `transient` or `@JsonIgnore` member is not written at all, and a field declared by a `java.*` class is the
  *   JDK's own state;
- * - a `@JsonProperty("order_id")` member is written under that name.
+ * - a `@JsonProperty("order_id")` member is written under that name;
+ * - a Java bean is written through its getters, so a private field without one is not written and a field named
+ *   `vets` behind `getVetList()` is written as `vetList`.
+ *
+ * Containers - `ResponseEntity`, `Optional`, a publisher, a collection - are described by their payload, their first
+ * type argument. What counts as a container is decided by where the class is declared, never by its package alone:
+ * a project class under `org.springframework.` is the project's own DTO.
  */
 internal object ResponseSchemaReader {
 
@@ -44,14 +51,98 @@ internal object ResponseSchemaReader {
         val resolved = (type as? PsiClassType)?.resolve() ?: return null
         val fqn = resolved.qualifiedName ?: return null
 
-        if (WRAPPER_PACKAGES.any(fqn::startsWith)) {
+        if (isContainer(resolved, fqn)) {
             return type.parameters.firstOrNull()?.let { schemaOf(it, depth) }
         }
         if (resolved.isEnum) return enumSchemaOf(resolved, fqn)
 
-        val fields = fieldsOf(resolved, depth).ifEmpty { propertiesOf(resolved, depth) }
+        val fields = if (isJavaBean(resolved)) {
+            beanPropertiesOf(resolved, depth)
+        } else {
+            fieldsOf(resolved, depth).ifEmpty { propertiesOf(resolved, depth) }
+        }
         return DtoSchemaJson(className = fqn, fields = fields)
     }
+
+    /**
+     * A class whose payload is its first type argument. A class declared in the project never is, whatever its
+     * package. A library class is when the JDK, the Kotlin standard library or Spring declares it - a collection or a
+     * map, `Optional`, `ResponseEntity`, a `Page` - or when it is a reactive or asynchronous container; a library type
+     * without a type argument, such as `String`, `Instant` or `ModelAndView`, then has no schema of its own.
+     */
+    private fun isContainer(psiClass: PsiClass, fqn: String): Boolean {
+        if (ProjectSources.declares(psiClass)) return false
+        return fqn in CONTAINERS || LIBRARY_CONTAINER_PACKAGES.any(fqn::startsWith)
+    }
+
+    /**
+     * A Java class Jackson writes through its accessors. A record keeps its components, which Java exposes as fields
+     * and Jackson writes under the same names; a Kotlin class, an interface and an enum keep their own readers.
+     */
+    private fun isJavaBean(psiClass: PsiClass): Boolean =
+        psiClass !is KtLightClass && !psiClass.isRecord && !psiClass.isInterface && !psiClass.isEnum
+
+    /**
+     * The properties of a Java bean as Jackson's default visibility writes them: every public getter - `getX`, or
+     * `isX` returning `boolean` - and every public field, under the getter's property name. An annotation on the
+     * getter or on the field behind it applies to the property.
+     *
+     * A class with no accessor at all is read by its fields, as before: its accessors are generated at compile time
+     * by an annotation processor the IDE does not model, or its mapper is configured for field visibility.
+     */
+    private fun beanPropertiesOf(psiClass: PsiClass, depth: Int): List<DtoFieldJson> {
+        val getters = psiClass.allMethods.filter(::isWrittenGetter)
+            .groupBy(::jacksonPropertyName)
+            .mapValues { (_, overloads) -> overloads.first() }
+        val properties = getters.mapNotNull { (name, getter) ->
+            val field = psiClass.findFieldByName(name, true)?.takeIf(::isWrittenField)
+            val carriers = listOfNotNull(getter, field)
+            if (carriers.any { isEnabled(it.getAnnotation(JacksonClasses.JSON_IGNORE)) }) return@mapNotNull null
+            val type = getter.returnType ?: return@mapNotNull null
+            fieldJson(
+                declaredName = name,
+                wireName = carriers.firstNotNullOfOrNull { renamedTo(it.getAnnotation(JacksonClasses.JSON_PROPERTY)) },
+                type = type,
+                origin = null,
+                nullable = isDeclaredNullable(carriers),
+                depth = depth,
+            )
+        }
+        val publicFields = psiClass.allFields
+            .filter { it.hasModifierProperty(PsiModifier.PUBLIC) && isWrittenField(it) && it.name !in getters }
+            .mapNotNull { field ->
+                if (isIgnored(field)) return@mapNotNull null
+                fieldJson(
+                    declaredName = field.name,
+                    wireName = renamedTo(field.getAnnotation(JacksonClasses.JSON_PROPERTY)),
+                    type = field.type,
+                    origin = null,
+                    nullable = isDeclaredNullable(listOf(field)),
+                    depth = depth,
+                )
+            }
+        return (properties + publicFields).ifEmpty { fieldsOf(psiClass, depth) }
+    }
+
+    private fun isWrittenGetter(method: PsiMethod): Boolean =
+        method.hasModifierProperty(PsiModifier.PUBLIC) &&
+                !method.hasModifierProperty(PsiModifier.STATIC) &&
+                PropertyUtilBase.isSimplePropertyGetter(method) &&
+                !isJdkMember(method)
+
+    /**
+     * The property name Jackson's default naming gives a getter: the prefix is dropped and the leading run of
+     * capitals is lower-cased as a whole - `getVetList` is `vetList`, `getURL` is `url` - unlike the JavaBeans rule,
+     * which keeps `URL`.
+     */
+    private fun jacksonPropertyName(getter: PsiMethod): String {
+        val base = getter.name.removePrefix(if (getter.name.startsWith("is")) "is" else "get")
+        val capitals = base.takeWhile { it.isUpperCase() }.length
+        return base.take(capitals).lowercase() + base.drop(capitals)
+    }
+
+    private fun isDeclaredNullable(carriers: List<PsiModifierListOwner>): Boolean =
+        carriers.any { owner -> owner.annotations.any { it.qualifiedName?.contains("Nullable") == true } }
 
     private fun enumSchemaOf(enum: PsiClass, fqn: String): DtoSchemaJson {
         val constants = enum.fields.filterIsInstance<PsiEnumConstant>()
@@ -201,6 +292,13 @@ internal object ResponseSchemaReader {
 
     private const val JDK_PACKAGE = "java."
 
-    /** Containers and framework types: their first type argument is what the client receives. */
-    private val WRAPPER_PACKAGES = listOf(JDK_PACKAGE, "kotlin.", "org.springframework.")
+    /** Packages whose library classes are described by their first type argument, or by nothing without one. */
+    private val LIBRARY_CONTAINER_PACKAGES = listOf(JDK_PACKAGE, "kotlin.", "org.springframework.")
+
+    /** Reactive and coroutine containers outside those packages, whose payload is their first type argument. */
+    private val CONTAINERS = setOf(
+        "reactor.core.publisher.Mono",
+        "reactor.core.publisher.Flux",
+        "kotlinx.coroutines.flow.Flow",
+    )
 }
