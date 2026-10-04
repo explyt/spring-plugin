@@ -249,8 +249,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
-                "file path, line and endpoint type, and 'consumes'/'produces' when the mapping declares media " +
-                "types. 'endpoints' lists the closest match to the pattern first: an exact path, then one matching " +
+                "project-relative 'filePath', line and endpoint type, and 'consumes'/'produces' when the mapping " +
+                "declares media types; an endpoint declared in a jar, such as a built-in Actuator one, has a null " +
+                "'filePath' and names the jar in 'library' instead - no answer carries a path of the machine. " +
+                "'endpoints' lists the closest match to the pattern first: an exact path, then one matching " +
                 "it as a pattern, then one merely containing it, and within each group by path specificity, the " +
                 "way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of routes " +
                 "with different paths matching one URL the first is the one that dispatches. Handlers sharing one " +
@@ -533,8 +535,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val controllerClass = endpoint.containingClass ?: declaringMethod?.containingClass
         val position = sourcePositionOf(endpoint.psiElement, project)
         // A loader may know the declaring file of an endpoint whose element has no source position of its own.
-        val filePath = position.filePath
-            ?: endpoint.containingFile?.let { relativePathOf(it, project) }
+        val location = position.location.takeIf { it != McpSourceLocation.UNKNOWN }
+            ?: endpoint.containingFile?.let { McpSourceLocation.of(it, project) }
+            ?: McpSourceLocation.UNKNOWN
         val mediaTypes = mediaTypesOf(
             requestHandlerOf(endpoint)?.toUElement() as? UMethod,
             ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement),
@@ -547,7 +550,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             pathTemplate = endpoint.pathTemplate.takeIf { it != endpoint.path },
             controllerClass = controllerClass?.qualifiedName,
             methodName = declaringMethod?.name,
-            filePath = filePath,
+            filePath = location.filePath,
+            library = location.library,
             line = position.line,
             endpointType = endpoint.type.readable,
             consumes = mediaTypes.consumes,
@@ -568,6 +572,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             controllerClass = core.controllerClass,
             methodName = core.methodName,
             filePath = core.filePath,
+            library = core.library,
             line = core.line,
             parameters = parametersOf(endpoint, handler),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
@@ -853,7 +858,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "sharing a path and a verb are told apart by them, not by their order. " +
                 "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
                 "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
-                "absent otherwise. " +
+                "absent otherwise. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
+                "built-in Actuator one, has a null 'filePath' and names the jar in 'library' instead, a key absent " +
+                "for a project endpoint - no answer carries a path of the machine. " +
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
                 "and on a large project the full form can exceed 100 KB on a single line. " +
                 "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
@@ -1036,6 +1043,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             controllerClass = core.controllerClass,
             methodName = core.methodName,
             filePath = core.filePath,
+            library = core.library,
             line = core.line,
             parameters = parametersOf(endpoint, handler),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
@@ -1101,6 +1109,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return ServiceCallJson(
             target = "${callee.containingClass?.qualifiedName}.${callee.name}",
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
         )
     }
@@ -1177,6 +1186,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return ServiceCallJson(
             target = "${callee.containingClass?.qualifiedName}.${callee.name}",
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
             callLine = site.line,
         )
@@ -1229,7 +1239,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "changed since the first page, is answered with RESULT_CHANGED."
     )
     suspend fun traceCallChain(
-        @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
+        @McpDescription(
+            "Path to the source file containing the starting method, relative to the project root as the other " +
+                    "tools report it, e.g. 'src/main/kotlin/.../MyController.kt' or '../shared/src/.../Service.kt' for " +
+                    "a module outside the project directory"
+        )
         filePath: String,
         @McpDescription(
             "1-based line number of the method to start tracing from. Any line of the method works - its " +
@@ -1265,7 +1279,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val basePath = project.basePath ?: mcpFail("project base path not found")
-                val absolutePath = "$basePath/$filePath"
+                val absolutePath = McpSourceLocation.resolveInputPath(filePath, basePath)
                 val virtualFile = LocalFileSystem.getInstance().findFileByPath(absolutePath)
                     ?: mcpFail("file not found: $filePath")
                 val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
@@ -1379,6 +1393,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             className = containingClass?.qualifiedName ?: containingClass?.name,
             methodName = CallChainTracer.sourceNameOf(method),
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
             parameters = CallChainTracer.sourceParametersOf(method),
             aop = ProxyAnnotations.of(method).map { AopAnnotationJson(it.annotation, it.declaredOn.name) },
@@ -1524,6 +1539,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             className = qualifiedName,
             tableName = resolveTableName(psiClass, simpleName),
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
             readSchema = { EntitySchema(collectEntityFields(psiClass), collectEntityIndexes(psiClass)) }
         )
@@ -1607,21 +1623,18 @@ class SpringBootApplicationMcpToolset : McpToolset {
         else -> null
     }
 
-    private fun relativePathOf(element: PsiElement, project: Project): String? {
-        val basePath = project.basePath?.let { "$it/" } ?: return null
-        val filePath = element.containingFile?.virtualFile?.path ?: return null
-        return if (filePath.startsWith(basePath)) filePath.removePrefix(basePath) else filePath
-    }
-
     /**
-     * File path and line of a single source anchor. Both are `null` when the reported element has no
+     * Location and line of a single source anchor. All of them are `null` when the reported element has no
      * physical declaration to point at, so a caller never gets a path and a line taken from different files.
      */
-    private data class SourcePosition(val filePath: String?, val line: Int?)
+    private data class SourcePosition(val location: McpSourceLocation, val line: Int?) {
+        val filePath: String? get() = location.filePath
+        val library: String? get() = location.library
+    }
 
     private fun sourcePositionOf(element: PsiElement, project: Project): SourcePosition {
-        val anchor = McpSourcePositions.sourceAnchorOf(element) ?: return SourcePosition(null, null)
-        return SourcePosition(relativePathOf(anchor, project), McpSourcePositions.lineOfAnchor(anchor))
+        val anchor = McpSourcePositions.sourceAnchorOf(element) ?: return SourcePosition(McpSourceLocation.UNKNOWN, null)
+        return SourcePosition(McpSourceLocation.of(anchor, project), McpSourcePositions.lineOfAnchor(anchor))
     }
 
     /** 1-based line of [element], or `null` when it has no physical declaration to point at. */
@@ -1865,7 +1878,9 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Project-relative; `null` for an element declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint element has no physical declaration to point at. */
     val line: Int?,
     val parameters: List<EndpointParameterJson>,
@@ -1899,7 +1914,13 @@ data class CompactEndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Relative to the project root, `../` for a module outside it; `null` for an element declared in a library. */
     val filePath: String?,
+    /**
+     * The jar, or the library, declaring an element that is not a project file - a built-in Actuator endpoint -
+     * by its file name, never by a path of this machine. Absent for a project element, whose [filePath] is set.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint element has no physical declaration to point at. */
     val line: Int?,
     val endpointType: String,
@@ -1994,7 +2015,9 @@ data class CallChainNodeJson(
     val reachedBy: String?,
     val className: String?,
     val methodName: String,
+    /** Project-relative; `null` for a method declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` for a light or synthetic method with no physical declaration, e.g. a generated `copy()`. */
     val line: Int?,
     val parameters: List<String>,
@@ -2027,14 +2050,18 @@ data class AopAnnotationJson(
 )
 
 data class NodeTestReferenceJson(
-    val filePath: String,
+    /** Project-relative; `null` for a test outside the project, see [CompactEndpointJson.library]. */
+    val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     val lines: List<Int>,
     /** The interface or abstract method the test refers to instead of this method, `null` for a direct reference. */
     val via: String?,
 )
 
 data class UrlTestReferenceJson(
-    val filePath: String,
+    /** Project-relative; `null` for a test outside the project, see [CompactEndpointJson.library]. */
+    val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     val lines: List<Int>,
     /**
      * The mapping path of the endpoint the test's request matched, as the endpoint declares it - not the literal URL
@@ -2061,8 +2088,10 @@ data class CallTargetJson(
 
 data class ServiceCallJson(
     val target: String,
-    /** Where [target] is declared. */
+    /** Where [target] is declared, project-relative; `null` for a library declaration, see [library]. */
     val filePath: String?,
+    /** The jar or library declaring [target] when it is not a project file; see [CompactEndpointJson.library]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String? = null,
     /** Declaration line of [target]. */
     val line: Int?,
     /** Line of the call in the handler; absent for a functional route, whose handler is a reference, not a call. */
@@ -2076,7 +2105,9 @@ data class EndpointContractJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Project-relative; `null` for an element declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint method has no physical declaration to point at. */
     val line: Int?,
     val parameters: List<EndpointParameterJson>,

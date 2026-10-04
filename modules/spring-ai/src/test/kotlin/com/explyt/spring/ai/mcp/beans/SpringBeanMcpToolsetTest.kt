@@ -12,8 +12,11 @@ import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
+import com.intellij.openapi.vfs.JarFileSystem
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.GlobalSearchScope
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -67,6 +70,35 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
 
         assertEquals("SINGLE", root["outcome"].asText())
         assertEquals("systemClock", root["candidates"][0]["name"].asText())
+    }
+
+    /**
+     * A bean declared in a jar is located by the jar's name: a `jar://` URL would carry the absolute path of the
+     * local cache, which leaks the home directory and names nothing an agent can open.
+     */
+    fun testALibraryDeclarationIsNamedByItsJarNotByAnAbsoluteUrl() = runBlocking {
+        copyBeanQueryFixture()
+        val libraryClass = JavaPsiFacade.getInstance(project)
+            .findClass(LIBRARY_CONFIGURATION, GlobalSearchScope.allScope(project))!!
+        val expectedJar = JarFileSystem.getInstance().getVirtualFileForJar(libraryClass.containingFile.virtualFile)!!.name
+
+        val root = call(typeFqn = LIBRARY_CONFIGURATION)
+
+        assertTrue("Precondition: the fixture must list a library bean, got $root", root["totalCount"].asInt() >= 1)
+        val declaration = root["candidates"][0]["declaration"]
+        assertNotNull("A library bean carries a declaration, got ${root["candidates"][0]}", declaration)
+        val texts = declaration.map { it.asText() }
+        assertTrue(
+            "a declaration never carries a local path, got $declaration",
+            texts.none { it.contains("jar://") || it.contains(".jar!/") || it.contains("file://") }
+        )
+        assertTrue("a library declaration has no project path, got $declaration", declaration["filePath"].isNull)
+        assertEquals(expectedJar, declaration["library"].asText())
+        assertEquals(
+            "the same shape an endpoint record gives a library element",
+            setOf("filePath", "library", "line"),
+            declaration.fieldNames().asSequence().toSet()
+        )
     }
 
     /** The static model is named as an estimate rather than presented as the running context. */
@@ -291,17 +323,13 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     private fun projectPath(): String = project.basePath!!
 
     /**
-     * Where a candidate was declared, however the projection could express it.
-     *
-     * A file under the project root is reported as a relative `filePath`, and anything else - a library, or the
-     * light fixture's own `temp://` source root, which sits outside the project's base directory - as a
-     * `sourceUrl`. Both are a declaration; asserting only the first would make this test depend on the fixture's
-     * storage rather than on the answer.
+     * Where a candidate was declared: a path relative to the project root, or to the light fixture's own `temp://`
+     * source root, which sits outside the project's base directory.
      */
     private fun declarationOf(candidate: JsonNode): String {
         val declaration = candidate["declaration"]
         assertNotNull("A bean declared in the fixture must carry a declaration", declaration)
-        return (declaration["filePath"] ?: declaration["sourceUrl"]).asText()
+        return declaration["filePath"].asText()
     }
 
     /** The size a client measures: the payload inside the content array the MCP transport wraps it in. */
@@ -311,5 +339,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     private companion object {
         const val MAX_DEFAULT_PAYLOAD = 1800
         const val MAX_CLIENT_PAYLOAD = 2000
+        const val LIBRARY_CONFIGURATION =
+            "org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration"
     }
 }
