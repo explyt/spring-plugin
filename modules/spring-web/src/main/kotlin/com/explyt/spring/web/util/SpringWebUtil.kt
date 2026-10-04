@@ -385,6 +385,21 @@ object SpringWebUtil {
         )
     }
 
+    /**
+     * The mapping a `@RequestMapping`-annotated member declares, read through [requestMappingMah] so that `@GetMapping`
+     * and every other composed mapping count: its path values, `""` standing for a mapping that names none, and its
+     * verbs, empty for a mapping that restricts none.
+     */
+    fun requestMappingOf(member: PsiMember, requestMappingMah: MetaAnnotationsHolder): RequestMapping {
+        val values = requestMappingMah.getAnnotationMemberValues(member, setOf("value"))
+        val paths = if (values.isEmpty()) listOf("") else values.mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
+        val methods = requestMappingMah.getAnnotationMemberValues(member, setOf("method"))
+            .map { it.text.split('.').last() }
+        return RequestMapping(paths, methods)
+    }
+
+    data class RequestMapping(val paths: List<String>, val methods: List<String>)
+
     fun removeParams(url: String): String {
         val pos = url.indexOfFirst { it == '?' }
         val withoutParams = if (pos == -1) url else url.substring(0, pos + 1)
