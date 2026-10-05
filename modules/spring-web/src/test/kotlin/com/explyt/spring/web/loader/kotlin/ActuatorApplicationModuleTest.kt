@@ -5,6 +5,8 @@
 
 package com.explyt.spring.web.loader.kotlin
 
+import com.explyt.spring.core.SpringCoreClasses.ACTUATOR_ENDPOINT_AUTO_CONFIGURATION
+import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.test.ExplytMultiModuleTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.web.loader.EndpointAccess
@@ -16,7 +18,12 @@ import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.test.addFromMaven
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.roots.DependencyScope
+import com.intellij.openapi.roots.LibraryOrderEntry
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 
@@ -135,6 +142,75 @@ class ActuatorApplicationModuleTest : ExplytMultiModuleTestCase() {
         assertEquals(EXPOSED, custom.single().exposure)
     }
 
+    /**
+     * The Spring Boot petclinic sample declares `spring-boot-starter-actuator` as `runtimeOnly`: the Actuator jars are
+     * on the application's runtime classpath and on no compile scope, yet the running application serves every
+     * built-in endpoint.
+     */
+    fun testRuntimeOnlyActuatorStarterListsTheBuiltIns() {
+        val application = addActuatorModule("petclinic", DependencyScope.RUNTIME)
+        addApplication(application, "petclinic", null)
+        addFileToModule(application, "application.properties", EXPOSE_ALL)
+        val facade = JavaPsiFacade.getInstance(project)
+        assertNull(
+            "precondition: the compile classpath has no Actuator auto-configuration",
+            facade.findClass(ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, GlobalSearchScope.moduleWithLibrariesScope(application))
+        )
+        assertNotNull(
+            "precondition: the runtime classpath has it",
+            facade.findClass(ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, application.getModuleRuntimeScope(false))
+        )
+
+        val health = actuatorAt("/actuator/health")
+        assertEquals("health is listed once, by the runtime-only application: ${describe(health)}", 1, health.size)
+        assertEquals(EXPOSED, health.single().exposure)
+        assertEquals(EndpointAccess.UNRESTRICTED, health.single().access)
+
+        val shutdown = actuatorAt("/actuator/shutdown").filter { "POST" in it.requestMethods }
+        assertEquals("shutdown is listed once: ${describe(shutdown)}", 1, shutdown.size)
+        assertEquals(EXPOSED, shutdown.single().exposure)
+        assertEquals("its declared defaultAccess is read", EndpointAccess.NONE, shutdown.single().access)
+    }
+
+    fun testTestScopedActuatorListsNoBuiltIns() {
+        val application = addActuatorModule("tested", DependencyScope.TEST)
+        addApplication(application, "tested", null)
+        addFileToModule(application, "application.properties", EXPOSE_ALL)
+        val facade = JavaPsiFacade.getInstance(project)
+        assertNotNull(
+            "precondition: the test classpath has the Actuator auto-configuration",
+            facade.findClass(ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, application.getModuleRuntimeScope(true))
+        )
+        assertNull(
+            "precondition: the production runtime classpath has not",
+            facade.findClass(ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, application.getModuleRuntimeScope(false))
+        )
+
+        assertEquals(emptyMap<String, Any>(), ActuatorEndpointKeys.libraryEndpointsById(application))
+        assertEmpty(actuatorAt("/actuator/health"))
+    }
+
+    private fun addActuatorModule(name: String, actuatorScope: DependencyScope): Module {
+        val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
+        val application = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
+        ModuleRootModificationUtil.setSdkInherited(application)
+        ModuleRootModificationUtil.updateModel(application) { model ->
+            addFromMaven(model, BOOT_AUTO_CONFIGURE.mavenCoordinates, BOOT_AUTO_CONFIGURE.includeTransitiveDependencies)
+            libraries.forEach {
+                addFromMaven(model, it.mavenCoordinates, it.includeTransitiveDependencies, actuatorScope)
+            }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+
+        val scopes = ModuleRootManager.getInstance(application).orderEntries
+            .filterIsInstance<LibraryOrderEntry>()
+            .associate { it.libraryName to it.scope }
+        val expected = mapOf(BOOT_AUTO_CONFIGURE.mavenCoordinates to DependencyScope.COMPILE) +
+                libraries.associate { it.mavenCoordinates to actuatorScope }
+        assertEquals("precondition: the Actuator libraries are $actuatorScope-scoped", expected, scopes)
+        return application
+    }
+
     private fun addCustomEndpoint(target: Module) {
         addFileToModule(
             target, "com/example/library/CustomEndpoint.kt",
@@ -179,5 +255,7 @@ class ActuatorApplicationModuleTest : ExplytMultiModuleTestCase() {
         const val INCLUDE_INFO = "management:\n  endpoints:\n    web:\n      exposure:\n        include: health,info\n"
         const val SHUTDOWN_UNRESTRICTED = "management:\n  endpoint:\n    shutdown:\n      access: unrestricted\n"
         const val INCLUDE_CUSTOM = "management:\n  endpoints:\n    web:\n      exposure:\n        include: health,custom\n"
+        const val EXPOSE_ALL = "management.endpoints.web.exposure.include=*\n"
+        val BOOT_AUTO_CONFIGURE = TestLibrary.springBootAutoConfigure_4_1_0
     }
 }
