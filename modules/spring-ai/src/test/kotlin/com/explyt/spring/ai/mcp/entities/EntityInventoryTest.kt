@@ -65,6 +65,19 @@ class EntityInventoryTest : ExplytJavaLightTestCase() {
         assertTrue(node["indexes"][0]["unique"].asBoolean())
     }
 
+    fun testAQuotedTableNameIsFlaggedAndAnUnquotedOneCarriesNoFlag() {
+        val quoted = inventory.compact(
+            EntityRecord("Cluster", "com.example.Cluster", "Cluster", null, null, tableQuoted = true) {
+                EntitySchema(emptyList(), emptyList())
+            }
+        )
+        val plain = inventory.details(record("Order", "com.example.Order"))
+
+        assertEquals("Cluster", quoted["tableName"].asText())
+        assertEquals(true, quoted["tableQuoted"].booleanValue())
+        assertFalse("An unquoted table carries no flag rather than a false one", plain.has("tableQuoted"))
+    }
+
     /** An entity with no physical declaration keeps its row; a path and a line are simply unknown. */
     fun testUnknownSourcePositionIsReportedAsNullRatherThanDropped() {
         val node = inventory.compact(
@@ -173,9 +186,13 @@ class EntityInventoryTest : ExplytJavaLightTestCase() {
 
     private fun schemaWithFields() = EntitySchema(
         fields = listOf(
-            EntityFieldJson("id", "java.lang.Long", "id", primaryKey = true, nullable = false, null, null, null),
             EntityFieldJson(
-                "reference", "java.lang.String", "reference", primaryKey = false, nullable = false, null, null, null
+                name = "id", type = "java.lang.Long", column = "id", primaryKey = true, nullable = false,
+                relationship = null, joinColumn = null, mappedBy = null
+            ),
+            EntityFieldJson(
+                name = "reference", type = "java.lang.String", column = "reference", primaryKey = false,
+                nullable = false, relationship = null, joinColumn = null, mappedBy = null
             )
         ),
         indexes = emptyList()
