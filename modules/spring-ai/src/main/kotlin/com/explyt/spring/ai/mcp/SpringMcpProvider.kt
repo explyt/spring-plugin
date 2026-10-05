@@ -1413,6 +1413,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Pass includeDetails=true, and className to name the entity, to add its fields with column names, " +
                 "types, primary key flag and nullability, its @OneToOne/@OneToMany/@ManyToOne/@ManyToMany " +
                 "relationships with joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
+                "'nullable' is the nullability of the mapped column: a primary key (@Id, @EmbeddedId) is never " +
+                "nullable, even when the property is nullable before the entity is persisted, such as a Kotlin " +
+                "'Long?' id. " +
                 "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
                 "requested' as 'this entity has none'. " +
                 "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
@@ -1562,7 +1565,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val joinColumn = field.findFirstAnnotation(JOIN_COLUMN_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
         val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
         val primaryKey = field.findFirstAnnotation(ID_ANNOTATION_FQNS) != null
-        val nullable = columnNullable ?: !hasNotNullAnnotation(field)
+        val nullable = !primaryKey && (columnNullable ?: !hasNotNullAnnotation(field))
 
         return EntityFieldJson(
             name = field.name,

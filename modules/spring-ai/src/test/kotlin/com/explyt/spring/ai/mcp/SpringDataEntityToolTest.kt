@@ -243,6 +243,148 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testAPrimaryKeyColumnIsNotNullableWhateverItsPropertyType() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/Cluster.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity
+            public class Cluster {
+                @Id
+                private Integer id;
+
+                private String region;
+
+                @Column(nullable = false)
+                private String code;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Cluster")
+
+        assertEquals(true, field(fields, "id")["primaryKey"].booleanValue())
+        assertEquals("A primary-key column cannot hold NULL", false, field(fields, "id")["nullable"].booleanValue())
+        assertEquals("An unannotated reference column stays nullable", true, field(fields, "region")["nullable"].booleanValue())
+        assertEquals("A declared non-null column stays so", false, field(fields, "code")["nullable"].booleanValue())
+    }
+
+    fun testAKotlinNullableIdDeclaredNullableIsStillANotNullableColumn() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/Node.kt", """
+            package com.example.pk
+
+            import jakarta.persistence.Column
+            import jakarta.persistence.Entity
+            import jakarta.persistence.Id
+
+            @Entity
+            class Node {
+                @Id
+                @Column(nullable = true)
+                var id: Long? = null
+
+                var label: String? = null
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Node")
+
+        assertEquals("java.lang.Long", field(fields, "id")["type"].asText())
+        assertEquals("The id is null only before the entity is persisted", false, field(fields, "id")["nullable"].booleanValue())
+        assertEquals(true, field(fields, "label")["nullable"].booleanValue())
+    }
+
+    fun testAnEmbeddedIdIsANotNullablePrimaryKey() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/ShardKey.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Embeddable;
+
+            @Embeddable
+            public class ShardKey {
+                private Integer region;
+                private Integer index;
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/pk/Shard.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.EmbeddedId;
+            import jakarta.persistence.Entity;
+
+            @Entity
+            public class Shard {
+                @EmbeddedId
+                private ShardKey key;
+
+                private String owner;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Shard")
+
+        assertEquals(true, field(fields, "key")["primaryKey"].booleanValue())
+        assertEquals(false, field(fields, "key")["nullable"].booleanValue())
+        assertEquals(true, field(fields, "owner")["nullable"].booleanValue())
+    }
+
+    fun testAnIdInheritedFromAMappedSuperclassIsANotNullablePrimaryKey() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/Audited.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Id;
+            import jakarta.persistence.MappedSuperclass;
+
+            @MappedSuperclass
+            public abstract class Audited {
+                @Id
+                private Long id;
+
+                private String createdBy;
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/pk/Event.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Entity;
+
+            @Entity
+            public class Event extends Audited {
+                private String kind;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Event")
+
+        assertEquals(true, field(fields, "id")["primaryKey"].booleanValue())
+        assertEquals(false, field(fields, "id")["nullable"].booleanValue())
+        assertEquals(true, field(fields, "createdBy")["nullable"].booleanValue())
+    }
+
+    private suspend fun fieldsOf(className: String): JsonNode {
+        val page = parse(
+            toolset.getSpringDataEntities(projectPath = projectPath(), className = className, includeDetails = true)
+        )
+        assertEquals("Precondition: the entity must be found, got $page", 1, page["totalCount"].asInt())
+        return page["entities"][0]["fields"]
+    }
+
+    private fun field(fields: JsonNode, name: String): JsonNode = fields.single { it["name"].asText() == name }
+
     private companion object {
         const val DEMO_ENTITY = "com.example.app.entity.DemoEntity"
         const val WAREHOUSE_ENTITY =
