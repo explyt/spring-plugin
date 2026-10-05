@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 
 /**
@@ -18,7 +19,14 @@ import com.intellij.psi.PsiElement
 internal object ProjectSources {
 
     fun declares(element: PsiElement): Boolean {
-        val file = element.navigationElement.containingFile?.virtualFile ?: return false
+        val file = element.declaredFile() ?: return false
         return ProjectFileIndex.getInstance(element.project).isInSourceContent(file)
     }
+
+    fun declaresInTests(element: PsiElement): Boolean {
+        val file = element.declaredFile() ?: return false
+        return ProjectFileIndex.getInstance(element.project).isInTestSourceContent(file)
+    }
+
+    private fun PsiElement.declaredFile(): VirtualFile? = navigationElement.containingFile?.virtualFile
 }

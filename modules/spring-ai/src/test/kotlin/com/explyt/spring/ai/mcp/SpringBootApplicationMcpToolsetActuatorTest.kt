@@ -83,6 +83,14 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertEquals("EXPOSED", health["exposed"].asText())
     }
 
+    fun testLibraryEndpointCarriesNoTestSourceKey() = runBlocking<Unit> {
+        val found = exactMatch("/actuator/health")
+        val listed = listActuator(compact = true).single { it["fullPath"].asText() == "/actuator/health" }
+
+        assertFalse("A built-in endpoint is library code, got $found", found.has("testSource"))
+        assertFalse("A built-in endpoint is library code, got $listed", listed.has("testSource"))
+    }
+
     fun testInfoIsFoundButNotExposedByDefault() = runBlocking<Unit> {
         assertEquals("NOT_EXPOSED", exactMatch("/actuator/info")["exposed"].asText())
     }
