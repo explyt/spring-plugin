@@ -37,16 +37,17 @@ internal class MethodCallSite private constructor(
     val callee: PsiMethod,
     val receiver: UExpression?,
     val receiverClass: PsiClass?,
-    val line: Int?,
-) {
+    override val line: Int?,
+) : CallSite {
 
     /** Whether the method is invoked on the caller itself (`this::helper`, `super.x()`) rather than on another object. */
     val isOnSelf: Boolean get() = receiver is UThisExpression || receiver is USuperExpression
 
     companion object {
 
-        fun of(call: UCallExpression): MethodCallSite? {
-            val callee = call.resolve() ?: return null
+        fun of(call: UCallExpression): MethodCallSite? = call.resolve()?.let { resolvedTo(call, it) }
+
+        fun resolvedTo(call: UCallExpression, callee: PsiMethod): MethodCallSite {
             val line = (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.let(McpSourcePositions::lineOfAnchor)
             return MethodCallSite(callee, call.receiver, PsiUtil.resolveClassInClassTypeOnly(call.receiverType), line)
         }
@@ -61,8 +62,11 @@ internal class MethodCallSite private constructor(
          * class, and as `qualifierType`; Java reports the qualifier expression only. A qualifier that resolves to a
          * class is therefore a type, not an instance.
          */
-        fun of(reference: UCallableReferenceExpression): MethodCallSite? {
-            val callee = (reference.resolve() as? PsiMethod)?.takeUnless(::isPropertyAccessor) ?: return null
+        fun of(reference: UCallableReferenceExpression): MethodCallSite? =
+            (reference.resolve() as? PsiMethod)?.let { resolvedTo(reference, it) }
+
+        fun resolvedTo(reference: UCallableReferenceExpression, callee: PsiMethod): MethodCallSite? {
+            if (isPropertyAccessor(callee)) return null
             val qualifier = reference.qualifierExpression
             val qualifiedByType = (qualifier as? UResolvable)?.resolve() is PsiClass
             val receiver = qualifier.takeUnless { qualifiedByType }

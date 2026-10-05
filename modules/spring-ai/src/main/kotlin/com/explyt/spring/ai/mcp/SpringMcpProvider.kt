@@ -1239,7 +1239,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "reference such as 'repository::save', with its 'kind' (INTERNAL, PROJECT or " +
                 "EXTERNAL), the line of the call itself, 'node' naming the id of the traced method it reaches " +
                 "(null when it is not traced), and 'via' naming the interface method it is written against when " +
-                "it reaches an implementation. 'chainLimitReached' is true when reachable methods were left out " +
+                "it reaches an implementation. A call on an injected dependency that the IDE cannot resolve - its " +
+                "library jar is not downloaded, or the method does not exist - is still listed, as EXTERNAL since " +
+                "it cannot be followed even when the declared type is a project class, named after that declared " +
+                "type and marked 'resolved': false; the key is absent on every resolved call. An unresolved call " +
+                "with an implicit receiver, inside with(dsl) or dsl.apply, names no dependency and is left out. " +
+                "'chainLimitReached' is true when reachable methods were left out " +
                 "because the chain hit its size limit of $MAX_TRACED_METHODS methods. " +
                 "With includeTests, every node carries 'testReferences': the test files referring to the method, " +
                 "or to the interface method named in 'via' - the tests a signature change will break - and the " +
@@ -1423,6 +1428,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     line = call.line,
                     node = call.reached?.let(chain::idOf),
                     via = call.via,
+                    resolved = if (call.resolved) null else false,
                 )
             },
             testReferences = nodeTests?.references,
@@ -2119,7 +2125,8 @@ data class CallTargetJson(
     /**
      * `INTERNAL` for a helper of the caller's own unit of code, `PROJECT` for a method of another project class, and
      * `EXTERNAL` where the request leaves the application: a library method called on an injected dependency, or a
-     * method the framework implements, such as a Spring Data repository method.
+     * method the framework implements, such as a Spring Data repository method. An unresolved call is `EXTERNAL`
+     * because nothing can be followed, even when the dependency's declared type is a project class.
      */
     val kind: String,
     /** Line of the call in the calling method, where a change to its arguments is made. */
@@ -2128,6 +2135,13 @@ data class CallTargetJson(
     val node: Int?,
     /** The interface or abstract method the call is written against, when [target] is an implementation of it. */
     val via: String?,
+    /**
+     * `false` when the IDE cannot resolve the method - its library jar is not downloaded, or it does not exist - so
+     * [target] is read from the call site and the declared type of the injected dependency it is made on. Absent on
+     * every resolved call.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val resolved: Boolean? = null,
 )
 
 data class ServiceCallJson(
