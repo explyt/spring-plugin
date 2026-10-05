@@ -30,9 +30,11 @@ import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.WebApplicationStack
 import com.explyt.util.ExplytAnnotationUtil.findFirstAnnotation
 import com.explyt.util.ExplytAnnotationUtil.getBooleanAttribute
+import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.explyt.util.ExplytAnnotationUtil.getStringAttribute
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.explyt.util.MultiVendorClass
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.codeInspection.isInheritorOf
@@ -1411,15 +1413,16 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "source location - enough to pick one without expanding any schema. tableName is @Table(name) " +
                 "when declared, otherwise the JPA default - the @Entity(name) entity name, then the class name - " +
                 "before any physical naming strategy of the application is applied. A name declared between " +
-                "backticks or double quotes is reported without them and flagged 'tableQuoted', 'columnQuoted' or " +
-                "'joinColumnQuoted' (true, absent otherwise); only such explicit delimiters count, a global quoting " +
-                "setting such as hibernate.globally_quoted_identifiers is not read. " +
+                "backticks, double quotes or square brackets is reported without them and flagged 'tableQuoted', " +
+                "'columnQuoted' or 'joinColumnQuoted' (true, absent otherwise); only such explicit delimiters count, " +
+                "a global quoting setting such as hibernate.globally_quoted_identifiers is not read. " +
                 "Pass includeDetails=true, and className to name the entity, to add its fields with column names, " +
                 "types, primary key flag and nullability, its @OneToOne/@OneToMany/@ManyToOne/@ManyToMany " +
                 "relationships with joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
-                "'nullable' is the nullability of the mapped column: a primary key (@Id, @EmbeddedId) is never " +
-                "nullable, even when the property is nullable before the entity is persisted, such as a Kotlin " +
-                "'Long?' id. " +
+                "'nullable' is the nullability of the mapped column: a primary key (@Id, @EmbeddedId, a @MapsId " +
+                "association) is never nullable, even when the property is nullable before the entity is " +
+                "persisted, such as a Kotlin 'Long?' id; a to-one association is not nullable when it declares " +
+                "optional = false or @JoinColumn(nullable = false). " +
                 "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
                 "requested' as 'this entity has none'. " +
                 "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
@@ -1562,17 +1565,20 @@ class SpringBootApplicationMcpToolset : McpToolset {
     private fun toEntityField(field: PsiField): EntityFieldJson {
         val columnAnnotation = field.findFirstAnnotation(COLUMN_ANNOTATION_FQNS)
         val column = columnAnnotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
-        val columnNullable = columnAnnotation.getBooleanAttribute(ATTR_NULLABLE)
+        val columnNullable = columnAnnotation.getDeclaredBooleanAttribute(ATTR_NULLABLE)
         val relationshipMatch = RELATIONSHIP_ANNOTATIONS.firstNotNullOfOrNull { (fqns, kind) ->
             field.findFirstAnnotation(fqns)?.let { it to kind }
         }
         val relationshipAnnotation = relationshipMatch?.first
         val relationshipType = relationshipMatch?.second
-        val joinColumn = field.findFirstAnnotation(JOIN_COLUMN_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
-            ?.let(SqlIdentifier::declared)
+        val joinColumnAnnotation = field.findFirstAnnotation(JOIN_COLUMN_ANNOTATION_FQNS)
+        val joinColumn = joinColumnAnnotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
+        val joinColumnNullable = joinColumnAnnotation.getDeclaredBooleanAttribute(ATTR_NULLABLE)
+        val optional = relationshipAnnotation.getDeclaredBooleanAttribute(ATTR_OPTIONAL)
         val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
-        val primaryKey = field.findFirstAnnotation(ID_ANNOTATION_FQNS) != null
-        val nullable = !primaryKey && (columnNullable ?: !hasNotNullAnnotation(field))
+        val primaryKey = field.findFirstAnnotation(PRIMARY_KEY_ANNOTATION_FQNS) != null
+        val nullable = !primaryKey && optional != false &&
+                (columnNullable ?: joinColumnNullable ?: !hasNotNullAnnotation(field))
 
         return EntityFieldJson(
             name = field.name,
@@ -1597,8 +1603,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     name = indexAnnotation.getStringAttribute(ATTR_NAME),
                     columns = indexAnnotation.getStringAttribute(ATTR_COLUMN_LIST)
                         ?.split(',')
-                        ?.map { it.trim() }
                         ?.filter { it.isNotBlank() }
+                        ?.map { SqlIdentifier.declared(it).name }
                         ?: emptyList(),
                     unique = indexAnnotation.getBooleanAttribute(ATTR_UNIQUE) ?: false,
                 )
@@ -1608,6 +1614,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
     private fun hasNotNullAnnotation(field: PsiField): Boolean {
         return field.annotations.any { it.qualifiedName?.substringAfterLast('.') == NOT_NULL_SIMPLE_NAME }
     }
+
+    private fun PsiAnnotation?.getDeclaredBooleanAttribute(attributeName: String): Boolean? =
+        this?.findDeclaredAttributeValue(attributeName)?.getBooleanValue()
 
     private fun detectSpringLayer(psiClass: PsiClass): String? = when {
         psiClass.isMetaAnnotatedBy(SpringWebClasses.REST_CONTROLLER) -> "CONTROLLER"
@@ -1692,6 +1701,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
         private const val ATTR_NAME = "name"
         private const val ATTR_NULLABLE = "nullable"
+        private const val ATTR_OPTIONAL = "optional"
         private const val ATTR_MAPPED_BY = "mappedBy"
         private const val ATTR_INDEXES = "indexes"
         private const val ATTR_COLUMN_LIST = "columnList"
@@ -1799,7 +1809,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
         private val TABLE_ANNOTATION_FQNS = JpaClasses.table.allFqns
         private val COLUMN_ANNOTATION_FQNS = JpaClasses.column.allFqns
-        private val ID_ANNOTATION_FQNS = JpaClasses.id.allFqns + JpaClasses.embeddedId.allFqns
+        private val PRIMARY_KEY_ANNOTATION_FQNS =
+            JpaClasses.id.allFqns + JpaClasses.embeddedId.allFqns + MultiVendorClass("persistence.MapsId").allFqns
         private val TRANSIENT_ANNOTATION_FQNS = JpaClasses.transient.allFqns
         private val JOIN_COLUMN_ANNOTATION_FQNS = JpaClasses.joinColumn.allFqns
         private val RELATIONSHIP_ANNOTATIONS: List<Pair<List<String>, String>> = listOf(
