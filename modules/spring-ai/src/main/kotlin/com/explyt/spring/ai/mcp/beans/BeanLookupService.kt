@@ -16,9 +16,11 @@ import com.explyt.spring.core.service.beans.SpringInjectionPoint
 import com.explyt.spring.core.service.beans.SpringInjectionPointResolver
 import com.explyt.spring.ai.mcp.McpProjectChoice
 import com.explyt.spring.ai.mcp.McpProjectResolver
+import com.explyt.spring.ai.mcp.McpSourceLocation
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -87,24 +89,31 @@ class BeanLookupService(private val project: Project) {
     /**
      * Resolves a project-relative path without following it out of the project.
      *
-     * The roots of the project are what the path is resolved against, not its base path on disk: a project's
-     * content may live on another file system than its base directory does, and a path resolved through the
-     * local file system alone would miss it. Each candidate is then required to sit under the root it came
-     * from, so a path climbing out with `..` resolves to nothing rather than to a file the caller was never
-     * scoped to.
+     * A path is first read the way the tools report one, relative to the project root with `../` leading to a
+     * module kept outside the project directory, and accepted when it lands in the project's content. The roots
+     * of the project are then tried, not only its base path on disk: a project's content may live on another
+     * file system than its base directory does, and a path resolved through the local file system alone would
+     * miss it. Each such candidate is required to sit under the root it came from, so a path climbing out with
+     * `..` reaches a project file or nothing, never a file the caller was never scoped to.
      */
     private fun resolveFile(filePath: String): PsiFile {
         val relative = filePath.trim().removePrefix("/")
         if (relative.isEmpty()) throw fileNotFound("'$filePath' names no file.")
 
-        val file = project.roots()
-            .firstNotNullOfOrNull { root ->
+        val file = projectFileRelativeToBasePath(relative)
+            ?: project.roots().firstNotNullOfOrNull { root ->
                 root.findFileByRelativePath(relative)?.takeIf { VfsUtilCore.isAncestor(root, it, false) }
             }
             ?: throw fileNotFound("No file '$filePath' in the project.")
 
         return PsiManager.getInstance(project).findFile(file)
             ?: throw fileNotFound("'$filePath' is not a source file the IDE can read.")
+    }
+
+    private fun projectFileRelativeToBasePath(filePath: String): VirtualFile? {
+        val basePath = project.basePath ?: return null
+        val file = LocalFileSystem.getInstance().findFileByPath(McpSourceLocation.resolveInputPath(filePath, basePath))
+        return file?.takeIf { ProjectFileIndex.getInstance(project).isInContent(it) }
     }
 
     /** The base directory first, so a path written against the project root wins over a same-named module path. */
