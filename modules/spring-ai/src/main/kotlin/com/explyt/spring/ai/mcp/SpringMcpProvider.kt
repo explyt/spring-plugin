@@ -55,6 +55,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.PsiUtil
 import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -249,8 +250,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
-                "file path, line and endpoint type, and 'consumes'/'produces' when the mapping declares media " +
-                "types. 'endpoints' lists the closest match to the pattern first: an exact path, then one matching " +
+                "project-relative 'filePath', line and endpoint type, and 'consumes'/'produces' when the mapping " +
+                "declares media types; an endpoint declared in a jar, such as a built-in Actuator one, has a null " +
+                "'filePath' and names the jar in 'library' instead - no answer carries a path of the machine. " +
+                "'endpoints' lists the closest match to the pattern first: an exact path, then one matching " +
                 "it as a pattern, then one merely containing it, and within each group by path specificity, the " +
                 "way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of routes " +
                 "with different paths matching one URL the first is the one that dispatches. Handlers sharing one " +
@@ -533,8 +536,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val controllerClass = endpoint.containingClass ?: declaringMethod?.containingClass
         val position = sourcePositionOf(endpoint.psiElement, project)
         // A loader may know the declaring file of an endpoint whose element has no source position of its own.
-        val filePath = position.filePath
-            ?: endpoint.containingFile?.let { relativePathOf(it, project) }
+        val location = position.location.takeIf { it != McpSourceLocation.UNKNOWN }
+            ?: endpoint.containingFile?.let { McpSourceLocation.of(it, project) }
+            ?: McpSourceLocation.UNKNOWN
         val mediaTypes = mediaTypesOf(
             requestHandlerOf(endpoint)?.toUElement() as? UMethod,
             ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement),
@@ -547,7 +551,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             pathTemplate = endpoint.pathTemplate.takeIf { it != endpoint.path },
             controllerClass = controllerClass?.qualifiedName,
             methodName = declaringMethod?.name,
-            filePath = filePath,
+            filePath = location.filePath,
+            library = location.library,
             line = position.line,
             endpointType = endpoint.type.readable,
             consumes = mediaTypes.consumes,
@@ -568,6 +573,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             controllerClass = core.controllerClass,
             methodName = core.methodName,
             filePath = core.filePath,
+            library = core.library,
             line = core.line,
             parameters = parametersOf(endpoint, handler),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
@@ -666,7 +672,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
             .map(::wireNameOf)
             .toSet()
-        val servletApplication = isServletApplication(psiMethod)
+        val stack = webStackOf(psiMethod)
+        val servletApplication = stack == WebApplicationStack.SERVLET
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
             val source = if (servletApplication && info.name in multipartRequestNames) "PART" else "QUERY"
             result += EndpointParameterJson(info.name, source, declaredTypeOf(info), info.isRequired, info.defaultValue)
@@ -690,7 +697,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             )
         }
 
-        result += parametersOutsideCollectors(psiMethod, servletApplication)
+        result += parametersOutsideCollectors(psiMethod, stack)
         return result
     }
 
@@ -705,13 +712,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return if (type is PsiPrimitiveType) type.canonicalText else info.typeFqn
     }
 
-    /**
-     * Whether the handler's application runs on servlet MVC, where `@RequestParam` also binds a multipart part.
-     * A project carrying WebFlux next to it - usually only for `WebClient` - is still a servlet application.
-     */
-    private fun isServletApplication(psiMethod: PsiMethod): Boolean {
-        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
-        return WebApplicationStack.of(module) == WebApplicationStack.SERVLET
+    private fun webStackOf(psiMethod: PsiMethod): WebApplicationStack? {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
+        return WebApplicationStack.of(module)
     }
 
     private fun isMultipartPart(type: PsiType): Boolean = when (type) {
@@ -737,14 +740,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
      */
     private fun parametersOutsideCollectors(
         psiMethod: PsiMethod,
-        servletApplication: Boolean,
+        stack: WebApplicationStack?,
     ): List<EndpointParameterJson> =
         HandlerSignature.requestParameters(psiMethod)
             .filter { param -> COLLECTED_BINDING_ANNOTATIONS.none { param.isMetaAnnotatedBy(it) } }
             .map { param ->
                 EndpointParameterJson(
                     name = wireNameOf(param),
-                    source = sourceOfUncollected(param, servletApplication),
+                    source = sourceOfUncollected(param, stack),
                     type = param.type.canonicalText,
                     // Not null-by-omission: the collected annotations declare requiredness, whereas a
                     // resolver's contract is private to the resolver. Defaulting to `true` or `false` here would
@@ -768,13 +771,30 @@ class SpringBootApplicationMcpToolset : McpToolset {
             ?: param.name
     }
 
-    private fun sourceOfUncollected(param: PsiParameter, servletApplication: Boolean): String = when {
+    private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String = when {
         param.isMetaAnnotatedBy(SpringWebClasses.COOKIE_VALUE) -> "COOKIE"
         param.isMetaAnnotatedBy(SpringWebClasses.MODEL_ATTRIBUTE) -> "MODEL"
-        FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(param.type, it) } -> "FRAMEWORK"
+        isFrameworkSupplied(param.type, stack) -> "FRAMEWORK"
         param.annotations.any { !isBindingNeutral(it) } -> "UNKNOWN"
-        else -> defaultSourceOf(param.type, servletApplication)
+        else -> defaultSourceOf(param.type, stack == WebApplicationStack.SERVLET)
     }
+
+    private fun isFrameworkSupplied(type: PsiType, stack: WebApplicationStack?): Boolean = when {
+        FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(type, it) } -> true
+        stack != WebApplicationStack.REACTIVE -> false
+        REACTIVE_FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(type, it) } -> true
+        qualifiedNameOf(type) in REACTIVE_FRAMEWORK_SUPPLIED_EXACT_TYPES -> true
+        else -> isReactiveWrapperOfFrameworkSupplied(type)
+    }
+
+    private fun isReactiveWrapperOfFrameworkSupplied(type: PsiType): Boolean {
+        val payload = REACTIVE_ADAPTED_WRAPPER_TYPES.firstNotNullOfOrNull { wrapper ->
+            PsiUtil.substituteTypeParameter(type, wrapper, 0, false)
+        } ?: return false
+        return REACTIVE_WRAPPED_FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(payload, it) }
+    }
+
+    private fun qualifiedNameOf(type: PsiType): String? = (type as? PsiClassType)?.resolve()?.qualifiedName
 
     /**
      * Where Spring's catch-all resolvers put a parameter no annotation claims - the tail of the resolver chain of
@@ -853,7 +873,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "sharing a path and a verb are told apart by them, not by their order. " +
                 "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
                 "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
-                "absent otherwise. " +
+                "absent otherwise. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
+                "built-in Actuator one, has a null 'filePath' and names the jar in 'library' instead, a key absent " +
+                "for a project endpoint - no answer carries a path of the machine. " +
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
                 "and on a large project the full form can exceed 100 KB on a single line. " +
                 "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
@@ -944,7 +966,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
                 "expanded up to 3 levels: in 'name' a @JsonProperty name, else the name the declared Jackson naming " +
                 "strategy gives - @JsonNaming or spring.jackson.property-naming-strategy, reported as 'namingStrategy' " +
-                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared - with " +
+                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared, which " +
+                "includes an ObjectMapper, mapper builder or builder customizer bean declared in the application's " +
+                "production sources, since Boot yields to it and what it sets is not read; 'namingStrategySource' " +
+                "then names that declaration - with " +
                 "the declared one in 'declaredName'; 'nullable' null when an unannotated Java reference leaves it unknown; " +
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
@@ -1036,6 +1061,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             controllerClass = core.controllerClass,
             methodName = core.methodName,
             filePath = core.filePath,
+            library = core.library,
             line = core.line,
             parameters = parametersOf(endpoint, handler),
             returnType = handler?.let(HandlerSignature::declaredReturnType)?.canonicalText,
@@ -1101,6 +1127,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return ServiceCallJson(
             target = "${callee.containingClass?.qualifiedName}.${callee.name}",
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
         )
     }
@@ -1177,6 +1204,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return ServiceCallJson(
             target = "${callee.containingClass?.qualifiedName}.${callee.name}",
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
             callLine = site.line,
         )
@@ -1229,7 +1257,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "changed since the first page, is answered with RESULT_CHANGED."
     )
     suspend fun traceCallChain(
-        @McpDescription("Path to the source file containing the starting method (project-relative, e.g. 'src/main/kotlin/.../MyController.kt')")
+        @McpDescription(
+            "Path to the source file containing the starting method, relative to the project root as the other " +
+                    "tools report it, e.g. 'src/main/kotlin/.../MyController.kt' or '../shared/src/.../Service.kt' for " +
+                    "a module outside the project directory"
+        )
         filePath: String,
         @McpDescription(
             "1-based line number of the method to start tracing from. Any line of the method works - its " +
@@ -1240,9 +1272,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         @McpDescription(PROJECT_PATH_DESCRIPTION)
         projectPath: String? = null,
         @McpDescription(
-            "How many layers deep to trace (default 3, at most 10). A layer is a call into another class; a call " +
-                    "to the same class, its supertypes, its nested classes or a top-level function of the same " +
-                    "file does not use one up."
+            "How many layers deep to trace (default 3, at most 10). A layer is a call into another class, " +
+                    "counted from the starting method: depth 1 reaches the methods its calls into other classes " +
+                    "land in and stops there. A call to the same class, its supertypes, its nested classes or a " +
+                    "top-level function of the same file does not use one up."
         )
         depth: Int = 3,
         @McpDescription("Whether to find the test files that call a traced method (default true)")
@@ -1265,7 +1298,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val basePath = project.basePath ?: mcpFail("project base path not found")
-                val absolutePath = "$basePath/$filePath"
+                val absolutePath = McpSourceLocation.resolveInputPath(filePath, basePath)
                 val virtualFile = LocalFileSystem.getInstance().findFileByPath(absolutePath)
                     ?: mcpFail("file not found: $filePath")
                 val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
@@ -1379,6 +1412,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             className = containingClass?.qualifiedName ?: containingClass?.name,
             methodName = CallChainTracer.sourceNameOf(method),
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
             parameters = CallChainTracer.sourceParametersOf(method),
             aop = ProxyAnnotations.of(method).map { AopAnnotationJson(it.annotation, it.declaredOn.name) },
@@ -1524,6 +1558,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             className = qualifiedName,
             tableName = resolveTableName(psiClass, simpleName),
             filePath = position.filePath,
+            library = position.library,
             line = position.line,
             readSchema = { EntitySchema(collectEntityFields(psiClass), collectEntityIndexes(psiClass)) }
         )
@@ -1607,21 +1642,18 @@ class SpringBootApplicationMcpToolset : McpToolset {
         else -> null
     }
 
-    private fun relativePathOf(element: PsiElement, project: Project): String? {
-        val basePath = project.basePath?.let { "$it/" } ?: return null
-        val filePath = element.containingFile?.virtualFile?.path ?: return null
-        return if (filePath.startsWith(basePath)) filePath.removePrefix(basePath) else filePath
-    }
-
     /**
-     * File path and line of a single source anchor. Both are `null` when the reported element has no
+     * Location and line of a single source anchor. All of them are `null` when the reported element has no
      * physical declaration to point at, so a caller never gets a path and a line taken from different files.
      */
-    private data class SourcePosition(val filePath: String?, val line: Int?)
+    private data class SourcePosition(val location: McpSourceLocation, val line: Int?) {
+        val filePath: String? get() = location.filePath
+        val library: String? get() = location.library
+    }
 
     private fun sourcePositionOf(element: PsiElement, project: Project): SourcePosition {
-        val anchor = McpSourcePositions.sourceAnchorOf(element) ?: return SourcePosition(null, null)
-        return SourcePosition(relativePathOf(anchor, project), McpSourcePositions.lineOfAnchor(anchor))
+        val anchor = McpSourcePositions.sourceAnchorOf(element) ?: return SourcePosition(McpSourceLocation.UNKNOWN, null)
+        return SourcePosition(McpSourceLocation.of(anchor, project), McpSourcePositions.lineOfAnchor(anchor))
     }
 
     /** 1-based line of [element], or `null` when it has no physical declaration to point at. */
@@ -1784,6 +1816,31 @@ class SpringBootApplicationMcpToolset : McpToolset {
             "org.springframework.security.core.Authentication",
         )
 
+        private const val WEB_SESSION = "org.springframework.web.server.WebSession"
+
+        private val REACTIVE_FRAMEWORK_SUPPLIED_TYPES = listOf(
+            "org.springframework.web.server.ServerWebExchange",
+            "org.springframework.http.server.reactive.ServerHttpRequest",
+            "org.springframework.http.server.reactive.ServerHttpResponse",
+            WEB_SESSION,
+        )
+
+        private val REACTIVE_FRAMEWORK_SUPPLIED_EXACT_TYPES = setOf(
+            "org.springframework.web.util.UriBuilder",
+        )
+
+        private val REACTIVE_ADAPTED_WRAPPER_TYPES = listOf(
+            "org.reactivestreams.Publisher",
+            "java.util.concurrent.Flow.Publisher",
+            "java.util.concurrent.CompletionStage",
+        )
+
+        private val REACTIVE_WRAPPED_FRAMEWORK_SUPPLIED_TYPES = listOf(
+            WEB_SESSION,
+            "java.security.Principal",
+            "org.springframework.validation.Errors",
+        )
+
         private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
         private val TABLE_ANNOTATION_FQNS = JpaClasses.table.allFqns
         private val COLUMN_ANNOTATION_FQNS = JpaClasses.column.allFqns
@@ -1865,7 +1922,9 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Project-relative; `null` for an element declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint element has no physical declaration to point at. */
     val line: Int?,
     val parameters: List<EndpointParameterJson>,
@@ -1899,7 +1958,13 @@ data class CompactEndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Relative to the project root, `../` for a module outside it; `null` for an element declared in a library. */
     val filePath: String?,
+    /**
+     * The jar, or the library, declaring an element that is not a project file - a built-in Actuator endpoint -
+     * by its file name, never by a path of this machine. Absent for a project element, whose [filePath] is set.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint element has no physical declaration to point at. */
     val line: Int?,
     val endpointType: String,
@@ -1994,7 +2059,9 @@ data class CallChainNodeJson(
     val reachedBy: String?,
     val className: String?,
     val methodName: String,
+    /** Project-relative; `null` for a method declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` for a light or synthetic method with no physical declaration, e.g. a generated `copy()`. */
     val line: Int?,
     val parameters: List<String>,
@@ -2027,14 +2094,18 @@ data class AopAnnotationJson(
 )
 
 data class NodeTestReferenceJson(
-    val filePath: String,
+    /** Project-relative; `null` for a test outside the project, see [CompactEndpointJson.library]. */
+    val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     val lines: List<Int>,
     /** The interface or abstract method the test refers to instead of this method, `null` for a direct reference. */
     val via: String?,
 )
 
 data class UrlTestReferenceJson(
-    val filePath: String,
+    /** Project-relative; `null` for a test outside the project, see [CompactEndpointJson.library]. */
+    val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     val lines: List<Int>,
     /**
      * The mapping path of the endpoint the test's request matched, as the endpoint declares it - not the literal URL
@@ -2061,8 +2132,10 @@ data class CallTargetJson(
 
 data class ServiceCallJson(
     val target: String,
-    /** Where [target] is declared. */
+    /** Where [target] is declared, project-relative; `null` for a library declaration, see [library]. */
     val filePath: String?,
+    /** The jar or library declaring [target] when it is not a project file; see [CompactEndpointJson.library]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String? = null,
     /** Declaration line of [target]. */
     val line: Int?,
     /** Line of the call in the handler; absent for a functional route, whose handler is a reference, not a call. */
@@ -2076,7 +2149,9 @@ data class EndpointContractJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val pathTemplate: String?,
     val controllerClass: String?,
     val methodName: String?,
+    /** Project-relative; `null` for an element declared outside the project, see [CompactEndpointJson.library]. */
     val filePath: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val library: String?,
     /** `null` when the endpoint method has no physical declaration to point at. */
     val line: Int?,
     val parameters: List<EndpointParameterJson>,
@@ -2132,7 +2207,10 @@ data class DtoSchemaJson(
      * `SNAKE_CASE`, or `UNKNOWN` when one is declared but cannot be read statically and the names are left as declared.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategy: String? = null,
-    /** Where [namingStrategy] is declared: `@JsonNaming` or `spring.jackson.property-naming-strategy`. */
+    /**
+     * Where [namingStrategy] is declared: `@JsonNaming`, `spring.jackson.property-naming-strategy`, or the mapper,
+     * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
+     */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
 )
 
