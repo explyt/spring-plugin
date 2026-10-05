@@ -55,6 +55,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.PsiUtil
 import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -671,7 +672,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
             .map(::wireNameOf)
             .toSet()
-        val servletApplication = isServletApplication(psiMethod)
+        val stack = webStackOf(psiMethod)
+        val servletApplication = stack == WebApplicationStack.SERVLET
         for (info in SpringWebUtil.collectRequestParameters(psiMethod)) {
             val source = if (servletApplication && info.name in multipartRequestNames) "PART" else "QUERY"
             result += EndpointParameterJson(info.name, source, declaredTypeOf(info), info.isRequired, info.defaultValue)
@@ -695,7 +697,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             )
         }
 
-        result += parametersOutsideCollectors(psiMethod, servletApplication)
+        result += parametersOutsideCollectors(psiMethod, stack)
         return result
     }
 
@@ -710,13 +712,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return if (type is PsiPrimitiveType) type.canonicalText else info.typeFqn
     }
 
-    /**
-     * Whether the handler's application runs on servlet MVC, where `@RequestParam` also binds a multipart part.
-     * A project carrying WebFlux next to it - usually only for `WebClient` - is still a servlet application.
-     */
-    private fun isServletApplication(psiMethod: PsiMethod): Boolean {
-        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return false
-        return WebApplicationStack.of(module) == WebApplicationStack.SERVLET
+    private fun webStackOf(psiMethod: PsiMethod): WebApplicationStack? {
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
+        return WebApplicationStack.of(module)
     }
 
     private fun isMultipartPart(type: PsiType): Boolean = when (type) {
@@ -742,14 +740,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
      */
     private fun parametersOutsideCollectors(
         psiMethod: PsiMethod,
-        servletApplication: Boolean,
+        stack: WebApplicationStack?,
     ): List<EndpointParameterJson> =
         HandlerSignature.requestParameters(psiMethod)
             .filter { param -> COLLECTED_BINDING_ANNOTATIONS.none { param.isMetaAnnotatedBy(it) } }
             .map { param ->
                 EndpointParameterJson(
                     name = wireNameOf(param),
-                    source = sourceOfUncollected(param, servletApplication),
+                    source = sourceOfUncollected(param, stack),
                     type = param.type.canonicalText,
                     // Not null-by-omission: the collected annotations declare requiredness, whereas a
                     // resolver's contract is private to the resolver. Defaulting to `true` or `false` here would
@@ -773,13 +771,30 @@ class SpringBootApplicationMcpToolset : McpToolset {
             ?: param.name
     }
 
-    private fun sourceOfUncollected(param: PsiParameter, servletApplication: Boolean): String = when {
+    private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String = when {
         param.isMetaAnnotatedBy(SpringWebClasses.COOKIE_VALUE) -> "COOKIE"
         param.isMetaAnnotatedBy(SpringWebClasses.MODEL_ATTRIBUTE) -> "MODEL"
-        FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(param.type, it) } -> "FRAMEWORK"
+        isFrameworkSupplied(param.type, stack) -> "FRAMEWORK"
         param.annotations.any { !isBindingNeutral(it) } -> "UNKNOWN"
-        else -> defaultSourceOf(param.type, servletApplication)
+        else -> defaultSourceOf(param.type, stack == WebApplicationStack.SERVLET)
     }
+
+    private fun isFrameworkSupplied(type: PsiType, stack: WebApplicationStack?): Boolean = when {
+        FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(type, it) } -> true
+        stack != WebApplicationStack.REACTIVE -> false
+        REACTIVE_FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(type, it) } -> true
+        qualifiedNameOf(type) in REACTIVE_FRAMEWORK_SUPPLIED_EXACT_TYPES -> true
+        else -> isReactiveWrapperOfFrameworkSupplied(type)
+    }
+
+    private fun isReactiveWrapperOfFrameworkSupplied(type: PsiType): Boolean {
+        val payload = REACTIVE_ADAPTED_WRAPPER_TYPES.firstNotNullOfOrNull { wrapper ->
+            PsiUtil.substituteTypeParameter(type, wrapper, 0, false)
+        } ?: return false
+        return REACTIVE_WRAPPED_FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(payload, it) }
+    }
+
+    private fun qualifiedNameOf(type: PsiType): String? = (type as? PsiClassType)?.resolve()?.qualifiedName
 
     /**
      * Where Spring's catch-all resolvers put a parameter no annotation claims - the tail of the resolver chain of
@@ -951,7 +966,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
                 "expanded up to 3 levels: in 'name' a @JsonProperty name, else the name the declared Jackson naming " +
                 "strategy gives - @JsonNaming or spring.jackson.property-naming-strategy, reported as 'namingStrategy' " +
-                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared - with " +
+                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared, which " +
+                "includes an ObjectMapper, mapper builder or builder customizer bean declared in the application's " +
+                "production sources, since Boot yields to it and what it sets is not read; 'namingStrategySource' " +
+                "then names that declaration - with " +
                 "the declared one in 'declaredName'; 'nullable' null when an unannotated Java reference leaves it unknown; " +
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
@@ -1797,6 +1815,31 @@ class SpringBootApplicationMcpToolset : McpToolset {
             "org.springframework.security.core.Authentication",
         )
 
+        private const val WEB_SESSION = "org.springframework.web.server.WebSession"
+
+        private val REACTIVE_FRAMEWORK_SUPPLIED_TYPES = listOf(
+            "org.springframework.web.server.ServerWebExchange",
+            "org.springframework.http.server.reactive.ServerHttpRequest",
+            "org.springframework.http.server.reactive.ServerHttpResponse",
+            WEB_SESSION,
+        )
+
+        private val REACTIVE_FRAMEWORK_SUPPLIED_EXACT_TYPES = setOf(
+            "org.springframework.web.util.UriBuilder",
+        )
+
+        private val REACTIVE_ADAPTED_WRAPPER_TYPES = listOf(
+            "org.reactivestreams.Publisher",
+            "java.util.concurrent.Flow.Publisher",
+            "java.util.concurrent.CompletionStage",
+        )
+
+        private val REACTIVE_WRAPPED_FRAMEWORK_SUPPLIED_TYPES = listOf(
+            WEB_SESSION,
+            "java.security.Principal",
+            "org.springframework.validation.Errors",
+        )
+
         private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
         private val TABLE_ANNOTATION_FQNS = JpaClasses.table.allFqns
         private val COLUMN_ANNOTATION_FQNS = JpaClasses.column.allFqns
@@ -2163,7 +2206,10 @@ data class DtoSchemaJson(
      * `SNAKE_CASE`, or `UNKNOWN` when one is declared but cannot be read statically and the names are left as declared.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategy: String? = null,
-    /** Where [namingStrategy] is declared: `@JsonNaming` or `spring.jackson.property-naming-strategy`. */
+    /**
+     * Where [namingStrategy] is declared: `@JsonNaming`, `spring.jackson.property-naming-strategy`, or the mapper,
+     * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
+     */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
 )
 
