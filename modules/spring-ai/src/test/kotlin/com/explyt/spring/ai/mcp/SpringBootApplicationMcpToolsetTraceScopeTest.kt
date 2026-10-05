@@ -98,10 +98,10 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
      * inside the repository, before the SQL-building method where the defect behind the original report was.
      */
     fun testDepthCountsCallsIntoOtherClassesOnly() = runBlocking<Unit> {
-        val names = traceFromHandler(depth = 2)["chain"].map(::nameOf)
+        val names = traceFromHandler(depth = 1)["chain"].map(::nameOf)
 
         assertEquals(
-            "Depth 2 reaches the service and the object helper, and stops before the repository",
+            "Depth 1 reaches the service and the object helper through the controller's helpers, and stops before the repository",
             listOf(
                 "ShortLinkAdminController.activity",
                 "ShortLinkAdminController.parseWindow",
@@ -111,6 +111,64 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
                 "WindowFormat.normalize",
             ),
             names
+        )
+    }
+
+    /**
+     * `depth` is the number of calls into other classes the trace follows from the start method, as the tool
+     * describes it: controller → service → provider → store is three such calls, so `depth: 3` reaches the store.
+     * The start method used to be charged a layer of its own, which left the store's node missing at 3 and
+     * made it appear only at 4.
+     */
+    fun testDepthFollowsThatManyCallsIntoOtherClassesFromTheStart() = runBlocking<Unit> {
+        val chain = traceLayers(REPORT_HANDLER, depth = 3)["chain"]
+
+        assertEquals(
+            listOf(
+                "ReportController.report",
+                "ReportController.trimmed",
+                "ReportService.report",
+                "ReportProvider.provide",
+                "ReportStore.load",
+            ),
+            chain.map(::nameOf)
+        )
+        val callsIntoOtherClasses = chain.flatMap { it["callsInto"] }.filter { it["kind"].asText() == "PROJECT" }
+        assertEquals(
+            listOf("ReportService.report", "ReportProvider.provide", "ReportStore.load", "AuditLog.record"),
+            callsIntoOtherClasses.map { it["target"].asText() }
+        )
+        assertEquals(
+            "The first three calls into other classes reach traced nodes; the fourth lies beyond depth 3",
+            listOf(true, true, true, false),
+            callsIntoOtherClasses.map { !it["node"].isNull }
+        )
+    }
+
+    fun testDepthTwoStopsBeforeTheThirdCallIntoAnotherClass() = runBlocking<Unit> {
+        val chain = traceLayers(REPORT_HANDLER, depth = 2)["chain"]
+
+        assertEquals(
+            listOf("ReportController.report", "ReportController.trimmed", "ReportService.report", "ReportProvider.provide"),
+            chain.map(::nameOf)
+        )
+        val storeCall = chain.single { nameOf(it) == "ReportProvider.provide" }["callsInto"].single()
+        assertEquals("ReportStore.load", storeCall["target"].asText())
+        assertTrue("The third call into another class lies beyond depth 2", storeCall["node"].isNull)
+    }
+
+    /** A private helper between the start method and the service is the same class, so it costs no layer. */
+    fun testHelperBetweenTheStartAndTheServiceCostsNoDepth() = runBlocking<Unit> {
+        val chain = traceLayers(HELPED_HANDLER, depth = 1)["chain"]
+
+        assertEquals(
+            listOf("HelperController.report", "HelperController.viaHelper", "ReportService.report"),
+            chain.map(::nameOf)
+        )
+        val serviceCall = chain.single { nameOf(it) == "HelperController.viaHelper" }["callsInto"].single()
+        assertEquals(
+            chain.single { nameOf(it) == "ReportService.report" }["id"].asInt(),
+            serviceCall["node"].asInt()
         )
     }
 
@@ -547,6 +605,19 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
     private suspend fun repositoryNode(): JsonNode =
         traceFromHandler()["chain"].single { nameOf(it) == "ShortLinkStatsRepository.activity" }
 
+    private suspend fun traceLayers(handlerAnchor: String, depth: Int): JsonNode {
+        addSource(LAYERS_ROOT, "com/example/reports/Reports.kt", LAYERS_SOURCE)
+        return mapper.readTree(
+            toolset.traceCallChain(
+                filePath = "$LAYERS_ROOT/com/example/reports/Reports.kt",
+                line = lineOf(LAYERS_SOURCE, handlerAnchor),
+                projectPath = project.basePath!!,
+                depth = depth,
+                includeTests = false,
+            )
+        )
+    }
+
     private fun nameOf(node: JsonNode): String =
         "${node["className"].asText().substringAfterLast('.')}.${node["methodName"].asText()}"
 
@@ -588,6 +659,9 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         const val MAIN_ROOT = "traceMain"
         const val TEST_ROOT = "traceTest"
         const val LONG_ROOT = "traceLong"
+        const val LAYERS_ROOT = "traceLayers"
+        const val REPORT_HANDLER = "= service.report(trimmed(name))"
+        const val HELPED_HANDLER = "= viaHelper(name)"
         const val BRAND_ROOT = "traceBrandTest"
         const val BRAND_TEST = "$BRAND_ROOT/com/example/links/ShortLinkBrandTest.kt"
         const val CLIENT_TEST = "$BRAND_ROOT/com/example/links/ShortLinkClientTest.kt"
@@ -606,6 +680,52 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
             appendLine("    private fun step60(): Int = 0")
             appendLine("}")
         }
+
+        val LAYERS_SOURCE = """
+            package com.example.reports
+
+            import org.springframework.stereotype.Component
+            import org.springframework.stereotype.Repository
+            import org.springframework.stereotype.Service
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @Component
+            class AuditLog {
+                fun record(entry: String): String = entry
+            }
+
+            @Repository
+            class ReportStore(private val audit: AuditLog) {
+                fun load(name: String): String = audit.record(name)
+            }
+
+            @Component
+            class ReportProvider(private val store: ReportStore) {
+                fun provide(name: String): String = store.load(name)
+            }
+
+            @Service
+            class ReportService(private val provider: ReportProvider) {
+                fun report(name: String): String = provider.provide(name)
+            }
+
+            @RestController
+            class ReportController(private val service: ReportService) {
+                @GetMapping("/reports")
+                fun report(name: String): String = service.report(trimmed(name))
+
+                private fun trimmed(name: String): String = name.trim()
+            }
+
+            @RestController
+            class HelperController(private val service: ReportService) {
+                @GetMapping("/helped-reports")
+                fun report(name: String): String = viaHelper(name)
+
+                private fun viaHelper(name: String): String = service.report(name)
+            }
+        """.trimIndent()
 
         val LIBRARIES = listOf(
             TestLibrary.springWebMvc_6_0_7,

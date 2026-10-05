@@ -1272,9 +1272,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
         @McpDescription(PROJECT_PATH_DESCRIPTION)
         projectPath: String? = null,
         @McpDescription(
-            "How many layers deep to trace (default 3, at most 10). A layer is a call into another class; a call " +
-                    "to the same class, its supertypes, its nested classes or a top-level function of the same " +
-                    "file does not use one up."
+            "How many layers deep to trace (default 3, at most 10). A layer is a call into another class, " +
+                    "counted from the starting method: depth 1 reaches the methods its calls into other classes " +
+                    "land in and stops there. A call to the same class, its supertypes, its nested classes or a " +
+                    "top-level function of the same file does not use one up."
         )
         depth: Int = 3,
         @McpDescription("Whether to find the test files that call a traced method (default true)")
