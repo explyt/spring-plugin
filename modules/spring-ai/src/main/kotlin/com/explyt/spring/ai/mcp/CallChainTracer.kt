@@ -56,6 +56,10 @@ import org.jetbrains.uast.visitor.AbstractUastVisitor
  * dependency and marked unresolved, since nothing can be followed, even when that type is a project class. A call on
  * anything else - a fresh object, a type, the result of an earlier call in a fluent chain, or a call with an implicit
  * receiver inside `with(dsl)` or `dsl.apply` - names no dependency the trace could attribute it to, and stays out.
+ *
+ * A call to a trivial accessor of a project class ([TrivialAccessors]) is listed and not followed: a getter that only
+ * returns a field has nothing to trace, and sixty of them in a response builder used up the method limit before the
+ * repository call was reached.
  */
 internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 
@@ -72,17 +76,20 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
             val calls = callsOf(method)
             traced[key] = TracedMethod(method, reachedBy, calls)
 
-            calls.filter { it.kind == CallKind.INTERNAL }.asReversed()
-                .forEach { pending.addFirst(Pending(it.reached!!, remainingDepth, CallKind.INTERNAL)) }
+            calls.followable(CallKind.INTERNAL).asReversed()
+                .forEach { pending.addFirst(Pending(it, remainingDepth, CallKind.INTERNAL)) }
             if (remainingDepth > 0) {
-                calls.filter { it.kind == CallKind.PROJECT }
-                    .forEach { pending.addLast(Pending(it.reached!!, remainingDepth - 1, CallKind.PROJECT)) }
+                calls.followable(CallKind.PROJECT)
+                    .forEach { pending.addLast(Pending(it, remainingDepth - 1, CallKind.PROJECT)) }
             }
         }
         return CallChain(traced.values.toList(), truncated = pending.any { methodKey(it.method) !in traced })
     }
 
     private data class Pending(val method: PsiMethod, val remainingDepth: Int, val reachedBy: CallKind?)
+
+    private fun List<TracedCall>.followable(kind: CallKind): List<PsiMethod> =
+        filter { it.kind == kind && !it.accessor }.mapNotNull { it.reached }
 
     private fun callsOf(method: PsiMethod): List<TracedCall> {
         val uMethod = method.toUElement() as? UMethod ?: return emptyList()
@@ -140,6 +147,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
     private fun projectCall(line: Int?, callee: PsiMethod, viaMethod: PsiMethod?, caller: PsiMethod) = TracedCall(
         nameOf(callee), line, callee, viaMethod,
         if (isInternal(caller, callee)) CallKind.INTERNAL else CallKind.PROJECT,
+        accessor = TrivialAccessors.isTrivial(callee),
     )
 
     /**
@@ -277,10 +285,12 @@ internal class TracedMethod(val method: PsiMethod, val reachedBy: CallKind?, val
  * One call a traced method makes.
  *
  * @property line the line of the call itself, where a change to its arguments is made.
- * @property reached the project method the call reaches, which the trace follows; `null` for an external call.
+ * @property reached the project method the call reaches; `null` for an external call.
  * @property viaMethod the declaration the call is written against when it reaches an implementation of it.
  * @property resolved `false` when the IDE cannot resolve the method, so [target] is read from the call site and the
  *   declared type of the dependency it is made on rather than from the callee.
+ * @property accessor whether [reached] is a trivial accessor of a project class ([TrivialAccessors]), which the
+ *   trace lists without following.
  */
 internal data class TracedCall(
     val target: String,
@@ -289,6 +299,7 @@ internal data class TracedCall(
     val viaMethod: PsiMethod?,
     val kind: CallKind,
     val resolved: Boolean = true,
+    val accessor: Boolean = false,
 ) {
     val via: String? get() = viaMethod?.let(CallChainTracer::nameOf)
 }
