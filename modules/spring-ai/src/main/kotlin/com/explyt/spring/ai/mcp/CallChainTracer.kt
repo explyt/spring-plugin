@@ -49,6 +49,13 @@ import org.jetbrains.uast.visitor.AbstractUastVisitor
  *
  * A method passed as a callable reference - `input.use(validator::validate)`, `orders.forEach(repository::save)` - is
  * invoked by the function it is passed to, so it is a call of the method that passes it ([MethodCallSite]).
+ *
+ * A call the IDE cannot resolve is kept when it is made on an injected dependency ([UnresolvedCallSite]): the jar the
+ * build declares may not be downloaded yet, or the method may be a typo, and dropping the call left the method looking
+ * like one that calls nothing. It is listed as an [CallKind.EXTERNAL] leaf named after the declared type of the
+ * dependency and marked unresolved, since nothing can be followed, even when that type is a project class. A call on
+ * anything else - a fresh object, a type, the result of an earlier call in a fluent chain, or a call with an implicit
+ * receiver inside `with(dsl)` or `dsl.apply` - names no dependency the trace could attribute it to, and stays out.
  */
 internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 
@@ -83,17 +90,31 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         uMethod.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
                 ProgressManager.checkCanceled()
-                MethodCallSite.of(node)?.let { calls += callsAt(it, method) }
+                CallSite.of(node)?.let { calls += callsAt(it, method) }
                 return false
             }
 
             override fun visitCallableReferenceExpression(node: UCallableReferenceExpression): Boolean {
                 ProgressManager.checkCanceled()
-                MethodCallSite.of(node)?.let { calls += callsAt(it, method) }
+                CallSite.of(node)?.let { calls += callsAt(it, method) }
                 return false
             }
         })
-        return calls.distinctBy { Triple(it.target, it.via, it.reached?.let(::methodKey)) }
+        return calls.distinctBy { listOf(it.target, it.via, it.reached?.let(::methodKey), it.resolved) }
+    }
+
+    private fun callsAt(site: CallSite, caller: PsiMethod): List<TracedCall> = when (site) {
+        is MethodCallSite -> callsAt(site, caller)
+        is UnresolvedCallSite -> listOfNotNull(unresolvedCallOnInjectedDependency(site, caller))
+    }
+
+    private fun unresolvedCallOnInjectedDependency(site: UnresolvedCallSite, caller: PsiMethod): TracedCall? {
+        val owner = caller.containingClass ?: return null
+        val field = InjectedDependencies.fieldOf(site.receiver, owner) ?: return null
+        return TracedCall(
+            "${InjectedDependencies.declaredTypeNameOf(field)}.${site.methodName}",
+            site.line, reached = null, viaMethod = null, CallKind.EXTERNAL, resolved = false,
+        )
     }
 
     private fun callsAt(site: MethodCallSite, caller: PsiMethod): List<TracedCall> {
@@ -258,6 +279,8 @@ internal class TracedMethod(val method: PsiMethod, val reachedBy: CallKind?, val
  * @property line the line of the call itself, where a change to its arguments is made.
  * @property reached the project method the call reaches, which the trace follows; `null` for an external call.
  * @property viaMethod the declaration the call is written against when it reaches an implementation of it.
+ * @property resolved `false` when the IDE cannot resolve the method, so [target] is read from the call site and the
+ *   declared type of the dependency it is made on rather than from the callee.
  */
 internal data class TracedCall(
     val target: String,
@@ -265,6 +288,7 @@ internal data class TracedCall(
     val reached: PsiMethod?,
     val viaMethod: PsiMethod?,
     val kind: CallKind,
+    val resolved: Boolean = true,
 ) {
     val via: String? get() = viaMethod?.let(CallChainTracer::nameOf)
 }
