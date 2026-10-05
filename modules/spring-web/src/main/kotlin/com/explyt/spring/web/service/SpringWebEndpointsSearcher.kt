@@ -21,6 +21,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 
 @Service(Service.Level.PROJECT)
@@ -44,9 +45,10 @@ class SpringWebEndpointsSearcher(private val project: Project) {
 
     /**
      * Every endpoint of the project, each once. A controller found again from a dependent module is the same endpoint;
-     * an Actuator endpoint listed by two applications is two, because each application decides its own exposure and
-     * access, whether the endpoint is a built-in one or declared in a library both reach. So identity is the route,
-     * the declaration and the module owning it - never a verdict.
+     * a mapping two controllers inherit from one base class is two, because Spring registers the handler methods of
+     * each controller bean; an Actuator endpoint listed by two applications is two, because each application decides
+     * its own exposure and access, whether the endpoint is a built-in one or declared in a library both reach. So
+     * identity is the route, the declaration, the class serving it and the module owning it - never a verdict.
      */
     fun getAllEndpoints(): List<EndpointElement> {
         val seen = mutableSetOf<EndpointIdentity>()
@@ -96,6 +98,7 @@ private data class EndpointIdentity(
     val path: String,
     val requestMethods: List<String>,
     val psiElement: PsiElement,
+    val containingClass: PsiClass?,
     val owner: Module,
 ) {
     companion object {
@@ -110,7 +113,9 @@ private data class EndpointIdentity(
             } else {
                 ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: listedBy
             }
-            return EndpointIdentity(endpoint.type, endpoint.path, endpoint.requestMethods, endpoint.psiElement, owner)
+            return EndpointIdentity(
+                endpoint.type, endpoint.path, endpoint.requestMethods, endpoint.psiElement, endpoint.containingClass, owner
+            )
         }
     }
 }

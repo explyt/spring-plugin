@@ -33,8 +33,9 @@ class EntityRecord(
     val tableName: String,
     val filePath: String?,
     val line: Int?,
+    val library: String? = null,
     val tableQuoted: Boolean = false,
-    val readSchema: () -> EntitySchema
+    val readSchema: () -> EntitySchema,
 )
 
 /**
@@ -62,6 +63,7 @@ class EntityInventory(private val mapper: ObjectMapper = ObjectMapper()) {
         node.put("tableName", record.tableName)
         if (record.tableQuoted) node.put("tableQuoted", true)
         node.put("filePath", record.filePath)
+        record.library?.let { node.put("library", it) }
         node.put("line", record.line)
         return node
     }

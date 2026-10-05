@@ -40,6 +40,9 @@ class SpringBeanMcpToolset : McpToolset {
                 "what the model cannot promise as a whole and what the returned and undecided records cannot, " +
                 "never the limitations of unrelated beans. " +
                 "'NONE' means nothing matched in that model, never that no declaration exists. " +
+                "A candidate's 'declaration' carries the project-relative 'filePath' and 'line' of the declaring " +
+                "member, or a null 'filePath' and 'library' naming the jar for a bean declared in one - never a " +
+                "path of the machine. " +
                 "For an injection point, 'required' and 'hasDefaultValue' are independent of whether a " +
                 "candidate exists, and null means unknown rather than optional. " +
                 "Returns at most 'limit' candidates (5 by default) within 'maxChars' of compact JSON (1800 by " +
