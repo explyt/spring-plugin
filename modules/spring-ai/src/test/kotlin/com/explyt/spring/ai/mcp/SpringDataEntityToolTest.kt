@@ -243,8 +243,523 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testAPrimaryKeyColumnIsNotNullableWhateverItsPropertyType() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/Cluster.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity
+            public class Cluster {
+                @Id
+                private Integer id;
+
+                private String region;
+
+                @Column(nullable = false)
+                private String code;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Cluster")
+
+        assertEquals(true, field(fields, "id")["primaryKey"].booleanValue())
+        assertEquals("A primary-key column cannot hold NULL", false, field(fields, "id")["nullable"].booleanValue())
+        assertEquals("An unannotated reference column stays nullable", true, field(fields, "region")["nullable"].booleanValue())
+        assertEquals("A declared non-null column stays so", false, field(fields, "code")["nullable"].booleanValue())
+    }
+
+    fun testAKotlinNullableIdDeclaredNullableIsStillANotNullableColumn() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/Node.kt", """
+            package com.example.pk
+
+            import jakarta.persistence.Column
+            import jakarta.persistence.Entity
+            import jakarta.persistence.Id
+
+            @Entity
+            class Node {
+                @Id
+                @Column(nullable = true)
+                var id: Long? = null
+
+                var label: String? = null
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Node")
+
+        assertEquals("java.lang.Long", field(fields, "id")["type"].asText())
+        assertEquals("The id is null only before the entity is persisted", false, field(fields, "id")["nullable"].booleanValue())
+        assertEquals(true, field(fields, "label")["nullable"].booleanValue())
+    }
+
+    fun testAnEmbeddedIdIsANotNullablePrimaryKey() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/ShardKey.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Embeddable;
+
+            @Embeddable
+            public class ShardKey {
+                private Integer region;
+                private Integer index;
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/pk/Shard.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.EmbeddedId;
+            import jakarta.persistence.Entity;
+
+            @Entity
+            public class Shard {
+                @EmbeddedId
+                private ShardKey key;
+
+                private String owner;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Shard")
+
+        assertEquals(true, field(fields, "key")["primaryKey"].booleanValue())
+        assertEquals(false, field(fields, "key")["nullable"].booleanValue())
+        assertEquals(true, field(fields, "owner")["nullable"].booleanValue())
+    }
+
+    fun testAnIdInheritedFromAMappedSuperclassIsANotNullablePrimaryKey() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/pk/Audited.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Id;
+            import jakarta.persistence.MappedSuperclass;
+
+            @MappedSuperclass
+            public abstract class Audited {
+                @Id
+                private Long id;
+
+                private String createdBy;
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/pk/Event.java", """
+            package com.example.pk;
+
+            import jakarta.persistence.Entity;
+
+            @Entity
+            public class Event extends Audited {
+                private String kind;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.pk.Event")
+
+        assertEquals(true, field(fields, "id")["primaryKey"].booleanValue())
+        assertEquals(false, field(fields, "id")["nullable"].booleanValue())
+        assertEquals(true, field(fields, "createdBy")["nullable"].booleanValue())
+    }
+
+    fun testJavaQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Cluster.java", """
+            package com.example.quoted;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinColumn;
+            import jakarta.persistence.ManyToOne;
+            import jakarta.persistence.Table;
+
+            @Entity
+            @Table(name = "`Cluster`")
+            public class Cluster {
+                @Id
+                @Column(name = "\"ClusterId\"")
+                private Long id;
+
+                @ManyToOne
+                @JoinColumn(name = "`OwnerId`")
+                private Cluster owner;
+
+                @Column(name = "region")
+                private String region;
+            }
+            """.trimIndent()
+        )
+
+        val entity = detailedRecordOf("com.example.quoted.Cluster")
+        val fields = entity["fields"]
+
+        assertEquals("Cluster", entity["tableName"].asText())
+        assertEquals(true, entity["tableQuoted"].booleanValue())
+        assertEquals("ClusterId", field(fields, "id")["column"].asText())
+        assertEquals(true, field(fields, "id")["columnQuoted"].booleanValue())
+        assertEquals("OwnerId", field(fields, "owner")["joinColumn"].asText())
+        assertEquals(true, field(fields, "owner")["joinColumnQuoted"].booleanValue())
+        assertEquals("region", field(fields, "region")["column"].asText())
+        assertFalse("An unquoted column carries no flag", field(fields, "region").has("columnQuoted"))
+        assertFalse("A field without a join column carries no flag", field(fields, "region").has("joinColumnQuoted"))
+    }
+
+    fun testKotlinQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Node.kt", """
+            package com.example.quoted
+
+            import jakarta.persistence.Column
+            import jakarta.persistence.Entity
+            import jakarta.persistence.Id
+            import jakarta.persistence.JoinColumn
+            import jakarta.persistence.ManyToOne
+            import jakarta.persistence.Table
+
+            @Entity
+            @Table(name = "\"Node\"")
+            class Node {
+                @Id
+                @Column(name = "`NodeId`")
+                var id: Long? = null
+
+                @ManyToOne
+                @JoinColumn(name = "\"ParentId\"")
+                var parent: Node? = null
+
+                @Column(name = "label")
+                var label: String? = null
+            }
+            """.trimIndent()
+        )
+
+        val entity = detailedRecordOf("com.example.quoted.Node")
+        val fields = entity["fields"]
+
+        assertEquals("Node", entity["tableName"].asText())
+        assertEquals(true, entity["tableQuoted"].booleanValue())
+        assertEquals("NodeId", field(fields, "id")["column"].asText())
+        assertEquals(true, field(fields, "id")["columnQuoted"].booleanValue())
+        assertEquals("ParentId", field(fields, "parent")["joinColumn"].asText())
+        assertEquals(true, field(fields, "parent")["joinColumnQuoted"].booleanValue())
+        assertFalse("An unquoted column carries no flag", field(fields, "label").has("columnQuoted"))
+    }
+
+    fun testAQuotedNameReferencedThroughAConstantIsReadLikeALiteral() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Names.java", """
+            package com.example.quoted;
+
+            public final class Names {
+                public static final String TABLE = "\"Segment\"";
+                public static final String KEY = "`SegmentId`";
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/quoted/Segment.java", """
+            package com.example.quoted;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.Table;
+
+            @Entity
+            @Table(name = Names.TABLE)
+            public class Segment {
+                @Id
+                @Column(name = Names.KEY)
+                private Long id;
+            }
+            """.trimIndent()
+        )
+
+        val compact = compactRecordOf("com.example.quoted.Segment")
+        val detailed = detailedRecordOf("com.example.quoted.Segment")
+
+        assertEquals("Segment", compact["tableName"].asText())
+        assertEquals(true, compact["tableQuoted"].booleanValue())
+        assertEquals("SegmentId", field(detailed["fields"], "id")["column"].asText())
+        assertEquals(true, field(detailed["fields"], "id")["columnQuoted"].booleanValue())
+    }
+
+    fun testAnUnquotedEntityKeepsExactlyItsKeys() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val compact = compactRecordOf(ORDER_ENTITY)
+        val detailed = detailedRecordOf(ORDER_ENTITY)
+        val demo = field(detailed["fields"], "demo")
+
+        assertEquals("orders", compact["tableName"].asText())
+        assertEquals(setOf("name", "className", "tableName", "filePath", "line"), keysOf(compact))
+        assertEquals("demo_id", demo["joinColumn"].asText())
+        assertEquals(
+            setOf("name", "type", "column", "primaryKey", "nullable", "relationship", "joinColumn", "mappedBy"),
+            keysOf(demo)
+        )
+        assertEquals(keysOf(demo), keysOf(field(detailed["fields"], "reference")))
+    }
+
+    fun testAMapsIdAssociationIsPartOfThePrimaryKey() = runBlocking<Unit> {
+        addOwnerEntity()
+        myFixture.addFileToProject(
+            "com/example/fk/Profile.java", """
+            package com.example.fk;
+
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinColumn;
+            import jakarta.persistence.MapsId;
+            import jakarta.persistence.OneToOne;
+
+            @Entity
+            public class Profile {
+                @Id
+                private Long id;
+
+                @MapsId
+                @OneToOne
+                @JoinColumn(name = "user_id")
+                private Owner user;
+
+                private String bio;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.fk.Profile")
+
+        assertEquals(true, field(fields, "user")["primaryKey"].booleanValue())
+        assertEquals("A @MapsId join column belongs to the primary key", false, field(fields, "user")["nullable"].booleanValue())
+        assertEquals("user_id", field(fields, "user")["joinColumn"].asText())
+        assertEquals(true, field(fields, "bio")["nullable"].booleanValue())
+    }
+
+    fun testAMandatoryForeignKeyIsNotNullable() = runBlocking<Unit> {
+        addOwnerEntity()
+        myFixture.addFileToProject(
+            "com/example/fk/Task.java", """
+            package com.example.fk;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinColumn;
+            import jakarta.persistence.ManyToOne;
+
+            @Entity
+            public class Task {
+                @Id
+                private Long id;
+
+                @ManyToOne
+                @JoinColumn(name = "owner_id", nullable = false)
+                private Owner owner;
+
+                @ManyToOne(optional = false)
+                private Owner boss;
+
+                @ManyToOne
+                private Owner peer;
+
+                @ManyToOne
+                @JoinColumn(name = "reviewer_id")
+                private Owner reviewer;
+
+                @ManyToOne
+                @JoinColumn(name = "auditor_id")
+                @NotNull
+                private Owner auditor;
+
+                @Column(name = "code")
+                @NotNull
+                private String code;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.fk.Task")
+
+        assertEquals("@JoinColumn(nullable = false)", false, field(fields, "owner")["nullable"].booleanValue())
+        assertEquals("@ManyToOne(optional = false)", false, field(fields, "boss")["nullable"].booleanValue())
+        assertEquals("A plain to-one is optional", true, field(fields, "peer")["nullable"].booleanValue())
+        assertEquals("A @JoinColumn without nullable keeps the default", true, field(fields, "reviewer")["nullable"].booleanValue())
+        assertEquals("@NotNull is not masked by a @JoinColumn that does not say nullable", false, field(fields, "auditor")["nullable"].booleanValue())
+        assertEquals("@NotNull is not masked by a @Column that does not say nullable", false, field(fields, "code")["nullable"].booleanValue())
+    }
+
+    fun testAKotlinMandatoryForeignKeyIsNotNullable() = runBlocking<Unit> {
+        addOwnerEntity()
+        myFixture.addFileToProject(
+            "com/example/fk/Ticket.kt", """
+            package com.example.fk
+
+            import jakarta.persistence.Entity
+            import jakarta.persistence.Id
+            import jakarta.persistence.ManyToOne
+
+            @Entity
+            class Ticket {
+                @Id
+                var id: Long? = null
+
+                @ManyToOne(optional = false)
+                var owner: Owner? = null
+
+                @ManyToOne
+                var watcher: Owner? = null
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.fk.Ticket")
+
+        assertEquals(false, field(fields, "owner")["nullable"].booleanValue())
+        assertEquals(true, field(fields, "watcher")["nullable"].booleanValue())
+    }
+
+    fun testABracketQuotedTableNameIsReportedWithoutTheBrackets() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Order.java", """
+            package com.example.quoted;
+
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.Table;
+
+            @Entity
+            @Table(name = "[Order]")
+            public class Order {
+                @Id
+                private Long id;
+            }
+            """.trimIndent()
+        )
+
+        val compact = compactRecordOf("com.example.quoted.Order")
+
+        assertEquals("Order", compact["tableName"].asText())
+        assertEquals(true, compact["tableQuoted"].booleanValue())
+    }
+
+    fun testAnIndexOverAQuotedColumnListsTheColumnWithoutItsQuotes() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Coupon.java", """
+            package com.example.quoted;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.Index;
+            import jakarta.persistence.Table;
+
+            @Entity
+            @Table(name = "coupons", indexes = @Index(name = "ix_coupon_code", columnList = "`Code`, issued_at"))
+            public class Coupon {
+                @Id
+                private Long id;
+
+                @Column(name = "`Code`")
+                private String code;
+
+                @Column(name = "issued_at")
+                private String issuedAt;
+            }
+            """.trimIndent()
+        )
+
+        val detailed = detailedRecordOf("com.example.quoted.Coupon")
+
+        assertEquals("Code", field(detailed["fields"], "code")["column"].asText())
+        assertEquals(listOf("Code", "issued_at"), detailed["indexes"][0]["columns"].map { it.asText() })
+    }
+
+    fun testAnEntityNameIsTheTableNameWhenNoTableIsDeclared() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/named/GraphNode.java", """
+            package com.example.named;
+
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity(name = "Node")
+            public class GraphNode {
+                @Id
+                private Long id;
+            }
+            """.trimIndent()
+        )
+
+        val compact = compactRecordOf("com.example.named.GraphNode")
+
+        assertEquals("Node", compact["tableName"].asText())
+        assertFalse("An entity name is not a quoted identifier", compact.has("tableQuoted"))
+    }
+
+    private fun addOwnerEntity() {
+        myFixture.addFileToProject(
+            "com/example/fk/NotNull.java", """
+            package com.example.fk;
+
+            public @interface NotNull {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/fk/Owner.java", """
+            package com.example.fk;
+
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity
+            public class Owner {
+                @Id
+                private Long id;
+            }
+            """.trimIndent()
+        )
+    }
+
+    private suspend fun fieldsOf(className: String): JsonNode = detailedRecordOf(className)["fields"]
+
+    private suspend fun compactRecordOf(className: String): JsonNode = singleRecordOf(className, includeDetails = false)
+
+    private suspend fun detailedRecordOf(className: String): JsonNode = singleRecordOf(className, includeDetails = true)
+
+    private suspend fun singleRecordOf(className: String, includeDetails: Boolean): JsonNode {
+        val page = parse(
+            toolset.getSpringDataEntities(
+                projectPath = projectPath(),
+                className = className,
+                includeDetails = includeDetails
+            )
+        )
+        assertEquals("Precondition: the entity must be found, got $page", 1, page["totalCount"].asInt())
+        return page["entities"][0]
+    }
+
+    private fun keysOf(node: JsonNode): Set<String> = node.fieldNames().asSequence().toSet()
+
+    private fun field(fields: JsonNode, name: String): JsonNode = fields.single { it["name"].asText() == name }
+
     private companion object {
         const val DEMO_ENTITY = "com.example.app.entity.DemoEntity"
+        const val ORDER_ENTITY = "com.example.app.entity.OrderEntity"
         const val WAREHOUSE_ENTITY =
             "com.example.app.integration.persistence.warehouse.entity.WarehouseInventoryAdjustmentEntity"
     }
