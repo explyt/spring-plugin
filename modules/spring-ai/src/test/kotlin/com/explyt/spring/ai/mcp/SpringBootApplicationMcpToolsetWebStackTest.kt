@@ -10,6 +10,7 @@ import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -76,9 +77,41 @@ abstract class McpToolsetWebStackTestCase : ExplytJavaLightTestCase() {
         return mapOf("find" to sourcesOf(found), "contract" to sourcesOf(contract))
     }
 
-    private fun sourcesOf(endpoint: JsonNode): Map<String, String> =
+    protected fun addExchangeController() {
+        myFixture.addFileToProject(
+            "com/example/app/web/ExchangeController.kt", """
+            package com.example.app.web
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.web.server.ServerWebExchange
+            import org.springframework.web.server.WebSession
+
+            @RestController
+            class ExchangeController {
+                @GetMapping("/api/exchange")
+                fun exchange(exchange: ServerWebExchange, session: WebSession, name: String): String = name
+            }
+            """.trimIndent()
+        )
+    }
+
+    protected fun assertResolving(vararg classNames: String) {
+        val facade = JavaPsiFacade.getInstance(project)
+        for (className in classNames) {
+            assertNotNull("$className on the module classpath", facade.findClass(className, module.moduleWithLibrariesScope))
+        }
+    }
+
+    protected suspend fun contractSourcesOf(url: String): Map<String, String> =
+        sourcesOf(mapper.readTree(toolset.getEndpointContract(urlPattern = url, projectPath = projectPath()))["endpoints"].single())
+
+    protected fun sourcesOf(endpoint: JsonNode): Map<String, String> =
         endpoint["parameters"].associate { it["name"].asText() to it["source"].asText() }
 }
+
+internal const val SERVER_WEB_EXCHANGE = "org.springframework.web.server.ServerWebExchange"
+internal const val WEB_SESSION = "org.springframework.web.server.WebSession"
 
 /** The reported project carried both starters; the endpoint itself was already typed `Spring MVC`. */
 class SpringBootApplicationMcpToolsetMixedStackTest : McpToolsetWebStackTestCase() {
@@ -97,6 +130,17 @@ class SpringBootApplicationMcpToolsetMixedStackTest : McpToolsetWebStackTestCase
             assertEquals("$tool sources", mapOf("id" to "PATH", "file" to "PART", "meta" to "PART"), sources)
         }
     }
+
+    fun testReactiveExchangeTypesAreNotFrameworkSuppliedToAServletApplication() = runBlocking<Unit> {
+        assertDispatchers(servlet = true, reactive = true)
+        assertResolving(SERVER_WEB_EXCHANGE, WEB_SESSION)
+        addExchangeController()
+
+        assertEquals(
+            mapOf("exchange" to "MODEL", "session" to "MODEL", "name" to "QUERY"),
+            contractSourcesOf("/api/exchange"),
+        )
+    }
 }
 
 class SpringBootApplicationMcpToolsetReactiveStackTest : McpToolsetWebStackTestCase() {
@@ -113,5 +157,50 @@ class SpringBootApplicationMcpToolsetReactiveStackTest : McpToolsetWebStackTestC
         for ((tool, sources) in sourcesOfUpload()) {
             assertEquals("$tool sources", mapOf("id" to "PATH", "file" to "QUERY", "meta" to "PART"), sources)
         }
+    }
+
+    fun testReactiveExchangeTypesAreFrameworkSuppliedToAReactiveApplication() = runBlocking<Unit> {
+        assertDispatchers(servlet = false, reactive = true)
+        assertResolving(SERVER_WEB_EXCHANGE, WEB_SESSION)
+        addExchangeController()
+
+        assertEquals(
+            mapOf("exchange" to "FRAMEWORK", "session" to "FRAMEWORK", "name" to "QUERY"),
+            contractSourcesOf("/api/exchange"),
+        )
+    }
+
+    fun testSuspendHandlerReportsItsDeclaredParametersWithTheExchangeFrameworkSupplied() = runBlocking<Unit> {
+        assertDispatchers(servlet = false, reactive = true)
+        assertResolving(SERVER_WEB_EXCHANGE)
+        myFixture.addFileToProject(
+            "com/example/app/web/SuspendExchangeController.kt", """
+            package com.example.app.web
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.PathVariable
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.web.server.ServerWebExchange
+
+            @RestController
+            class SuspendExchangeController {
+                @GetMapping("/api/suspend-exchange/{code}")
+                suspend fun find(@PathVariable code: String, exchange: ServerWebExchange): String = code
+            }
+            """.trimIndent()
+        )
+        val compiled = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.app.web.SuspendExchangeController", GlobalSearchScope.projectScope(project))!!
+            .findMethodsByName("find", false).single()
+        assertEquals(
+            "The compiled handler carries the continuation this test is about",
+            listOf("code", "exchange", "\$completion"),
+            compiled.parameterList.parameters.map { it.name },
+        )
+
+        assertEquals(
+            mapOf("code" to "PATH", "exchange" to "FRAMEWORK"),
+            contractSourcesOf("/api/suspend-exchange/abc"),
+        )
     }
 }
