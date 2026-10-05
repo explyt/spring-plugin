@@ -16,4 +16,29 @@ object JacksonClasses {
         "com.fasterxml.jackson.databind.annotation.JsonNaming",
         "tools.jackson.databind.annotation.JsonNaming",
     )
+
+    /**
+     * The mapper Spring Boot auto-configures under `@ConditionalOnMissingBean`: a project bean of this type, or of a
+     * subtype such as `JsonMapper`, replaces Boot's and the `spring.jackson.*` properties no longer reach it.
+     */
+    val OBJECT_MAPPERS = setOf(
+        "com.fasterxml.jackson.databind.ObjectMapper",
+        "tools.jackson.databind.ObjectMapper",
+    )
+
+    /** The builder Boot's mapper is built from, also auto-configured under `@ConditionalOnMissingBean`. */
+    val MAPPER_BUILDERS = setOf(
+        "org.springframework.http.converter.json.Jackson2ObjectMapperBuilder",
+        "tools.jackson.databind.json.JsonMapper.Builder",
+    )
+
+    /**
+     * The callbacks Boot applies to its builder. Boot's own, which applies the properties, runs at order 0; a
+     * project customizer without an order runs after it and can override what the properties set.
+     */
+    val MAPPER_BUILDER_CUSTOMIZERS = setOf(
+        "org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer",
+        "org.springframework.boot.jackson2.autoconfigure.Jackson2ObjectMapperBuilderCustomizer",
+        "org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer",
+    )
 }

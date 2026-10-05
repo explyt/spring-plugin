@@ -9,6 +9,7 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import kotlinx.coroutines.runBlocking
@@ -34,7 +35,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         val facade = JavaPsiFacade.getInstance(project)
         assertNotNull(
             "precondition: Boot's HealthEndpoint is on the classpath",
-            facade.findClass("org.springframework.boot.health.actuate.endpoint.HealthEndpoint", scope)
+            facade.findClass(HEALTH_ENDPOINT, scope)
         )
         assertNotNull(
             "precondition: Boot's endpoint auto-configuration is on the classpath",
@@ -169,6 +170,36 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         )
     }
 
+    /**
+     * A built-in endpoint is declared in a jar under the user's home, which is nothing an agent can open and a path
+     * that must not leave the machine: the record names the jar instead, and keeps the class as its identity.
+     */
+    fun testLibraryEndpointIsLocatedByItsJarNotByAnAbsolutePath() = runBlocking<Unit> {
+        val healthEndpoint = JavaPsiFacade.getInstance(project)
+            .findClass(HEALTH_ENDPOINT, GlobalSearchScope.allScope(project))!!
+        val expectedJar = JarFileSystem.getInstance()
+            .getVirtualFileForJar(healthEndpoint.containingFile.virtualFile)?.name
+        assertNotNull("precondition: HealthEndpoint is read from a jar", expectedJar)
+
+        val listed = listActuator(compact = false).single { it["fullPath"].asText() == "/actuator/health" }
+        val contract = contractOf("/actuator/health", "GET")
+
+        for (record in listOf(listed, contract)) {
+            assertNoLocalPath(record)
+            assertTrue("filePath is unknown for a library element, got ${record["filePath"]}", record["filePath"].isNull)
+            assertEquals(expectedJar, record["library"].asText())
+            assertEquals(HEALTH_ENDPOINT, record["controllerClass"].asText())
+        }
+    }
+
+    fun testProjectEndpointKeepsItsFilePathAndNamesNoLibrary() = runBlocking<Unit> {
+        val orders = find("/api/orders").single()
+
+        assertEquals("com/example/app/web/OrdersController.kt", orders["filePath"].asText())
+        assertFalse("a project element names no library, got $orders", orders.has("library"))
+        assertNoLocalPath(orders)
+    }
+
     /** Access is a gate independent of exposure: `shutdown` is exposed by `*` yet answers 404 without access. */
     fun testAccessIsReportedNextToExposure() = runBlocking<Unit> {
         myFixture.addFileToProject("application.properties", "management.endpoints.web.exposure.include=*")
@@ -234,4 +265,33 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         mapper.readTree(
             toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "ACTUATOR", compact = compact)
         )["endpoints"].toList()
+
+    private fun assertNoLocalPath(node: JsonNode) {
+        val home = System.getProperty("user.home")
+        val homeForms = listOf(home, home.replace('/', '\\'))
+        val leaks = textFieldsOf(node).filter { (key, value) ->
+            homeForms.any(value::contains) || value.contains("jar://") || value.contains("file://") ||
+                    value.contains(".jar!/") || (isLocationKey(key) && !isPortable(value))
+        }
+        assertTrue("no answer may carry a local path, got $leaks", leaks.isEmpty())
+    }
+
+    private fun isLocationKey(key: String?): Boolean =
+        key != null && key !in URL_PATH_KEYS && (key == "library" || key.endsWith("Path") || key.endsWith("Url"))
+
+    private fun isPortable(value: String): Boolean =
+        !value.startsWith("/") && !value.startsWith("\\") && !value.matches(Regex("^[A-Za-z]:.*")) &&
+                !value.contains("!/") && !value.contains("://")
+
+    private fun textFieldsOf(node: JsonNode, key: String? = null): List<Pair<String?, String>> = when {
+        node.isTextual -> listOf(key to node.asText())
+        node.isObject -> node.fields().asSequence().flatMap { (name, value) -> textFieldsOf(value, name) }.toList()
+        node.isArray -> node.flatMap { textFieldsOf(it, key) }
+        else -> emptyList()
+    }
+
+    private companion object {
+        const val HEALTH_ENDPOINT = "org.springframework.boot.health.actuate.endpoint.HealthEndpoint"
+        val URL_PATH_KEYS = setOf("fullPath", "basePath", "endpointPath")
+    }
 }

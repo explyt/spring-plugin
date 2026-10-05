@@ -74,7 +74,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 
             calls.filter { it.kind == CallKind.INTERNAL }.asReversed()
                 .forEach { pending.addFirst(Pending(it.reached!!, remainingDepth, CallKind.INTERNAL)) }
-            if (remainingDepth > 1) {
+            if (remainingDepth > 0) {
                 calls.filter { it.kind == CallKind.PROJECT }
                     .forEach { pending.addLast(Pending(it.reached!!, remainingDepth - 1, CallKind.PROJECT)) }
             }
