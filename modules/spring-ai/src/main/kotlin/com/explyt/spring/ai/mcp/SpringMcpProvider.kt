@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.ai.mcp.entities.EntityInventory
 import com.explyt.spring.ai.mcp.entities.EntityRecord
 import com.explyt.spring.ai.mcp.entities.EntitySchema
+import com.explyt.spring.ai.mcp.entities.SqlIdentifier
 import com.explyt.spring.core.service.beans.ApplicationClassName
 import com.explyt.spring.core.service.beans.BeanQueryException
 import com.explyt.spring.core.service.beans.BeanSourcePreference
@@ -1409,7 +1410,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "javax.persistence and jakarta.persistence alike) carrying only name, className, tableName and " +
                 "source location - enough to pick one without expanding any schema. tableName is @Table(name) " +
                 "when declared, otherwise the JPA default - the @Entity(name) entity name, then the class name - " +
-                "before any physical naming strategy of the application is applied. " +
+                "before any physical naming strategy of the application is applied. A name declared between " +
+                "backticks or double quotes is reported without them and flagged 'tableQuoted', 'columnQuoted' or " +
+                "'joinColumnQuoted' (true, absent otherwise); only such explicit delimiters count, a global quoting " +
+                "setting such as hibernate.globally_quoted_identifiers is not read. " +
                 "Pass includeDetails=true, and className to name the entity, to add its fields with column names, " +
                 "types, primary key flag and nullability, its @OneToOne/@OneToMany/@ManyToOne/@ManyToMany " +
                 "relationships with joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
@@ -1522,21 +1526,23 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val qualifiedName = psiClass.qualifiedName ?: return null
         val simpleName = psiClass.name ?: qualifiedName.substringAfterLast('.')
         val position = sourcePositionOf(psiClass, project)
+        val table = resolveTableName(psiClass, simpleName)
         return EntityRecord(
             name = simpleName,
             className = qualifiedName,
-            tableName = resolveTableName(psiClass, simpleName),
+            tableName = table.name,
             filePath = position.filePath,
             line = position.line,
+            tableQuoted = table.quoted,
             readSchema = { EntitySchema(collectEntityFields(psiClass), collectEntityIndexes(psiClass)) }
         )
     }
 
-    private fun resolveTableName(psiClass: PsiClass, defaultName: String): String {
+    private fun resolveTableName(psiClass: PsiClass, defaultName: String): SqlIdentifier {
         val tableName = psiClass.findFirstAnnotation(TABLE_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
-        if (tableName != null) return tableName
+        if (tableName != null) return SqlIdentifier.declared(tableName)
         val entityName = psiClass.findFirstAnnotation(ENTITY_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
-        return entityName ?: defaultName
+        return SqlIdentifier.declared(entityName ?: defaultName)
     }
 
     private fun collectEntityFields(psiClass: PsiClass): List<EntityFieldJson> {
@@ -1555,7 +1561,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
     private fun toEntityField(field: PsiField): EntityFieldJson {
         val columnAnnotation = field.findFirstAnnotation(COLUMN_ANNOTATION_FQNS)
-        val column = columnAnnotation.getStringAttribute(ATTR_NAME)
+        val column = columnAnnotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
         val columnNullable = columnAnnotation.getBooleanAttribute(ATTR_NULLABLE)
         val relationshipMatch = RELATIONSHIP_ANNOTATIONS.firstNotNullOfOrNull { (fqns, kind) ->
             field.findFirstAnnotation(fqns)?.let { it to kind }
@@ -1563,6 +1569,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val relationshipAnnotation = relationshipMatch?.first
         val relationshipType = relationshipMatch?.second
         val joinColumn = field.findFirstAnnotation(JOIN_COLUMN_ANNOTATION_FQNS).getStringAttribute(ATTR_NAME)
+            ?.let(SqlIdentifier::declared)
         val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
         val primaryKey = field.findFirstAnnotation(ID_ANNOTATION_FQNS) != null
         val nullable = !primaryKey && (columnNullable ?: !hasNotNullAnnotation(field))
@@ -1570,11 +1577,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return EntityFieldJson(
             name = field.name,
             type = field.type.canonicalText,
-            column = column,
+            column = column?.name,
+            columnQuoted = column?.quotedOrNull,
             primaryKey = primaryKey,
             nullable = nullable,
             relationship = relationshipType,
-            joinColumn = joinColumn,
+            joinColumn = joinColumn?.name,
+            joinColumnQuoted = joinColumn?.quotedOrNull,
             mappedBy = mappedBy,
         )
     }
@@ -2154,10 +2163,12 @@ data class EntityFieldJson(
     val name: String,
     val type: String,
     val column: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val columnQuoted: Boolean? = null,
     val primaryKey: Boolean,
     val nullable: Boolean,
     val relationship: String?,
     val joinColumn: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinColumnQuoted: Boolean? = null,
     val mappedBy: String?,
 )
 

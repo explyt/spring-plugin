@@ -375,18 +375,171 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, field(fields, "createdBy")["nullable"].booleanValue())
     }
 
-    private suspend fun fieldsOf(className: String): JsonNode {
+    fun testJavaQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Cluster.java", """
+            package com.example.quoted;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinColumn;
+            import jakarta.persistence.ManyToOne;
+            import jakarta.persistence.Table;
+
+            @Entity
+            @Table(name = "`Cluster`")
+            public class Cluster {
+                @Id
+                @Column(name = "\"ClusterId\"")
+                private Long id;
+
+                @ManyToOne
+                @JoinColumn(name = "`OwnerId`")
+                private Cluster owner;
+
+                @Column(name = "region")
+                private String region;
+            }
+            """.trimIndent()
+        )
+
+        val entity = detailedRecordOf("com.example.quoted.Cluster")
+        val fields = entity["fields"]
+
+        assertEquals("Cluster", entity["tableName"].asText())
+        assertEquals(true, entity["tableQuoted"].booleanValue())
+        assertEquals("ClusterId", field(fields, "id")["column"].asText())
+        assertEquals(true, field(fields, "id")["columnQuoted"].booleanValue())
+        assertEquals("OwnerId", field(fields, "owner")["joinColumn"].asText())
+        assertEquals(true, field(fields, "owner")["joinColumnQuoted"].booleanValue())
+        assertEquals("region", field(fields, "region")["column"].asText())
+        assertFalse("An unquoted column carries no flag", field(fields, "region").has("columnQuoted"))
+        assertFalse("A field without a join column carries no flag", field(fields, "region").has("joinColumnQuoted"))
+    }
+
+    fun testKotlinQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Node.kt", """
+            package com.example.quoted
+
+            import jakarta.persistence.Column
+            import jakarta.persistence.Entity
+            import jakarta.persistence.Id
+            import jakarta.persistence.JoinColumn
+            import jakarta.persistence.ManyToOne
+            import jakarta.persistence.Table
+
+            @Entity
+            @Table(name = "\"Node\"")
+            class Node {
+                @Id
+                @Column(name = "`NodeId`")
+                var id: Long? = null
+
+                @ManyToOne
+                @JoinColumn(name = "\"ParentId\"")
+                var parent: Node? = null
+
+                @Column(name = "label")
+                var label: String? = null
+            }
+            """.trimIndent()
+        )
+
+        val entity = detailedRecordOf("com.example.quoted.Node")
+        val fields = entity["fields"]
+
+        assertEquals("Node", entity["tableName"].asText())
+        assertEquals(true, entity["tableQuoted"].booleanValue())
+        assertEquals("NodeId", field(fields, "id")["column"].asText())
+        assertEquals(true, field(fields, "id")["columnQuoted"].booleanValue())
+        assertEquals("ParentId", field(fields, "parent")["joinColumn"].asText())
+        assertEquals(true, field(fields, "parent")["joinColumnQuoted"].booleanValue())
+        assertFalse("An unquoted column carries no flag", field(fields, "label").has("columnQuoted"))
+    }
+
+    fun testAQuotedNameReferencedThroughAConstantIsReadLikeALiteral() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/quoted/Names.java", """
+            package com.example.quoted;
+
+            public final class Names {
+                public static final String TABLE = "\"Segment\"";
+                public static final String KEY = "`SegmentId`";
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/quoted/Segment.java", """
+            package com.example.quoted;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.Table;
+
+            @Entity
+            @Table(name = Names.TABLE)
+            public class Segment {
+                @Id
+                @Column(name = Names.KEY)
+                private Long id;
+            }
+            """.trimIndent()
+        )
+
+        val compact = compactRecordOf("com.example.quoted.Segment")
+        val detailed = detailedRecordOf("com.example.quoted.Segment")
+
+        assertEquals("Segment", compact["tableName"].asText())
+        assertEquals(true, compact["tableQuoted"].booleanValue())
+        assertEquals("SegmentId", field(detailed["fields"], "id")["column"].asText())
+        assertEquals(true, field(detailed["fields"], "id")["columnQuoted"].booleanValue())
+    }
+
+    fun testAnUnquotedEntityKeepsExactlyItsKeys() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+
+        val compact = compactRecordOf(ORDER_ENTITY)
+        val detailed = detailedRecordOf(ORDER_ENTITY)
+        val demo = field(detailed["fields"], "demo")
+
+        assertEquals("orders", compact["tableName"].asText())
+        assertEquals(setOf("name", "className", "tableName", "filePath", "line"), keysOf(compact))
+        assertEquals("demo_id", demo["joinColumn"].asText())
+        assertEquals(
+            setOf("name", "type", "column", "primaryKey", "nullable", "relationship", "joinColumn", "mappedBy"),
+            keysOf(demo)
+        )
+        assertEquals(keysOf(demo), keysOf(field(detailed["fields"], "reference")))
+    }
+
+    private suspend fun fieldsOf(className: String): JsonNode = detailedRecordOf(className)["fields"]
+
+    private suspend fun compactRecordOf(className: String): JsonNode = singleRecordOf(className, includeDetails = false)
+
+    private suspend fun detailedRecordOf(className: String): JsonNode = singleRecordOf(className, includeDetails = true)
+
+    private suspend fun singleRecordOf(className: String, includeDetails: Boolean): JsonNode {
         val page = parse(
-            toolset.getSpringDataEntities(projectPath = projectPath(), className = className, includeDetails = true)
+            toolset.getSpringDataEntities(
+                projectPath = projectPath(),
+                className = className,
+                includeDetails = includeDetails
+            )
         )
         assertEquals("Precondition: the entity must be found, got $page", 1, page["totalCount"].asInt())
-        return page["entities"][0]["fields"]
+        return page["entities"][0]
     }
+
+    private fun keysOf(node: JsonNode): Set<String> = node.fieldNames().asSequence().toSet()
 
     private fun field(fields: JsonNode, name: String): JsonNode = fields.single { it["name"].asText() == name }
 
     private companion object {
         const val DEMO_ENTITY = "com.example.app.entity.DemoEntity"
+        const val ORDER_ENTITY = "com.example.app.entity.OrderEntity"
         const val WAREHOUSE_ENTITY =
             "com.example.app.integration.persistence.warehouse.entity.WarehouseInventoryAdjustmentEntity"
     }
