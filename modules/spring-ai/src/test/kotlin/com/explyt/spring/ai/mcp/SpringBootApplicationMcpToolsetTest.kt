@@ -304,6 +304,42 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("Expected truncated=false for the small fixture", false, root["truncated"].asBoolean())
     }
 
+    /** Spring registers the inherited handler of each controller bean, so each controller is its own endpoint. */
+    fun testGetHttpEndpointsListsEveryControllerInheritingTheSameMapping() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        myFixture.addFileToProject("com/example/app/web/inherited/InheritedControllers.kt", """
+            package com.example.app.web.inherited
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.PathVariable
+            import org.springframework.web.bind.annotation.RestController
+
+            open class BaseRouteController {
+                @GetMapping("/api/base/{id}")
+                fun get(@PathVariable id: String) = id
+            }
+
+            @RestController
+            class RouteViaBase : BaseRouteController()
+
+            @RestController
+            class ProbeViaBase : BaseRouteController()
+        """.trimIndent())
+
+        val endpoints = endpointsOf(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "ViaBase", compact = true)
+        ).filter { it["fullPath"].asText() == "/api/base/{id}" }
+
+        assertEquals(
+            setOf(
+                "com.example.app.web.inherited.RouteViaBase",
+                "com.example.app.web.inherited.ProbeViaBase",
+            ),
+            endpoints.map { it["controllerClass"].asText() }.toSet()
+        )
+        assertEquals("one endpoint per controller, got $endpoints", 2, endpoints.size)
+    }
+
     fun testGetEndpointContract() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
