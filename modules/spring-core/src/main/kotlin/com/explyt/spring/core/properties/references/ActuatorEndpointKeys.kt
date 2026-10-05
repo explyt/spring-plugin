@@ -12,6 +12,7 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
@@ -21,6 +22,7 @@ import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.ResolveResult
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -68,7 +70,7 @@ object ActuatorEndpointKeys {
         if (DumbService.isDumb(module.project)) return emptyMap()
         return CachedValuesManager.getManager(module.project).getCachedValue(module) {
             CachedValueProvider.Result(
-                findEndpoints(module, GlobalSearchScope.moduleWithDependenciesScope(module)),
+                findEndpoints(module.project, projectDiscovery(module)),
                 ModificationTrackerManager.getInstance(module.project).getUastModelAndLibraryTracker()
             )
         }
@@ -133,38 +135,53 @@ object ActuatorEndpointKeys {
         return references.toTypedArray()
     }
 
-    private fun findLibraryEndpoints(module: Module): Map<String, List<ActuatorEndpoint>> {
-        val libraries = GlobalSearchScope.moduleWithLibrariesScope(module)
-            .intersectWith(GlobalSearchScope.notScope(GlobalSearchScope.moduleWithDependenciesScope(module)))
-        val autoConfigured = JavaPsiFacade.getInstance(module.project)
-            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, libraries) != null
-        return if (autoConfigured) findEndpoints(module, libraries) else emptyMap()
+    private fun findLibraryEndpoints(module: Module): Map<String, List<ActuatorEndpoint>> =
+        libraryDiscovery(module)?.let { findEndpoints(module.project, it) } ?: emptyMap()
+
+    private class Discovery(
+        val endpointScope: GlobalSearchScope,
+        val accessScope: GlobalSearchScope,
+        val annotations: Collection<PsiClass>,
+    )
+
+    /**
+     * The endpoints the project declares: the module with its dependency modules - a shared starter may declare
+     * `@Endpoint` next to the application module holding `application.yaml` (#382) - and never its libraries, whose
+     * endpoints already ship metadata. The `Access` probe does read the libraries, since the class ships in a jar.
+     */
+    private fun projectDiscovery(module: Module) = Discovery(
+        endpointScope = GlobalSearchScope.moduleWithDependenciesScope(module),
+        accessScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module),
+        annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.ACTUATOR_ENDPOINT, false)
+    )
+
+    private fun libraryDiscovery(module: Module): Discovery? {
+        val libraries = module.getModuleRuntimeScope(false).intersectWith(ProjectScope.getLibrariesScope(module.project))
+        val facade = JavaPsiFacade.getInstance(module.project)
+        facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, libraries) ?: return null
+        val endpointAnnotation = facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT, libraries) ?: return null
+        return Discovery(libraries, libraries, annotationWithChildren(endpointAnnotation, libraries))
     }
 
-    private fun findEndpoints(module: Module, scope: GlobalSearchScope): Map<String, List<ActuatorEndpoint>> {
-        // Read inside the provider, never captured by it: the provider of the first call is the one the platform
-        // keeps for the lifetime of the module, so a gate evaluated outside would answer for the classpath as it
-        // was when the cache was first populated - `.access` staying unresolved for the rest of the session.
-        val accessAvailable = JavaPsiFacade.getInstance(module.project).findClass(
-            SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS,
-            GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-        ) != null
+    private fun annotationWithChildren(annotation: PsiClass, scope: GlobalSearchScope): Collection<PsiClass> {
+        val byName = LinkedHashMap<String, PsiClass>()
+        fun collect(psiClass: PsiClass) {
+            val name = psiClass.qualifiedName ?: return
+            if (byName.putIfAbsent(name, psiClass) != null) return
+            MetaAnnotationUtil.getChildren(psiClass, scope).forEach(::collect)
+        }
+        collect(annotation)
+        return byName.values
+    }
 
-        // `@Endpoint` is the linking meta-annotation of `@WebEndpoint`, `@JmxEndpoint` and the controller endpoints,
-        // so matching it covers every specialization, including ones a project or a future Boot release declares.
-        val annotations = MetaAnnotationUtil
-            .getAnnotationTypesWithChildren(module, SpringCoreClasses.ACTUATOR_ENDPOINT, false)
+    private fun findEndpoints(project: Project, discovery: Discovery): Map<String, List<ActuatorEndpoint>> {
+        val accessAvailable = JavaPsiFacade.getInstance(project)
+            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_ACCESS, discovery.accessScope) != null
 
         val result = LinkedHashMap<String, MutableList<ActuatorEndpoint>>()
-        for (annotationClass in annotations) {
+        for (annotationClass in discovery.annotations) {
             val annotationName = annotationClass.qualifiedName ?: continue
-            // An endpoint class is not a bean by virtue of the annotation - `@Endpoint` carries only `@Reflective` -
-            // so it is found by annotation search, not through the bean model.
-            // For keys the scope is the module with its dependencies — a shared starter may declare `@Endpoint`
-            // next to the application module holding `application.yaml` (issue #382) — and never its libraries:
-            // Boot's own endpoints already ship metadata, and synthesizing their keys again would duplicate every
-            // completion and navigation target.
-            AnnotatedElementsSearch.searchPsiClasses(annotationClass, scope).forEach { psiClass ->
+            AnnotatedElementsSearch.searchPsiClasses(annotationClass, discovery.endpointScope).forEach { psiClass ->
                 toEndpoint(psiClass, annotationName, accessAvailable)
                     ?.let { result.getOrPut(it.id) { mutableListOf() } += it }
             }
