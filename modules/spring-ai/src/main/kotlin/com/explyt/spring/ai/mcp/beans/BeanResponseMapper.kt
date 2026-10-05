@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
+import com.explyt.spring.ai.mcp.McpSourceLocation
 import com.explyt.spring.ai.mcp.McpSourcePositions
 import com.explyt.spring.core.service.beans.BeanAnnotationEvidence
 import com.explyt.spring.core.service.beans.BeanDetailsReader
@@ -95,19 +96,17 @@ class BeanResponseMapper(private val project: Project) {
 
     /**
      * Anchored by the rule every tool shares, so a light member is reported through its declaring class here as it
-     * is elsewhere. A library declaration is named by `sourceUrl`, because it has no path relative to the project.
+     * is elsewhere. A library declaration is named by the jar holding it, because it has no path relative to the
+     * project and an absolute one would name a directory of this machine.
      */
     private fun declaration(member: PsiMember?): ObjectNode? {
         val anchor = member?.takeIf { it.isValid }?.let(McpSourcePositions::sourceAnchorOf) ?: return null
         val file = anchor.containingFile?.virtualFile ?: return null
         val node = mapper.createObjectNode()
 
-        val basePath = project.basePath?.let { "$it/" }
-        if (basePath != null && file.path.startsWith(basePath)) {
-            node.put("filePath", file.path.removePrefix(basePath))
-        } else {
-            node.put("sourceUrl", file.url)
-        }
+        val location = McpSourceLocation.of(file, project)
+        node.put("filePath", location.filePath)
+        location.library?.let { node.put("library", it) }
         McpSourcePositions.lineOfAnchor(anchor)?.let { node.put("line", it) }
         return node
     }

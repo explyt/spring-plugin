@@ -31,7 +31,6 @@ internal class CallChainTestReferences(private val module: Module, private val p
 
     private val testScope = module.moduleTestsWithDependentsScope
     private val fileIndex = ProjectFileIndex.getInstance(project)
-    private val basePath = project.basePath
 
     /** The tests of one traced method: the references to it, and - on a handler - the requests to its URL. */
     data class NodeTests(val references: List<NodeTestReferenceJson>, val urlReferences: List<UrlTestReferenceJson>?)
@@ -52,23 +51,30 @@ internal class CallChainTestReferences(private val module: Module, private val p
         val notARequest = { reference: PsiElement -> requestElements.none { isWithin(reference, it) } }
 
         val direct = linesByFile(referencesOf(method).filter(notARequest))
-        val directLines = direct.flatMap { (file, lines) -> lines.map { file to it } }.toSet()
+        val directLines = direct.flatMap { (location, lines) -> lines.map { location to it } }.toSet()
         val throughInterfaces = viaDeclarations.flatMap { declaration ->
             val via = CallChainTracer.nameOf(declaration)
-            linesByFile(referencesOf(declaration).filter(notARequest)).mapNotNull { (file, lines) ->
-                lines.filter { (file to it) !in directLines }.takeIf { it.isNotEmpty() }
-                    ?.let { NodeTestReferenceJson(file, it, via) }
+            linesByFile(referencesOf(declaration).filter(notARequest)).mapNotNull { (location, lines) ->
+                lines.filter { (location to it) !in directLines }.takeIf { it.isNotEmpty() }
+                    ?.let { nodeReference(location, it, via) }
             }
         }
-        val references = (direct.map { (file, lines) -> NodeTestReferenceJson(file, lines, via = null) } + throughInterfaces)
+        val references = (direct.map { (location, lines) -> nodeReference(location, lines, via = null) } + throughInterfaces)
             .sortedWith(compareBy({ it.filePath }, { it.via }))
 
         val urlReferences = if (!withUrlReferences) null else requests
-            .flatMap { (path, usages) -> linesByFile(usages).map { (file, lines) -> UrlTestReferenceJson(file, lines, path) } }
+            .flatMap { (path, usages) ->
+                linesByFile(usages).map { (location, lines) ->
+                    UrlTestReferenceJson(location.filePath, location.library, lines, path)
+                }
+            }
             .distinct()
             .sortedBy { it.filePath }
         return NodeTests(references, urlReferences)
     }
+
+    private fun nodeReference(location: McpSourceLocation, lines: List<Int>, via: String?) =
+        NodeTestReferenceJson(location.filePath, location.library, lines, via)
 
     /** The requests tests send to the endpoints [handler] serves, by the endpoint's mapping path. */
     private fun requestsTo(handler: PsiMethod): List<Pair<String, List<PsiElement>>> {
@@ -88,17 +94,14 @@ internal class CallChainTestReferences(private val module: Module, private val p
     private fun referencesOf(method: PsiMethod): List<PsiElement> =
         MethodReferencesSearch.search(method, testScope, true).findAll().map { it.element }
 
-    private fun linesByFile(elements: List<PsiElement>): List<Pair<String, List<Int>>> =
+    private fun linesByFile(elements: List<PsiElement>): List<Pair<McpSourceLocation, List<Int>>> =
         elements.mapNotNull { element ->
             ProgressManager.checkCanceled()
             val file = element.containingFile?.virtualFile?.takeIf(fileIndex::isInTestSourceContent) ?: return@mapNotNull null
             val line = McpSourcePositions.sourceAnchorOf(element)?.let(McpSourcePositions::lineOfAnchor) ?: return@mapNotNull null
-            relativePathOf(file.path) to line
+            McpSourceLocation.of(file, project) to line
         }
             .groupBy({ it.first }, { it.second })
-            .map { (file, lines) -> file to lines.distinct().sorted() }
-            .sortedBy { it.first }
-
-    private fun relativePathOf(path: String): String =
-        basePath?.let { path.removePrefix("$it/") } ?: path
+            .map { (location, lines) -> location to lines.distinct().sorted() }
+            .sortedBy { (location, _) -> location.filePath ?: location.library }
 }
