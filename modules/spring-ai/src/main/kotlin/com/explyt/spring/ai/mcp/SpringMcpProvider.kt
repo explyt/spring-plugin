@@ -253,10 +253,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "project-relative 'filePath', line and endpoint type, and 'consumes'/'produces' when the mapping " +
                 "declares media types; an endpoint declared in a jar, such as a built-in Actuator one, has a null " +
                 "'filePath' and names the jar in 'library' instead - no answer carries a path of the machine. " +
-                "'endpoints' lists the closest match to the pattern first: an exact path, then one matching " +
-                "it as a pattern, then one merely containing it, and within each group by path specificity, the " +
-                "way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of routes " +
-                "with different paths matching one URL the first is the one that dispatches. Handlers sharing one " +
+                "'endpoints' lists the closest production match to the pattern first: an exact path, then one " +
+                "matching it as a pattern, then one merely containing it, and within each group by path specificity, " +
+                "the way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of " +
+                "routes with different paths matching one URL the first is the one that dispatches. Endpoints " +
+                "declared in test sources follow them, marked 'testSource': such an endpoint exists only in a test " +
+                "context, not in the running application. Handlers sharing one " +
                 "path and verb are not ordered by dispatch: the request's Content-Type and Accept choose among " +
                 "them, by the 'consumes' and 'produces' each record carries. " +
                 "Covers annotation-declared handlers and functional routes alike; for a functional route the " +
@@ -276,7 +278,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "When 'endpoints' is empty, no route answers the URL even without a leading prefix, and " +
                 "'nearestByPrefix' lists the existing routes that share the longest leading path with it - the " +
                 "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path as " +
-                "the routes declare it, with their '{templates}'."
+                "the routes declare it, with their '{templates}'. " +
+                "A test-source endpoint - a probe controller inside a test class - is listed in 'endpoints' and in " +
+                "'nearestByPrefix' too, after the production ones, with 'testSource': true; the key is absent on " +
+                "production and library endpoints."
     )
     suspend fun findEndpoint(
         @McpDescription(
@@ -377,7 +382,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     /**
-     * The endpoints answering [reading], closest match first.
+     * The endpoints answering [reading], closest match first, those declared in test sources after every other.
      *
      * Matches are ordered by how closely they answer the path ([matchRank]) and then by
      * [EndpointPathPatterns.SPECIFICITY], so when a literal route and a `{template}` route both match, the first
@@ -393,12 +398,30 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .onEach { ProgressManager.checkCanceled() }
             .map { it to SpringWebUtil.simplifyUrl(it.path) }
             .filter { (endpoint, path) -> admits(reading, endpoint, path, basePaths) }
-            .mapNotNull { (endpoint, path) -> matchRank(path, reading)?.let { RankedEndpoint(endpoint, path, it) } }
-            .sortedWith(compareBy<RankedEndpoint> { it.rank }.thenBy(EndpointPathPatterns.SPECIFICITY) { it.path })
+            .mapNotNull { (endpoint, path) ->
+                matchRank(path, reading)?.let { RankedEndpoint(endpoint, path, it, declaredInTests(endpoint)) }
+            }
+            .sortedWith(
+                compareBy<RankedEndpoint> { it.inTestSources }
+                    .thenBy { it.rank }
+                    .thenBy(EndpointPathPatterns.SPECIFICITY) { it.path }
+            )
             .map { it.endpoint }
             .toList()
 
-    private data class RankedEndpoint(val endpoint: EndpointElement, val path: String, val rank: Int)
+    private data class RankedEndpoint(
+        val endpoint: EndpointElement,
+        val path: String,
+        val rank: Int,
+        val inTestSources: Boolean,
+    )
+
+    /**
+     * Whether [endpoint] belongs to test code: decided by the controller serving it, not by the method declaring
+     * the mapping - a test-source probe inheriting a production base class's `@GetMapping` is still test code.
+     */
+    private fun declaredInTests(endpoint: EndpointElement): Boolean =
+        ProjectSources.declaresInTests(endpoint.containingClass ?: endpoint.psiElement)
 
     /**
      * One way a request path meets the routes: as written, under a [basePath] a module's configuration declares, or
@@ -475,7 +498,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * with it. Nothing is returned when no reading shares a segment: every route in the project "shares" the root,
      * and listing all of them would say nothing about where the URL belongs.
      *
-     * The shared path is spelled the way the most specific neighbour declares it: the URL of a request carries values
+     * The shared path is spelled the way the most specific production neighbour declares it: the URL of a request carries values
      * where a route has `{templates}`, and echoing `/api/short-links/15a4a137` would read as if a route with that
      * literal id existed.
      */
@@ -497,7 +520,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             .maxByOrNull { it.second }
             ?: return null
 
-        val ordered = nearest.sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+        val bySpecificity = nearest.sortedWith(compareBy(EndpointPathPatterns.SPECIFICITY) { SpringWebUtil.simplifyUrl(it.path) })
+        val (inTests, production) = bySpecificity.partition(::declaredInTests)
+        val ordered = production + inTests
         val compact = ordered
             .take(MAX_NEAREST_ROUTES)
             .onEach { ProgressManager.checkCanceled() }
@@ -559,6 +584,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             produces = (endpoint.produces + mediaTypes.produces).distinct(),
             exposed = endpoint.exposure?.name,
             access = endpoint.access?.name,
+            testSource = declaredInTests(endpoint).takeIf { it },
         )
     }
 
@@ -582,6 +608,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             produces = core.produces,
             exposed = core.exposed,
             access = core.access,
+            testSource = core.testSource,
         )
     }
 
@@ -879,7 +906,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
                 "and on a large project the full form can exceed 100 KB on a single line. " +
                 "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
-                "or request the next page with 'offset' = 'offset' + number of returned endpoints."
+                "or request the next page with 'offset' = 'offset' + number of returned endpoints. " +
+                "An endpoint declared in a test source root is listed too, carries 'testSource': true and follows " +
+                "every production endpoint, so it lands on the last pages; the key is absent otherwise."
     )
     suspend fun getHttpEndpoints(
         @McpDescription(PROJECT_PATH_DESCRIPTION)
@@ -914,7 +943,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
         val result = withContext(Dispatchers.IO) {
             smartReadAction(project) {
-                val matching = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
+                val listed = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
                     .filter { it.type.isWeb }
                     .filter { typeFilter == null || it.type.name.equals(typeFilter, ignoreCase = true) }
                     .filter {
@@ -926,6 +955,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                         }
                     }
                     .toList()
+                val (inTests, production) = listed.partition(::declaredInTests)
+                val matching = production + inTests
 
                 // Convert only the requested page: building an EndpointJson resolves PSI (module, line number,
                 // parameters), which is far too expensive to do for every endpoint of a large project.
@@ -1011,6 +1042,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "had to be guessed and dropped, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
                 "matched - with a contract in place of each endpoint; every counted endpoint is returned, so " +
                 "endpoints.size equals totalCount unless truncated. " +
+                "A contract of an endpoint declared in a test source root carries 'testSource': true and follows " +
+                "every production contract. " +
                 "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
     )
     suspend fun getEndpointContract(
@@ -1074,6 +1107,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             endpointType = endpoint.type.readable,
             exposed = core.exposed,
             access = core.access,
+            testSource = core.testSource,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
         )
@@ -1944,6 +1978,8 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
     /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /** Whether the endpoint is declared in a test source root; see [CompactEndpointJson.testSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
 )
 
 /**
@@ -1995,6 +2031,11 @@ data class CompactEndpointJson(
      * Under `READ_ONLY` only read operations are served, so a write or delete operation of that endpoint reads `NONE`.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /**
+     * `true` for an endpoint declared in a test source root - a probe controller inside a test class - which every
+     * endpoint tool lists after the production endpoints. Absent for production and library endpoints.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
 )
 
 data class EndpointListJson<T>(
@@ -2007,8 +2048,10 @@ data class EndpointListJson<T>(
 /**
  * The result of resolving one URL pattern, for the find and contract tools.
  *
- * [endpoints] lists the closest match first, and among equally close ones the more specific path first, the way
- * Spring ranks path patterns, so of routes with different paths its first element is the one that dispatches.
+ * [endpoints] lists the closest production match first, and among equally close ones the more specific path first,
+ * the way Spring ranks path patterns, so of routes with different paths its first element is the one that dispatches.
+ * Endpoints declared in test sources follow, marked `testSource`: such an endpoint exists only in a test context, not
+ * in the running application.
  * Handlers sharing one path are chosen by the request's media types instead, which their `consumes` and `produces`
  * show; their order says nothing about dispatch. [basePath] is the leading path
  * stripped from the URL because the configuration of the answering routes' module declares it - a servlet context
@@ -2185,6 +2228,8 @@ data class EndpointContractJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
     /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /** Whether the endpoint is declared in a test source root; see [CompactEndpointJson.testSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
     /**
      * `COMPLETE` when a request-handling method declares the endpoint, `PARTIAL` when the endpoint exists but has
      * no such signature to read - a functional route or an OpenAPI declaration.
