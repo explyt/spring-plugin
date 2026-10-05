@@ -284,7 +284,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "the routes declare it, with their '{templates}'. " +
                 "A test-source endpoint - a probe controller inside a test class - is listed in 'endpoints' and in " +
                 "'nearestByPrefix' too, after the production ones, with 'testSource': true; the key is absent on " +
-                "production and library endpoints."
+                "production and library endpoints. " +
+                ACTUATOR_APPLICATION_DESCRIPTION
     )
     suspend fun findEndpoint(
         @McpDescription(
@@ -424,7 +425,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * the mapping - a test-source probe inheriting a production base class's `@GetMapping` is still test code.
      */
     private fun declaredInTests(endpoint: EndpointElement): Boolean =
-        ProjectSources.declaresInTests(endpoint.containingClass ?: endpoint.psiElement)
+        ProjectSources.declaresInTests(endpoint.containingClass ?: endpoint.psiElement) ||
+                endpoint.application?.let(ProjectSources::declaresInTests) == true
 
     /**
      * One way a request path meets the routes: as written, under a [basePath] a module's configuration declares, or
@@ -588,6 +590,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             exposed = endpoint.exposure?.name,
             access = endpoint.access?.name,
             testSource = declaredInTests(endpoint).takeIf { it },
+            application = endpoint.application?.qualifiedName,
         )
     }
 
@@ -612,6 +615,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             exposed = core.exposed,
             access = core.access,
             testSource = core.testSource,
+            application = core.application,
         )
     }
 
@@ -911,7 +915,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
                 "or request the next page with 'offset' = 'offset' + number of returned endpoints. " +
                 "An endpoint declared in a test source root is listed too, carries 'testSource': true and follows " +
-                "every production endpoint, so it lands on the last pages; the key is absent otherwise."
+                "every production endpoint, so it lands on the last pages; the key is absent otherwise. " +
+                ACTUATOR_APPLICATION_DESCRIPTION
     )
     suspend fun getHttpEndpoints(
         @McpDescription(PROJECT_PATH_DESCRIPTION)
@@ -1047,6 +1052,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "endpoints.size equals totalCount unless truncated. " +
                 "A contract of an endpoint declared in a test source root carries 'testSource': true and follows " +
                 "every production contract. " +
+                ACTUATOR_APPLICATION_DESCRIPTION + " " +
                 "Take the urlPattern from explyt_find_spring_endpoint or explyt_get_spring_http_endpoints."
     )
     suspend fun getEndpointContract(
@@ -1113,6 +1119,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             testSource = core.testSource,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
+            application = core.application,
         )
     }
 
@@ -1752,6 +1759,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
         private const val COMPLETE_CONTRACT = "COMPLETE"
         private const val PARTIAL_CONTRACT = "PARTIAL"
+        private const val ACTUATOR_APPLICATION_DESCRIPTION =
+            "An Actuator endpoint names in 'application' the application whose context lists it; a copy listed by " +
+                    "an application declared in test sources carries 'testSource': true and follows the production copy."
 
         private val FRAMEWORK_PACKAGES = listOf("java.", "kotlin.", "org.springframework.")
 
@@ -2007,6 +2017,8 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
     /** Whether the endpoint is declared in a test source root; see [CompactEndpointJson.testSource]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
+    /** The application whose context lists an Actuator endpoint; see [CompactEndpointJson.application]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val application: String?,
 )
 
 /**
@@ -2063,6 +2075,11 @@ data class CompactEndpointJson(
      * endpoint tool lists after the production endpoints. Absent for production and library endpoints.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
+    /**
+     * For an Actuator endpoint only, the qualified name of the `@SpringBootApplication` whose context lists it. A copy
+     * listed by an application declared in test sources carries [testSource] and follows the production copy.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val application: String?,
 )
 
 data class EndpointListJson<T>(
@@ -2275,6 +2292,8 @@ data class EndpointContractJson(
     val contractStatus: String,
     /** What has to be read elsewhere, and where. `null` for a `COMPLETE` contract. */
     val contractUnavailableReason: String?,
+    /** The application whose context lists an Actuator endpoint; see [CompactEndpointJson.application]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val application: String?,
 )
 
 /**
