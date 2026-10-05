@@ -1278,6 +1278,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "it cannot be followed even when the declared type is a project class, named after that declared " +
                 "type and marked 'resolved': false; the key is absent on every resolved call. An unresolved call " +
                 "with an implicit receiver, inside with(dsl) or dsl.apply, names no dependency and is left out. " +
+                "A call to a trivial accessor of a project class - a getter or setter whose body only reads or " +
+                "writes a field, a Kotlin property's default accessor, or one generated from the field as Lombok " +
+                "does - carries 'accessor': true: it is listed, not followed, and not counted against the limit. " +
                 "'chainLimitReached' is true when reachable methods were left out " +
                 "because the chain hit its size limit of $MAX_TRACED_METHODS methods. " +
                 "With includeTests, every node carries 'testReferences': the test files referring to the method, " +
@@ -1463,6 +1466,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     node = call.reached?.let(chain::idOf),
                     via = call.via,
                     resolved = if (call.resolved) null else false,
+                    accessor = true.takeIf { call.accessor },
                 )
             },
             testReferences = nodeTests?.references,
@@ -2185,6 +2189,13 @@ data class CallTargetJson(
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL)
     val resolved: Boolean? = null,
+    /**
+     * `true` when [target] is a trivial accessor of a project class - a getter or setter whose body only reads or
+     * writes a field, a Kotlin property's default accessor, or one generated from the field - which the trace lists
+     * without following or counting against its limit. Absent for every other call.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val accessor: Boolean? = null,
 )
 
 data class ServiceCallJson(
