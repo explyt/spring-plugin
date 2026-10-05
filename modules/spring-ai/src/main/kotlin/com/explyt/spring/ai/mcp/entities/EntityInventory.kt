@@ -33,7 +33,8 @@ class EntityRecord(
     val tableName: String,
     val filePath: String?,
     val line: Int?,
-    val readSchema: () -> EntitySchema
+    val library: String? = null,
+    val readSchema: () -> EntitySchema,
 )
 
 /**
@@ -60,6 +61,7 @@ class EntityInventory(private val mapper: ObjectMapper = ObjectMapper()) {
         node.put("className", record.className)
         node.put("tableName", record.tableName)
         node.put("filePath", record.filePath)
+        record.library?.let { node.put("library", it) }
         node.put("line", record.line)
         return node
     }
