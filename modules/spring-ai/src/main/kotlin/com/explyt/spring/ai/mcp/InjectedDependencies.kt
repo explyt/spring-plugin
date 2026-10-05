@@ -16,7 +16,11 @@ import com.intellij.psi.PsiParameter
 import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.util.InheritanceUtil
 import org.jetbrains.kotlin.asJava.elements.KtLightField
+import org.jetbrains.kotlin.psi.KtCallableDeclaration
+import org.jetbrains.kotlin.psi.KtNullableType
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtTypeElement
+import org.jetbrains.kotlin.psi.KtUserType
 import org.jetbrains.uast.UExpression
 
 /**
@@ -57,6 +61,23 @@ internal object InjectedDependencies {
      */
     fun fieldOf(receiver: UExpression?, owner: PsiClass): PsiField? =
         LocalAliases.originOf(receiver)?.let { fieldOf(it, owner) }
+
+    /**
+     * The simple name of the type [field] is declared with, read from the declaration rather than from the class it
+     * resolves to, so a dependency whose jar is missing is still named the way the code wrote it.
+     */
+    fun declaredTypeNameOf(field: PsiField): String =
+        kotlinDeclaredTypeNameOf(field)
+            ?: field.typeElement?.innermostComponentReferenceElement?.referenceName
+            ?: field.type.presentableText
+
+    private fun kotlinDeclaredTypeNameOf(field: PsiField): String? {
+        val declaration = (field as? KtLightField)?.kotlinOrigin as? KtCallableDeclaration ?: return null
+        return (declaration.typeReference?.typeElement?.withoutNullability() as? KtUserType)?.referencedName
+    }
+
+    private fun KtTypeElement.withoutNullability(): KtTypeElement? =
+        if (this is KtNullableType) innerType?.withoutNullability() else this
 
     private fun fieldOf(receiver: PsiElement, owner: PsiClass): PsiField? {
         val field = when (receiver) {
