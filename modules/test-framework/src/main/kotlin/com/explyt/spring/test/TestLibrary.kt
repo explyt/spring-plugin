@@ -31,6 +31,7 @@ data class TestLibrary(val mavenCoordinates: String, val includeTransitiveDepend
         val springBoot_3_5_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:3.5.0")
         val springBoot_4_0_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot:4.0.0")
         val springBootAutoConfigure_3_1_1: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:3.1.1")
+        val springBootAutoConfigure_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-autoconfigure:4.1.0")
         val springBootActuatorAutoConfigure_4_1_0: TestLibrary =
             TestLibrary("org.springframework.boot:spring-boot-actuator-autoconfigure:4.1.0")
         val springBootHealth_4_1_0: TestLibrary = TestLibrary("org.springframework.boot:spring-boot-health:4.1.0")
