@@ -959,7 +959,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
                 "expanded up to 3 levels: in 'name' a @JsonProperty name, else the name the declared Jackson naming " +
                 "strategy gives - @JsonNaming or spring.jackson.property-naming-strategy, reported as 'namingStrategy' " +
-                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared - with " +
+                "and 'namingStrategySource', UNKNOWN when it cannot be read and the names are left as declared, which " +
+                "includes an ObjectMapper, mapper builder or builder customizer bean declared in the application's " +
+                "production sources, since Boot yields to it and what it sets is not read; 'namingStrategySource' " +
+                "then names that declaration - with " +
                 "the declared one in 'declaredName'; 'nullable' null when an unannotated Java reference leaves it unknown; " +
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
@@ -2172,7 +2175,10 @@ data class DtoSchemaJson(
      * `SNAKE_CASE`, or `UNKNOWN` when one is declared but cannot be read statically and the names are left as declared.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategy: String? = null,
-    /** Where [namingStrategy] is declared: `@JsonNaming` or `spring.jackson.property-naming-strategy`. */
+    /**
+     * Where [namingStrategy] is declared: `@JsonNaming`, `spring.jackson.property-naming-strategy`, or the mapper,
+     * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
+     */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
 )
 
