@@ -281,6 +281,24 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertEquals("PATH", read.getValue("name")["source"].asText())
     }
 
+    fun testLoggersResponseIsDescribedByTheDescriptorGetters() = runBlocking<Unit> {
+        val descriptor = JavaPsiFacade.getInstance(project).findClass(
+            "org.springframework.boot.actuate.logging.LoggersEndpoint.LoggersDescriptor",
+            GlobalSearchScope.allScope(project)
+        )
+        assertNotNull("precondition: LoggersDescriptor is on the classpath", descriptor)
+        assertTrue(
+            "precondition: LoggersDescriptor declares getLevels and getLoggers",
+            descriptor!!.allMethods.map { it.name }.containsAll(listOf("getLevels", "getLoggers"))
+        )
+
+        val schema = contractOf("/actuator/loggers", "GET")["responseSchema"]
+
+        assertFalse("responseSchema is null", schema.isNull)
+        assertTrue(schema["fields"].map { it["name"].asText() }.containsAll(listOf("levels", "loggers")))
+        assertFalse(schema.has("schemaOmitted"))
+    }
+
     private suspend fun contractOf(url: String, method: String): JsonNode =
         mapper.readTree(
             toolset.getEndpointContract(urlPattern = url, projectPath = projectPath(), httpMethod = method)

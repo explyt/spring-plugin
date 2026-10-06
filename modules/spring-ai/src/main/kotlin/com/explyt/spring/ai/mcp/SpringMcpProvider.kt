@@ -1012,7 +1012,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "the declared one in 'declaredName'; 'nullable' null when an unannotated Java reference leaves it unknown; " +
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
-                "which are not the wire values), produces/consumes media types, and 'serviceCalls': every " +
+                "which are not the wire values; a non-generic library class such as an Actuator descriptor is " +
+                "expanded like a project DTO, and a library object type that is not carries 'schemaOmitted': " +
+                "LIBRARY_INFRASTRUCTURE, JSON_TREE, CUSTOM_SERIALIZATION, MAP_TYPE, COLLECTION_TYPE, ABSTRACT_TYPE or " +
+                "NO_VISIBLE_PROPERTIES; 'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
+                "is written next to the fields; a Page<T> is described by its content type, an approximation of " +
+                "the page Spring Data writes), produces/consumes media types, and " +
+                "'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +
                 "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +
                 "named after the bean's type like 'OwnerRepository.save', and a call made inside the handler's " +
@@ -2382,6 +2388,10 @@ data class DtoSchemaJson(
      * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
+    /** Why a library object type is not expanded into [fields]; see `ResponseSchemaReader.SchemaOmitted`. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val schemaOmitted: String? = null,
+    /** `true` when entries of a map are written next to [fields], as a Jackson `@JsonAnyGetter` writes them. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val additionalProperties: Boolean? = null,
 )
 
 data class DtoFieldJson(
