@@ -189,30 +189,30 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
             .filter { !it.hasModifierProperty(PsiModifier.ABSTRACT) && isProjectSource(it) }
             .sortedBy { methodKey(it) }
 
-    /**
-     * Whether [callee] belongs to the same unit of code as [caller], so calling it costs no depth: the caller's own
-     * class, a supertype of it, a class enclosing it, a class it encloses such as a companion, or a top-level
-     * function of its file. Two classes nested in one outer class are separate units - the outer class is often
-     * no more than a namespace.
-     */
-    private fun isInternal(caller: PsiMethod, callee: PsiMethod): Boolean {
-        val callerClass = caller.containingClass ?: return false
-        val calleeClass = callee.containingClass ?: return false
-        return callerClass.enclosingClasses().any { InheritanceUtil.isInheritorOrSelf(it, calleeClass, true) }
-                || calleeClass.enclosingClasses().any { InheritanceUtil.isInheritorOrSelf(callerClass, it, true) }
-                || isTopLevelFunctionOfTheFileOf(callee, caller)
-    }
-
-    private fun PsiClass.enclosingClasses(): Sequence<PsiClass> = generateSequence(this, PsiClass::getContainingClass)
-
-    private fun isTopLevelFunctionOfTheFileOf(callee: PsiMethod, caller: PsiMethod): Boolean {
-        val declaration = (callee as? KtLightMethod)?.kotlinOrigin ?: return false
-        return declaration.parent is KtFile && declaration.containingFile == caller.navigationElement.containingFile
-    }
-
     private fun isProjectSource(element: PsiElement): Boolean = ProjectSources.declares(element)
 
     companion object {
+
+        /**
+         * Whether [callee] belongs to the same unit of code as [caller], so calling it costs no depth: the caller's own
+         * class, a supertype of it, a class enclosing it, a class it encloses such as a companion, or a top-level
+         * function of its file. Two classes nested in one outer class are separate units - the outer class is often
+         * no more than a namespace.
+         */
+        fun isInternal(caller: PsiMethod, callee: PsiMethod): Boolean {
+            val callerClass = caller.containingClass ?: return false
+            val calleeClass = callee.containingClass ?: return false
+            return callerClass.enclosingClasses().any { InheritanceUtil.isInheritorOrSelf(it, calleeClass, true) }
+                    || calleeClass.enclosingClasses().any { InheritanceUtil.isInheritorOrSelf(callerClass, it, true) }
+                    || isTopLevelFunctionOfTheFileOf(callee, caller)
+        }
+
+        private fun PsiClass.enclosingClasses(): Sequence<PsiClass> = generateSequence(this, PsiClass::getContainingClass)
+
+        private fun isTopLevelFunctionOfTheFileOf(callee: PsiMethod, caller: PsiMethod): Boolean {
+            val declaration = (callee as? KtLightMethod)?.kotlinOrigin ?: return false
+            return declaration.parent is KtFile && declaration.containingFile == caller.navigationElement.containingFile
+        }
 
         /** How a method is named in a trace: its declaring class and its source name, `ShortLinkService.activity`. */
         fun nameOf(method: PsiMethod): String = "${method.containingClass?.name ?: "?"}.${sourceNameOf(method)}"
@@ -308,6 +308,6 @@ internal data class TracedCall(
  * Identity of a method across the PSI instances resolving to it: a Kotlin light method is re-created by every
  * resolve, so neither identity nor `equals` recognises a method already traced.
  */
-private fun methodKey(method: PsiMethod): String =
+internal fun methodKey(method: PsiMethod): String =
     "${method.containingClass?.qualifiedName}#${method.name}" +
             method.parameterList.parameters.joinToString(prefix = "(", postfix = ")") { it.type.canonicalText }
