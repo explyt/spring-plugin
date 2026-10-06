@@ -26,6 +26,8 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
@@ -71,9 +73,9 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
     }
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
-        val application = isApplicationModule(module)
-        val declared = if (application) ActuatorEndpointKeys.endpointsById(module) else ownEndpointsById(module)
-        val builtIn = if (application) {
+        val application = applicationClassOf(module)
+        val declared = if (application != null) ActuatorEndpointKeys.endpointsById(module) else ownEndpointsById(module)
+        val builtIn = if (application != null) {
             ActuatorEndpointKeys.libraryEndpointsById(module).filterKeys { it !in declared }
         } else {
             emptyMap()
@@ -93,7 +95,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
 
         return endpoints.flatMap {
-            val gates = Gates(exposure.exposureOf(it.id), access.accessOf(it))
+            val gates = Gates(exposure.exposureOf(it.id), access.accessOf(it), application)
             endpointElements(it, basePath, propertyValue, gates) { requestMappingMah }
         }
     }
@@ -121,24 +123,31 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         while (pending.isNotEmpty()) {
             val dependent = pending.removeFirst()
             if (!visited.add(dependent)) continue
-            if (isApplicationModule(dependent)) return true
+            if (applicationClassOf(dependent) != null) return true
             pending += moduleManager.getModuleDependentModules(dependent)
         }
         return false
     }
 
     /**
-     * Whether [module] declares a Spring Boot application of its own. Built-in endpoints belong to the context an
-     * application starts, so only its module lists them, under its configuration: a library module that merely has
-     * the Actuator jar would list them again under the defaults, contradicting the application's verdict.
+     * The Spring Boot application [module] declares, if any. Built-in endpoints belong to the context an application
+     * starts, so only its module lists them, under its configuration: a library module that merely has the Actuator
+     * jar would list them again under the defaults, contradicting the application's verdict. A production application
+     * outranks one in test sources, and the qualified name breaks the remaining ties, so the answer is stable.
      */
-    private fun isApplicationModule(module: Module): Boolean =
-        PackageScanService.getInstance(project).getSpringBootAppAnnotations().any {
-            AnnotatedElementsSearch.searchPsiClasses(it, module.moduleScope).findFirst() != null
-        }
+    private fun applicationClassOf(module: Module): PsiClass? {
+        val fileIndex = ProjectFileIndex.getInstance(project)
+        return PackageScanService.getInstance(project).getSpringBootAppAnnotations()
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, module.moduleScope).findAll() }
+            .minWithOrNull(
+                compareBy<PsiClass> { psiClass ->
+                    psiClass.containingFile?.virtualFile?.let { fileIndex.isInTestSourceContent(it) } ?: false
+                }.thenBy { it.qualifiedName.orEmpty() }
+            )
+    }
 
-    /** The two independent conditions under which Boot serves an endpoint: exposure and access. */
-    private class Gates(val exposure: EndpointExposure, val access: EndpointAccess)
+    /** The two independent conditions under which Boot serves an endpoint, and the application whose context holds it. */
+    private class Gates(val exposure: EndpointExposure, val access: EndpointAccess, val application: PsiClass?)
 
     private fun endpointElements(
         endpoint: ActuatorEndpoint,
@@ -161,7 +170,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         // An endpoint declaring no operation - a servlet endpoint, or one that declares none at all - stays listed so its
         // declaration does, and names no verb because it declares none.
         return operations.ifEmpty {
-            listOf(endpointElement(endpointPath, emptyList(), endpoint.psiClass, endpoint, gates.exposure, gates.access))
+            listOf(endpointElement(endpointPath, emptyList(), endpoint.psiClass, endpoint, gates, gates.access))
         }
     }
 
@@ -184,7 +193,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             val isRead = mapping.methods.isNotEmpty() && mapping.methods.all { it in READ_ONLY_REQUEST_METHODS }
             val access = ActuatorAccess.ofOperation(gates.access, isRead)
             mapping.paths.map {
-                endpointElement(joinPath(endpointPath, it), mapping.methods, method, endpoint, gates.exposure, access)
+                endpointElement(joinPath(endpointPath, it), mapping.methods, method, endpoint, gates, access)
             }
         }
 
@@ -207,7 +216,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
 
         val access = ActuatorAccess.ofOperation(gates.access, isRead = httpMethod == READ_METHOD)
         return endpointElement(
-            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates.exposure, access, produces.toList()
+            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates, access, produces.toList()
         )
     }
 
@@ -216,12 +225,12 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         requestMethods: List<String>,
         psiElement: PsiElement,
         endpoint: ActuatorEndpoint,
-        exposure: EndpointExposure,
+        gates: Gates,
         access: EndpointAccess,
         produces: List<String> = emptyList(),
     ) = EndpointElement(
         path, requestMethods, psiElement, endpoint.psiClass, null, getType(),
-        exposure = exposure, produces = produces, access = access
+        exposure = gates.exposure, produces = produces, access = access, application = gates.application
     )
 
 
