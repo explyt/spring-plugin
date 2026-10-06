@@ -25,6 +25,7 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.springWebMvc_6_0_7,
         TestLibrary.jacksonAnnotations_2_15_2,
+        TestLibrary.jacksonDatabind_2_15_2,
     )
 
     private val toolset = SpringBootApplicationMcpToolset()
@@ -105,8 +106,43 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         val schema = responseSchema("/library/problem", "GET")
 
         assertEquals("org.springframework.http.ProblemDetail", schema["className"].asText())
-        assertTrue(names(schema).containsAll(listOf("type", "title", "status", "detail", "instance")))
+        assertEquals(setOf("type", "title", "status", "detail", "instance"), names(schema).toSet())
+        assertTrue("the any-getter's entries are written at the top level", schema["additionalProperties"].asBoolean())
         assertFalse(schema.has("schemaOmitted"))
+    }
+
+    fun testLibraryMapIsMarkedOmitted() = runBlocking<Unit> {
+        assertOmitted("/library/http-headers", "org.springframework.http.HttpHeaders", "MAP_TYPE")
+    }
+
+    fun testLibraryCollectionIsMarkedOmitted() = runBlocking<Unit> {
+        assertOmitted("/library/sources", "org.springframework.core.env.MutablePropertySources", "COLLECTION_TYPE")
+    }
+
+    fun testJsonTreeIsMarkedOmitted() = runBlocking<Unit> {
+        assertOmitted("/library/node", "com.fasterxml.jackson.databind.node.ObjectNode", "JSON_TREE")
+    }
+
+    fun testSelfSerializingLibraryTypeIsMarkedOmitted() = runBlocking<Unit> {
+        assertOmitted("/library/jsonp", "com.fasterxml.jackson.databind.util.JSONPObject", "CUSTOM_SERIALIZATION")
+    }
+
+    fun testLibraryClassWithoutPropertiesIsMarkedOmitted() = runBlocking<Unit> {
+        assertOmitted("/library/method", "org.springframework.http.HttpMethod", "NO_VISIBLE_PROPERTIES")
+    }
+
+    fun testProjectEnumKeepsItsValues() = runBlocking<Unit> {
+        val schema = responseSchema("/plain/kind", "GET")
+
+        assertEquals(listOf("className", "enumValues"), schema.fieldNames().asSequence().toList())
+        assertEquals(listOf("SMALL", "LARGE"), schema["enumValues"].map { it.asText() })
+    }
+
+    private suspend fun assertOmitted(url: String, className: String, reason: String) {
+        val schema = responseSchema(url, "GET")
+        assertEquals(className, schema["className"].asText())
+        assertEquals(reason, schema["schemaOmitted"].asText())
+        assertFalse(schema.has("fields"))
     }
 
     fun testLibraryInfrastructureIsMarkedOmitted() = runBlocking<Unit> {
@@ -312,6 +348,11 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
                     public PlainReport report() { return new PlainReport(); }
                 }
             """,
+            "com/example/plain/Kind.java" to """
+                package com.example.plain;
+
+                public enum Kind { SMALL, LARGE }
+            """,
             "com/example/plain/TreeNode.java" to """
                 package com.example.plain;
 
@@ -346,6 +387,24 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
 
                     @GetMapping("/library/tree")
                     public ResponseEntity<TreeNode> tree() { return null; }
+
+                    @GetMapping("/library/http-headers")
+                    public org.springframework.http.HttpHeaders httpHeaders() { return null; }
+
+                    @GetMapping("/library/sources")
+                    public org.springframework.core.env.MutablePropertySources sources() { return null; }
+
+                    @GetMapping("/library/node")
+                    public com.fasterxml.jackson.databind.node.ObjectNode json() { return null; }
+
+                    @GetMapping("/library/jsonp")
+                    public com.fasterxml.jackson.databind.util.JSONPObject jsonp() { return null; }
+
+                    @GetMapping("/library/method")
+                    public org.springframework.http.HttpMethod method() { return null; }
+
+                    @GetMapping("/plain/kind")
+                    public Kind kind() { return Kind.SMALL; }
                 }
             """,
         )

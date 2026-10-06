@@ -21,8 +21,8 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
-import com.intellij.psi.util.PropertyUtilBase
 import com.intellij.psi.util.InheritanceUtil
+import com.intellij.psi.util.PropertyUtilBase
 import org.jetbrains.kotlin.asJava.classes.KtLightClass
 import org.jetbrains.kotlin.asJava.elements.KtLightField
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
@@ -83,16 +83,13 @@ internal object ResponseSchemaReader {
     }
 
     private fun librarySchemaOf(psiClass: PsiClass, fqn: String, depth: Int, names: Names): DtoSchemaJson {
-        val omitted = when {
-            LIBRARY_INFRASTRUCTURE.any { InheritanceUtil.isInheritor(psiClass, it) } -> SchemaOmitted.LIBRARY_INFRASTRUCTURE
-            psiClass.isInterface || psiClass.hasModifierProperty(PsiModifier.ABSTRACT) -> SchemaOmitted.ABSTRACT_TYPE
-            else -> null
-        }
+        val omitted = omissionOf(psiClass)
+        val anyGetter = ANY_GETTER_MIXINS[fqn]
         val fields = when {
             omitted != null -> emptyList()
             isJavaBean(psiClass) -> beanPropertiesOf(psiClass, depth, names)
             else -> fieldsOf(psiClass, depth, names).ifEmpty { propertiesOf(psiClass, depth, names) }
-        }
+        }.filter { it.name != anyGetter }
         val reason = omitted ?: SchemaOmitted.NO_VISIBLE_PROPERTIES.takeIf { fields.isEmpty() }
         return DtoSchemaJson(
             className = fqn,
@@ -100,8 +97,26 @@ internal object ResponseSchemaReader {
             namingStrategy = names.own?.name,
             namingStrategySource = names.own?.source,
             schemaOmitted = reason?.name,
+            additionalProperties = true.takeIf { anyGetter != null && reason == null },
         )
     }
+
+    private fun omissionOf(psiClass: PsiClass): SchemaOmitted? {
+        fun inherits(fqns: Collection<String>) = fqns.any { InheritanceUtil.isInheritor(psiClass, it) }
+        return when {
+            inherits(LIBRARY_INFRASTRUCTURE) -> SchemaOmitted.LIBRARY_INFRASTRUCTURE
+            inherits(JSON_TREES) -> SchemaOmitted.JSON_TREE
+            inherits(SELF_SERIALIZING) || hasCustomSerialization(psiClass) -> SchemaOmitted.CUSTOM_SERIALIZATION
+            inherits(MAPS) -> SchemaOmitted.MAP_TYPE
+            inherits(COLLECTIONS) -> SchemaOmitted.COLLECTION_TYPE
+            psiClass.isInterface || psiClass.hasModifierProperty(PsiModifier.ABSTRACT) -> SchemaOmitted.ABSTRACT_TYPE
+            else -> null
+        }
+    }
+
+    private fun hasCustomSerialization(psiClass: PsiClass): Boolean =
+        CUSTOM_SERIALIZATION_ANNOTATIONS.any { psiClass.hasAnnotation(it) } ||
+                psiClass.allMethods.any { isEnabled(it.getAnnotation(JacksonClasses.JSON_VALUE)) }
 
     /**
      * A class whose payload is its first type argument. A class declared in the project never is, whatever its
@@ -374,7 +389,35 @@ internal object ResponseSchemaReader {
         "org.springframework.ui.ModelMap",
     )
 
-    private enum class SchemaOmitted { LIBRARY_INFRASTRUCTURE, ABSTRACT_TYPE, NO_VISIBLE_PROPERTIES }
+    private val JSON_TREES = listOf("com.fasterxml.jackson.databind.JsonNode", "tools.jackson.databind.JsonNode")
+
+    private val SELF_SERIALIZING = listOf(
+        "com.fasterxml.jackson.databind.JsonSerializable",
+        "tools.jackson.databind.JacksonSerializable",
+    )
+
+    private val CUSTOM_SERIALIZATION_ANNOTATIONS = listOf(
+        "com.fasterxml.jackson.databind.annotation.JsonSerialize",
+        "tools.jackson.databind.annotation.JsonSerialize",
+        "com.fasterxml.jackson.annotation.JsonFormat",
+    )
+
+    private val MAPS = listOf("java.util.Map", "org.springframework.util.MultiValueMap")
+
+    private val COLLECTIONS = listOf("java.lang.Iterable")
+
+    /** Library classes a mixin registered by Spring's Jackson builders writes with a `@JsonAnyGetter` property. */
+    private val ANY_GETTER_MIXINS = mapOf("org.springframework.http.ProblemDetail" to "properties")
+
+    private enum class SchemaOmitted {
+        LIBRARY_INFRASTRUCTURE,
+        JSON_TREE,
+        CUSTOM_SERIALIZATION,
+        MAP_TYPE,
+        COLLECTION_TYPE,
+        ABSTRACT_TYPE,
+        NO_VISIBLE_PROPERTIES,
+    }
 
     /** Reactive and coroutine containers outside those packages, whose payload is their first type argument. */
     private val CONTAINERS = setOf(
