@@ -21,6 +21,7 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
+import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.PropertyUtilBase
 import org.jetbrains.kotlin.asJava.classes.KtLightClass
 import org.jetbrains.kotlin.asJava.elements.KtLightField
@@ -67,8 +68,9 @@ internal object ResponseSchemaReader {
 
         val naming = JacksonNaming.declaredOn(resolved) ?: configured
         val names = Names(naming, configured)
+        if (!ProjectSources.declares(resolved)) return librarySchemaOf(resolved, fqn, depth, names)
         val fields = if (isJavaBean(resolved)) {
-            beanPropertiesOf(resolved, depth, names)
+            beanPropertiesOf(resolved, depth, names).ifEmpty { fieldsOf(resolved, depth, names) }
         } else {
             fieldsOf(resolved, depth, names).ifEmpty { propertiesOf(resolved, depth, names) }
         }
@@ -80,15 +82,54 @@ internal object ResponseSchemaReader {
         )
     }
 
+    private fun librarySchemaOf(psiClass: PsiClass, fqn: String, depth: Int, names: Names): DtoSchemaJson {
+        val omitted = omissionOf(psiClass)
+        val anyGetter = ANY_GETTER_MIXINS[fqn]
+        val fields = when {
+            omitted != null -> emptyList()
+            isJavaBean(psiClass) -> beanPropertiesOf(psiClass, depth, names)
+            else -> fieldsOf(psiClass, depth, names).ifEmpty { propertiesOf(psiClass, depth, names) }
+        }.filter { it.name != anyGetter }
+        val reason = omitted ?: SchemaOmitted.NO_VISIBLE_PROPERTIES.takeIf { fields.isEmpty() }
+        return DtoSchemaJson(
+            className = fqn,
+            fields = fields.takeIf { reason == null },
+            namingStrategy = names.own?.name,
+            namingStrategySource = names.own?.source,
+            schemaOmitted = reason?.name,
+            additionalProperties = true.takeIf { anyGetter != null && reason == null },
+        )
+    }
+
+    private fun omissionOf(psiClass: PsiClass): SchemaOmitted? {
+        fun inherits(fqns: Collection<String>) = fqns.any { InheritanceUtil.isInheritor(psiClass, it) }
+        return when {
+            inherits(LIBRARY_INFRASTRUCTURE) -> SchemaOmitted.LIBRARY_INFRASTRUCTURE
+            inherits(JSON_TREES) -> SchemaOmitted.JSON_TREE
+            inherits(SELF_SERIALIZING) || hasCustomSerialization(psiClass) -> SchemaOmitted.CUSTOM_SERIALIZATION
+            inherits(MAPS) -> SchemaOmitted.MAP_TYPE
+            inherits(COLLECTIONS) -> SchemaOmitted.COLLECTION_TYPE
+            psiClass.isInterface || psiClass.hasModifierProperty(PsiModifier.ABSTRACT) -> SchemaOmitted.ABSTRACT_TYPE
+            else -> null
+        }
+    }
+
+    private fun hasCustomSerialization(psiClass: PsiClass): Boolean =
+        CUSTOM_SERIALIZATION_ANNOTATIONS.any { psiClass.hasAnnotation(it) } ||
+                psiClass.allMethods.any { isEnabled(it.getAnnotation(JacksonClasses.JSON_VALUE)) }
+
     /**
      * A class whose payload is its first type argument. A class declared in the project never is, whatever its
-     * package. A library class is when the JDK, the Kotlin standard library or Spring declares it - a collection or a
-     * map, `Optional`, `ResponseEntity`, a `Page` - or when it is a reactive or asynchronous container; a library type
-     * without a type argument, such as `String`, `Instant` or `ModelAndView`, then has no schema of its own.
+     * package. A library class is when it is a reactive or asynchronous container, or a generic class the JDK, the
+     * Kotlin standard library or Spring declares - a collection or a map, `Optional`, `ResponseEntity`, a `Page`. A
+     * JDK or Kotlin value type such as `String` or `Instant` has no schema of its own; a non-generic Spring class is
+     * described as a bean.
      */
     private fun isContainer(psiClass: PsiClass, fqn: String): Boolean {
         if (ProjectSources.declares(psiClass)) return false
-        return fqn in CONTAINERS || LIBRARY_CONTAINER_PACKAGES.any(fqn::startsWith)
+        if (fqn in CONTAINERS) return true
+        if (VALUE_TYPE_PACKAGES.any(fqn::startsWith)) return true
+        return fqn.startsWith(SPRING_PACKAGE) && psiClass.hasTypeParameters()
     }
 
     /**
@@ -139,7 +180,7 @@ internal object ResponseSchemaReader {
                     names = names,
                 )
             }
-        return (properties + publicFields).ifEmpty { fieldsOf(psiClass, depth, names) }
+        return properties + publicFields
     }
 
     private fun isWrittenGetter(method: PsiMethod): Boolean =
@@ -331,8 +372,52 @@ internal object ResponseSchemaReader {
 
     private val NON_NULL_ANNOTATIONS = setOf("NotNull", "NonNull", "Nonnull")
 
+    private const val SPRING_PACKAGE = "org.springframework."
+
     /** Packages whose library classes are described by their first type argument, or by nothing without one. */
-    private val LIBRARY_CONTAINER_PACKAGES = listOf(JDK_PACKAGE, "kotlin.", "org.springframework.")
+    private val VALUE_TYPE_PACKAGES = listOf(JDK_PACKAGE, "kotlin.")
+
+    /** Spring types a handler returns to be rendered, streamed or bound rather than serialized as a bean. */
+    private val LIBRARY_INFRASTRUCTURE = listOf(
+        "org.springframework.web.servlet.ModelAndView",
+        "org.springframework.web.servlet.View",
+        "org.springframework.web.reactive.result.view.Rendering",
+        "org.springframework.core.io.Resource",
+        "org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody",
+        "org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter",
+        "org.springframework.ui.Model",
+        "org.springframework.ui.ModelMap",
+    )
+
+    private val JSON_TREES = listOf("com.fasterxml.jackson.databind.JsonNode", "tools.jackson.databind.JsonNode")
+
+    private val SELF_SERIALIZING = listOf(
+        "com.fasterxml.jackson.databind.JsonSerializable",
+        "tools.jackson.databind.JacksonSerializable",
+    )
+
+    private val CUSTOM_SERIALIZATION_ANNOTATIONS = listOf(
+        "com.fasterxml.jackson.databind.annotation.JsonSerialize",
+        "tools.jackson.databind.annotation.JsonSerialize",
+        "com.fasterxml.jackson.annotation.JsonFormat",
+    )
+
+    private val MAPS = listOf("java.util.Map", "org.springframework.util.MultiValueMap")
+
+    private val COLLECTIONS = listOf("java.lang.Iterable")
+
+    /** Library classes a mixin registered by Spring's Jackson builders writes with a `@JsonAnyGetter` property. */
+    private val ANY_GETTER_MIXINS = mapOf("org.springframework.http.ProblemDetail" to "properties")
+
+    private enum class SchemaOmitted {
+        LIBRARY_INFRASTRUCTURE,
+        JSON_TREE,
+        CUSTOM_SERIALIZATION,
+        MAP_TYPE,
+        COLLECTION_TYPE,
+        ABSTRACT_TYPE,
+        NO_VISIBLE_PROPERTIES,
+    }
 
     /** Reactive and coroutine containers outside those packages, whose payload is their first type argument. */
     private val CONTAINERS = setOf(
