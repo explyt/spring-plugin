@@ -1568,9 +1568,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'nullable' is the nullability of the mapped column: a primary key (@Id, @EmbeddedId, a @MapsId " +
                 "association) is never nullable, even when the property is nullable before the entity is " +
                 "persisted, such as a Kotlin 'Long?' id; a to-one association is not nullable when it declares " +
-                "optional = false or @JoinColumn(nullable = false); a primitive property without @Column maps " +
-                "to a NOT NULL column, as does @Basic(optional = false); an explicit @Column keeps its own " +
-                "nullable. @Basic with optional = true or no optional attribute keeps a primitive nullable. " +
+                "optional = false or @JoinColumn(nullable = false); a primitive property with neither @Column " +
+                "nor @Basic maps to a NOT NULL column. @Basic(optional = false) forces NOT NULL for any type, " +
+                "also over @Column(nullable = true); an optional or bare @Basic does not force NOT NULL by itself. " +
                 "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
                 "requested' as 'this entity has none'. " +
                 "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
