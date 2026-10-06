@@ -1568,7 +1568,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'nullable' is the nullability of the mapped column: a primary key (@Id, @EmbeddedId, a @MapsId " +
                 "association) is never nullable, even when the property is nullable before the entity is " +
                 "persisted, such as a Kotlin 'Long?' id; a to-one association is not nullable when it declares " +
-                "optional = false or @JoinColumn(nullable = false). " +
+                "optional = false or @JoinColumn(nullable = false); a primitive property with neither @Column " +
+                "nor @Basic maps to a NOT NULL column. @Basic(optional = false) forces NOT NULL for any type, " +
+                "also over @Column(nullable = true); an optional or bare @Basic does not force NOT NULL by itself. " +
                 "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
                 "requested' as 'this entity has none'. " +
                 "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
@@ -1713,6 +1715,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val columnAnnotation = field.findFirstAnnotation(COLUMN_ANNOTATION_FQNS)
         val column = columnAnnotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
         val columnNullable = columnAnnotation.getDeclaredBooleanAttribute(ATTR_NULLABLE)
+        val basicAnnotation = field.findFirstAnnotation(BASIC_ANNOTATION_FQNS)
+        val basicOptional = basicAnnotation?.let { it.getDeclaredBooleanAttribute(ATTR_OPTIONAL) ?: true }
+        val implicitPrimitiveColumn = columnAnnotation == null && field.type is PsiPrimitiveType && basicAnnotation == null
         val relationshipMatch = RELATIONSHIP_ANNOTATIONS.firstNotNullOfOrNull { (fqns, kind) ->
             field.findFirstAnnotation(fqns)?.let { it to kind }
         }
@@ -1724,7 +1729,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val optional = relationshipAnnotation.getDeclaredBooleanAttribute(ATTR_OPTIONAL)
         val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
         val primaryKey = field.findFirstAnnotation(PRIMARY_KEY_ANNOTATION_FQNS) != null
-        val nullable = !primaryKey && optional != false &&
+        val nullable = !primaryKey && optional != false && basicOptional != false && !implicitPrimitiveColumn &&
                 (columnNullable ?: joinColumnNullable ?: !hasNotNullAnnotation(field))
 
         return EntityFieldJson(
@@ -1982,6 +1987,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
         private val TABLE_ANNOTATION_FQNS = JpaClasses.table.allFqns
         private val COLUMN_ANNOTATION_FQNS = JpaClasses.column.allFqns
+        private val BASIC_ANNOTATION_FQNS = MultiVendorClass("persistence.Basic").allFqns
         private val PRIMARY_KEY_ANNOTATION_FQNS =
             JpaClasses.id.allFqns + JpaClasses.embeddedId.allFqns + MultiVendorClass("persistence.MapsId").allFqns
         private val TRANSIENT_ANNOTATION_FQNS = JpaClasses.transient.allFqns

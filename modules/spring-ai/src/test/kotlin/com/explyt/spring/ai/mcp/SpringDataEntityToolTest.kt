@@ -25,6 +25,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.jakarta_persistence_3_1_0,
+        TestLibrary.javax_persistence_2_2,
     )
 
     private val toolset = SpringBootApplicationMcpToolset()
@@ -709,6 +710,254 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
 
         assertEquals("Node", compact["tableName"].asText())
         assertFalse("An entity name is not a quoted identifier", compact.has("tableQuoted"))
+    }
+
+    fun testAnImplicitPrimitiveBooleanColumnIsNotNullable() = runBlocking<Unit> {
+        val active = field(fieldsOf(addSwitchEntity()), "active")
+
+        assertEquals("Precondition: the property must be primitive", "boolean", active["type"].asText())
+        assertEquals("A primitive without @Column maps to a NOT NULL column", false, active["nullable"].booleanValue())
+    }
+
+    fun testAnImplicitPrimitiveLongColumnIsNotNullable() = runBlocking<Unit> {
+        val version = field(fieldsOf(addSwitchEntity()), "version")
+
+        assertEquals("Precondition: the property must be primitive", "long", version["type"].asText())
+        assertEquals("A primitive without @Column maps to a NOT NULL column", false, version["nullable"].booleanValue())
+    }
+
+    fun testAnImplicitWrapperColumnStaysNullable() = runBlocking<Unit> {
+        val flag = field(fieldsOf(addSwitchEntity()), "flag")
+
+        assertEquals("Precondition: the property must be boxed", "java.lang.Boolean", flag["type"].asText())
+        assertEquals(true, flag["nullable"].booleanValue())
+    }
+
+    fun testAnExplicitColumnOnAPrimitiveKeepsItsDefaultNullable() = runBlocking<Unit> {
+        val deleted = field(fieldsOf(addSwitchEntity()), "deleted")
+
+        assertEquals("Precondition: the property must be primitive", "boolean", deleted["type"].asText())
+        assertEquals("is_deleted", deleted["column"].asText())
+        assertEquals("An explicit @Column ignores primitiveness", true, deleted["nullable"].booleanValue())
+    }
+
+    fun testAnExplicitNotNullableColumnOnAWrapperIsNotNullable() = runBlocking<Unit> {
+        val archived = field(fieldsOf(addSwitchEntity()), "archived")
+
+        assertEquals("Precondition: the property must be boxed", "java.lang.Boolean", archived["type"].asText())
+        assertEquals(false, archived["nullable"].booleanValue())
+    }
+
+    fun testAMandatoryBasicColumnIsNotNullable() = runBlocking<Unit> {
+        val code = field(fieldsOf(addSwitchEntity()), "code")
+
+        assertEquals("Precondition: the property must be a reference", "java.lang.String", code["type"].asText())
+        assertEquals("@Basic(optional = false) maps to a NOT NULL column", false, code["nullable"].booleanValue())
+    }
+
+    fun testAnOptionalBasicPrimitiveColumnIsNullable() = runBlocking<Unit> {
+        val priority = field(fieldsOf(addSwitchEntity()), "priority")
+
+        assertEquals("Precondition: the property must be primitive", "int", priority["type"].asText())
+        assertEquals("@Basic(optional = true) overrides primitiveness", true, priority["nullable"].booleanValue())
+    }
+
+    fun testABareBasicPrimitiveColumnIsNullable() = runBlocking<Unit> {
+        val rank = field(fieldsOf(addSwitchEntity()), "rank")
+
+        assertEquals("Precondition: the property must be primitive", "int", rank["type"].asText())
+        assertEquals("@Basic defaults to optional = true", true, rank["nullable"].booleanValue())
+    }
+
+    fun testAnImplicitPrimitiveInheritedFromAMappedSuperclassIsNotNullable() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/primitive/Versioned.java", """
+            package com.example.primitive;
+
+            import jakarta.persistence.MappedSuperclass;
+
+            @MappedSuperclass
+            public abstract class Versioned {
+                private long revision;
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/primitive/Document.java", """
+            package com.example.primitive;
+
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity
+            public class Document extends Versioned {
+                @Id
+                private Long id;
+            }
+            """.trimIndent()
+        )
+
+        val revision = field(fieldsOf("com.example.primitive.Document"), "revision")
+
+        assertEquals("Precondition: the property must be primitive", "long", revision["type"].asText())
+        assertEquals("An inherited primitive without @Column maps to a NOT NULL column", false, revision["nullable"].booleanValue())
+    }
+
+    fun testKotlinNonNullPrimitivePropertiesAreNotNullableColumns() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/primitive/Toggle.kt", """
+            package com.example.primitive
+
+            import jakarta.persistence.Entity
+            import jakarta.persistence.Id
+
+            @Entity
+            class Toggle(@Id var id: Long? = null) {
+                var enabled: Boolean = false
+                var counter: Long = 0
+                var maybe: Boolean? = null
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.primitive.Toggle")
+
+        assertEquals("Precondition: a non-null Boolean compiles to a primitive", "boolean", field(fields, "enabled")["type"].asText())
+        assertEquals("Precondition: a non-null Long compiles to a primitive", "long", field(fields, "counter")["type"].asText())
+        assertEquals("Precondition: a nullable Boolean is boxed", "java.lang.Boolean", field(fields, "maybe")["type"].asText())
+        assertEquals("A boxed property stays nullable", true, field(fields, "maybe")["nullable"].booleanValue())
+        assertEquals("enabled maps to a NOT NULL column", false, field(fields, "enabled")["nullable"].booleanValue())
+        assertEquals("counter maps to a NOT NULL column", false, field(fields, "counter")["nullable"].booleanValue())
+    }
+
+    fun testAMandatoryBasicOverridesAnExplicitlyNullableColumn() = runBlocking<Unit> {
+        val label = field(fieldsOf(addGateEntity()), "label")
+
+        assertEquals("Precondition: the property must be a reference", "java.lang.String", label["type"].asText())
+        assertEquals("@Basic(optional = false) forces NOT NULL over @Column(nullable = true)", false, label["nullable"].booleanValue())
+    }
+
+    fun testAMandatoryBasicPrimitiveWithoutAColumnIsNotNullable() = runBlocking<Unit> {
+        val weight = field(fieldsOf(addGateEntity()), "weight")
+
+        assertEquals("Precondition: the property must be primitive", "int", weight["type"].asText())
+        assertEquals(false, weight["nullable"].booleanValue())
+    }
+
+    fun testANotNullPrimitiveWithAnExplicitColumnIsNotNullable() = runBlocking<Unit> {
+        val open = field(fieldsOf(addGateEntity()), "open")
+
+        assertEquals("Precondition: the property must be primitive", "boolean", open["type"].asText())
+        assertEquals("gate_open", open["column"].asText())
+        assertEquals("@NotNull is not masked by a @Column that does not say nullable", false, open["nullable"].booleanValue())
+    }
+
+    fun testJavaxBasicAnnotationsFollowTheSameRules() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/legacy/Lever.java", """
+            package com.example.legacy;
+
+            import javax.persistence.Basic;
+            import javax.persistence.Entity;
+            import javax.persistence.Id;
+
+            @Entity
+            public class Lever {
+                @Id
+                private Long id;
+
+                @Basic(optional = false)
+                private String name;
+
+                @Basic
+                private int position;
+
+                private boolean locked;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.legacy.Lever")
+
+        assertEquals("Precondition: the property must be a reference", "java.lang.String", field(fields, "name")["type"].asText())
+        assertEquals("Precondition: the property must be primitive", "int", field(fields, "position")["type"].asText())
+        assertEquals("Precondition: the property must be primitive", "boolean", field(fields, "locked")["type"].asText())
+        assertEquals("javax @Basic(optional = false)", false, field(fields, "name")["nullable"].booleanValue())
+        assertEquals("A bare javax @Basic keeps a primitive nullable", true, field(fields, "position")["nullable"].booleanValue())
+        assertEquals("An implicit primitive column under javax", false, field(fields, "locked")["nullable"].booleanValue())
+    }
+
+    private fun addGateEntity(): String {
+        addOwnerEntity()
+        myFixture.addFileToProject(
+            "com/example/fk/Gate.java", """
+            package com.example.fk;
+
+            import jakarta.persistence.Basic;
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity
+            public class Gate {
+                @Id
+                private Long id;
+
+                @Basic(optional = false)
+                @Column(nullable = true)
+                private String label;
+
+                @Basic(optional = false)
+                private int weight;
+
+                @Column(name = "gate_open")
+                @NotNull
+                private boolean open;
+            }
+            """.trimIndent()
+        )
+        return "com.example.fk.Gate"
+    }
+
+    private fun addSwitchEntity(): String {
+        myFixture.addFileToProject(
+            "com/example/primitive/Switch.java", """
+            package com.example.primitive;
+
+            import jakarta.persistence.Basic;
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity
+            public class Switch {
+                @Id
+                private Long id;
+
+                private boolean active;
+
+                private long version;
+
+                private Boolean flag;
+
+                @Column(name = "is_deleted")
+                private boolean deleted;
+
+                @Column(nullable = false)
+                private Boolean archived;
+
+                @Basic(optional = false)
+                private String code;
+
+                @Basic(optional = true)
+                private int priority;
+
+                @Basic
+                private int rank;
+            }
+            """.trimIndent()
+        )
+        return "com.example.primitive.Switch"
     }
 
     private fun addOwnerEntity() {
