@@ -25,6 +25,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.jakarta_persistence_3_1_0,
+        TestLibrary.javax_persistence_2_2,
     )
 
     private val toolset = SpringBootApplicationMcpToolset()
@@ -827,6 +828,95 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("A boxed property stays nullable", true, field(fields, "maybe")["nullable"].booleanValue())
         assertEquals("enabled maps to a NOT NULL column", false, field(fields, "enabled")["nullable"].booleanValue())
         assertEquals("counter maps to a NOT NULL column", false, field(fields, "counter")["nullable"].booleanValue())
+    }
+
+    fun testAMandatoryBasicOverridesAnExplicitlyNullableColumn() = runBlocking<Unit> {
+        val label = field(fieldsOf(addGateEntity()), "label")
+
+        assertEquals("Precondition: the property must be a reference", "java.lang.String", label["type"].asText())
+        assertEquals("@Basic(optional = false) forces NOT NULL over @Column(nullable = true)", false, label["nullable"].booleanValue())
+    }
+
+    fun testAMandatoryBasicPrimitiveWithoutAColumnIsNotNullable() = runBlocking<Unit> {
+        val weight = field(fieldsOf(addGateEntity()), "weight")
+
+        assertEquals("Precondition: the property must be primitive", "int", weight["type"].asText())
+        assertEquals(false, weight["nullable"].booleanValue())
+    }
+
+    fun testANotNullPrimitiveWithAnExplicitColumnIsNotNullable() = runBlocking<Unit> {
+        val open = field(fieldsOf(addGateEntity()), "open")
+
+        assertEquals("Precondition: the property must be primitive", "boolean", open["type"].asText())
+        assertEquals("gate_open", open["column"].asText())
+        assertEquals("@NotNull is not masked by a @Column that does not say nullable", false, open["nullable"].booleanValue())
+    }
+
+    fun testJavaxBasicAnnotationsFollowTheSameRules() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/legacy/Lever.java", """
+            package com.example.legacy;
+
+            import javax.persistence.Basic;
+            import javax.persistence.Entity;
+            import javax.persistence.Id;
+
+            @Entity
+            public class Lever {
+                @Id
+                private Long id;
+
+                @Basic(optional = false)
+                private String name;
+
+                @Basic
+                private int position;
+
+                private boolean locked;
+            }
+            """.trimIndent()
+        )
+
+        val fields = fieldsOf("com.example.legacy.Lever")
+
+        assertEquals("Precondition: the property must be a reference", "java.lang.String", field(fields, "name")["type"].asText())
+        assertEquals("Precondition: the property must be primitive", "int", field(fields, "position")["type"].asText())
+        assertEquals("Precondition: the property must be primitive", "boolean", field(fields, "locked")["type"].asText())
+        assertEquals("javax @Basic(optional = false)", false, field(fields, "name")["nullable"].booleanValue())
+        assertEquals("A bare javax @Basic keeps a primitive nullable", true, field(fields, "position")["nullable"].booleanValue())
+        assertEquals("An implicit primitive column under javax", false, field(fields, "locked")["nullable"].booleanValue())
+    }
+
+    private fun addGateEntity(): String {
+        addOwnerEntity()
+        myFixture.addFileToProject(
+            "com/example/fk/Gate.java", """
+            package com.example.fk;
+
+            import jakarta.persistence.Basic;
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+
+            @Entity
+            public class Gate {
+                @Id
+                private Long id;
+
+                @Basic(optional = false)
+                @Column(nullable = true)
+                private String label;
+
+                @Basic(optional = false)
+                private int weight;
+
+                @Column(name = "gate_open")
+                @NotNull
+                private boolean open;
+            }
+            """.trimIndent()
+        )
+        return "com.example.fk.Gate"
     }
 
     private fun addSwitchEntity(): String {
