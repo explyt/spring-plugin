@@ -24,6 +24,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.springWebMvc_6_0_7,
+        TestLibrary.springDataJpa_3_1_0,
         TestLibrary.kotlin_1_9_22,
     )
 
@@ -177,6 +178,74 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertTrue("serviceCalls is always present", contract.has("serviceCalls"))
         assertEquals(0, contract["serviceCalls"].size())
         assertTrue(contract["serviceCall"].isNull)
+    }
+
+    fun testInheritedRepositoryMethodIsListedWithItsLibrary() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
+        val repository = myFixture.findClass("com.example.app.owners.OwnerRepository")
+        assertEquals(
+            "org.springframework.data.repository.CrudRepository",
+            repository.findMethodsByName("save", true).single().containingClass?.qualifiedName
+        )
+
+        val contract = contractOf("/owners/{id}/edit")
+
+        assertEquals(
+            listOf("com.example.app.owners.OwnerRepository.findByName", "com.example.app.owners.OwnerRepository.save"),
+            targets(contract)
+        )
+        val save = contract["serviceCalls"][1]
+        assertTrue(save["filePath"].isNull)
+        assertTrue("library of save: $save", save["library"].asText().isNotBlank())
+        assertEquals(ownersLineOf("return owners.save(owner)"), save["callLine"].asInt())
+        assertEquals(setOf("target", "filePath", "library", "line", "callLine"), save.fieldNames().asSequence().toSet())
+        val declared = contract["serviceCalls"][0]
+        assertEquals("com/example/app/owners/OwnersController.kt", declared["filePath"].asText())
+        assertEquals(setOf("target", "filePath", "line", "callLine"), declared.fieldNames().asSequence().toSet())
+    }
+
+    /** A call in the handler's own helper is made where the helper calls it, in place of the call of the helper. */
+    fun testCallsMadeThroughOwnHelpersAreListed() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
+
+        val contract = contractOf("/owners/list")
+
+        assertEquals(
+            listOf(
+                "com.example.app.owners.OwnerAudit.record",
+                "com.example.app.owners.OwnerRepository.findAll",
+                "com.example.app.owners.OwnerAudit.loop",
+            ),
+            targets(contract)
+        )
+        assertEquals(ownersLineOf("owners.findAll(PageRequest"), contract["serviceCalls"][1]["callLine"].asInt())
+        assertEquals(contract["serviceCall"], contract["serviceCalls"][0])
+    }
+
+    fun testRecursiveHelperIsFollowedOnce() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
+
+        assertEquals(listOf("com.example.app.owners.OwnerAudit.loop"), targets(contractOf("/owners/recursive")))
+    }
+
+    /**
+     * A helper of another class is not the handler's code, a repository passed to it is no longer the injected field,
+     * and a locally created object is not the bean.
+     */
+    fun testHelpersOfOtherClassesAndLocalObjectsAreNotListed() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
+        myFixture.addFileToProject(
+            "com/example/app/owners/OwnerAuditing.kt",
+            "package com.example.app.owners\n\nfun recordElsewhere(controller: OwnersController) = controller.audit.record(9)\n"
+        )
+
+        assertEquals(emptyList<String>(), targets(contractOf("/owners/elsewhere")))
+    }
+
+    private fun ownersLineOf(anchor: String): Int {
+        val index = OWNERS_SOURCE.lines().indexOfFirst { anchor in it }
+        assertTrue("Anchor '$anchor' is absent from the fixture", index >= 0)
+        return index + 1
     }
 
     private suspend fun contractOf(url: String): JsonNode {
@@ -349,6 +418,73 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
                 }
 
                 private fun normalize(name: String): String = name.lowercase()
+            }
+        """.trimIndent()
+
+        val OWNERS_SOURCE = """
+            package com.example.app.owners
+
+            import org.springframework.data.domain.PageRequest
+            import org.springframework.data.jpa.repository.JpaRepository
+            import org.springframework.stereotype.Service
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.PathVariable
+            import org.springframework.web.bind.annotation.RequestMapping
+            import org.springframework.web.bind.annotation.RequestParam
+            import org.springframework.web.bind.annotation.RestController
+
+            class Owner(val id: Int)
+
+            @org.springframework.stereotype.Repository
+            interface OwnerRepository : JpaRepository<Owner, Int> {
+                fun findByName(name: String): Owner?
+            }
+
+            @Service
+            class OwnerAudit {
+                fun record(id: Int) = Unit
+                fun loop(id: Int): Int = id
+            }
+
+            object OwnerHelpers {
+                fun countAll(repository: OwnerRepository): Long = repository.count()
+            }
+
+            @RestController
+            @RequestMapping("/owners")
+            class OwnersController(private val owners: OwnerRepository, val audit: OwnerAudit) {
+                @GetMapping("/{id}/edit")
+                fun edit(@PathVariable id: Int): Owner {
+                    val owner = Owner(id)
+                    owners.findByName("x")
+                    return owners.save(owner)
+                }
+
+                @GetMapping("/list")
+                fun list(@RequestParam page: Int): List<Owner> {
+                    audit.record(page)
+                    return findPaginated(page)
+                }
+
+                @GetMapping("/recursive")
+                fun recursive(@RequestParam n: Int): Int = countDown(n)
+
+                @GetMapping("/elsewhere")
+                fun elsewhere(): Long {
+                    val fresh = OwnerAudit()
+                    fresh.record(1)
+                    recordElsewhere(this)
+                    OwnersController(owners, audit).recursive(0)
+                    return OwnerHelpers.countAll(owners) + java.util.Collections.emptyList<Int>().size
+                }
+
+                private fun findPaginated(page: Int): List<Owner> {
+                    val result = owners.findAll(PageRequest.of(page, 5)).content
+                    countDown(page)
+                    return result
+                }
+
+                private fun countDown(n: Int): Int = if (n <= 0) audit.loop(n) else countDown(n - 1)
             }
         """.trimIndent()
 

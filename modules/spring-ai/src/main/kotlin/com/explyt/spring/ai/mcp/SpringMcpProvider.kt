@@ -1009,7 +1009,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
                 "which are not the wire values), produces/consumes media types, and 'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +
-                "reference, such as 'validator::validate' - in source order, each with its 'target', the " +
+                "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +
+                "named after the bean's type like 'OwnerRepository.save', and a call made inside the handler's " +
+                "own helper methods, listed where the helper makes it - in source order, each with its 'target', the " +
                 "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
                 "there is none). 'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
                 "resolver called before the service that handles the request, not that service; to follow the " +
@@ -1195,21 +1197,39 @@ class SpringBootApplicationMcpToolset : McpToolset {
         if (beanFields.isEmpty()) return emptyList()
 
         val calls = mutableListOf<ServiceCallJson>()
-        fun collect(site: MethodCallSite?) {
-            if (site != null) serviceCallOf(site, controllerClass, beanFields, project)?.let { calls += it }
-        }
-        uMethod.accept(object : AbstractUastVisitor() {
-            override fun visitCallExpression(node: UCallExpression): Boolean {
-                collect(MethodCallSite.of(node))
-                return false
+        val visited = mutableSetOf<String>()
+        fun visit(method: PsiMethod, body: UMethod) {
+            if (!visited.add(methodKey(method))) return
+            fun collect(site: MethodCallSite?) {
+                if (site == null) return
+                val call = serviceCallOf(site, controllerClass, beanFields, project)
+                if (call != null) calls += call
+                else ownHelperOf(site, psiMethod)?.let { (helper, helperBody) -> visit(helper, helperBody) }
             }
+            body.accept(object : AbstractUastVisitor() {
+                override fun visitCallExpression(node: UCallExpression): Boolean {
+                    ProgressManager.checkCanceled()
+                    collect(MethodCallSite.of(node))
+                    return false
+                }
 
-            override fun visitCallableReferenceExpression(node: UCallableReferenceExpression): Boolean {
-                collect(MethodCallSite.of(node))
-                return false
-            }
-        })
+                override fun visitCallableReferenceExpression(node: UCallableReferenceExpression): Boolean {
+                    collect(MethodCallSite.of(node))
+                    return false
+                }
+            })
+        }
+        visit(psiMethod, uMethod)
         return calls.distinctBy { it.target to it.callLine }
+    }
+
+    private fun ownHelperOf(site: MethodCallSite, handler: PsiMethod): Pair<PsiMethod, UMethod>? {
+        val helper = site.callee
+        if (site.receiver != null && !site.isOnSelf) return null
+        if (helper.isConstructor || helper.hasModifierProperty(PsiModifier.ABSTRACT)) return null
+        if (!ProjectSources.declares(helper) || !CallChainTracer.isInternal(handler, helper)) return null
+        val body = (helper.navigationElement.toUElement() ?: helper.toUElement()) as? UMethod ?: return null
+        return helper to body
     }
 
     /**
@@ -1220,6 +1240,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
         if (ProjectSources.declares(declaringClass)) return false
         val fqn = declaringClass.qualifiedName ?: return true
         return FRAMEWORK_PACKAGES.any(fqn::startsWith)
+    }
+
+    private fun isFrameworkInterfaceMemberOfProjectType(calleeClass: PsiClass, receiverClass: PsiClass): Boolean {
+        val fqn = calleeClass.qualifiedName ?: return false
+        return calleeClass.isInterface
+                && PLATFORM_PACKAGES.none(fqn::startsWith)
+                && ProjectSources.declares(receiverClass)
     }
 
     /** The service call [site] makes, when it invokes a project method of one of the controller's injected beans. */
@@ -1233,13 +1260,18 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val callee = site.callee
         val receiverClass = (field.type as? PsiClassType)?.resolve() ?: return null
         val calleeClass = callee.containingClass ?: return null
-        if (callee.hasModifierProperty(PsiModifier.STATIC)
-            || isPlatformOrFrameworkLibraryMember(calleeClass)
+        if (callee.isConstructor
+            || callee.hasModifierProperty(PsiModifier.STATIC)
             || !InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
         ) return null
+        val namedAfter = when {
+            !isPlatformOrFrameworkLibraryMember(calleeClass) -> calleeClass
+            isFrameworkInterfaceMemberOfProjectType(calleeClass, receiverClass) -> receiverClass
+            else -> return null
+        }
         val position = sourcePositionOf(callee, project)
         return ServiceCallJson(
-            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+            target = "${namedAfter.qualifiedName}.${callee.name}",
             filePath = position.filePath,
             library = position.library,
             line = position.line,
@@ -1753,7 +1785,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
         private const val COMPLETE_CONTRACT = "COMPLETE"
         private const val PARTIAL_CONTRACT = "PARTIAL"
 
-        private val FRAMEWORK_PACKAGES = listOf("java.", "kotlin.", "org.springframework.")
+        private val PLATFORM_PACKAGES = listOf("java.", "kotlin.")
+        private val FRAMEWORK_PACKAGES = PLATFORM_PACKAGES + "org.springframework."
 
         private const val TEMPLATE_NAME_GROUP = "name"
 
