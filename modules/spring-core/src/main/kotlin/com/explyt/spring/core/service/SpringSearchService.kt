@@ -364,7 +364,7 @@ class SpringSearchService(private val project: Project) {
         val metaAnnotationsHolder = getMetaAnnotations(module, SpringCoreClasses.PROFILE)
         val values = metaAnnotationsHolder.getAnnotationMemberValues(psiMember, setOf("value"))
 
-        return values.all { value ->
+        return values.isEmpty() || values.any { value ->
             profilesService.compute(
                 ElementManipulators.getValueText(value)
             )
