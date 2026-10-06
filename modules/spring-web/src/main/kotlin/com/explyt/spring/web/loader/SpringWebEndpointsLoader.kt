@@ -73,6 +73,8 @@ data class Referrer(
  * @property exposure whether the configuration publishes the endpoint over HTTP; `null` for an endpoint that is
  * served whenever it is declared, which is every kind but an Actuator endpoint.
  * @property produces the media types the endpoint declares it produces; empty when it declares none.
+ * @property application the `@SpringBootApplication` whose context serves the endpoint; set for an Actuator endpoint,
+ * which every application lists under its own configuration, and `null` for every other kind.
  */
 data class EndpointElement(
     val path: String,
@@ -85,6 +87,7 @@ data class EndpointElement(
     val exposure: EndpointExposure? = null,
     val produces: List<String> = emptyList(),
     val access: EndpointAccess? = null,
+    val application: PsiClass? = null,
 )
 
 /** Whether an Actuator endpoint answers over HTTP, as `management.endpoints.web.exposure` decides it. */

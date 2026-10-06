@@ -22,7 +22,9 @@ import com.intellij.openapi.roots.DependencyScope
 import com.intellij.openapi.roots.LibraryOrderEntry
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
@@ -172,6 +174,56 @@ class ActuatorApplicationModuleTest : ExplytMultiModuleTestCase() {
         assertEquals("its declared defaultAccess is read", EndpointAccess.NONE, shutdown.single().access)
     }
 
+    /**
+     * A Gradle `test` source-set module declaring a test application is a context of its own, so it lists the built-ins
+     * too - each copy carrying the application listing it.
+     */
+    fun testTestSourceApplicationCopyCarriesItsApplication() {
+        val main = addActuatorModule("petclinic", DependencyScope.RUNTIME)
+        addApplication(main, "petclinic", null)
+        addFileToModule(main, "application.properties", EXPOSE_ALL)
+        val tests = addUnrelatedModule("petclinicTest")
+        ModuleRootModificationUtil.addDependency(tests, main)
+        addTestApplication(tests, "crash")
+        val facade = JavaPsiFacade.getInstance(project)
+        for (each in listOf(main, tests)) {
+            assertNotNull(
+                "precondition: ${each.name} sees the Actuator auto-configuration at runtime",
+                facade.findClass(ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, each.getModuleRuntimeScope(false))
+            )
+        }
+        val production = applicationClass("petclinic")
+        val test = applicationClass("crash")
+        assertFalse("precondition: production app", isInTestSources(production))
+        assertTrue("precondition: test app", isInTestSources(test))
+
+        val health = actuatorAt("/actuator/health")
+        assertEquals("health is listed by both applications: ${describe(health)}", 2, health.size)
+        assertEquals(setOf(production, test), health.map { it.application }.toSet())
+    }
+
+    fun testModuleWithProductionAndTestApplicationsListsForTheProductionOne() {
+        val app = addActuatorModule("petclinic", DependencyScope.RUNTIME)
+        addFileToModule(app, "application.properties", EXPOSE_ALL)
+        addTestApplication(app, "aaa")
+        addApplication(app, "zzz", null)
+
+        val health = actuatorAt("/actuator/health")
+        assertEquals("health is listed once: ${describe(health)}", 1, health.size)
+        assertEquals(applicationClass("zzz"), health.single().application)
+    }
+
+    fun testModuleWithTwoProductionApplicationsPicksByQualifiedName() {
+        val app = addActuatorModule("petclinic", DependencyScope.RUNTIME)
+        addFileToModule(app, "application.properties", EXPOSE_ALL)
+        addApplication(app, "zzz", null)
+        addApplication(app, "aaa", null)
+
+        val health = actuatorAt("/actuator/health")
+        assertEquals("health is listed once: ${describe(health)}", 1, health.size)
+        assertEquals(applicationClass("aaa"), health.single().application)
+    }
+
     fun testTestScopedActuatorListsNoBuiltIns() {
         val application = addActuatorModule("tested", DependencyScope.TEST)
         addApplication(application, "tested", null)
@@ -231,6 +283,22 @@ class ActuatorApplicationModuleTest : ExplytMultiModuleTestCase() {
         )
         configuration?.let { addFileToModule(target, "application.yml", it) }
     }
+
+    private fun addTestApplication(target: Module, name: String) {
+        addTestSourceFileToModule(
+            target, "com/example/$name/Application.kt",
+            "package com.example.$name\n\n" +
+                    "import org.springframework.boot.autoconfigure.SpringBootApplication\n\n" +
+                    "@SpringBootApplication\nclass Application\n"
+        )
+    }
+
+    private fun applicationClass(name: String): PsiClass =
+        JavaPsiFacade.getInstance(project).findClass("com.example.$name.Application", GlobalSearchScope.projectScope(project))
+            ?: error("no application $name")
+
+    private fun isInTestSources(psiClass: PsiClass): Boolean =
+        ProjectFileIndex.getInstance(project).isInTestSourceContent(psiClass.containingFile.virtualFile)
 
     /** A second application beside the first, neither depending on the other: each reads only its own configuration. */
     private fun addUnrelatedModule(name: String): Module {
