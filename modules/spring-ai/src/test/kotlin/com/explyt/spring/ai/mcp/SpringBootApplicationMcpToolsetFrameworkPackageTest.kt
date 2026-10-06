@@ -138,6 +138,54 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         assertEquals(listOf("SMALL", "LARGE"), schema["enumValues"].map { it.asText() })
     }
 
+    fun testJsonArrayIsAJsonTreeBeforeItIsACollection() = runBlocking<Unit> {
+        assertOmitted("/library/array", "com.fasterxml.jackson.databind.node.ArrayNode", "JSON_TREE")
+    }
+
+    fun testThirdPartyLibraryDtoIsExpandedByItsGetters() = runBlocking<Unit> {
+        val schema = responseSchema("/library/version", "GET")
+
+        assertEquals("com.fasterxml.jackson.databind.PropertyName", schema["className"].asText())
+        assertEquals(listOf("className", "fields"), schema.fieldNames().asSequence().toList())
+        assertEquals(
+            setOf("simpleName", "namespace", "empty"),
+            names(schema).toSet()
+        )
+    }
+
+    fun testGenericThirdPartyLibraryClassIsDescribedAsItself() = runBlocking<Unit> {
+        val schema = responseSchema("/library/lru", "GET")
+
+        assertEquals("com.fasterxml.jackson.databind.util.LRUMap", schema["className"].asText())
+        assertEquals("NO_VISIBLE_PROPERTIES", schema["schemaOmitted"].asText())
+    }
+
+    fun testLibraryTypesNestedInAProjectDtoCarryTheirOwnSchema() = runBlocking<Unit> {
+        val schema = responseSchema("/library/envelope", "GET")
+
+        assertEquals(listOf("headers", "tree", "version"), names(schema))
+        val headers = field(schema, "headers")["nested"]; assertNotNull(schema.toString(), headers?.get("className"))
+        assertEquals("org.springframework.http.HttpHeaders", headers["className"].asText())
+        assertEquals("MAP_TYPE", headers["schemaOmitted"].asText())
+        val tree = field(schema, "tree")["nested"]
+        assertEquals("com.fasterxml.jackson.databind.JsonNode", tree["className"].asText())
+        assertEquals("JSON_TREE", tree["schemaOmitted"].asText())
+        val version = field(schema, "version")["nested"]
+        assertEquals("com.fasterxml.jackson.databind.PropertyName", version["className"].asText())
+        assertFalse(version.has("schemaOmitted"))
+        assertTrue(version["fields"].size() > 0)
+    }
+
+    fun testLibraryDtoBeyondTheDepthBudgetHasNoNestedSchema() = runBlocking<Unit> {
+        val level1 = responseSchema("/library/deep", "GET")
+        val level2 = field(level1, "inner")["nested"]
+        val level3 = field(level2, "inner")["nested"]
+
+        assertEquals("com.example.plain.Deep3", level3["className"].asText())
+        val version = field(level3, "version")
+        assertTrue("no schema and no marker past the depth budget", version["nested"] == null || version["nested"].isNull)
+    }
+
     private suspend fun assertOmitted(url: String, className: String, reason: String) {
         val schema = responseSchema(url, "GET")
         assertEquals(className, schema["className"].asText())
@@ -360,6 +408,36 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
                     public TreeNode getChild() { return null; }
                 }
             """,
+            "com/example/plain/Envelope.java" to """
+                package com.example.plain;
+
+                public class Envelope {
+                    public org.springframework.http.HttpHeaders getHeaders() { return null; }
+                    public com.fasterxml.jackson.databind.JsonNode getTree() { return null; }
+                    public com.fasterxml.jackson.databind.PropertyName getVersion() { return null; }
+                }
+            """,
+            "com/example/plain/Deep1.java" to """
+                package com.example.plain;
+
+                public class Deep1 {
+                    public Deep2 getInner() { return null; }
+                }
+            """,
+            "com/example/plain/Deep2.java" to """
+                package com.example.plain;
+
+                public class Deep2 {
+                    public Deep3 getInner() { return null; }
+                }
+            """,
+            "com/example/plain/Deep3.java" to """
+                package com.example.plain;
+
+                public class Deep3 {
+                    public com.fasterxml.jackson.databind.PropertyName getVersion() { return null; }
+                }
+            """,
             "com/example/plain/LibraryController.java" to """
                 package com.example.plain;
 
@@ -402,6 +480,21 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
 
                     @GetMapping("/library/method")
                     public org.springframework.http.HttpMethod method() { return null; }
+
+                    @GetMapping("/library/array")
+                    public com.fasterxml.jackson.databind.node.ArrayNode array() { return null; }
+
+                    @GetMapping("/library/version")
+                    public com.fasterxml.jackson.databind.PropertyName version() { return null; }
+
+                    @GetMapping("/library/lru")
+                    public com.fasterxml.jackson.databind.util.LRUMap<String, String> lru() { return null; }
+
+                    @GetMapping("/library/envelope")
+                    public Envelope envelope() { return null; }
+
+                    @GetMapping("/library/deep")
+                    public Deep1 deep() { return null; }
 
                     @GetMapping("/plain/kind")
                     public Kind kind() { return Kind.SMALL; }
