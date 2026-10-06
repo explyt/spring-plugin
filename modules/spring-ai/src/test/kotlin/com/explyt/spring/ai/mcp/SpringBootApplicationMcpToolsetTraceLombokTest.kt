@@ -47,6 +47,7 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
         }
         addSource("com/example/topics/Dto.java", DTO_SOURCE)
         addSource("com/example/topics/Sub.java", SUB_SOURCE)
+        addSource("com/example/topics/PerEnv.java", PER_ENV_SOURCE)
         addSource("com/example/topics/LazyDto.java", LAZY_DTO_SOURCE)
         addSource("com/example/topics/TopicStore.java", STORE_SOURCE)
         addSource("com/example/topics/TopicService.java", SERVICE_SOURCE)
@@ -62,10 +63,13 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
         assertTrue(TrivialAccessors.isTrivial(setter))
     }
 
+
+
     fun testInheritedLombokSetterCalledOnASubclassIsAnAccessor() = runBlocking {
         val trace = trace()
 
-        trace.assertAccessor(trace.call("Dto.setTopicExists", receiverLine("sub.setTopicExists")))
+        trace.assertAccessor(trace.call("Dto.setTopicExists", receiverLine("local.setTopicExists")))
+        trace.assertAccessor(trace.call("PerEnv.setTopicExists", receiverLine("perEnv.setTopicExists")))
     }
 
     fun testLombokGetterIsAnAccessor() = runBlocking {
@@ -163,7 +167,8 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
         val LIBRARIES = listOf(
             TestLibrary.springWebMvc_6_0_7.mavenCoordinates,
             TestLibrary.springContext_6_0_7.mavenCoordinates,
-            "org.projectlombok:lombok:1.18.38",
+            "org.projectlombok:lombok:1.18.46",
+            "jakarta.validation:jakarta.validation-api:3.0.2",
         )
 
         val DTO_SOURCE = """
@@ -171,15 +176,29 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
 
             @lombok.Data
             public class Dto {
-                boolean topicExists;
+                @jakarta.validation.constraints.NotNull boolean topicExists;
                 String name;
+            }
+        """.trimIndent()
+
+        val PER_ENV_SOURCE = """
+            package com.example.topics;
+
+            import jakarta.validation.constraints.NotNull;
+
+            @lombok.Data
+            public class PerEnv {
+                @NotNull private boolean topicExists;
+                private String error;
             }
         """.trimIndent()
 
         val SUB_SOURCE = """
             package com.example.topics;
 
+            @lombok.Data
             public class Sub extends Dto {
+                @jakarta.validation.constraints.NotNull private java.util.List<String> infos;
             }
         """.trimIndent()
 
@@ -219,6 +238,10 @@ class SpringBootApplicationMcpToolsetTraceLombokTest : JavaCodeInsightFixtureTes
                 }
 
                 public String refresh(Sub sub, Dto dto, LazyDto lazy) {
+                    Sub local = new Sub();
+                    local.setTopicExists(false);
+                    PerEnv perEnv = new PerEnv();
+                    perEnv.setTopicExists(true);
                     sub.setTopicExists(true);
                     String name = sub.getName();
                     dto.setTopicExists(false);
