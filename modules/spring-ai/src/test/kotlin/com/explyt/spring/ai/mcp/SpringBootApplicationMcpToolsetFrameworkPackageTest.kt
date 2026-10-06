@@ -183,7 +183,20 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
 
         assertEquals("com.example.plain.Deep3", level3["className"].asText())
         val version = field(level3, "version")
-        assertTrue("no schema and no marker past the depth budget", version["nested"] == null || version["nested"].isNull)
+        assertEquals(listOf("name", "type", "nullable", "nested"), version.fieldNames().asSequence().toList())
+        assertTrue("the key is written as null, with no marker", version["nested"].isNull)
+    }
+
+    fun testLibraryClassWithAJsonValueMethodIsMarkedCustomSerialized() = runBlocking<Unit> {
+        assertOmitted("/library/schema", "com.fasterxml.jackson.databind.jsonschema.JsonSchema", "CUSTOM_SERIALIZATION")
+    }
+
+    fun testLibraryEnumIsItsConstantNames() = runBlocking<Unit> {
+        val schema = responseSchema("/library/status", "GET")
+
+        assertEquals("org.springframework.http.HttpStatus", schema["className"].asText())
+        assertEquals(listOf("className", "enumValues"), schema.fieldNames().asSequence().toList())
+        assertEquals("CONTINUE", schema["enumValues"][0].asText())
     }
 
     private suspend fun assertOmitted(url: String, className: String, reason: String) {
@@ -251,6 +264,7 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
 
     private companion object {
         const val SHOP = "org.springframework.samples.shop"
+
 
         val SOURCES = mapOf(
             "org/springframework/samples/shop/ShopApplication.java" to """
@@ -480,6 +494,12 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
 
                     @GetMapping("/library/method")
                     public org.springframework.http.HttpMethod method() { return null; }
+
+                    @GetMapping("/library/schema")
+                    public com.fasterxml.jackson.databind.jsonschema.JsonSchema schema() { return null; }
+
+                    @GetMapping("/library/status")
+                    public org.springframework.http.HttpStatus status() { return null; }
 
                     @GetMapping("/library/array")
                     public com.fasterxml.jackson.databind.node.ArrayNode array() { return null; }
