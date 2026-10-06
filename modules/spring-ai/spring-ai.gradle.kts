@@ -54,6 +54,7 @@ dependencies {
         jetbrainsRuntime()
         bundledPlugins(springCoreProject.ext["intellijPlugins"] as List<String> + intellijPlugins)
         bundledPlugin("com.intellij.mcpServer")
+        testBundledPlugin("Lombook Plugin")
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.Plugin.Java)
 
