@@ -95,6 +95,54 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
     fun testJdkValueTypesStayUnexpanded() = runBlocking<Unit> {
         assertTrue(responseSchemaOrNull("/orders/label", "GET").isNull)
         assertTrue(responseSchemaOrNull("/orders/since", "GET").isNull)
+        assertEquals(
+            "a project DTO keeps exactly its class name and fields",
+            listOf("className", "fields"), responseSchema("/plain/report", "GET").fieldNames().asSequence().toList()
+        )
+    }
+
+    fun testNonGenericLibraryDtoIsExpandedByItsGetters() = runBlocking<Unit> {
+        val schema = responseSchema("/library/problem", "GET")
+
+        assertEquals("org.springframework.http.ProblemDetail", schema["className"].asText())
+        assertTrue(names(schema).containsAll(listOf("type", "title", "status", "detail", "instance")))
+        assertFalse(schema.has("schemaOmitted"))
+    }
+
+    fun testLibraryInfrastructureIsMarkedOmitted() = runBlocking<Unit> {
+        val schema = responseSchema("/library/view", "GET")
+
+        assertEquals("org.springframework.web.servlet.ModelAndView", schema["className"].asText())
+        assertEquals("LIBRARY_INFRASTRUCTURE", schema["schemaOmitted"].asText())
+        assertFalse(schema.has("fields"))
+    }
+
+    fun testLibraryInfrastructureInsideAContainerIsMarkedOmitted() = runBlocking<Unit> {
+        val schema = responseSchema("/library/file", "GET")
+
+        assertEquals("org.springframework.core.io.Resource", schema["className"].asText())
+        assertEquals("LIBRARY_INFRASTRUCTURE", schema["schemaOmitted"].asText())
+    }
+
+    fun testAbstractLibraryTypeIsMarkedOmitted() = runBlocking<Unit> {
+        val schema = responseSchema("/library/headers", "GET")
+
+        assertEquals("org.springframework.web.context.request.WebRequest", schema["className"].asText())
+        assertEquals("ABSTRACT_TYPE", schema["schemaOmitted"].asText())
+    }
+
+    fun testGenericLibraryWrapperStillUnwrapsToItsPayload() = runBlocking<Unit> {
+        val schema = responseSchema("/orders/one", "GET")
+
+        assertEquals(listOf("className", "fields"), schema.fieldNames().asSequence().toList())
+        assertEquals("$SHOP.order.OrderDto", schema["className"].asText())
+    }
+
+    fun testRecursiveDtoStopsAtTheDepthBudget() = runBlocking<Unit> {
+        val levels = generateSequence(responseSchema("/library/tree", "GET")) { node ->
+            node["fields"].firstOrNull { it["name"].asText() == "child" }?.get("nested")?.takeUnless { it.isNull }
+        }.count()
+        assertEquals(3, levels)
     }
 
     private suspend fun contractOf(url: String, method: String): JsonNode {
@@ -262,6 +310,42 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
 
                     @GetMapping("/plain/report")
                     public PlainReport report() { return new PlainReport(); }
+                }
+            """,
+            "com/example/plain/TreeNode.java" to """
+                package com.example.plain;
+
+                public class TreeNode {
+                    public TreeNode getChild() { return null; }
+                }
+            """,
+            "com/example/plain/LibraryController.java" to """
+                package com.example.plain;
+
+                import org.springframework.core.io.Resource;
+                import org.springframework.http.ProblemDetail;
+                import org.springframework.http.ResponseEntity;
+                import org.springframework.web.bind.annotation.GetMapping;
+                import org.springframework.web.bind.annotation.RestController;
+                import org.springframework.web.context.request.WebRequest;
+                import org.springframework.web.servlet.ModelAndView;
+
+                @RestController
+                public class LibraryController {
+                    @GetMapping("/library/problem")
+                    public ProblemDetail problem() { return ProblemDetail.forStatus(400); }
+
+                    @GetMapping("/library/view")
+                    public ModelAndView view() { return new ModelAndView(); }
+
+                    @GetMapping("/library/file")
+                    public ResponseEntity<Resource> file() { return null; }
+
+                    @GetMapping("/library/headers")
+                    public WebRequest headers() { return null; }
+
+                    @GetMapping("/library/tree")
+                    public ResponseEntity<TreeNode> tree() { return null; }
                 }
             """,
         )

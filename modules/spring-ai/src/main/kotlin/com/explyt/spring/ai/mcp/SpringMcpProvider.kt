@@ -1012,7 +1012,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "the declared one in 'declaredName'; 'nullable' null when an unannotated Java reference leaves it unknown; " +
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
-                "which are not the wire values), produces/consumes media types, and 'serviceCalls': every " +
+                "which are not the wire values; a non-generic library class such as an Actuator descriptor is " +
+                "expanded like a project DTO, and a library object type that is not carries 'schemaOmitted': " +
+                "LIBRARY_INFRASTRUCTURE, ABSTRACT_TYPE or NO_VISIBLE_PROPERTIES), produces/consumes media types, and " +
+                "'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +
                 "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +
                 "named after the bean's type like 'OwnerRepository.save', and a call made inside the handler's " +
@@ -2382,6 +2385,12 @@ data class DtoSchemaJson(
      * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
+    /**
+     * Why a library object type is not expanded into [fields]: `LIBRARY_INFRASTRUCTURE` for a type Spring renders or
+     * streams rather than serializes as a bean, `ABSTRACT_TYPE` for an interface or abstract class, and
+     * `NO_VISIBLE_PROPERTIES` for a class without a public getter or field.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val schemaOmitted: String? = null,
 )
 
 data class DtoFieldJson(
