@@ -33,8 +33,12 @@ internal object TrivialAccessors {
     fun isTrivial(method: PsiMethod): Boolean = when {
         method.hasModifierProperty(PsiModifier.ABSTRACT) -> false
         method is KtLightMethod -> isDefaultPropertyAccessor(method)
+        isGeneratedFromAComputingField(method) -> false
         else -> readsOrWritesOneField(method) || isGeneratedFromAField(method)
     }
+
+    private fun isGeneratedFromAComputingField(method: PsiMethod): Boolean =
+        !method.isPhysical && (method.navigationElement as? PsiField)?.let(::computesItsValue) == true
 
     private fun readsOrWritesOneField(method: PsiMethod): Boolean =
         PropertyUtil.getFieldOfGetter(method) != null || PropertyUtil.getFieldOfSetter(method) != null
@@ -52,7 +56,6 @@ internal object TrivialAccessors {
         val field = method.navigationElement as? PsiField ?: return false
         val owner = method.containingClass ?: return false
         return field.containingClass?.isEquivalentTo(owner) == true &&
-                !computesItsValue(field) &&
                 isNamedAfter(method, field) &&
                 (readsField(method, field) || writesField(method, field))
     }

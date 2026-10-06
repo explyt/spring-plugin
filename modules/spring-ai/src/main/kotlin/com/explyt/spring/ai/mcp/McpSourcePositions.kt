@@ -15,7 +15,8 @@ import org.jetbrains.kotlin.idea.base.psi.getLineNumber
  *
  * Light and synthetic members - a Kotlin `data class` `copy()`, an enum `values()`, or any light method whose origin
  * declaration is absent - have no text range, and reading a line number from them fails. Such a member is reported
- * through its declaring class, and through nothing at all when that class is synthetic too.
+ * through its declaring class, and through nothing at all when that class is synthetic too. A method Lombok generates
+ * reports an empty range at the start of the file instead; it is reported through the field it was generated from.
  */
 object McpSourcePositions {
 
@@ -43,5 +44,5 @@ object McpSourcePositions {
     private fun PsiElement.withSourcePosition(): PsiElement? =
         takeIf { it.hasSourcePosition() } ?: navigationElement?.takeIf { it.hasSourcePosition() }
 
-    private fun PsiElement.hasSourcePosition(): Boolean = textRange != null && containingFile != null
+    private fun PsiElement.hasSourcePosition(): Boolean = textRange?.isEmpty == false && containingFile != null
 }
