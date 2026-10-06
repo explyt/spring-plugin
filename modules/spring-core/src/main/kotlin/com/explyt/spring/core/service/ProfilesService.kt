@@ -5,12 +5,14 @@
 
 package com.explyt.spring.core.service
 
+import com.explyt.spring.core.profile.ProfileGroups
 import com.explyt.spring.core.profile.SpringProfilesService
 import com.explyt.spring.core.runconfiguration.RunConfigurationUtil
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.psi.util.CachedValueProvider
@@ -52,6 +54,12 @@ class ProfilesService(private val project: Project) {
     }
 
     private fun getActiveProfiles(): Set<String> {
+        val collected = collectedActiveProfiles()
+        if (DumbService.isDumb(project)) return collected
+        return ProfileGroups.of(project).expand(collected)
+    }
+
+    private fun collectedActiveProfiles(): Set<String> {
         if (activeProfilesFromRunConfiguration.isNotEmpty()) return activeProfilesFromRunConfiguration
 
         return CachedValuesManager.getManager(project).getCachedValue(project) {

@@ -23,6 +23,7 @@ object SpringProperties {
     const val SPRING_BEAN_REFERENCE = "spring-bean-reference"
 
     const val SPRING_PROFILES_ACTIVE = "spring.profiles.active"
+    const val SPRING_PROFILES_GROUP = "spring.profiles.group"
 
     const val GET_RESOURCE = "getResource"
     const val GET_RESOURCES = "getResources"
