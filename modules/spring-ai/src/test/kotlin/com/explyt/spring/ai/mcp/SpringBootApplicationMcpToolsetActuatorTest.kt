@@ -91,6 +91,30 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertFalse("A built-in endpoint is library code, got $listed", listed.has("testSource"))
     }
 
+    fun testActuatorEndpointNamesItsApplication() = runBlocking<Unit> {
+        val found = exactMatch("/actuator/health")
+        val listed = listActuator(compact = true).single { it["fullPath"].asText() == "/actuator/health" }
+
+        assertEquals("com.example.app.DemoApplication", found["application"]?.asText())
+        assertEquals("com.example.app.DemoApplication", listed["application"]?.asText())
+        assertEquals(
+            "com.example.app.DemoApplication",
+            contractOf("/actuator/health", "GET")["application"]?.asText()
+        )
+    }
+
+    fun testControllerEndpointNamesNoApplication() = runBlocking<Unit> {
+        val orders = exactMatch("/api/orders")
+
+        assertEquals(
+            listOf(
+                "httpMethods", "fullPath", "controllerClass", "methodName", "filePath", "line", "parameters",
+                "returnType", "endpointType",
+            ),
+            orders.fieldNames().asSequence().toList()
+        )
+    }
+
     fun testInfoIsFoundButNotExposedByDefault() = runBlocking<Unit> {
         assertEquals("NOT_EXPOSED", exactMatch("/actuator/info")["exposed"].asText())
     }
