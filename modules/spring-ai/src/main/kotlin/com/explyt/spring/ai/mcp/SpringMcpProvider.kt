@@ -1013,7 +1013,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "named after the bean's type like 'OwnerRepository.save', and a call made inside the handler's " +
                 "own helper methods, listed where the helper makes it - in source order, each with its 'target', the " +
                 "'filePath' and 'line' of the target's declaration and the 'callLine' in the handler (empty when " +
-                "there is none). 'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
+                "there is none). A call on an injected bean whose method the IDE cannot resolve - a missing jar or " +
+                "a method that does not exist - is still listed, with 'resolved': false, a 'target' named after the " +
+                "declared type of the bean and null 'filePath' and 'line'; the key is absent on every resolved call. " +
+                "'serviceCall' is the first of them, kept for compatibility - often a guard or a " +
                 "resolver called before the service that handles the request, not that service; to follow the " +
                 "request through the layers, call explyt_trace_spring_call_chain on the handler. Calls into the " +
                 "JDK, Kotlin and Spring are never listed. Reading the handler signature by hand misses what Spring " +
@@ -1200,21 +1203,26 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val visited = mutableSetOf<String>()
         fun visit(method: PsiMethod, body: UMethod) {
             if (!visited.add(methodKey(method))) return
-            fun collect(site: MethodCallSite?) {
-                if (site == null) return
-                val call = serviceCallOf(site, controllerClass, beanFields, project)
-                if (call != null) calls += call
-                else ownHelperOf(site, psiMethod)?.let { (helper, helperBody) -> visit(helper, helperBody) }
+            fun collect(site: CallSite?) {
+                when (site) {
+                    null -> Unit
+                    is UnresolvedCallSite -> unresolvedServiceCallOf(site, controllerClass, beanFields)?.let { calls += it }
+                    is MethodCallSite -> {
+                        val call = serviceCallOf(site, controllerClass, beanFields, project)
+                        if (call != null) calls += call
+                        else ownHelperOf(site, psiMethod)?.let { (helper, helperBody) -> visit(helper, helperBody) }
+                    }
+                }
             }
             body.accept(object : AbstractUastVisitor() {
                 override fun visitCallExpression(node: UCallExpression): Boolean {
                     ProgressManager.checkCanceled()
-                    collect(MethodCallSite.of(node))
+                    collect(CallSite.of(node))
                     return false
                 }
 
                 override fun visitCallableReferenceExpression(node: UCallableReferenceExpression): Boolean {
-                    collect(MethodCallSite.of(node))
+                    collect(CallSite.of(node))
                     return false
                 }
             })
@@ -1240,6 +1248,21 @@ class SpringBootApplicationMcpToolset : McpToolset {
         if (ProjectSources.declares(declaringClass)) return false
         val fqn = declaringClass.qualifiedName ?: return true
         return FRAMEWORK_PACKAGES.any(fqn::startsWith)
+    }
+
+    private fun unresolvedServiceCallOf(
+        site: UnresolvedCallSite,
+        controllerClass: PsiClass,
+        beanFields: Set<PsiField>,
+    ): ServiceCallJson? {
+        val field = InjectedDependencies.fieldOf(site.receiver, controllerClass)?.takeIf { it in beanFields } ?: return null
+        return ServiceCallJson(
+            target = "${InjectedDependencies.declaredTypeNameOf(field)}.${site.methodName}",
+            filePath = null,
+            line = null,
+            callLine = site.line,
+            resolved = false,
+        )
     }
 
     private fun isFrameworkInterfaceMemberOfProjectType(calleeClass: PsiClass, receiverClass: PsiClass): Boolean {
@@ -2264,6 +2287,8 @@ data class ServiceCallJson(
     val line: Int?,
     /** Line of the call in the handler; absent for a functional route, whose handler is a reference, not a call. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val callLine: Int? = null,
+    /** `false` when the IDE cannot resolve the method, so [target] is the declared type of the bean and the name written. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val resolved: Boolean? = null,
 )
 
 

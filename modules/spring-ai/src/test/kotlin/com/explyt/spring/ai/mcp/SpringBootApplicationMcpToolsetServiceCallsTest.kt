@@ -242,6 +242,20 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(emptyList<String>(), targets(contractOf("/owners/elsewhere")))
     }
 
+    fun testUnresolvedMethodOnAnInjectedBeanIsListedAsUnresolved() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
+
+        val calls = contractOf("/owners/missing")["serviceCalls"]
+
+        assertEquals(listOf("OwnerRepository.missingMethod", "com.example.app.owners.OwnerAudit.record"), calls.map { it["target"].asText() })
+        val unresolved = calls[0]
+        assertFalse(unresolved["resolved"].asBoolean(true))
+        assertTrue(unresolved["filePath"].isNull)
+        assertTrue(unresolved["line"].isNull)
+        assertEquals(ownersLineOf("owners.missingMethod(1)"), unresolved["callLine"].asInt())
+        assertFalse(calls[1].has("resolved"))
+    }
+
     private fun ownersLineOf(anchor: String): Int {
         val index = OWNERS_SOURCE.lines().indexOfFirst { anchor in it }
         assertTrue("Anchor '$anchor' is absent from the fixture", index >= 0)
@@ -476,6 +490,12 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
                     recordElsewhere(this)
                     OwnersController(owners, audit).recursive(0)
                     return OwnerHelpers.countAll(owners) + java.util.Collections.emptyList<Int>().size
+                }
+
+                @GetMapping("/missing")
+                fun missing() {
+                    owners.missingMethod(1)
+                    audit.record(2)
                 }
 
                 private fun findPaginated(page: Int): List<Owner> {
