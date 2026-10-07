@@ -13,6 +13,8 @@ import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.psi.PsiMethod
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiParameter
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
@@ -256,6 +258,21 @@ class InterfaceParameterAnnotationsTest : ExplytJavaLightTestCase() {
         assertEquals(emptyList<String>(), SpringWebUtil.collectRequestParameters(handler).map { it.name })
         assertEquals(emptyList<String>(), SpringWebUtil.collectPathVariables(handler).map { it.name })
         assertNull(SpringWebUtil.getRequestBodyInfo(handler))
+    }
+
+    fun testParameterHierarchyCacheRefreshesAfterInterfaceAnnotationEdit() {
+        addAppApiAndController()
+        val interfaceFile = myFixture.findClass("com.example.AppApi").containingFile
+        val document = PsiDocumentManager.getInstance(project).getDocument(interfaceFile)!!
+        assertTrue("Precondition: the interface contains appId", document.text.contains("@PathVariable(\"appId\")"))
+        assertEquals(listOf("appId"), SpringWebUtil.collectPathVariables(handlerOf("/apps/{appId}")).map { it.name })
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            document.setText(document.text.replace("@PathVariable(\"appId\")", "@PathVariable(\"id\")"))
+        }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+        assertEquals(listOf("id"), SpringWebUtil.collectPathVariables(handlerOf("/apps/{appId}")).map { it.name })
     }
 
     private fun addAppApiAndController() {
