@@ -14,6 +14,10 @@ object SpringCoreClasses {
     const val ACTUATOR_WRITE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.WriteOperation"
     const val ACTUATOR_DELETE_OPERATION = "org.springframework.boot.actuate.endpoint.annotation.DeleteOperation"
     const val ACTUATOR_SELECTOR = "org.springframework.boot.actuate.endpoint.annotation.Selector"
+    const val ACTUATOR_PRODUCIBLE = "org.springframework.boot.actuate.endpoint.Producible"
+    const val ACTUATOR_ENDPOINT_MEDIA_TYPES = "org.springframework.boot.actuate.endpoint.web.EndpointMediaTypes"
+    const val ACTUATOR_WEB_ENDPOINT_RESPONSE =
+        "org.springframework.boot.actuate.endpoint.web.WebEndpointResponse"
     const val ACTUATOR_CONTROLLER_ENDPOINT =
         "org.springframework.boot.actuate.endpoint.web.annotation.ControllerEndpoint"
     const val ACTUATOR_REST_CONTROLLER_ENDPOINT =
@@ -58,6 +62,7 @@ object SpringCoreClasses {
     const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
 
     const val IO_RESOURCE = "org.springframework.core.io.Resource"
+    const val JAVA_LANG_VOID = "java.lang.Void"
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
 
     const val MIME_TYPE = "org.springframework.util.MimeType"

@@ -69,6 +69,7 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
             endpoints.map { Triple(it.path, it.requestMethods, (it.psiElement as? PsiMethod)?.name) }
                 .sortedBy { it.second.joinToString() }
         )
+        assertEquals(listOf(null, null), endpoints.map { it.producesSource })
     }
 
     /** A bare `@RequestMapping` accepts any verb, which the endpoint model writes as no verb restriction. */
@@ -122,7 +123,14 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         val json = threadDump.single { (it.psiElement as? PsiMethod)?.name == "threadDump" }
 
         assertTrue("textThreadDump produces text/plain, got ${text.produces}", text.produces.any { it.startsWith("text/plain") })
-        assertEquals("an operation declaring no media type carries none", emptyList<String>(), json.produces)
+        assertEquals(
+            listOf(
+                "application/vnd.spring-boot.actuator.v3+json",
+                "application/vnd.spring-boot.actuator.v2+json",
+                "application/json",
+            ),
+            json.produces
+        )
     }
 
     /** An endpoint declaring nothing it answers keeps its row, but no verb is invented for it. */
