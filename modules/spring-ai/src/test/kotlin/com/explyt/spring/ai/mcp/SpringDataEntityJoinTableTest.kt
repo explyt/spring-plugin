@@ -330,6 +330,38 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertFalse("The inverse side declares no join table, got $vets", vets.has("joinTable"))
     }
 
+    fun testAnInverseSideWithAJoinTableReportsBothDeclarations() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/vets/Specialty.java", """
+            package com.example.vets;
+
+            import java.util.Set;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinTable;
+            import jakarta.persistence.ManyToMany;
+
+            @Entity
+            public class Specialty {
+                @Id
+                private Long id;
+
+                @ManyToMany(mappedBy = "specialties")
+                @JoinTable(name = "invalid_inverse")
+                private Set<Specialty> vets;
+            }
+            """.trimIndent()
+        )
+
+        val vets = relationshipField("com.example.vets.Specialty", "vets", "MANY_TO_MANY")
+
+        assertEquals("specialties", vets["mappedBy"].asText())
+        assertEquals(
+            json("""{"name":"invalid_inverse","joinColumns":[],"inverseJoinColumns":[]}"""),
+            joinTableOf(vets)
+        )
+    }
+
     fun testAnOwningManyToManyWithoutJoinTableInventsNoDefaultName() = runBlocking<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
