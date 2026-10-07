@@ -1343,11 +1343,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "stereotype of its class in 'layer' (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; " +
                 "null for a class that is not a bean, such as a Kotlin object), 'reachedBy' (INTERNAL for a helper " +
                 "of its caller's class, PROJECT for a call from another class, null for the starting method), " +
-                "parameters as declared, file path and declaration line, 'aop' - the @Transactional, @Async and " +
-                "cache annotations declared on the method or its class, with 'declaredOn' METHOD or CLASS; Spring " +
-                "applies them through a proxy, so they do not take effect for a call reached INTERNAL, which is " +
-                "a self-invocation - and 'callsInto': every call, including a method passed as a callable " +
-                "reference such as 'repository::save', with its 'kind' (INTERNAL, PROJECT or " +
+                "parameters as declared, file path and declaration line, and an extension function's node carries " +
+                "'receiver' with its declared receiver type, which is not listed in 'parameters'. " +
+                "'aop' - the @Transactional, @Async and cache annotations declared on the method or its class, with " +
+                "'declaredOn' METHOD or CLASS; Spring applies them through a proxy, so they do not take effect for a " +
+                "call reached INTERNAL, which is a self-invocation - and 'callsInto': every call, including a method " +
+                "passed as a callable reference such as 'repository::save', with its 'kind' (INTERNAL, PROJECT or " +
                 "EXTERNAL), the line of the call itself, 'node' naming the id of the traced method it reaches " +
                 "(null when it is not traced), and 'via' naming the interface method it is written against when " +
                 "it reaches an implementation. A call on an injected dependency that the IDE cannot resolve - its " +
@@ -1534,6 +1535,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             library = position.library,
             line = position.line,
             parameters = CallChainTracer.sourceParametersOf(method),
+            receiver = CallChainTracer.sourceReceiverOf(method),
             aop = ProxyAnnotations.of(method).map { AopAnnotationJson(it.annotation, it.declaredOn.name) },
             callsInto = traced.calls.map { call ->
                 CallTargetJson(
@@ -2262,6 +2264,7 @@ data class CallChainNodeJson(
     /** `null` for a light or synthetic method with no physical declaration, e.g. a generated `copy()`. */
     val line: Int?,
     val parameters: List<String>,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val receiver: String?,
     /**
      * The proxy annotations Spring applies around the method - `@Transactional`, `@Async`, the cache annotations -
      * declared on the method or on its class, the method's own first. Empty when none is declared.
