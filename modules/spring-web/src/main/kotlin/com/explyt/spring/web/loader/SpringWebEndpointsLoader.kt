@@ -88,7 +88,16 @@ data class EndpointElement(
     val produces: List<String> = emptyList(),
     val access: EndpointAccess? = null,
     val application: PsiClass? = null,
+    val producesSource: ProducesSource? = null,
 )
+
+enum class ProducesSource {
+    DECLARED,
+    NONE,
+    RESOURCE,
+    BOOT_DEFAULT,
+    CUSTOM_ENDPOINT_MEDIA_TYPES,
+}
 
 /** Whether an Actuator endpoint answers over HTTP, as `management.endpoints.web.exposure` decides it. */
 enum class EndpointExposure {
