@@ -52,11 +52,13 @@ class ProfileValueArrayTest : ExplytKotlinLightTestCase() {
         assertBeanActive("NotProdOrTestConfig")
     }
 
-    fun testEmptyProfileArrayKeepsConfigurationActive() {
+    fun testUnreadableOrEmptyProfileListDoesNotHideTheBean() {
         activate("dev")
         addJavaConfiguration("EmptyProfileConfig", "@Profile({})")
+        addJavaConfigurationFile("UnreadableProfileConfig", "@Profile(UNKNOWN_PROFILE)")
 
         assertBeanActive("EmptyProfileConfig")
+        assertBeanInactive("UnreadableProfileConfig")
     }
 
     fun testNegatedArrayIsInactiveWhenNoElementMatches() {
@@ -150,6 +152,10 @@ class ProfileValueArrayTest : ExplytKotlinLightTestCase() {
 
     private fun addJavaConfiguration(className: String, profileAnnotations: String) {
         addApplication()
+        addJavaConfigurationFile(className, profileAnnotations)
+    }
+
+    private fun addJavaConfigurationFile(className: String, profileAnnotations: String) {
         myFixture.addFileToProject(
             "com/app/$className.java",
             """
