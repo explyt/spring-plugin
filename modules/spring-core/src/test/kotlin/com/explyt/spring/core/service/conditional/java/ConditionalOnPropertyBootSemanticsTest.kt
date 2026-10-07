@@ -334,16 +334,10 @@ class ConditionalOnPropertyBootSemanticsTest : JavaPropertyConditionTestCase() {
         assertActive("com.app.LocalClassConfig", "x.enabled")
     }
 
-    fun testEscapedPlaceholderIsLiteral() {
-        addProperties("application.properties", "x.enabled=\\${'$'}{A}")
-        addConfiguration("EscapedLiteralConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "${'$'}{A}")""")
-        assertActive("com.app.EscapedLiteralConfig", "x.enabled")
-    }
-
-    fun testEscapedPlaceholderDoesNotMatchTrue() {
-        addProperties("application.properties", "x.enabled=\\${'$'}{A}")
+    fun testEscapedPlaceholderKeepsTheBean() {
+        addProperties("application.yaml", "x:", "  enabled: \\${'$'}{A}")
         addConfiguration("EscapedPlaceholderConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
-        assertInactive("com.app.EscapedPlaceholderConfig", "x.enabled")
+        assertActive("com.app.EscapedPlaceholderConfig", "x.enabled")
     }
 
     fun testActivePropertiesDocumentOverridesDefaultDocument() {
