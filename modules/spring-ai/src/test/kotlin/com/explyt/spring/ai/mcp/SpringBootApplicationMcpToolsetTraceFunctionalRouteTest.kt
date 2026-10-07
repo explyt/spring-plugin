@@ -238,6 +238,75 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("OrderService.find", "OrderService.remove"), targetsOf(head))
     }
 
+    fun testJavaRouteNestedUnderAPredicatePrefixHasNoInventedRoute() = runBlocking<Unit> {
+        assertNestedJavaRouteHasNoInventedRoute(
+            ".nest(org.springframework.web.reactive.function.server.RequestPredicates.path(\"/a\"), b -> b.GET(\"/x\", handler::list))"
+        )
+    }
+
+    fun testJavaRouteNestedUnderABuilderPathHasNoInventedRoute() = runBlocking<Unit> {
+        assertNestedJavaRouteHasNoInventedRoute(".path(\"/a\", b -> b.GET(\"/x\", handler::list))")
+    }
+
+    fun testRouteWithoutAPathHasNoTestUrlReferences() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items/one\") { catalog.find()",
+            "GET { catalog.find()"
+        )
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+
+        val head = traceAt(CATALOG_FILE, source, "GET { catalog.find()", includeTests = true)["chain"][0]
+
+        assertEquals("CatalogRoutes.catalogRoutes", nameOf(head))
+        assertEquals(listOf("CatalogService.find"), targetsOf(head))
+        assertFalse("A route without a known path has no route, got ${head["route"]}", head.has("route"))
+        assertFalse(
+            "Requests cannot be matched to a route without a known path, got ${head["testUrlReferences"]}",
+            head.has("testUrlReferences")
+        )
+    }
+
+    fun testLineInsideALambdaRouteBodyStartsAtThatRoute() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items/one\") { catalog.find(); ServerResponse.ok().buildAndAwait() }",
+            "GET(\"/co/items/one\") {\n        catalog.find()\n        ServerResponse.ok().buildAndAwait()\n    }"
+        )
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+
+        val chain = traceAt(CATALOG_FILE, source, "catalog.find()")["chain"]
+
+        assertLambdaRouteStart(chain, factory = "CatalogRoutes.catalogRoutes", ownCall = "CatalogService.find")
+        assertEquals("GET /co/items/one", chain[0]["route"]?.asText())
+    }
+
+    fun testNestHeaderLineFallsBackToTheFactory() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items\", handler::list)",
+            "\"/a\".nest {\n        GET(\"/b\", handler::list)\n    }"
+        )
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+
+        val head = traceAt(CATALOG_FILE, source, "\"/a\".nest {")["chain"][0]
+
+        assertEquals("CatalogRoutes.catalogRoutes", nameOf(head))
+        assertFalse(head.has("route"))
+        assertTrue("The whole factory is traced, got ${targetsOf(head)}", "CatalogService.remove" in targetsOf(head))
+    }
+
+    private suspend fun assertNestedJavaRouteHasNoInventedRoute(nestedRoute: String) {
+        val source = ORDER_ROUTES_SOURCE.replace(".GET(\"/java/orders\", handler::list)", nestedRoute)
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/x\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "b.GET(\"/x\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertFalse("The unresolved prefix leaves the route unknown, got ${head["route"]}", head.has("route"))
+        val toX = head["testUrlReferences"]?.filter { it["endpointPath"].asText() == "/x" }.orEmpty()
+        assertTrue("No request is matched to the prefix-less path, got $toX", toX.isEmpty())
+    }
+
     private fun assertLambdaRouteStart(chain: JsonNode, factory: String, ownCall: String) {
         val names = chain.map(::nameOf)
         assertEquals("The lambda is reported under the factory that registers it, got $names", factory, names.first())
