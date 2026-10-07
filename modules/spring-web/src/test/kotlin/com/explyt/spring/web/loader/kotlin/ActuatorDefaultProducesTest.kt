@@ -84,6 +84,18 @@ class ActuatorDefaultProducesTest : ExplytKotlinLightTestCase() {
         assertEquals(emptyList<String>(), reset.produces)
     }
 
+
+    fun testKotlinUnitReadOperationProducesNothing() {
+        addEndpoint(
+            """
+            @ReadOperation
+            fun report(): Unit = Unit
+            """
+        )
+
+        assertEquals(emptyList<String>(), operation("ReportEndpoint", "report").produces)
+    }
+
     fun testResourceReadOperationProducesAnOctetStream() {
         addEndpoint(
             """
@@ -130,6 +142,57 @@ class ActuatorDefaultProducesTest : ExplytKotlinLightTestCase() {
         )
 
         assertEquals(listOf("text/csv", "text/markdown"), operation("ReportEndpoint", "report").produces)
+    }
+
+    fun testDeclaredProducesPrecedesProducesFromTypes() {
+        myFixture.addFileToProject(
+            "ReportFormat.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.Producible
+            import org.springframework.util.MimeType
+
+            enum class ReportFormat(private val mimeType: String) : Producible<ReportFormat> {
+                CSV("text/csv");
+
+                override fun getProducedMimeType(): MimeType = MimeType.valueOf(mimeType)
+            }
+            """.trimIndent()
+        )
+        addEndpoint(
+            """
+            @ReadOperation(produces = ["text/plain"], producesFrom = ReportFormat::class)
+            fun report(format: ReportFormat): String = format.name
+            """
+        )
+
+        assertEquals(listOf("text/plain", "text/csv"), operation("ReportEndpoint", "report").produces)
+    }
+
+    fun testUnreadableProducesFromConstantIsExcluded() {
+        myFixture.addFileToProject(
+            "ReportFormat.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.Producible
+            import org.springframework.util.MimeType
+
+            enum class ReportFormat(private val mimeType: String) : Producible<ReportFormat> {
+                CSV("text/csv"),
+                UNKNOWN(unreadableMimeType());
+
+                override fun getProducedMimeType(): MimeType = MimeType.valueOf(mimeType)
+            }
+
+            fun unreadableMimeType(): String = "text/x-unreadable"
+            """.trimIndent()
+        )
+        addEndpoint(
+            """
+            @ReadOperation(producesFrom = ReportFormat::class)
+            fun report(format: ReportFormat): String = format.name
+            """
+        )
+
+        assertEquals(listOf("text/csv"), operation("ReportEndpoint", "report").produces)
     }
 
     private fun addEndpoint(operations: String) {
