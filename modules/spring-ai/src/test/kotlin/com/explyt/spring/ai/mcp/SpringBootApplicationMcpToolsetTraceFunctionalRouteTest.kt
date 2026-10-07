@@ -144,6 +144,25 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertUrlReferences(head, PLAIN_TEST_FILE, "/plain/items", PLAIN_TEST_SOURCE, "get(\"/plain/items\")")
     }
 
+    fun testCoRouterLambdaRouteStartIsMarkedWithItsRoute() = runBlocking<Unit> {
+        val head = traceAt(CATALOG_FILE, CATALOG_SOURCE, "GET(\"/co/items/one\")")["chain"][0]
+
+        assertEquals("GET /co/items/one", head["route"]?.asText())
+    }
+
+    fun testJavaBuilderReferenceRouteStartIsMarkedWithItsRoute() = runBlocking<Unit> {
+        val head = traceAt(ORDER_ROUTES_FILE, ORDER_ROUTES_SOURCE, ".GET(\"/java/orders\", handler::list)")["chain"][0]
+
+        assertEquals("GET /java/orders", head["route"]?.asText())
+    }
+
+    fun testRouteIsAbsentOutsideFunctionalRoutes() = runBlocking<Unit> {
+        val chain = traceAt(PLAIN_FILE, PLAIN_SOURCE, "fun items(): String = service.items()")["chain"]
+
+        assertEquals("PlainController.items", nameOf(chain[0]))
+        assertTrue("No node of an annotated handler trace carries a route, got $chain", chain.none { it.has("route") })
+    }
+
     private fun assertLambdaRouteStart(chain: JsonNode, factory: String, ownCall: String) {
         val names = chain.map(::nameOf)
         assertEquals("The lambda is reported under the factory that registers it, got $names", factory, names.first())
