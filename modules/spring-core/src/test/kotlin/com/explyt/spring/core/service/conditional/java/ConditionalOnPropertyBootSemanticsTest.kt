@@ -335,20 +335,19 @@ class ConditionalOnPropertyBootSemanticsTest : JavaPropertyConditionTestCase() {
     }
 
     fun testEscapedPlaceholderIsLiteral() {
-        addProperties("application.properties", "x.enabled=\\\\${'$'}{A}")
+        addProperties("application.properties", "x.enabled=\\${'$'}{A}")
         addConfiguration("EscapedLiteralConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "${'$'}{A}")""")
         assertActive("com.app.EscapedLiteralConfig", "x.enabled")
     }
 
     fun testEscapedPlaceholderDoesNotMatchTrue() {
-        addProperties("application.properties", "x.enabled=\\\\${'$'}{A}")
+        addProperties("application.properties", "x.enabled=\\${'$'}{A}")
         addConfiguration("EscapedPlaceholderConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
         assertInactive("com.app.EscapedPlaceholderConfig", "x.enabled")
     }
 
     fun testActivePropertiesDocumentOverridesDefaultDocument() {
-        addProperties("application.properties", "x.enabled=false", "#---", "spring.config.activate.on-profile=prod", "x.enabled=true")
-        addProperties("application-prod.properties", "spring.profiles.active=prod")
+        addProperties("application.properties", "spring.profiles.active=prod", "x.enabled=false", "#---", "spring.config.activate.on-profile=prod", "x.enabled=true")
         addConfiguration("PropertiesDocumentConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
         assertActive("com.app.PropertiesDocumentConfig", "x.enabled")
     }
