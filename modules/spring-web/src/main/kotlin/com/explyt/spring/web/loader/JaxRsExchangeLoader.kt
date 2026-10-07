@@ -13,13 +13,11 @@ import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-import com.explyt.util.MultiVendorClass
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
-import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.search.GlobalSearchScope
@@ -31,17 +29,7 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
-    override fun isApplicable(module: Module) = SpringWebUtil.isRsWebModule(module) ||
-            WebEeClasses.JAX_RS_PATH.allFqns.any {
-                JavaPsiFacade.getInstance(project).findClass(it, module.getModuleWithDependenciesAndLibrariesScope(false)) != null
-            }
-
-    private fun targetClassOf(vendorClass: MultiVendorClass, module: Module?): String {
-        module ?: return vendorClass.jakarta
-        val scope = module.getModuleWithDependenciesAndLibrariesScope(false)
-        return if (JavaPsiFacade.getInstance(project).findClass(vendorClass.jakarta, scope) != null) vendorClass.jakarta
-        else vendorClass.javax
-    }
+    override fun isApplicable(module: Module) = WebEeClasses.JAX_RS_PATH.isPresentInDependencies(module)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return cachedValuesManager.getCachedValue(module) {
@@ -58,12 +46,12 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
     private fun doSearchEndpoints(module: Module): List<EndpointElement> {
         val applicationPath = SpringWebEndpointsSearcher.getInstance(project).getJaxRsApplicationPath(module)
-        val httpMethodTargetClass = targetClassOf(WebEeClasses.JAX_RS_HTTP_METHOD, module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClassInDependencies(module)
         val httpMethodAnnotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(
             module, httpMethodTargetClass, false
         ).takeIf { it.isNotEmpty() } ?: return emptyList()
 
-        val pathTargetClass = targetClassOf(WebEeClasses.JAX_RS_PATH, module)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
         val pathMah = MetaAnnotationsHolder.of(module, pathTargetClass)
         val httpMethodMah = MetaAnnotationsHolder.of(module, httpMethodTargetClass)
 
@@ -90,7 +78,7 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
     private fun resourceClassesOf(annotatedClass: PsiClass, module: Module): List<PsiClass> {
         if (!annotatedClass.isAbstractType()) return listOf(annotatedClass)
-        val pathTargetClass = targetClassOf(WebEeClasses.JAX_RS_PATH, module)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
         val moduleScope = GlobalSearchScope.moduleScope(module)
         val implementations = ClassInheritorsSearch.search(annotatedClass, moduleScope, true)
             .filter { !it.isAbstractType() }
@@ -116,8 +104,8 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
         applicationPath: String
     ): List<EndpointElement> {
         val module = ModuleUtil.findModuleForPsiElement(resourceClass)
-        val pathTargetClass = targetClassOf(WebEeClasses.JAX_RS_PATH, module)
-        val httpMethodTargetClass = targetClassOf(WebEeClasses.JAX_RS_HTTP_METHOD, module)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClassInDependencies(module)
 
         val prefixes = HandlerMethods.mappedType(resourceClass, HandlerMethods.HierarchyOrder.SUPERCLASS_FIRST) {
             it.isMetaAnnotatedBy(pathTargetClass)

@@ -393,7 +393,7 @@ object SpringWebUtil {
 
     fun getJaxRsPaths(psiMember: PsiMember, module: Module): List<String> {
         if (!psiMember.isMetaAnnotatedBy(WebEeClasses.JAX_RS_PATH.allFqns)) return listOf("")
-        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClassInDependencies(module)
         val pathMah = MetaAnnotationsHolder.of(module, pathTargetClass)
 
         val paths = pathMah.getAnnotationMemberValues(psiMember, setOf("value"))
@@ -404,7 +404,7 @@ object SpringWebUtil {
     }
 
     fun getJaxRsHttpMethods(psiMethod: PsiMethod, module: Module): List<String> {
-        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClassInDependencies(module)
         val httpMethodMah = MetaAnnotationsHolder.of(module, httpMethodTargetClass)
 
         return httpMethodMah.getAnnotationMemberValues(psiMethod, setOf("value"))
@@ -412,14 +412,14 @@ object SpringWebUtil {
     }
 
     fun getJaxRsProduces(psiMethod: PsiMethod, module: Module): List<String> {
-        val producesTargetClass = WebEeClasses.JAX_RS_PRODUCES.getTargetClass(module)
+        val producesTargetClass = WebEeClasses.JAX_RS_PRODUCES.getTargetClassInDependencies(module)
         val producesMah = MetaAnnotationsHolder.of(module, producesTargetClass)
         return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
     }
 
     fun getJaxRsConsumes(psiMethod: PsiMethod, module: Module): List<String> {
-        val consumesTargetClass = WebEeClasses.JAX_RS_CONSUMES.getTargetClass(module)
+        val consumesTargetClass = WebEeClasses.JAX_RS_CONSUMES.getTargetClassInDependencies(module)
         val producesMah = MetaAnnotationsHolder.of(module, consumesTargetClass)
         return producesMah.getAnnotationMemberValues(psiMethod, setOf(VALUE))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
