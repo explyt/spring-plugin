@@ -1565,6 +1565,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Pass includeDetails=true, and className to name the entity, to add its fields with column names, " +
                 "types, primary key flag and nullability, its @OneToOne/@OneToMany/@ManyToOne/@ManyToMany " +
                 "relationships with joinColumn/mappedBy, and the indexes declared in @Table(indexes=[...]). " +
+                "A relationship reports joinTable with its name, joinColumns and inverseJoinColumns only when " +
+                "@JoinTable is declared; default names are not computed. " +
                 "'nullable' is the nullability of the mapped column: a primary key (@Id, @EmbeddedId, a @MapsId " +
                 "association) is never nullable, even when the property is nullable before the entity is " +
                 "persisted, such as a Kotlin 'Long?' id; a to-one association is not nullable when it declares " +
@@ -1743,8 +1745,25 @@ class SpringBootApplicationMcpToolset : McpToolset {
             joinColumn = joinColumn?.name,
             joinColumnQuoted = joinColumn?.quotedOrNull,
             mappedBy = mappedBy,
+            joinTable = field.findFirstAnnotation(JpaClasses.JOIN_TABLE.allFqns)?.let(::toEntityJoinTable),
         )
     }
+
+    private fun toEntityJoinTable(annotation: PsiAnnotation): EntityJoinTableJson {
+        val name = annotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
+        return EntityJoinTableJson(
+            name = name?.name,
+            quoted = name?.quotedOrNull,
+            joinColumns = collectJoinTableColumns(annotation, "joinColumns"),
+            inverseJoinColumns = collectJoinTableColumns(annotation, "inverseJoinColumns"),
+        )
+    }
+
+    private fun collectJoinTableColumns(annotation: PsiAnnotation, attribute: String): List<EntityJoinColumnJson> =
+        annotation.getMemberValues(attribute).filterIsInstance<PsiAnnotation>().map { column ->
+            val name = column.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
+            EntityJoinColumnJson(name = name?.name, quoted = name?.quotedOrNull)
+        }
 
     private fun collectEntityIndexes(psiClass: PsiClass): List<EntityIndexJson> {
         val tableAnnotation = psiClass.findFirstAnnotation(TABLE_ANNOTATION_FQNS) ?: return emptyList()
@@ -2422,6 +2441,19 @@ data class EntityFieldJson(
     val joinColumn: String?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinColumnQuoted: Boolean? = null,
     val mappedBy: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinTable: EntityJoinTableJson? = null,
+)
+
+data class EntityJoinTableJson(
+    val name: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val quoted: Boolean? = null,
+    val joinColumns: List<EntityJoinColumnJson>,
+    val inverseJoinColumns: List<EntityJoinColumnJson>,
+)
+
+data class EntityJoinColumnJson(
+    val name: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val quoted: Boolean? = null,
 )
 
 data class EntityIndexJson(

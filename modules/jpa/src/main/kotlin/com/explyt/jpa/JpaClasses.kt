@@ -23,6 +23,7 @@ object JpaClasses {
     val embeddedId by "persistence.EmbeddedId"
     val transient by "persistence.Transient"
     val joinColumn by "persistence.JoinColumn"
+    val JOIN_TABLE by "persistence.JoinTable"
     val oneToOne by "persistence.OneToOne"
     val oneToMany by "persistence.OneToMany"
     val manyToOne by "persistence.ManyToOne"
