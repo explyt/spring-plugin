@@ -5,16 +5,21 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.addFromMaven
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
@@ -43,6 +48,10 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
 
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
+
+    override fun tuneFixture(moduleBuilder: JavaModuleFixtureBuilder<*>) {
+        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
+    }
 
     fun testTraceCallChainHappyPath() = runBlocking<Unit> {
         val basePath = project.basePath!!
@@ -277,6 +286,156 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
             "Expected the generated copy() to be reported at its declaring data class",
             itemClassLine, copyNode["line"].asInt()
         )
+    }
+
+    fun testCompanionCallNamesItsOuterClass() = runBlocking {
+        val chain = traceCompanion("kotlinParse")
+        val call = companionCall(chain, "parse")
+        assertEquals("PROJECT", call["kind"].asText())
+        assertEquals("VmId.parse", call["target"].asText())
+    }
+
+    fun testJavaJvmStaticCallNamesItsOuterClass() = runBlocking {
+        val call = companionCall(traceCompanion("javaStaticParse", javaCaller = true), "parse")
+        assertEquals("PROJECT", call["kind"].asText())
+        assertEquals("StaticVmId.parse", call["target"].asText())
+    }
+
+    fun testJavaCompanionCallNamesItsOuterClass() = runBlocking {
+        val call = companionCall(traceCompanion("javaCompanionParse", javaCaller = true), "parse")
+        assertEquals("PROJECT", call["kind"].asText())
+        assertEquals("StaticVmId.parse", call["target"].asText())
+    }
+
+    fun testNamedCompanionCallNamesItsOuterClass() = runBlocking {
+        val call = companionCall(traceCompanion("namedFactory"), "of")
+        assertEquals("PROJECT", call["kind"].asText())
+        assertEquals("FactoryVmId.of", call["target"].asText())
+    }
+
+    fun testOwnCompanionCallIsInternal() = runBlocking {
+        val chain = traceCompanion("ownParse")
+        val call = companionCall(chain, "parse")
+        assertEquals("INTERNAL", call["kind"].asText())
+        val node = chain.single { it["methodName"].asText() == "parse" }
+        assertEquals("INTERNAL", node["reachedBy"].asText())
+    }
+
+    fun testOwnCompanionCallUsesTheSameOuterClassName() = runBlocking {
+        val call = companionCall(traceCompanion("ownParse"), "parse")
+        assertEquals("VmId.parse", call["target"].asText())
+    }
+
+    fun testTopLevelObjectCallKeepsItsName() = runBlocking {
+        val call = companionCall(traceCompanion("objectParse"), "parse")
+        assertEquals("IdFormat.parse", call["target"].asText())
+        assertEquals("PROJECT", call["kind"].asText())
+    }
+
+    fun testNestedClassCallKeepsItsShortName() = runBlocking {
+        val call = companionCall(traceCompanion("nestedParse"), "parse")
+        assertEquals("Inner.parse", call["target"].asText())
+        assertEquals("PROJECT", call["kind"].asText())
+    }
+
+    fun testCompanionCallsLinkToDistinctOuterClassNodes() = runBlocking {
+        val chain = traceCompanion("twoParsers")
+        val calls = chain[0]["callsInto"].filter { it["target"].asText().endsWith(".parse") }
+        assertEquals("Both companion calls must be present in callsInto", 2, calls.size)
+        assertTrue("Both calls must link to expanded nodes: $calls", calls.all { it["node"].isIntegralNumber })
+        val nodes = calls.map { call -> chain.single { it["id"].asInt() == call["node"].asInt() } }
+        assertEquals(2, nodes.map { it["id"].asInt() }.distinct().size)
+        assertEquals(
+            setOf("explyt.trace.VmId.Companion", "explyt.trace.OtherVmId.Companion"),
+            nodes.map { it["className"].asText() }.toSet()
+        )
+        assertEquals(listOf("parse", "parse"), nodes.map { it["methodName"].asText() })
+        assertTrue(nodes.all { it["filePath"].asText().endsWith("Ids.kt") })
+    }
+
+    private fun companionCall(chain: JsonNode, methodName: String): JsonNode {
+        val calls = chain[0]["callsInto"].filter { it["target"].asText().endsWith(".$methodName") }
+        assertEquals("The $methodName call must be present in callsInto: ${chain[0]}", 1, calls.size)
+        return calls.single()
+    }
+
+    private suspend fun traceCompanion(methodName: String, javaCaller: Boolean = false): JsonNode {
+        val kotlin = """
+            package explyt.trace
+
+            class VmId {
+                companion object {
+                    fun parse(raw: String): String = raw
+                }
+                fun ownParse(raw: String): String = parse(raw)
+            }
+            class OtherVmId {
+                companion object {
+                    fun parse(raw: String): String = raw
+                }
+            }
+            class StaticVmId {
+                companion object {
+                    @JvmStatic
+                    fun parse(raw: String): String = raw
+                }
+            }
+            class FactoryVmId {
+                companion object Factory {
+                    fun of(raw: String): String = raw
+                }
+            }
+            object IdFormat {
+                fun parse(raw: String): String = raw
+            }
+            class Outer {
+                class Inner {
+                    fun parse(raw: String): String = raw
+                }
+            }
+            class IdService {
+                fun kotlinParse(raw: String): String = VmId.parse(raw)
+                fun namedFactory(raw: String): String = FactoryVmId.of(raw)
+                fun objectParse(raw: String): String = IdFormat.parse(raw)
+                fun nestedParse(raw: String): String = Outer.Inner().parse(raw)
+                fun twoParsers(raw: String): String = VmId.parse(raw) + OtherVmId.parse(raw)
+            }
+        """.trimIndent()
+        val java = """
+            package explyt.trace;
+
+            public class JavaIdService {
+                public String javaStaticParse(String raw) { return StaticVmId.parse(raw); }
+                public String javaCompanionParse(String raw) { return StaticVmId.Companion.parse(raw); }
+            }
+        """.trimIndent()
+        ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
+            val library = TestLibrary.kotlin_1_9_22
+            addFromMaven(model, library.mavenCoordinates, library.includeTransitiveDependencies)
+        }
+        val sourcesRoot = File(project.basePath!!, "companionSrc").apply { mkdirs() }
+        writeSource(sourcesRoot, "explyt/trace/Ids.kt", kotlin)
+        writeSource(sourcesRoot, "explyt/trace/JavaIdService.java", java)
+        registerSourceRoot(sourcesRoot)
+        val source = if (javaCaller) java else kotlin
+        val fileName = if (javaCaller) "JavaIdService.java" else "Ids.kt"
+        val anchor = source.lines().indexOfFirst { it.contains(" $methodName(") }
+        assertTrue("The traced declaration must exist in $fileName", anchor >= 0)
+        val result = mapper.readTree(
+            toolset.traceCallChain(
+                filePath = "companionSrc/explyt/trace/$fileName",
+                line = anchor + 1,
+                projectPath = project.basePath!!,
+                depth = 2,
+                includeTests = false,
+                limit = 20,
+                maxChars = 16000,
+            )
+        )
+        assertEquals("OK", result["status"]?.asText())
+        val chain = result["chain"]
+        assertEquals(methodName, chain[0]["methodName"].asText())
+        return chain
     }
 
     private fun resolvedCalls(method: UMethod): List<PsiMethod> {
