@@ -1180,9 +1180,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * partial contract navigable instead of ending at the registration.
      */
     private fun routeHandlerCall(endpoint: EndpointElement, project: Project): ServiceCallJson? {
-        val route = endpoint.psiElement.toUElement()?.getParentOfType<UCallExpression>(strict = false) ?: return null
-        val callee = route.valueArguments
-            .firstNotNullOfOrNull { (it as? UCallableReferenceExpression)?.resolve() as? PsiMethod }
+        val callee = (FunctionalRouteTarget.of(endpoint.psiElement) as? FunctionalRouteTarget.Handler)?.method
             ?: return null
         val position = sourcePositionOf(callee, project)
         return ServiceCallJson(
@@ -1338,6 +1336,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Any line of the method identifies it - its signature, an annotation on it, or a line of its " +
                 "body - so the line explyt_find_spring_endpoint reports for a handler can be passed straight in; " +
                 "a line belonging to no method is refused with the nearest method declarations in that file. " +
+                "A trace started at a functional route begins at its handler; for a lambda route the start node " +
+                "is the @Bean factory with only that route's calls; 'route' names the verb and path, such as " +
+                "'GET /items', when they are known. " +
                 "Returns {status, chainLimitReached, revision, totalCount, offset, truncated, nextOffset, chain}. " +
                 "'chain' holds the traced methods, the starting method first, each with an 'id', the Spring " +
                 "stereotype of its class in 'layer' (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; " +
@@ -1426,11 +1427,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 val document = PsiDocumentManager.getInstance(project).getDocument(psiFile)
                     ?: mcpFail("cannot get document for: $filePath")
 
-                val psiMethod = methodAtLine(psiFile, document, line)
+                val route = FunctionalRouteTarget.atLine(psiFile, document, line)
+                val psiMethod = route?.start
+                    ?: methodAtLine(psiFile, document, line)
                     ?: mcpFail(noMethodAtLineMessage(psiFile, document, filePath, line))
 
                 val module = ModuleUtilCore.findModuleForPsiElement(psiMethod)
-                val chain = CallChainTracer(project, MAX_TRACED_METHODS).trace(psiMethod, effectiveDepth)
+                val chain = CallChainTracer(project, MAX_TRACED_METHODS).trace(psiMethod, effectiveDepth, route?.startBody)
                 val tests = module?.takeIf { includeTests }?.let { CallChainTestReferences(it, project) }
                 val revision = EntityInventory.revision(
                     project,
@@ -1447,7 +1450,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     itemsField = FIELD_CHAIN,
                     totalCount = chain.methods.size,
                     itemAt = { id ->
-                        mapper.valueToTree(toCallChainNodeJson(id, chain.methods[id], chain, tests, project))
+                        mapper.valueToTree(toCallChainNodeJson(id, chain.methods[id], chain, tests, project, route))
                     },
                     revision = revision,
                     page = page,
@@ -1520,11 +1523,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
         chain: CallChain,
         tests: CallChainTestReferences?,
         project: Project,
+        route: FunctionalRouteTarget?,
     ): CallChainNodeJson {
         val method = traced.method
         val containingClass = method.containingClass
         val position = sourcePositionOf(method, project)
-        val nodeTests = tests?.of(method, chain.viaDeclarationsOf(method), withUrlReferences = traced.reachedBy == null)
+        val startRoute = route?.takeIf { traced.reachedBy == null }
+        val nodeTests = tests?.of(
+            method, chain.viaDeclarationsOf(method), withUrlReferences = traced.reachedBy == null, route = startRoute
+        )
         return CallChainNodeJson(
             id = id,
             layer = containingClass?.let { detectSpringLayer(it) },
@@ -1550,6 +1557,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             },
             testReferences = nodeTests?.references,
             testUrlReferences = nodeTests?.urlReferences,
+            route = startRoute?.route,
         )
     }
 
@@ -2284,6 +2292,9 @@ data class CallChainNodeJson(
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL)
     val testUrlReferences: List<UrlTestReferenceJson>? = null,
+    /** On the method the trace started from, when it starts from a functional route: its verb and path. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL)
+    val route: String? = null,
 )
 
 data class AopAnnotationJson(
