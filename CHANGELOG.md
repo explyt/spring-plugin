@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Spring Web
+- fix: Report Boot's default media types for Actuator operations when no media type is declared (#525)
+
 ### Spring Core
 - fix: Treat `@Profile` values as alternatives like Spring, so a bean with several profiles or direct and meta-annotation profiles is active when any value matches (#548)
 - fix: Activate the profiles a `spring.profiles.group` adds: with `spring.profiles.active: production` and `spring.profiles.group.production: [billing]` Spring Boot runs `production` and `billing`, yet a `@Profile("billing")` bean was reported missing by the autowiring inspection, the bean gutters, Search Everywhere and the Spring MCP bean tools. Groups from `application.properties`/`application.yaml` — comma lists, YAML sequences and indexed keys — now expand active profiles, run-configuration profiles and the `default` fallback, nested groups included (#529)

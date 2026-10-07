@@ -17,8 +17,9 @@ import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.ActuatorAccess
 import com.explyt.spring.web.util.ActuatorExposure
+import com.explyt.spring.web.util.ActuatorMediaTypes
 import com.explyt.spring.web.util.SpringWebUtil
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
@@ -212,11 +213,12 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
             .joinToString("") { "/{${it.name}}" }
 
-        val produces = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod)).getStringMemberValues(PRODUCES)
+        val operation = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod))
+        val produces = ActuatorMediaTypes.producedBy(method, operation)
 
         val access = ActuatorAccess.ofOperation(gates.access, isRead = httpMethod == READ_METHOD)
         return endpointElement(
-            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates, access, produces.toList()
+            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates, access, produces
         )
     }
 
@@ -245,7 +247,7 @@ private const val DEFAULT_BASE_PATH = "/actuator"
 private const val BASE_PATH_KEY = "management.endpoints.web.base-path"
 private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
 
-private const val PRODUCES = "produces"
+
 private const val READ_METHOD = "GET"
 private val READ_ONLY_REQUEST_METHODS = setOf("GET", "HEAD")
 
