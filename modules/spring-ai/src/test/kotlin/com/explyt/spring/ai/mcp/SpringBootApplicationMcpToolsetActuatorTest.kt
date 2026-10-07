@@ -270,6 +270,31 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertTrue("the text dump's media type is reported, got $produces", produces.any { it.startsWith("text/plain") })
     }
 
+    fun testOperationReportsWhereItsMediaTypesComeFrom() = runBlocking<Unit> {
+        val health = exactMatch("/actuator/health")
+        assertEquals("BOOT_DEFAULT", health["producesSource"]?.asText())
+        assertEquals(
+            listOf(
+                "application/vnd.spring-boot.actuator.v3+json",
+                "application/vnd.spring-boot.actuator.v2+json",
+                "application/json",
+            ),
+            health["produces"].map { it.asText() }
+        )
+        assertEquals(
+            "BOOT_DEFAULT",
+            listActuator(compact = true).single { it["fullPath"].asText() == "/actuator/health" }["producesSource"]
+                ?.asText()
+        )
+        assertEquals("BOOT_DEFAULT", contractOf("/actuator/health", "GET")["producesSource"]?.asText())
+        assertEquals("NONE", contractOf("/actuator/loggers/{name}", "POST")["producesSource"]?.asText())
+    }
+
+    fun testControllerEndpointHasNoProducesSourceKey() = runBlocking<Unit> {
+        assertFalse(find("/api/orders").single().has("producesSource"))
+        assertFalse(contractOf("/api/orders", "GET").has("producesSource"))
+    }
+
     /** A `@Selector` is a path segment, and a write operation's other arguments are fields of its JSON body. */
     fun testSelectorIsAPathParameterAndWriteArgumentsAreTheBody() = runBlocking<Unit> {
         val write = contractOf("/actuator/loggers/{name}", "POST")["parameters"].associateBy { it["name"].asText() }
