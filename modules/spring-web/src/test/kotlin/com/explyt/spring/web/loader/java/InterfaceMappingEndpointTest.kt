@@ -189,6 +189,56 @@ class InterfaceMappingEndpointTest : ExplytJavaLightTestCase() {
         assertHandledBy("AppResource", endpoints.single())
     }
 
+    fun testJaxRsInterfaceWithoutImplementationRemainsDiscoverable() {
+        addJaxRsAnnotations()
+        myFixture.addFileToProject(
+            "com/example/UnimplementedResource.java", """
+            package com.example;
+            import jakarta.ws.rs.GET;
+            import jakarta.ws.rs.Path;
+            @Path("/unimplemented")
+            public interface UnimplementedResource {
+                @GET
+                @Path("/apps")
+                String get();
+            }
+            """.trimIndent()
+        )
+        val resource = myFixture.findClass("com.example.UnimplementedResource")
+        val endpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .filter { it.type == EndpointType.SPRING_JAX_RS }
+        assertEquals(1, endpoints.size)
+        assertEquals("/unimplemented/apps", endpoints.single().path)
+        assertEquals(listOf("GET"), endpoints.single().requestMethods)
+        assertEquals(resource, endpoints.single().containingClass)
+        assertEquals(resource.findMethodsByName("get", false).single(), endpoints.single().psiElement)
+    }
+
+    fun testJaxRsConcreteResourceKeepsItsOwnHandler() {
+        addJaxRsAnnotations()
+        myFixture.addFileToProject(
+            "com/example/ConcreteResource.java", """
+            package com.example;
+            import jakarta.ws.rs.GET;
+            import jakarta.ws.rs.Path;
+            @Path("/concrete")
+            public class ConcreteResource {
+                @GET
+                @Path("/apps")
+                public String get() { return "apps"; }
+            }
+            """.trimIndent()
+        )
+        val resource = myFixture.findClass("com.example.ConcreteResource")
+        val endpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .filter { it.type == EndpointType.SPRING_JAX_RS }
+        assertEquals(1, endpoints.size)
+        assertEquals("/concrete/apps", endpoints.single().path)
+        assertEquals(listOf("GET"), endpoints.single().requestMethods)
+        assertEquals(resource, endpoints.single().containingClass)
+        assertEquals(resource.findMethodsByName("get", false).single(), endpoints.single().psiElement)
+    }
+
     private fun addJaxRsAnnotations() {
         jaxRsAnnotation(
             "HttpMethod",

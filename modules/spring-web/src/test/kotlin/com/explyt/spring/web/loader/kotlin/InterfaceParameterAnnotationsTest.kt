@@ -154,6 +154,91 @@ class InterfaceParameterAnnotationsTest : ExplytKotlinLightTestCase() {
         assertEquals("com.example.AppDto", (create.requestBodyInfo?.psiElement as? PsiParameter)?.type?.canonicalText)
     }
 
+    fun testOverrideBindingNamesReplaceInterfaceBindingsWithoutDuplicates() {
+        myFixture.addFileToProject(
+            "com/example/BindingController.kt", """
+            package com.example
+            import org.springframework.web.bind.annotation.*
+            interface BindingApi {
+                @GetMapping("/bindings/{id}")
+                fun get(@PathVariable("interfaceId") id: String, @RequestParam("view") view: String): String
+            }
+            @RestController
+            class BindingController : BindingApi {
+                override fun get(@PathVariable("id") id: String, @RequestParam("v") view: String): String = id
+            }
+            """.trimIndent()
+        )
+
+        val handler = handlerOf("/bindings/{id}", controller = "BindingController")
+        assertEquals(listOf("id"), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertEquals(listOf("v"), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+    }
+
+    fun testSuperclassParameterAnnotationsBindTheUnannotatedOverride() {
+        myFixture.addFileToProject(
+            "com/example/SuperController.kt", """
+            package com.example
+            import org.springframework.web.bind.annotation.*
+            abstract class BaseBinding {
+                @GetMapping("/super/{id}")
+                abstract fun get(@PathVariable("id") id: String, @RequestParam view: String): String
+            }
+            @RestController
+            class SuperController : BaseBinding() {
+                override fun get(id: String, view: String): String = id
+            }
+            """.trimIndent()
+        )
+
+        val handler = handlerOf("/super/{id}", controller = "SuperController")
+        assertEquals(listOf("id"), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertEquals(listOf("view"), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+        assertEquals(emptyList<String>(), SpringWebUtil.collectRequestHeaders(handler).map { it.name })
+    }
+
+    fun testInterfaceAnnotationsAcrossAnAbstractSuperclassBindTheOverride() {
+        myFixture.addFileToProject(
+            "com/example/ChainController.kt", """
+            package com.example
+            import org.springframework.web.bind.annotation.*
+            interface ChainApi {
+                @GetMapping("/chain/{id}")
+                fun get(@PathVariable("id") id: String, @RequestParam("view") view: String): String
+            }
+            abstract class AbstractBinding : ChainApi {
+                abstract override fun get(id: String, view: String): String
+            }
+            @RestController
+            class ChainController : AbstractBinding() {
+                override fun get(id: String, view: String): String = id
+            }
+            """.trimIndent()
+        )
+
+        val handler = handlerOf("/chain/{id}", controller = "ChainController")
+        assertEquals(listOf("id"), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertEquals(listOf("view"), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+    }
+
+    fun testUnmappedMethodWithoutSuperMethodHasNoEndpointOrBindings() {
+        myFixture.addFileToProject(
+            "com/example/UnmappedController.kt", """
+            package com.example
+            import org.springframework.web.bind.annotation.RestController
+            @RestController
+            class UnmappedController {
+                fun helper(value: String): String = value
+            }
+            """.trimIndent()
+        )
+        val handler = myFixture.findClass("com.example.UnmappedController").findMethodsByName("helper", false).single()
+        assertNull(SpringWebUtil.getEndpointInfo(handler.toUElement() as UMethod))
+        assertEquals(emptyList<String>(), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+        assertEquals(emptyList<String>(), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertNull(SpringWebUtil.getRequestBodyInfo(handler))
+    }
+
     private fun addAppApiAndController() {
         addAppApi()
         myFixture.addFileToProject(

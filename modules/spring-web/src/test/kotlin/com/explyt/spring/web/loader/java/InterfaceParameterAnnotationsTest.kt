@@ -158,6 +158,114 @@ class InterfaceParameterAnnotationsTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.AppDto", (create.requestBodyInfo?.psiElement as? PsiParameter)?.type?.canonicalText)
     }
 
+    fun testOverrideBindingNamesReplaceInterfaceBindingsWithoutDuplicates() {
+        myFixture.addFileToProject(
+            "com/example/BindingApi.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.*;
+            public interface BindingApi {
+                @GetMapping("/bindings/{id}")
+                String get(@PathVariable("interfaceId") String id, @RequestParam("view") String view);
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/BindingController.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.*;
+            @RestController
+            public class BindingController implements BindingApi {
+                public String get(@PathVariable("id") String id, @RequestParam("v") String view) { return id; }
+            }
+            """.trimIndent()
+        )
+
+        val handler = handlerOf("/bindings/{id}", controller = "BindingController")
+        assertEquals(listOf("id"), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertEquals(listOf("v"), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+    }
+
+    fun testSuperclassParameterAnnotationsBindTheUnannotatedOverride() {
+        myFixture.addFileToProject(
+            "com/example/BaseBinding.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.*;
+            public abstract class BaseBinding {
+                @GetMapping("/super/{id}")
+                public abstract String get(@PathVariable("id") String id, @RequestParam String view);
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/SuperController.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.RestController;
+            @RestController
+            public class SuperController extends BaseBinding {
+                public String get(String id, String view) { return id; }
+            }
+            """.trimIndent()
+        )
+
+        val handler = handlerOf("/super/{id}", controller = "SuperController")
+        assertEquals(listOf("id"), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertEquals(listOf("view"), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+        assertEquals(emptyList<String>(), SpringWebUtil.collectRequestHeaders(handler).map { it.name })
+    }
+
+    fun testInterfaceAnnotationsAcrossAnAbstractSuperclassBindTheOverride() {
+        myFixture.addFileToProject(
+            "com/example/ChainApi.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.*;
+            public interface ChainApi {
+                @GetMapping("/chain/{id}")
+                String get(@PathVariable("id") String id, @RequestParam("view") String view);
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/AbstractBinding.java", """
+            package com.example;
+            public abstract class AbstractBinding implements ChainApi {
+                public abstract String get(String id, String view);
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/ChainController.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.RestController;
+            @RestController
+            public class ChainController extends AbstractBinding {
+                public String get(String id, String view) { return id; }
+            }
+            """.trimIndent()
+        )
+
+        val handler = handlerOf("/chain/{id}", controller = "ChainController")
+        assertEquals(listOf("id"), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertEquals(listOf("view"), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+    }
+
+    fun testUnmappedMethodWithoutSuperMethodHasNoEndpointOrBindings() {
+        myFixture.addFileToProject(
+            "com/example/UnmappedController.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.RestController;
+            @RestController
+            public class UnmappedController {
+                public String helper(String value) { return value; }
+            }
+            """.trimIndent()
+        )
+        val handler = myFixture.findClass("com.example.UnmappedController").findMethodsByName("helper", false).single()
+        assertNull(SpringWebUtil.getEndpointInfo(handler.toUElement() as UMethod))
+        assertEquals(emptyList<String>(), SpringWebUtil.collectRequestParameters(handler).map { it.name })
+        assertEquals(emptyList<String>(), SpringWebUtil.collectPathVariables(handler).map { it.name })
+        assertNull(SpringWebUtil.getRequestBodyInfo(handler))
+    }
+
     private fun addAppApiAndController() {
         addAppApi()
         myFixture.addFileToProject(
