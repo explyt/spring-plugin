@@ -58,6 +58,53 @@ abstract class ConditionalOnPropertyReferencesBoot35TestCase : ExplytBaseLightTe
     fun testUnusedPropertiesKeyIsStillReported() = assertUnusedKeyIsReported(false)
     fun testUnusedYamlKeyIsStillReported() = assertUnusedKeyIsReported(true)
 
+    fun testUnrelatedAnnotationNameDoesNotCreatePropertyReference() {
+        val consumer = configureUnrelatedConsumer()
+        assertAnnotationsResolve(consumer, listOf("sample.Unrelated"))
+        val offset = consumer.text.indexOf("\"feature.enabled\"") + 1
+        val reference = consumer.findReferenceAt(offset) as? PsiPolyVariantReference
+        assertTrue(
+            "Unrelated annotation must not resolve a property reference",
+            reference == null || reference.multiResolve(true).isEmpty()
+        )
+    }
+
+    fun testUnrelatedAnnotationPrefixDoesNotOfferConfigurationCompletion() {
+        val consumer = configureUnrelatedConsumer("prefix = \"<caret>\"")
+        assertAnnotationsResolve(consumer, listOf("sample.Unrelated"))
+        myFixture.complete(CompletionType.BASIC)
+        assertFalse(
+            "Unrelated annotation must not offer conditional-property prefixes",
+            "feature" in myFixture.lookupElementStrings.orEmpty()
+        )
+    }
+
+    fun testContainerElementPrefixDoesNotLeakToTheNextElement() {
+        myFixture.addFileToProject("application.properties", "feature.enabled=true\nother.enabled=true")
+        myFixture.addFileToProject("application.yaml", "feature:\n  enabled: true\nother:\n  enabled: true")
+        val first = "${booleanProperty.substringAfterLast('.')}(${nameArgument("enabled")}, prefix = \"feature\")"
+        val second = "${booleanProperty.substringAfterLast('.')}(${nameArgument("enabled")}, prefix = \"other\")"
+        val annotations = if (kotlinSource) {
+            "@$first\n@$second"
+        } else {
+            "@${SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTIES.substringAfterLast('.')}({@$first, @$second})"
+        }
+        val consumer = configureConsumer(annotations)
+        assertAnnotationsResolve(
+            consumer,
+            if (kotlinSource) listOf(booleanProperty, booleanProperty)
+            else listOf(SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTIES, booleanProperty, booleanProperty)
+        )
+        assertLastKeyReference(consumer, "other.enabled")
+    }
+
+    fun testBooleanPropertyMetaAnnotationProvidesAPropertyReference() {
+        addPropertyFiles()
+        val consumer = configureMetaAnnotatedConsumer()
+        assertAnnotationsResolve(consumer, listOf(booleanProperty, "FeatureFlag"))
+        assertKeyReference(consumer, "feature.enabled", "feature.enabled")
+    }
+
     private fun assertReference(annotation: String, attribute: String) {
         addPropertyFiles()
         val key = if (attribute == "prefix") "enabled" else "feature.enabled"
@@ -138,6 +185,82 @@ abstract class ConditionalOnPropertyReferencesBoot35TestCase : ExplytBaseLightTe
             else "<warning descr=\"$description\">feature.enabled</warning>=true"
         )
         myFixture.testHighlighting(true, false, false)
+    }
+
+    private fun configureUnrelatedConsumer(arguments: String = "name = \"feature.enabled\""): PsiFile {
+        return myFixture.configureByText(
+            if (kotlinSource) "UnrelatedConsumer.kt" else "UnrelatedConsumer.java",
+            if (kotlinSource) {
+                """
+                package sample
+
+                annotation class Unrelated(val name: String = "", val prefix: String = "")
+
+                @Unrelated($arguments)
+                class UnrelatedConsumer
+                """.trimIndent()
+            } else {
+                """
+                package sample;
+
+                @interface Unrelated {
+                    String name() default "";
+                    String prefix() default "";
+                }
+
+                @Unrelated($arguments)
+                public class UnrelatedConsumer {}
+                """.trimIndent()
+            }
+        )
+    }
+
+    private fun configureMetaAnnotatedConsumer(): PsiFile {
+        val booleanAnnotation = booleanProperty.substringAfterLast('.')
+        return myFixture.configureByText(
+            if (kotlinSource) "MetaConsumer.kt" else "MetaConsumer.java",
+            if (kotlinSource) {
+                """
+                import $booleanProperty
+
+                @$booleanAnnotation("feature.enabled")
+                annotation class FeatureFlag
+
+                @FeatureFlag
+                class MetaConsumer
+                """.trimIndent()
+            } else {
+                """
+                import $booleanProperty;
+
+                @$booleanAnnotation("feature.enabled")
+                @interface FeatureFlag {}
+
+                @FeatureFlag
+                public class MetaConsumer {}
+                """.trimIndent()
+            }
+        )
+    }
+
+    private fun assertLastKeyReference(consumer: PsiFile, expectedKey: String) {
+        val literal = "\"enabled\""
+        val offset = consumer.text.lastIndexOf(literal) + 1
+        assertTrue("Consumer must contain the last key literal", offset > 0)
+        val reference = consumer.findReferenceAt(offset) as? PsiPolyVariantReference
+        assertNotNull("Property reference missing for $expectedKey", reference)
+        val targets = reference!!.multiResolve(true).mapNotNull { it.element }
+        assertEquals("Container element must resolve to both configuration files", 2, targets.size)
+        assertEquals(
+            setOf(expectedKey),
+            targets.map {
+                when (it) {
+                    is IProperty -> it.key
+                    is YAMLKeyValue -> YAMLUtil.getConfigFullName(it)
+                    else -> fail("Unexpected property reference target: ${it.javaClass.name}")
+                }
+            }.toSet()
+        )
     }
 
     private fun addConfigurationProperties() {
