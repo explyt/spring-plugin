@@ -587,6 +587,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             endpointType = endpoint.type.readable,
             consumes = mediaTypes.consumes,
             produces = (endpoint.produces + mediaTypes.produces).distinct(),
+            producesSource = endpoint.producesSource?.name,
             exposed = endpoint.exposure?.name,
             access = endpoint.access?.name,
             testSource = declaredInTests(endpoint).takeIf { it },
@@ -612,6 +613,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             endpointType = core.endpointType,
             consumes = core.consumes,
             produces = core.produces,
+            producesSource = core.producesSource,
             exposed = core.exposed,
             access = core.access,
             testSource = core.testSource,
@@ -904,7 +906,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "\"required\":true,\"defaultValue\":null}],\"returnType\":\"com.example.app.dto.DemoDto\"," +
                 "\"endpointType\":\"Spring MVC\"}. " +
                 "'consumes' and 'produces' are present only when the mapping declares media types: two handlers " +
-                "sharing a path and a verb are told apart by them, not by their order. " +
+                "sharing a path and a verb are told apart by them, not by their order. An Actuator operation " +
+                "lists the media types Boot answers with and carries 'producesSource': DECLARED, NONE for a void " +
+                "operation, RESOURCE, BOOT_DEFAULT, or CUSTOM_ENDPOINT_MEDIA_TYPES when the application declares " +
+                "its own EndpointMediaTypes bean, whose types are not read. " +
                 "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
                 "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
                 "absent otherwise. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
@@ -1121,6 +1126,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             responseSchema = handler?.let(HandlerSignature::declaredReturnType)
                 ?.let { ResponseSchemaReader.schemaOf(it, depth = 3, module = module) },
             produces = core.produces,
+            producesSource = core.producesSource,
             consumes = core.consumes,
             serviceCall = serviceCalls.firstOrNull(),
             serviceCalls = serviceCalls,
@@ -2100,6 +2106,8 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
     /** The media types the mapping produces, present only when it declares some. */
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /** Where an Actuator operation's [produces] come from; see [CompactEndpointJson.producesSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val producesSource: String?,
     /** Whether an Actuator endpoint answers over HTTP; see [CompactEndpointJson.exposed]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
     /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
@@ -2146,6 +2154,13 @@ data class CompactEndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val consumes: List<String>,
     /** The media types the mapping produces, matched against the request's `Accept`; absent when it declares none. */
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val produces: List<String>,
+    /**
+     * For an Actuator operation only, where [produces] comes from: `DECLARED` by `produces`/`producesFrom`, `NONE` for a
+     * void operation, `RESOURCE` for a resource, `BOOT_DEFAULT` for Boot's default endpoint media types, or
+     * `CUSTOM_ENDPOINT_MEDIA_TYPES` when the application declares its own `EndpointMediaTypes` bean, whose types are not
+     * read and may differ from the Boot defaults listed. Absent for every other endpoint.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val producesSource: String?,
     /**
      * For an Actuator endpoint only, whether `management.endpoints.web.exposure.include`/`exclude` let it answer over
      * HTTP: `EXPOSED`, `NOT_EXPOSED`, or `UNKNOWN` when a value cannot be read from the configuration files. Absent for
@@ -2357,6 +2372,8 @@ data class EndpointContractJson(
     val returnType: String?,
     val responseSchema: DtoSchemaJson?,
     val produces: List<String>,
+    /** Where an Actuator operation's [produces] come from; see [CompactEndpointJson.producesSource]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val producesSource: String?,
     val consumes: List<String>,
     /** The first of [serviceCalls]; kept for callers of the generation that had only it. */
     val serviceCall: ServiceCallJson?,
