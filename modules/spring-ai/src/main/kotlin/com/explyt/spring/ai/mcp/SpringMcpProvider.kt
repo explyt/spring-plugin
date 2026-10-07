@@ -1336,9 +1336,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Any line of the method identifies it - its signature, an annotation on it, or a line of its " +
                 "body - so the line explyt_find_spring_endpoint reports for a handler can be passed straight in; " +
                 "a line belonging to no method is refused with the nearest method declarations in that file. " +
-                "A line registering a functional route starts the trace at the handler method the route " +
-                "references; for a lambda route the start node is the @Bean factory with only the calls of that " +
-                "route's lambda, and either way the start node carries 'route', such as 'GET /items'. " +
+                "A trace started at a functional route begins at its handler; for a lambda route the start node " +
+                "is the @Bean factory with only that route's calls; 'route' names the verb and path, such as " +
+                "'GET /items', when they are known. " +
                 "Returns {status, chainLimitReached, revision, totalCount, offset, truncated, nextOffset, chain}. " +
                 "'chain' holds the traced methods, the starting method first, each with an 'id', the Spring " +
                 "stereotype of its class in 'layer' (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; " +
