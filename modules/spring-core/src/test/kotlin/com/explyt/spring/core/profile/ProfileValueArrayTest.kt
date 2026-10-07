@@ -52,6 +52,13 @@ class ProfileValueArrayTest : ExplytKotlinLightTestCase() {
         assertBeanActive("NotProdOrTestConfig")
     }
 
+    fun testEmptyProfileArrayKeepsConfigurationActive() {
+        activate("dev")
+        addJavaConfiguration("EmptyProfileConfig", "@Profile({})")
+
+        assertBeanActive("EmptyProfileConfig")
+    }
+
     fun testNegatedArrayIsInactiveWhenNoElementMatches() {
         activate("prod")
         addJavaConfiguration("NotProdOrTestConfig", "@Profile({\"!prod\", \"test\"})")
