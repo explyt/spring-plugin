@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
+import org.jetbrains.uast.UElement
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
 import org.jetbrains.uast.visitor.AbstractUastVisitor
@@ -68,7 +69,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
 
     private val projectScope = GlobalSearchScope.projectScope(project)
 
-    fun trace(start: PsiMethod, depth: Int): CallChain {
+    fun trace(start: PsiMethod, depth: Int, startBody: UElement? = null): CallChain {
         val traced = LinkedHashMap<String, TracedMethod>()
         val pending = ArrayDeque<Pending>().apply { add(Pending(start, depth, reachedBy = null)) }
 
@@ -76,7 +77,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
             val (method, remainingDepth, reachedBy) = pending.removeFirst()
             val key = methodKey(method)
             if (key in traced) continue
-            val calls = callsOf(method)
+            val calls = callsOf(method, startBody.takeIf { reachedBy == null })
             traced[key] = TracedMethod(method, reachedBy, calls)
 
             calls.followable(CallKind.INTERNAL).asReversed()
@@ -94,10 +95,10 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
     private fun List<TracedCall>.followable(kind: CallKind): List<PsiMethod> =
         filter { it.kind == kind && !it.accessor }.mapNotNull { it.reached }
 
-    private fun callsOf(method: PsiMethod): List<TracedCall> {
-        val uMethod = method.toUElement() as? UMethod ?: return emptyList()
+    private fun callsOf(method: PsiMethod, body: UElement?): List<TracedCall> {
+        val root = body ?: method.toUElement() as? UMethod ?: return emptyList()
         val calls = mutableListOf<TracedCall>()
-        uMethod.accept(object : AbstractUastVisitor() {
+        root.accept(object : AbstractUastVisitor() {
             override fun visitCallExpression(node: UCallExpression): Boolean {
                 ProgressManager.checkCanceled()
                 CallSite.of(node)?.let { calls += callsAt(it, method) }

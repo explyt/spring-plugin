@@ -45,9 +45,18 @@ internal class CallChainTestReferences(private val module: Module, private val p
      * bundled JetBrains Spring MVC plugin puts one on the MockMvc URL string, so the same request line came back
      * from the reference search too and one test was counted twice.
      */
-    fun of(method: PsiMethod, viaDeclarations: List<PsiMethod>, withUrlReferences: Boolean): NodeTests {
-        val requests = if (withUrlReferences) requestsTo(method) else emptyList()
-        val requestElements = requests.flatMap { it.second }
+    fun of(
+        method: PsiMethod,
+        viaDeclarations: List<PsiMethod>,
+        withUrlReferences: Boolean,
+        route: FunctionalRouteTarget? = null,
+    ): NodeTests {
+        val requests = when {
+            !withUrlReferences -> null
+            route != null -> requestsTo(route)
+            else -> requestsTo(method)
+        }
+        val requestElements = requests.orEmpty().flatMap { it.second }
         val notARequest = { reference: PsiElement -> requestElements.none { isWithin(reference, it) } }
 
         val direct = linesByFile(referencesOf(method).filter(notARequest))
@@ -62,14 +71,14 @@ internal class CallChainTestReferences(private val module: Module, private val p
         val references = (direct.map { (location, lines) -> nodeReference(location, lines, via = null) } + throughInterfaces)
             .sortedWith(compareBy({ it.filePath }, { it.via }))
 
-        val urlReferences = if (!withUrlReferences) null else requests
-            .flatMap { (path, usages) ->
+        val urlReferences = requests
+            ?.flatMap { (path, usages) ->
                 linesByFile(usages).map { (location, lines) ->
                     UrlTestReferenceJson(location.filePath, location.library, lines, path)
                 }
             }
-            .distinct()
-            .sortedBy { it.filePath }
+            ?.distinct()
+            ?.sortedBy { it.filePath }
         return NodeTests(references, urlReferences)
     }
 
@@ -85,6 +94,12 @@ internal class CallChainTestReferences(private val module: Module, private val p
             .map { endpoint ->
                 endpoint.path to EndpointUsageSearcher.findTestRequestUsage(endpoint.path, endpoint.requestMethods, module)
             }
+    }
+
+    private fun requestsTo(route: FunctionalRouteTarget): List<Pair<String, List<PsiElement>>>? {
+        val verb = route.verb ?: return null
+        val paths = route.paths.takeIf { it.isNotEmpty() } ?: return null
+        return paths.map { path -> path to EndpointUsageSearcher.findTestRequestUsage(path, listOf(verb), module) }
     }
 
     /** Whether [reference] is part of the request [request] - its URL argument, or anything else inside the call. */
