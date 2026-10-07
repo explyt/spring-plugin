@@ -12,14 +12,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.runBlocking
 
-/**
- * The contract of an endpoint whose mapping and binding annotations live on an implemented interface - the shape
- * openapi-generator produces - while the controller overrides the methods without repeating them.
- *
- * Spring invokes the override (`MethodIntrospector.selectMethods` keys by `ClassUtils.getMostSpecificMethod`), binds its
- * parameters with the annotations of the overridden interface parameters (`AnnotatedMethod.getInheritedParameterAnnotations`)
- * and takes the media types from the merged `@RequestMapping`.
- */
 class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
@@ -117,7 +109,6 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(listOf("com.example.app.AppService.find"), contract["serviceCalls"].map { it["target"].asText() })
     }
 
-    /** `AnnotatedMethodParameter` keeps the handler's own annotation; an inherited one of the same type is skipped. */
     fun testAnnotationsOnTheOverrideWinOverTheInterface() = runBlocking<Unit> {
         myFixture.addFileToProject(
             "com/example/app/AppController.java", """
@@ -212,6 +203,38 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(mapOf("sid" to "COOKIE"), sourcesOf(contract["parameters"]))
     }
 
+    fun testCustomResolverAnnotationDeclaredOnlyOnTheInterfaceRemainsUnknown() = runBlocking<Unit> {
+        myFixture.addFileToProject("com/example/app/CurrentUser.java", """
+            package com.example.app;
+            import java.lang.annotation.*;
+            @Target(ElementType.PARAMETER)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface CurrentUser {}
+            """.trimIndent())
+        myFixture.addFileToProject("com/example/app/SessionApi.java", """
+            package com.example.app;
+            import org.springframework.web.bind.annotation.GetMapping;
+            public interface SessionApi {
+                @GetMapping("/current-user")
+                String current(@CurrentUser String user);
+            }
+            """.trimIndent())
+        myFixture.addFileToProject("com/example/app/SessionController.java", """
+            package com.example.app;
+            import org.springframework.web.bind.annotation.RestController;
+            @RestController
+            public class SessionController implements SessionApi {
+                public String current(String user) { return user; }
+            }
+            """.trimIndent())
+        val declared = myFixture.findClass("com.example.app.SessionApi").findMethodsByName("current", false).single()
+        val override = myFixture.findClass("com.example.app.SessionController").findMethodsByName("current", false).single()
+        assertNotNull(declared.parameterList.parameters.single().getAnnotation("com.example.app.CurrentUser"))
+        assertTrue("Precondition: the override has no annotations", override.parameterList.parameters.single().annotations.isEmpty())
+        val contract = contractOf("/current-user", "GET")
+        assertEquals(mapOf("user" to "UNKNOWN"), sourcesOf(contract["parameters"]))
+    }
+
     private fun addUploadApiAndController() {
         myFixture.addFileToProject(
             "com/example/app/UploadApi.java", """
@@ -300,7 +323,6 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         )
     }
 
-    /** The contract of [fullPath], asserted to be served by the controller's override. */
     private suspend fun contractOf(fullPath: String, verb: String): JsonNode {
         val endpoints = mapper.readTree(
             toolset.getEndpointContract(urlPattern = fullPath, projectPath = project.basePath, httpMethod = verb)
