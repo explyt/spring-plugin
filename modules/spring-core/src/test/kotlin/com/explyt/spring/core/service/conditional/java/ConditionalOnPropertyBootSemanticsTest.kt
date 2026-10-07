@@ -231,6 +231,54 @@ class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemantic
         assertActive("com.app.RawPlaceholderConfig", "app.feature.enabled")
     }
 
+    fun testMethodConditionDoesNotExcludeConfiguration() {
+        addProperties("application.properties", "x.enabled=false")
+        myFixture.addFileToProject("com/app/MethodConfig.java", """
+            package com.app;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            @Configuration
+            public class MethodConfig {
+                @Bean
+                @ConditionalOnProperty(name = "x.enabled", havingValue = "true")
+                public String disabledBean() { return "disabled"; }
+            }
+            """.trimIndent())
+        assertActive("com.app.MethodConfig", "x.enabled")
+        val facade = com.explyt.spring.core.service.SpringSearchServiceFacade.getInstance(project)
+        assertFalse(facade.getAllActiveBeans(module).any { it.psiMember.name == "disabledBean" })
+        assertTrue(facade.getExcludedBeansClasses(module).any { it.psiMember.name == "disabledBean" })
+    }
+
+    fun testNestedConditionDoesNotExcludeOuterConfiguration() {
+        addProperties("application.properties", "x.enabled=false")
+        myFixture.addFileToProject("com/app/OuterConfig.java", """
+            package com.app;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            @Configuration
+            public class OuterConfig {
+                @ConditionalOnProperty(name = "x.enabled", havingValue = "true")
+                static class Nested {}
+            }
+            """.trimIndent())
+        assertActive("com.app.OuterConfig", "x.enabled")
+    }
+
+    fun testParameterAnnotationDoesNotExcludeConfiguration() {
+        addProperties("application.properties", "x.enabled=false")
+        myFixture.addFileToProject("com/app/ParameterConfig.java", """
+            package com.app;
+            import org.springframework.context.annotation.Configuration;
+            @Configuration
+            public class ParameterConfig {
+                void consume(@Deprecated String value) {}
+            }
+            """.trimIndent())
+        assertActive("com.app.ParameterConfig", "x.enabled")
+    }
+
     private fun addConfiguration(className: String, conditions: String) {
         myFixture.addFileToProject(
             "com/app/$className.java",
@@ -238,7 +286,9 @@ class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemantic
             package com.app;
 
             import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperties;
             import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperties;
             import org.springframework.context.annotation.Configuration;
 
             @Configuration

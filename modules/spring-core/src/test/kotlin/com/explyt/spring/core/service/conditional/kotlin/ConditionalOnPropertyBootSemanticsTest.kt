@@ -96,6 +96,41 @@ class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemantic
         assertInactive("com.app.BooleanFalseConfig", "app.feature.enabled")
     }
 
+    fun testMethodConditionDoesNotExcludeConfiguration() {
+        addProperties("application.properties", "x.enabled=false")
+        myFixture.addFileToProject("com/app/MethodConfig.kt", """
+            package com.app
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.context.annotation.Bean
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+            @Configuration
+            class MethodConfig {
+                @Bean
+                @ConditionalOnProperty(name = ["x.enabled"], havingValue = "true")
+                fun disabledBean(): String = "disabled"
+            }
+            """.trimIndent())
+        assertActive("com.app.MethodConfig", "x.enabled")
+        val facade = com.explyt.spring.core.service.SpringSearchServiceFacade.getInstance(project)
+        assertFalse(facade.getAllActiveBeans(module).any { it.psiMember.name == "disabledBean" })
+        assertTrue(facade.getExcludedBeansClasses(module).any { it.psiMember.name == "disabledBean" })
+    }
+
+    fun testNestedConditionDoesNotExcludeOuterConfiguration() {
+        addProperties("application.properties", "x.enabled=false")
+        myFixture.addFileToProject("com/app/OuterConfig.kt", """
+            package com.app
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+            @Configuration
+            class OuterConfig {
+                @ConditionalOnProperty(name = ["x.enabled"], havingValue = "true")
+                class Nested
+            }
+            """.trimIndent())
+        assertActive("com.app.OuterConfig", "x.enabled")
+    }
+
     private fun addConfiguration(className: String, conditions: String) {
         myFixture.addFileToProject(
             "com/app/$className.kt",
