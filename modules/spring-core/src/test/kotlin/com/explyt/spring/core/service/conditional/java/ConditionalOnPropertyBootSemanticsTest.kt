@@ -149,6 +149,88 @@ class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemantic
         assertActive("com.app.BooleanTrueConfig", "app.feature.enabled")
     }
 
+    fun testExplicitPropertyContainerRequiresEveryAnnotationToMatch() {
+        addProperties("application.properties", "app.first.enabled=true", "app.second.enabled=false")
+        addConfiguration(
+            "ExplicitPropertyContainerConfig",
+            """
+            @ConditionalOnProperties({
+                @ConditionalOnProperty(name = "app.first.enabled", havingValue = "true"),
+                @ConditionalOnProperty(name = "app.second.enabled", havingValue = "true")
+            })
+            """
+        )
+
+        assertInactive("com.app.ExplicitPropertyContainerConfig", "app.first.enabled", "app.second.enabled")
+    }
+
+    fun testExplicitBooleanPropertyContainerRequiresEveryAnnotationToMatch() {
+        addProperties("application.properties", "app.first.enabled=true", "app.second.enabled=false")
+        addConfiguration(
+            "ExplicitBooleanContainerConfig",
+            """
+            @ConditionalOnBooleanProperties({
+                @ConditionalOnBooleanProperty(name = "app.first.enabled"),
+                @ConditionalOnBooleanProperty(name = "app.second.enabled")
+            })
+            """
+        )
+
+        assertInactive("com.app.ExplicitBooleanContainerConfig", "app.first.enabled", "app.second.enabled")
+    }
+
+    fun testMetaAnnotationCarriesPropertyCondition() {
+        addProperties("application.properties", "app.meta.enabled=false")
+        myFixture.addFileToProject(
+            "com/app/MetaConfig.java",
+            """
+            package com.app;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Configuration;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            @ConditionalOnProperty(name = "app.meta.enabled", havingValue = "true")
+            @interface EnabledWhenProperty {}
+
+            @Configuration
+            @EnabledWhenProperty
+            public class MetaConfig {}
+            """.trimIndent()
+        )
+
+        assertInactive("com.app.MetaConfig", "app.meta.enabled")
+    }
+
+    fun testPlaceholderUsesDefinedPropertyValueBeforeDefault() {
+        addProperties(
+            "application.properties",
+            "app.source.enabled=true",
+            "app.feature.enabled=\${app.source.enabled:false}"
+        )
+        addConfiguration(
+            "DefinedPlaceholderConfig",
+            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "true")"""
+        )
+
+        assertActive("com.app.DefinedPlaceholderConfig", "app.feature.enabled", "app.source.enabled")
+    }
+
+    fun testUnresolvedPlaceholderRemainsRaw() {
+        addProperties("application.properties", "app.feature.enabled=\${EXPLYT_UNSET_FEATURE_FLAG}")
+        addConfiguration(
+            "RawPlaceholderConfig",
+            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "${'$'}{EXPLYT_UNSET_FEATURE_FLAG}")"""
+        )
+
+        assertActive("com.app.RawPlaceholderConfig", "app.feature.enabled")
+    }
+
     private fun addConfiguration(className: String, conditions: String) {
         myFixture.addFileToProject(
             "com/app/$className.java",
