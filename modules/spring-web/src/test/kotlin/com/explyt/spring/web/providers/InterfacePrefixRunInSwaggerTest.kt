@@ -15,7 +15,33 @@ class InterfacePrefixRunInSwaggerTest : ExplytKotlinLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springWebMvc_6_0_7)
 
+    fun testEndpointRunInSwaggerUsesTheInterfacePrefix() {
+        val method = addController().findMethodsByName("apps", false).single()
+        val identifier = (method.navigationElement as org.jetbrains.kotlin.psi.KtNamedFunction).nameIdentifier!!
+        val endpoints = EndpointRunLineMarkerProvider().getInfo(identifier)?.actions
+            ?.filterIsInstance<RunInSwaggerAction>()?.single()?.endpoints().orEmpty()
+        assertEquals(listOf("/api/apps"), endpoints.map { it.path })
+    }
+
+    fun testEndpointActionsUseTheInterfacePrefix() {
+        val method = addController().findMethodsByName("apps", false).single()
+        val identifier = (method.navigationElement as org.jetbrains.kotlin.psi.KtNamedFunction).nameIdentifier!!
+        val markers = mutableListOf<com.intellij.codeInsight.daemon.LineMarkerInfo<*>>()
+        ControllerEndpointActionsLineMarkerProvider().collectSlowLineMarkers(mutableListOf(identifier), markers)
+        val paths = markers.mapNotNull { (it.navigationHandler as? EndpointIconGutterHandler)?.endpointInfo?.path }
+        assertEquals(listOf("/api/apps"), paths)
+    }
+
     fun testControllerRunInSwaggerPrefixesThePathDeclaredOnTheInterface() {
+        val controller = addController()
+        val nameIdentifier = (controller.navigationElement as KtClass).nameIdentifier!!
+        val action = ControllerRunLineMarkerProvider().getInfo(nameIdentifier)?.actions
+            ?.filterIsInstance<RunInSwaggerAction>()?.single()
+            ?: error("No Run in Swagger action on AppController")
+        assertEquals(listOf("/api/apps"), action.endpoints().map { it.path })
+    }
+
+    private fun addController(): com.intellij.psi.PsiClass {
         myFixture.addFileToProject(
             "com/example/AppApi.kt", """
             package com.example
@@ -47,11 +73,8 @@ class InterfacePrefixRunInSwaggerTest : ExplytKotlinLightTestCase() {
         assertTrue("Precondition: the prefix is on the interface", api.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING))
         assertFalse("Precondition: the controller declares no prefix", controller.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING))
 
-        val nameIdentifier = (controller.navigationElement as KtClass).nameIdentifier!!
-        val action = ControllerRunLineMarkerProvider().getInfo(nameIdentifier)?.actions
-            ?.filterIsInstance<RunInSwaggerAction>()?.single()
-            ?: error("No Run in Swagger action on AppController")
-
-        assertEquals(listOf("/api/apps"), action.endpoints().map { it.path })
+        assertTrue("Precondition: the interface declares the method mapping", (api.findMethodsByName("apps", false).single().navigationElement as org.jetbrains.kotlin.psi.KtNamedFunction).annotationEntries.isNotEmpty())
+        assertTrue("Precondition: the controller method declares no annotations", (controller.findMethodsByName("apps", false).single().navigationElement as org.jetbrains.kotlin.psi.KtNamedFunction).annotationEntries.isEmpty())
+        return controller
     }
 }

@@ -17,11 +17,6 @@ import com.intellij.psi.PsiParameter
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
 
-/**
- * A Kotlin controller overriding an interface method that carries the binding annotations binds its parameters the
- * way the interface declares them: `AnnotatedMethod.getInheritedParameterAnnotations` adds the parameter annotations
- * of every overridden method, and the media types come from the merged `@RequestMapping` of the mapping source.
- */
 class InterfaceParameterAnnotationsTest : ExplytKotlinLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springWebMvc_6_0_7)

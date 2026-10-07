@@ -17,12 +17,6 @@ import com.intellij.psi.PsiParameter
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
 
-/**
- * A controller overriding an interface method that carries the binding annotations - the openapi-generator shape -
- * binds its parameters the way the interface declares them: `HandlerMethod` extends `AnnotatedMethod`, whose
- * `getInheritedParameterAnnotations` adds the parameter annotations of every interface or superclass method the
- * handler overrides, and the media types come from the merged `@RequestMapping` of the mapping source.
- */
 class InterfaceParameterAnnotationsTest : ExplytJavaLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springWebMvc_6_0_7)
@@ -67,7 +61,6 @@ class InterfaceParameterAnnotationsTest : ExplytJavaLightTestCase() {
         assertEquals("com.example.AppDto", (body!!.psiElement as PsiParameter).type.canonicalText)
     }
 
-    /** "Add endpoint to OpenAPI" and the endpoint gutters describe the handler through [SpringWebUtil.getEndpointInfo]. */
     fun testOpenApiDescriptionOfTheOverrideCarriesTheInterfaceContract() {
         addAppApiAndController()
 
@@ -88,7 +81,6 @@ class InterfaceParameterAnnotationsTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("X-Tenant"), info.requestHeaders.map { it.name })
     }
 
-    /** `AnnotatedMethodParameter` keeps the handler's own annotation and adds an inherited one only of another type. */
     fun testAnnotationOnTheOverrideWinsOverTheInterfaceAnnotation() {
         addAppApi()
         myFixture.addFileToProject(
@@ -315,7 +307,6 @@ class InterfaceParameterAnnotationsTest : ExplytJavaLightTestCase() {
         )
     }
 
-    /** The method the endpoint model publishes for [path], asserted to be the controller's own declaration. */
     private fun handlerOf(path: String, verb: String = "GET", controller: String = "AppController"): PsiMethod {
         val endpoint: EndpointElement = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
             .singleOrNull { it.type == EndpointType.SPRING_MVC && it.path == path && verb in it.requestMethods }

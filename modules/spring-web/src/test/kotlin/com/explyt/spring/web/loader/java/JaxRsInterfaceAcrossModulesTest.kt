@@ -61,6 +61,55 @@ class JaxRsInterfaceAcrossModulesTest : ExplytMultiModuleTestCase() {
         )
     }
 
+    fun testDependencySourcePathAnnotationsAreRead() {
+        val resource = dependencyAnnotatedResource()
+        assertEquals(listOf("/apps"), com.explyt.spring.web.util.SpringWebUtil.getJaxRsPaths(resource, module))
+    }
+
+    fun testDependencySourceHttpMethodAnnotationsAreRead() {
+        val method = dependencyAnnotatedResource().findMethodsByName("create", false).single()
+        assertEquals(listOf("POST"), com.explyt.spring.web.util.SpringWebUtil.getJaxRsHttpMethods(method, module))
+    }
+
+    fun testDependencySourceProducesAnnotationsAreRead() {
+        val method = dependencyAnnotatedResource().findMethodsByName("create", false).single()
+        assertEquals(listOf("application/json"), com.explyt.spring.web.util.SpringWebUtil.getJaxRsProduces(method, module))
+    }
+
+    fun testDependencySourceConsumesAnnotationsAreRead() {
+        val method = dependencyAnnotatedResource().findMethodsByName("create", false).single()
+        assertEquals(listOf("application/json"), com.explyt.spring.web.util.SpringWebUtil.getJaxRsConsumes(method, module))
+    }
+
+    private fun dependencyAnnotatedResource(): com.intellij.psi.PsiClass {
+        val api = addDependencyModule("api")
+        addJaxRsAnnotations(api)
+        jaxRsAnnotation(api, "POST", "@Target(ElementType.METHOD) @HttpMethod(\"POST\") public @interface POST {}")
+        for (name in listOf("Produces", "Consumes")) {
+            jaxRsAnnotation(api, name, "@Target({ElementType.TYPE, ElementType.METHOD}) public @interface $name { String[] value(); }")
+        }
+        addFileToModule(module, "com/example/impl/LocalResource.java", """
+            package com.example.impl;
+            import jakarta.ws.rs.*;
+            @Path("/apps")
+            public class LocalResource {
+                @POST
+                @Produces("application/json")
+                @Consumes("application/json")
+                public String create() { return "apps"; }
+            }
+            """.trimIndent())
+        val resource = myFixture.findClass("com.example.impl.LocalResource")
+        assertEquals(module, ModuleUtilCore.findModuleForPsiElement(resource))
+        for (name in listOf("Path", "HttpMethod", "POST", "Produces", "Consumes")) {
+            assertEquals("Precondition: $name is a dependency source", api,
+                ModuleUtilCore.findModuleForPsiElement(myFixture.findClass("jakarta.ws.rs.$name")))
+        }
+        assertNotNull(resource.getAnnotation("jakarta.ws.rs.Path"))
+        assertNotNull(resource.findMethodsByName("create", false).single().getAnnotation("jakarta.ws.rs.POST"))
+        return resource
+    }
+
     private fun addJaxRsAnnotations(target: Module) {
         jaxRsAnnotation(
             target, "HttpMethod",
