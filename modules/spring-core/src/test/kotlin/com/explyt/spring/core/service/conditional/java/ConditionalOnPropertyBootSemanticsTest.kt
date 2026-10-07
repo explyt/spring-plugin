@@ -346,6 +346,26 @@ class ConditionalOnPropertyBootSemanticsTest : JavaPropertyConditionTestCase() {
         assertActive("com.app.PropertiesDocumentConfig", "x.enabled")
     }
 
+    fun testLastRepeatedOnProfileActivatesPropertiesDocument() {
+        addProperties(
+            "application.properties",
+            "spring.profiles.active=prod",
+            "#---", "spring.config.activate.on-profile=dev", "spring.config.activate.on-profile=prod", "x.enabled=true"
+        )
+        addConfiguration("RepeatedOnProfileConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
+        assertActive("com.app.RepeatedOnProfileConfig", "x.enabled")
+    }
+
+    fun testLastRepeatedOnProfileDeactivatesPropertiesDocument() {
+        addProperties(
+            "application.properties",
+            "spring.profiles.active=prod",
+            "#---", "spring.config.activate.on-profile=prod", "spring.config.activate.on-profile=dev", "x.enabled=true"
+        )
+        addConfiguration("RepeatedOffProfileConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
+        assertInactive("com.app.RepeatedOffProfileConfig", "x.enabled")
+    }
+
     fun testInactivePropertiesDocumentIsIgnored() {
         addProperties("application.properties", "spring.profiles.active=dev", "x.enabled=false", "#---", "spring.config.activate.on-profile=prod", "x.enabled=true")
         addConfiguration("InactivePropertiesDocumentConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")

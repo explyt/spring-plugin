@@ -116,6 +116,50 @@ class PropertyConditionValuesTest : ConditionalOnPropertyBootSemanticsTestCase()
         assertEquals(ConditionPropertyValue.Unresolvable, valueOf("x.v"))
     }
 
+    fun testLastRepeatedOnProfileInDocumentDecides() {
+        addProperties(
+            "application.properties",
+            "spring.profiles.active=prod",
+            "#---", "spring.config.activate.on-profile=dev", "spring.config.activate.on-profile=prod", "x.v=true"
+        )
+
+        assertEquals(ConditionPropertyValue.Known("true"), valueOf("x.v"))
+    }
+
+    fun testLastRepeatedOnProfileInDocumentExcludesIt() {
+        addProperties(
+            "application.properties",
+            "spring.profiles.active=prod",
+            "#---", "spring.config.activate.on-profile=prod", "spring.config.activate.on-profile=dev", "x.v=true"
+        )
+
+        assertEquals(ConditionPropertyValue.Missing, valueOf("x.v"))
+    }
+
+    fun testLegacyProfilesKeyInDocumentIsUnresolvable() {
+        addProperties("application.properties", "x.v=a", "#---", "spring.profiles=prod", "x.v=b")
+
+        assertEquals(ConditionPropertyValue.Unresolvable, valueOf("x.v"))
+    }
+
+    fun testDefaultIsNotUsedForUnresolvableReference() {
+        addProperties("application.yaml", "src:", "  flag: ${'$'}{EXPLYT_UNSET_FLAG}", "x: ${'$'}{src.flag:true}")
+
+        assertEquals(ConditionPropertyValue.Unresolvable, valueOf("x"))
+    }
+
+    fun testNestedDefaultUsesKnownInnerValue() {
+        addProperties("application.yaml", "inner:", "  flag: false", "x: ${'$'}{outer.flag:${'$'}{inner.flag:true}}")
+
+        assertEquals(ConditionPropertyValue.Known("false"), valueOf("x"))
+    }
+
+    fun testExclamationSeparatorStartsADocument() {
+        addProperties("application.properties", "x.v=a", "!---", "x.v=b")
+
+        assertEquals(ConditionPropertyValue.Known("b"), valueOf("x.v"))
+    }
+
     private fun valueOf(key: String): ConditionPropertyValue {
         ModificationTrackerManager.getInstance(project).invalidateAll()
         return PropertyConditionValues(module).valueOf(key)
