@@ -17,8 +17,9 @@ import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.ActuatorAccess
 import com.explyt.spring.web.util.ActuatorExposure
+import com.explyt.spring.web.util.ActuatorMediaTypes
 import com.explyt.spring.web.util.SpringWebUtil
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
@@ -27,7 +28,9 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
@@ -93,9 +96,10 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val exposure = ActuatorExposure.of(module, definitions)
         val access = ActuatorAccess.of(module, definitions)
         val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
+        val customMediaTypes = declaresEndpointMediaTypesBean(module)
 
         return endpoints.flatMap {
-            val gates = Gates(exposure.exposureOf(it.id), access.accessOf(it), application)
+            val gates = Gates(exposure.exposureOf(it.id), access.accessOf(it), application, customMediaTypes)
             endpointElements(it, basePath, propertyValue, gates) { requestMappingMah }
         }
     }
@@ -146,8 +150,26 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             )
     }
 
+    private fun declaresEndpointMediaTypesBean(module: Module): Boolean {
+        val scope = module.getModuleWithDependenciesScope()
+        val bean = JavaPsiFacade.getInstance(project)
+            .findClass(SpringCoreClasses.BEAN, module.getModuleWithDependenciesAndLibrariesScope(false)) ?: return false
+        val fileIndex = ProjectFileIndex.getInstance(project)
+        return AnnotatedElementsSearch.searchPsiMethods(bean, scope).anyMatch { method ->
+            val file = method.containingFile?.virtualFile
+            file != null && fileIndex.isInSourceContent(file) && !fileIndex.isInTestSourceContent(file) &&
+                    (method.returnType as? PsiClassType)?.resolve()?.qualifiedName ==
+                    SpringCoreClasses.ACTUATOR_ENDPOINT_MEDIA_TYPES
+        }
+    }
+
     /** The two independent conditions under which Boot serves an endpoint, and the application whose context holds it. */
-    private class Gates(val exposure: EndpointExposure, val access: EndpointAccess, val application: PsiClass?)
+    private class Gates(
+        val exposure: EndpointExposure,
+        val access: EndpointAccess,
+        val application: PsiClass?,
+        val customMediaTypes: Boolean,
+    )
 
     private fun endpointElements(
         endpoint: ActuatorEndpoint,
@@ -212,11 +234,12 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             .filter { it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
             .joinToString("") { "/{${it.name}}" }
 
-        val produces = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod)).getStringMemberValues(PRODUCES)
+        val operation = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod))
+        val produces = ActuatorMediaTypes.producedBy(method, operation, gates.customMediaTypes)
 
         val access = ActuatorAccess.ofOperation(gates.access, isRead = httpMethod == READ_METHOD)
         return endpointElement(
-            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates, access, produces.toList()
+            endpointPath + selectors, listOf(httpMethod), method, endpoint, gates, access, produces
         )
     }
 
@@ -227,10 +250,11 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         endpoint: ActuatorEndpoint,
         gates: Gates,
         access: EndpointAccess,
-        produces: List<String> = emptyList(),
+        produces: ActuatorMediaTypes.Produces? = null,
     ) = EndpointElement(
         path, requestMethods, psiElement, endpoint.psiClass, null, getType(),
-        exposure = gates.exposure, produces = produces, access = access, application = gates.application
+        exposure = gates.exposure, produces = produces?.mediaTypes.orEmpty(), access = access,
+        application = gates.application, producesSource = produces?.source
     )
 
 
@@ -245,7 +269,7 @@ private const val DEFAULT_BASE_PATH = "/actuator"
 private const val BASE_PATH_KEY = "management.endpoints.web.base-path"
 private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
 
-private const val PRODUCES = "produces"
+
 private const val READ_METHOD = "GET"
 private val READ_ONLY_REQUEST_METHODS = setOf("GET", "HEAD")
 
