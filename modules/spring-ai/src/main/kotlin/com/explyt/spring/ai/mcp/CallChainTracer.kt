@@ -224,9 +224,10 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
             val containingClass = method.containingClass
             val name = containingClass?.name ?: "?"
             val kotlinOrigin = (method as? KtLightMethod)?.kotlinOrigin
-            val objectDeclaration = kotlinOrigin
-                ?.let { PsiTreeUtil.getParentOfType(it, KtObjectDeclaration::class.java) }
-                ?: containingClass?.navigationElement as? KtObjectDeclaration
+            val declaration = kotlinOrigin
+                ?.let { PsiTreeUtil.getParentOfType(it, KtClassOrObject::class.java) }
+                ?: containingClass?.navigationElement
+            val objectDeclaration = declaration as? KtObjectDeclaration
             if (objectDeclaration?.isCompanion() != true) return name
             val outerName = PsiTreeUtil.getParentOfType(objectDeclaration, KtClassOrObject::class.java)?.name ?: return name
             return outerName
