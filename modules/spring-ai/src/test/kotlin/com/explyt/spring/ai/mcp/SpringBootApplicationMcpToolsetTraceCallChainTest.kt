@@ -14,9 +14,12 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.pom.java.LanguageLevel
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.impl.light.LightMethodBuilder
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
@@ -26,6 +29,7 @@ import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.visitor.AbstractUastVisitor
@@ -353,13 +357,53 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertTrue(nodes.all { it["filePath"].asText().endsWith("Ids.kt") })
     }
 
+    fun testNestedCompanionCallNamesItsImmediateOuterClass() = runBlocking {
+        val chain = traceCompanion("nestedCompanionParse")
+        val call = companionCall(chain, "parse")
+        assertEquals("InnerId.parse", call["target"].asText())
+        assertEquals("PROJECT", call["kind"].asText())
+        assertTrue("The nested companion must be expanded", call["node"].isIntegralNumber)
+        val node = chain.single { it["id"].asInt() == call["node"].asInt() }
+        assertEquals("explyt.trace.Outer.InnerId.Companion", node["className"].asText())
+    }
+
+    fun testCompanionNameFallsBackToClassNavigationWithoutKotlinMethodOrigin() = runBlocking {
+        companionCall(traceCompanion("kotlinParse"), "parse")
+        val companion = JavaPsiFacade.getInstance(project)
+            .findClass("explyt.trace.VmId.Companion", GlobalSearchScope.projectScope(project))!!
+        val navigation = companion.navigationElement as KtObjectDeclaration
+        assertTrue(navigation.isCompanion())
+        val method = LightMethodBuilder(companion.manager, companion.language, "parse")
+            .setContainingClass(companion)
+        assertFalse("The fallback must not have a Kotlin method origin", method is KtLightMethod)
+        assertEquals("VmId.parse", CallChainTracer.nameOf(method))
+    }
+
+    fun testCompanionTestReferenceKeepsOuterClassTargetAndDirectReferenceLines() = runBlocking {
+        val chain = traceCompanion("kotlinParse", includeTests = true)
+        val call = companionCall(chain, "parse")
+        assertEquals("VmId.parse", call["target"].asText())
+        assertTrue("The companion must be expanded", call["node"].isIntegralNumber)
+        val node = chain.single { it["id"].asInt() == call["node"].asInt() }
+        val references = node["testReferences"]
+        assertEquals("A direct test call must be discovered", 1, references.size())
+        val reference = references.single()
+        assertEquals("companionTests/explyt/trace/VmIdTest.kt", reference["filePath"].asText())
+        assertEquals(listOf(4), reference["lines"].map { it.asInt() })
+        assertTrue("A direct reference has no interface via", reference["via"] == null || reference["via"].isNull)
+    }
+
     private fun companionCall(chain: JsonNode, methodName: String): JsonNode {
         val calls = chain[0]["callsInto"].filter { it["target"].asText().endsWith(".$methodName") }
         assertEquals("The $methodName call must be present in callsInto: ${chain[0]}", 1, calls.size)
         return calls.single()
     }
 
-    private suspend fun traceCompanion(methodName: String, javaCaller: Boolean = false): JsonNode {
+    private suspend fun traceCompanion(
+        methodName: String,
+        javaCaller: Boolean = false,
+        includeTests: Boolean = false,
+    ): JsonNode {
         val kotlin = """
             package explyt.trace
 
@@ -389,6 +433,11 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                 fun parse(raw: String): String = raw
             }
             class Outer {
+                class InnerId {
+                    companion object {
+                        fun parse(raw: String): String = raw
+                    }
+                }
                 class Inner {
                     fun parse(raw: String): String = raw
                 }
@@ -398,6 +447,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                 fun namedFactory(raw: String): String = FactoryVmId.of(raw)
                 fun objectParse(raw: String): String = IdFormat.parse(raw)
                 fun nestedParse(raw: String): String = Outer.Inner().parse(raw)
+                fun nestedCompanionParse(raw: String): String = Outer.InnerId.parse(raw)
                 fun twoParsers(raw: String): String = VmId.parse(raw) + OtherVmId.parse(raw)
             }
         """.trimIndent()
@@ -416,7 +466,18 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         val sourcesRoot = File(project.basePath!!, "companionSrc").apply { mkdirs() }
         writeSource(sourcesRoot, "explyt/trace/Ids.kt", kotlin)
         writeSource(sourcesRoot, "explyt/trace/JavaIdService.java", java)
-        registerSourceRoot(sourcesRoot)
+        registerSourceRoot(sourcesRoot, isTestSource = false)
+        if (includeTests) {
+            val testRoot = File(project.basePath!!, "companionTests").apply { mkdirs() }
+            writeSource(testRoot, "explyt/trace/VmIdTest.kt", """
+                package explyt.trace
+
+                class VmIdTest {
+                    fun parses(raw: String): String = VmId.parse(raw)
+                }
+            """.trimIndent())
+            registerSourceRoot(testRoot)
+        }
         val source = if (javaCaller) java else kotlin
         val fileName = if (javaCaller) "JavaIdService.java" else "Ids.kt"
         val anchor = source.lines().indexOfFirst { it.contains(" $methodName(") }
@@ -427,7 +488,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                 line = anchor + 1,
                 projectPath = project.basePath!!,
                 depth = 2,
-                includeTests = false,
+                includeTests = includeTests,
                 limit = 20,
                 maxChars = 16000,
             )
@@ -449,14 +510,14 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         return result
     }
 
-    private fun registerSourceRoot(sourcesRoot: File) {
+    private fun registerSourceRoot(sourcesRoot: File, isTestSource: Boolean = true) {
         WriteAction.runAndWait<Throwable> {
             LocalFileSystem.getInstance().refresh(false)
         }
         val sourcesRootVf = VfsUtil.findFile(sourcesRoot.toPath(), true)
             ?: error("Sources root not visible in VFS: ${sourcesRoot.absolutePath}")
         ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
-            model.addContentEntry(sourcesRootVf).addSourceFolder(sourcesRootVf, true)
+            model.addContentEntry(sourcesRootVf).addSourceFolder(sourcesRootVf, isTestSource)
         }
         WriteAction.runAndWait<Throwable> {
             LocalFileSystem.getInstance().refresh(false)
