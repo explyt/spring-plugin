@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.SpringWebClasses
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.runBlocking
@@ -183,6 +184,93 @@ class SpringBootApplicationMcpToolsetInterfaceMappingTest : ExplytJavaLightTestC
         assertEquals(listOf("application/json"), contract["consumes"].map { it.asText() })
         assertEquals(listOf("application/json"), contract["produces"].map { it.asText() })
     }
+
+    fun testRequestPartDeclaredOnTheInterfaceIsAPart() = runBlocking<Unit> {
+        addUploadApiAndController()
+        assertOnlyTheInterfaceAnnotates("attach", SpringWebClasses.REQUEST_PART)
+
+        val contract = contractOf("/uploads/attach", "POST")
+
+        assertEquals(mapOf("file" to "PART"), sourcesOf(contract["parameters"]))
+    }
+
+    fun testMultipartRequestParamDeclaredOnTheInterfaceIsAPart() = runBlocking<Unit> {
+        addUploadApiAndController()
+        assertOnlyTheInterfaceAnnotates("upload", SpringWebClasses.REQUEST_PARAM)
+
+        val contract = contractOf("/uploads", "POST")
+
+        assertEquals(mapOf("upload" to "PART"), sourcesOf(contract["parameters"]))
+    }
+
+    fun testCookieValueDeclaredOnTheInterfaceIsACookieUnderItsWireName() = runBlocking<Unit> {
+        addUploadApiAndController()
+        assertOnlyTheInterfaceAnnotates("session", SpringWebClasses.COOKIE_VALUE)
+
+        val contract = contractOf("/uploads/session", "GET")
+
+        assertEquals(mapOf("sid" to "COOKIE"), sourcesOf(contract["parameters"]))
+    }
+
+    private fun addUploadApiAndController() {
+        myFixture.addFileToProject(
+            "com/example/app/UploadApi.java", """
+            package com.example.app;
+
+            import org.springframework.web.bind.annotation.CookieValue;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PostMapping;
+            import org.springframework.web.bind.annotation.RequestParam;
+            import org.springframework.web.bind.annotation.RequestPart;
+            import org.springframework.web.multipart.MultipartFile;
+
+            public interface UploadApi {
+                @PostMapping(value = "/uploads/attach", consumes = "multipart/form-data")
+                String attach(@RequestPart("file") MultipartFile file);
+
+                @PostMapping(value = "/uploads", consumes = "multipart/form-data")
+                String upload(@RequestParam("upload") MultipartFile upload);
+
+                @GetMapping("/uploads/session")
+                String session(@CookieValue("sid") String session);
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/app/UploadController.java", """
+            package com.example.app;
+
+            import org.springframework.web.bind.annotation.RestController;
+            import org.springframework.web.multipart.MultipartFile;
+
+            @RestController
+            public class UploadController implements UploadApi {
+                @Override
+                public String attach(MultipartFile file) { return file.getName(); }
+
+                @Override
+                public String upload(MultipartFile upload) { return upload.getName(); }
+
+                @Override
+                public String session(String session) { return session; }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun assertOnlyTheInterfaceAnnotates(methodName: String, annotation: String) {
+        val declared = myFixture.findClass("com.example.app.UploadApi").findMethodsByName(methodName, false).single()
+        val override = myFixture.findClass("com.example.app.UploadController").findMethodsByName(methodName, false).single()
+        assertNotNull(
+            "Precondition: $annotation is on the interface parameter",
+            declared.parameterList.parameters.single().getAnnotation(annotation)
+        )
+        assertNull(
+            "Precondition: the override parameter carries no annotation",
+            override.parameterList.parameters.single().annotations.firstOrNull()
+        )
+    }
+
 
     private fun addUnannotatedController() {
         myFixture.addFileToProject(
