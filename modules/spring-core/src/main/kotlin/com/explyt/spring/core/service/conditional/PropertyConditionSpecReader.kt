@@ -12,22 +12,25 @@ import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiArrayInitializerMemberValue
 import com.intellij.psi.PsiMember
-import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.toUElementOfType
 
 class PropertyConditionSpecReader(private val propertyAnnotations: MetaAnnotationsHolder) {
 
-    fun read(member: PsiMember): List<PropertyConditionSpec> =
-        (member.annotations.asSequence() + PsiTreeUtil.findChildrenOfType(member, PsiAnnotation::class.java).asSequence())
-            .distinctBy { it.textRange }
-            .flatMap { specsOf(it) }
-            .toList()
+    fun read(member: PsiMember): List<PropertyConditionSpec> = member.annotations.flatMap { specsOf(it) }
 
-    private fun specsOf(annotation: PsiAnnotation): List<PropertyConditionSpec> = when (annotation.qualifiedName) {
-        SpringCoreClasses.CONDITIONAL_ON_PROPERTIES,
-        SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTIES -> repeated(annotation).flatMap { specsOf(it) }
+    private fun specsOf(annotation: PsiAnnotation, visited: Set<String> = emptySet()): List<PropertyConditionSpec> {
+        val name = annotation.qualifiedName ?: return emptyList()
+        if (name in visited) return emptyList()
+        val next = visited + name
+        return when (name) {
+            SpringCoreClasses.CONDITIONAL_ON_PROPERTIES,
+            SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTIES -> repeated(annotation).flatMap { specsOf(it, next) }
 
-        SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTY -> listOf(booleanSpec(annotation))
-        else -> if (propertyAnnotations.contains(annotation)) listOf(propertySpec(annotation)) else emptyList()
+            SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTY -> listOf(booleanSpec(annotation))
+            else -> if (propertyAnnotations.contains(annotation)) listOf(propertySpec(annotation))
+            else annotation.resolveAnnotationType()?.annotations.orEmpty().flatMap { specsOf(it, next) }
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -48,13 +51,15 @@ class PropertyConditionSpecReader(private val propertyAnnotations: MetaAnnotatio
         matchIfMissing = AnnotationUtil.getBooleanAttributeValue(annotation, MATCH_IF_MISSING) ?: false
     )
 
-    private fun repeated(container: PsiAnnotation): List<PsiAnnotation> =
-        container.findDeclaredAttributeValue(VALUE)
-            ?.let { value ->
-                flatten(value).filterIsInstance<PsiAnnotation>()
-                    .ifEmpty { PsiTreeUtil.findChildrenOfType(value, PsiAnnotation::class.java).toList() }
-            }
-            .orEmpty()
+    private fun repeated(container: PsiAnnotation): List<PsiAnnotation> {
+        val nested = container.findAttributeValue(VALUE)?.let { flatten(it) }
+            .orEmpty().filterIsInstance<PsiAnnotation>()
+        if (nested.isNotEmpty()) return nested
+        val value = container.toUElementOfType<UAnnotation>()?.findAttributeValue(VALUE)
+        return MetaAnnotationsHolder.getValues(value).mapNotNull {
+            (it as? UAnnotation)?.javaPsi ?: it.sourcePsi.toUElementOfType<UAnnotation>()?.javaPsi
+        }
+    }
 
     private fun strings(values: Collection<PsiAnnotationMemberValue>): List<String> =
         values.flatMap { flatten(it) }.mapNotNull { AnnotationUtil.getStringAttributeValue(it) }.distinct()
