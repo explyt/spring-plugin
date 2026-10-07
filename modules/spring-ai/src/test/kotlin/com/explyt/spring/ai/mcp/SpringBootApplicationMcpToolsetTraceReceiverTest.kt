@@ -38,7 +38,7 @@ class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureT
             }
         }
         val root = File(project.basePath!!, ROOT).apply { mkdirs() }
-        mapOf("Billing.kt" to BILLING_SOURCE, "Extensions.kt" to EXTENSIONS_SOURCE).forEach { (name, content) ->
+        mapOf("Billing.kt" to BILLING_SOURCE, "Extensions.kt" to EXTENSIONS_SOURCE, "JavaBilling.java" to JAVA_SOURCE).forEach { (name, content) ->
             File(root, "com/example/billing/$name").apply {
                 parentFile.mkdirs()
                 writeText(content)
@@ -92,6 +92,39 @@ class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureT
         assertReceiver("BillingAccount", node)
     }
 
+    fun testOrdinaryNodeRetainsTheBaselineOrderedKeys() = runBlocking {
+        assertEquals(BASELINE_KEYS, nodeReachedFrom("fun readBalance", "balance").fieldNames().asSequence().toList())
+    }
+
+    fun testExtensionNodeInsertsReceiverImmediatelyAfterParameters() = runBlocking {
+        val keys = BASELINE_KEYS.toMutableList().apply { add(indexOf("parameters") + 1, "receiver") }
+        assertEquals(keys, nodeReachedFrom("fun chargeAccount", "charge").fieldNames().asSequence().toList())
+    }
+
+    fun testJavaMethodOmitsReceiver() = runBlocking {
+        val node = nodeReachedFrom("fun javaBalance", "available")
+        assertEquals(listOf("currency"), parametersOf(node))
+        assertFalse("Java methods must omit receiver: $node", node.has("receiver"))
+    }
+
+    fun testQualifiedReceiverKeepsItsWrittenPackage() = runBlocking {
+        assertReceiver("com.example.billing.BillingAccount", nodeReachedFrom("fun qualifiedCharge", "chargeQualified"))
+    }
+
+    fun testTypealiasReceiverKeepsTheAlias() = runBlocking {
+        assertReceiver("Money", nodeReachedFrom("fun formatMoney", "format"))
+    }
+
+    fun testFunctionTypeReceiverKeepsParentheses() = runBlocking {
+        val node = nodeReachedFrom("fun runCallback", "runWith")
+        assertEquals(listOf("x"), parametersOf(node))
+        assertReceiver("((String) -> Unit)", node)
+    }
+
+    fun testClassMemberExtensionReportsReceiverWhenCalledInsideItsClass() = runBlocking {
+        assertReceiver("BillingAccount", nodeReachedFrom("fun memberCharge", "chargeInClass"))
+    }
+
     private suspend fun nodeReachedFrom(anchor: String, name: String): JsonNode {
         val offset = BILLING_SOURCE.indexOf(anchor)
         assertTrue("Precondition: service declaration exists for $anchor", offset >= 0)
@@ -123,6 +156,14 @@ class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureT
 
     private companion object {
         const val ROOT = "traceReceivers"
+        val BASELINE_KEYS = listOf("id", "layer", "reachedBy", "className", "methodName", "filePath", "line", "parameters", "aop", "callsInto")
+
+        val JAVA_SOURCE = """
+            package com.example.billing;
+            public class JavaBilling {
+                public long available(String currency) { return currency.length(); }
+            }
+        """.trimIndent()
 
         val BILLING_SOURCE = """
             package com.example.billing
@@ -149,6 +190,12 @@ class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureT
                 fun normalizeLabel(label: String?): String = label.orBlank()
                 fun readBalance(account: BillingAccount): Long = account.balance("credits")
                 suspend fun chargeLater(account: BillingAccount): Receipt = account.chargeSuspending(1)
+                fun javaBalance(billing: JavaBilling): Long = billing.available("credits")
+                fun qualifiedCharge(account: BillingAccount): Receipt = account.chargeQualified(1)
+                fun formatMoney(amount: Money): String = amount.format()
+                fun runCallback(callback: (String) -> Unit): Unit = callback.runWith("charge")
+                fun memberCharge(account: BillingAccount): Receipt = account.chargeInClass(1)
+                private fun BillingAccount.chargeInClass(amount: Long): Receipt = Receipt(amount)
             }
         """.trimIndent()
 
@@ -159,6 +206,10 @@ class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureT
             fun <T : Entity> T.touch(): T = this
             fun String?.orBlank(): String = this ?: ""
             suspend fun BillingAccount.chargeSuspending(amount: Long): Receipt = Receipt(amount)
+            fun com.example.billing.BillingAccount.chargeQualified(amount: Long): Receipt = Receipt(amount)
+            typealias Money = Long
+            fun Money.format(): String = toString()
+            fun ((String) -> Unit).runWith(x: String): Unit = invoke(x)
         """.trimIndent()
     }
 }
