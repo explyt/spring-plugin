@@ -61,7 +61,7 @@ class PropertyConditionValues(private val module: Module) {
 
     private fun isInUnclearFile(property: DefinedConfigurationProperty): Boolean {
         val file = property.psiElement?.containingFile as? PropertiesFile ?: return false
-        return documentsOf(file).unclear
+        return documentsOf(file).isUnclearAt(property.psiElement?.textRange?.startOffset ?: return true)
     }
 
     private fun documentProfileOf(element: PsiElement): String? {
@@ -150,9 +150,14 @@ class PropertyConditionValues(private val module: Module) {
     private class PropertiesDocuments(
         private val boundaries: List<Int>,
         private val profiles: List<String?>,
-        val unclear: Boolean
+        private val unclearDocuments: Set<Int>,
+        private val unclearFile: Boolean
     ) {
-        fun profileAt(offset: Int): String? = profiles[boundaries.count { it <= offset }]
+        fun profileAt(offset: Int): String? = profiles[documentAt(offset)]
+
+        fun isUnclearAt(offset: Int): Boolean = unclearFile || documentAt(offset) in unclearDocuments
+
+        private fun documentAt(offset: Int): Int = boundaries.count { it <= offset }
 
         companion object {
             fun of(file: PropertiesFile): PropertiesDocuments {
@@ -165,15 +170,15 @@ class PropertyConditionValues(private val module: Module) {
                 }
                 val boundaries = separators.map { lines[it].first }
                 val profiles = MutableList<String?>(boundaries.size + 1) { null }
-                file.properties.forEach { property ->
-                    if (property.key in PROFILE_KEYS) {
-                        val document = boundaries.count { it <= property.psiElement.textRange.startOffset }
-                        if (profiles[document] == null) {
-                            profiles[document] = (property as? Property)?.unescapedValue ?: property.value
-                        }
+                val unclearDocuments = mutableSetOf<Int>()
+                file.properties.sortedBy { it.psiElement.textRange.startOffset }.forEach { property ->
+                    val document = boundaries.count { it <= property.psiElement.textRange.startOffset }
+                    when (property.key) {
+                        ON_PROFILE -> profiles[document] = (property as? Property)?.unescapedValue ?: property.value
+                        LEGACY_PROFILES -> unclearDocuments += document
                     }
                 }
-                return PropertiesDocuments(boundaries, profiles, unclear)
+                return PropertiesDocuments(boundaries, profiles, unclearDocuments, unclear)
             }
 
             private fun lineStarts(text: String): List<Pair<Int, String>> {
@@ -199,7 +204,9 @@ class PropertyConditionValues(private val module: Module) {
         const val ESCAPED_PREFIX = "\\\${"
         const val ESCAPED_SEPARATOR = "\\:"
         const val MAX_DEPTH = 8
-        val PROFILE_KEYS = setOf("spring.config.activate.on-profile", "spring.profiles")
+        const val ON_PROFILE = "spring.config.activate.on-profile"
+        const val LEGACY_PROFILES = "spring.profiles"
+        val PROFILE_KEYS = setOf(ON_PROFILE, LEGACY_PROFILES)
         val DOCUMENT_SEPARATORS = setOf("#---", "!---")
     }
 }
