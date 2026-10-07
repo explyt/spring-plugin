@@ -133,7 +133,9 @@
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 
 ### Spring MCP
+
 - feat: Report the declared receiver type of Kotlin extension functions in `explyt_trace_spring_call_chain` nodes, without adding it to `parameters` (#499)
+- fix: `explyt_trace_spring_call_chain` started at a line registering a functional route (`coRouter`, `router`, `RouterFunctions.route()`) begins at the handler method the route references, or for a lambda route at its `@Bean` factory with only that lambda's calls, names the route's verb and path in `route` when they are known, and lists in `testUrlReferences` the test requests to that route's URL (#505)
 - fix: Name companion-object calls by their outer class in Spring MCP call traces (#504)
 - feat: Report `producesSource` for Actuator operations in MCP endpoint listing, lookup and contract responses, distinguishing declared, absent, resource, Boot default and custom endpoint media types (#525)
 - feat: Report an explicitly declared @JoinTable in entity responses with its name, joinColumns and inverseJoinColumns, preserving declaration order and explicit identifier quoting; default join table names are not computed (#507)

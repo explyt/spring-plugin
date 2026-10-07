@@ -45,8 +45,17 @@ internal class CallChainTestReferences(private val module: Module, private val p
      * bundled JetBrains Spring MVC plugin puts one on the MockMvc URL string, so the same request line came back
      * from the reference search too and one test was counted twice.
      */
-    fun of(method: PsiMethod, viaDeclarations: List<PsiMethod>, withUrlReferences: Boolean): NodeTests {
-        val requests = if (withUrlReferences) requestsTo(method) else emptyList()
+    fun of(
+        method: PsiMethod,
+        viaDeclarations: List<PsiMethod>,
+        withUrlReferences: Boolean,
+        route: FunctionalRouteTarget? = null,
+    ): NodeTests {
+        val requests = when {
+            !withUrlReferences -> emptyList()
+            route != null -> requestsTo(route)
+            else -> requestsTo(method)
+        }
         val requestElements = requests.flatMap { it.second }
         val notARequest = { reference: PsiElement -> requestElements.none { isWithin(reference, it) } }
 
@@ -85,6 +94,11 @@ internal class CallChainTestReferences(private val module: Module, private val p
             .map { endpoint ->
                 endpoint.path to EndpointUsageSearcher.findTestRequestUsage(endpoint.path, endpoint.requestMethods, module)
             }
+    }
+
+    private fun requestsTo(route: FunctionalRouteTarget): List<Pair<String, List<PsiElement>>> {
+        val verb = route.verb ?: return emptyList()
+        return route.paths.map { path -> path to EndpointUsageSearcher.findTestRequestUsage(path, listOf(verb), module) }
     }
 
     /** Whether [reference] is part of the request [request] - its URL argument, or anything else inside the call. */
