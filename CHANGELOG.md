@@ -133,6 +133,7 @@
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 
 ### Spring MCP
+- fix: Name companion-object calls by their outer class in Spring MCP call traces (#504)
 - feat: Report `producesSource` for Actuator operations in MCP endpoint listing, lookup and contract responses, distinguishing declared, absent, resource, Boot default and custom endpoint media types (#525)
 - feat: Report an explicitly declared @JoinTable in entity responses with its name, joinColumns and inverseJoinColumns, preserving declaration order and explicit identifier quoting; default join table names are not computed (#507)
 - fix: Report implicit primitive columns and `@Basic(optional = false)` properties as `nullable: false` in `explyt_get_spring_data_entities`; a primitive property with neither `@Column` nor `@Basic` maps to a NOT NULL column, and `@Basic(optional = false)` forces NOT NULL for any type, also over `@Column(nullable = true)`; an optional or bare `@Basic` does not force NOT NULL by itself (#559)
