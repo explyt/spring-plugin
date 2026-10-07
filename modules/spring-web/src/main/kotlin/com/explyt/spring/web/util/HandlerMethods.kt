@@ -9,14 +9,22 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInsight.AnnotationUtil
+import com.intellij.openapi.roots.ProjectRootModificationTracker
+import com.intellij.openapi.util.Key
 import com.intellij.psi.CommonClassNames
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiParameter
+import com.intellij.psi.util.CachedValue
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.MethodSignatureUtil
+import com.intellij.psi.util.PsiModificationTracker
 
 object HandlerMethods {
+
+    private val parameterMethodsKey = Key.create<CachedValue<List<PsiMethod>>>("explyt.web.parameterMethods")
 
     enum class HierarchyOrder { INTERFACES_FIRST, SUPERCLASS_FIRST }
 
@@ -67,8 +75,17 @@ object HandlerMethods {
     private fun parameterHierarchy(parameter: PsiParameter): Sequence<PsiParameter> {
         val method = parameter.declarationScope as? PsiMethod ?: return sequenceOf(parameter)
         val index = method.parameterList.getParameterIndex(parameter).takeIf { it >= 0 } ?: return sequenceOf(parameter)
-        return methodHierarchy(method, HierarchyOrder.INTERFACES_FIRST).mapNotNull { it.parameterList.getParameter(index) }
+        return parameterMethodsOf(method).asSequence().mapNotNull { it.parameterList.getParameter(index) }
     }
+
+    private fun parameterMethodsOf(handler: PsiMethod): List<PsiMethod> =
+        CachedValuesManager.getCachedValue(handler, parameterMethodsKey) {
+            CachedValueProvider.Result.create(
+                methodHierarchy(handler, HierarchyOrder.INTERFACES_FIRST).toList(),
+                PsiModificationTracker.MODIFICATION_COUNT,
+                ProjectRootModificationTracker.getInstance(handler.project),
+            )
+        }
 
     private fun methodHierarchy(handler: PsiMethod, order: HierarchyOrder): Sequence<PsiMethod> {
         val declaringClass = handler.containingClass ?: return sequenceOf(handler)
