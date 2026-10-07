@@ -41,6 +41,10 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
         if (!SpringWebUtil.isSpringWebProject(psiElement.project)) return null
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
+        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
+            val containingClass = psiMethod.containingClass ?: return null
+            if (!SpringWebUtil.isRequestHandlerClass(containingClass)) return null
+        }
         val mappingSource = SpringWebUtil.requestMappingSourceOf(psiMethod) ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)

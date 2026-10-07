@@ -321,6 +321,9 @@ object SpringWebUtil {
         return null
     }
 
+    fun isRequestHandlerClass(psiClass: PsiClass): Boolean =
+        psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER) || psiClass.isMetaAnnotatedBy(SpringWebClasses.FEIGN_CLIENT)
+
     fun requestMappingSourceOf(method: PsiMethod): PsiMethod? = when {
         method.isMetaAnnotatedBy(REQUEST_MAPPING) -> method
         method.isConstructor || method.hasModifierProperty(PsiModifier.STATIC) -> null

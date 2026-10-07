@@ -15,6 +15,43 @@ class InterfacePrefixRunInSwaggerTest : ExplytKotlinLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springWebMvc_6_0_7)
 
+    fun testPlainOverrideOfMappedInterfaceHasNoRunInSwaggerGutter() {
+        myFixture.addFileToProject(
+            "com/example/PetApi.kt", """
+            package com.example
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
+
+            @RequestMapping("/api")
+            interface PetApi {
+                @GetMapping("/pets")
+                fun pets(): String
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/FakePetApi.kt", """
+            package com.example
+
+            class FakePetApi : PetApi {
+                override fun pets(): String = "fake"
+            }
+            """.trimIndent()
+        )
+        val fake = myFixture.findClass("com.example.FakePetApi")
+        val method = fake.findMethodsByName("pets", false).single()
+        assertFalse(fake.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER))
+        assertFalse(fake.isMetaAnnotatedBy(SpringWebClasses.FEIGN_CLIENT))
+        assertFalse(method.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING))
+        val identifier = (method.navigationElement as org.jetbrains.kotlin.psi.KtNamedFunction).nameIdentifier!!
+
+        assertNull(
+            "A plain override of a mapped interface is not a served endpoint",
+            EndpointRunLineMarkerProvider().getInfo(identifier)
+        )
+    }
+
     fun testEndpointRunInSwaggerUsesTheInterfacePrefix() {
         val method = addController().findMethodsByName("apps", false).single()
         val identifier = (method.navigationElement as org.jetbrains.kotlin.psi.KtNamedFunction).nameIdentifier!!
