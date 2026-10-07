@@ -5,6 +5,10 @@
 
 package com.explyt.spring.web.util
 
+import com.explyt.spring.core.service.MetaAnnotationsHolder
+import com.explyt.spring.web.SpringWebClasses
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
+import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.psi.CommonClassNames
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
@@ -14,18 +18,32 @@ import com.intellij.psi.util.MethodSignatureUtil
 
 object HandlerMethods {
 
+    enum class HierarchyOrder { INTERFACES_FIRST, SUPERCLASS_FIRST }
+
     data class MappedMethod(val handler: PsiMethod, val mappingSource: PsiMethod)
 
-    fun mappedMethods(controller: PsiClass, isMapped: (PsiMethod) -> Boolean): List<MappedMethod> =
+    fun mappedMethods(
+        controller: PsiClass,
+        order: HierarchyOrder = HierarchyOrder.INTERFACES_FIRST,
+        isMapped: (PsiMethod) -> Boolean,
+    ): List<MappedMethod> =
         controller.allMethods.asSequence()
             .filter(isMapped)
             .map { mostSpecificMethod(it, controller) to it }
             .distinctBy { (handler, _) -> handler }
-            .map { (handler, mapped) -> MappedMethod(handler, mappingSourceOf(handler, isMapped) ?: mapped) }
+            .map { (handler, mapped) -> MappedMethod(handler, mappingSourceOf(handler, order, isMapped) ?: mapped) }
             .toList()
 
-    fun mappedType(controller: PsiClass, isMapped: (PsiClass) -> Boolean): PsiClass? =
-        typeHierarchy(controller).firstOrNull(isMapped)
+    fun mappedType(
+        controller: PsiClass,
+        order: HierarchyOrder = HierarchyOrder.INTERFACES_FIRST,
+        isMapped: (PsiClass) -> Boolean,
+    ): PsiClass? = typeHierarchy(controller, order).firstOrNull(isMapped)
+
+    fun requestMappingPrefixes(controller: PsiClass, requestMappingMah: MetaAnnotationsHolder): List<String> =
+        mappedType(controller) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+            ?.let { requestMappingMah.getAnnotationMemberValues(it, setOf("path", "value")) }.orEmpty()
+            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
     fun mostSpecificMethod(method: PsiMethod, controller: PsiClass): PsiMethod {
         val overrides = controller.findMethodsByName(method.name, true)
@@ -34,8 +52,11 @@ object HandlerMethods {
             ?: method
     }
 
-    fun mappingSourceOf(handler: PsiMethod, isMapped: (PsiMethod) -> Boolean): PsiMethod? =
-        methodHierarchy(handler).firstOrNull(isMapped)
+    fun mappingSourceOf(
+        handler: PsiMethod,
+        order: HierarchyOrder = HierarchyOrder.INTERFACES_FIRST,
+        isMapped: (PsiMethod) -> Boolean,
+    ): PsiMethod? = methodHierarchy(handler, order).firstOrNull(isMapped)
 
     fun annotatedParameter(parameter: PsiParameter, isAnnotated: (PsiParameter) -> Boolean): PsiParameter? =
         parameterHierarchy(parameter).firstOrNull(isAnnotated)
@@ -46,12 +67,12 @@ object HandlerMethods {
     private fun parameterHierarchy(parameter: PsiParameter): Sequence<PsiParameter> {
         val method = parameter.declarationScope as? PsiMethod ?: return sequenceOf(parameter)
         val index = method.parameterList.getParameterIndex(parameter).takeIf { it >= 0 } ?: return sequenceOf(parameter)
-        return methodHierarchy(method).mapNotNull { it.parameterList.getParameter(index) }
+        return methodHierarchy(method, HierarchyOrder.INTERFACES_FIRST).mapNotNull { it.parameterList.getParameter(index) }
     }
 
-    private fun methodHierarchy(handler: PsiMethod): Sequence<PsiMethod> {
+    private fun methodHierarchy(handler: PsiMethod, order: HierarchyOrder): Sequence<PsiMethod> {
         val declaringClass = handler.containingClass ?: return sequenceOf(handler)
-        return typeHierarchy(declaringClass)
+        return typeHierarchy(declaringClass, order).asSequence()
             .flatMap { type -> if (type == declaringClass) sequenceOf(handler) else overriddenIn(type, handler) }
     }
 
@@ -59,11 +80,23 @@ object HandlerMethods {
         type.findMethodsByName(handler.name, false).asSequence()
             .filter { MethodSignatureUtil.isSuperMethod(it, handler) }
 
-    private fun typeHierarchy(type: PsiClass, visited: MutableSet<PsiClass> = mutableSetOf()): Sequence<PsiClass> =
-        sequence {
-            if (!visited.add(type) || type.qualifiedName == CommonClassNames.JAVA_LANG_OBJECT) return@sequence
-            yield(type)
-            for (superInterface in type.interfaces) yieldAll(typeHierarchy(superInterface, visited))
-            type.superClass?.let { yieldAll(typeHierarchy(it, visited)) }
+    private fun typeHierarchy(type: PsiClass, order: HierarchyOrder): List<PsiClass> {
+        val visited = LinkedHashSet<PsiClass>()
+        fun visit(current: PsiClass) {
+            if (current.qualifiedName == CommonClassNames.JAVA_LANG_OBJECT || !visited.add(current)) return
+            when (order) {
+                HierarchyOrder.INTERFACES_FIRST -> {
+                    current.interfaces.forEach { visit(it) }
+                    current.superClass?.let { visit(it) }
+                }
+
+                HierarchyOrder.SUPERCLASS_FIRST -> {
+                    current.superClass?.let { visit(it) }
+                    current.interfaces.forEach { visit(it) }
+                }
+            }
         }
+        visit(type)
+        return visited.toList()
+    }
 }
