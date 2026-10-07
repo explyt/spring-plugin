@@ -5,6 +5,12 @@
 
 package com.explyt.spring.core.service.conditional
 
+sealed interface ConditionPropertyValue {
+    object Missing : ConditionPropertyValue
+    object Unresolvable : ConditionPropertyValue
+    data class Known(val text: String) : ConditionPropertyValue
+}
+
 data class PropertyConditionSpec(
     val prefix: String,
     val names: List<String>,
@@ -13,9 +19,12 @@ data class PropertyConditionSpec(
 ) {
     val keys: List<String> get() = names.map { "$prefix$it" }
 
-    fun matches(valueOf: (String) -> String?): Boolean = keys.all { key ->
-        val value = valueOf(key)
-        if (value == null) matchIfMissing else isMatch(value)
+    fun matches(valueOf: (String) -> ConditionPropertyValue): Boolean = keys.all { key ->
+        when (val value = valueOf(key)) {
+            ConditionPropertyValue.Missing -> matchIfMissing
+            ConditionPropertyValue.Unresolvable -> true
+            is ConditionPropertyValue.Known -> isMatch(value.text)
+        }
     }
 
     private fun isMatch(value: String): Boolean =
@@ -26,7 +35,7 @@ data class PropertyConditionSpec(
         private const val FALSE = "false"
 
         fun of(prefix: String?, names: List<String>, havingValue: String?, matchIfMissing: Boolean) =
-            PropertyConditionSpec(normalizedPrefix(prefix), names.map { it.trim() }, havingValue.orEmpty(), matchIfMissing)
+            PropertyConditionSpec(normalizedPrefix(prefix), names, havingValue.orEmpty(), matchIfMissing)
 
         private fun normalizedPrefix(prefix: String?): String {
             val trimmed = prefix?.trim().orEmpty()
