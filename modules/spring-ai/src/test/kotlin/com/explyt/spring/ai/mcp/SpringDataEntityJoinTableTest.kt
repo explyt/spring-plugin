@@ -24,6 +24,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.jakarta_persistence_3_1_0,
+        TestLibrary.javax_persistence_2_2,
     )
 
     private val toolset = SpringBootApplicationMcpToolset()
@@ -173,6 +174,105 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
 
         assertEquals(
             json("""{"name":"nurse_specialties","joinColumns":[{"name":"nurse_id"}],"inverseJoinColumns":[{"name":"specialty_id"}]}"""),
+            joinTableOf(specialties)
+        )
+    }
+
+    fun testAJoinTableWithOnlyANameEmitsEmptyColumnArrays() = runBlocking<Unit> {
+        addSpecialtyEntity()
+        myFixture.addFileToProject(
+            "com/example/vets/NamedOnly.java", """
+            package com.example.vets;
+
+            import java.util.Set;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinTable;
+            import jakarta.persistence.ManyToMany;
+
+            @Entity
+            public class NamedOnly {
+                @Id
+                private Long id;
+
+                @ManyToMany
+                @JoinTable(name = "named_only_specialties")
+                private Set<Specialty> specialties;
+            }
+            """.trimIndent()
+        )
+
+        val specialties = relationshipField("com.example.vets.NamedOnly", "specialties", "MANY_TO_MANY")
+
+        assertEquals(
+            json("""{"name":"named_only_specialties","joinColumns":[],"inverseJoinColumns":[]}"""),
+            joinTableOf(specialties)
+        )
+    }
+
+    fun testJoinColumnsWithoutNamesCarryNullNamesAndNoQuotedFlags() = runBlocking<Unit> {
+        addSpecialtyEntity()
+        myFixture.addFileToProject(
+            "com/example/vets/UnnamedColumns.java", """
+            package com.example.vets;
+
+            import java.util.Set;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinColumn;
+            import jakarta.persistence.JoinTable;
+            import jakarta.persistence.ManyToMany;
+
+            @Entity
+            public class UnnamedColumns {
+                @Id
+                private Long id;
+
+                @ManyToMany
+                @JoinTable(name = "unnamed_specialties", joinColumns = @JoinColumn,
+                        inverseJoinColumns = @JoinColumn)
+                private Set<Specialty> specialties;
+            }
+            """.trimIndent()
+        )
+
+        val specialties = relationshipField("com.example.vets.UnnamedColumns", "specialties", "MANY_TO_MANY")
+
+        assertEquals(
+            json("""{"name":"unnamed_specialties","joinColumns":[{"name":null}],"inverseJoinColumns":[{"name":null}]}"""),
+            joinTableOf(specialties)
+        )
+    }
+
+    fun testJavaxJoinTableIsReportedLikeJakartaJoinTable() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/vets/LegacySpecialty.java", """
+            package com.example.vets;
+
+            import java.util.Set;
+            import javax.persistence.Entity;
+            import javax.persistence.Id;
+            import javax.persistence.JoinColumn;
+            import javax.persistence.JoinTable;
+            import javax.persistence.ManyToMany;
+
+            @Entity
+            public class LegacySpecialty {
+                @Id
+                private Long id;
+
+                @ManyToMany
+                @JoinTable(name = "legacy_specialties", joinColumns = @JoinColumn(name = "vet_id"),
+                        inverseJoinColumns = @JoinColumn(name = "specialty_id"))
+                private Set<LegacySpecialty> specialties;
+            }
+            """.trimIndent()
+        )
+
+        val specialties = relationshipField("com.example.vets.LegacySpecialty", "specialties", "MANY_TO_MANY")
+
+        assertEquals(
+            json("""{"name":"legacy_specialties","joinColumns":[{"name":"vet_id"}],"inverseJoinColumns":[{"name":"specialty_id"}]}"""),
             joinTableOf(specialties)
         )
     }
