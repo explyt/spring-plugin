@@ -321,6 +321,13 @@ object SpringWebUtil {
         return null
     }
 
+    fun requestMappingSourceOf(method: PsiMethod): PsiMethod? = when {
+        method.isMetaAnnotatedBy(REQUEST_MAPPING) -> method
+        method.isConstructor || method.hasModifierProperty(PsiModifier.STATIC) -> null
+        method.findSuperMethods().isEmpty() -> null
+        else -> HandlerMethods.mappingSourceOf(method) { it.isMetaAnnotatedBy(REQUEST_MAPPING) }
+    }
+
     fun getEndpointInfo(uMethod: UMethod, prefix: String = ""): EndpointInfo? {
         ProgressManager.checkCanceled()
 
@@ -328,8 +335,7 @@ object SpringWebUtil {
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        val mappingSource = HandlerMethods.mappingSourceOf(psiMethod) { it.isMetaAnnotatedBy(REQUEST_MAPPING) }
-            ?: return null
+        val mappingSource = requestMappingSourceOf(psiMethod) ?: return null
         val psiClass = psiMethod.containingClass ?: return null
         val controllerName = psiClass.name ?: return null
 
