@@ -133,6 +133,7 @@
 - fix: Inject the regular expression of a `@RequestMapping` path built by concatenation into the literal that actually contains it
 
 ### Spring MCP
+- fix: Name companion-object calls by their outer class in Spring MCP call traces (#504)
 - feat: Report an explicitly declared @JoinTable in entity responses with its name, joinColumns and inverseJoinColumns, preserving declaration order and explicit identifier quoting; default join table names are not computed (#507)
 - fix: Report implicit primitive columns and `@Basic(optional = false)` properties as `nullable: false` in `explyt_get_spring_data_entities`; a primitive property with neither `@Column` nor `@Basic` maps to a NOT NULL column, and `@Basic(optional = false)` forces NOT NULL for any type, also over `@Column(nullable = true)`; an optional or bare `@Basic` does not force NOT NULL by itself (#559)
 - fix: `explyt_get_spring_endpoint_contract` describes a non-generic library response type such as `/actuator/loggers`'s `LoggersDescriptor` by its getters instead of `responseSchema: null`, and marks a library type it does not expand with `schemaOmitted` (`LIBRARY_INFRASTRUCTURE`, `ABSTRACT_TYPE`, `JSON_TREE`, `CUSTOM_SERIALIZATION`, `MAP_TYPE`, `COLLECTION_TYPE`, `NO_VISIBLE_PROPERTIES`); a `ProblemDetail` lists its RFC 9457 members with `additionalProperties: true` (#556)
