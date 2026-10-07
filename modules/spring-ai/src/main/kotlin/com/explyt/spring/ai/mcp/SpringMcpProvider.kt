@@ -24,6 +24,7 @@ import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointPathPatterns
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
@@ -779,7 +780,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         stack: WebApplicationStack?,
     ): List<EndpointParameterJson> =
         HandlerSignature.requestParameters(psiMethod)
-            .filter { param -> COLLECTED_BINDING_ANNOTATIONS.none { param.isMetaAnnotatedBy(it) } }
+            .filter { param ->
+                COLLECTED_BINDING_ANNOTATIONS.none { binding ->
+                    HandlerMethods.annotatedParameter(param) { it.isMetaAnnotatedBy(binding) } != null
+                }
+            }
             .map { param ->
                 EndpointParameterJson(
                     name = wireNameOf(param),
@@ -1150,9 +1155,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         if (uHandler == null || module == null) return MediaTypes(emptyList(), emptyList())
         val mah = SpringSearchService.getInstance(project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
+        val mapping = HandlerMethods.mappingSourceOf(uHandler.javaPsi) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+            ?.toUElement() as? UMethod ?: uHandler
         return MediaTypes(
-            produces = mah.getAnnotationValues(uHandler, setOf("produces")).mapNotNull { it.evaluateString() },
-            consumes = mah.getAnnotationValues(uHandler, setOf("consumes")).mapNotNull { it.evaluateString() },
+            produces = mah.getAnnotationValues(mapping, setOf("produces")).mapNotNull { it.evaluateString() },
+            consumes = mah.getAnnotationValues(mapping, setOf("consumes")).mapNotNull { it.evaluateString() },
         )
     }
 
