@@ -277,6 +277,32 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testAJoinTableOnANonRelationshipFieldIsIgnored() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "com/example/vets/StrayJoinTable.java", """
+            package com.example.vets;
+
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.JoinTable;
+
+            @Entity
+            public class StrayJoinTable {
+                @Id
+                private Long id;
+
+                @JoinTable(name = "stray")
+                private String value;
+            }
+            """.trimIndent()
+        )
+
+        val value = field(fieldsOf("com.example.vets.StrayJoinTable"), "value")
+
+        assertNull("Precondition: a basic field must have no relationship, got $value", value["relationship"]?.takeUnless { it.isNull })
+        assertFalse("A non-relationship @JoinTable must be ignored, got $value", value.has("joinTable"))
+    }
+
     fun testAnInverseManyToManyWithoutJoinTableReportsOnlyMappedBy() = runBlocking<Unit> {
         myFixture.addFileToProject(
             "com/example/vets/Specialty.java", """

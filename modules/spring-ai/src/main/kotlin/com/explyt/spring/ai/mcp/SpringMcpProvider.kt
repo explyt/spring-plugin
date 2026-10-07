@@ -1745,7 +1745,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
             joinColumn = joinColumn?.name,
             joinColumnQuoted = joinColumn?.quotedOrNull,
             mappedBy = mappedBy,
-            joinTable = field.findFirstAnnotation(JpaClasses.JOIN_TABLE.allFqns)?.let(::toEntityJoinTable),
+            joinTable = relationshipAnnotation?.let {
+                field.findFirstAnnotation(JpaClasses.JOIN_TABLE.allFqns)?.let(::toEntityJoinTable)
+            },
         )
     }
 
