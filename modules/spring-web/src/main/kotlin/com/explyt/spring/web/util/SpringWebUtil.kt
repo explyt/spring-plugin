@@ -127,16 +127,12 @@ object SpringWebUtil {
     fun collectRequestParameters(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) }
         val mahRequestParam = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_PARAM)
 
         val requestParamInfos = mutableListOf<PathArgumentInfo>()
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahRequestParam.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahRequestParam.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
@@ -185,16 +181,12 @@ object SpringWebUtil {
     fun collectRequestHeaders(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_HEADER) }
         val mahRequestHeader = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_HEADER)
 
         val requestParamInfos = mutableListOf<PathArgumentInfo>()
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahRequestHeader.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahRequestHeader.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
@@ -243,16 +235,12 @@ object SpringWebUtil {
     fun collectPathVariables(psiMethod: PsiMethod): Collection<PathArgumentInfo> {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return emptyList()
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.PATH_VARIABLE) }
         val mahPathVariable = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.PATH_VARIABLE)
 
         val pathVariableInfos = mutableListOf<PathArgumentInfo>()
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahPathVariable.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahPathVariable.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
@@ -307,15 +295,11 @@ object SpringWebUtil {
     fun getRequestBodyInfo(psiMethod: PsiMethod): PathArgumentInfo? {
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        val annotatedParams = psiMethod.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_BODY) }
         val mahRequestBody = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_BODY)
 
-        for (param in annotatedParams) {
-            val annotation = param.annotations.firstOrNull {
-                mahRequestBody.contains(it)
-            } ?: continue
+        for (param in psiMethod.parameterList.parameters) {
+            val annotation = HandlerMethods.bindingAnnotationOf(param) { mahRequestBody.contains(it) } ?: continue
 
             val paramType = param.type
             val isMap = paramType.isMapWithStringKey()
@@ -344,24 +328,25 @@ object SpringWebUtil {
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(REQUEST_MAPPING)) return null
+        val mappingSource = HandlerMethods.mappingSourceOf(psiMethod) { it.isMetaAnnotatedBy(REQUEST_MAPPING) }
+            ?: return null
         val psiClass = psiMethod.containingClass ?: return null
         val controllerName = psiClass.name ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, REQUEST_MAPPING)
-        val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
+        val path = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("path", "value")).asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .firstOrNull() ?: ""
         if (isAbsolutePath(path)) return null
-        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
+        val produces = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("produces"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
+        val consumes = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("consumes"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
         val fullPath = simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/${removeParams(path)}"))
 
         val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
+            requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("method"))
                 .map { it.text.split('.').last() }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""

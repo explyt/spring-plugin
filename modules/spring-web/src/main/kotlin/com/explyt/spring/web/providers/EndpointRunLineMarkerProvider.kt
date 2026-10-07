@@ -27,6 +27,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
+import com.explyt.spring.web.util.HandlerMethods
 import com.intellij.psi.PsiMethod
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.getUParentForIdentifier
@@ -89,18 +90,20 @@ class EndpointRunLineMarkerProvider : RunLineMarkerContributor() {
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiMethod) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
+        val mappingSource = HandlerMethods.mappingSourceOf(psiMethod) {
+            it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)
+        } ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
-        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
+        val produces = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("produces"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
+        val consumes = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("consumes"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
         val fullPath = SpringWebUtil.simplifyUrl(removeParams(apiPath))
 
         val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
+            requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("method"))
                 .map { it.text.split('.').last() }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""

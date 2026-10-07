@@ -6,8 +6,10 @@
 package com.explyt.spring.web.util
 
 import com.intellij.psi.CommonClassNames
+import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiParameter
 import com.intellij.psi.util.MethodSignatureUtil
 
 object HandlerMethods {
@@ -32,11 +34,25 @@ object HandlerMethods {
             ?: method
     }
 
-    fun mappingSourceOf(handler: PsiMethod, isMapped: (PsiMethod) -> Boolean): PsiMethod? {
-        val declaringClass = handler.containingClass ?: return handler.takeIf(isMapped)
+    fun mappingSourceOf(handler: PsiMethod, isMapped: (PsiMethod) -> Boolean): PsiMethod? =
+        methodHierarchy(handler).firstOrNull(isMapped)
+
+    fun annotatedParameter(parameter: PsiParameter, isAnnotated: (PsiParameter) -> Boolean): PsiParameter? =
+        parameterHierarchy(parameter).firstOrNull(isAnnotated)
+
+    fun bindingAnnotationOf(parameter: PsiParameter, isBinding: (PsiAnnotation) -> Boolean): PsiAnnotation? =
+        parameterHierarchy(parameter).firstNotNullOfOrNull { candidate -> candidate.annotations.firstOrNull(isBinding) }
+
+    private fun parameterHierarchy(parameter: PsiParameter): Sequence<PsiParameter> {
+        val method = parameter.declarationScope as? PsiMethod ?: return sequenceOf(parameter)
+        val index = method.parameterList.getParameterIndex(parameter).takeIf { it >= 0 } ?: return sequenceOf(parameter)
+        return methodHierarchy(method).mapNotNull { it.parameterList.getParameter(index) }
+    }
+
+    private fun methodHierarchy(handler: PsiMethod): Sequence<PsiMethod> {
+        val declaringClass = handler.containingClass ?: return sequenceOf(handler)
         return typeHierarchy(declaringClass)
             .flatMap { type -> if (type == declaringClass) sequenceOf(handler) else overriddenIn(type, handler) }
-            .firstOrNull(isMapped)
     }
 
     private fun overriddenIn(type: PsiClass, handler: PsiMethod): Sequence<PsiMethod> =
