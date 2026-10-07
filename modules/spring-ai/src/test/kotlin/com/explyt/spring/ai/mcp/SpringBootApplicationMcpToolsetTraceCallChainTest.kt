@@ -393,6 +393,25 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertTrue("A direct reference has no interface via", reference["via"] == null || reference["via"].isNull)
     }
 
+    fun testClassNestedInCompanionKeepsItsOwnName() = runBlocking {
+        val chain = traceCompanion("classInCompanionParse")
+        val call = companionCall(chain, "parse")
+        assertEquals("Nested.parse", call["target"].asText())
+        assertTrue(call["node"].isIntegralNumber)
+        val node = chain.single { it["id"].asInt() == call["node"].asInt() }
+        assertEquals("explyt.trace.Owner.Companion.Nested", node["className"].asText())
+    }
+
+    fun testJavaJvmStaticAndCompanionCallsKeepDistinctNodes() = runBlocking {
+        val chain = traceCompanion("bothStaticParsers", javaCaller = true)
+        val calls = chain[0]["callsInto"].toList()
+        assertEquals(listOf("StaticVmId.parse", "StaticVmId.parse"), calls.map { it["target"].asText() })
+        assertTrue(calls.all { it["node"].isIntegralNumber })
+        assertEquals(2, calls.map { it["node"].asInt() }.distinct().size)
+        val nodes = calls.map { call -> chain.single { it["id"].asInt() == call["node"].asInt() } }
+        assertEquals(setOf("explyt.trace.StaticVmId", "explyt.trace.StaticVmId.Companion"), nodes.map { it["className"].asText() }.toSet())
+    }
+
     private fun companionCall(chain: JsonNode, methodName: String): JsonNode {
         val calls = chain[0]["callsInto"].filter { it["target"].asText().endsWith(".$methodName") }
         assertEquals("The $methodName call must be present in callsInto: ${chain[0]}", 1, calls.size)
@@ -442,7 +461,15 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
                     fun parse(raw: String): String = raw
                 }
             }
+            class Owner {
+                companion object {
+                    class Nested {
+                        fun parse(raw: String): String = raw
+                    }
+                }
+            }
             class IdService {
+                fun classInCompanionParse(raw: String): String = Owner.Companion.Nested().parse(raw)
                 fun kotlinParse(raw: String): String = VmId.parse(raw)
                 fun namedFactory(raw: String): String = FactoryVmId.of(raw)
                 fun objectParse(raw: String): String = IdFormat.parse(raw)
@@ -457,6 +484,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
             public class JavaIdService {
                 public String javaStaticParse(String raw) { return StaticVmId.parse(raw); }
                 public String javaCompanionParse(String raw) { return StaticVmId.Companion.parse(raw); }
+                public String bothStaticParsers(String raw) { return StaticVmId.parse(raw) + StaticVmId.Companion.parse(raw); }
             }
         """.trimIndent()
         ModuleRootModificationUtil.updateModel(myFixture.module) { model ->
