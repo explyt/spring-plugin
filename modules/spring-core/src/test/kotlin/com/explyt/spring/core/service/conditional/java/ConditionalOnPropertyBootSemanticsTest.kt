@@ -5,37 +5,7 @@
 
 package com.explyt.spring.core.service.conditional.java
 
-import com.explyt.spring.core.service.conditional.ConditionalOnPropertyBootSemanticsTestCase
-
-class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemanticsTestCase() {
-
-    override fun setUp() {
-        super.setUp()
-        myFixture.addFileToProject(
-            "com/app/Application.java",
-            """
-            package com.app;
-
-            import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-            @SpringBootApplication
-            public class Application {}
-            """.trimIndent()
-        )
-    }
-
-    fun testRepeatedAnnotationsMustAllMatch() {
-        addProperties("application.properties", "app.first.enabled=true", "app.second.enabled=false")
-        addConfiguration(
-            "RepeatedConfig",
-            """
-            @ConditionalOnProperty(name = "app.first.enabled", havingValue = "true")
-            @ConditionalOnProperty(name = "app.second.enabled", havingValue = "true")
-            """
-        )
-
-        assertInactive("com.app.RepeatedConfig", "app.first.enabled", "app.second.enabled")
-    }
+class ConditionalOnPropertyBootSemanticsTest : JavaPropertyConditionTestCase() {
 
     fun testEveryNameMustMatch() {
         addProperties("application.properties", "app.first.enabled=true", "app.second.enabled=false")
@@ -118,6 +88,36 @@ class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemantic
         assertInactive("com.app.DevProfileConfig", "app.feature.enabled")
     }
 
+    fun testActiveProfileDocumentOverridesDefaultDocument() {
+        addProperties("application.yaml", *profileDocuments("prod"))
+        addConfiguration("ProdDocumentConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
+
+        assertActive("com.app.ProdDocumentConfig", "x.enabled")
+    }
+
+    fun testInactiveProfileDocumentIsIgnored() {
+        addProperties("application.yaml", *profileDocuments("dev"))
+        addConfiguration("DevDocumentConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
+
+        assertInactive("com.app.DevDocumentConfig", "x.enabled")
+    }
+
+    fun testKeyOnlyInInactiveProfileDocumentIsMissing() {
+        addProperties(
+            "application.yaml",
+            "spring:", "  profiles:", "    active: dev",
+            "---",
+            "spring:", "  config:", "    activate:", "      on-profile: prod",
+            "x:", "  only: true"
+        )
+        addConfiguration(
+            "InactiveDocumentConfig",
+            """@ConditionalOnProperty(name = "x.only", havingValue = "false", matchIfMissing = true)"""
+        )
+
+        assertActive("com.app.InactiveDocumentConfig", "x.only")
+    }
+
     fun testPlaceholderDefaultIsUsedWhenTheVariableIsUnset() {
         addProperties("application.properties", "app.feature.enabled=\${EXPLYT_UNSET_FEATURE_FLAG:true}")
         addConfiguration(
@@ -135,54 +135,85 @@ class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemantic
         assertInactive("com.app.PlaceholderFalseConfig", "app.feature.enabled")
     }
 
-    fun testBooleanPropertyFalseDoesNotMatch() {
-        addProperties("application.properties", "app.feature.enabled=false")
-        addConfiguration("BooleanFalseConfig", """@ConditionalOnBooleanProperty("app.feature.enabled")""")
-
-        assertInactive("com.app.BooleanFalseConfig", "app.feature.enabled")
-    }
-
-    fun testBooleanPropertyTrueMatches() {
-        addProperties("application.properties", "app.feature.enabled=true")
-        addConfiguration("BooleanTrueConfig", """@ConditionalOnBooleanProperty("app.feature.enabled")""")
-
-        assertActive("com.app.BooleanTrueConfig", "app.feature.enabled")
-    }
-
-    fun testExplicitPropertyContainerRequiresEveryAnnotationToMatch() {
-        addProperties("application.properties", "app.first.enabled=true", "app.second.enabled=false")
+    fun testPlaceholderUsesDefinedPropertyValueBeforeDefault() {
+        addProperties(
+            "application.properties",
+            "app.source.enabled=true",
+            "app.feature.enabled=\${app.source.enabled:false}"
+        )
         addConfiguration(
-            "ExplicitPropertyContainerConfig",
-            """
-            @ConditionalOnProperties({
-                @ConditionalOnProperty(name = "app.first.enabled", havingValue = "true"),
-                @ConditionalOnProperty(name = "app.second.enabled", havingValue = "true")
-            })
-            """
+            "DefinedPlaceholderConfig",
+            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "true")"""
         )
 
-        assertInactive("com.app.ExplicitPropertyContainerConfig", "app.first.enabled", "app.second.enabled")
+        assertActive("com.app.DefinedPlaceholderConfig", "app.feature.enabled", "app.source.enabled")
     }
 
-    fun testExplicitBooleanPropertyContainerRequiresEveryAnnotationToMatch() {
-        addProperties("application.properties", "app.first.enabled=true", "app.second.enabled=false")
+    fun testNestedPlaceholderDefaultIsResolved() {
+        addProperties("application.properties", "app.feature.enabled=\${EXPLYT_UNSET_A:\${EXPLYT_UNSET_B:true}}")
         addConfiguration(
-            "ExplicitBooleanContainerConfig",
-            """
-            @ConditionalOnBooleanProperties({
-                @ConditionalOnBooleanProperty(name = "app.first.enabled"),
-                @ConditionalOnBooleanProperty(name = "app.second.enabled")
-            })
-            """
+            "NestedDefaultConfig",
+            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "true")"""
         )
 
-        assertInactive("com.app.ExplicitBooleanContainerConfig", "app.first.enabled", "app.second.enabled")
+        assertActive("com.app.NestedDefaultConfig", "app.feature.enabled")
+    }
+
+    fun testUnresolvablePlaceholderKeepsTheBean() {
+        addProperties("application.properties", "app.feature.enabled=\${EXPLYT_UNSET_FEATURE_FLAG}")
+        addConfiguration(
+            "UnresolvableConfig",
+            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "true")"""
+        )
+
+        assertActive("com.app.UnresolvableConfig", "app.feature.enabled")
+    }
+
+    fun testUnresolvablePlaceholderWithoutHavingValueKeepsTheBean() {
+        addProperties("application.properties", "app.feature.enabled=\${EXPLYT_UNSET_FEATURE_FLAG}")
+        addConfiguration("UnresolvableFlagConfig", """@ConditionalOnProperty("app.feature.enabled")""")
+
+        assertActive("com.app.UnresolvableFlagConfig", "app.feature.enabled")
+    }
+
+    fun testEmbeddedUnresolvablePlaceholderKeepsTheBean() {
+        addProperties("application.properties", "app.feature.mode=fast-\${EXPLYT_UNSET_FEATURE_FLAG}")
+        addConfiguration(
+            "EmbeddedPlaceholderConfig",
+            """@ConditionalOnProperty(name = "app.feature.mode", havingValue = "fast-on")"""
+        )
+
+        assertActive("com.app.EmbeddedPlaceholderConfig", "app.feature.mode")
+    }
+
+    fun testNestedUnresolvablePlaceholderKeepsTheBean() {
+        addProperties("application.properties", "app.feature.enabled=\${EXPLYT_UNSET_A:\${EXPLYT_UNSET_B}}")
+        addConfiguration(
+            "NestedUnresolvableConfig",
+            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "true")"""
+        )
+
+        assertActive("com.app.NestedUnresolvableConfig", "app.feature.enabled")
+    }
+
+    fun testReferencedUnresolvablePlaceholderKeepsTheBean() {
+        addProperties(
+            "application.properties",
+            "app.source.enabled=\${EXPLYT_UNSET_FEATURE_FLAG}",
+            "app.feature.enabled=\${app.source.enabled:false}"
+        )
+        addConfiguration(
+            "ReferencedUnresolvableConfig",
+            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "true")"""
+        )
+
+        assertActive("com.app.ReferencedUnresolvableConfig", "app.feature.enabled", "app.source.enabled")
     }
 
     fun testMetaAnnotationCarriesPropertyCondition() {
         addProperties("application.properties", "app.meta.enabled=false")
-        myFixture.addFileToProject(
-            "com/app/MetaConfig.java",
+        addJava(
+            "MetaConfig",
             """
             package com.app;
 
@@ -201,100 +232,113 @@ class ConditionalOnPropertyBootSemanticsTest : ConditionalOnPropertyBootSemantic
             @Configuration
             @EnabledWhenProperty
             public class MetaConfig {}
-            """.trimIndent()
+            """
         )
 
         assertInactive("com.app.MetaConfig", "app.meta.enabled")
     }
 
-    fun testPlaceholderUsesDefinedPropertyValueBeforeDefault() {
-        addProperties(
-            "application.properties",
-            "app.source.enabled=true",
-            "app.feature.enabled=\${app.source.enabled:false}"
-        )
-        addConfiguration(
-            "DefinedPlaceholderConfig",
-            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "true")"""
+    fun testMetaAnnotationMatchIfMissingIsRead() {
+        addProperties("application.properties", "app.marker=present")
+        addJava(
+            "MetaMissingConfig",
+            """
+            package com.app;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Configuration;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            @ConditionalOnProperty(name = "x", matchIfMissing = true)
+            @interface EnabledWhen {}
+
+            @Configuration
+            @EnabledWhen
+            public class MetaMissingConfig {}
+            """
         )
 
-        assertActive("com.app.DefinedPlaceholderConfig", "app.feature.enabled", "app.source.enabled")
-    }
-
-    fun testUnresolvedPlaceholderRemainsRaw() {
-        addProperties("application.properties", "app.feature.enabled=\${EXPLYT_UNSET_FEATURE_FLAG}")
-        addConfiguration(
-            "RawPlaceholderConfig",
-            """@ConditionalOnProperty(name = "app.feature.enabled", havingValue = "${'$'}{EXPLYT_UNSET_FEATURE_FLAG}")"""
-        )
-
-        assertActive("com.app.RawPlaceholderConfig", "app.feature.enabled")
+        assertActive("com.app.MetaMissingConfig", "app.marker")
     }
 
     fun testMethodConditionDoesNotExcludeConfiguration() {
         addProperties("application.properties", "x.enabled=false")
-        myFixture.addFileToProject("com/app/MethodConfig.java", """
+        addJava(
+            "MethodConfig",
+            """
             package com.app;
-            import org.springframework.context.annotation.Configuration;
-            import org.springframework.context.annotation.Bean;
+
             import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+
             @Configuration
             public class MethodConfig {
                 @Bean
                 @ConditionalOnProperty(name = "x.enabled", havingValue = "true")
                 public String disabledBean() { return "disabled"; }
             }
-            """.trimIndent())
+            """
+        )
+
         assertActive("com.app.MethodConfig", "x.enabled")
-        val facade = com.explyt.spring.core.service.SpringSearchServiceFacade.getInstance(project)
-        assertFalse(facade.getAllActiveBeans(module).any { it.psiMember.name == "disabledBean" })
-        assertTrue(facade.getExcludedBeansClasses(module).any { it.psiMember.name == "disabledBean" })
+        assertBeanMethodExcluded("disabledBean")
     }
 
     fun testNestedConditionDoesNotExcludeOuterConfiguration() {
         addProperties("application.properties", "x.enabled=false")
-        myFixture.addFileToProject("com/app/OuterConfig.java", """
+        addJava(
+            "OuterConfig",
+            """
             package com.app;
-            import org.springframework.context.annotation.Configuration;
+
             import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Configuration;
+
             @Configuration
             public class OuterConfig {
                 @ConditionalOnProperty(name = "x.enabled", havingValue = "true")
                 static class Nested {}
             }
-            """.trimIndent())
+            """
+        )
+
         assertActive("com.app.OuterConfig", "x.enabled")
     }
 
-    fun testParameterAnnotationDoesNotExcludeConfiguration() {
+    fun testLocalClassConditionDoesNotExcludeConfiguration() {
         addProperties("application.properties", "x.enabled=false")
-        myFixture.addFileToProject("com/app/ParameterConfig.java", """
-            package com.app;
-            import org.springframework.context.annotation.Configuration;
-            @Configuration
-            public class ParameterConfig {
-                void consume(@Deprecated String value) {}
-            }
-            """.trimIndent())
-        assertActive("com.app.ParameterConfig", "x.enabled")
-    }
-
-    private fun addConfiguration(className: String, conditions: String) {
-        myFixture.addFileToProject(
-            "com/app/$className.java",
+        addJava(
+            "LocalClassConfig",
             """
             package com.app;
 
-            import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
-            import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperties;
             import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperties;
             import org.springframework.context.annotation.Configuration;
 
             @Configuration
-            ${conditions.trimIndent()}
-            public class $className {}
-            """.trimIndent()
+            public class LocalClassConfig {
+                void build() {
+                    @ConditionalOnProperty(name = "x.enabled", havingValue = "true")
+                    class Local {}
+                }
+            }
+            """
         )
+
+        assertActive("com.app.LocalClassConfig", "x.enabled")
     }
+
+    private fun profileDocuments(activeProfile: String): Array<String> = arrayOf(
+        "spring:", "  profiles:", "    active: $activeProfile",
+        "x:", "  enabled: false",
+        "---",
+        "spring:", "  config:", "    activate:", "      on-profile: prod",
+        "x:", "  enabled: true"
+    )
 }

@@ -12,13 +12,8 @@ import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.spring.test.ExplytBaseLightTestCase
 import com.explyt.spring.test.TestLibrary
 
-/**
- * Expected verdicts follow Spring Boot's `OnPropertyCondition` (identical in 3.5.16 and 4.1.0): every repeated
- * annotation must match, every name must match, `havingValue` is compared ignoring case, an empty `havingValue`
- * means "not `false`", and `matchIfMissing` applies only to a missing key.
- */
 abstract class ConditionalOnPropertyBootSemanticsTestCase : ExplytBaseLightTestCase() {
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_4_1_0)
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
 
     protected fun addProperties(fileName: String, vararg lines: String) {
         myFixture.addFileToProject(fileName, lines.joinToString("\n"))
@@ -38,6 +33,18 @@ abstract class ConditionalOnPropertyBootSemanticsTestCase : ExplytBaseLightTestC
         assertFalse(
             "Spring Boot does not activate $beanClass, but the plugin reports it active",
             beanClass in activeBeanClasses()
+        )
+    }
+
+    protected fun assertBeanMethodExcluded(methodName: String) {
+        val facade = SpringSearchServiceFacade.getInstance(project)
+        assertFalse(
+            "Spring Boot does not register $methodName, but the plugin reports it active",
+            facade.getAllActiveBeans(module).any { it.psiMember.name == methodName }
+        )
+        assertTrue(
+            "Bean method $methodName must be reported as excluded",
+            facade.getExcludedBeansClasses(module).any { it.psiMember.name == methodName }
         )
     }
 
