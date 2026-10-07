@@ -57,7 +57,7 @@ class FoldedPropertyValue(
                 .firstOrNull()
         }
 
-        private fun profileOf(sourceFile: String): String? = DefinedConfigurationPropertiesSearch.fileMask
+        fun profileOf(sourceFile: String): String? = DefinedConfigurationPropertiesSearch.fileMask
             .matchEntire(sourceFile)
             ?.groupValues
             ?.get(1)

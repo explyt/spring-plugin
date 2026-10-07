@@ -88,6 +88,11 @@ object SpringCoreClasses {
     const val CONDITIONAL_ON_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnClass"
     const val CONDITIONAL_ON_MISSING_CLASS = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass"
     const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
+    const val CONDITIONAL_ON_PROPERTIES = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperties"
+    const val CONDITIONAL_ON_BOOLEAN_PROPERTY =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty"
+    const val CONDITIONAL_ON_BOOLEAN_PROPERTIES =
+        "org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperties"
     const val CONDITIONAL_ON_WEB_APPLICATION =
         "org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication"
 
