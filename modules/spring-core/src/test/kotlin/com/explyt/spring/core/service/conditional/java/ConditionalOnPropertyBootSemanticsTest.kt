@@ -334,6 +334,37 @@ class ConditionalOnPropertyBootSemanticsTest : JavaPropertyConditionTestCase() {
         assertActive("com.app.LocalClassConfig", "x.enabled")
     }
 
+    fun testEscapedPlaceholderIsLiteral() {
+        addProperties("application.properties", "x.enabled=\\\\${'$'}{A}")
+        addConfiguration("EscapedLiteralConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "${'$'}{A}")""")
+        assertActive("com.app.EscapedLiteralConfig", "x.enabled")
+    }
+
+    fun testEscapedPlaceholderDoesNotMatchTrue() {
+        addProperties("application.properties", "x.enabled=\\\\${'$'}{A}")
+        addConfiguration("EscapedPlaceholderConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
+        assertInactive("com.app.EscapedPlaceholderConfig", "x.enabled")
+    }
+
+    fun testActivePropertiesDocumentOverridesDefaultDocument() {
+        addProperties("application.properties", "x.enabled=false", "#---", "spring.config.activate.on-profile=prod", "x.enabled=true")
+        addProperties("application-prod.properties", "spring.profiles.active=prod")
+        addConfiguration("PropertiesDocumentConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
+        assertActive("com.app.PropertiesDocumentConfig", "x.enabled")
+    }
+
+    fun testInactivePropertiesDocumentIsIgnored() {
+        addProperties("application.properties", "spring.profiles.active=dev", "x.enabled=false", "#---", "spring.config.activate.on-profile=prod", "x.enabled=true")
+        addConfiguration("InactivePropertiesDocumentConfig", """@ConditionalOnProperty(name = "x.enabled", havingValue = "true")""")
+        assertInactive("com.app.InactivePropertiesDocumentConfig", "x.enabled")
+    }
+
+    fun testKeyOnlyInInactivePropertiesDocumentIsMissing() {
+        addProperties("application.properties", "spring.profiles.active=dev", "#---", "spring.config.activate.on-profile=prod", "x.only=true")
+        addConfiguration("InactivePropertiesMissingConfig", """@ConditionalOnProperty(name = "x.only", havingValue = "false", matchIfMissing = true)""")
+        assertActive("com.app.InactivePropertiesMissingConfig", "x.only")
+    }
+
     private fun profileDocuments(activeProfile: String): Array<String> = arrayOf(
         "spring:", "  profiles:", "    active: $activeProfile",
         "x:", "  enabled: false",
