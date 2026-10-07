@@ -9,6 +9,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.WebEeClasses
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -18,6 +19,9 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiModifier
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.searches.ClassInheritorsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 
@@ -56,6 +60,7 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
 
         for (annotation in httpMethodAnnotations) {
             val classes = searchAnnotatedMethods(annotation, module).mapNotNull { it.containingClass }
+                .flatMap { resourceClassesOf(it, module) }
 
             for (psiClass in classes) {
                 val classFqn = psiClass.qualifiedName ?: continue
@@ -69,27 +74,42 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
         return endpoints
     }
 
+    private fun resourceClassesOf(annotatedClass: PsiClass, module: Module): List<PsiClass> {
+        if (!annotatedClass.isInterface && !annotatedClass.hasModifierProperty(PsiModifier.ABSTRACT)) {
+            return listOf(annotatedClass)
+        }
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        val implementations = ClassInheritorsSearch.search(annotatedClass, GlobalSearchScope.moduleScope(module), true)
+            .filter { !it.isInterface && !it.hasModifierProperty(PsiModifier.ABSTRACT) }
+            .filter { implementation ->
+                HandlerMethods.mappedType(implementation) { it.isMetaAnnotatedBy(pathTargetClass) } != null
+            }
+        return implementations.ifEmpty { listOf(annotatedClass) }
+    }
+
     private fun getEndpoints(
-        annotatedClass: PsiClass,
+        resourceClass: PsiClass,
         pathMah: MetaAnnotationsHolder,
         httpMethodMah: MetaAnnotationsHolder,
         applicationPath: String
     ): List<EndpointElement> {
-        val prefixes = pathMah.getAnnotationMemberValues(annotatedClass, TARGET_VALUE)
+        val module = ModuleUtil.findModuleForPsiElement(resourceClass)
+        val pathTargetClass = WebEeClasses.JAX_RS_PATH.getTargetClass(module)
+        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
+
+        val prefixes = HandlerMethods.mappedType(resourceClass) { it.isMetaAnnotatedBy(pathTargetClass) }
+            ?.let { pathMah.getAnnotationMemberValues(it, TARGET_VALUE) }.orEmpty()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .ifEmpty { listOf("") }
 
         val result = mutableListOf<EndpointElement>()
-        val module = ModuleUtil.findModuleForPsiElement(annotatedClass)
-        val httpMethodTargetClass = WebEeClasses.JAX_RS_HTTP_METHOD.getTargetClass(module)
-        for (method in annotatedClass.allMethods) {
-            if (!method.isMetaAnnotatedBy(httpMethodTargetClass)) continue
-
-            val pathValues = pathMah.getAnnotationMemberValues(method, TARGET_VALUE)
+        val mappedMethods = HandlerMethods.mappedMethods(resourceClass) { it.isMetaAnnotatedBy(httpMethodTargetClass) }
+        for ((method, mappingSource) in mappedMethods) {
+            val pathValues = pathMah.getAnnotationMemberValues(mappingSource, TARGET_VALUE)
                 .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
                 .ifEmpty { listOf("") }
 
-            val requestMethods = httpMethodMah.getAnnotationMemberValues(method, TARGET_VALUE)
+            val requestMethods = httpMethodMah.getAnnotationMemberValues(mappingSource, TARGET_VALUE)
                 .map { ExplytPsiUtil.getUnquotedText(it) }
 
             for (value in pathValues) {
@@ -98,7 +118,7 @@ class JaxRsExchangeLoader(private val project: Project) : SpringWebEndpointsLoad
                         SpringWebUtil.simplifyUrl("$applicationPath/$prefix/$value"),
                         requestMethods,
                         method,
-                        annotatedClass,
+                        resourceClass,
                         null,
                         getType()
                     )
