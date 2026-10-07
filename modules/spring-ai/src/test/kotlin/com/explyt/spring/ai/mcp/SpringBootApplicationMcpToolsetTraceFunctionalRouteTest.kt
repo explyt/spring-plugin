@@ -163,6 +163,81 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertTrue("No node of an annotated handler trace carries a route, got $chain", chain.none { it.has("route") })
     }
 
+    fun testNestedRouteKeepsItsFullPathAndRequest() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items\", handler::list)",
+            "\"/a\".nest { GET(\"/b\", handler::list) }"
+        )
+        val requests = CATALOG_TEST_SOURCE.replace("/co/items\"", "/a/b\"")
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        addSource(TEST_ROOT, CATALOG_TEST_FILE, requests, isTestSource = true)
+        assertRouteModelled("/a/b", "GET")
+
+        val head = traceAt(CATALOG_FILE, source, "GET(\"/b\"", includeTests = true)["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertEquals("GET /a/b", head["route"]?.asText())
+        assertUrlReferences(head, CATALOG_TEST_FILE, "/a/b", requests, "get().uri(\"/a/b\")")
+    }
+
+    fun testGenericMethodRouteKeepsItsVerbAndRequest() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items\", handler::list)",
+            "\"/created\".nest { method(org.springframework.http.HttpMethod.POST, handler::list) }"
+        )
+        val requests = CATALOG_TEST_SOURCE.replace("get().uri(\"/co/items\")", "post().uri(\"/created\")")
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        addSource(TEST_ROOT, CATALOG_TEST_FILE, requests, isTestSource = true)
+        assertRouteModelled("/created", "POST")
+
+        val head = traceAt(CATALOG_FILE, source, "method(org.springframework.http.HttpMethod.POST", includeTests = true)["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertEquals("POST /created", head["route"]?.asText())
+        assertUrlReferences(head, CATALOG_TEST_FILE, "/created", requests, "post().uri(\"/created\")")
+    }
+
+    fun testIteratedPathsListBothRequestsAndMarkTheFirstPath() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items\", handler::list)",
+            "listOf(\"/x\", \"/y\").forEach { path -> GET(path, handler::list) }"
+        )
+        val requests = CATALOG_TEST_SOURCE.replace("/co/items\"", "/x\"")
+            .replace("/co/items/one", "/y")
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        addSource(TEST_ROOT, CATALOG_TEST_FILE, requests, isTestSource = true)
+        assertRouteModelled("/x", "GET")
+        assertRouteModelled("/y", "GET")
+
+        val head = traceAt(CATALOG_FILE, source, "GET(path, handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertEquals("GET /x", head["route"]?.asText())
+        val references = head["testUrlReferences"]
+        assertEquals(listOf("/x", "/y"), references.map { it["endpointPath"].asText() }.sorted())
+        assertEquals(listOf("$TEST_ROOT/$CATALOG_TEST_FILE"), references.map { it["filePath"].asText() }.distinct())
+        assertEquals(
+            listOf(lineOf(requests, "get().uri(\"/x\")"), lineOf(requests, "get().uri(\"/y\")")),
+            references.flatMap { it["lines"].map { line -> line.asInt() } }.sorted()
+        )
+    }
+
+    fun testJavaHandlerFieldFallsBackToTheRegistrationMethod() = runBlocking<Unit> {
+        val source = ORDER_ROUTES_SOURCE.replace(
+            "public class OrderRoutes {",
+            """public class OrderRoutes {
+                private final org.springframework.web.reactive.function.server.HandlerFunction<ServerResponse> handlerFn = request -> ServerResponse.ok().build();"""
+        ).replace(".GET(\"/java/orders\", handler::list)", ".GET(\"/f\", handlerFn)")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        assertRouteModelled("/f", "GET")
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, ".GET(\"/f\", handlerFn)")["chain"][0]
+
+        assertEquals("OrderRoutes.orderRoutes", nameOf(head))
+        assertFalse("An opaque handler field supplies no resolved route target", head.has("route"))
+        assertEquals(listOf("OrderService.find", "OrderService.remove"), targetsOf(head))
+    }
+
     private fun assertLambdaRouteStart(chain: JsonNode, factory: String, ownCall: String) {
         val names = chain.map(::nameOf)
         assertEquals("The lambda is reported under the factory that registers it, got $names", factory, names.first())
