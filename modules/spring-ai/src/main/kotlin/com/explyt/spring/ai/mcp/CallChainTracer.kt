@@ -247,6 +247,9 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
             kotlinFunctionOf(method)?.valueParameters?.mapNotNull { it.name }
                 ?: method.parameterList.parameters.map { it.name }
 
+        fun sourceReceiverOf(method: PsiMethod): String? =
+            kotlinFunctionOf(method)?.receiverTypeReference?.text
+
         private fun kotlinFunctionOf(method: PsiMethod): KtNamedFunction? =
             (method as? KtLightMethod)?.kotlinOrigin as? KtNamedFunction
 
