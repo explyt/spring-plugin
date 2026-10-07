@@ -25,6 +25,7 @@ object SpringWebClasses {
     const val COOKIE_VALUE = "org.springframework.web.bind.annotation.CookieValue"
     const val REQUEST_BODY = "org.springframework.web.bind.annotation.RequestBody"
     const val RESPONSE_ENTITY = "org.springframework.http.ResponseEntity"
+    const val MEDIA_TYPE = "org.springframework.http.MediaType"
     const val FEIGN_CLIENT = "org.springframework.cloud.openfeign.FeignClient"
     const val JAVA_HTTP_CLIENT = "java.net.http.HttpClient"
     const val JAVA_HTTP_REQUEST = "java.net.http.HttpRequest"
