@@ -61,6 +61,7 @@ object SpringCoreClasses {
     const val DYNAMIC_PROPERTY_REGISTRY = "org.springframework.test.context.DynamicPropertyRegistry"
 
     const val IO_RESOURCE = "org.springframework.core.io.Resource"
+    const val JAVA_LANG_VOID = "java.lang.Void"
     const val ALIAS_FOR = "org.springframework.core.annotation.AliasFor"
 
     const val MIME_TYPE = "org.springframework.util.MimeType"

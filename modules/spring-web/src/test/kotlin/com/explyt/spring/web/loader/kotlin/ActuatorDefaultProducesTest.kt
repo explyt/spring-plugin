@@ -96,6 +96,37 @@ class ActuatorDefaultProducesTest : ExplytKotlinLightTestCase() {
         assertEquals(emptyList<String>(), operation("ReportEndpoint", "report").produces)
     }
 
+    fun testKotlinNullableVoidWriteOperationProducesNothing() {
+        addEndpoint(
+            """
+            @WriteOperation
+            fun reset(): Void? = null
+            """
+        )
+
+        val method = operation("ReportEndpoint", "reset").psiElement as PsiMethod
+        println("Kotlin nullable Void return type: canonicalText=${method.returnType?.canonicalText}, class=${method.returnType?.javaClass?.name}")
+        assertEquals(emptyList<String>(), operation("ReportEndpoint", "reset").produces)
+    }
+
+    fun testJavaVoidWriteOperationProducesNothing() {
+        myFixture.addFileToProject(
+            "JavaVoidEndpoint.java",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+            import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
+
+            @Endpoint(id = "java-void")
+            public class JavaVoidEndpoint {
+                @WriteOperation
+                public Void reset() { return null; }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(emptyList<String>(), operation("JavaVoidEndpoint", "reset").produces)
+    }
+
     fun testResourceReadOperationProducesAnOctetStream() {
         addEndpoint(
             """

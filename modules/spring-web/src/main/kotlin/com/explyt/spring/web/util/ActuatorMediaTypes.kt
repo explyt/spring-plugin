@@ -52,6 +52,7 @@ object ActuatorMediaTypes {
         val returnType = method.returnType ?: return defaults
         if (returnType.canonicalText in setOf(VOID, KOTLIN_UNIT)) return emptyList()
         val classType = returnType as? PsiClassType
+        if (classType?.resolve()?.qualifiedName == SpringCoreClasses.JAVA_LANG_VOID) return emptyList()
         if (classType?.isResource() == true || classType?.isResourceResponse() == true) {
             return listOf(OCTET_STREAM)
         }
