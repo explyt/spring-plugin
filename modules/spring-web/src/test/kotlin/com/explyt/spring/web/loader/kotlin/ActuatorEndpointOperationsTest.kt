@@ -69,6 +69,7 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
             endpoints.map { Triple(it.path, it.requestMethods, (it.psiElement as? PsiMethod)?.name) }
                 .sortedBy { it.second.joinToString() }
         )
+        assertEquals(listOf(null, null), endpoints.map { it.producesSource })
     }
 
     /** A bare `@RequestMapping` accepts any verb, which the endpoint model writes as no verb restriction. */

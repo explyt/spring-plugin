@@ -9,6 +9,7 @@ import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
+import com.explyt.spring.web.loader.ProducesSource
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
@@ -407,6 +408,113 @@ class ActuatorDefaultProducesTest : ExplytKotlinLightTestCase() {
         )
 
         assertEquals(listOf("text/csv"), operation("ReportEndpoint", "report").produces)
+    }
+
+    fun testDeclaredProducesIsReportedAsDeclared() {
+        addEndpoint(
+            """
+            @ReadOperation(produces = ["text/plain"])
+            fun report(): String = "ok"
+            """
+        )
+
+        assertEquals(ProducesSource.DECLARED, operation("ReportEndpoint", "report").producesSource)
+    }
+
+    fun testVoidOperationIsReportedAsProducingNone() {
+        addEndpoint(
+            """
+            @WriteOperation
+            fun reset() {
+            }
+            """
+        )
+
+        assertEquals(ProducesSource.NONE, operation("ReportEndpoint", "reset").producesSource)
+    }
+
+    fun testResourceOperationIsReportedAsResource() {
+        addEndpoint(
+            """
+            @ReadOperation
+            fun download(): org.springframework.core.io.Resource = org.springframework.core.io.ByteArrayResource(ByteArray(0))
+            """
+        )
+
+        assertEquals(ProducesSource.RESOURCE, operation("ReportEndpoint", "download").producesSource)
+    }
+
+    fun testUndeclaredOperationIsReportedAsBootDefault() {
+        addEndpoint(
+            """
+            @ReadOperation
+            fun report(): Report = Report("ok")
+            """
+        )
+
+        assertEquals(ProducesSource.BOOT_DEFAULT, operation("ReportEndpoint", "report").producesSource)
+    }
+
+    fun testProjectEndpointMediaTypesBeanMarksTheDefaultsAsCustom() {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject(
+            "MediaTypesConfiguration.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.web.EndpointMediaTypes
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+
+            @Configuration
+            class MediaTypesConfiguration {
+                @Bean
+                fun endpointMediaTypes(): EndpointMediaTypes = EndpointMediaTypes("application/json")
+            }
+            """.trimIndent()
+        )
+        addEndpoint(
+            """
+            @ReadOperation
+            fun report(): Report = Report("ok")
+
+            @ReadOperation(produces = ["text/plain"])
+            fun text(): String = "ok"
+            """
+        )
+
+        val report = operation("ReportEndpoint", "report")
+        assertEquals(ProducesSource.CUSTOM_ENDPOINT_MEDIA_TYPES, report.producesSource)
+        assertEquals(DEFAULT_PRODUCES, report.produces)
+        assertEquals(ProducesSource.CUSTOM_ENDPOINT_MEDIA_TYPES, operation("HealthEndpoint", "health").producesSource)
+        assertEquals(ProducesSource.DECLARED, operation("ReportEndpoint", "text").producesSource)
+    }
+
+    fun testJavaEndpointMediaTypesBeanMarksTheDefaultsAsCustom() {
+        myFixture.addFileToProject(
+            "JavaMediaTypesConfiguration.java",
+            """
+            import org.springframework.boot.actuate.endpoint.web.EndpointMediaTypes;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            public class JavaMediaTypesConfiguration {
+                @Bean
+                public EndpointMediaTypes endpointMediaTypes() {
+                    return new EndpointMediaTypes("application/json");
+                }
+            }
+            """.trimIndent()
+        )
+        addJavaEndpoint(
+            """
+            @ReadOperation
+            public Object report() { return null; }
+            """
+        )
+
+        assertEquals(
+            ProducesSource.CUSTOM_ENDPOINT_MEDIA_TYPES, operation("JavaReportEndpoint", "report").producesSource
+        )
     }
 
     private fun addEndpoint(operations: String) {

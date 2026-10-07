@@ -4,9 +4,6 @@
 
 ## [Unreleased]
 
-### Spring Web
-- fix: Report Boot's default media types for Actuator operations when no media type is declared (#525)
-
 ### Spring Core
 - fix: Treat `@Profile` values as alternatives like Spring, so a bean with several profiles or direct and meta-annotation profiles is active when any value matches (#548)
 - fix: Activate the profiles a `spring.profiles.group` adds: with `spring.profiles.active: production` and `spring.profiles.group.production: [billing]` Spring Boot runs `production` and `billing`, yet a `@Profile("billing")` bean was reported missing by the autowiring inspection, the bean gutters, Search Everywhere and the Spring MCP bean tools. Groups from `application.properties`/`application.yaml` — comma lists, YAML sequences and indexed keys — now expand active profiles, run-configuration profiles and the `default` fallback, nested groups included (#529)
@@ -100,6 +97,7 @@
 - fix: Make `gradlew` and `mvnw` executable in a project generated through Spring Initializr, so the first `./gradlew` in a terminal no longer fails with "permission denied" (#60)
 
 ### Spring Web
+- fix: Report the media types Spring Boot answers an Actuator operation with when it declares none: its default JSON types, nothing for a void operation, application/octet-stream for a resource, with declared constants evaluated and each operation marked with where its media types come from, a project EndpointMediaTypes bean included (#525)
 - fix: Built-in Actuator endpoints listed by a test-source `@SpringBootApplication`, as in the Spring PetClinic sample, carry their application, so they can be told apart from the production application's; a module holding both a production and a test application lists them once, for the production one (#550)
 - fix: List every controller that inherits a mapping from a base class: two `@RestController` classes extending one base that declares `@GetMapping("/api/base/{id}")` were listed as one endpoint in the Endpoints tool window, endpoint search and the Spring MCP endpoint tools, because the endpoint identity read the declaring method and not the controller serving it. Spring registers the handler methods of each controller bean, so each controller is its own endpoint; a controller seen again from a dependent module is still one (#543)
 - fix: List the built-in Actuator endpoints when `spring-boot-starter-actuator` is a `runtimeOnly` dependency, as in the Spring Boot petclinic sample: built-in discovery read the application module's compile classpath, where a runtime-only jar is invisible, so `health`, `info` and the others vanished from the Endpoints tool window and the Spring MCP endpoint tools. Built-ins are now read from the runtime classpath, which is what the running application serves, and `management.endpoint.<id>.*` keys are still never synthesized for them (#523)

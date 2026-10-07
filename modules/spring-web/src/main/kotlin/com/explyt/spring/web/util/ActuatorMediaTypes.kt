@@ -7,6 +7,7 @@ package com.explyt.spring.web.util
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.loader.ProducesSource
 import com.explyt.util.ExplytAnnotationUtil.computeConstantExpression
 import com.explyt.util.ExplytAnnotationUtil.getMemberValues
 import com.intellij.psi.JavaPsiFacade
@@ -58,17 +59,24 @@ object ActuatorMediaTypes {
         "application/json",
     )
 
-    fun producedBy(method: PsiMethod, annotation: PsiAnnotation?): List<String> {
-        val declared = annotation.getMemberValues(PRODUCES).mapNotNull { it.stringValue() } + producedFrom(annotation)
-        if (declared.isNotEmpty()) return declared
+    data class Produces(val mediaTypes: List<String>, val source: ProducesSource)
 
-        val returnType = method.returnType ?: return defaults
-        if (returnType.canonicalText in setOf(VOID, KOTLIN_UNIT)) return emptyList()
-        val classType = returnType as? PsiClassType ?: return defaults
+    fun producedBy(method: PsiMethod, annotation: PsiAnnotation?, customDefaults: Boolean): Produces {
+        val declared = annotation.getMemberValues(PRODUCES).mapNotNull { it.stringValue() } + producedFrom(annotation)
+        if (declared.isNotEmpty()) return Produces(declared, ProducesSource.DECLARED)
+
+        val defaultProduces = Produces(
+            defaults, if (customDefaults) ProducesSource.CUSTOM_ENDPOINT_MEDIA_TYPES else ProducesSource.BOOT_DEFAULT
+        )
+        val returnType = method.returnType ?: return defaultProduces
+        if (returnType.canonicalText in setOf(VOID, KOTLIN_UNIT)) return Produces(emptyList(), ProducesSource.NONE)
+        val classType = returnType as? PsiClassType ?: return defaultProduces
         val returnClass = classType.resolve()?.qualifiedName
-        if (returnClass == SpringCoreClasses.JAVA_LANG_VOID) return emptyList()
-        if (returnClass == SpringCoreClasses.IO_RESOURCE || classType.isResourceResponse()) return listOf(OCTET_STREAM)
-        return defaults
+        if (returnClass == SpringCoreClasses.JAVA_LANG_VOID) return Produces(emptyList(), ProducesSource.NONE)
+        if (returnClass == SpringCoreClasses.IO_RESOURCE || classType.isResourceResponse()) {
+            return Produces(listOf(OCTET_STREAM), ProducesSource.RESOURCE)
+        }
+        return defaultProduces
     }
 
     private fun PsiAnnotationMemberValue.stringValue(): String? =
