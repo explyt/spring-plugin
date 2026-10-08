@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.SpringSearchService.Companion.getInstance
 import com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer
 import com.explyt.spring.core.service.conditional.*
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.BeanFactoryMethods
 import com.explyt.spring.core.util.GlobalSearchScopeTestAware
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.beanPsiType
@@ -354,7 +355,7 @@ class SpringSearchService(private val project: Project) {
     }
 
     private fun getMethodBeans(psiClass: PsiClass): Sequence<PsiMethod> {
-        return psiClass.allMethods.asSequence().filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
+        return BeanFactoryMethods.of(psiClass)
     }
 
     fun profileActivation(psiMember: PsiMember): ProfileActivation {
@@ -395,8 +396,7 @@ class SpringSearchService(private val project: Project) {
         return psiBeans.asSequence()
             .map { it.psiClass }
             .filter { it.isValid }
-            .flatMap { it.allMethods.asSequence() }
-            .filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
+            .flatMap { BeanFactoryMethods.of(it) }
             .filter { isActive(it) }
             .flatMap { method ->
                 // for array created separated method: searchArrayComponentPsiClassesByBeanMethods
