@@ -139,7 +139,7 @@
 ### Spring MCP
 
 - fix: Name contract `serviceCalls[].target` and functional-route handler calls from source declarations: companion members use their outer class and `internal` functions omit JVM suffixes; target strings change, keys stay unchanged (#571)
-- fix: Report SINGLE_TABLE subclass columns as nullable with `nullableReason: SINGLE_TABLE_SUBCLASS` when inheritance relaxes their constraints, while preserving primary keys and explicit `@Column(nullable = false)` (#560)
+- fix: Report SINGLE_TABLE subclass columns as nullable with `nullableReason: SINGLE_TABLE_SUBCLASS` when inheritance relaxes their constraints, while preserving primary keys and explicit `@Column(nullable = false)`, `@JoinColumn(nullable = false)` and to-one `optional = false` (#560)
 - fix: Read endpoint contract parameter sources and media types inherited from interface methods, including multipart parts, cookies under their wire names and inherited custom resolver annotations reported as UNKNOWN (#533)
 - feat: Report the declared receiver type of Kotlin extension functions in `explyt_trace_spring_call_chain` nodes, without adding it to `parameters` (#499)
 - fix: `explyt_trace_spring_call_chain` started at a line registering a functional route (`coRouter`, `router`, `RouterFunctions.route()`) begins at the handler method the route references, or for a lambda route at its `@Bean` factory with only that lambda's calls, names the route's verb and path in `route` when they are known, and lists in `testUrlReferences` the test requests to that route's URL (#505)
