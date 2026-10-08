@@ -11,6 +11,7 @@ import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -46,34 +47,28 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return null
 
-        if (!psiMethod.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) return null
         val psiClass = psiMethod.containingClass ?: return null
         if (!psiClass.isMetaAnnotatedBy(SpringWebClasses.CONTROLLER)) return null
+        val mappingSource = SpringWebUtil.requestMappingSourceOf(psiMethod) ?: return null
         val controllerName = psiClass.name ?: return null
 
         val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
-        val path = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("path", "value")).asSequence()
+        val path = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("path", "value")).asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .firstOrNull() ?: ""
         if (OpenApiUtils.isAbsolutePath(path)) return null
 
-        val prefix = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
-            requestMappingMah.getAnnotationMemberValues(psiClass, setOf("path", "value")).asSequence()
-                .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-                .firstOrNull() ?: ""
-        } else {
-            ""
-        }
+        val prefix = HandlerMethods.requestMappingPrefixes(psiClass, requestMappingMah).firstOrNull() ?: ""
         if (OpenApiUtils.isAbsolutePath(prefix)) return null
 
         val fullPath = SpringWebUtil.simplifyUrl(MappingPathPlaceholders.resolve(module, "$prefix/$path"))
 
         val requestMethods =
-            requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
+            requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("method"))
                 .map { it.text.split('.').last() }
-        val produces = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("produces"))
+        val produces = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("produces"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        val consumes = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("consumes"))
+        val consumes = requestMappingMah.getAnnotationMemberValues(mappingSource, setOf("consumes"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""

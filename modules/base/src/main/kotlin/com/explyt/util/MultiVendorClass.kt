@@ -24,4 +24,15 @@ class MultiVendorClass(subFqn: String) {
         return JavaPsiFacade.getInstance(module.project)
             .findClass(this.jakarta, module.moduleWithLibrariesScope) != null
     }
+
+    fun getTargetClassInDependencies(module: Module?): String {
+        module ?: return this.jakarta
+        return if (findInDependencies(module, jakarta)) this.jakarta else this.javax
+    }
+
+    fun isPresentInDependencies(module: Module): Boolean = allFqns.any { findInDependencies(module, it) }
+
+    private fun findInDependencies(module: Module, fqn: String): Boolean =
+        JavaPsiFacade.getInstance(module.project)
+            .findClass(fqn, module.getModuleWithDependenciesAndLibrariesScope(false)) != null
 }
