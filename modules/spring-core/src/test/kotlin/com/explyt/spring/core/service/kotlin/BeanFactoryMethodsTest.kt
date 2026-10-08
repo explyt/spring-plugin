@@ -167,6 +167,50 @@ class BeanFactoryMethodsTest : ExplytKotlinLightTestCase() {
         assertEquals(psiClass("Child"), (beans.single { it.name == "bar" }.psiMember as PsiMethod).containingClass)
     }
 
+    fun testNameAttributeOverridePreservesSuperclassBeanName() {
+        configure(
+            "@Bean(name = [\"bar\"]) override fun foo(): Foo = Foo()",
+            "open class Base { @Bean open fun foo(): Foo = Foo() }",
+            ": Base()"
+        )
+        val base = psiClass("Base").findMethodsByName("foo", false).single()
+        val child = psiClass("Child").findMethodsByName("foo", false).single()
+        assertResolvedBeanName(base, null)
+        assertExplicitNameWithoutValue(child, "bar")
+        assertTrue("Precondition: Child overrides Base.foo", child.findSuperMethods().contains(base))
+        val beans = activeFooBeans()
+        assertEquals(setOf("foo", "bar"), beans.map { it.name }.toSet())
+        assertEquals(2, beans.size)
+        assertEquals(psiClass("Base"), (beans.single { it.name == "foo" }.psiMember as PsiMethod).containingClass)
+        assertEquals(psiClass("Child"), (beans.single { it.name == "bar" }.psiMember as PsiMethod).containingClass)
+    }
+
+    fun testSameNameAttributeOverrideIsOneBeanDeclaredInChild() {
+        configure(
+            "@Bean(name = [\"x\"]) override fun foo(): Foo = Foo()",
+            "open class Base { @Bean(name = [\"x\"]) open fun foo(): Foo = Foo() }",
+            ": Base()"
+        )
+        val base = psiClass("Base").findMethodsByName("foo", false).single()
+        val child = psiClass("Child").findMethodsByName("foo", false).single()
+        assertExplicitNameWithoutValue(base, "x")
+        assertExplicitNameWithoutValue(child, "x")
+        assertTrue("Precondition: Child overrides Base.foo", child.findSuperMethods().contains(base))
+        val beans = activeFooBeans()
+        assertEquals(1, beans.size)
+        assertEquals("x", beans.single().name)
+        assertEquals(psiClass("Child"), (beans.single().psiMember as PsiMethod).containingClass)
+    }
+
+    private fun assertExplicitNameWithoutValue(method: PsiMethod, name: String) {
+        val annotation = method.getAnnotation(SpringCoreClasses.BEAN) ?: error("Missing @Bean on ${method.name}")
+        assertEquals(SpringCoreClasses.BEAN, annotation.resolveAnnotationType()?.qualifiedName)
+        assertNull("Precondition: no explicit value attribute", annotation.findDeclaredAttributeValue("value"))
+        val explicitName = annotation.findDeclaredAttributeValue("name") as? com.intellij.psi.PsiArrayInitializerMemberValue
+            ?: error("Missing explicit name array")
+        assertEquals(name, JavaPsiFacade.getInstance(project).constantEvaluationHelper.computeConstantExpression(explicitName.initializers.single()))
+    }
+
     fun testDifferentlyNamedOverloadsAreTwoActiveBeans() {
         configure(
             "@Bean(\"a\") fun foo(): Foo = Foo()\n@Bean(\"b\") fun foo(dep: Dep): Foo = Foo()",
