@@ -1798,6 +1798,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         var nearestEntity: PsiClass? = null
         val visited = mutableSetOf<PsiClass>()
         while (visited.add(current)) {
+            ProgressManager.checkCanceled()
             if (current.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) != null) {
                 nearestEntity = current
             }
