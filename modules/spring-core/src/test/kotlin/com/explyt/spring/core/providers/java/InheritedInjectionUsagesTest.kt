@@ -53,7 +53,7 @@ class InheritedInjectionUsagesTest : ExplytJavaLightTestCase() {
             abstract class Base { @Autowired void setFoo(Foo foo) {} }
             @Component class Impl extends Base {}
             @Component class Foo {}
-            """.trimIndent(), "setFoo", 1
+            """.trimIndent(), "foo", 1
         )
     }
 
@@ -64,7 +64,7 @@ class InheritedInjectionUsagesTest : ExplytJavaLightTestCase() {
             @Component class First extends Base {}
             @Component class Second extends Base {}
             @Component class Foo {}
-            """.trimIndent(), "foo", 1
+            """.trimIndent(), "foo", 1, listOf("First", "Second")
         )
     }
 
@@ -78,11 +78,13 @@ class InheritedInjectionUsagesTest : ExplytJavaLightTestCase() {
         assertFalse(targets.any { it.contains("unrelated") })
     }
 
-    private fun assertUsages(source: String, target: String, count: Int) {
+    private fun assertUsages(source: String, target: String, count: Int, owners: List<String> = listOf("Impl")) {
         val targets = targets(source)
-        assertTrue(SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
-            .any { it.psiClass.qualifiedName == "candidates.Impl" })
-        assertEquals(count, targets.count { it.contains(target) })
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+        owners.forEach { owner ->
+            assertTrue("candidates.$owner must be an active bean", beans.any { it.psiClass.qualifiedName == "candidates.$owner" })
+        }
+        assertEquals(count, targets.count { it == target })
     }
 
     private fun targets(source: String): List<String> {
