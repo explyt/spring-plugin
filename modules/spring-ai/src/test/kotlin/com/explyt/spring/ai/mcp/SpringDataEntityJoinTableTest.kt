@@ -400,6 +400,151 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testJavaOneToManyOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+        addJavaOwner("@OneToMany(mappedBy = \"owner\") private Set<Pet> pets;")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
+        assertEquals("owner", pets["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testKotlinOneToManyOmitsNullableForANonNullCollection() = runBlocking<Unit> {
+        addKotlinOwner("@field:OneToMany(mappedBy = \"owner\") val pets: MutableSet<Pet> = mutableSetOf()")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
+        assertEquals("owner", pets["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testJavaManyToManyOmitsNullableForAJoinTable() = runBlocking<Unit> {
+        addJavaOwner("@ManyToMany @JoinTable(name = \"owner_pets\") private Set<Pet> pets;")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "MANY_TO_MANY")
+        assertEquals("owner_pets", joinTableOf(pets)?.get("name")?.asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testKotlinManyToManyOmitsNullableForAJoinTable() = runBlocking<Unit> {
+        addKotlinOwner("@field:ManyToMany @field:JoinTable(name = \"owner_pets\") val pets: MutableSet<Pet> = mutableSetOf()")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "MANY_TO_MANY")
+        assertEquals("owner_pets", joinTableOf(pets)?.get("name")?.asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testElementCollectionOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+        addJavaOwner("@ElementCollection private Set<String> tags;")
+
+        val tags = field(fieldsOf("com.example.mapping.Owner"), "tags")
+        assertEquals("java.util.Set<java.lang.String>", tags["type"].asText())
+        assertTrue("Precondition: element collections have no association kind, got $tags", tags["relationship"].isNull)
+        assertNoOwnerColumnNullable(tags)
+    }
+
+    fun testInverseOneToOneOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+        addJavaOwner("@OneToOne(mappedBy = \"profile\") private Pet pet;")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
+        assertEquals("profile", pet["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pet)
+    }
+
+    fun testManyToOneKeepsNullableForAnOptionalForeignKey() = runBlocking<Unit> {
+        addJavaOwner("@ManyToOne private Pet pet;")
+
+        assertOwnerColumnNullable(relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE"), true)
+    }
+
+    fun testManyToOneKeepsNullableForAMandatoryForeignKey() = runBlocking<Unit> {
+        addJavaOwner("@ManyToOne(optional = false) private Pet pet;")
+
+        assertOwnerColumnNullable(relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE"), false)
+    }
+
+    fun testManyToOneKeepsNullableForANotNullJoinColumn() = runBlocking<Unit> {
+        addJavaOwner("@ManyToOne @JoinColumn(name = \"pet_id\", nullable = false) private Pet pet;")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE")
+        assertEquals("pet_id", pet["joinColumn"].asText())
+        assertOwnerColumnNullable(pet, false)
+    }
+
+    fun testOwningOneToOneKeepsNullableForItsJoinColumn() = runBlocking<Unit> {
+        addJavaOwner("@OneToOne @JoinColumn(name = \"pet_id\", nullable = false) private Pet pet;")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
+        assertEquals("pet_id", pet["joinColumn"].asText())
+        assertTrue("Precondition: owning one-to-one has no mappedBy, got $pet", pet["mappedBy"].isNull)
+        assertOwnerColumnNullable(pet, false)
+    }
+
+    fun testBasicPrimitiveAndWrapperKeepTheirNullableKeys() = runBlocking<Unit> {
+        addJavaOwner("private int count; private Integer optionalCount;")
+
+        val fields = fieldsOf("com.example.mapping.Owner")
+        val count = field(fields, "count")
+        val optionalCount = field(fields, "optionalCount")
+        assertEquals("int", count["type"].asText())
+        assertEquals("java.lang.Integer", optionalCount["type"].asText())
+        assertTrue("Precondition: primitive is a basic field, got $count", count["relationship"].isNull)
+        assertTrue("Precondition: wrapper is a basic field, got $optionalCount", optionalCount["relationship"].isNull)
+        assertOwnerColumnNullable(count, false)
+        assertOwnerColumnNullable(optionalCount, true)
+    }
+
+    private fun assertNoOwnerColumnNullable(field: JsonNode) {
+        assertFalse("Fields without an owner-table column must omit nullable, got $field", field.has("nullable"))
+    }
+
+    private fun assertOwnerColumnNullable(field: JsonNode, nullable: Boolean) {
+        assertTrue("Owner-table columns must keep the nullable key, got $field", field.has("nullable"))
+        assertEquals(mapper.valueToTree<JsonNode>(nullable), field["nullable"])
+    }
+
+    private fun addJavaOwner(declaration: String) {
+        myFixture.addFileToProject(
+            "com/example/mapping/Owner.java", """
+            package com.example.mapping;
+            import java.util.Set;
+            import jakarta.persistence.*;
+
+            @Entity
+            public class Owner {
+                @Id private Long id;
+                $declaration
+            }
+
+            @Entity
+            class Pet {
+                @Id private Long id;
+                @ManyToOne private Owner owner;
+                @OneToOne @JoinColumn(name = "profile_id") private Owner profile;
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun addKotlinOwner(declaration: String) {
+        myFixture.addFileToProject(
+            "com/example/mapping/Owner.kt", """
+            package com.example.mapping
+            import jakarta.persistence.*
+
+            @Entity
+            class Owner {
+                @field:Id var id: Long? = null
+                $declaration
+            }
+
+            @Entity
+            class Pet {
+                @field:Id var id: Long? = null
+                @field:ManyToOne var owner: Owner? = null
+            }
+            """.trimIndent()
+        )
+    }
+
     private fun addSpecialtyEntity() {
         myFixture.addFileToProject(
             "com/example/vets/Specialty.java", """
