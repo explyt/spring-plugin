@@ -20,6 +20,7 @@ import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 import com.intellij.psi.search.GlobalSearchScope
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -201,6 +202,71 @@ class BeanFactoryMethodsTest : ExplytJavaLightTestCase() {
             indicator.cancel()
             result.cancel(true)
             assertTrue("Query worker must stop before fixture teardown", finished.await(5, TimeUnit.SECONDS))
+        }
+    }
+
+    fun testRenamedOverridePreservesSuperclassBeanName() {
+        configure(
+            "@Bean(\"bar\") @Override public Foo foo() { return new Foo(); }",
+            "class Base { @Bean public Foo foo() { return new Foo(); } }",
+            "extends Base"
+        )
+        val base = psiClass("Base").findMethodsByName("foo", false).single()
+        val child = psiClass("Child").findMethodsByName("foo", false).single()
+        assertResolvedBeanName(base, null)
+        assertResolvedBeanName(child, "bar")
+        assertTrue("Precondition: Child overrides Base.foo", child.findSuperMethods().contains(base))
+        val beans = activeFooBeans()
+        assertEquals("Distinct bean names on an override must both survive", setOf("foo", "bar"), beans.map { it.name }.toSet())
+        assertEquals(2, beans.size)
+        assertEquals(psiClass("Base"), (beans.single { it.name == "foo" }.psiMember as PsiMethod).containingClass)
+        assertEquals(psiClass("Child"), (beans.single { it.name == "bar" }.psiMember as PsiMethod).containingClass)
+    }
+
+    fun testDifferentlyNamedOverloadsAreTwoActiveBeans() {
+        configure(
+            "@Bean(\"a\") public Foo foo() { return new Foo(); }\n@Bean(\"b\") public Foo foo(Dep dep) { return new Foo(); }",
+            enforceUniqueMethods = false
+        )
+        val methods = psiClass("Child").findMethodsByName("foo", false)
+        assertEquals("Precondition: two overloads", 2, methods.size)
+        assertEquals(setOf(0, 1), methods.map { it.parameterList.parametersCount }.toSet())
+        assertResolvedBeanName(methods.single { it.parameterList.parametersCount == 0 }, "a")
+        assertResolvedBeanName(methods.single { it.parameterList.parametersCount == 1 }, "b")
+        val configuration = psiClass("Child").getAnnotation(SpringCoreClasses.CONFIGURATION)!!
+        assertEquals(SpringCoreClasses.CONFIGURATION, configuration.resolveAnnotationType()?.qualifiedName)
+        assertEquals(false, JavaPsiFacade.getInstance(project).constantEvaluationHelper.computeConstantExpression(configuration.findAttributeValue("enforceUniqueMethods")!!))
+        val beans = activeFooBeans()
+        assertEquals("Distinct bean names on overloads must both survive", setOf("a", "b"), beans.map { it.name }.toSet())
+        assertEquals(2, beans.size)
+    }
+
+    fun testAbstractInterfaceFactoryDoesNotPublishUnannotatedImplementation() {
+        configure(
+            "@Override public Foo foo() { return new Foo(); }",
+            "interface Factory { @Bean Foo foo(); }",
+            "implements Factory"
+        )
+        val factory = psiClass("Factory")
+        assertTrue("Precondition: Factory is an interface", factory.isInterface)
+        assertEquals(listOf(factory), psiClass("Child").interfaces.toList())
+        val abstractMethod = factory.findMethodsByName("foo", false).single()
+        assertResolvedBeanName(abstractMethod, null)
+        assertTrue("Precondition: interface factory is abstract", abstractMethod.hasModifierProperty(PsiModifier.ABSTRACT))
+        val implementation = psiClass("Child").findMethodsByName("foo", false).single()
+        assertFalse("Precondition: implementation has no @Bean", implementation.hasAnnotation(SpringCoreClasses.BEAN))
+        assertTrue("Precondition: implementation overrides interface method", implementation.findSuperMethods().contains(abstractMethod))
+        assertEquals("Abstract interface @Bean must not publish a foo bean", emptyList<String>(), activeFooBeans().map { it.name })
+    }
+
+    private fun assertResolvedBeanName(method: PsiMethod, explicitName: String?) {
+        val annotation = method.getAnnotation(SpringCoreClasses.BEAN) ?: error("Missing @Bean on ${method.name}")
+        assertEquals("Precondition: @Bean annotation resolves", SpringCoreClasses.BEAN, annotation.resolveAnnotationType()?.qualifiedName)
+        val value = annotation.findDeclaredAttributeValue("value")
+        if (explicitName == null) {
+            assertNull("Precondition: default bean name", value)
+        } else {
+            assertEquals("Precondition: explicit value is resolved", explicitName, JavaPsiFacade.getInstance(project).constantEvaluationHelper.computeConstantExpression(value!!))
         }
     }
 
