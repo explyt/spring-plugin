@@ -6,12 +6,12 @@
 package com.explyt.spring.core.inspections.kotlin
 
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.search.GlobalSearchScope
 import com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection
 import com.explyt.spring.test.ExplytInspectionKotlinTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
 import org.intellij.lang.annotations.Language
 import org.jetbrains.kotlin.test.TestMetadata
 
@@ -77,6 +77,8 @@ class SomeServiceTest {
 
     fun testExplicitBeanNameDoesNotMatchMethodNameQualifier() = assertBeanNameQualifier("@Bean(name = [\"x\"])", "foo", true)
 
+    fun testBeanAliasQualifier() = assertBeanNameQualifier("@Bean(name = [\"x\", \"y\"])", "y")
+
     private fun assertBeanNameQualifier(annotation: String, qualifier: String, missing: Boolean = false) {
         myFixture.configureByText(
             "App.kt",
@@ -109,10 +111,14 @@ class SomeServiceTest {
         val beanAnnotation = application.findMethodsByName("foo", false).single()
             .getAnnotation(SpringCoreClasses.BEAN)!!
         assertEquals(SpringCoreClasses.BEAN, beanAnnotation.resolveAnnotationType()?.qualifiedName)
-        val expectedNames = if (qualifier == "x" || missing) listOf("x") else emptyList()
-        if (missing) assertTrue("foo" !in expectedNames)
+        val expectedNames = when {
+            qualifier == "y" -> listOf("x", "y")
+            qualifier == "x" || missing -> listOf("x")
+            else -> emptyList()
+        }
+        assertTrue("foo" !in expectedNames)
         assertEquals("Declared @Bean name values", expectedNames, beanAnnotation.getStringMemberValues("name"))
-        assertEquals("Explicit name attribute presence", qualifier == "x" || missing, beanAnnotation.findDeclaredAttributeValue("name") != null)
+        assertEquals("Explicit name attribute presence", expectedNames.isNotEmpty(), beanAnnotation.findDeclaredAttributeValue("name") != null)
         assertNotNull(application.findMethodsByName("other", false).single().getAnnotation(SpringCoreClasses.BEAN))
         val injection = facade.findClass("beanname.Consumer", scope)!!.findFieldByName("foo", false)!!
         assertEquals(listOf(qualifier), injection.getAnnotation(SpringCoreClasses.QUALIFIER)!!.getStringMemberValues())

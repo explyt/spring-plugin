@@ -6,22 +6,22 @@
 package com.explyt.spring.core.service.java
 
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.service.beans.BeanSourcePreference
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiClass
-import com.intellij.psi.search.GlobalSearchScope
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import junit.framework.TestCase
 
@@ -134,6 +134,44 @@ class SpringSearchServiceTest : ExplytJavaLightTestCase() {
         assertEquals("One factory must produce one snapshot record", 1, records.size)
         assertEquals("x", records.single().name)
         assertEquals(listOf("x", "y"), records.single().knownNames.toList())
+    }
+
+    fun testComposedBeanAliasAttributeIsNotReadYet() {
+        myFixture.addFileToProject("beanname/App.java", """
+            package beanname;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.core.annotation.AliasFor;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            @Bean
+            @Retention(RetentionPolicy.RUNTIME)
+            @interface MyBean {
+                @AliasFor(annotation = Bean.class, attribute = "name")
+                String[] beanName() default {};
+            }
+            @SpringBootApplication
+            public class App {
+                @MyBean(beanName = "x")
+                public Foo foo() { return new Foo(); }
+            }
+            class Foo {}
+        """.trimIndent())
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass("beanname.App", GlobalSearchScope.projectScope(project))!!
+        val method = application.findMethodsByName("foo", false).single()
+        val annotation = method.getAnnotation("beanname.MyBean")!!
+        assertEquals("beanname.MyBean", annotation.resolveAnnotationType()?.qualifiedName)
+        assertEquals(listOf("x"), annotation.getStringMemberValues("beanName"))
+        assertTrue(method.name !in annotation.getStringMemberValues("beanName"))
+        val declaration = annotation.resolveAnnotationType()!!
+        assertEquals(SpringCoreClasses.BEAN, declaration.getAnnotation(SpringCoreClasses.BEAN)!!.resolveAnnotationType()?.qualifiedName)
+        val alias = declaration.findMethodsByName("beanName", false).single()
+            .getAnnotation("org.springframework.core.annotation.AliasFor")!!
+        assertEquals("org.springframework.core.annotation.AliasFor", alias.resolveAnnotationType()?.qualifiedName)
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .filter { it.psiClass.qualifiedName == "beanname.Foo" }
+        assertEquals(listOf("foo"), beans.map { it.name })
     }
 
     private fun assertBeanName(annotation: String, attribute: String, values: List<String>, expectedName: String) {

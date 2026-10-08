@@ -15,6 +15,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ProjectKeys
 import com.intellij.openapi.externalSystem.model.internal.InternalExternalProjectInfo
@@ -232,6 +233,61 @@ class BeanSnapshotServiceTest : ExplytKotlinLightTestCase() {
         assertEquals(before.records.map { it.id }, after.records.map { it.id })
     }
 
+    fun testNativeJavaBeanName() = assertNativeBeanNames(false, listOf("x"))
+
+    fun testNativeJavaBeanAliases() = assertNativeBeanNames(false, listOf("x", "y"))
+
+    fun testNativeKotlinBeanName() = assertNativeBeanNames(true, listOf("x"))
+
+    fun testNativeKotlinBeanAliases() = assertNativeBeanNames(true, listOf("x", "y"))
+
+    private fun assertNativeBeanNames(kotlin: Boolean, names: List<String>) {
+        val values = names.joinToString { "\"$it\"" }
+        val source = if (kotlin) {
+            """
+            package com.explyt.demo
+            import org.springframework.boot.autoconfigure.SpringBootApplication
+            import org.springframework.context.annotation.Bean
+            import java.time.Clock
+            @SpringBootApplication
+            open class App {
+                @Bean(name = [$values])
+                open fun foo(): Clock = Clock.systemUTC()
+            }
+            """.trimIndent()
+        } else {
+            """
+            package com.explyt.demo;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            import org.springframework.context.annotation.Bean;
+            import java.time.Clock;
+            @SpringBootApplication
+            public class App {
+                @Bean(name = {$values})
+                public Clock foo() { return Clock.systemUTC(); }
+            }
+            """.trimIndent()
+        }
+        myFixture.addFileToProject("com/explyt/demo/App.${if (kotlin) "kt" else "java"}", source)
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass("com.explyt.demo.App", GlobalSearchScope.projectScope(project))!!
+        val factory = application.findMethodsByName("foo", false).single()
+        val annotation = factory.getAnnotation("org.springframework.context.annotation.Bean")!!
+        assertEquals("org.springframework.context.annotation.Bean", annotation.resolveAnnotationType()?.qualifiedName)
+        assertEquals(names, annotation.getStringMemberValues("name"))
+        assertTrue(factory.name !in names)
+        installNativeRoot(application, names.first(), "foo", "java.time.Clock")
+        val snapshot = SpringSearchServiceFacade.getInstance(project)
+            .getBeanSnapshot(application, BeanSourcePreference.NATIVE)
+        assertEquals(BeanModelSource.NATIVE_SNAPSHOT, snapshot.selection.source)
+        assertEquals(1, snapshot.records.size)
+        val record = snapshot.records.single()
+        assertEquals(names.first(), record.name)
+        assertEquals(names, record.knownNames.toList())
+        assertEquals(factory, record.declaration)
+        assertFalse(NativeBeanSnapshotReader.ALIASES_NOT_EXPORTED in record.limitations)
+    }
+
     private fun staticSnapshot(application: PsiClass) =
         SpringSearchServiceFacade.getInstance(project).getBeanSnapshot(application, BeanSourcePreference.STATIC)
 
@@ -271,7 +327,7 @@ class BeanSnapshotServiceTest : ExplytKotlinLightTestCase() {
             ?: error("No PSI for $packageName.$name")
     }
 
-    private fun installNativeRoot(application: PsiClass, beanName: String) {
+    private fun installNativeRoot(application: PsiClass, beanName: String, methodName: String? = null, methodType: String? = null) {
         val path = application.navigationElement.containingFile.virtualFile.canonicalPath!!
         project.getService(NativeSettings::class.java).linkProject(NativeProjectSettings().apply {
             externalProjectPath = path
@@ -283,7 +339,7 @@ class BeanSnapshotServiceTest : ExplytKotlinLightTestCase() {
         root.createChild(BeanSearch.KEY, BeanSearch(true, path))
         root.createChild(
             SpringBeanData.KEY,
-            SpringBeanData(beanName, "java.time.Clock", "singleton", null, null, SpringBeanType.OTHER, true, true, false)
+            SpringBeanData(beanName, if (methodName == null) "java.time.Clock" else application.qualifiedName!!, "singleton", methodName, methodType, SpringBeanType.OTHER, true, true, false)
         )
         ExternalProjectsDataStorage.getInstance(project)
             .update(InternalExternalProjectInfo(SYSTEM_ID, path, root))

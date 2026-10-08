@@ -6,18 +6,18 @@
 package com.explyt.spring.core.service.kotlin
 
 import com.explyt.spring.core.SpringCoreClasses
-import com.explyt.spring.core.service.beans.BeanSourcePreference
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiClass
-import com.intellij.psi.search.GlobalSearchScope
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.search.GlobalSearchScope
 import junit.framework.TestCase
 
 class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
