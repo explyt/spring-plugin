@@ -44,6 +44,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.*
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.SearchScope
@@ -356,20 +357,25 @@ class SpringSearchService(private val project: Project) {
         return psiClass.allMethods.asSequence().filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
     }
 
+    fun profileActivation(psiMember: PsiMember): ProfileActivation {
+        if (!psiMember.isMetaAnnotatedBy(SpringCoreClasses.PROFILE)) return ProfileActivation.ACTIVE
+        val module = profileModule(psiMember) ?: return ProfileActivation.UNDECIDED
+        return ProfilesService.getInstance(project)
+            .activationOf(psiMember, getMetaAnnotations(module, SpringCoreClasses.PROFILE))
+    }
+
     private fun isActive(psiMember: PsiMember): Boolean {
         if (!psiMember.isMetaAnnotatedBy(SpringCoreClasses.PROFILE)) return true
-        val module = ModuleUtilCore.findModuleForPsiElement(psiMember) ?: return false
-        val profilesService = ProfilesService.getInstance(project)
-
-        val metaAnnotationsHolder = getMetaAnnotations(module, SpringCoreClasses.PROFILE)
-        val values = metaAnnotationsHolder.getAnnotationMemberValues(psiMember, setOf("value"))
-
-        return values.isEmpty() || values.any { value ->
-            profilesService.compute(
-                ElementManipulators.getValueText(value)
-            )
-        }
+        if (profileModule(psiMember) == null) return false
+        return profileActivation(psiMember) != ProfileActivation.INACTIVE
     }
+
+    private fun profileModule(psiMember: PsiMember): Module? =
+        ModuleUtilCore.findModuleForPsiElement(psiMember)
+            ?: psiMember.containingFile?.let { file ->
+                val virtualFile = file.virtualFile ?: return@let null
+                ProjectFileIndex.getInstance(project).getModuleForFile(virtualFile)
+            }
 
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanPsiMethods(module)
