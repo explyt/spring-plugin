@@ -24,6 +24,9 @@ import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointPathPatterns
+import com.explyt.spring.web.util.HandlerMethods
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
+import com.intellij.psi.PsiAnnotation
 import com.explyt.spring.web.util.HandlerSignature
 import com.explyt.spring.web.util.EndpointPathPatterns.PathReading
 import com.explyt.spring.web.util.SpringWebUtil
@@ -705,7 +708,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             result += EndpointParameterJson(info.name, "PATH", declaredTypeOf(info), info.isRequired)
         }
         val multipartRequestNames = HandlerSignature.requestParameters(psiMethod).asSequence()
-            .filter { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_PARAM) && isMultipartPart(it.type) }
+            .filter { inherited(it, SpringWebClasses.REQUEST_PARAM) != null && isMultipartPart(it.type) }
             .map(::wireNameOf)
             .toSet()
         val stack = webStackOf(psiMethod)
@@ -715,7 +718,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             result += EndpointParameterJson(info.name, source, declaredTypeOf(info), info.isRequired, info.defaultValue)
         }
         for (param in HandlerSignature.requestParameters(psiMethod)) {
-            val part = param.findFirstAnnotation(listOf(SpringWebClasses.REQUEST_PART)) ?: continue
+            val part = inherited(param, SpringWebClasses.REQUEST_PART) ?: continue
             result += EndpointParameterJson(
                 name = wireNameOf(param),
                 source = "PART",
@@ -779,7 +782,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         stack: WebApplicationStack?,
     ): List<EndpointParameterJson> =
         HandlerSignature.requestParameters(psiMethod)
-            .filter { param -> COLLECTED_BINDING_ANNOTATIONS.none { param.isMetaAnnotatedBy(it) } }
+            .filter { param ->
+                COLLECTED_BINDING_ANNOTATIONS.none { binding ->
+                    HandlerMethods.annotatedParameter(param) { it.isMetaAnnotatedBy(binding) } != null
+                }
+            }
             .map { param ->
                 EndpointParameterJson(
                     name = wireNameOf(param),
@@ -800,18 +807,21 @@ class SpringBootApplicationMcpToolset : McpToolset {
      *
      * Falls back to the declared name, which is also Spring's own rule when the annotation names nothing.
      */
+    private fun inherited(param: PsiParameter, annotationFqn: String): PsiAnnotation? =
+        HandlerMethods.bindingAnnotationOf(param) { it.isMetaAnnotatedByOrSelf(annotationFqn) }
+
     private fun wireNameOf(param: PsiParameter): String {
-        val annotation = param.findFirstAnnotation(NAMED_BINDING_ANNOTATIONS) ?: return param.name
+        val annotation = NAMED_BINDING_ANNOTATIONS.firstNotNullOfOrNull { inherited(param, it) } ?: return param.name
         return annotation.getStringAttribute("value")
             ?: annotation.getStringAttribute(ATTR_NAME)
             ?: param.name
     }
 
     private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String = when {
-        param.isMetaAnnotatedBy(SpringWebClasses.COOKIE_VALUE) -> "COOKIE"
-        param.isMetaAnnotatedBy(SpringWebClasses.MODEL_ATTRIBUTE) -> "MODEL"
+        inherited(param, SpringWebClasses.COOKIE_VALUE) != null -> "COOKIE"
+        inherited(param, SpringWebClasses.MODEL_ATTRIBUTE) != null -> "MODEL"
         isFrameworkSupplied(param.type, stack) -> "FRAMEWORK"
-        param.annotations.any { !isBindingNeutral(it) } -> "UNKNOWN"
+        HandlerMethods.bindingAnnotationOf(param) { !isBindingNeutral(it) } != null -> "UNKNOWN"
         else -> defaultSourceOf(param.type, stack == WebApplicationStack.SERVLET)
     }
 
@@ -1150,9 +1160,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         if (uHandler == null || module == null) return MediaTypes(emptyList(), emptyList())
         val mah = SpringSearchService.getInstance(project)
             .getMetaAnnotations(module, SpringWebClasses.REQUEST_MAPPING)
+        val mapping = HandlerMethods.mappingSourceOf(uHandler.javaPsi) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+            ?.toUElement() as? UMethod ?: uHandler
         return MediaTypes(
-            produces = mah.getAnnotationValues(uHandler, setOf("produces")).mapNotNull { it.evaluateString() },
-            consumes = mah.getAnnotationValues(uHandler, setOf("consumes")).mapNotNull { it.evaluateString() },
+            produces = mah.getAnnotationValues(mapping, setOf("produces")).mapNotNull { it.evaluateString() },
+            consumes = mah.getAnnotationValues(mapping, setOf("consumes")).mapNotNull { it.evaluateString() },
         )
     }
 
