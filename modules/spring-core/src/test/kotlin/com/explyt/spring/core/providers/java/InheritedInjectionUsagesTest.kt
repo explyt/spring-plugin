@@ -1,0 +1,99 @@
+/*
+ * Copyright (c) 2024 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.explyt.spring.core.providers.java
+
+import com.explyt.spring.core.SpringIcons
+import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.SpringGutterTestUtil
+
+class InheritedInjectionUsagesTest : ExplytJavaLightTestCase() {
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springContext_6_0_7,
+        TestLibrary.springBootAutoConfigure_3_1_1
+    )
+
+    fun testAnnotatedAbstractBaseFieldIsListedOnce() {
+        assertUsages(
+            """
+            @Component abstract class Base { @Autowired Foo foo; }
+            @Component class Impl extends Base {}
+            @Component class Foo {}
+            """.trimIndent(), "foo", 1
+        )
+    }
+
+    fun testUnannotatedAbstractBaseFieldIsListed() {
+        assertUsages(
+            """
+            abstract class Base { @Autowired Foo foo; }
+            @Component class Impl extends Base {}
+            @Component class Foo {}
+            """.trimIndent(), "foo", 1
+        )
+    }
+
+    fun testAutowiredConstructorInAbstractBaseIsListed() {
+        assertUsages(
+            """
+            abstract class Base { @Autowired public Base(Foo foo) {} }
+            @Component class Impl extends Base { Impl() { super(null); } }
+            @Component class Foo {}
+            """.trimIndent(), "foo", 1
+        )
+    }
+
+    fun testAutowiredSetterInAbstractBaseIsListed() {
+        assertUsages(
+            """
+            abstract class Base { @Autowired void setFoo(Foo foo) {} }
+            @Component class Impl extends Base {}
+            @Component class Foo {}
+            """.trimIndent(), "setFoo", 1
+        )
+    }
+
+    fun testTwoConcreteSubclassesDoNotDuplicateBaseInjection() {
+        assertUsages(
+            """
+            abstract class Base { @Autowired Foo foo; }
+            @Component class First extends Base {}
+            @Component class Second extends Base {}
+            @Component class Foo {}
+            """.trimIndent(), "foo", 1
+        )
+    }
+
+    fun testUnrelatedNonBeanInjectionIsNotListed() {
+        val targets = targets(
+            """
+            class Unrelated { @Autowired Foo unrelated; }
+            @Component class Foo {}
+            """.trimIndent()
+        )
+        assertFalse(targets.any { it.contains("unrelated") })
+    }
+
+    private fun assertUsages(source: String, target: String, count: Int) {
+        val targets = targets(source)
+        assertTrue(SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .any { it.psiClass.qualifiedName == "candidates.Impl" })
+        assertEquals(count, targets.count { it.contains(target) })
+    }
+
+    private fun targets(source: String): List<String> {
+        myFixture.configureByText(
+            "Candidates.java",
+            "package candidates;\nimport org.springframework.stereotype.Component;\n" +
+                "import org.springframework.beans.factory.annotation.Autowired;\n" + source
+        )
+        myFixture.doHighlighting()
+        return SpringGutterTestUtil.getGutterTargetString(
+            SpringGutterTestUtil.getAllBeanGuttersByIcon(myFixture, SpringIcons.SpringBean)
+        ).flatten()
+    }
+}
