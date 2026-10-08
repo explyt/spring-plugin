@@ -9,8 +9,6 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
-import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
@@ -21,7 +19,6 @@ import com.intellij.psi.JavaPsiFacade
 
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiType
 
 /**
@@ -94,26 +91,9 @@ class StaticBeanSnapshotReader(private val project: Project) {
         )
     }
 
-    /**
-     * Every name the declaration is known to answer to, in declaration order.
-     *
-     * Reading them here is what lets an exact-name query match an alias without a second lookup; the canonical
-     * name stays the one the model already chose.
-     */
     private fun declaredNamesOf(bean: PsiBean, module: Module): Set<String> =
-        (bean.psiMember.resolveBeanName(module) + declaredBeanAliases(bean))
+        bean.psiMember.resolveBeanName(module)
             .filterTo(LinkedHashSet()) { it.isNotBlank() }
-
-    /**
-     * `@Bean` declares its names under either `value` or `name` - they are aliases of one attribute in Spring.
-     * The shared `resolveBeanName` reads only `value`, so a bean declared as `@Bean(name = {"a", "b"})` would
-     * answer to `b` at runtime while an exact-name query for it found nothing.
-     */
-    private fun declaredBeanAliases(bean: PsiBean): List<String> {
-        val annotation = (bean.psiMember as? PsiModifierListOwner)?.getMetaAnnotation(SpringCoreClasses.BEAN)
-            ?: return emptyList()
-        return (annotation.getStringMemberValues("value") + annotation.getStringMemberValues("name")).toList()
-    }
 
     private fun declaredTypeOf(bean: PsiBean, factory: PsiMethod?): PsiType? = when (factory) {
         null -> JavaPsiFacade.getElementFactory(project).createType(bean.psiClass)

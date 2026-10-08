@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: `@Bean(name = …)` beans are named by their declared name; `@Qualifier` matches them (#506)
 - fix: Evaluate `@Profile` constants by value and keep undecidable profile expressions active (#562)
 - fix: Evaluate `@ConditionalOnProperty` like Spring Boot: every repeated annotation and every listed name must match, `havingValue` is compared ignoring case, a `false` value without `havingValue` does not match, `matchIfMissing` applies only to a missing key, the value of an active profile file overrides the default file in YAML as in `.properties`, a `${VAR:default}` value falls back to its default, and `@ConditionalOnBooleanProperty` is evaluated too, so a configuration Boot turns off is no longer reported as an active bean, and one Boot turns on no longer disappears (#496)
 - fix: Treat `@Profile` values as alternatives like Spring, so a bean with several profiles or direct and meta-annotation profiles is active when any value matches (#548)

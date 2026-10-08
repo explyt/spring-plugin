@@ -431,7 +431,11 @@ object SpringCoreUtil {
     }
 
     fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? {
-        return getMetaAnnotation(SpringCoreClasses.BEAN)?.getStringMemberValues()?.ifEmpty { null }?.toSet()
+        val annotation = getMetaAnnotation(SpringCoreClasses.BEAN) ?: return null
+        return (annotation.getStringMemberValues("value") + annotation.getStringMemberValues("name"))
+            .filter(String::isNotBlank)
+            .toCollection(LinkedHashSet())
+            .ifEmpty { null }
     }
 
     fun PsiAnnotation.resolveBeanName(): String? {
