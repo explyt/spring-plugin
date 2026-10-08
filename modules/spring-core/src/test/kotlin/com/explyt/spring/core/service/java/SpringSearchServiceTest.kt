@@ -5,6 +5,12 @@
 
 package com.explyt.spring.core.service.java
 
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.beans.BeanSourcePreference
+import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
+import com.intellij.psi.search.GlobalSearchScope
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
@@ -20,7 +26,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import junit.framework.TestCase
 
 class SpringSearchServiceTest : ExplytJavaLightTestCase() {
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_3_1_1)
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7, TestLibrary.springBootAutoConfigure_3_1_1)
 
     override fun setUp() {
         super.setUp()
@@ -106,5 +112,55 @@ class SpringSearchServiceTest : ExplytJavaLightTestCase() {
         PsiManager.getInstance(project).dropPsiCaches()
 
         assertEquals(2, SpringSearchUtils.getAllReferencesToElement(method).size)
+    }
+
+    fun testBeanNameAttributeInActiveModel() = assertBeanName("@Bean(name = \"x\")", "name", listOf("x"), "x")
+
+    fun testBeanNamePositionalControl() = assertBeanName("@Bean(\"x\")", "value", listOf("x"), "x")
+
+    fun testBeanNameValueControl() = assertBeanName("@Bean(value = \"x\")", "value", listOf("x"), "x")
+
+    fun testBeanNameUnnamedControl() = assertBeanName("@Bean", "value", emptyList(), "foo")
+
+    fun testBeanNameAttributeSnapshotAliases() {
+        val application = configureBeanName("@Bean(name = {\"x\", \"y\"})", "name", listOf("x", "y"))
+        val records = SpringSearchServiceFacade.getInstance(project)
+            .getBeanSnapshot(application, BeanSourcePreference.STATIC).records
+            .filter { it.typeName == "beanname.Foo" }
+        assertEquals("One factory must produce one snapshot record", 1, records.size)
+        assertEquals("x", records.single().name)
+        assertEquals(listOf("x", "y"), records.single().knownNames.toList())
+    }
+
+    private fun assertBeanName(annotation: String, attribute: String, values: List<String>, expectedName: String) {
+        configureBeanName(annotation, attribute, values)
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .filter { it.psiClass.qualifiedName == "beanname.Foo" }
+        assertEquals(setOf(expectedName), beans.map { it.name }.toSet())
+        assertEquals(1, beans.size)
+    }
+
+    private fun configureBeanName(annotation: String, attribute: String, values: List<String>): PsiClass {
+        myFixture.addFileToProject(
+            "beanname/App.java",
+            """
+            package beanname;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            import org.springframework.context.annotation.Bean;
+            @SpringBootApplication
+            public class App {
+                $annotation
+                public Foo foo() { return new Foo(); }
+            }
+            class Foo {}
+            """.trimIndent()
+        )
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass("beanname.App", GlobalSearchScope.projectScope(project))!!
+        val beanAnnotation = application.findMethodsByName("foo", false).single()
+            .getAnnotation(SpringCoreClasses.BEAN)!!
+        assertEquals("Declared @Bean attribute values", values, beanAnnotation.getStringMemberValues(attribute))
+        assertEquals("Explicit attribute presence", values.isNotEmpty(), beanAnnotation.findDeclaredAttributeValue(attribute) != null)
+        return application
     }
 }
