@@ -1605,6 +1605,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "also over @Column(nullable = true); an optional or bare @Basic does not force NOT NULL by itself. " +
                 "'nullable' is absent for a to-many association, an element collection and the inverse side of a " +
                 "one-to-one, because the owner table has no column for them. " +
+                "A SINGLE_TABLE subclass column relaxed to nullable reports nullableReason: SINGLE_TABLE_SUBCLASS, " +
+                "unless an explicit @Column(nullable = false), @JoinColumn(nullable = false) or to-one optional = false keeps it NOT NULL. " +
                 "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
                 "requested' as 'this entity has none'. " +
                 "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
@@ -1740,12 +1742,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
             if (field.findFirstAnnotation(TRANSIENT_ANNOTATION_FQNS) != null) continue
             if (!seen.add(field.name)) continue
 
-            result += toEntityField(field)
+            result += toEntityField(field, psiClass)
         }
         return result
     }
 
-    private fun toEntityField(field: PsiField): EntityFieldJson {
+    private fun toEntityField(field: PsiField, readEntity: PsiClass): EntityFieldJson {
         val columnAnnotation = field.findFirstAnnotation(COLUMN_ANNOTATION_FQNS)
         val column = columnAnnotation.getStringAttribute(ATTR_NAME)?.let(SqlIdentifier::declared)
         val columnNullable = columnAnnotation.getDeclaredBooleanAttribute(ATTR_NULLABLE)
@@ -1763,11 +1765,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val optional = relationshipAnnotation.getDeclaredBooleanAttribute(ATTR_OPTIONAL)
         val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
         val primaryKey = field.findFirstAnnotation(PRIMARY_KEY_ANNOTATION_FQNS) != null
+        val constrainedNullable = !primaryKey && optional != false && basicOptional != false && !implicitPrimitiveColumn &&
+                (columnNullable ?: joinColumnNullable ?: !hasNotNullAnnotation(field))
         val nullable = if (!hasOwnerColumn(field, relationshipType, mappedBy)) {
             null
         } else {
-            !primaryKey && optional != false && basicOptional != false && !implicitPrimitiveColumn &&
-                    (columnNullable ?: joinColumnNullable ?: !hasNotNullAnnotation(field))
+            constrainedNullable || isSingleTableSubclass(owningEntity(field.containingClass, readEntity)) &&
+                    !primaryKey && optional != false && (columnNullable ?: joinColumnNullable ?: true)
         }
 
         return EntityFieldJson(
@@ -1777,6 +1781,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             columnQuoted = column?.quotedOrNull,
             primaryKey = primaryKey,
             nullable = nullable,
+            nullableReason = EntityNullableReason.SINGLE_TABLE_SUBCLASS.takeIf { nullable == true && !constrainedNullable },
             relationship = relationshipType,
             joinColumn = joinColumn?.name,
             joinColumnQuoted = joinColumn?.quotedOrNull,
@@ -1785,6 +1790,42 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 field.findFirstAnnotation(JpaClasses.JOIN_TABLE.allFqns)?.let(::toEntityJoinTable)
             },
         )
+    }
+
+    private fun owningEntity(declaringClass: PsiClass?, readEntity: PsiClass): PsiClass? {
+        if (declaringClass?.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) != null) return declaringClass
+        var current = readEntity
+        var nearestEntity: PsiClass? = null
+        val visited = mutableSetOf<PsiClass>()
+        while (visited.add(current)) {
+            ProgressManager.checkCanceled()
+            if (current.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) != null) {
+                nearestEntity = current
+            }
+            if (current == declaringClass) return nearestEntity
+            current = current.superClass ?: return null
+        }
+        return null
+    }
+
+    private fun isSingleTableSubclass(declaringClass: PsiClass?): Boolean {
+        if (declaringClass?.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) == null) return false
+        var root: PsiClass = declaringClass
+        var hasEntityParent = false
+        var ancestor = declaringClass.superClass
+        val visited = mutableSetOf<PsiClass>()
+        while (ancestor != null && visited.add(ancestor)) {
+            ProgressManager.checkCanceled()
+            if (ancestor.findFirstAnnotation(ENTITY_ANNOTATION_FQNS) != null) {
+                root = ancestor
+                hasEntityParent = true
+            }
+            ancestor = ancestor.superClass
+        }
+        if (!hasEntityParent) return false
+        val strategy = root.findFirstAnnotation(JpaClasses.inheritance.allFqns)
+            ?.findDeclaredAttributeValue("strategy") ?: return true
+        return (strategy as? PsiReferenceExpression)?.resolve().let { it as? PsiEnumConstant }?.name == "SINGLE_TABLE"
     }
 
     private fun toEntityJoinTable(annotation: PsiAnnotation): EntityJoinTableJson {
@@ -2495,12 +2536,15 @@ data class EntityFieldJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val columnQuoted: Boolean? = null,
     val primaryKey: Boolean,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val nullable: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val nullableReason: EntityNullableReason? = null,
     val relationship: String?,
     val joinColumn: String?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinColumnQuoted: Boolean? = null,
     val mappedBy: String?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinTable: EntityJoinTableJson? = null,
 )
+
+enum class EntityNullableReason { SINGLE_TABLE_SUBCLASS }
 
 data class EntityJoinTableJson(
     val name: String?,

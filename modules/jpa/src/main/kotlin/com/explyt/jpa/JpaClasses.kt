@@ -11,6 +11,7 @@ import kotlin.reflect.KProperty
 object JpaClasses {
     val entity by "persistence.Entity"
     val mappedSuperclass by "persistence.MappedSuperclass"
+    val inheritance by "persistence.Inheritance"
     val embeddable by "persistence.Embeddable"
 
     val entityManager by "persistence.EntityManager"
