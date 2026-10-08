@@ -7,6 +7,8 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.runBlocking
@@ -397,6 +399,260 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertEquals(
             setOf("name", "type", "column", "primaryKey", "nullable", "relationship", "joinColumn", "mappedBy"),
             keysOf(name)
+        )
+    }
+
+    fun testJavaOneToManyOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+        addJavaOwner("@OneToMany(mappedBy = \"owner\") private Set<Pet> pets;")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
+        assertEquals("owner", pets["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testKotlinOneToManyOmitsNullableForANonNullCollection() = runBlocking<Unit> {
+        addKotlinOwner("@field:OneToMany(mappedBy = \"owner\") val pets: MutableSet<Pet> = mutableSetOf()")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
+        assertEquals("owner", pets["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testJavaManyToManyOmitsNullableForAJoinTable() = runBlocking<Unit> {
+        addJavaOwner("@ManyToMany @JoinTable(name = \"owner_pets\") private Set<Pet> pets;")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "MANY_TO_MANY")
+        assertEquals("owner_pets", joinTableOf(pets)?.get("name")?.asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testKotlinManyToManyOmitsNullableForAJoinTable() = runBlocking<Unit> {
+        addKotlinOwner("@field:ManyToMany @field:JoinTable(name = \"owner_pets\") val pets: MutableSet<Pet> = mutableSetOf()")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "MANY_TO_MANY")
+        assertEquals("owner_pets", joinTableOf(pets)?.get("name")?.asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testElementCollectionOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+        addJavaOwner("@ElementCollection private Set<String> tags;")
+
+        val tags = field(fieldsOf("com.example.mapping.Owner"), "tags")
+        assertEquals("java.util.Set<java.lang.String>", tags["type"].asText())
+        assertTrue("Precondition: element collections have no association kind, got $tags", tags["relationship"].isNull)
+        assertNoOwnerColumnNullable(tags)
+    }
+
+    fun testInverseOneToOneOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+        addJavaOwner("@OneToOne(mappedBy = \"profile\") private Pet pet;")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
+        assertEquals("profile", pet["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pet)
+    }
+
+    fun testManyToOneKeepsNullableForAnOptionalForeignKey() = runBlocking<Unit> {
+        addJavaOwner("@ManyToOne private Pet pet;")
+
+        assertOwnerColumnNullable(relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE"), true)
+    }
+
+    fun testManyToOneKeepsNullableForAMandatoryForeignKey() = runBlocking<Unit> {
+        addJavaOwner("@ManyToOne(optional = false) private Pet pet;")
+
+        assertOwnerColumnNullable(relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE"), false)
+    }
+
+    fun testManyToOneKeepsNullableForANotNullJoinColumn() = runBlocking<Unit> {
+        addJavaOwner("@ManyToOne @JoinColumn(name = \"pet_id\", nullable = false) private Pet pet;")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE")
+        assertEquals("pet_id", pet["joinColumn"].asText())
+        assertOwnerColumnNullable(pet, false)
+    }
+
+    fun testOwningOneToOneKeepsNullableForItsJoinColumn() = runBlocking<Unit> {
+        addJavaOwner("@OneToOne @JoinColumn(name = \"pet_id\", nullable = false) private Pet pet;")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
+        assertEquals("pet_id", pet["joinColumn"].asText())
+        assertTrue("Precondition: owning one-to-one has no mappedBy, got $pet", pet["mappedBy"].isNull)
+        assertOwnerColumnNullable(pet, false)
+    }
+
+    fun testBasicPrimitiveAndWrapperKeepTheirNullableKeys() = runBlocking<Unit> {
+        addJavaOwner("private int count; private Integer optionalCount;")
+
+        val fields = fieldsOf("com.example.mapping.Owner")
+        val count = field(fields, "count")
+        val optionalCount = field(fields, "optionalCount")
+        assertEquals("int", count["type"].asText())
+        assertEquals("java.lang.Integer", optionalCount["type"].asText())
+        assertTrue("Precondition: primitive is a basic field, got $count", count["relationship"].isNull)
+        assertTrue("Precondition: wrapper is a basic field, got $optionalCount", optionalCount["relationship"].isNull)
+        assertOwnerColumnNullable(count, false)
+        assertOwnerColumnNullable(optionalCount, true)
+    }
+
+    fun testJavaInverseManyToManyOmitsNullable() = runBlocking<Unit> {
+        addJavaOwner("@ManyToMany(mappedBy = \"owners\") private Set<Pet> pets;")
+        assertMappingAnnotation("pets", "jakarta.persistence.ManyToMany")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "MANY_TO_MANY")
+        assertEquals("owners", pets["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testKotlinInverseOneToOneOmitsNullable() = runBlocking<Unit> {
+        addKotlinOwner("@field:OneToOne(mappedBy = \"profile\") var pet: Pet? = null")
+        assertMappingAnnotation("pet", "jakarta.persistence.OneToOne")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
+        assertEquals("profile", pet["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pet)
+    }
+
+    fun testKotlinElementCollectionOmitsNullable() = runBlocking<Unit> {
+        addKotlinOwner("@field:ElementCollection val tags: MutableSet<String> = mutableSetOf()")
+        assertMappingAnnotation("tags", "jakarta.persistence.ElementCollection")
+
+        val tags = field(fieldsOf("com.example.mapping.Owner"), "tags")
+        assertEquals("java.util.Set<java.lang.String>", tags["type"].asText())
+        assertTrue("Precondition: element collection has no association kind, got $tags", tags["relationship"].isNull)
+        assertNoOwnerColumnNullable(tags)
+    }
+
+    fun testJavaxOneToManyOmitsNullable() = runBlocking<Unit> {
+        addJavaOwner("@javax.persistence.OneToMany(mappedBy = \"owner\") private Set<Pet> pets;")
+        assertMappingAnnotation("pets", "javax.persistence.OneToMany")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
+        assertEquals("owner", pets["mappedBy"].asText())
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testJavaxElementCollectionOmitsNullable() = runBlocking<Unit> {
+        addJavaOwner("@javax.persistence.ElementCollection private Set<String> tags;")
+        assertMappingAnnotation("tags", "javax.persistence.ElementCollection")
+
+        val tags = field(fieldsOf("com.example.mapping.Owner"), "tags")
+        assertEquals("java.util.Set<java.lang.String>", tags["type"].asText())
+        assertTrue("Precondition: element collection has no association kind, got $tags", tags["relationship"].isNull)
+        assertNoOwnerColumnNullable(tags)
+    }
+
+    fun testUnidirectionalOneToManyOmitsNullableForAChildTableForeignKey() = runBlocking<Unit> {
+        addJavaOwner("@OneToMany @JoinColumn(name = \"owner_id\") private Set<Pet> pets;")
+        assertMappingAnnotation("pets", "jakarta.persistence.JoinColumn")
+
+        val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
+        assertEquals("owner_id", pets["joinColumn"].asText())
+        assertTrue("Precondition: unidirectional association has no mappedBy, got $pets", pets["mappedBy"].isNull)
+        assertNoOwnerColumnNullable(pets)
+    }
+
+    fun testEmbeddedFieldKeepsNullableKey() = runBlocking<Unit> {
+        addJavaOwner("@Embedded private OwnerKey details;")
+        assertMappingAnnotation("details", "jakarta.persistence.Embedded")
+
+        val details = field(fieldsOf("com.example.mapping.Owner"), "details")
+        assertEquals("com.example.mapping.OwnerKey", details["type"].asText())
+        assertTrue("Precondition: embedded field has no association kind, got $details", details["relationship"].isNull)
+        assertTrue("Embedded fields must keep nullable, got $details", details.has("nullable"))
+    }
+
+    fun testEmbeddedIdFieldKeepsNullableKey() = runBlocking<Unit> {
+        addJavaOwner("@EmbeddedId private OwnerKey key;", idDeclaration = "")
+        assertMappingAnnotation("key", "jakarta.persistence.EmbeddedId")
+
+        val key = field(fieldsOf("com.example.mapping.Owner"), "key")
+        assertTrue("Precondition: embedded id is a primary key, got $key", key["primaryKey"].asBoolean())
+        assertTrue("Embedded id fields must keep nullable, got $key", key.has("nullable"))
+    }
+
+    fun testOwningOneToOneMapsIdKeepsNullableKey() = runBlocking<Unit> {
+        addJavaOwner("@OneToOne @MapsId @JoinColumn(name = \"id\") private Pet pet;")
+        assertMappingAnnotation("pet", "jakarta.persistence.MapsId")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
+        assertTrue("Precondition: MapsId is a primary key, got $pet", pet["primaryKey"].asBoolean())
+        assertTrue("Precondition: owning association has no mappedBy, got $pet", pet["mappedBy"].isNull)
+        assertTrue("MapsId fields must keep nullable, got $pet", pet.has("nullable"))
+    }
+
+    fun testOwningOneToOnePrimaryKeyJoinColumnKeepsNullableKey() = runBlocking<Unit> {
+        addJavaOwner("@OneToOne @PrimaryKeyJoinColumn private Pet pet;")
+        assertMappingAnnotation("pet", "jakarta.persistence.PrimaryKeyJoinColumn")
+
+        val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
+        assertTrue("Precondition: owning association has no mappedBy, got $pet", pet["mappedBy"].isNull)
+        assertTrue("Primary-key join fields must keep nullable, got $pet", pet.has("nullable"))
+    }
+
+    private fun assertMappingAnnotation(fieldName: String, annotation: String) {
+        val owner = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.mapping.Owner", GlobalSearchScope.allScope(project))
+        val mappedField = owner?.findFieldByName(fieldName, false)
+        assertTrue("Precondition: $fieldName must declare $annotation", mappedField?.hasAnnotation(annotation) == true)
+    }
+
+    private fun assertNoOwnerColumnNullable(field: JsonNode) {
+        assertFalse("Fields without an owner-table column must omit nullable, got $field", field.has("nullable"))
+    }
+
+    private fun assertOwnerColumnNullable(field: JsonNode, nullable: Boolean) {
+        assertTrue("Owner-table columns must keep the nullable key, got $field", field.has("nullable"))
+        assertEquals(mapper.valueToTree<JsonNode>(nullable), field["nullable"])
+    }
+
+    private fun addJavaOwner(declaration: String, idDeclaration: String = "@Id private Long id;") {
+        myFixture.addFileToProject(
+            "com/example/mapping/Owner.java", """
+            package com.example.mapping;
+            import java.util.Set;
+            import jakarta.persistence.*;
+
+            @Entity
+            public class Owner {
+                $idDeclaration
+                $declaration
+            }
+
+            @Entity
+            class Pet {
+                @Id private Long id;
+                @ManyToOne private Owner owner;
+                @OneToOne @JoinColumn(name = "profile_id") private Owner profile;
+                @ManyToMany private Set<Owner> owners;
+            }
+
+            @Embeddable
+            class OwnerKey {
+                private Long value;
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun addKotlinOwner(declaration: String) {
+        myFixture.addFileToProject(
+            "com/example/mapping/Owner.kt", """
+            package com.example.mapping
+            import jakarta.persistence.*
+
+            @Entity
+            class Owner {
+                @field:Id var id: Long? = null
+                $declaration
+            }
+
+            @Entity
+            class Pet {
+                @field:Id var id: Long? = null
+                @field:ManyToOne var owner: Owner? = null
+                @field:OneToOne @field:JoinColumn(name = "profile_id") var profile: Owner? = null
+            }
+            """.trimIndent()
         )
     }
 
