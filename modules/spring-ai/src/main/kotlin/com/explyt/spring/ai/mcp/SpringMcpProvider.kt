@@ -1195,8 +1195,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val callee = (FunctionalRouteTarget.of(endpoint.psiElement) as? FunctionalRouteTarget.Handler)?.method
             ?: return null
         val position = sourcePositionOf(callee, project)
+        val target = SourceNames.qualifiedNameOf(callee) ?: return null
         return ServiceCallJson(
-            target = "${callee.containingClass?.qualifiedName}.${callee.name}",
+            target = target,
             filePath = position.filePath,
             library = position.library,
             line = position.line,
@@ -1317,13 +1318,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
             || !InheritanceUtil.isInheritorOrSelf(receiverClass, calleeClass, true)
         ) return null
         val namedAfter = when {
-            !isPlatformOrFrameworkLibraryMember(calleeClass) -> calleeClass
+            !isPlatformOrFrameworkLibraryMember(calleeClass) -> null
             isFrameworkInterfaceMemberOfProjectType(calleeClass, receiverClass) -> receiverClass
             else -> return null
         }
+        val target = SourceNames.qualifiedNameOf(callee, namedAfter) ?: return null
         val position = sourcePositionOf(callee, project)
         return ServiceCallJson(
-            target = "${namedAfter.qualifiedName}.${callee.name}",
+            target = target,
             filePath = position.filePath,
             library = position.library,
             line = position.line,
@@ -1549,7 +1551,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             layer = containingClass?.let { detectSpringLayer(it) },
             reachedBy = traced.reachedBy?.name,
             className = containingClass?.qualifiedName ?: containingClass?.name,
-            methodName = CallChainTracer.sourceNameOf(method),
+            methodName = SourceNames.sourceNameOf(method),
             filePath = position.filePath,
             library = position.library,
             line = position.line,

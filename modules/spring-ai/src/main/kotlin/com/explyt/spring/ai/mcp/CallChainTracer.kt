@@ -14,13 +14,9 @@ import com.intellij.psi.PsiModifier
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.OverridingMethodsSearch
 import com.intellij.psi.util.InheritanceUtil
-import com.intellij.psi.util.PsiTreeUtil
-
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
-import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.UElement
@@ -219,26 +215,7 @@ internal class CallChainTracer(project: Project, private val maxMethods: Int) {
         }
 
         /** How a method is named in a trace: its declaring class and its source name, `ShortLinkService.activity`. */
-        fun nameOf(method: PsiMethod): String = "${displayNameOf(method)}.${sourceNameOf(method)}"
-
-        private fun displayNameOf(method: PsiMethod): String {
-            val containingClass = method.containingClass
-            val name = containingClass?.name ?: "?"
-            val kotlinOrigin = (method as? KtLightMethod)?.kotlinOrigin
-            val declaration = kotlinOrigin
-                ?.let { PsiTreeUtil.getParentOfType(it, KtClassOrObject::class.java) }
-                ?: containingClass?.navigationElement
-            val objectDeclaration = declaration as? KtObjectDeclaration
-            if (objectDeclaration?.isCompanion() != true) return name
-            val outerName = PsiTreeUtil.getParentOfType(objectDeclaration, KtClassOrObject::class.java)?.name ?: return name
-            return outerName
-        }
-
-        /**
-         * The name a function is declared with, not the one the JVM sees: a Kotlin `internal` function compiles to
-         * `activitySql$module_name`, a name that appears nowhere in the source a caller would search.
-         */
-        fun sourceNameOf(method: PsiMethod): String = kotlinFunctionOf(method)?.name ?: method.name
+        fun nameOf(method: PsiMethod): String = SourceNames.shortNameOf(method)
 
         /**
          * The parameters a method is declared with. The JVM signature of a Kotlin function carries more: the receiver of
