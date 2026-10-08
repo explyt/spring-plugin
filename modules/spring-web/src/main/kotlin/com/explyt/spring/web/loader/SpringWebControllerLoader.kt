@@ -8,6 +8,7 @@ package com.explyt.spring.web.loader
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.util.MappingPathPlaceholders
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.spring.web.util.WebApplicationStack
@@ -73,16 +74,18 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
         module: Module,
         endpointType: EndpointType,
     ): List<EndpointElement> {
-        val prefixes = requestMappingMah.getAnnotationMemberValues(controllerPsiClass, TARGET_VALUE)
+        val prefixes = HandlerMethods.mappedType(controllerPsiClass) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
+            ?.let { requestMappingMah.getAnnotationMemberValues(it, TARGET_VALUE) }.orEmpty()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .ifEmpty { listOf("") }
 
         val result = mutableListOf<EndpointElement>()
 
-        for (method in controllerPsiClass.allMethods) {
-            if (!method.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) continue
-
-            val mapping = SpringWebUtil.requestMappingOf(method, requestMappingMah)
+        val mappedMethods = HandlerMethods.mappedMethods(controllerPsiClass) {
+            it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)
+        }
+        for ((handler, mappingSource) in mappedMethods) {
+            val mapping = SpringWebUtil.requestMappingOf(mappingSource, requestMappingMah)
 
             for (value in mapping.paths) {
                 for (prefix in prefixes) {
@@ -90,7 +93,7 @@ class SpringWebControllerLoader(private val project: Project) : SpringWebEndpoin
                     result += EndpointElement(
                         SpringWebUtil.simplifyUrl(MappingPathPlaceholders.resolve(module, declared)),
                         mapping.methods,
-                        method,
+                        handler,
                         controllerPsiClass,
                         null,
                         endpointType,

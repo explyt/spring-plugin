@@ -9,6 +9,7 @@ import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.loader.EndpointType
@@ -53,12 +54,7 @@ class SpringWebProjectOpenApiGenerateAction :
             if (!isController && !isFeignClient) return
             val requestMappingMah = MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING)
 
-            val prefixes = if (psiClass.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING)) {
-                requestMappingMah.getAnnotationMemberValues(psiClass, setOf("path", "value"))
-                    .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            } else {
-                emptyList()
-            }
+            val prefixes = HandlerMethods.requestMappingPrefixes(psiClass, requestMappingMah)
 
             val prefix = prefixes.firstOrNull { !isAbsolutePath(it) } ?: ""
             endpointInfos += uClass.methods
