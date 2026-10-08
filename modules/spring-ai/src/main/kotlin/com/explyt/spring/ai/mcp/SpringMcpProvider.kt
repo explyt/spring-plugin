@@ -1601,6 +1601,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "optional = false or @JoinColumn(nullable = false); a primitive property with neither @Column " +
                 "nor @Basic maps to a NOT NULL column. @Basic(optional = false) forces NOT NULL for any type, " +
                 "also over @Column(nullable = true); an optional or bare @Basic does not force NOT NULL by itself. " +
+                "'nullable' is absent for a to-many association, an element collection and the inverse side of a " +
+                "one-to-one, because the owner table has no column for them. " +
                 "An inventory record carries no 'fields' or 'indexes' at all, so a client never reads 'not " +
                 "requested' as 'this entity has none'. " +
                 "packageFilter narrows the inventory by prefix and className selects exactly one entity; passing " +
@@ -1759,8 +1761,12 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val optional = relationshipAnnotation.getDeclaredBooleanAttribute(ATTR_OPTIONAL)
         val mappedBy = relationshipAnnotation.getStringAttribute(ATTR_MAPPED_BY)
         val primaryKey = field.findFirstAnnotation(PRIMARY_KEY_ANNOTATION_FQNS) != null
-        val nullable = !primaryKey && optional != false && basicOptional != false && !implicitPrimitiveColumn &&
-                (columnNullable ?: joinColumnNullable ?: !hasNotNullAnnotation(field))
+        val nullable = if (!hasOwnerColumn(field, relationshipType, mappedBy)) {
+            null
+        } else {
+            !primaryKey && optional != false && basicOptional != false && !implicitPrimitiveColumn &&
+                    (columnNullable ?: joinColumnNullable ?: !hasNotNullAnnotation(field))
+        }
 
         return EntityFieldJson(
             name = field.name,
@@ -1811,6 +1817,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 )
             }
     }
+
+    private fun hasOwnerColumn(field: PsiField, relationshipType: String?, mappedBy: String?): Boolean =
+        field.findFirstAnnotation(JpaClasses.elementCollection.allFqns) == null &&
+                relationshipType !in setOf("ONE_TO_MANY", "MANY_TO_MANY") &&
+                !(relationshipType == "ONE_TO_ONE" && mappedBy != null)
 
     private fun hasNotNullAnnotation(field: PsiField): Boolean {
         return field.annotations.any { it.qualifiedName?.substringAfterLast('.') == NOT_NULL_SIMPLE_NAME }
@@ -2481,7 +2492,7 @@ data class EntityFieldJson(
     val column: String?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val columnQuoted: Boolean? = null,
     val primaryKey: Boolean,
-    val nullable: Boolean,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val nullable: Boolean? = null,
     val relationship: String?,
     val joinColumn: String?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val joinColumnQuoted: Boolean? = null,
