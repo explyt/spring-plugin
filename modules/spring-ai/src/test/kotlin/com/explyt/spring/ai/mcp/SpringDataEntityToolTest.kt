@@ -9,6 +9,10 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiReferenceExpression
+import com.intellij.psi.search.GlobalSearchScope
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -885,6 +889,254 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("javax @Basic(optional = false)", false, field(fields, "name")["nullable"].booleanValue())
         assertEquals("A bare javax @Basic keeps a primitive nullable", true, field(fields, "position")["nullable"].booleanValue())
         assertEquals("An implicit primitive column under javax", false, field(fields, "locked")["nullable"].booleanValue())
+    }
+
+    fun testJavaSingleTableNotNullSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = false, name = "code")
+    }
+
+    fun testKotlinSingleTableNotNullSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = true, name = "code")
+    }
+
+    fun testJavaSingleTableMandatoryBasicSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = false, name = "name")
+    }
+
+    fun testKotlinSingleTableMandatoryBasicSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = true, name = "name")
+    }
+
+    fun testJavaSingleTableImplicitPrimitiveSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = false, name = "level")
+    }
+
+    fun testKotlinSingleTableImplicitPrimitiveSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = true, name = "level")
+    }
+
+    fun testJavaDefaultSingleTableSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = false, name = "code", strategy = null)
+    }
+
+    fun testKotlinDefaultSingleTableSubclassColumnIsNullable() = runBlocking<Unit> {
+        assertForcedSubclassColumn(kotlin = true, name = "code", strategy = null)
+    }
+
+    fun testJavaSingleTableExplicitNotNullSubclassColumnKeepsItsConstraint() = runBlocking<Unit> {
+        assertExplicitSubclassColumn(kotlin = false)
+    }
+
+    fun testKotlinSingleTableExplicitNotNullSubclassColumnKeepsItsConstraint() = runBlocking<Unit> {
+        assertExplicitSubclassColumn(kotlin = true)
+    }
+
+    fun testJavaSingleTableRootColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertRootColumns(kotlin = false)
+    }
+
+    fun testKotlinSingleTableRootColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertRootColumns(kotlin = true)
+    }
+
+    fun testJavaJoinedSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertOtherStrategyColumns(kotlin = false, strategy = "JOINED")
+    }
+
+    fun testKotlinJoinedSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertOtherStrategyColumns(kotlin = true, strategy = "JOINED")
+    }
+
+    fun testJavaTablePerClassSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertOtherStrategyColumns(kotlin = false, strategy = "TABLE_PER_CLASS")
+    }
+
+    fun testKotlinTablePerClassSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertOtherStrategyColumns(kotlin = true, strategy = "TABLE_PER_CLASS")
+    }
+
+    fun testJavaMappedSuperclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertMappedSuperclassColumns(kotlin = false)
+    }
+
+    fun testKotlinMappedSuperclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+        assertMappedSuperclassColumns(kotlin = true)
+    }
+
+    private suspend fun assertForcedSubclassColumn(kotlin: Boolean, name: String, strategy: String? = "SINGLE_TABLE") {
+        val subclass = addColumnHierarchy(kotlin, strategy)
+        val property = subclass.findFieldByName(name, false) ?: error("Missing subclass property $name")
+        assertEquals("Precondition: the property belongs to the subclass", subclass, property.containingClass)
+        when (name) {
+            "code" -> assertNotNull("Precondition: @NotNull is present", property.getAnnotation("explyt.inheritance.NotNull"))
+            "name" -> assertEquals(
+                "Precondition: @Basic explicitly forbids null", "false",
+                property.getAnnotation("jakarta.persistence.Basic")?.findDeclaredAttributeValue("optional")?.text
+            )
+            "level" -> {
+                assertEquals("Precondition: the property is primitive", "int", property.type.canonicalText)
+                assertNull("Precondition: the primitive has no explicit column", property.getAnnotation("jakarta.persistence.Column"))
+            }
+        }
+        val fields = fieldsOf(subclass.qualifiedName!!)
+        assertColumnWithoutInheritanceReason(field(fields, "explicit"), nullable = false)
+        assertColumnWithoutInheritanceReason(field(fields, "rootCode"), nullable = false)
+        assertColumnWithoutInheritanceReason(field(fields, "id"), nullable = false)
+        assertColumnWithoutInheritanceReason(field(fields, "unconstrained"), nullable = true)
+        val column = field(fields, name)
+        assertTrue("The column must carry a Boolean nullable key", column.has("nullable") && column["nullable"].isBoolean)
+        assertEquals("SINGLE_TABLE subclass $name must allow other subclasses' rows", true, column["nullable"].booleanValue())
+        assertTrue("A forced nullable column must explain its inheritance rule", column.has("nullableReason"))
+        assertEquals("SINGLE_TABLE_SUBCLASS", column["nullableReason"].asText())
+    }
+
+    private suspend fun assertExplicitSubclassColumn(kotlin: Boolean) {
+        val subclass = addColumnHierarchy(kotlin)
+        val property = subclass.findFieldByName("explicit", false) ?: error("Missing explicit column")
+        assertEquals(
+            "Precondition: @Column explicitly forbids null", "false",
+            property.getAnnotation("jakarta.persistence.Column")?.findDeclaredAttributeValue("nullable")?.text
+        )
+        assertColumnWithoutInheritanceReason(field(fieldsOf(subclass.qualifiedName!!), "explicit"), nullable = false)
+    }
+
+    private suspend fun assertRootColumns(kotlin: Boolean) {
+        val subclass = addColumnHierarchy(kotlin)
+        val root = subclass.superClass ?: error("Missing root entity")
+        val rootFields = fieldsOf(root.qualifiedName!!)
+        val inheritedFields = fieldsOf(subclass.qualifiedName!!)
+        for (name in listOf("id", "rootCode", "rootName", "rootLevel")) {
+            assertEquals("Precondition: $name is declared on the root", root, subclass.findFieldByName(name, true)?.containingClass)
+            assertColumnWithoutInheritanceReason(field(rootFields, name), nullable = false)
+            assertColumnWithoutInheritanceReason(field(inheritedFields, name), nullable = false)
+        }
+        assertColumnWithoutInheritanceReason(field(rootFields, "rootOptional"), nullable = true)
+        assertColumnWithoutInheritanceReason(field(inheritedFields, "rootOptional"), nullable = true)
+    }
+
+    private suspend fun assertOtherStrategyColumns(kotlin: Boolean, strategy: String) {
+        val subclass = addColumnHierarchy(kotlin, strategy)
+        val fields = fieldsOf(subclass.qualifiedName!!)
+        assertEquals("Precondition: subclass primitive is present", "int", field(fields, "level")["type"].asText())
+        for (name in listOf("code", "name", "level", "explicit", "id", "rootCode", "rootName", "rootLevel")) {
+            assertColumnWithoutInheritanceReason(field(fields, name), nullable = false)
+        }
+        for (name in listOf("unconstrained", "rootOptional")) {
+            assertColumnWithoutInheritanceReason(field(fields, name), nullable = true)
+        }
+    }
+
+    private suspend fun assertMappedSuperclassColumns(kotlin: Boolean) {
+        val entity = addColumnHierarchy(kotlin, strategy = null, mappedSuperclass = true)
+        val fields = fieldsOf(entity.qualifiedName!!)
+        for (name in listOf("id", "rootCode", "rootName", "rootLevel")) {
+            assertEquals("Precondition: $name belongs to the mapped superclass", entity.superClass, entity.findFieldByName(name, true)?.containingClass)
+            assertColumnWithoutInheritanceReason(field(fields, name), nullable = false)
+        }
+        assertColumnWithoutInheritanceReason(field(fields, "rootOptional"), nullable = true)
+    }
+
+    private fun assertColumnWithoutInheritanceReason(column: JsonNode, nullable: Boolean) {
+        assertTrue("The column must carry a Boolean nullable key: $column", column.has("nullable") && column["nullable"].isBoolean)
+        assertEquals("Column nullability stays unchanged: $column", nullable, column["nullable"].booleanValue())
+        assertFalse("A column unaffected by forced nullability must omit nullableReason: $column", column.has("nullableReason"))
+    }
+
+    private fun addColumnHierarchy(kotlin: Boolean, strategy: String? = "SINGLE_TABLE", mappedSuperclass: Boolean = false): PsiClass {
+        myFixture.addFileToProject(
+            "explyt/inheritance/NotNull.java", """
+            package explyt.inheritance;
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Target;
+            @Target(ElementType.FIELD)
+            public @interface NotNull {}
+            """.trimIndent()
+        )
+        val parentAnnotation = if (mappedSuperclass) "@MappedSuperclass" else "@Entity"
+        val inheritance = strategy?.let { "@Inheritance(strategy = InheritanceType.$it)" }.orEmpty()
+        if (kotlin) {
+            myFixture.addFileToProject(
+                "explyt/inheritance/Root.kt", """
+                package explyt.inheritance
+                import jakarta.persistence.*
+                $parentAnnotation
+                $inheritance
+                open class Root {
+                    @field:Id var id: Long? = null
+                    @field:NotNull var rootCode: String? = null
+                    @field:Basic(optional = false) var rootName: String? = null
+                    var rootLevel: Int = 0
+                    var rootOptional: String? = null
+                }
+                """.trimIndent()
+            )
+            myFixture.addFileToProject(
+                "explyt/inheritance/Child.kt", """
+                package explyt.inheritance
+                import jakarta.persistence.*
+                @Entity
+                class Child : Root() {
+                    @field:NotNull var code: String? = null
+                    @field:Basic(optional = false) var name: String? = null
+                    var level: Int = 0
+                    @field:Column(nullable = false) var explicit: String? = null
+                    var unconstrained: String? = null
+                }
+                """.trimIndent()
+            )
+        } else {
+            myFixture.addFileToProject(
+                "explyt/inheritance/Root.java", """
+                package explyt.inheritance;
+                import jakarta.persistence.*;
+                $parentAnnotation
+                $inheritance
+                public class Root {
+                    @Id private Long id;
+                    @NotNull private String rootCode;
+                    @Basic(optional = false) private String rootName;
+                    private int rootLevel;
+                    private String rootOptional;
+                }
+                """.trimIndent()
+            )
+            myFixture.addFileToProject(
+                "explyt/inheritance/Child.java", """
+                package explyt.inheritance;
+                import jakarta.persistence.*;
+                @Entity
+                public class Child extends Root {
+                    @NotNull private String code;
+                    @Basic(optional = false) private String name;
+                    private int level;
+                    @Column(nullable = false) private String explicit;
+                    private String unconstrained;
+                }
+                """.trimIndent()
+            )
+        }
+        val facade = JavaPsiFacade.getInstance(project)
+        val scope = GlobalSearchScope.projectScope(project)
+        val root = facade.findClass("explyt.inheritance.Root", scope) ?: error("Missing root PSI")
+        val child = facade.findClass("explyt.inheritance.Child", scope) ?: error("Missing subclass PSI")
+        assertNotNull("Precondition: subclass is an entity", child.getAnnotation("jakarta.persistence.Entity"))
+        assertEquals("Precondition: the subclass extends the root", root, child.superClass)
+        assertTrue("Precondition: inheritance resolves", child.isInheritor(root, true))
+        if (mappedSuperclass) {
+            assertNotNull("Precondition: parent is a mapped superclass", root.getAnnotation("jakarta.persistence.MappedSuperclass"))
+            assertNull("Precondition: parent is not an entity", root.getAnnotation("jakarta.persistence.Entity"))
+        } else {
+            assertNotNull("Precondition: root is an entity", root.getAnnotation("jakarta.persistence.Entity"))
+            assertNull("Precondition: root has no entity parent", root.superClass?.getAnnotation("jakarta.persistence.Entity"))
+        }
+        val annotation = root.getAnnotation("jakarta.persistence.Inheritance")
+        if (strategy == null) {
+            assertNull("Precondition: no inheritance annotation is declared", annotation)
+        } else {
+            val value = annotation?.findDeclaredAttributeValue("strategy") as? PsiReferenceExpression
+            assertEquals("Precondition: declared inheritance strategy resolves", strategy, value?.resolve()?.let { (it as? com.intellij.psi.PsiField)?.name })
+        }
+        return child
     }
 
     private fun addGateEntity(): String {
