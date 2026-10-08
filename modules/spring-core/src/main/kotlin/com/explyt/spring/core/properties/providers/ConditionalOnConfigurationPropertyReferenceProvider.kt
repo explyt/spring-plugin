@@ -5,9 +5,8 @@
 
 package com.explyt.spring.core.properties.providers
 
-import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.properties.PropertyConditionAnnotations
 import com.explyt.spring.core.properties.references.ExplytLibraryPropertyReference
-import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.PropertyUtil
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.intellij.codeInsight.AnnotationUtil
@@ -36,15 +35,9 @@ class ConditionalOnConfigurationPropertyReferenceProvider : UastInjectionHostRef
         val module = ModuleUtilCore.findModuleForPsiElement(psiAnnotation) ?: return EMPTY_ARRAY
         val attributeName = namedExpression.name ?: "value"
 
-        val annotationHolder = SpringSearchService.getInstance(module.project)
-            .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
-        if (!annotationHolder.isAttributeRelatedWith(
-                annotationQn,
-                attributeName,
-                SpringCoreClasses.CONDITIONAL_ON_PROPERTY,
-                VALUE_FIELDS
-            )
-        ) return EMPTY_ARRAY
+        val annotationHolder = PropertyConditionAnnotations.relatedAnnotationHolder(
+            module, annotationQn, attributeName, VALUE_FIELDS
+        ) ?: return EMPTY_ARRAY
 
         val values = psiAnnotation.getStringMemberValues(attributeName)
 
