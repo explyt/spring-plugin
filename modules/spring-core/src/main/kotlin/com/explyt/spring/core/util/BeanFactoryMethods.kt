@@ -6,23 +6,25 @@
 package com.explyt.spring.core.util
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 
 object BeanFactoryMethods {
     fun of(psiClass: PsiClass): Sequence<PsiMethod> {
         val visited = mutableSetOf<PsiClass>()
-        val methodNames = mutableSetOf<String>()
+        val beanNames = mutableSetOf<String>()
         val methods = mutableListOf<PsiMethod>()
 
         fun visit(current: PsiClass) {
             if (current.qualifiedName?.startsWith("java.") == true || !visited.add(current)) return
             ProgressManager.checkCanceled()
             current.methods.forEach { method ->
-                if (method.name !in methodNames && method.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) {
-                    methodNames += method.name
+                if (current.isInterface && method.hasModifierProperty(PsiModifier.ABSTRACT)) return@forEach
+                if (method.isMetaAnnotatedBy(SpringCoreClasses.BEAN) && beanNames.add(method.resolveBeanName.first())) {
                     methods += method
                 }
             }
