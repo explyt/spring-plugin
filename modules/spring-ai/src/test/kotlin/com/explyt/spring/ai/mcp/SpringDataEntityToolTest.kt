@@ -13,7 +13,13 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.openapi.application.ApplicationManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * The entity tool answers a paged inventory rather than every entity's schema at once.
@@ -969,6 +975,71 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
 
     fun testKotlinMappedSuperclassBetweenSingleTableEntitiesHasNullableColumns() = runBlocking<Unit> {
         assertMappedMiddleColumns(kotlin = true)
+    }
+
+    fun testCyclicJavaEntityInheritanceQueriesTerminate() {
+        myFixture.addFileToProject(
+            "explyt/cycle/NotNull.java", """
+            package explyt.cycle;
+            public @interface NotNull {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "explyt/cycle/A.java", """
+            package explyt.cycle;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            @Entity
+            public class A extends B {
+                @Id private Long id;
+                @NotNull private String x;
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "explyt/cycle/B.java", """
+            package explyt.cycle;
+            import jakarta.persistence.Entity;
+            @Entity
+            public class B extends A {}
+            """.trimIndent()
+        )
+        val facade = JavaPsiFacade.getInstance(project)
+        val scope = GlobalSearchScope.projectScope(project)
+        val a = facade.findClass("explyt.cycle.A", scope) ?: error("Missing A PSI")
+        val b = facade.findClass("explyt.cycle.B", scope) ?: error("Missing B PSI")
+        assertEquals("Precondition: PSI preserves A extends B", b, a.superClass)
+        assertEquals("Precondition: PSI preserves B extends A", a, b.superClass)
+        assertNotNull("Precondition: A is an entity", a.getAnnotation("jakarta.persistence.Entity"))
+        assertNotNull("Precondition: B is an entity", b.getAnnotation("jakarta.persistence.Entity"))
+        assertNotNull("Precondition: the constrained field reaches the inheritance walk", a.findFieldByName("x", false)?.getAnnotation("explyt.cycle.NotNull"))
+        for (entity in listOf(a, b)) {
+            val job = Job()
+            val finished = CountDownLatch(1)
+            val result = ApplicationManager.getApplication().executeOnPooledThread(Callable {
+                try {
+                    runBlocking(job) { detailedRecordOf(entity.qualifiedName!!) }
+                } finally {
+                    finished.countDown()
+                }
+            })
+            try {
+                val record = try {
+                    result.get(30, TimeUnit.SECONDS)
+                } catch (_: TimeoutException) {
+                    fail("Entity query for ${entity.qualifiedName} must terminate within 30 seconds despite cyclic inheritance")
+                    error("Unreachable")
+                }
+                assertEquals(entity.qualifiedName, record["className"].asText())
+                assertTrue("A detailed cyclic entity record carries fields", record["fields"].isArray)
+                assertEquals("java.lang.String", field(record["fields"], "x")["type"].asText())
+                assertTrue("The inherited column has Boolean nullability", field(record["fields"], "x")["nullable"].isBoolean)
+            } finally {
+                job.cancel()
+                result.cancel(true)
+                assertTrue("The bounded query worker must stop before fixture teardown", finished.await(5, TimeUnit.SECONDS))
+            }
+        }
     }
 
     private suspend fun assertMappedMiddleColumns(kotlin: Boolean) {
