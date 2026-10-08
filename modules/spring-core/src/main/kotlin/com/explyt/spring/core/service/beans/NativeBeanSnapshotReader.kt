@@ -5,15 +5,13 @@
 
 package com.explyt.spring.core.service.beans
 
-import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.externalsystem.model.BeanSearch
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
 import com.explyt.spring.core.externalsystem.model.SpringBeanType
 import com.explyt.spring.core.externalsystem.setting.NativeProjectSettings
 import com.explyt.spring.core.externalsystem.utils.Constants
 import com.explyt.spring.core.externalsystem.utils.Constants.SYSTEM_ID
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
-import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
+import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanNameByAnnotation
 import com.intellij.openapi.externalSystem.model.DataNode
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo
 import com.intellij.openapi.externalSystem.model.project.ProjectData
@@ -132,11 +130,8 @@ class NativeBeanSnapshotReader(private val project: Project) {
      * which names it registers. They are taken only when the exported canonical name is one of them, so a factory
      * that no longer matches what the application reported adds nothing.
      */
-    private fun declaredBeanNames(factory: PsiMethod): Set<String> {
-        val annotation = factory.getMetaAnnotation(SpringCoreClasses.BEAN) ?: return emptySet()
-        return (annotation.getStringMemberValues("value") + annotation.getStringMemberValues("name"))
-            .filterTo(LinkedHashSet()) { it.isNotBlank() }
-    }
+    private fun declaredBeanNames(factory: PsiMethod): Set<String> =
+        factory.resolveBeanNameByAnnotation().orEmpty()
 
     /**
      * Read from what the export recorded, not from the selected classpath: a class outside the project sources was
