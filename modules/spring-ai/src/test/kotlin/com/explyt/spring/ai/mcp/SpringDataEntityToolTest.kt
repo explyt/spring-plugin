@@ -1247,8 +1247,16 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
             toolset.getSpringDataEntities(
                 projectPath = projectPath(),
                 className = className,
-                includeDetails = includeDetails
+                includeDetails = includeDetails,
+                maxChars = BoundedPageWriter.MAX_CHARS
             )
+        )
+        val status = page.path("status").asText("missing")
+        val minimumRequiredChars = Regex("at least (\\d+)")
+            .find(page.path("error").path("message").asText())?.groupValues?.get(1) ?: "not reported"
+        assertEquals(
+            "Precondition: entity response status=$status, minimumRequiredChars=$minimumRequiredChars, got $page",
+            "OK", status
         )
         assertEquals("Precondition: the entity must be found, got $page", 1, page["totalCount"].asInt())
         return page["entities"][0]
