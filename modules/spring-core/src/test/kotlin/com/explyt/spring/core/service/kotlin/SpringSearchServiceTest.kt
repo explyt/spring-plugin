@@ -92,6 +92,12 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
 
     fun testBeanNameUnnamedControl() = assertBeanName("@Bean", "value", emptyList(), "foo")
 
+    fun testBeanNameAttributeAndValueWithSameName() = assertBeanName("@Bean(value = [\"x\"], name = [\"x\"])", "value", listOf("x"), "x")
+
+    fun testBlankBeanNameFallsBackToMethodName() = assertBeanName("@Bean(name = [\"\"])", "name", listOf(""), "foo")
+
+    fun testBeanNameConstant() = assertBeanName("@Bean(name = [BEAN_NAME])", "name", listOf("x"), "x")
+
     fun testBeanNameAttributeSnapshotAliases() {
         val application = configureBeanName("@Bean(name = [\"x\", \"y\"])", "name", listOf("x", "y"))
         val records = SpringSearchServiceFacade.getInstance(project)
@@ -103,7 +109,13 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
     }
 
     private fun assertBeanName(annotation: String, attribute: String, values: List<String>, expectedName: String) {
-        configureBeanName(annotation, attribute, values)
+        val application = configureBeanName(annotation, attribute, values)
+        val records = SpringSearchServiceFacade.getInstance(project)
+            .getBeanSnapshot(application, BeanSourcePreference.STATIC).records
+            .filter { it.typeName == "beanname.Foo" }
+        assertEquals(1, records.size)
+        assertEquals(expectedName, records.single().name)
+        assertEquals(listOf(expectedName), records.single().knownNames.toList())
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
             .filter { it.psiClass.qualifiedName == "beanname.Foo" }
         assertEquals(setOf(expectedName), beans.map { it.name }.toSet())
@@ -117,6 +129,7 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
             package beanname
             import org.springframework.boot.autoconfigure.SpringBootApplication
             import org.springframework.context.annotation.Bean
+            const val BEAN_NAME = "x"
             @SpringBootApplication
             open class App {
                 $annotation
@@ -129,6 +142,8 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
             .findClass("beanname.App", GlobalSearchScope.projectScope(project))!!
         val beanAnnotation = application.findMethodsByName("foo", false).single()
             .getAnnotation(SpringCoreClasses.BEAN)!!
+        assertEquals(SpringCoreClasses.BEAN, beanAnnotation.resolveAnnotationType()?.qualifiedName)
+        assertTrue(values.none { it == "foo" })
         assertEquals("Declared @Bean attribute values", values, beanAnnotation.getStringMemberValues(attribute))
         assertEquals("Explicit attribute presence", values.isNotEmpty(), beanAnnotation.findDeclaredAttributeValue(attribute) != null)
         return application

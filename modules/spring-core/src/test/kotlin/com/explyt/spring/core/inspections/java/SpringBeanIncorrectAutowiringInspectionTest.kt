@@ -114,7 +114,9 @@ public class SomeServiceTest {
 
     fun testBeanNameUnnamedQualifierControl() = assertBeanNameQualifier("@Bean", "foo")
 
-    private fun assertBeanNameQualifier(annotation: String, qualifier: String) {
+    fun testExplicitBeanNameDoesNotMatchMethodNameQualifier() = assertBeanNameQualifier("@Bean(name = \"x\")", "foo", true)
+
+    private fun assertBeanNameQualifier(annotation: String, qualifier: String, missing: Boolean = false) {
         myFixture.configureByText(
             "App.java",
             """
@@ -145,12 +147,19 @@ public class SomeServiceTest {
         val application = facade.findClass("beanname.App", scope)!!
         val beanAnnotation = application.findMethodsByName("foo", false).single()
             .getAnnotation(SpringCoreClasses.BEAN)!!
-        val expectedNames = if (qualifier == "x") listOf("x") else emptyList()
+        assertEquals(SpringCoreClasses.BEAN, beanAnnotation.resolveAnnotationType()?.qualifiedName)
+        val expectedNames = if (qualifier == "x" || missing) listOf("x") else emptyList()
+        if (missing) assertTrue("foo" !in expectedNames)
         assertEquals("Declared @Bean name values", expectedNames, beanAnnotation.getStringMemberValues("name"))
-        assertEquals("Explicit name attribute presence", qualifier == "x", beanAnnotation.findDeclaredAttributeValue("name") != null)
+        assertEquals("Explicit name attribute presence", qualifier == "x" || missing, beanAnnotation.findDeclaredAttributeValue("name") != null)
         assertNotNull(application.findMethodsByName("other", false).single().getAnnotation(SpringCoreClasses.BEAN))
         val injection = facade.findClass("beanname.Consumer", scope)!!.findFieldByName("foo", false)!!
         assertEquals(listOf(qualifier), injection.getAnnotation(SpringCoreClasses.QUALIFIER)!!.getStringMemberValues())
-        myFixture.testHighlighting(true, false, false)
+        if (missing) {
+            val errors = myFixture.doHighlighting().filter { it.description == "Autowire failed. No beans of 'Foo' found" }
+            assertEquals(1, errors.size)
+        } else {
+            myFixture.testHighlighting(true, false, false)
+        }
     }
 }
