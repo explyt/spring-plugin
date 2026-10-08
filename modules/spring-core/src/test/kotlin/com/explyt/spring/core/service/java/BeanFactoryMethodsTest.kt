@@ -302,6 +302,27 @@ class BeanFactoryMethodsTest : ExplytJavaLightTestCase() {
         assertEquals("Abstract interface @Bean must not publish a foo bean", emptyList<String>(), activeFooBeans().map { it.name })
     }
 
+    fun testAnnotatedImplementationOfAbstractInterfaceFactoryPublishesOneBean() {
+        configure(
+            "@Bean @Override public Foo foo() { return new Foo(); }",
+            "interface Factory { @Bean Foo foo(); }",
+            "implements Factory"
+        )
+        val factory = psiClass("Factory")
+        assertTrue(factory.isInterface)
+        assertEquals(listOf(factory), psiClass("Child").interfaces.toList())
+        val abstractMethod = factory.findMethodsByName("foo", false).single()
+        assertResolvedBeanName(abstractMethod, null)
+        assertTrue(abstractMethod.hasModifierProperty(PsiModifier.ABSTRACT))
+        val implementation = psiClass("Child").findMethodsByName("foo", false).single()
+        assertResolvedBeanName(implementation, null)
+        assertTrue(implementation.findSuperMethods().contains(abstractMethod))
+        val beans = activeFooBeans()
+        assertEquals(1, beans.size)
+        assertEquals("foo", beans.single().name)
+        assertEquals(psiClass("Child"), (beans.single().psiMember as PsiMethod).containingClass)
+    }
+
     private fun assertResolvedBeanName(method: PsiMethod, explicitName: String?) {
         val annotation = method.getAnnotation(SpringCoreClasses.BEAN) ?: error("Missing @Bean on ${method.name}")
         assertEquals("Precondition: @Bean annotation resolves", SpringCoreClasses.BEAN, annotation.resolveAnnotationType()?.qualifiedName)
