@@ -5,6 +5,14 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.toUElementOfType
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
@@ -35,6 +43,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         super.setUp()
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject("com/example/app/web/OrdersController.kt", SOURCE)
+        myFixture.addFileToProject("explyt/web/SourceNames.kt", SOURCE_NAMES)
     }
 
     /** The guard is called first, the service second: both are listed, and `serviceCall` stays the first. */
@@ -52,6 +61,47 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
 
     fun testExpressionBodiedHandlerHasOneCall() = runBlocking<Unit> {
         assertEquals(listOf("com.example.app.web.OrdersService.count"), targets(contractOf("/api/stores/{id}/count")))
+    }
+
+    fun testInjectedCompanionDependencyUsesItsSourceOwner() = runBlocking<Unit> {
+        val callee = sourceNameCallee("handle")
+        assertTrue((callee.containingClass?.navigationElement as? KtObjectDeclaration)?.isCompanion() == true)
+        assertEquals("com.example.app.web.SourceHandler.Companion", callee.containingClass?.qualifiedName)
+        assertTrue(callee.containingClass!!.interfaces.any { it.qualifiedName == "com.example.app.web.HandlerApi" })
+        val contract = contractOf("/source-names/companion")
+        assertEquals("com.example.app.web.SourceHandler.handle", contract["serviceCalls"].single()["target"].asText())
+        assertFalse(contract["serviceCalls"].single()["target"].asText().contains(".Companion."))
+    }
+
+    fun testInternalServiceMethodUsesItsSourceName() = runBlocking<Unit> {
+        val callee = sourceNameCallee("calculate")
+        val source = callee.navigationElement as KtNamedFunction
+        assertTrue(source.hasModifier(KtTokens.INTERNAL_KEYWORD))
+        assertEquals("calculate", source.name)
+        val target = targets(contractOf("/source-names/internal")).single()
+        assertEquals("com.example.app.web.InternalService.calculate", target)
+        assertFalse(target.contains('\u0024'))
+    }
+
+    fun testClassNestedInCompanionKeepsItsQualifiedSourceName() = runBlocking<Unit> {
+        val callee = sourceNameCallee("parse")
+        assertEquals("com.example.app.web.Owner.Companion.Nested", callee.containingClass?.qualifiedName)
+        assertFalse((callee.containingClass?.navigationElement as? KtObjectDeclaration)?.isCompanion() == true)
+        assertEquals(
+            "com.example.app.web.Owner.Companion.Nested.parse",
+            targets(contractOf("/source-names/nested")).single()
+        )
+    }
+
+    fun testNamedCompanionUsesItsOuterSourceOwner() = runBlocking<Unit> {
+        val callee = sourceNameCallee("create")
+        val owner = callee.containingClass?.navigationElement as KtObjectDeclaration
+        assertTrue(owner.isCompanion())
+        assertEquals("Factory", owner.name)
+        assertEquals(
+            "com.example.app.web.FactoryOwner.create",
+            targets(contractOf("/source-names/factory")).single()
+        )
     }
 
     /** Two calls of one bean method on different lines are two places a change has to be made. */
@@ -254,6 +304,16 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertTrue(unresolved["line"].isNull)
         assertEquals(ownersLineOf("owners.missingMethod(1)"), unresolved["callLine"].asInt())
         assertFalse(calls[1].has("resolved"))
+    }
+
+    private fun sourceNameCallee(name: String): PsiMethod {
+        val file = myFixture.findFileInTempDir("explyt/web/SourceNames.kt")
+        val psi = com.intellij.psi.PsiManager.getInstance(project).findFile(file)!!
+        val call = PsiTreeUtil.findChildrenOfType(psi, KtCallExpression::class.java)
+            .single { it.calleeExpression?.text == name }
+        val callee = call.toUElementOfType<UCallExpression>()?.resolve()
+        assertNotNull("The fixture call to $name must resolve", callee)
+        return callee!!
     }
 
     private fun ownersLineOf(anchor: String): Int {
@@ -505,6 +565,69 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
                 }
 
                 private fun countDown(n: Int): Int = if (n <= 0) audit.loop(n) else countDown(n - 1)
+            }
+        """.trimIndent()
+
+        val SOURCE_NAMES = """
+            package com.example.app.web
+
+            import org.springframework.stereotype.Service
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            interface HandlerApi {
+                fun handle(): String
+            }
+
+            @Service
+            class SourceHandler {
+                @Service
+                companion object : HandlerApi {
+                    override fun handle(): String = "handled"
+                }
+            }
+
+            @Service
+            class InternalService {
+                internal fun calculate(): String = "calculated"
+            }
+
+            class Owner {
+                companion object {
+                    @Service
+                    class Nested {
+                        fun parse(): String = "nested"
+                    }
+                }
+            }
+
+            class FactoryOwner {
+                @Service
+                companion object Factory {
+                    fun create(): String = "created"
+                }
+            }
+
+            @RestController
+            @RequestMapping("/source-names")
+            class SourceNamesController(
+                private val handler: SourceHandler.Companion,
+                private val internalService: InternalService,
+                private val nestedParser: Owner.Companion.Nested,
+                private val factory: FactoryOwner.Factory,
+            ) {
+                @GetMapping("/companion")
+                fun companion() = handler.handle()
+
+                @GetMapping("/internal")
+                fun internal() = internalService.calculate()
+
+                @GetMapping("/nested")
+                fun nested() = nestedParser.parse()
+
+                @GetMapping("/factory")
+                fun factory() = factory.create()
             }
         """.trimIndent()
 

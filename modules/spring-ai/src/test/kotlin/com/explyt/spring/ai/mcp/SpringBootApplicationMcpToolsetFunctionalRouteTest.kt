@@ -5,6 +5,14 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.uast.UCallableReferenceExpression
+import org.jetbrains.uast.toUElementOfType
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
@@ -35,6 +43,7 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
         super.setUp()
         addGatewayHandler()
         addCoRouterConfig()
+        addCompanionRoute()
         addAnnotatedController()
     }
 
@@ -93,6 +102,15 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
             contract["serviceCalls"].map { it["target"].asText() }
         )
         assertFalse("A handler reference is not a call, so it has no call line", contract["serviceCalls"][0].has("callLine"))
+    }
+
+    fun testFunctionalRouteUsesTheSourceNameForACompanionHandler() = runBlocking<Unit> {
+        val callee = routeReferenceCallee("CompanionRouterConfig.kt")
+        assertTrue((callee.containingClass?.navigationElement as? KtObjectDeclaration)?.isCompanion() == true)
+        assertEquals("explyt.web.Handler.Companion", callee.containingClass?.qualifiedName)
+        val contract = contractsOf("/h").single()
+        assertEquals("explyt.web.Handler.handle", contract["serviceCall"]["target"].asText())
+        assertEquals("explyt.web.Handler.handle", contract["serviceCalls"].single()["target"].asText())
     }
 
     /**
@@ -201,6 +219,94 @@ class SpringBootApplicationMcpToolsetFunctionalRouteTest : ExplytKotlinLightTest
                 fun gatewayProxyRoutes(handler: GatewayHandler): RouterFunction<ServerResponse> = coRouter {
                     GET("/v1/models", handler::handle)
                     POST("/v1beta/models/{model}:generateContent", handler::handle)
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    fun testJavaStaticHandlerKeepsItsQualifiedName() = runBlocking<Unit> {
+        myFixture.addFileToProject(
+            "explyt/web/JavaHandler.java",
+            """
+            package explyt.web;
+            import org.springframework.web.reactive.function.server.ServerRequest;
+            import org.springframework.web.reactive.function.server.ServerResponse;
+            import reactor.core.publisher.Mono;
+            public class JavaHandler {
+                public static Mono<ServerResponse> handle(ServerRequest request) { return ServerResponse.ok().build(); }
+            }
+            """.trimIndent()
+        )
+        addStaticRouter("JavaHandler", "/java-static")
+        val callee = routeReferenceCallee("StaticRouterConfig.kt")
+        assertTrue(callee.hasModifierProperty(PsiModifier.STATIC))
+        assertEquals("explyt.web.JavaHandler", callee.containingClass?.qualifiedName)
+        val contract = contractsOf("/java-static").single()
+        assertEquals("explyt.web.JavaHandler.handle", contract["serviceCalls"].single()["target"].asText())
+    }
+
+    private fun addStaticRouter(handler: String, path: String) {
+        myFixture.addFileToProject(
+            "StaticRouterConfig.kt",
+            """
+            import explyt.web.$handler
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.router
+            @Configuration
+            class StaticRouterConfig {
+                @Bean
+                fun staticRoutes(): RouterFunction<ServerResponse> = router {
+                    GET("$path", $handler::handle)
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun routeReferenceCallee(path: String): PsiMethod {
+        val file = PsiManager.getInstance(project).findFile(myFixture.findFileInTempDir(path))!!
+        val reference = PsiTreeUtil.findChildrenOfType(file, KtCallableReferenceExpression::class.java).single()
+        val callee = reference.toUElementOfType<UCallableReferenceExpression>()?.resolve() as? PsiMethod
+        assertNotNull("The handler reference must resolve", callee)
+        return callee!!
+    }
+
+    private fun addCompanionRoute() {
+        myFixture.addFileToProject(
+            "explyt/web/Handler.kt",
+            """
+            package explyt.web
+
+            import org.springframework.web.reactive.function.server.ServerRequest
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.buildAndAwait
+
+            class Handler {
+                companion object {
+                    suspend fun handle(request: ServerRequest): ServerResponse = ServerResponse.ok().buildAndAwait()
+                }
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "CompanionRouterConfig.kt",
+            """
+            import explyt.web.Handler
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.coRouter
+
+            @Configuration
+            class CompanionRouterConfig {
+                @Bean
+                fun companionRoutes(): RouterFunction<ServerResponse> = coRouter {
+                    GET("/h", Handler::handle)
                 }
             }
             """.trimIndent()
