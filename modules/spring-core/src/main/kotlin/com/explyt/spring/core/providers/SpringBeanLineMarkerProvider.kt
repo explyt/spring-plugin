@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getArrayType
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
@@ -291,8 +292,12 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allBeans = springSearchService.getActiveBeansClasses(module) +
                     springSearchService.getDependentBeanPsiClassesAnnotatedByComponent(module)
 
-            val allFieldsWithAutowired = allBeans.asSequence()
-                .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+            val owners = InjectionPointOwners.of(allBeans.asSequence().map { it.psiClass })
+            val componentClasses = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                .mapTo(HashSet()) { it.psiClass }
+
+            val allFieldsWithAutowired = owners.asSequence()
+                .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
                 .flatMap { field ->
                     field.asSequence()
                         .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -302,15 +307,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
 
             val allParametersWithAutowired = mutableSetOf<UVariable>()
-            allBeans.forEach { bean ->
-                val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+            owners.forEach { owner ->
+                val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
                 allParametersWithAutowired.addAll(
                     methods.asSequence()
                         .filter {
                             it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                     || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                    || it.isConstructor
-                                    && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                                    || it.isConstructor && owner in componentClasses
                         }
                         .flatMap { it.parameterList.parameters.asSequence() }
                         .filter { it.isCandidate(targetType, targetClass, targetClasses) }

@@ -17,6 +17,7 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.spring.core.util.SpringCoreUtil.isComponentCandidate
@@ -256,8 +257,13 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         val allBeans = if (projectBeans.isNotEmpty()) libraryBeans + projectBeans
         else SpringSearchService.getInstance(project).getAllActiveBeans()
 
-        val allFieldsWithAutowired = allBeans.asSequence()
-            .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+        val owners = InjectionPointOwners.of(allBeans.asSequence().map { it.psiClass })
+        val componentClasses = allBeans.asSequence()
+            .filter { it.psiMember is PsiClass }
+            .mapTo(HashSet()) { it.psiClass }
+
+        val allFieldsWithAutowired = owners.asSequence()
+            .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
             .flatMap { field ->
                 field.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -265,18 +271,15 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
                     .mapNotNull { it.navigationElement.toUElement() as? UVariable }
             }.toSet()
 
-        val componentBeanNames = allBeans.asSequence()
-            .filter { it.psiMember is PsiClass }
-            .mapToSet { it.name }
         val allParametersWithAutowired = mutableSetOf<UVariable>()
-        allBeans.forEach { bean ->
-            val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+        owners.forEach { owner ->
+            val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
                         it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor && bean.name in componentBeanNames
+                                || it.isConstructor && owner in componentClasses
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { it.isCandidate(targetType, targetClass, targetClasses) }

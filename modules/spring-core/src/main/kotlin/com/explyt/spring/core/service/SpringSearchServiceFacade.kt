@@ -14,6 +14,7 @@ import com.explyt.spring.core.service.beans.ScopedBeanSnapshot
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
@@ -147,8 +148,12 @@ class SpringSearchServiceFacade(private val project: Project) {
 
         val allBeans = getAllActiveBeans(module, isNative)
 
-        val allFieldsWithAutowired = allBeans.asSequence()
-            .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+        val owners = InjectionPointOwners.of(allBeans.asSequence().map { it.psiClass })
+        val componentClasses = nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
+            .mapTo(HashSet()) { it.psiClass }
+
+        val allFieldsWithAutowired = owners.asSequence()
+            .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
             .flatMap { field ->
                 field.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -158,15 +163,14 @@ class SpringSearchServiceFacade(private val project: Project) {
 
 
         val allParametersWithAutowired = mutableSetOf<UVariable>()
-        allBeans.forEach { bean ->
-            val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+        owners.forEach { owner ->
+            val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
                         it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor
-                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
+                                || it.isConstructor && owner in componentClasses
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { it.isCandidate(targetType, targetClass, targetClasses) }
