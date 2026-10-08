@@ -8,6 +8,7 @@ package com.explyt.spring.core.service.kotlin
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.inspections.SpringBeanIncorrectAutowiringInspection
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.beans.BeanModelSource
 import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.test.ExplytKotlinLightTestCase
@@ -58,7 +59,11 @@ class BeanFactoryMethodsTest : ExplytKotlinLightTestCase() {
     fun testDifferentMethodNamesRemainTwoActiveBeans() {
         configure("@Bean fun first(): Foo = Foo()\n@Bean fun second(): Foo = Foo()")
         val methods = psiClass("Child").methods.filter { it.hasAnnotation(SpringCoreClasses.BEAN) }
-        assertEquals("Precondition: two distinct @Bean declarations", setOf("first", "second"), methods.map { it.name }.toSet())
+        assertEquals(
+            "Precondition: two distinct @Bean declarations",
+            setOf("first", "second"),
+            methods.map { it.name }.toSet()
+        )
         val beans = activeFooBeans()
         assertEquals("Distinct factory names must remain two beans", 2, beans.size)
         assertEquals(setOf("first", "second"), beans.map { it.name }.toSet())
@@ -80,7 +85,10 @@ class BeanFactoryMethodsTest : ExplytKotlinLightTestCase() {
             """.trimIndent()
         )
         val injection = psiClass("Consumer").findFieldByName("foo", false)!!
-        assertTrue("Precondition: Foo injection is @Autowired", injection.hasAnnotation("org.springframework.beans.factory.annotation.Autowired"))
+        assertTrue(
+            "Precondition: Foo injection is @Autowired",
+            injection.hasAnnotation("org.springframework.beans.factory.annotation.Autowired")
+        )
         assertEquals("com.explyt.demo.Foo", injection.type.canonicalText)
         myFixture.testHighlighting(true, false, false)
     }
@@ -93,7 +101,51 @@ class BeanFactoryMethodsTest : ExplytKotlinLightTestCase() {
         val records = snapshot.records.filter { it.typeName == "com.explyt.demo.Foo" }
         assertEquals("Static snapshot must contain one foo record", 1, records.size)
         assertEquals("foo", records.single().name)
-        assertEquals("com.explyt.demo.Child", (records.single().declaration as PsiMethod).containingClass?.qualifiedName)
+        assertEquals(
+            "com.explyt.demo.Child",
+            (records.single().declaration as PsiMethod).containingClass?.qualifiedName
+        )
+    }
+
+    fun testGrandparentOverrideIsOneBeanDeclaredInChild() {
+        configure(
+            "@Bean override fun foo(): Foo = Foo()",
+            "open class GrandBase { @Bean open fun foo(): Foo = Foo() } open class Base : GrandBase()",
+            ": Base()"
+        )
+        assertEquals(psiClass("GrandBase"), psiClass("Base").superClass)
+        assertEquals(psiClass("Base"), psiClass("Child").superClass)
+        assertEquals(0, psiClass("Base").findMethodsByName("foo", false).size)
+        assertTrue(psiClass("GrandBase").findMethodsByName("foo", false).single().hasAnnotation(SpringCoreClasses.BEAN))
+        assertTrue(psiClass("Child").findMethodsByName("foo", false).single().hasAnnotation(SpringCoreClasses.BEAN))
+        val beans = activeFooBeans()
+        assertEquals(1, beans.size)
+        assertEquals("foo", beans.single().name)
+        assertEquals(psiClass("Child"), (beans.single().psiMember as PsiMethod).containingClass)
+    }
+
+    fun testProjectBeansContainsOneOpenClassOverride() {
+        configureOverride(annotated = true)
+        val configuration = psiClass("Child").getAnnotation(SpringCoreClasses.CONFIGURATION)!!
+        assertEquals("false", configuration.findAttributeValue("proxyBeanMethods")?.text)
+        val beans = SpringSearchService.getInstance(project).getProjectBeans(module)
+            .filter { it.psiClass.qualifiedName == "com.explyt.demo.Foo" }
+        assertEquals(1, beans.size)
+        assertEquals("foo", beans.single().name)
+        assertEquals(psiClass("Child"), (beans.single().psiMember as PsiMethod).containingClass)
+    }
+
+    fun testObjectConfigurationPublishesItsFactory() {
+        configure("@Bean fun foo(): Foo = Foo()", declaration = "object")
+        assertTrue(
+            "Precondition: object light class has INSTANCE",
+            psiClass("Child").findFieldByName("INSTANCE", false) != null
+        )
+        assertTrue(psiClass("Child").findMethodsByName("foo", false).single().hasAnnotation(SpringCoreClasses.BEAN))
+        val beans = activeFooBeans()
+        assertEquals(1, beans.size)
+        assertEquals("foo", beans.single().name)
+        assertEquals(psiClass("Child"), (beans.single().psiMember as PsiMethod).containingClass)
     }
 
     private fun configureOverride(annotated: Boolean) {
@@ -113,7 +165,8 @@ class BeanFactoryMethodsTest : ExplytKotlinLightTestCase() {
         body: String,
         base: String = "",
         inheritance: String = "",
-        enforceUniqueMethods: Boolean = true
+        enforceUniqueMethods: Boolean = true,
+        declaration: String = "open class"
     ) {
         myFixture.addFileToProject(
             "com/explyt/demo/App.kt",
@@ -129,12 +182,15 @@ class BeanFactoryMethodsTest : ExplytKotlinLightTestCase() {
             class Dep
             $base
             @Configuration(proxyBeanMethods = false, enforceUniqueMethods = $enforceUniqueMethods)
-            open class Child $inheritance {
+            $declaration Child $inheritance {
                 $body
             }
             """.trimIndent()
         )
-        assertTrue("Precondition: Child is @Configuration", psiClass("Child").hasAnnotation(SpringCoreClasses.CONFIGURATION))
+        assertTrue(
+            "Precondition: Child is @Configuration",
+            psiClass("Child").hasAnnotation(SpringCoreClasses.CONFIGURATION)
+        )
     }
 
     private fun psiClass(name: String) = JavaPsiFacade.getInstance(project)
