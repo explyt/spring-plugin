@@ -16,8 +16,21 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.psi.util.CachedValueProvider
+import com.explyt.util.ExplytAnnotationUtil.computeConstantExpression
+import com.intellij.psi.PsiAnnotationMemberValue
+import com.intellij.psi.PsiMember
 import com.intellij.psi.util.CachedValuesManager
+import org.jetbrains.uast.UAnnotated
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UExpression
+import org.jetbrains.uast.toUElement
 import java.util.*
+
+enum class ProfileActivation {
+    ACTIVE,
+    INACTIVE,
+    UNDECIDED
+}
 
 @Service(Service.Level.PROJECT)
 class ProfilesService(private val project: Project) {
@@ -77,9 +90,38 @@ class ProfilesService(private val project: Project) {
             .ifEmpty { DEFAULT_PROFILES }
     }
 
-    /**
-     * Parses expression, with current [ProfilesService.activeProfiles] computes result
-     */
+    fun activationOf(member: PsiMember, values: Collection<PsiAnnotationMemberValue>): ProfileActivation {
+        val profileValues = profileValuesOf(member, values)
+        if (profileValues.isEmpty()) return ProfileActivation.ACTIVE
+
+        var undecided = false
+        for (expression in profileValues) {
+            if (expression == null) {
+                undecided = true
+            } else if (compute(expression)) {
+                return ProfileActivation.ACTIVE
+            }
+        }
+        return if (undecided) ProfileActivation.UNDECIDED else ProfileActivation.INACTIVE
+    }
+
+    private fun profileValuesOf(
+        member: PsiMember,
+        values: Collection<PsiAnnotationMemberValue>
+    ): List<String?> {
+        val annotation = (member.toUElement() as? UAnnotated)
+            ?.uAnnotations
+            ?.firstOrNull { it.qualifiedName == com.explyt.spring.core.SpringCoreClasses.PROFILE }
+        val attribute = annotation?.findDeclaredAttributeValue("value")
+        val sourceValues = when (attribute) {
+            is UCallExpression -> attribute.valueArguments.map { it.evaluate() as? String }
+            null -> emptyList()
+            else -> listOf(attribute.evaluate() as? String)
+        }
+        val evaluatedValues = values.map { it.computeConstantExpression() as? String }
+        return if (sourceValues.isNotEmpty()) sourceValues + evaluatedValues else evaluatedValues
+    }
+
     fun compute(profilesExpression: String): Boolean {
         val tokens = tokenize(profilesExpression) ?: return false
         val postfixExpression = toPostfix(tokens)

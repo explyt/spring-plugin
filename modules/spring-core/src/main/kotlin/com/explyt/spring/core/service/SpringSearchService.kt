@@ -356,20 +356,16 @@ class SpringSearchService(private val project: Project) {
         return psiClass.allMethods.asSequence().filter { it.isMetaAnnotatedBy(SpringCoreClasses.BEAN) }
     }
 
-    private fun isActive(psiMember: PsiMember): Boolean {
-        if (!psiMember.isMetaAnnotatedBy(SpringCoreClasses.PROFILE)) return true
-        val module = ModuleUtilCore.findModuleForPsiElement(psiMember) ?: return false
-        val profilesService = ProfilesService.getInstance(project)
-
-        val metaAnnotationsHolder = getMetaAnnotations(module, SpringCoreClasses.PROFILE)
-        val values = metaAnnotationsHolder.getAnnotationMemberValues(psiMember, setOf("value"))
-
-        return values.isEmpty() || values.any { value ->
-            profilesService.compute(
-                ElementManipulators.getValueText(value)
-            )
-        }
+    fun profileActivation(psiMember: PsiMember): ProfileActivation {
+        if (!psiMember.isMetaAnnotatedBy(SpringCoreClasses.PROFILE)) return ProfileActivation.ACTIVE
+        val module = ModuleUtilCore.findModuleForPsiElement(psiMember) ?: return ProfileActivation.UNDECIDED
+        val values = getMetaAnnotations(module, SpringCoreClasses.PROFILE)
+            .getAnnotationMemberValues(psiMember, setOf("value"))
+        return ProfilesService.getInstance(project).activationOf(psiMember, values)
     }
+
+    private fun isActive(psiMember: PsiMember): Boolean =
+        profileActivation(psiMember) != ProfileActivation.INACTIVE
 
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanPsiMethods(module)
