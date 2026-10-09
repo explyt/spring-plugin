@@ -305,19 +305,19 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testServletComposedPredicateHasNoResolvedPrefix() {
+    fun testServletComposedPredicateIncludesPathPrefix() {
         assertBuilderRoutes(
             EndpointType.SPRING_MVC,
             """route().nest(RequestPredicates.path("/a").and(RequestPredicates.accept(APPLICATION_JSON)), b -> b.GET("/b", h::list)).build()""",
-            listOf("/b" to "GET")
+            listOf("/a/b" to "GET")
         )
     }
 
-    fun testReactiveComposedPredicateHasNoResolvedPrefix() {
+    fun testReactiveComposedPredicateIncludesPathPrefix() {
         assertBuilderRoutes(
             EndpointType.SPRING_WEBFLUX,
             """route().nest(RequestPredicates.path("/a").and(RequestPredicates.accept(APPLICATION_JSON)), b -> b.GET("/b", h::list)).build()""",
-            listOf("/b" to "GET")
+            listOf("/a/b" to "GET")
         )
     }
 
@@ -335,13 +335,130 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testServletPathFreeAndPathPredicateIncludesPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.accept(APPLICATION_JSON).and(RequestPredicates.path("/a")), b -> b.GET("/b", h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testReactivePathFreeAndPathPredicateIncludesPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.accept(APPLICATION_JSON).and(RequestPredicates.path("/a")), b -> b.GET("/b", h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testServletContentTypePredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.contentType(APPLICATION_JSON), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveContentTypePredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.contentType(APPLICATION_JSON), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testServletVariablePredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(api, b -> b.GET("/b", h::list)).build()""",
+            emptyList(), prelude = """RequestPredicate api = RequestPredicates.path("/api");"""
+        )
+    }
+
+    fun testReactiveVariablePredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(api, b -> b.GET("/b", h::list)).build()""",
+            emptyList(), prelude = """RequestPredicate api = RequestPredicates.path("/api");"""
+        )
+    }
+
+    fun testServletHelperPredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(apiPredicate(), b -> b.GET("/b", h::list)).build()""",
+            emptyList(),
+            members = """private RequestPredicate apiPredicate() { return RequestPredicates.path("/api"); }"""
+        )
+    }
+
+    fun testReactiveHelperPredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(apiPredicate(), b -> b.GET("/b", h::list)).build()""",
+            emptyList(),
+            members = """private RequestPredicate apiPredicate() { return RequestPredicates.path("/api"); }"""
+        )
+    }
+
+    fun testServletOrPredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.path("/a").or(RequestPredicates.path("/b")), b -> b.GET("/b", h::list)).build()""",
+            emptyList()
+        )
+    }
+
+    fun testReactiveOrPredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.path("/a").or(RequestPredicates.path("/b")), b -> b.GET("/b", h::list)).build()""",
+            emptyList()
+        )
+    }
+
+    fun testServletNegatedPredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.path("/a").negate(), b -> b.GET("/b", h::list)).build()""",
+            emptyList()
+        )
+    }
+
+    fun testReactiveNegatedPredicateDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.path("/a").negate(), b -> b.GET("/b", h::list)).build()""",
+            emptyList()
+        )
+    }
+
+    fun testServletUndecidableNestPreservesSiblingRoutes() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().GET("/x", h::x).nest(api, b -> b.GET("/b", h::list)).POST("/y", h::y).build()""",
+            listOf("/x" to "GET", "/y" to "POST"),
+            prelude = """RequestPredicate api = RequestPredicates.path("/api");"""
+        )
+    }
+
+    fun testReactiveUndecidableNestPreservesSiblingRoutes() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().GET("/x", h::x).nest(api, b -> b.GET("/b", h::list)).POST("/y", h::y).build()""",
+            listOf("/x" to "GET", "/y" to "POST"),
+            prelude = """RequestPredicate api = RequestPredicates.path("/api");"""
+        )
+    }
+
     private fun assertBuilderRoutes(
         type: EndpointType,
         route: String,
         expected: List<Pair<String, String>>,
         members: String = "",
         staticPathImport: Boolean = false,
-        unrelatedVerb: Boolean = false
+        unrelatedVerb: Boolean = false,
+        prelude: String = ""
     ) {
         val functionPackage = when (type) {
             EndpointType.SPRING_MVC -> "org.springframework.web.servlet.function"
@@ -357,6 +474,7 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
             """
             import org.springframework.context.annotation.Bean;
             import org.springframework.context.annotation.Configuration;
+            import $functionPackage.RequestPredicate;
             import $functionPackage.RequestPredicates;
             import $functionPackage.RouterFunction;
             import $functionPackage.RouterFunctions;
@@ -371,6 +489,7 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
 
                 @Bean
                 public RouterFunction<ServerResponse> routes(Handler h) {
+                    $prelude
                     return RouterFunctions.$route;
                 }
 
