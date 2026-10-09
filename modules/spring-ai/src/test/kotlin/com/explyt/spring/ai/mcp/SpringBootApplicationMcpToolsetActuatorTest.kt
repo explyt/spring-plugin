@@ -70,13 +70,13 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
     }
 
     /**
-     * `health` is two operations - `/actuator/health` and `/actuator/health/{path}` for one component - and the lookup
-     * lists the exact route first, the way it orders any other match.
+     * `health` is two operations - `/actuator/health` and `/actuator/health/{*path}` for any nested component - and the
+     * lookup lists the exact route first, the way it orders any other match.
      */
     fun testHealthIsFoundAndExposedByDefault() = runBlocking<Unit> {
         val found = find("/actuator/health")
 
-        assertEquals(listOf("/actuator/health", "/actuator/health/{path}"), found.map { it["fullPath"].asText() })
+        assertEquals(listOf("/actuator/health", "/actuator/health/{*path}"), found.map { it["fullPath"].asText() })
         val health = found.first()
         assertEquals("Actuator", health["endpointType"].asText())
         assertEquals("health", health["methodName"].asText())
@@ -151,8 +151,12 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
 
         assertEquals("a declared base path, not a guess", "/shop", root["basePath"].asText())
         assertTrue(root["assumedPrefix"].isNull)
-        assertEquals(listOf("/actuator/health"), root["endpoints"].map { it["fullPath"].asText() })
-        assertEquals("EXPOSED", root["endpoints"].single()["exposed"].asText())
+        assertEquals(
+            listOf("/actuator/health", "/actuator/health/{*path}"),
+            root["endpoints"].map { it["fullPath"].asText() }
+        )
+        assertEquals("health", root["endpoints"].first()["methodName"].asText())
+        assertEquals(listOf("EXPOSED", "EXPOSED"), root["endpoints"].map { it["exposed"].asText() })
     }
 
     fun testListingOfActuatorEndpointsCarriesExposureOnEveryRecord() = runBlocking<Unit> {
