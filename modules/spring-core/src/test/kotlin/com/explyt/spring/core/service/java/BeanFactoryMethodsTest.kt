@@ -11,6 +11,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.beans.BeanModelSource
 import com.explyt.spring.core.service.beans.BeanSourcePreference
+import com.explyt.spring.core.util.BeanFactoryMethods
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.intellij.openapi.util.registry.Registry
@@ -62,6 +63,39 @@ class BeanFactoryMethodsTest : ExplytJavaLightTestCase() {
         val beans = activeFooBeans()
         assertEquals("Same-name overloads must register one foo bean", 1, beans.size)
         assertEquals("foo", beans.single().name)
+    }
+
+    fun testSameBeanNameDifferentMethodsInOneClassAreBothListed() {
+        configure("@Bean public Foo admin() { return new Foo(); }\n@Bean(\"admin\") public Foo adminFactory() { return new Foo(); }")
+        val configuration = psiClass("Child")
+        val methods = listOf("admin", "adminFactory").map { configuration.findMethodsByName(it, false).single() }
+        assertTrue("Precondition: both local methods are @Bean", methods.all { it.hasAnnotation(SpringCoreClasses.BEAN) })
+        assertResolvedBeanName(methods[0], null)
+        assertResolvedBeanName(methods[1], "admin")
+        val factories = BeanFactoryMethods.of(configuration).toList()
+        assertEquals("Same bean name with different method names must keep both factories", 2, factories.size)
+        assertEquals(listOf("admin", "adminFactory"), factories.map { it.name })
+        val beans = activeFooBeans()
+        assertEquals(listOf("admin", "admin"), beans.map { it.name })
+        assertEquals(setOf("admin", "adminFactory"), beans.map { (it.psiMember as PsiMethod).name }.toSet())
+    }
+
+    fun testSameBeanNameSameMethodNameOverloadsAreMerged() {
+        configure(
+            "@Bean(\"a\") public Foo foo() { return new Foo(); }\n@Bean(\"a\") public Foo foo(Dep dep) { return new Foo(); }",
+            enforceUniqueMethods = false
+        )
+        val configuration = psiClass("Child")
+        val methods = configuration.findMethodsByName("foo", false)
+        assertEquals("Precondition: two local overloads", 2, methods.size)
+        assertEquals(setOf(0, 1), methods.map { it.parameterList.parametersCount }.toSet())
+        methods.forEach { assertResolvedBeanName(it, "a") }
+        val annotation = configuration.getAnnotation(SpringCoreClasses.CONFIGURATION)!!
+        assertEquals(false, JavaPsiFacade.getInstance(project).constantEvaluationHelper.computeConstantExpression(annotation.findAttributeValue("enforceUniqueMethods")!!))
+        assertEquals(listOf("foo"), BeanFactoryMethods.of(configuration).map { it.name }.toList())
+        val beans = activeFooBeans()
+        assertEquals(listOf("a"), beans.map { it.name })
+        assertEquals("foo", (beans.single().psiMember as PsiMethod).name)
     }
 
     fun testDifferentMethodNamesRemainTwoActiveBeans() {
