@@ -137,6 +137,40 @@ class AbstractComponentGutterTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    fun testFactoryBeanOfAbstractTypeIsImplementation() {
+        configure(
+            """
+            @Component abstract class <caret>AbstractFoo
+            class FirstFoo : AbstractFoo()
+            @org.springframework.context.annotation.Configuration
+            open class Cfg {
+                @org.springframework.context.annotation.Bean
+                open fun foo(): AbstractFoo = FirstFoo()
+            }
+            """.trimIndent()
+        )
+        assertActiveBeans("candidates.Cfg")
+        val facade = JavaPsiFacade.getInstance(project)
+        val scope = GlobalSearchScope.projectScope(project)
+        val abstractType = facade.findClass("candidates.AbstractFoo", scope)!!
+        val implementation = facade.findClass("candidates.FirstFoo", scope)!!
+        assertTrue(abstractType.hasModifierProperty(PsiModifier.ABSTRACT))
+        assertTrue(abstractType.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT))
+        assertFalse(implementation.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT))
+        val factory = facade.findClass("candidates.Cfg", scope)!!.findMethodsByName("foo", false).single()
+        assertNotNull(factory.getAnnotation(SpringCoreClasses.BEAN))
+        assertEquals(abstractType, (factory.returnType as com.intellij.psi.PsiClassType).resolve())
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+        assertFalse("FirstFoo must not be a bean by itself", beans.any { it.psiClass == implementation })
+        assertEquals(listOf(factory), beans.filter { it.name == "foo" && it.psiClass == abstractType }.map { it.psiMember })
+
+        val gutter = springGutterAtCaret()
+        assertEquals(
+            SpringCoreBundle.message("explyt.spring.gutter.abstract.component.tooltip", 1) to listOf("foo()"),
+            gutter.tooltipText to SpringGutterTestUtil.getGutterTargetsStrings(gutter)
+        )
+    }
+
     private fun configureFactoryImplementation() {
         configure(
             """
