@@ -15,6 +15,24 @@ import org.junit.Test
 
 class EndpointUrlMatcherTest {
 
+    @Test
+    fun `capture rest preserves the opening segment boundary`() {
+        assertFalse(SpringWebUtil.isEndpointMatches("/a/{*x}", "/ab"))
+        assertTrue(SpringWebUtil.isEndpointMatches("/a/{*x}", "/a"))
+        assertTrue(SpringWebUtil.isEndpointMatches("/a/{*x}", "/a/b/c"))
+        assertTrue(SpringWebUtil.isEndpointMatches("/a/{*x}", "/a/"))
+    }
+
+    @Test
+    fun `an Ant style middle wildcard matches many segments`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/api/**/items", "/api/x/y/items"))
+    }
+
+    @Test
+    fun `an Ant style middle wildcard matches zero segments`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/api/**/items", "/api/items"))
+    }
+
     private val routes = listOf("/api/items/{id}", "/api/items/export", "/api/items", "/{tenant}/reports")
 
     @Test

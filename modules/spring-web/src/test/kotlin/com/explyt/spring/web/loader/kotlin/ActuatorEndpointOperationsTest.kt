@@ -17,6 +17,9 @@ import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UResolvable
+import org.jetbrains.uast.toUElementOfType
 
 /**
  * What an Actuator endpoint answers, operation by operation: the verbs and paths its mapping methods declare when it
@@ -175,6 +178,88 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         )
 
         assertEquals(listOf("/actuator/health/{*path}"), matched.map { it.path })
+    }
+
+    fun testJavaProjectSelectorCapturesAllRemaining() {
+        myFixture.addFileToProject("ProjectEndpoint.java", """
+            import org.springframework.boot.actuate.endpoint.annotation.*;
+            @Endpoint(id = "project")
+            public class ProjectEndpoint {
+                @ReadOperation
+                public String read(@Selector(match = Selector.Match.ALL_REMAINING) String path) { return path; }
+            }
+        """.trimIndent())
+
+        assertProjectSelectorPath("/actuator/project/{*path}", 0)
+    }
+
+    fun testJavaStaticImportedSelectorCapturesAllRemaining() {
+        myFixture.addFileToProject("ProjectEndpoint.java", """
+            import org.springframework.boot.actuate.endpoint.annotation.*;
+            import static org.springframework.boot.actuate.endpoint.annotation.Selector.Match.ALL_REMAINING;
+            @Endpoint(id = "project")
+            public class ProjectEndpoint {
+                @ReadOperation
+                public String read(@Selector(match = ALL_REMAINING) String path) { return path; }
+            }
+        """.trimIndent())
+
+        assertProjectSelectorPath("/actuator/project/{*path}", 0)
+    }
+
+    fun testKotlinProjectSelectorCapturesAllRemaining() {
+        myFixture.addFileToProject("ProjectEndpoint.kt", """
+            import org.springframework.boot.actuate.endpoint.annotation.*
+            @Endpoint(id = "project")
+            class ProjectEndpoint {
+                @ReadOperation
+                fun read(@Selector(match = Selector.Match.ALL_REMAINING) path: String) = path
+            }
+        """.trimIndent())
+
+        assertProjectSelectorPath("/actuator/project/{*path}", 0)
+    }
+
+    fun testOnlyTheLastSelectorCapturesRemainingSegments() {
+        myFixture.addFileToProject("ProjectEndpoint.java", """
+            import org.springframework.boot.actuate.endpoint.annotation.*;
+            @Endpoint(id = "project")
+            public class ProjectEndpoint {
+                @ReadOperation
+                public String read(@Selector String a, @Selector(match = Selector.Match.ALL_REMAINING) String b) { return b; }
+            }
+        """.trimIndent())
+
+        assertProjectSelectorPath("/actuator/project/{a}/{*b}", 1)
+    }
+
+    fun testInvalidNonLastAllRemainingSelectorStaysASingleSegment() {
+        myFixture.addFileToProject("ProjectEndpoint.java", """
+            import org.springframework.boot.actuate.endpoint.annotation.*;
+            @Endpoint(id = "project")
+            public class ProjectEndpoint {
+                @ReadOperation
+                public String read(@Selector(match = Selector.Match.ALL_REMAINING) String a, @Selector String b) { return b; }
+            }
+        """.trimIndent())
+
+        assertProjectSelectorPath("/actuator/project/{a}/{b}", 0)
+    }
+
+    private fun assertProjectSelectorPath(expected: String, allRemainingIndex: Int) {
+        val endpoint = endpointsOf("ProjectEndpoint").single()
+        val method = endpoint.psiElement as PsiMethod
+        val selector = method.parameterList.parameters[allRemainingIndex].getAnnotation(
+            "org.springframework.boot.actuate.endpoint.annotation.Selector"
+        )
+        assertNotNull("precondition: project parameter carries @Selector", selector)
+        val psiMatch = (selector!!.findAttributeValue("match") as? PsiReferenceExpression)?.resolve() as? PsiEnumConstant
+        val uastMatch = selector.toUElementOfType<UAnnotation>()?.findAttributeValue("match") as? UResolvable
+        val match = psiMatch ?: uastMatch?.resolve() as? PsiEnumConstant
+        assertEquals("precondition: selector carries ALL_REMAINING", "ALL_REMAINING", match?.name)
+        assertEquals("org.springframework.boot.actuate.endpoint.annotation.Selector.Match", match?.containingClass?.qualifiedName)
+        assertEquals(listOf("GET"), endpoint.requestMethods)
+        assertEquals(expected, endpoint.path)
     }
 
     private fun healthForPath(): EndpointElement {
