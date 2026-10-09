@@ -97,11 +97,11 @@ object RoutePathResolver {
 
     private fun ULambdaExpression.iteratingCall(): UCallExpression? =
         (uastParent as? UCallExpression)?.takeIf { it.callName() in ITERATING_CALLS }
-
-    /**
-     * A call into an unresolved declaration — a stdlib function absent from the module classpath, for instance —
-     * reports no [UCallExpression.methodName], so the name is read from the callee as written.
-     */
-    private fun UCallExpression.callName(): String? =
-        methodName ?: methodIdentifier?.name ?: (sourcePsi as? KtCallExpression)?.calleeExpression?.text
 }
+
+/**
+ * A call into an unresolved declaration — a stdlib function absent from the module classpath, for instance —
+ * reports no [UCallExpression.methodName], so the name is read from the callee as written.
+ */
+internal fun UCallExpression.callName(): String? =
+    methodName ?: methodIdentifier?.name ?: (sourcePsi as? KtCallExpression)?.calleeExpression?.text
