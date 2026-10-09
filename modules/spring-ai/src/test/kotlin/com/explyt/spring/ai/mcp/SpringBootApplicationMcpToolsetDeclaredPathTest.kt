@@ -40,6 +40,33 @@ class SpringBootApplicationMcpToolsetDeclaredPathTest : ExplytJavaLightTestCase(
 
     private fun paths(nodes: JsonNode): List<String> = nodes.map { it["fullPath"].asText() }
 
+    fun testDeclaredBasePathEndpointPrecedesARootCatchAll() = runBlocking<Unit> {
+        declareConfiguration("server:\n  servlet:\n    context-path: /shop\n", expectedBasePath = "/shop")
+        myFixture.addFileToProject(
+            "com/example/app/web/ShopController.java", """
+            package com.example.app.web;
+            import org.springframework.web.bind.annotation.*;
+
+            @RestController
+            public class ShopController {
+                @GetMapping("/**") public String fallback() { return "fallback"; }
+                @GetMapping("/api/items") public String items() { return "items"; }
+            }
+            """.trimIndent()
+        )
+        val listed = mapper.readTree(
+            toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "ShopController", compact = true)
+        )
+        assertEquals("precondition: both controller routes are in the model", listOf("/**", "/api/items"), paths(listed["endpoints"]).sorted())
+
+        val found = find("/shop/api/items", "GET")
+
+        assertEquals("/api/items", found["endpoints"].first()["fullPath"].asText())
+        assertEquals("items", found["endpoints"].first()["methodName"].asText())
+        assertEquals("/shop", found["basePath"].asText())
+        assertTrue(found["assumedPrefix"].isNull)
+    }
+
     private fun declareConfiguration(yaml: String, expectedBasePath: String) {
         myFixture.copyDirectoryToProject("springBootApp", "")
         assertNotNull(
