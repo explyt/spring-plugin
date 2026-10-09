@@ -12,7 +12,15 @@ import com.explyt.spring.web.inspections.ControllerBeanNameAsPathInspection
 import com.explyt.spring.web.util.WebApplicationStack
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiModifier
 import com.intellij.psi.util.InheritanceUtil
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UQualifiedReferenceExpression
+import org.jetbrains.uast.UReferenceExpression
+import org.jetbrains.uast.toUElementOfType
 import org.intellij.lang.annotations.Language
 
 private const val HTTP_REQUEST_HANDLER = "org.springframework.web.HttpRequestHandler"
@@ -40,14 +48,19 @@ abstract class ControllerBeanNameAsPathKotlinTestCase : ExplytInspectionKotlinTe
     }
 
     protected fun assertStereotype(classFqn: String, stereotypeFqn: String) {
-        assertNotNull(
+        assertEquals(
             "$classFqn must carry Spring's $stereotypeFqn",
-            myFixture.findClass(classFqn).getAnnotation(stereotypeFqn)
+            stereotypeFqn,
+            myFixture.findClass(classFqn).getAnnotation(stereotypeFqn)?.resolveAnnotationType()?.qualifiedName
         )
     }
 
     protected fun applySingleQuickFix(fileName: String, @Language("kotlin") code: String): String {
         myFixture.configureByText(fileName, code)
+        assertStereotype(
+            "demo.${fileName.substringBeforeLast('.')}",
+            if (code.contains("@RestController")) SpringWebClasses.REST_CONTROLLER else SpringWebClasses.CONTROLLER
+        )
         val fixes = myFixture.getAllQuickFixes()
         assertSize(1, fixes)
         myFixture.launchAction(fixes.single())
@@ -229,6 +242,15 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathKotlinTes
         )
         assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
         assertSingleWarningOn(problems, "Paths.APP")
+        val annotation = myFixture.findClass("demo.AppController").toUElementOfType<UClass>()!!
+            .uAnnotations.single { it.qualifiedName == SpringWebClasses.REST_CONTROLLER }
+        val expression = annotation.findDeclaredAttributeValue("value") as UQualifiedReferenceExpression
+        val constant = (expression.selector as UReferenceExpression).resolve() as PsiField
+        assertEquals("APP", constant.name)
+        assertTrue(constant.hasModifierProperty(PsiModifier.STATIC))
+        assertTrue(constant.hasModifierProperty(PsiModifier.FINAL))
+        assertEquals("/app", constant.computeConstantValue())
+        assertTrue((constant.navigationElement as KtProperty).hasModifier(KtTokens.CONST_KEYWORD))
 
         val result = applySingleQuickFix(
             "AppController.kt", """
@@ -262,6 +284,27 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathKotlinTes
         assertEmpty(problems)
     }
 
+    fun testControllerBeanNameIsReportedAndQuickFixKeepsController() {
+        val code = """
+            package demo
+
+            import org.springframework.stereotype.Controller
+
+            @Controller("/app")
+            class ApiController
+            """.trimIndent()
+        val problems = problemsIn("ApiController.kt", code)
+        assertEquals(WebApplicationStack.SERVLET, WebApplicationStack.of(module))
+        assertStereotype("demo.ApiController", SpringWebClasses.CONTROLLER)
+        val description = assertSingleWarningOn(problems, "\"/app\"")
+        assertTrue(description, description.contains("500"))
+
+        val result = applySingleQuickFix("ApiController.kt", code)
+        assertTrue(result, result.contains("@RequestMapping(\"/app\")"))
+        assertTrue(result, result.contains("@Controller"))
+        assertFalse(result, result.contains("Controller(\"/app\")"))
+    }
+
     fun testComposedControllerAnnotationIsNotReported() {
         val problems = problemsIn(
             "AppController.kt", """
@@ -291,8 +334,8 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathKotlinTes
             @Controller("/files/**")
             class LegacyHandler : HttpRequestHandler {
                 override fun handleRequest(
-                    request: javax.servlet.http.HttpServletRequest,
-                    response: javax.servlet.http.HttpServletResponse
+                    request: jakarta.servlet.http.HttpServletRequest,
+                    response: jakarta.servlet.http.HttpServletResponse
                 ) = Unit
             }
             """.trimIndent()
@@ -300,6 +343,16 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathKotlinTes
         val handler = myFixture.findClass("demo.LegacyHandler")
         assertStereotype("demo.LegacyHandler", SpringWebClasses.CONTROLLER)
         assertTrue(InheritanceUtil.isInheritor(handler, HTTP_REQUEST_HANDLER))
+        val handleRequest = handler.findMethodsByName("handleRequest", false).single()
+        assertEquals(HTTP_REQUEST_HANDLER, handleRequest.findSuperMethods().single().containingClass?.qualifiedName)
+        assertEquals(
+            "jakarta.servlet.http.HttpServletRequest",
+            handleRequest.parameterList.parameters[0].type.canonicalText
+        )
+        assertEquals(
+            "jakarta.servlet.http.HttpServletResponse",
+            handleRequest.parameterList.parameters[1].type.canonicalText
+        )
         assertEmpty(problems)
     }
 
@@ -320,14 +373,17 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathKotlinTes
     }
 
     fun testQuickFixPreviewMatchesLaunchedResult() {
-        myFixture.configureByText("AppController.kt", """
+        myFixture.configureByText(
+            "AppController.kt", """
             package demo
 
             import org.springframework.web.bind.annotation.RestController
 
             @RestController("/app")
             class AppController
-            """.trimIndent())
+            """.trimIndent()
+        )
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
         val fix = myFixture.getAllQuickFixes().single()
         myFixture.checkPreviewAndLaunchAction(fix)
         assertTrue(myFixture.editor.document.text.contains("@RequestMapping(\"/app\")"))
