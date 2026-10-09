@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getArrayType
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
@@ -85,7 +86,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (PluginIds.SPRING_JB.isEnabledWithUltimate()) return
         val processor = getLineMarkerElementProcessor(element) ?: return
 
-        if (processor.isComponentClassOrBeanMethod()) {
+        if (processor.isAbstractComponent()) {
+            result.add(processor.createAbstractComponentMarker())
+        } else if (processor.isComponentClassOrBeanMethod()) {
             val builder = NavigationGutterIconBuilder.create(
                 getComponentIcon(processor),
                 SpringCoreBundle.message("explyt.spring.gutter.group.bean")
@@ -151,6 +154,17 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private val springSearchService = SpringSearchService.getInstance(module.project)
 
         var inSpringContextClass: Boolean? = null
+
+        fun isAbstractComponent(): Boolean =
+            uParent is UClass && AbstractComponentLineMarker.isAbstractComponent(uParent.javaPsi)
+
+        fun createAbstractComponentMarker(): RelatedItemLineMarkerInfo<PsiElement> {
+            val uClass = uParent as UClass
+            val facade = SpringSearchServiceFacade.getInstance(module.project)
+            return AbstractComponentLineMarker.create(element, uClass.javaPsi, facade.getAllActiveBeans(module)) {
+                facade.findInjectionPoints(uClass, null, module)
+            }
+        }
 
         fun isComponentClassOrBeanMethod(): Boolean {
             var result = false
@@ -291,8 +305,13 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allBeans = springSearchService.getActiveBeansClasses(module) +
                     springSearchService.getDependentBeanPsiClassesAnnotatedByComponent(module)
 
-            val allFieldsWithAutowired = allBeans.asSequence()
-                .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+            val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
+            val owners = InjectionPointOwners.of(beanClasses.asSequence())
+            val componentClasses = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+                .mapTo(HashSet()) { it.psiClass }
+
+            val allFieldsWithAutowired = owners.asSequence()
+                .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
                 .flatMap { field ->
                     field.asSequence()
                         .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -302,15 +321,15 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
 
             val allParametersWithAutowired = mutableSetOf<UVariable>()
-            allBeans.forEach { bean ->
-                val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+            owners.forEach { owner ->
+                val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
                 allParametersWithAutowired.addAll(
                     methods.asSequence()
                         .filter {
-                            it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                            if (it.isConstructor) owner in beanClasses
+                                    && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                            else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                     || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                    || it.isConstructor
-                                    && bean in springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
                         }
                         .flatMap { it.parameterList.parameters.asSequence() }
                         .filter { it.isCandidate(targetType, targetClass, targetClasses) }

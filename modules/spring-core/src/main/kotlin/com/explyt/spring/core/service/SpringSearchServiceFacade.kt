@@ -14,6 +14,7 @@ import com.explyt.spring.core.service.beans.ScopedBeanSnapshot
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
@@ -135,6 +136,12 @@ class SpringSearchServiceFacade(private val project: Project) {
         uClass: UClass?, uMethod: UMethod?, module: Module, isNative: Boolean = false
     ): Collection<PsiElement> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
+        return findInjectionPoints(uClass, uMethod, module, isNative)
+    }
+
+    fun findInjectionPoints(
+        uClass: UClass?, uMethod: UMethod?, module: Module, isNative: Boolean = false
+    ): Collection<PsiElement> {
         val isArrayType = uMethod?.returnType is PsiArrayType
         val uElement = uClass ?: uMethod ?: throw RuntimeException("No uElement")
         val targetType = if (uElement is UMethod) uElement.returnType else null
@@ -147,8 +154,15 @@ class SpringSearchServiceFacade(private val project: Project) {
 
         val allBeans = getAllActiveBeans(module, isNative)
 
-        val allFieldsWithAutowired = allBeans.asSequence()
-            .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+        val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
+        val owners = InjectionPointOwners.of(beanClasses.asSequence())
+        val componentBeans = if (isNative || isExternalProjectExist(project))
+            nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
+        else springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+        val componentClasses = componentBeans.mapTo(HashSet()) { it.psiClass }
+
+        val allFieldsWithAutowired = owners.asSequence()
+            .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
             .flatMap { field ->
                 field.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -158,15 +172,15 @@ class SpringSearchServiceFacade(private val project: Project) {
 
 
         val allParametersWithAutowired = mutableSetOf<UVariable>()
-        allBeans.forEach { bean ->
-            val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+        owners.forEach { owner ->
+            val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
-                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                        if (it.isConstructor) owner in beanClasses
+                                && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                        else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor
-                                && bean in nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { it.isCandidate(targetType, targetClass, targetClasses) }
