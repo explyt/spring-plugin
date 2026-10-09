@@ -140,7 +140,7 @@
                          implementationClass="com.explyt.spring.web.inspections.RequestMappingDuplicateInspection"/>
 
         <localInspection language="UAST"
-                         shortName="ControllerBeanNameAsPathInspection"
+                         shortName="ControllerBeanNameAsPath"
                          groupBundle="messages.SpringWebBundle"
                          groupPath="Explyt Spring"
                          groupKey="explyt.spring.web.notifications"
