@@ -46,7 +46,9 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             if (!SpringCoreUtil.isSpringBeanCandidateClass(uElement.javaPsi)) return
             val inContextBean = isContextBean(module, uElement)
             val componentCandidate = isComponentCandidate(uElement.javaPsi)
-            if (componentCandidate && !inContextBean) {
+            if (!inContextBean && AbstractComponentLineMarker.isAbstractComponent(uElement.javaPsi)) {
+                addAbstractComponent(uElement, module, result)
+            } else if (componentCandidate && !inContextBean) {
                 addComponentCandidateBean(uElement, module, result)
             } else {
                 if (isMethodBean(uElement, inContextBean, componentCandidate)) {
@@ -207,6 +209,19 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
             .setPopupTitle(SpringCoreBundle.message("explyt.spring.gutter.popup.title.choose.bean.candidate"))
             .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
         result.add(builder.createLineMarkerInfo(sourcePsi))
+    }
+
+    private fun addAbstractComponent(
+        uClass: UClass,
+        module: Module,
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+    ) {
+        val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
+        val beans = NativeSearchService.getInstance(module.project).getAllActiveBeans()
+        result.add(AbstractComponentLineMarker.create(sourcePsi, uClass.javaPsi, beans) {
+            SpringSearchServiceFacade.getInstance(module.project)
+                .findInjectionPoints(uClass, null, module, true)
+        })
     }
 
     private fun addComponentCandidateBean(
