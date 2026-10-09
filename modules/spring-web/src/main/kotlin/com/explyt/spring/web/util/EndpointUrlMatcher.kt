@@ -70,9 +70,11 @@ object EndpointUrlMatcher {
         val requestPath = requestPathOf(url, policy) ?: return Match(emptyList(), null)
         val routes = endpoints.map { Route(it, routeOf(it)) }
         val fragment = url.trim().takeIf { policy.fragments && it.isNotEmpty() }
-        return readingsOf(requestPath, routes, policy, basePathOf)
-            .map { reading -> reading to matchesOf(routes, reading, fragment, basePathOf) }
-            .firstOrNull { (_, matches) -> matches.isNotEmpty() }
+        return EndpointPathPatterns.preferredReading(
+            readingsOf(requestPath, routes, policy, basePathOf),
+            { reading -> matchesOf(routes, reading, fragment, basePathOf) },
+            { SpringWebUtil.simplifyUrl(routeOf(it)) },
+        )
             ?.let { (reading, matches) -> Match(matches, reading) }
             ?: Match(emptyList(), null)
     }
