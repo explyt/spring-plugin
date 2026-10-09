@@ -33,6 +33,17 @@ class UrlArgumentTextTest : ExplytKotlinLightTestCase() {
         assertEquals("/api/items/42", textOf("\"/api/items/\" + 42"))
     }
 
+    fun testConcatenatedVariableKeepsSingleSegmentRankingBeforeCaptureRest() {
+        val request = textOf("\"/files/\" + id")
+        assertEquals("/files/{*}", request)
+        val matched = EndpointUrlMatcher.match(
+            listOf("/files/{*path}", "/files/{id}"), request!!,
+            EndpointUrlMatcher.Policy.REFERENCE, { it }, { null }
+        )
+
+        assertEquals(listOf("/files/{id}", "/files/{*path}"), matched.endpoints)
+    }
+
     fun testUriFactoryIsUnwrapped() {
         assertEquals("http://localhost:8080/api/items/{*}?x=1", textOf("java.net.URI.create(\"http://localhost:8080/api/items/\$id?x=1\")"))
     }
