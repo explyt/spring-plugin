@@ -16,6 +16,56 @@ import org.junit.Test
 class EndpointUrlMatcherTest {
 
     @Test
+    fun `declared base path literal wins over a root double wildcard reading`() {
+        val endpoints = listOf("/**", "/api/items")
+        assertEquals(setOf("/**", "/api/items"), endpoints.toSet())
+        val match = EndpointUrlMatcher.match(endpoints, "/shop/api/items", Policy.REFERENCE, { it }, { "/shop" })
+
+        assertEquals("/api/items", match.endpoints.firstOrNull())
+        assertEquals(ReadingKind.DECLARED_BASE_PATH, match.reading?.kind)
+        assertEquals("/shop", match.reading?.prefix)
+    }
+
+    @Test
+    fun `declared base path literal wins over a root capture rest reading`() {
+        val endpoints = listOf("/{*rest}", "/api/items")
+        assertEquals(setOf("/{*rest}", "/api/items"), endpoints.toSet())
+        val match = EndpointUrlMatcher.match(endpoints, "/shop/api/items", Policy.REFERENCE, { it }, { "/shop" })
+
+        assertEquals("/api/items", match.endpoints.firstOrNull())
+        assertEquals(ReadingKind.DECLARED_BASE_PATH, match.reading?.kind)
+        assertEquals("/shop", match.reading?.prefix)
+    }
+
+    @Test
+    fun `assumed prefix literal wins over a root catch all reading`() {
+        val endpoints = listOf("/**", "/api/items")
+        assertEquals(setOf("/**", "/api/items"), endpoints.toSet())
+        val match = EndpointUrlMatcher.match(endpoints, "/t/api/items", Policy.SEARCH, { it }, { null })
+
+        assertEquals("/api/items", match.endpoints.firstOrNull())
+        assertEquals(ReadingKind.ASSUMED_PREFIX, match.reading?.kind)
+        assertEquals("/t", match.reading?.prefix)
+    }
+
+    @Test
+    fun `root catch all remains a fallback when no literal route exists`() {
+        val match = EndpointUrlMatcher.match(listOf("/**"), "/shop/api/items", Policy.REFERENCE, { it }, { "/shop" })
+
+        assertEquals(listOf("/**"), match.endpoints)
+        assertEquals(ReadingKind.AS_WRITTEN, match.reading?.kind)
+    }
+
+    @Test
+    fun `declared base path finds the literal without a catch all`() {
+        val match = EndpointUrlMatcher.match(listOf("/api/items"), "/shop/api/items", Policy.REFERENCE, { it }, { "/shop" })
+
+        assertEquals(listOf("/api/items"), match.endpoints)
+        assertEquals(ReadingKind.DECLARED_BASE_PATH, match.reading?.kind)
+        assertEquals("/shop", match.reading?.prefix)
+    }
+
+    @Test
     fun `capture rest preserves the opening segment boundary`() {
         assertFalse(SpringWebUtil.isEndpointMatches("/a/{*x}", "/ab"))
         assertTrue(SpringWebUtil.isEndpointMatches("/a/{*x}", "/a"))

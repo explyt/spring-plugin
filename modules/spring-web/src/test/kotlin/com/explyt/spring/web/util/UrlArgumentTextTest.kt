@@ -42,6 +42,7 @@ class UrlArgumentTextTest : ExplytKotlinLightTestCase() {
         )
 
         assertEquals(listOf("/files/{id}", "/files/{*path}"), matched.endpoints)
+        assertFalse(SpringWebUtil.isEndpointMatches(request, "/files/a/b"))
     }
 
     fun testUriFactoryIsUnwrapped() {
