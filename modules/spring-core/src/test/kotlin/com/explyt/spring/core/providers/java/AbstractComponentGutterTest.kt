@@ -132,7 +132,7 @@ class AbstractComponentGutterTest : ExplytJavaLightTestCase() {
     fun testFactoryBeanMethodIsAbstractComponentTarget() {
         configureFactoryImplementation()
         assertEquals(
-            listOf("firstFoo"),
+            listOf("firstFoo()"),
             SpringGutterTestUtil.getGutterTargetsStrings(springGutterAtCaret())
         )
     }

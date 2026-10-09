@@ -132,7 +132,7 @@ class AbstractComponentGutterTest : ExplytKotlinLightTestCase() {
     fun testFactoryBeanMethodIsAbstractComponentTarget() {
         configureFactoryImplementation()
         assertEquals(
-            listOf("firstFoo"),
+            listOf("firstFoo()"),
             SpringGutterTestUtil.getGutterTargetsStrings(springGutterAtCaret())
         )
     }
