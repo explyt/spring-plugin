@@ -220,7 +220,7 @@ class ActuatorBuiltInEndpointsTest : ExplytKotlinLightTestCase() {
             .flatMap { it.getEndpointElements("/actuator/health", module) }
             .toList()
 
-        assertEquals(listOf("/actuator/health"), matched.map { it.path }.distinct())
+        assertEquals(listOf("/actuator/health", "/actuator/health/{*path}"), matched.map { it.path }.distinct())
     }
 
     fun testJmxOnlyBuiltInsAreStillNotListed() {
