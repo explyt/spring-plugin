@@ -24,6 +24,35 @@ class ActuatorUrlReferenceMultiModuleTest : ExplytMultiModuleTestCase() {
         TestLibrary.springBootActuatorAutoConfigure_4_1_0
     )
 
+    fun testDependentModuleWithoutApplicationKeepsActuatorUrlUnresolved() {
+        val testModule = addDependentModule("app-test")
+        val request = addTestSourceFileToModule(
+            testModule,
+            "com/example/apptest/CustomEndpointTest.java",
+            "package com.example.apptest;\n" +
+                "import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;\n" +
+                "class CustomEndpointTest { void request() { get(\"/actuator/custom\"); } }"
+        )
+        myFixture.configureFromExistingVirtualFile(request.virtualFile)
+        myFixture.editor.caretModel.moveToOffset(request.text.indexOf("custom") + 2)
+        val reference = myFixture.file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
+        assertNotNull("precondition: MockMvc URL reference exists", reference)
+        assertNull(reference!!.resolve())
+    }
+
+    fun testServingApplicationBasePathIsUsedFromDependentModule() {
+        addFileToModule(module, "Application.kt", "import org.springframework.boot.autoconfigure.SpringBootApplication\n@SpringBootApplication class Application")
+        addFileToModule(module, "CustomEndpoint.kt", "import org.springframework.boot.actuate.endpoint.annotation.Endpoint\nimport org.springframework.boot.actuate.endpoint.annotation.ReadOperation\n@Endpoint(id = \"custom\") class CustomEndpoint { @ReadOperation fun read(): String = \"custom\" }")
+        addFileToModule(module, "application.properties", "management.endpoints.web.base-path=/manage")
+        val testModule = addDependentModule("app-test")
+        val request = addTestSourceFileToModule(testModule, "CustomEndpointTest.java", "import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get; class CustomEndpointTest { void request() { get(\"/manage/custom\"); } }")
+        myFixture.configureFromExistingVirtualFile(request.virtualFile)
+        myFixture.editor.caretModel.moveToOffset(request.text.indexOf("custom") + 2)
+        val reference = myFixture.file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
+        assertNotNull("precondition: base-path URL reference exists", reference)
+        assertEquals("read", (reference!!.resolve() as? PsiMethod)?.name)
+    }
+
     fun testMockMvcFromTestModuleResolvesApplicationEndpoint() {
         addFileToModule(
             module,

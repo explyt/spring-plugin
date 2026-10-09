@@ -73,4 +73,21 @@ class ActuatorEndpointActionsLineMarkerProviderTest : ExplytJavaLightTestCase() 
         )
         assertNotNull(endpointFile.findElementAt(endpointFile.text.indexOf("read")))
     }
+
+    fun testWriteAndDeleteOperationsGetGuttersOnlyOnAnEndpoint() {
+        myFixture.addFileToProject("Application.java", "import org.springframework.boot.autoconfigure.SpringBootApplication; @SpringBootApplication class Application {}")
+        myFixture.configureByText(
+            "Operations.java",
+            "import org.springframework.boot.actuate.endpoint.annotation.*;\n" +
+                "@Endpoint(id = \"operations\") class Operations {\n" +
+                " @WriteOperation String write() { return \"write\"; }\n" +
+                " @DeleteOperation String delete() { return \"delete\"; }\n" +
+                " String plain() { return \"plain\"; }\n}\n" +
+                "class NotAnEndpoint { @ReadOperation String read() { return \"read\"; } }"
+        )
+        myFixture.doHighlighting()
+        val markers = myFixture.findAllGutters().filter { it.tooltipText == "Endpoint Actions" }
+            .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+        assertEquals(setOf("write", "delete"), markers.mapNotNull { it.lineMarkerInfo.element?.text }.toSet())
+    }
 }
