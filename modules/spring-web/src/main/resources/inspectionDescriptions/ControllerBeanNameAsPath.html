@@ -13,7 +13,7 @@
 The value is the bean name, not a request path: no path prefix is applied to the handler methods.</p>
 
 <p>On Spring MVC a value starting with <code>/</code> is also registered by <code>BeanNameUrlHandlerMapping</code>:
-a request to exactly that path that no request mapping handles fails with HTTP 500, because no handler adapter
+a request to exactly that path that no other handler mapping serves fails with HTTP 500, because no handler adapter
 supports an annotated controller.</p>
 
 <p>Classes implementing <code>HttpRequestHandler</code> or <code>org.springframework.web.servlet.mvc.Controller</code>
