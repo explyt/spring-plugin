@@ -20,6 +20,8 @@ object SpringWebClasses {
     const val REQUEST_PARAM = "org.springframework.web.bind.annotation.RequestParam"
     const val REQUEST_PART = "org.springframework.web.bind.annotation.RequestPart"
     const val MVC_DISPATCHER_SERVLET = "org.springframework.web.servlet.DispatcherServlet"
+    const val HTTP_REQUEST_HANDLER = "org.springframework.web.HttpRequestHandler"
+    const val SERVLET_MVC_CONTROLLER = "org.springframework.web.servlet.mvc.Controller"
     const val WEBFLUX_DISPATCHER_HANDLER = "org.springframework.web.reactive.DispatcherHandler"
     const val REQUEST_HEADER = "org.springframework.web.bind.annotation.RequestHeader"
     const val COOKIE_VALUE = "org.springframework.web.bind.annotation.CookieValue"
@@ -117,6 +119,14 @@ object SpringWebClasses {
      * told apart by the enclosing bean's type rather than by this name.
      */
     val ROUTER_DSL_ENTRY_POINTS = listOf("coRouter", "router")
+
+    val ROUTER_DSL_CLASSES = listOf(
+        "org.springframework.web.reactive.function.server.CoRouterFunctionDsl",
+        "org.springframework.web.reactive.function.server.RouterFunctionDsl",
+        "org.springframework.web.servlet.function.RouterFunctionDsl"
+    )
+
+    const val ROUTER_DSL_PATH_PREDICATE = "path"
 
     const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
