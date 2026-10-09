@@ -350,9 +350,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
 
                 // The reading is settled by the path alone: a URL that resolves only for another verb has been found,
                 // and dropping one more segment of it to satisfy the method filter would answer a different URL.
-                val answered = readings.firstNotNullOfOrNull { reading ->
-                    matchesOf(allEndpoints, reading, basePaths).takeIf { it.isNotEmpty() }?.let { reading to it }
-                }
+                val answered = EndpointPathPatterns.preferredReading(
+                    readings,
+                    { reading -> matchesOf(allEndpoints, reading, basePaths) },
+                    { SpringWebUtil.simplifyUrl(it.path) },
+                )
                 val matching = answered?.second.orEmpty().filter { endpoint ->
                     methodFilter == null || endpoint.requestMethods.isEmpty()
                             || endpoint.requestMethods.any { it.equals(methodFilter, ignoreCase = true) }
@@ -2563,4 +2565,3 @@ data class EntityIndexJson(
     val columns: List<String>,
     val unique: Boolean,
 )
-
