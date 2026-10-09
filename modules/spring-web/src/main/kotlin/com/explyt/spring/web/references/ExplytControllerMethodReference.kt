@@ -41,8 +41,9 @@ class ExplytControllerMethodReference(
 
         return webSearchService.getAllEndpointElements(urlPath, currentModule, URL_REFERENCE_TYPES)
             .filter { isRequestedMethod(it) }
+            .groupBy { it.application }.values
+            .flatMap { it.dispatchedFirst() }
             .distinctBy { it.psiElement }
-            .dispatchedFirst()
             .mapTo(mutableListOf()) { PsiElementResolveResult(it.psiElement) }
             .toTypedArray()
     }
