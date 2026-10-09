@@ -36,11 +36,7 @@ class ExplytControllerMethodReference(
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> {
         val currentModule = module.value ?: return emptyArray()
 
-        return webSearchService.getAllEndpointElements(
-            urlPath,
-            currentModule,
-            listOf(EndpointType.SPRING_MVC, EndpointType.SPRING_WEBFLUX)
-        ).asSequence()
+        return webSearchService.getAllEndpointElements(urlPath, currentModule, URL_REFERENCE_TYPES).asSequence()
             .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) { PsiElementResolveResult(it.psiElement) }
             .toTypedArray()
@@ -49,7 +45,7 @@ class ExplytControllerMethodReference(
     override fun getVariants(): Array<Any> {
         val currentModule = module.value ?: return emptyArray()
         return SpringWebEndpointsSearcher.getInstance(currentModule.project)
-            .getAllEndpoints(currentModule, listOf(EndpointType.SPRING_MVC, EndpointType.SPRING_WEBFLUX)).asSequence()
+            .getAllEndpoints(currentModule, URL_REFERENCE_TYPES).asSequence()
             .filter { it.path.isNotEmpty() }
             .filter { isRequestedMethod(it) }
             .mapTo(mutableListOf()) {
@@ -63,3 +59,5 @@ class ExplytControllerMethodReference(
         requestMethod == null || it.requestMethods.contains(requestMethod)
 
 }
+
+private val URL_REFERENCE_TYPES = listOf(EndpointType.SPRING_MVC, EndpointType.SPRING_WEBFLUX, EndpointType.ACTUATOR)
