@@ -446,6 +446,7 @@ class SpringSearchService(private val project: Project) {
                 .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
                 .filter { it.isValid }
                 .filter { SpringCoreUtil.isSpringBeanCandidateClass(it) }
+                .filter { SpringCoreUtil.isCandidateComponent(it) }
                 .filter { isActive(it) }
                 .map { PsiBean(it.resolveBeanName(module), it, it.getQualifierAnnotation(), it) }
                 .toSet()

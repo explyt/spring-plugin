@@ -17,6 +17,7 @@ import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil.getQualifierAnnotation
 import com.explyt.spring.core.util.SpringCoreUtil.isCandidate
 import com.explyt.spring.core.util.SpringCoreUtil.isComponentCandidate
@@ -48,7 +49,9 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         val libraryBeans = NativeSearchService.getInstance(project).getAllProjectNodesLibraryBeans()
         if (libraryBeans.isEmpty()) {
             val beanSupplier = { SpringSearchService.getInstance(project).getAllActiveBeans().toList() }
-            if (isComponentCandidate) {
+            if (AbstractComponentLineMarker.isAbstractComponent(psiClass)) {
+                addAbstractComponent(uClass, result, beanSupplier.invoke())
+            } else if (isComponentCandidate) {
                 addContextBean(uClass, false, result, beanSupplier)
             }
             processMethods(uClass, result, beanSupplier)
@@ -64,7 +67,11 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
 
         if (contextBean == null && !isComponentCandidate) return
 
-        addContextBean(uClass, contextBean == null, result) { libraryBeans }
+        if (contextBean == null && AbstractComponentLineMarker.isAbstractComponent(psiClass)) {
+            addAbstractComponent(uClass, result, libraryBeans + NativeSearchService.getInstance(project).getProjectBeans())
+        } else {
+            addContextBean(uClass, contextBean == null, result) { libraryBeans }
+        }
 
         if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return
         processMethodsNative(uClass, result) { libraryBeans }
@@ -193,6 +200,17 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         }
     }
 
+    private fun addAbstractComponent(
+        uClass: UClass,
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+        beans: List<PsiBean>
+    ) {
+        val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
+        result.add(AbstractComponentLineMarker.create(sourcePsi, uClass.javaPsi, beans) {
+            findInjectionPoints(uClass, null, beans)
+        })
+    }
+
     private fun addContextBean(
         uClass: UClass,
         isComponentCandidate: Boolean,
@@ -240,6 +258,12 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         uClass: UClass?, uMethod: UMethod?, libraryBeans: List<PsiBean>
     ): Collection<PsiElement> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_LIBRARY_USAGE)
+        return findInjectionPoints(uClass, uMethod, libraryBeans)
+    }
+
+    private fun findInjectionPoints(
+        uClass: UClass?, uMethod: UMethod?, libraryBeans: List<PsiBean>
+    ): Collection<PsiElement> {
         val isArrayType = uMethod?.returnType is PsiArrayType
         val uElement = getUElement(uClass, uMethod)
 
@@ -256,8 +280,14 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         val allBeans = if (projectBeans.isNotEmpty()) libraryBeans + projectBeans
         else SpringSearchService.getInstance(project).getAllActiveBeans()
 
-        val allFieldsWithAutowired = allBeans.asSequence()
-            .mapNotNull { bean -> bean.psiClass.toUElementOfType<UClass>()?.fields }
+        val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
+        val owners = InjectionPointOwners.of(beanClasses.asSequence())
+        val componentClasses = allBeans.asSequence()
+            .filter { it.psiMember is PsiClass }
+            .mapTo(HashSet()) { it.psiClass }
+
+        val allFieldsWithAutowired = owners.asSequence()
+            .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
             .flatMap { field ->
                 field.asSequence()
                     .filter { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
@@ -265,18 +295,16 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
                     .mapNotNull { it.navigationElement.toUElement() as? UVariable }
             }.toSet()
 
-        val componentBeanNames = allBeans.asSequence()
-            .filter { it.psiMember is PsiClass }
-            .mapToSet { it.name }
         val allParametersWithAutowired = mutableSetOf<UVariable>()
-        allBeans.forEach { bean ->
-            val methods = bean.psiClass.toUElementOfType<UClass>()?.methods ?: return@forEach
+        owners.forEach { owner ->
+            val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
-                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                        if (it.isConstructor) owner in beanClasses
+                                && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                        else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor && bean.name in componentBeanNames
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { it.isCandidate(targetType, targetClass, targetClasses) }
