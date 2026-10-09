@@ -31,19 +31,27 @@ object ApplicationModules {
 
     private fun findServingModules(module: Module): List<Module> {
         if (declaresApplication(module)) return listOf(module)
+        val production = TestModuleProperties.getInstance(module).productionModule
+        if (production != null && declaresApplication(production)) return listOf(production)
+        return nearestApplicationModules(module)
+    }
+
+    private fun nearestApplicationModules(module: Module): List<Module> {
         val serving = LinkedHashSet<Module>()
         val visited = mutableSetOf(module)
-        val pending = ArrayDeque(listOfNotNull(TestModuleProperties.getInstance(module).productionModule))
-        pending += ModuleRootManager.getInstance(module).dependencies
-        while (pending.isNotEmpty()) {
-            ProgressManager.checkCanceled()
-            val candidate = pending.removeFirst()
-            if (!visited.add(candidate)) continue
-            if (declaresApplication(candidate)) {
-                serving += candidate
-            } else {
-                pending += ModuleRootManager.getInstance(candidate).dependencies
+        var level = ModuleRootManager.getInstance(module).dependencies.toList()
+        while (level.isNotEmpty() && serving.isEmpty()) {
+            val next = mutableListOf<Module>()
+            for (candidate in level) {
+                ProgressManager.checkCanceled()
+                if (!visited.add(candidate)) continue
+                if (declaresApplication(candidate)) {
+                    serving += candidate
+                } else {
+                    next += ModuleRootManager.getInstance(candidate).dependencies
+                }
             }
+            level = next
         }
         return serving.toList()
     }

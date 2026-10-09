@@ -79,7 +79,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             served, urlPath, EndpointUrlMatcher.Policy.REFERENCE,
             routeOf = { it.endpoint.path },
             basePathOf = { ApplicationBasePath.cachedOf(it.servingModule) },
-        ).endpoints.map { it.endpoint }.distinct()
+        ).endpoints.map { it.endpoint }.distinctBy { it.psiElement }
     }
 
     private data class ServedEndpoint(val endpoint: EndpointElement, val servingModule: Module)
