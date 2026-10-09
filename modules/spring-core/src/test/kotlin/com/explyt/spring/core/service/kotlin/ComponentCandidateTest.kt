@@ -55,14 +55,39 @@ class ComponentCandidateTest : ExplytKotlinLightTestCase() {
         assertSingleBean("candidates.LookupComponent")
     }
 
-    fun testComponentInterfaceIsNotBean() {
+    fun testComponentInterfaceStaysBean() {
         configure(
             "ComponentInterface", """
             @Component
             interface ComponentInterface
             """
         )
-        assertNotBean("candidates.ComponentInterface")
+        assertSingleBean("candidates.ComponentInterface")
+    }
+
+    fun testRepositoryInterfaceWithoutSpringDataStaysBean() {
+        configure(
+            "Mapper", """
+            import org.springframework.stereotype.Repository
+            @Repository
+            interface Mapper {
+                fun find(id: Long): String
+            }
+            """
+        )
+        assertSingleBean("candidates.Mapper")
+    }
+
+    fun testComponentNestedInInterfaceIsBean() {
+        configure(
+            "Holder", """
+            interface Holder {
+                @Component
+                class Nested
+            }
+            """
+        )
+        assertSingleBean("candidates.Holder.Nested")
     }
 
     fun testInnerComponentIsNotBean() {

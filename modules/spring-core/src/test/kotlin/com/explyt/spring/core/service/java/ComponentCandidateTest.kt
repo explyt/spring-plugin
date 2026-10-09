@@ -55,14 +55,49 @@ class ComponentCandidateTest : ExplytJavaLightTestCase() {
         assertSingleBean("candidates.LookupComponent")
     }
 
-    fun testComponentInterfaceIsNotBean() {
+    fun testComponentInterfaceStaysBean() {
         configure(
             "ComponentInterface", """
             @Component
             public interface ComponentInterface {}
             """
         )
-        assertNotBean("candidates.ComponentInterface")
+        assertSingleBean("candidates.ComponentInterface")
+    }
+
+    fun testRepositoryInterfaceWithoutSpringDataStaysBean() {
+        configure(
+            "Mapper", """
+            import org.springframework.stereotype.Repository;
+            @Repository
+            public interface Mapper {
+                String find(long id);
+            }
+            """
+        )
+        assertSingleBean("candidates.Mapper")
+    }
+
+    fun testRecordComponentIsBean() {
+        configure(
+            "RecordComponent", """
+            @Component
+            public record RecordComponent(Concrete concrete) {}
+            """
+        )
+        assertSingleBean("candidates.RecordComponent")
+    }
+
+    fun testComponentNestedInInterfaceIsBean() {
+        configure(
+            "Holder", """
+            public interface Holder {
+                @Component
+                class Nested {}
+            }
+            """
+        )
+        assertSingleBean("candidates.Holder.Nested")
     }
 
     fun testNonStaticInnerComponentIsNotBean() {

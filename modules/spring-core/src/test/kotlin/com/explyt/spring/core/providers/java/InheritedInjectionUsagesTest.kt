@@ -37,14 +37,16 @@ class InheritedInjectionUsagesTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testAutowiredConstructorInAbstractBaseIsListed() {
-        assertUsages(
+    fun testAutowiredConstructorInAbstractBaseIsNotInjectionPoint() {
+        val targets = targets(
             """
             abstract class Base { @Autowired public Base(Foo foo) {} }
-            @Component class Impl extends Base { Impl() { super(null); } }
+            @Component class Impl extends Base { @Autowired Foo other; Impl() { super(null); } }
             @Component class Foo {}
-            """.trimIndent(), "foo", 1
+            """.trimIndent()
         )
+        assertEquals("Impl's own field must be listed: $targets", 1, targets.count { it == "other" })
+        assertEquals("Base constructor parameter must not be listed: $targets", 0, targets.count { it == "foo" })
     }
 
     fun testAutowiredSetterInAbstractBaseIsListed() {
@@ -54,6 +56,20 @@ class InheritedInjectionUsagesTest : ExplytJavaLightTestCase() {
             @Component class Impl extends Base {}
             @Component class Foo {}
             """.trimIndent(), "foo", 1
+        )
+    }
+
+    fun testBeanMethodParameterInUnannotatedAbstractConfigurationIsListedOnce() {
+        assertUsages(
+            """
+            abstract class BaseConfig {
+                @org.springframework.context.annotation.Bean
+                public Bar bar(Foo foo) { return new Bar(); }
+            }
+            @org.springframework.context.annotation.Configuration class AppConfig extends BaseConfig {}
+            class Bar {}
+            @Component class Foo {}
+            """.trimIndent(), "foo", 1, listOf("AppConfig")
         )
     }
 
@@ -72,9 +88,11 @@ class InheritedInjectionUsagesTest : ExplytJavaLightTestCase() {
         val targets = targets(
             """
             class Unrelated { @Autowired Foo unrelated; }
+            @Component class User { @Autowired Foo used; }
             @Component class Foo {}
             """.trimIndent()
         )
+        assertTrue("The bean's injection point must be listed: $targets", targets.contains("used"))
         assertFalse(targets.any { it.contains("unrelated") })
     }
 

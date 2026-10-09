@@ -37,6 +37,7 @@ class RepositoryComponentCandidateTest : ExplytJavaLightTestCase() {
         val psiClass = findClass(querydslSupport, GlobalSearchScope.allScope(project))
         assertTrue(psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT))
         assertTrue(psiClass.hasModifierProperty("abstract"))
+        assertSingleBean("repos.PlainRepo", "plainRepo")
         val beans = activeBeans().filter { it.psiClass.qualifiedName == querydslSupport }
         assertEquals("$querydslSupport must not be a bean", emptyList<String>(), beans.map { it.name })
     }

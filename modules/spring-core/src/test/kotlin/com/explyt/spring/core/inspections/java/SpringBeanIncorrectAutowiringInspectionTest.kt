@@ -110,6 +110,36 @@ public class SomeServiceTest {
         myFixture.testHighlighting("SomeServiceTest.java")
     }
 
+    fun testStereotypeInterfaceInjectionHasNoMissingBeanError() {
+        myFixture.configureByText(
+            "App.java",
+            """
+            package gateways;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.stereotype.Component;
+            import org.springframework.stereotype.Repository;
+            @SpringBootApplication
+            public class App {}
+            @Component
+            interface Gateway {}
+            @Repository
+            interface Mapper {}
+            class Missing {}
+            @Component
+            class Consumer {
+                @Autowired Gateway gateway;
+                @Autowired Mapper mapper;
+                @Autowired Missing missing;
+            }
+            """.trimIndent()
+        )
+        val missingBeanErrors = myFixture.doHighlighting()
+            .mapNotNull { it.description }
+            .filter { it.startsWith("Autowire failed. No beans of") }
+        assertEquals(listOf("Autowire failed. No beans of 'Missing' found"), missingBeanErrors)
+    }
+
     fun testBeanNameAttributeQualifier() = assertBeanNameQualifier("@Bean(name = \"x\")", "x")
 
     fun testBeanNameUnnamedQualifierControl() = assertBeanNameQualifier("@Bean", "foo")
