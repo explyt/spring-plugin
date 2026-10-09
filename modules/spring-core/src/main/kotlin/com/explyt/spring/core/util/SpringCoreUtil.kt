@@ -203,8 +203,9 @@ object SpringCoreUtil {
     }
 
     fun isCandidateComponent(psiClass: PsiClass): Boolean {
-        if (psiClass.isInterface || psiClass.isAnnotationType) return false
+        if (psiClass.isAnnotationType) return false
         if (psiClass.containingClass != null && !psiClass.hasModifierProperty(PsiModifier.STATIC)) return false
+        if (psiClass.isInterface) return true
         if (!psiClass.hasModifierProperty(PsiModifier.ABSTRACT)) return true
         return psiClass.methods.any { it.isMetaAnnotatedBy(SpringCoreClasses.LOOKUP) }
     }

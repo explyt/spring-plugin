@@ -148,7 +148,8 @@ class SpringSearchServiceFacade(private val project: Project) {
 
         val allBeans = getAllActiveBeans(module, isNative)
 
-        val owners = InjectionPointOwners.of(allBeans.asSequence().map { it.psiClass })
+        val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
+        val owners = InjectionPointOwners.of(beanClasses.asSequence())
         val componentClasses = nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
             .mapTo(HashSet()) { it.psiClass }
 
@@ -168,9 +169,10 @@ class SpringSearchServiceFacade(private val project: Project) {
             allParametersWithAutowired.addAll(
                 methods.asSequence()
                     .filter {
-                        it.isAnnotatedBy(allAutowiredAnnotationsNames)
+                        if (it.isConstructor) owner in beanClasses
+                                && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                        else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                 || it.isAnnotatedBy(SpringCoreClasses.BEAN)
-                                || it.isConstructor && owner in componentClasses
                     }
                     .flatMap { it.parameterList.parameters.asSequence() }
                     .filter { it.isCandidate(targetType, targetClass, targetClasses) }
