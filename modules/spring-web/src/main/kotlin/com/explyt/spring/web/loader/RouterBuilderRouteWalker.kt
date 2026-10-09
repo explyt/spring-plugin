@@ -19,6 +19,8 @@ data class BuilderRoute(val path: String, val verb: String)
 object RouterBuilderRouteWalker {
 
     private const val MAX_NESTING = 8
+    private val UNDECIDABLE = emptyList<String>()
+    private val PATH_FREE = listOf("")
 
     fun routesOf(builderExpression: PsiExpression): List<BuilderRoute> = walkChain(builderExpression, "", 0)
 
@@ -83,15 +85,32 @@ object RouterBuilderRouteWalker {
         return chains.flatMap { walkChain(it, prefix, nesting) }
     }
 
-    private fun predicatePrefixes(predicate: PsiExpression): List<String> {
-        val call = unwrap(predicate) as? PsiMethodCallExpression ?: return listOf("")
-        val method = call.resolveMethod()
-        val isPathPredicate = method != null &&
-                method.name == SpringWebClasses.REQUEST_PREDICATES_PATH &&
-                method.parameterList.parametersCount == 1 &&
-                method.containingClass?.qualifiedName in SpringWebClasses.REQUEST_PREDICATES_CLASSES
-        return if (isPathPredicate) uriValues(call.argumentList.expressions.singleOrNull()) else listOf("")
+    private fun predicatePrefixes(predicate: PsiExpression?): List<String> {
+        val call = unwrap(predicate) as? PsiMethodCallExpression ?: return UNDECIDABLE
+        val method = call.resolveMethod() ?: return UNDECIDABLE
+        val arguments = call.argumentList.expressions
+        return when {
+            method.isDeclaredIn(SpringWebClasses.REQUEST_PREDICATES_CLASSES) -> when {
+                method.name == SpringWebClasses.REQUEST_PREDICATES_PATH && arguments.size == 1 ->
+                    uriValues(arguments.single())
+
+                method.name in SpringWebClasses.REQUEST_PREDICATES_PATH_FREE_FACTORIES -> PATH_FREE
+                else -> UNDECIDABLE
+            }
+
+            method.isDeclaredIn(SpringWebClasses.REQUEST_PREDICATE_CLASSES) &&
+                    method.name == SpringWebClasses.REQUEST_PREDICATE_AND && arguments.size == 1 -> {
+                val left = predicatePrefixes(call.methodExpression.qualifierExpression)
+                val right = predicatePrefixes(arguments.single())
+                left.flatMap { outer -> right.map { inner -> join(outer, inner) } }
+            }
+
+            else -> UNDECIDABLE
+        }
     }
+
+    private fun PsiMethod.isDeclaredIn(classNames: Collection<String>): Boolean =
+        containingClass?.qualifiedName in classNames
 
     private fun returnedExpressions(body: PsiElement?): List<PsiExpression> = when (body) {
         is PsiExpression -> listOf(body)

@@ -103,6 +103,14 @@ object SpringWebClasses {
     const val SERVLET_REQUEST_PREDICATES = "org.springframework.web.servlet.function.RequestPredicates"
     val REQUEST_PREDICATES_CLASSES = listOf(REQUEST_PREDICATES, SERVLET_REQUEST_PREDICATES)
     const val REQUEST_PREDICATES_PATH = "path"
+    val REQUEST_PREDICATES_PATH_FREE_FACTORIES = setOf(
+        "accept", "contentType", "headers", "method", "methods", "all", "param", "queryParam"
+    )
+
+    const val REQUEST_PREDICATE = "org.springframework.web.reactive.function.server.RequestPredicate"
+    const val SERVLET_REQUEST_PREDICATE = "org.springframework.web.servlet.function.RequestPredicate"
+    val REQUEST_PREDICATE_CLASSES = listOf(REQUEST_PREDICATE, SERVLET_REQUEST_PREDICATE)
+    const val REQUEST_PREDICATE_AND = "and"
 
     /**
      * Entry points of the Kotlin router DSL. `router` names both the reactive and the servlet DSL, so the stack is
