@@ -211,6 +211,127 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathKotlinTes
         assertFalse(result, result.contains("RestController("))
         assertTrue(result, result.contains("@RestController"))
     }
+
+    fun testConstantBeanNameIsReportedAndQuickFixKeepsExpression() {
+        val problems = problemsIn(
+            "AppController.kt", """
+            package demo
+
+            import org.springframework.web.bind.annotation.RestController
+
+            object Paths {
+                const val APP = "/app"
+            }
+
+            @RestController(Paths.APP)
+            class AppController
+            """.trimIndent()
+        )
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
+        assertSingleWarningOn(problems, "Paths.APP")
+
+        val result = applySingleQuickFix(
+            "AppController.kt", """
+            package demo
+
+            import org.springframework.web.bind.annotation.RestController
+
+            object Paths {
+                const val APP = "/app"
+            }
+
+            @RestController(Paths.APP)
+            class AppController
+            """.trimIndent()
+        )
+        assertTrue(result, result.contains("@RequestMapping(Paths.APP)"))
+    }
+
+    fun testEmptyBeanNameIsNotReported() {
+        val problems = problemsIn(
+            "AppController.kt", """
+            package demo
+
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController("")
+            class AppController
+            """.trimIndent()
+        )
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
+        assertEmpty(problems)
+    }
+
+    fun testComposedControllerAnnotationIsNotReported() {
+        val problems = problemsIn(
+            "AppController.kt", """
+            package demo
+
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            annotation class MyController(val value: String = "")
+
+            @MyController("/app")
+            class AppController
+            """.trimIndent()
+        )
+        assertNotNull(myFixture.findClass("demo.MyController").getAnnotation(SpringWebClasses.REST_CONTROLLER))
+        assertEmpty(problems)
+    }
+
+    fun testDirectHttpRequestHandlerIsExcluded() {
+        val problems = problemsIn(
+            "LegacyHandler.kt", """
+            package demo
+
+            import org.springframework.stereotype.Controller
+            import org.springframework.web.HttpRequestHandler
+
+            @Controller("/files/**")
+            class LegacyHandler : HttpRequestHandler {
+                override fun handleRequest(
+                    request: javax.servlet.http.HttpServletRequest,
+                    response: javax.servlet.http.HttpServletResponse
+                ) = Unit
+            }
+            """.trimIndent()
+        )
+        val handler = myFixture.findClass("demo.LegacyHandler")
+        assertStereotype("demo.LegacyHandler", SpringWebClasses.CONTROLLER)
+        assertTrue(InheritanceUtil.isInheritor(handler, HTTP_REQUEST_HANDLER))
+        assertEmpty(problems)
+    }
+
+    fun testExistingNamedPathMappingIsKept() {
+        val result = applySingleQuickFix(
+            "AppController.kt", """
+            package demo
+
+            import org.springframework.web.bind.annotation.*
+
+            @RestController("/app")
+            @RequestMapping(path = ["/x"])
+            class AppController
+            """.trimIndent()
+        )
+        assertTrue(result, result.contains("@RequestMapping(path = [\"/x\"])"))
+        assertFalse(result, result.contains("/app"))
+    }
+
+    fun testQuickFixPreviewMatchesLaunchedResult() {
+        myFixture.configureByText("AppController.kt", """
+            package demo
+
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController("/app")
+            class AppController
+            """.trimIndent())
+        val fix = myFixture.getAllQuickFixes().single()
+        myFixture.checkPreviewAndLaunchAction(fix)
+        assertTrue(myFixture.editor.document.text.contains("@RequestMapping(\"/app\")"))
+    }
 }
 
 class ControllerBeanNameAsPathReactiveInspectionTest : ControllerBeanNameAsPathKotlinTestCase() {

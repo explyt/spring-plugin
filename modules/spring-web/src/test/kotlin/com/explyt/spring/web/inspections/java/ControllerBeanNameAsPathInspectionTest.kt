@@ -200,6 +200,156 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathJavaTestC
         assertFalse(result, result.contains("RestController("))
         assertTrue(result, result.contains("@RestController"))
     }
+
+    fun testConstantBeanNameIsReportedAndQuickFixKeepsExpression() {
+        val problems = problemsIn(
+            "AppController.java", """
+            package demo;
+
+            import org.springframework.web.bind.annotation.RestController;
+
+            final class Paths {
+                static final String APP = "/app";
+            }
+
+            @RestController(Paths.APP)
+            public class AppController {
+            }
+            """.trimIndent()
+        )
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
+        assertSingleWarningOn(problems, "Paths.APP")
+
+        val result = applySingleQuickFix(
+            "AppController.java", """
+            package demo;
+
+            import org.springframework.web.bind.annotation.RestController;
+
+            final class Paths {
+                static final String APP = "/app";
+            }
+
+            @RestController(Paths.APP)
+            public class AppController {
+            }
+            """.trimIndent()
+        )
+        assertTrue(result, result.contains("@RequestMapping(Paths.APP)"))
+    }
+
+    fun testNamedValueArgumentIsReportedAndMoved() {
+        val result = applySingleQuickFix(
+            "AppController.java", """
+            package demo;
+
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController(value = "/app")
+            public class AppController {
+            }
+            """.trimIndent()
+        )
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
+        assertTrue(result, result.contains("@RequestMapping(\"/app\")"))
+        assertTrue(result, result.contains("@RestController"))
+        assertFalse(result, result.contains("RestController(value"))
+    }
+
+    fun testControllerBeanNameIsReportedAndQuickFixKeepsController() {
+        val result = applySingleQuickFix(
+            "ApiController.java", """
+            package demo;
+
+            import org.springframework.stereotype.Controller;
+
+            @Controller("/app")
+            public class ApiController {
+            }
+            """.trimIndent()
+        )
+        assertStereotype("demo.ApiController", SpringWebClasses.CONTROLLER)
+        assertTrue(result, result.contains("@RequestMapping(\"/app\")"))
+        assertTrue(result, result.contains("@Controller"))
+        assertFalse(result, result.contains("Controller(\"/app\")"))
+    }
+
+    fun testEmptyBeanNameIsNotReported() {
+        val problems = problemsIn(
+            "AppController.java", """
+            package demo;
+
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController("")
+            public class AppController {
+            }
+            """.trimIndent()
+        )
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
+        assertEmpty(problems)
+    }
+
+    fun testComposedControllerAnnotationIsNotReported() {
+        val problems = problemsIn(
+            "AppController.java", """
+            package demo;
+
+            import java.lang.annotation.*;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            @RestController
+            @interface MyController {
+                String value() default "";
+            }
+
+            @MyController("/app")
+            public class AppController {
+            }
+            """.trimIndent()
+        )
+        assertNotNull(myFixture.findClass("demo.MyController").getAnnotation(SpringWebClasses.REST_CONTROLLER))
+        assertEmpty(problems)
+    }
+
+    fun testDirectHttpRequestHandlerIsExcluded() {
+        val problems = problemsIn(
+            "LegacyHandler.java", """
+            package demo;
+
+            import org.springframework.stereotype.Controller;
+            import org.springframework.web.HttpRequestHandler;
+
+            @Controller("/files/**")
+            public class LegacyHandler implements HttpRequestHandler {
+                public void handleRequest(javax.servlet.http.HttpServletRequest request,
+                                           javax.servlet.http.HttpServletResponse response) {
+                }
+            }
+            """.trimIndent()
+        )
+        val handler = myFixture.findClass("demo.LegacyHandler")
+        assertStereotype("demo.LegacyHandler", SpringWebClasses.CONTROLLER)
+        assertTrue(InheritanceUtil.isInheritor(handler, HTTP_REQUEST_HANDLER))
+        assertEmpty(problems)
+    }
+
+    fun testQuickFixPreviewMatchesLaunchedResult() {
+        myFixture.configureByText("AppController.java", """
+            package demo;
+
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController("/app")
+            public class AppController {
+            }
+            """.trimIndent())
+        val fix = myFixture.getAllQuickFixes().single()
+        myFixture.checkPreviewAndLaunchAction(fix)
+        assertTrue(myFixture.editor.document.text.contains("@RequestMapping(\"/app\")"))
+    }
 }
 
 class ControllerBeanNameAsPathReactiveInspectionTest : ControllerBeanNameAsPathJavaTestCase() {
