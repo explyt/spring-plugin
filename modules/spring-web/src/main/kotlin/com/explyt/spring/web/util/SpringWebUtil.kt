@@ -647,7 +647,7 @@ object SpringWebUtil {
         var currentNode = callExpression.uastParent
         while (currentNode != null) {
             ProgressManager.checkCanceled()
-            if (currentNode is UCallExpression && currentNode.methodName == NEST) {
+            if (currentNode is UCallExpression && currentNode.callName() == NEST) {
                 // A receiver that is not a path - `accept(APPLICATION_JSON).nest { }` - narrows the routes without
                 // prefixing them, so the routes stay; only this route's own unresolved path drops it.
                 val prefixes = getNestPrefixes(currentNode)
@@ -670,8 +670,25 @@ object SpringWebUtil {
     }
 
     private fun getNestPrefixes(nestCall: UCallExpression): List<String> {
-        val receiver = nestCall.receiver ?: return emptyList()
-        return RoutePathResolver.resolveUriValues(receiver)
+        val predicate = nestPredicate(nestCall) ?: return emptyList()
+        val pathPredicate = predicate.asRouterDslPathPredicate()
+        if (pathPredicate != null) {
+            val pathArgument = pathPredicate.valueArguments.single()
+            return RoutePathResolver.resolveUriValues(pathArgument)
+        }
+        return RoutePathResolver.resolveUriValues(predicate)
+    }
+
+    private fun nestPredicate(nestCall: UCallExpression): UExpression? =
+        nestCall.receiver ?: nestCall.valueArguments.takeIf { it.size == 2 }?.first()
+
+    private fun UExpression.asRouterDslPathPredicate(): UCallExpression? {
+        val call = ((this as? UQualifiedReferenceExpression)?.selector ?: this) as? UCallExpression ?: return null
+        if (call.methodName != SpringWebClasses.ROUTER_DSL_PATH_PREDICATE || call.valueArgumentCount != 1) return null
+
+        val method = call.resolve() ?: return null
+        val isDslMember = method.containingClass?.qualifiedName in SpringWebClasses.ROUTER_DSL_CLASSES
+        return call.takeIf { isDslMember && method.parameterList.parametersCount == 1 }
     }
 
     fun simplifyUrl(urlPath: String): String {
