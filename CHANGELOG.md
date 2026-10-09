@@ -145,6 +145,7 @@
 
 ### Spring MCP
 
+- fix: Report the route of MCP call traces started inside `path("/a").nest { }` in the Kotlin router DSL with its prefix (`GET /a/b`), matching the endpoint list (follow-up of #576)
 - fix: Name contract `serviceCalls[].target` and functional-route handler calls from source declarations: companion members use their outer class and `internal` functions omit JVM suffixes; target strings change, keys stay unchanged (#571)
 - fix: Report SINGLE_TABLE subclass columns as nullable with `nullableReason: SINGLE_TABLE_SUBCLASS` when inheritance relaxes their constraints, while preserving primary keys and explicit `@Column(nullable = false)`, `@JoinColumn(nullable = false)` and to-one `optional = false` (#560)
 - fix: Read endpoint contract parameter sources and media types inherited from interface methods, including multipart parts, cookies under their wire names and inherited custom resolver annotations reported as UNKNOWN (#533)

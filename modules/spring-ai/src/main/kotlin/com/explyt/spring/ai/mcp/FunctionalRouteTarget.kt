@@ -6,12 +6,10 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.web.SpringWebClasses
-import com.explyt.spring.web.util.RoutePathResolver
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
-import com.intellij.psi.CommonClassNames
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
@@ -61,9 +59,7 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
         var node = call.uastParent
         while (node != null && node !is UMethod) {
             ProgressManager.checkCanceled()
-            if (node is UCallExpression && node.methodName in NESTING_CALLS && node.takesArgument(argument)) {
-                if (!hasResolvedPrefix(node)) return true
-            }
+            if (node is UCallExpression && node.takesArgument(argument) && node.hidesPrefix()) return true
             if (node is ULambdaExpression) argument = node
             node = node.uastParent
         }
@@ -73,19 +69,16 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
     private fun UCallExpression.takesArgument(argument: UElement): Boolean =
         valueArguments.any { it.sourcePsi != null && it.sourcePsi == argument.sourcePsi }
 
-    private fun hasResolvedPrefix(nesting: UCallExpression): Boolean {
-        if (nesting.lang.id != KotlinLanguage.INSTANCE.id) return false
-        val receiver = nesting.receiver ?: return false
-        if (receiver is UCallExpression && receiver.methodName == PATH_CALL) return false
-        val isPathText = receiver.getExpressionType()?.canonicalText in STRING_TYPES
-        return !isPathText || RoutePathResolver.resolveUriValues(receiver).isNotEmpty()
-    }
+    private fun UCallExpression.hidesPrefix(): Boolean =
+        if (lang.id == KotlinLanguage.INSTANCE.id) {
+            SpringWebUtil.isNestCall(this) && SpringWebUtil.getNestPrefixesOrNullIfUnresolved(this) == null
+        } else {
+            methodName in JAVA_NESTING_CALLS
+        }
 
     companion object {
 
-        private const val PATH_CALL = "path"
-        private val NESTING_CALLS = setOf("nest", PATH_CALL)
-        private val STRING_TYPES = setOf(CommonClassNames.JAVA_LANG_STRING, "kotlin.String")
+        private val JAVA_NESTING_CALLS = setOf("nest", "path")
 
         private val ROUTER_FUNCTIONS = listOf(SpringWebClasses.ROUTE_FUNCTION, SpringWebClasses.SERVLET_ROUTE_FUNCTION)
 
