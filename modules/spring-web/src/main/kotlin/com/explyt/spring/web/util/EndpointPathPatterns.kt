@@ -15,7 +15,7 @@ package com.explyt.spring.web.util
  */
 object EndpointPathPatterns {
 
-    val SPECIFICITY: Comparator<String> = compareBy<String> { it.contains(CATCH_ALL) }
+    val SPECIFICITY: Comparator<String> = compareBy<String> { isCatchAll(it) }
         .thenBy { score(it) }
         .thenByDescending { it.length }
         .thenBy { it }
@@ -24,14 +24,28 @@ object EndpointPathPatterns {
 
     fun isTemplateSegment(segment: String): Boolean = segment.startsWith('{') || segment.contains('*')
 
+    fun isCaptureRest(segment: String): Boolean =
+        segment == CATCH_ALL || segment.startsWith(CAPTURE_REST_OPENING) && segment.endsWith('}')
+
+    fun isCatchAll(path: String): Boolean = segments(path).any(::isCaptureRest)
+
     /**
      * How many leading segments [path] and [other] have in common, a template segment on either side matching
-     * any segment on the other: `/api/routes/{id}` and `/api/routes/export/preview` share three.
+     * any segment on the other: `/api/routes/{id}` and `/api/routes/export/preview` share three. A capture-rest
+     * segment matches every remaining segment on the other side.
      */
-    fun sharedLeadingSegments(path: String, other: String): Int =
-        segments(path).zip(segments(other))
-            .takeWhile { (a, b) -> a == b || isTemplateSegment(a) || isTemplateSegment(b) }
-            .size
+    fun sharedLeadingSegments(path: String, other: String): Int {
+        val ours = segments(path)
+        val theirs = segments(other)
+        ours.zip(theirs).forEachIndexed { index, (a, b) ->
+            when {
+                isCaptureRest(a) -> return theirs.size
+                isCaptureRest(b) -> return ours.size
+                a != b && !isTemplateSegment(a) && !isTemplateSegment(b) -> return index
+            }
+        }
+        return minOf(ours.size, theirs.size)
+    }
 
     fun prefixOf(path: String, segmentCount: Int): String =
         segments(path).take(segmentCount).joinToString(separator = "/", prefix = "/")
@@ -91,6 +105,7 @@ object EndpointPathPatterns {
 
     private val ORIGIN = Regex("^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]*")
     private const val CATCH_ALL = "**"
+    private const val CAPTURE_REST_OPENING = "{*"
     private const val WILDCARD_WEIGHT = 100
     private const val CAPTURE_WEIGHT = 1
 }
