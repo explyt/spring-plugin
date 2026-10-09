@@ -12,6 +12,8 @@ import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.references.ExplytControllerMethodReference
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.intellij.openapi.roots.DependencyScope
+import com.intellij.openapi.roots.ModuleOrderEntry
+
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiMethodCallExpression
@@ -29,6 +31,11 @@ class ActuatorCrossApplicationReferenceTest : ExplytMultiModuleTestCase() {
         addApplication(module, "app.a")
         addEndpoint(module, "app.a", "CatchAllStatus", "catchAll", "@Selector(match = Selector.Match.ALL_REMAINING) String path")
         val appB = addDependencyModule("app-b")
+        ModuleRootModificationUtil.updateModel(module) { model ->
+            model.orderEntries.filterIsInstance<ModuleOrderEntry>()
+                .filter { it.module == appB }
+                .forEach(model::removeOrderEntry)
+        }
         addApplication(appB, "app.b")
         addEndpoint(appB, "app.b", "ConcreteStatus", "concrete", "")
         addFileToModule(module, "application.properties", "management.endpoints.web.exposure.include=status\n")
