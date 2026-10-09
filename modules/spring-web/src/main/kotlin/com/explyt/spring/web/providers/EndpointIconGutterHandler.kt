@@ -38,12 +38,14 @@ import org.jetbrains.annotations.VisibleForTesting
 import java.awt.event.MouseEvent
 
 class EndpointIconGutterHandler(
-    @get:VisibleForTesting val endpointInfo: EndpointInfo
+    @get:VisibleForTesting val endpointInfo: EndpointInfo,
+    private val statisticActionId: StatisticActionId = StatisticActionId.GUTTER_CONTROLLER_ENDPOINT_USAGE,
+    private val offersOpenApiDescription: Boolean = true,
 ) : GutterIconNavigationHandler<PsiElement> {
 
     override fun navigate(e: MouseEvent, psiElement: PsiElement) {
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return
-        StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_CONTROLLER_ENDPOINT_USAGE)
+        StatisticService.getInstance().addActionUsage(statisticActionId)
 
         val path = endpointInfo.path
         val requestMethods = endpointInfo.requestMethods
@@ -102,7 +104,7 @@ class EndpointIconGutterHandler(
 
         val actions = mutableListOf<AnAction>()
 
-        if (openapiEndpoints.isEmpty())
+        if (offersOpenApiDescription && openapiEndpoints.isEmpty())
             actions.add(
                 ApplyIntentionAction(
                     intention,
