@@ -86,7 +86,9 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         if (PluginIds.SPRING_JB.isEnabledWithUltimate()) return
         val processor = getLineMarkerElementProcessor(element) ?: return
 
-        if (processor.isComponentClassOrBeanMethod()) {
+        if (processor.isAbstractComponent()) {
+            result.add(processor.createAbstractComponentMarker())
+        } else if (processor.isComponentClassOrBeanMethod()) {
             val builder = NavigationGutterIconBuilder.create(
                 getComponentIcon(processor),
                 SpringCoreBundle.message("explyt.spring.gutter.group.bean")
@@ -152,6 +154,17 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
         private val springSearchService = SpringSearchService.getInstance(module.project)
 
         var inSpringContextClass: Boolean? = null
+
+        fun isAbstractComponent(): Boolean =
+            uParent is UClass && AbstractComponentLineMarker.isAbstractComponent(uParent.javaPsi)
+
+        fun createAbstractComponentMarker(): RelatedItemLineMarkerInfo<PsiElement> {
+            val uClass = uParent as UClass
+            val facade = SpringSearchServiceFacade.getInstance(module.project)
+            return AbstractComponentLineMarker.create(element, uClass.javaPsi, facade.getAllActiveBeans(module)) {
+                facade.findFieldsAndMethodsWithAutowired(uClass, null, module)
+            }
+        }
 
         fun isComponentClassOrBeanMethod(): Boolean {
             var result = false

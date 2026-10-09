@@ -49,7 +49,9 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         val libraryBeans = NativeSearchService.getInstance(project).getAllProjectNodesLibraryBeans()
         if (libraryBeans.isEmpty()) {
             val beanSupplier = { SpringSearchService.getInstance(project).getAllActiveBeans().toList() }
-            if (isComponentCandidate) {
+            if (AbstractComponentLineMarker.isAbstractComponent(psiClass)) {
+                addAbstractComponent(uClass, result, beanSupplier.invoke())
+            } else if (isComponentCandidate) {
                 addContextBean(uClass, false, result, beanSupplier)
             }
             processMethods(uClass, result, beanSupplier)
@@ -64,6 +66,11 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         }
 
         if (contextBean == null && !isComponentCandidate) return
+
+        if (contextBean == null && AbstractComponentLineMarker.isAbstractComponent(psiClass)) {
+            addAbstractComponent(uClass, result, libraryBeans)
+            return
+        }
 
         addContextBean(uClass, contextBean == null, result) { libraryBeans }
 
@@ -192,6 +199,17 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
                 .setEmptyPopupText(SpringCoreBundle.message("explyt.spring.gutter.notfound.title.choose.bean.candidate"))
             result.add(builder.createLineMarkerInfo(sourcePsi))
         }
+    }
+
+    private fun addAbstractComponent(
+        uClass: UClass,
+        result: MutableCollection<in RelatedItemLineMarkerInfo<*>>,
+        beans: List<PsiBean>
+    ) {
+        val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
+        result.add(AbstractComponentLineMarker.create(sourcePsi, uClass.javaPsi, beans) {
+            findFieldsAndMethodsWithAutowired(uClass, null, beans)
+        })
     }
 
     private fun addContextBean(
