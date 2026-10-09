@@ -103,6 +103,14 @@ object SpringWebClasses {
      */
     val ROUTER_DSL_ENTRY_POINTS = listOf("coRouter", "router")
 
+    val ROUTER_DSL_CLASSES = listOf(
+        "org.springframework.web.reactive.function.server.CoRouterFunctionDsl",
+        "org.springframework.web.reactive.function.server.RouterFunctionDsl",
+        "org.springframework.web.servlet.function.RouterFunctionDsl"
+    )
+
+    const val ROUTER_DSL_PATH_PREDICATE = "path"
+
     const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
     const val ROUTER_DSL_GENERIC_METHOD = "method"
