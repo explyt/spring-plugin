@@ -23,7 +23,7 @@ Tests are IntelliJ Platform tests (headless IDE fixture) — slow and single-for
 
 ## Code style and conventions
 
-- Kotlin-idiomatic code; match surrounding style. Every source file starts with the Apache-2.0 SPDX header (`Copyright (c) 2024 Explyt Ltd`).
+- Kotlin-idiomatic code; match surrounding style. Every source file starts with the Apache-2.0 SPDX header `Copyright (c) <year> Explyt Ltd`, where `<year>` is the year the file is created; existing headers are not updated.
 - User-visible strings go through module message bundles (`SpringCoreBundle`, …); Spring FQNs come from constants holders like `SpringCoreClasses`.
 - IntelliJ threading rules apply: no slow work on EDT, PSI access under read/write actions, re-throw `ProcessCanceledException`, use `SmartPsiElementPointer` across async boundaries.
 - New inspections extend existing base classes (e.g. `SpringBaseUastLocalInspectionTool`), live in `<module>/inspections/`, and are registered in the module's `plugin.xml`. Reference pair: `SpringKotlinObjectInspection.kt` + its test.
