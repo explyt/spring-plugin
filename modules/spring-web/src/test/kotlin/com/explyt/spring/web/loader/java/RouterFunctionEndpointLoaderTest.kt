@@ -179,7 +179,170 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
-    private fun assertBuilderRoutes(type: EndpointType, route: String, expected: List<Pair<String, String>>) {
+    fun testServletConstantPathPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path(API, b -> b.GET("/b", h::list)).build()""",
+            listOf("/api/b" to "GET"), members = """private static final String API = "/api";"""
+        )
+    }
+
+    fun testReactiveConstantPathPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path(API, b -> b.GET("/b", h::list)).build()""",
+            listOf("/api/b" to "GET"), members = """private static final String API = "/api";"""
+        )
+    }
+
+    fun testServletBlockConsumerRoutes() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a", b -> { b.GET("/b", h::list); b.POST("/c", h::list); }).build()""",
+            listOf("/a/b" to "GET", "/a/c" to "POST")
+        )
+    }
+
+    fun testReactiveBlockConsumerRoutes() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a", b -> { b.GET("/b", h::list); b.POST("/c", h::list); }).build()""",
+            listOf("/a/b" to "GET", "/a/c" to "POST")
+        )
+    }
+
+    fun testServletStaticallyImportedPathPredicate() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(path("/a"), b -> b.GET("/b", h::list)).build()""",
+            listOf("/a/b" to "GET"), staticPathImport = true
+        )
+    }
+
+    fun testReactiveStaticallyImportedPathPredicate() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(path("/a"), b -> b.GET("/b", h::list)).build()""",
+            listOf("/a/b" to "GET"), staticPathImport = true
+        )
+    }
+
+    fun testServletVerbWithPredicateOverload() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a", b -> b.GET("/b", RequestPredicates.accept(APPLICATION_JSON), h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testReactiveVerbWithPredicateOverload() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a", b -> b.GET("/b", RequestPredicates.accept(APPLICATION_JSON), h::list)).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testServletMethodReferenceCallbackIsNotTraversed() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a", this::routes).build()""", emptyList(),
+            members = """
+                private Handler h;
+                private void routes(RouterFunctions.Builder b) { b.GET("/b", h::list); }
+            """.trimIndent()
+        )
+    }
+
+    fun testReactiveMethodReferenceCallbackIsNotTraversed() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a", this::routes).build()""", emptyList(),
+            members = """
+                private Handler h;
+                private void routes(RouterFunctions.Builder b) { b.GET("/b", h::list); }
+            """.trimIndent()
+        )
+    }
+
+    fun testServletConsumerExcludesUnrelatedVerb() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a", b -> { other.GET("/z"); b.GET("/b", h::list); }).build()""",
+            listOf("/a/b" to "GET"), unrelatedVerb = true,
+            members = """
+                private final Other other = new Other();
+                private static class Other { void GET(String path) {} }
+            """.trimIndent()
+        )
+    }
+
+    fun testReactiveConsumerExcludesUnrelatedVerb() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a", b -> { other.GET("/z"); b.GET("/b", h::list); }).build()""",
+            listOf("/a/b" to "GET"), unrelatedVerb = true,
+            members = """
+                private final Other other = new Other();
+                private static class Other { void GET(String path) {} }
+            """.trimIndent()
+        )
+    }
+
+    fun testServletBlockSupplierRoutes() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a", () -> { return RouterFunctions.route().GET("/b", h::list).build(); }).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testReactiveBlockSupplierRoutes() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a", () -> { return RouterFunctions.route().GET("/b", h::list).build(); }).build()""",
+            listOf("/a/b" to "GET")
+        )
+    }
+
+    fun testServletComposedPredicateHasNoResolvedPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.path("/a").and(RequestPredicates.accept(APPLICATION_JSON)), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveComposedPredicateHasNoResolvedPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.path("/a").and(RequestPredicates.accept(APPLICATION_JSON)), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testServletUriLessVerbIsNotListed() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().path("/a", b -> b.GET(h::list)).build()""", emptyList()
+        )
+    }
+
+    fun testReactiveUriLessVerbIsNotListed() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().path("/a", b -> b.GET(h::list)).build()""", emptyList()
+        )
+    }
+
+    private fun assertBuilderRoutes(
+        type: EndpointType,
+        route: String,
+        expected: List<Pair<String, String>>,
+        members: String = "",
+        staticPathImport: Boolean = false,
+        unrelatedVerb: Boolean = false
+    ) {
         val functionPackage = when (type) {
             EndpointType.SPRING_MVC -> "org.springframework.web.servlet.function"
             EndpointType.SPRING_WEBFLUX -> "org.springframework.web.reactive.function.server"
@@ -200,9 +363,12 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
             import $functionPackage.ServerRequest;
             import $functionPackage.ServerResponse;
             import static org.springframework.http.MediaType.APPLICATION_JSON;
+            ${if (staticPathImport) "import static $functionPackage.RequestPredicates.path;" else ""}
 
             @Configuration
             public class NestedBuilderRouterConfig {
+                $members
+
                 @Bean
                 public RouterFunction<ServerResponse> routes(Handler h) {
                     return RouterFunctions.$route;
@@ -222,10 +388,18 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
                         it.methodExpression.referenceName == "path" && it.argumentList.expressionCount == 2
             }
         assertTrue("Fixture must contain builder calls", builderCalls.isNotEmpty())
+        if (unrelatedVerb) {
+            assertEquals(1, builderCalls.count { it.methodExpression.qualifierExpression?.text == "other" })
+        }
         builderCalls.forEach { call ->
+            val expectedOwner = if (unrelatedVerb && call.methodExpression.qualifierExpression?.text == "other") {
+                "NestedBuilderRouterConfig.Other"
+            } else {
+                "$functionPackage.RouterFunctions.Builder"
+            }
             assertEquals(
-                "Builder call must resolve: ${call.text}",
-                "$functionPackage.RouterFunctions.Builder",
+                "Call must resolve to its expected owner: ${call.text}",
+                expectedOwner,
                 call.resolveMethod()?.containingClass?.qualifiedName
             )
         }
