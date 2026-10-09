@@ -7,13 +7,10 @@ package com.explyt.spring.web.loader
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.web.SpringWebClasses
-import com.explyt.spring.web.util.RoutePathResolver
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.psi.*
 import com.intellij.psi.util.childrenOfType
-import org.jetbrains.uast.UExpression
-import org.jetbrains.uast.toUElementOfType
 
 class SpringWebRouterFunctionLoader : EndpointHandler {
 
@@ -43,44 +40,8 @@ class SpringWebRouterFunctionLoader : EndpointHandler {
         val codeBlock = psiMethod.childrenOfType<PsiCodeBlock>().firstOrNull() ?: return emptyList()
         val returnStatement = codeBlock.childrenOfType<PsiReturnStatement>().firstOrNull() ?: return emptyList()
         val returnValue = returnStatement.returnValue ?: return emptyList()
-        return findSimpleRouteMethod(returnValue, psiMethod, containingClass, endpointType)
-    }
-
-    private fun findSimpleRouteMethod(
-        expression: PsiExpression,
-        psiMethod: PsiMethod,
-        containingClass: PsiClass,
-        endpointType: EndpointType
-    ): List<EndpointElement> {
-        val result = mutableListOf<EndpointElement>()
-
-        val refException = expression.childrenOfType<PsiReferenceExpression>().firstOrNull() ?: return emptyList()
-        val methodCallException =
-            refException.childrenOfType<PsiMethodCallExpression>().firstOrNull() ?: return emptyList()
-        val methods = methodCallException.resolveMethod() ?: return emptyList()
-
-        if (methods.containingClass?.qualifiedName in SpringWebClasses.ROUTE_FUNCTION_BUILDERS) {
-            val uriArgument = methodCallException.argumentList.expressions.firstOrNull()
-                ?.toUElementOfType<UExpression>()
-            val urls = uriArgument
-                ?.let { RoutePathResolver.resolveUriValues(it) }
-                ?.filter { it.isNotEmpty() }
-                ?: emptyList()
-
-            if (urls.isNotEmpty()) {
-                urls.mapTo(result) {
-                    EndpointElement(
-                        it,
-                        listOf(methods.name),
-                        psiMethod,
-                        containingClass,
-                        null,
-                        endpointType
-                    )
-                }
-                result += findSimpleRouteMethod(methodCallException, psiMethod, containingClass, endpointType)
-            }
+        return RouterBuilderRouteWalker.routesOf(returnValue).map { route ->
+            EndpointElement(route.path, listOf(route.verb), psiMethod, containingClass, null, endpointType)
         }
-        return result
     }
 }
