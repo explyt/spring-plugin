@@ -25,9 +25,28 @@ object EndpointPathPatterns {
     fun isTemplateSegment(segment: String): Boolean = segment.startsWith('{') || segment.contains('*')
 
     fun isCaptureRest(segment: String): Boolean =
-        segment == CATCH_ALL || segment.startsWith(CAPTURE_REST_OPENING) && segment.endsWith('}')
+        segment == CATCH_ALL ||
+                segment.length > CAPTURE_REST_OPENING.length + 1 &&
+                segment.startsWith(CAPTURE_REST_OPENING) && segment.endsWith('}')
 
     fun isCatchAll(path: String): Boolean = segments(path).any(::isCaptureRest)
+
+    fun <R, E> preferredReading(
+        readings: Sequence<R>,
+        matchesOf: (R) -> List<E>,
+        pathOf: (E) -> String,
+    ): Pair<R, List<E>>? {
+        var catchAllOnly: Pair<R, List<E>>? = null
+        for (reading in readings) {
+            val matches = matchesOf(reading)
+            when {
+                matches.isEmpty() -> continue
+                matches.any { !isCatchAll(pathOf(it)) } -> return reading to matches
+                catchAllOnly == null -> catchAllOnly = reading to matches
+            }
+        }
+        return catchAllOnly
+    }
 
     /**
      * How many leading segments [path] and [other] have in common, a template segment on either side matching
