@@ -61,6 +61,9 @@ abstract class ControllerBeanNameAsPathJavaTestCase : ExplytInspectionJavaTestCa
         )
         val fixes = myFixture.getAllQuickFixes()
         assertSize(1, fixes)
+        if (!code.contains("@RequestMapping")) {
+            assertEquals("Move '/app' to @RequestMapping", fixes.single().text)
+        }
         myFixture.launchAction(fixes.single())
         return myFixture.editor.document.text
     }
@@ -72,6 +75,100 @@ class ControllerBeanNameAsPathInspectionTest : ControllerBeanNameAsPathJavaTestC
 
     fun testServletStackIsDetected() {
         assertEquals(WebApplicationStack.SERVLET, WebApplicationStack.of(module))
+    }
+
+    fun testInheritedSuperclassRequestMappingOffersOnlyRemoveFix() {
+        val problems = problemsIn(
+            "AppController.java", """
+            package demo;
+
+            import org.springframework.web.bind.annotation.*;
+
+            @RequestMapping("/api")
+            abstract class BaseController {
+            }
+
+            @RestController("/app")
+            public class AppController extends BaseController {
+            }
+            """.trimIndent()
+        )
+        assertStereotype("demo.BaseController", SpringWebClasses.REQUEST_MAPPING)
+        assertTrue(InheritanceUtil.isInheritor(myFixture.findClass("demo.AppController"), "demo.BaseController"))
+        assertOnlyRemoveFixPreservesMapping(problems, "demo.BaseController")
+    }
+
+    fun testImplementedInterfaceRequestMappingOffersOnlyRemoveFix() {
+        val problems = problemsIn(
+            "AppController.java", """
+            package demo;
+
+            import org.springframework.web.bind.annotation.*;
+
+            @RequestMapping("/api")
+            interface Api {
+            }
+
+            @RestController("/app")
+            public class AppController implements Api {
+            }
+            """.trimIndent()
+        )
+        assertStereotype("demo.Api", SpringWebClasses.REQUEST_MAPPING)
+        assertTrue(myFixture.findClass("demo.Api").isInterface)
+        assertTrue(InheritanceUtil.isInheritor(myFixture.findClass("demo.AppController"), "demo.Api"))
+        assertOnlyRemoveFixPreservesMapping(problems, "demo.Api")
+    }
+
+    fun testComposedRequestMappingOffersOnlyRemoveFix() {
+        val problems = problemsIn(
+            "AppController.java", """
+            package demo;
+
+            import java.lang.annotation.*;
+            import org.springframework.web.bind.annotation.*;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            @RequestMapping("/api")
+            @interface ApiMapping {
+            }
+
+            @ApiMapping
+            @RestController("/app")
+            public class AppController {
+            }
+            """.trimIndent()
+        )
+        assertStereotype("demo.ApiMapping", SpringWebClasses.REQUEST_MAPPING)
+        assertStereotype("demo.AppController", "demo.ApiMapping")
+        assertOnlyRemoveFixPreservesMapping(problems, "demo.ApiMapping")
+        assertStereotype("demo.AppController", "demo.ApiMapping")
+    }
+
+    private fun assertOnlyRemoveFixPreservesMapping(problems: List<HighlightInfo>, mappingOwner: String) {
+        assertEquals(WebApplicationStack.SERVLET, WebApplicationStack.of(module))
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
+        assertSingleWarningOn(problems, "\"/app\"")
+        assertNull(myFixture.findClass("demo.AppController").getAnnotation(SpringWebClasses.REQUEST_MAPPING))
+        assertEquals(
+            "\"/api\"", myFixture.findClass(mappingOwner)
+                .getAnnotation(SpringWebClasses.REQUEST_MAPPING)?.findDeclaredAttributeValue("value")?.text
+        )
+        val fixes = myFixture.getAllQuickFixes()
+        assertSize(1, fixes)
+        val fix = fixes.single()
+        assertEquals("Remove bean name '/app'", fix.text)
+        myFixture.launchAction(fix)
+        val controller = myFixture.findClass("demo.AppController")
+        assertNull(controller.getAnnotation(SpringWebClasses.REQUEST_MAPPING))
+        assertStereotype("demo.AppController", SpringWebClasses.REST_CONTROLLER)
+        assertNull(controller.getAnnotation(SpringWebClasses.REST_CONTROLLER)?.findDeclaredAttributeValue("value"))
+        assertFalse(myFixture.editor.document.text.contains("RestController("))
+        assertEquals(
+            "\"/api\"", myFixture.findClass(mappingOwner)
+                .getAnnotation(SpringWebClasses.REQUEST_MAPPING)?.findDeclaredAttributeValue("value")?.text
+        )
     }
 
     fun testRestControllerValueWithLeadingSlashWarnsThatExactRequestFails() {
