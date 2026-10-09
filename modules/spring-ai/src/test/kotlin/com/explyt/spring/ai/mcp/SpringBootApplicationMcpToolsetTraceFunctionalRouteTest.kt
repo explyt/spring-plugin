@@ -9,16 +9,22 @@ import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.pom.java.LanguageLevel
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.toUElementOfType
 import java.io.File
 
 /**
@@ -178,6 +184,107 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals("CatalogHandler.list", nameOf(head))
         assertEquals("GET /a/b", head["route"]?.asText())
         assertUrlReferences(head, CATALOG_TEST_FILE, "/a/b", requests, "get().uri(\"/a/b\")")
+    }
+
+    fun testPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items\", handler::list)",
+            """
+            path("/a").nest {
+                GET("/b", handler::list)
+            }
+            """.trimIndent()
+        )
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        assertDslPathResolves("org.springframework.web.reactive.function.server.CoRouterFunctionDsl")
+        assertRouteModelled("/a/b", "GET")
+
+        val head = traceAt(CATALOG_FILE, source, "GET(\"/b\"")["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertEquals("GET /a/b", head["route"]?.asText())
+        assertEquals(listOf("CatalogService.list"), targetsOf(head))
+    }
+
+    fun testReactiveRouterPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE
+            .replace("import org.springframework.web.reactive.function.server.coRouter", "import org.springframework.web.reactive.function.server.router")
+            .replace("= coRouter {", "= router {")
+            .replace("suspend fun list(request: ServerRequest): ServerResponse", "fun list(request: ServerRequest): reactor.core.publisher.Mono<ServerResponse>")
+            .replace("buildAndAwait()", "build()")
+        assertCatalogNestTrace(
+            "path(\"/a\").nest { GET(\"/b\", handler::list) }",
+            "/a/b",
+            source,
+            "org.springframework.web.reactive.function.server.RouterFunctionDsl"
+        )
+    }
+
+    fun testValueArgumentPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+        assertCatalogNestTrace(
+            "nest(path(\"/a\")) { GET(\"/b\", handler::list) }",
+            "/a/b",
+            dslClass = "org.springframework.web.reactive.function.server.CoRouterFunctionDsl"
+        )
+    }
+
+    fun testStringNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+        assertCatalogNestTrace("\"/a\".nest { GET(\"/b\", handler::list) }", "/a/b")
+    }
+
+    fun testAcceptPredicateNestTraceKeepsTheChildRoute() = runBlocking<Unit> {
+        assertCatalogNestTrace(
+            "accept(org.springframework.http.MediaType.APPLICATION_JSON).nest { GET(\"/b\", handler::list) }",
+            "/b"
+        )
+    }
+
+    fun testJavaBuilderPathNestTraceHasNoInventedRoute() = runBlocking<Unit> {
+        val source = ORDER_ROUTES_SOURCE.replace(
+            ".GET(\"/java/orders\", handler::list)",
+            ".path(\"/a\", b -> b.GET(\"/b\", handler::list))"
+        )
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        assertRouteModelled("/a/b", "GET")
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "b.GET(\"/b\", handler::list)")["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertFalse("An unresolved Java nesting prefix leaves the route unknown, got ${head["route"]}", head.has("route"))
+        assertEquals(listOf("OrderService.list"), targetsOf(head))
+    }
+
+    private suspend fun assertCatalogNestTrace(
+        registration: String,
+        path: String,
+        template: String = CATALOG_SOURCE,
+        dslClass: String? = null,
+    ) {
+        val source = template.replace("GET(\"/co/items\", handler::list)", registration)
+        val requests = CATALOG_TEST_SOURCE.replace("/co/items\"", "$path\"")
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        addSource(TEST_ROOT, CATALOG_TEST_FILE, requests, isTestSource = true)
+        dslClass?.let(::assertDslPathResolves)
+        assertRouteModelled(path, "GET")
+
+        val head = traceAt(CATALOG_FILE, source, "GET(\"/b\"", includeTests = true)["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertEquals("GET $path", head["route"]?.asText())
+        assertEquals(listOf("CatalogService.list"), targetsOf(head))
+        assertUrlReferences(head, CATALOG_TEST_FILE, path, requests, "get().uri(\"$path\")")
+    }
+
+    private fun assertDslPathResolves(dslClass: String) = ReadAction.run<Throwable> {
+        val file = LocalFileSystem.getInstance().findFileByPath("${project.basePath}/$MAIN_ROOT/$CATALOG_FILE")!!
+        val psiFile = PsiManager.getInstance(project).findFile(file)!!
+        val call = PsiTreeUtil.findChildrenOfType(psiFile, KtCallExpression::class.java)
+            .single { it.calleeExpression?.text == "path" }
+            .toUElementOfType<UCallExpression>()!!
+        val method = call.resolve()
+        assertNotNull("Precondition: path resolves to a DSL member", method)
+        assertEquals(dslClass, method!!.containingClass?.qualifiedName)
+        assertEquals(listOf("java.lang.String"), method.parameterList.parameters.map { it.type.canonicalText })
     }
 
     fun testGenericMethodRouteKeepsItsVerbAndRequest() = runBlocking<Unit> {
