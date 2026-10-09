@@ -54,6 +54,35 @@ class BeanApplicationResolverTest : ExplytMultiModuleTestCase() {
         assertEquals(BeanApplicationResolver.APPLICATION_NOT_FOUND, failure.problem.code)
     }
 
+    fun testEnableAutoConfigurationApplicationIsTheOnlyCandidate() {
+        addFileToModule(
+            module,
+            "com/explyt/demo/portal/PortalApplication.java",
+            """
+            package com.explyt.demo.portal;
+
+            import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+            import org.springframework.context.annotation.ComponentScan;
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            @EnableAutoConfiguration
+            @ComponentScan
+            public class PortalApplication {}
+            """.trimIndent()
+        )
+        val portal = findClass("com.explyt.demo.portal.PortalApplication")
+        assertNotNull("Precondition: PortalApplication must resolve, otherwise the fixture proves nothing", portal)
+        assertTrue(
+            "Precondition: PortalApplication carries Boot's EnableAutoConfiguration",
+            portal!!.hasAnnotation("org.springframework.boot.autoconfigure.EnableAutoConfiguration")
+        )
+
+        val resolved = BeanApplicationResolver(project).resolve(null, null)
+
+        assertEquals("com.explyt.demo.portal.PortalApplication", resolved.qualifiedName)
+    }
+
     fun testNoApplicationAtAllIsReportedAsAbsence() {
         val failure = queryProblem { BeanApplicationResolver(project).resolve(null, null) }
 
