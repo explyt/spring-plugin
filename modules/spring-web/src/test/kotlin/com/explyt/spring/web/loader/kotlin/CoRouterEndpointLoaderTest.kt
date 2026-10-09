@@ -11,6 +11,7 @@ import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.uast.UCallExpression
@@ -234,6 +235,74 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
     }
 
+    fun testStringNestPrefixHelperResolvesLiteralAndConstantValues() {
+        addRouterConfig(
+            """
+            "/a".nest { GET("/b", handler::handle) }
+            API.nest { GET("/c", handler::handle) }
+            """,
+            companionBody = """const val API = "/api""""
+        )
+
+        assertEquals(listOf("/a"), nestPrefixes(0))
+        assertEquals(listOf("/api"), nestPrefixes(1))
+    }
+
+    fun testPathPredicateNestPrefixHelperResolvesReceiverAndValueArgumentForms() {
+        addRouterConfig(
+            """
+            path("/a").nest { GET("/b", handler::handle) }
+            nest(path("/c")) { GET("/d", handler::handle) }
+            """
+        )
+
+        assertEquals(listOf("/a"), nestPrefixes(0))
+        assertEquals(listOf("/c"), nestPrefixes(1))
+        assertTrue(isNest(0))
+        assertTrue(isNest(1))
+    }
+
+    fun testPathFreeAndComposedPredicatesHaveNoPrefix() {
+        addRouterConfig(
+            """
+            accept(MediaType.APPLICATION_JSON).nest { GET("/a", handler::handle) }
+            (path("/b") and accept(MediaType.APPLICATION_JSON)).nest { GET("/c", handler::handle) }
+            """,
+            imports = "import org.springframework.http.MediaType"
+        )
+
+        assertEquals(emptyList<String>(), nestPrefixes(0))
+        assertEquals(emptyList<String>(), nestPrefixes(1))
+    }
+
+    fun testUnresolvedStringNestPrefixIsNullAndRouteStaysInTheModel() {
+        addRouterConfig(
+            """someString().nest { GET("/b", handler::handle) }""",
+            companionBody = """fun someString(): String = System.getenv("X")"""
+        )
+
+        assertNull(nestPrefixes(0))
+        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testUnresolvedDslPathNestPrefixIsNullAndRouteStaysInTheModel() {
+        addRouterConfig(
+            """
+            val x = readLine() ?: ""
+            path(x).nest { GET("/b", handler::handle) }
+            """
+        )
+
+        assertNull(nestPrefixes(0))
+        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testIsNestCallRejectsAGetCall() {
+        addRouterConfig("""GET("/b", handler::handle)""")
+        val calls = callsInFixture()
+        assertTrue(calls.any { it.methodName == "GET" && !SpringWebUtil.isNestCall(it) })
+    }
+
     fun testAcceptNestDoesNotContributeAPathPrefix() {
         addRouterConfig(
             """accept(MediaType.APPLICATION_JSON).nest { GET("/b", handler::handle) }""",
@@ -379,6 +448,19 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
                 assertEquals(method, receiver.resolve())
             }
         }
+    }
+
+    private fun nestPrefixes(index: Int): List<String>? = SpringWebUtil.getNestPrefixesOrNullIfUnresolved(nestCall(index))
+
+    private fun isNest(index: Int): Boolean = SpringWebUtil.isNestCall(nestCall(index))
+
+    private fun nestCall(index: Int): UCallExpression = callsInFixture()
+        .filter { SpringWebUtil.isNestCall(it) }[index]
+
+    private fun callsInFixture(): List<UCallExpression> {
+        val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir("GatewayProxyRouterConfig.kt"))!!
+        return PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .mapNotNull { it.toUElementOfType<UCallExpression>() }
     }
 
     private fun addRouterConfig(routes: String, companionBody: String = "", imports: String = "") {
