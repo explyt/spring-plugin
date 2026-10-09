@@ -8,7 +8,9 @@ package com.explyt.spring.web.inspections
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.inspections.quickfix.MoveControllerBeanNameToRequestMappingQuickFix
+import com.explyt.spring.web.util.HandlerMethods
 import com.explyt.spring.web.util.WebApplicationStack
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -34,7 +36,7 @@ class ControllerBeanNameAsPathInspection : SpringWebBaseUastLocalInspectionTool(
 
         val fix = MoveControllerBeanNameToRequestMappingQuickFix(
             beanName.value,
-            addRequestMapping = !aClass.javaPsi.hasAnnotation(SpringWebClasses.REQUEST_MAPPING)
+            addRequestMapping = !aClass.javaPsi.hasTypeLevelRequestMapping()
         )
         return arrayOf(
             manager.createProblemDescriptor(
@@ -75,6 +77,9 @@ class ControllerBeanNameAsPathInspection : SpringWebBaseUastLocalInspectionTool(
 
     private fun PsiClass.isBeanNameUrlHandler(): Boolean =
         BEAN_NAME_URL_HANDLER_TYPES.any { InheritanceUtil.isInheritor(this, it) }
+
+    private fun PsiClass.hasTypeLevelRequestMapping(): Boolean =
+        HandlerMethods.mappedType(this) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) } != null
 
     companion object {
         private const val VALUE_ATTRIBUTE = "value"
