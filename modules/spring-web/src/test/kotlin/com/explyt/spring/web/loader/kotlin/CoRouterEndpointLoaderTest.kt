@@ -250,6 +250,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
 
     fun testPathPredicateValueArgumentNestKeepsItsPrefix() {
         addRouterConfig("""nest(path("/a")) { GET("/b", handler::handle) }""")
+        assertValueArgumentNestHasNoUastMethodName()
         assertPathPredicateCall()
         assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
     }
@@ -266,6 +267,7 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
 
     fun testStringValueArgumentNestKeepsItsPrefix() {
         addRouterConfig("""nest("/a") { GET("/b", handler::handle) }""")
+        assertValueArgumentNestHasNoUastMethodName()
         assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
     }
 
@@ -331,6 +333,18 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         )
         assertPathPredicateCall("ReactiveRouterConfig.kt", "RouterFunctionDsl", isNestReceiver = true)
         assertEquals(listOf("/a/b/c" to "GET"), webFluxEndpoints())
+    }
+
+    private fun assertValueArgumentNestHasNoUastMethodName(fileName: String = "GatewayProxyRouterConfig.kt") {
+        val psiFile = myFixture.psiManager.findFile(myFixture.findFileInTempDir(fileName))!!
+        val nest = PsiTreeUtil.findChildrenOfType(psiFile, KtCallExpression::class.java)
+            .mapNotNull { it.toUElementOfType<UCallExpression>() }
+            .single { (it.sourcePsi as? KtCallExpression)?.calleeExpression?.text == "nest" }
+        assertNull(
+            "A value-argument nest must carry no resolved UAST method name, or callName() would not be needed; was ${nest.methodName}",
+            nest.methodName
+        )
+        assertEquals("nest", (nest.sourcePsi as KtCallExpression).calleeExpression?.text)
     }
 
     private fun assertPathPredicateCall(
