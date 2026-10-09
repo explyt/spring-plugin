@@ -104,10 +104,11 @@ Most inspection tests have a Java and a Kotlin twin under `inspections/java/` an
 **Code style.** Keep it Kotlin-idiomatic and consistent with the surrounding code. Every source file carries the Apache-2.0 SPDX header:
 ```kotlin
 /*
- * Copyright (c) 2024 Explyt Ltd
+ * Copyright (c) <year> Explyt Ltd
  * SPDX-License-Identifier: Apache-2.0
  */
 ```
+Use the year the file is created as `<year>`; existing headers are not updated.
 
 ## 6. Submitting contributions
 1. **Fork the repository** to create your own working copy.
