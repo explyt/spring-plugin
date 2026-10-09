@@ -1,0 +1,23 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Controller Bean Name As Path Inspection</title>
+</head>
+<body>
+
+<p>Reports a <code>@Controller</code> or <code>@RestController</code> value that looks like a request path.
+The value is a bean name: no path prefix is applied to the handler methods.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+    @RestController("/app")
+    class AppController {
+    }
+</code></pre>
+
+</body>
+</html>

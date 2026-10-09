@@ -140,6 +140,17 @@
                          implementationClass="com.explyt.spring.web.inspections.RequestMappingDuplicateInspection"/>
 
         <localInspection language="UAST"
+                         shortName="ControllerBeanNameAsPathInspection"
+                         groupBundle="messages.SpringWebBundle"
+                         groupPath="Explyt Spring"
+                         groupKey="explyt.spring.web.notifications"
+                         bundle="messages.SpringWebBundle"
+                         key="explyt.spring.web.inspection.controller.beanNameAsPath"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.explyt.spring.web.inspections.ControllerBeanNameAsPathInspection"/>
+
+        <localInspection language="UAST"
                          shortName="JavaWebClientMethodWrongType"
                          groupBundle="messages.SpringWebBundle"
                          groupPath="Explyt Spring"
