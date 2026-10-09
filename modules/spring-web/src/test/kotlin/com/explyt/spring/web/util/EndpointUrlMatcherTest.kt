@@ -17,6 +17,58 @@ class EndpointUrlMatcherTest {
 
     private val routes = listOf("/api/items/{id}", "/api/items/export", "/api/items", "/{tenant}/reports")
 
+    @Test
+    fun `capture rest matches a nested health component`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/actuator/health/{*path}", "/actuator/health/db/redis"))
+    }
+
+    @Test
+    fun `capture rest matches a single health component`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/actuator/health/{*path}", "/actuator/health/db"))
+    }
+
+    @Test
+    fun `capture rest matches zero health components`() {
+        assertTrue(SpringWebUtil.isEndpointMatches("/actuator/health/{*path}", "/actuator/health"))
+    }
+
+    @Test
+    fun `capture rest cannot cross a literal segment boundary`() {
+        assertFalse(SpringWebUtil.isEndpointMatches("/actuator/health/{*path}", "/actuator/healthx"))
+    }
+
+    @Test
+    fun `single segment health selector outranks capture rest`() {
+        val routes = listOf("/actuator/health/{*path}", "/actuator/health/{id}")
+        val matched = EndpointUrlMatcher.match(routes, "/actuator/health/db", Policy.REFERENCE, { it }, { null })
+
+        assertEquals(listOf("/actuator/health/{id}", "/actuator/health/{*path}"), matched.endpoints)
+    }
+
+    @Test
+    fun `exact health operation precedes capture rest`() {
+        val operations = listOf("healthForPath" to "/actuator/health/{*path}", "health" to "/actuator/health")
+        val matched = EndpointUrlMatcher.match(operations, "/actuator/health", Policy.REFERENCE, { it.second }, { null })
+
+        assertEquals(listOf("health", "healthForPath"), matched.endpoints.map { it.first })
+    }
+
+    @Test
+    fun `a single segment variable does not become a rest wildcard`() {
+        assertFalse(SpringWebUtil.isEndpointMatches("/files/{path}", "/files/a/b/c"))
+        assertTrue(SpringWebUtil.isEndpointMatches("/files/{*path}", "/files/a/b/c"))
+    }
+
+    @Test
+    fun `reference matching finds a capture rest route without prefix guessing`() {
+        val matched = EndpointUrlMatcher.match(
+            listOf("/files/{*path}"), "/files/a/b/c", Policy.REFERENCE, { it }, { null }
+        )
+
+        assertEquals(listOf("/files/{*path}"), matched.endpoints)
+        assertEquals(ReadingKind.AS_WRITTEN, matched.reading?.kind)
+    }
+
     private fun search(url: String, basePath: String? = null) =
         EndpointUrlMatcher.match(routes, url, Policy.SEARCH, { it }, { basePath })
 
