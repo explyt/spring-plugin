@@ -14,6 +14,19 @@ import org.junit.Test
 class EndpointPathPatternsTest {
 
     @Test
+    fun `capture rest sorts after a single segment wildcard`() {
+        val sorted = listOf("/files/{*path}", "/files/*").sortedWith(EndpointPathPatterns.SPECIFICITY)
+
+        assertEquals(listOf("/files/*", "/files/{*path}"), sorted)
+    }
+
+    @Test
+    fun `capture rest shares every remaining request segment`() {
+        assertEquals(4, EndpointPathPatterns.sharedLeadingSegments("/actuator/health/{*path}", "/actuator/health/db/redis"))
+        assertEquals(4, EndpointPathPatterns.sharedLeadingSegments("/actuator/health/db/redis", "/actuator/health/{*path}"))
+    }
+
+    @Test
     fun `a literal route wins over a template route for the same URL`() {
         val sorted = listOf("/api/routes/{id}", "/api/routes/export").sortedWith(EndpointPathPatterns.SPECIFICITY)
 
