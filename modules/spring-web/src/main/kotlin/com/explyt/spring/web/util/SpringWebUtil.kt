@@ -780,7 +780,7 @@ object SpringWebUtil {
     private val endpointRegExByUri = ConcurrentHashMap<String, Regex>()
     private val TEMPLATE_PARAM_REGEX = Regex("\\{[^}]+}")
     private val MULTIPLE_ASTERISKS = Regex("\\*{2,}")
-    private val TRAILING_CAPTURE_REST = Regex("""/(?:\{\*[^}]*}|\*\*)$""")
+    private val TRAILING_CAPTURE_REST = Regex("""/(?:\{\*[^}]+}|\*\*)$""")
     private val INNER_DOUBLE_WILDCARD = Regex("""/\*\*(?=/)""")
     private const val ANY_SEGMENTS = "(?:/.*)?"
 
