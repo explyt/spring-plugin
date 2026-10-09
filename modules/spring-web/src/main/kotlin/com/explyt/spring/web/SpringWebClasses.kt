@@ -20,6 +20,8 @@ object SpringWebClasses {
     const val REQUEST_PARAM = "org.springframework.web.bind.annotation.RequestParam"
     const val REQUEST_PART = "org.springframework.web.bind.annotation.RequestPart"
     const val MVC_DISPATCHER_SERVLET = "org.springframework.web.servlet.DispatcherServlet"
+    const val HTTP_REQUEST_HANDLER = "org.springframework.web.HttpRequestHandler"
+    const val SERVLET_MVC_CONTROLLER = "org.springframework.web.servlet.mvc.Controller"
     const val WEBFLUX_DISPATCHER_HANDLER = "org.springframework.web.reactive.DispatcherHandler"
     const val REQUEST_HEADER = "org.springframework.web.bind.annotation.RequestHeader"
     const val COOKIE_VALUE = "org.springframework.web.bind.annotation.CookieValue"

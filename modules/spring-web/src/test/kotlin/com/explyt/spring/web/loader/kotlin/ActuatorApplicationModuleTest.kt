@@ -48,6 +48,29 @@ class ActuatorApplicationModuleTest : ExplytMultiModuleTestCase() {
         assertEquals(EXPOSED, info.single().exposure)
     }
 
+    fun testEnableAutoConfigurationApplicationListsTheBuiltIns() {
+        addFileToModule(
+            module, "com/example/portal/PortalApplication.kt",
+            "package com.example.portal\n\n" +
+                    "import org.springframework.boot.autoconfigure.EnableAutoConfiguration\n" +
+                    "import org.springframework.context.annotation.Configuration\n\n" +
+                    "@Configuration\n@EnableAutoConfiguration\nclass PortalApplication\n"
+        )
+        addFileToModule(module, "application.yml", INCLUDE_INFO)
+        val portal = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.portal.PortalApplication", GlobalSearchScope.projectScope(project))
+        assertNotNull("precondition: PortalApplication resolves", portal)
+        assertTrue(
+            "precondition: PortalApplication carries Boot's EnableAutoConfiguration",
+            portal!!.hasAnnotation("org.springframework.boot.autoconfigure.EnableAutoConfiguration")
+        )
+
+        val info = actuatorAt("/actuator/info")
+        assertEquals("info is listed once, by the application: ${describe(info)}", 1, info.size)
+        assertEquals(EXPOSED, info.single().exposure)
+        assertEquals(portal, info.single().application)
+    }
+
     fun testNoApplicationListsNoBuiltIns() {
         addDependencyModule("library")
 

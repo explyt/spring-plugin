@@ -139,16 +139,8 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
      * jar would list them again under the defaults, contradicting the application's verdict. A production application
      * outranks one in test sources, and the qualified name breaks the remaining ties, so the answer is stable.
      */
-    private fun applicationClassOf(module: Module): PsiClass? {
-        val fileIndex = ProjectFileIndex.getInstance(project)
-        return PackageScanService.getInstance(project).getSpringBootAppAnnotations()
-            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, module.moduleScope).findAll() }
-            .minWithOrNull(
-                compareBy<PsiClass> { psiClass ->
-                    psiClass.containingFile?.virtualFile?.let { fileIndex.isInTestSourceContent(it) } ?: false
-                }.thenBy { it.qualifiedName.orEmpty() }
-            )
-    }
+    private fun applicationClassOf(module: Module): PsiClass? =
+        PackageScanService.getInstance(project).applicationClasses(module.moduleScope).firstOrNull()
 
     private fun declaresEndpointMediaTypesBean(module: Module): Boolean {
         val scope = module.getModuleWithDependenciesScope()
