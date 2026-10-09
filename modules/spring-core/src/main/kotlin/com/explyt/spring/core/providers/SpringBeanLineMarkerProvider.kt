@@ -162,7 +162,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val uClass = uParent as UClass
             val facade = SpringSearchServiceFacade.getInstance(module.project)
             return AbstractComponentLineMarker.create(element, uClass.javaPsi, facade.getAllActiveBeans(module)) {
-                facade.findFieldsAndMethodsWithAutowired(uClass, null, module)
+                facade.findInjectionPoints(uClass, null, module)
             }
         }
 

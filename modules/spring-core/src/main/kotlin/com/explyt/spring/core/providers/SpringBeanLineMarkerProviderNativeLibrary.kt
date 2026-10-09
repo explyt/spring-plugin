@@ -68,11 +68,10 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         if (contextBean == null && !isComponentCandidate) return
 
         if (contextBean == null && AbstractComponentLineMarker.isAbstractComponent(psiClass)) {
-            addAbstractComponent(uClass, result, libraryBeans)
-            return
+            addAbstractComponent(uClass, result, libraryBeans + NativeSearchService.getInstance(project).getProjectBeans())
+        } else {
+            addContextBean(uClass, contextBean == null, result) { libraryBeans }
         }
-
-        addContextBean(uClass, contextBean == null, result) { libraryBeans }
 
         if (psiClass.isMetaAnnotatedBy(SpringCoreClasses.CONFIGURATION_PROPERTIES)) return
         processMethodsNative(uClass, result) { libraryBeans }
@@ -208,7 +207,7 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
     ) {
         val sourcePsi = uClass.uastAnchor?.sourcePsi ?: return
         result.add(AbstractComponentLineMarker.create(sourcePsi, uClass.javaPsi, beans) {
-            findFieldsAndMethodsWithAutowired(uClass, null, beans)
+            findInjectionPoints(uClass, null, beans)
         })
     }
 
@@ -259,6 +258,12 @@ class SpringBeanLineMarkerProviderNativeLibrary : RelatedItemLineMarkerProvider(
         uClass: UClass?, uMethod: UMethod?, libraryBeans: List<PsiBean>
     ): Collection<PsiElement> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_LIBRARY_USAGE)
+        return findInjectionPoints(uClass, uMethod, libraryBeans)
+    }
+
+    private fun findInjectionPoints(
+        uClass: UClass?, uMethod: UMethod?, libraryBeans: List<PsiBean>
+    ): Collection<PsiElement> {
         val isArrayType = uMethod?.returnType is PsiArrayType
         val uElement = getUElement(uClass, uMethod)
 

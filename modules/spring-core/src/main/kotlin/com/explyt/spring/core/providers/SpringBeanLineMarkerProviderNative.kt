@@ -220,7 +220,7 @@ class SpringBeanLineMarkerProviderNative : RelatedItemLineMarkerProvider() {
         val beans = NativeSearchService.getInstance(module.project).getAllActiveBeans()
         result.add(AbstractComponentLineMarker.create(sourcePsi, uClass.javaPsi, beans) {
             SpringSearchServiceFacade.getInstance(module.project)
-                .findFieldsAndMethodsWithAutowired(uClass, null, module, true)
+                .findInjectionPoints(uClass, null, module, true)
         })
     }
 

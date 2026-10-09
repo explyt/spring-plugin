@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Explyt Ltd
+ * Copyright (c) 2024 Explyt Ltd
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -15,9 +15,11 @@ import com.explyt.spring.core.util.SpringCoreUtil.hasComponentAnnotation
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.codeInsight.navigation.NavigationGutterIconBuilder
 import com.intellij.openapi.editor.markup.GutterIconRenderer
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.presentation.java.SymbolPresentationUtil
 
@@ -56,11 +58,12 @@ object AbstractComponentLineMarker {
             .createLineMarkerInfo(anchor)
     }
 
-    private fun implementationsOf(abstractClass: PsiClass, beans: Collection<PsiBean>): List<PsiClass> =
+    private fun implementationsOf(abstractClass: PsiClass, beans: Collection<PsiBean>): List<PsiMember> =
         beans.asSequence()
-            .filter { it.psiMember is PsiClass && it.psiClass.isValid }
-            .map { it.psiClass }
-            .filter { it != abstractClass && it.isInheritor(abstractClass, true) }
+            .onEach { ProgressManager.checkCanceled() }
+            .filter { it.psiClass.isValid && it.psiMember.isValid }
+            .filter { it.psiClass != abstractClass && it.psiClass.isInheritor(abstractClass, true) }
+            .map { it.psiMember }
             .distinct()
             .toList()
 }

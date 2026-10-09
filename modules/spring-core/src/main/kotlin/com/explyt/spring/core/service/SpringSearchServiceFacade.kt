@@ -136,6 +136,12 @@ class SpringSearchServiceFacade(private val project: Project) {
         uClass: UClass?, uMethod: UMethod?, module: Module, isNative: Boolean = false
     ): Collection<PsiElement> {
         StatisticService.getInstance().addActionUsage(StatisticActionId.GUTTER_BEAN_USAGE)
+        return findInjectionPoints(uClass, uMethod, module, isNative)
+    }
+
+    fun findInjectionPoints(
+        uClass: UClass?, uMethod: UMethod?, module: Module, isNative: Boolean = false
+    ): Collection<PsiElement> {
         val isArrayType = uMethod?.returnType is PsiArrayType
         val uElement = uClass ?: uMethod ?: throw RuntimeException("No uElement")
         val targetType = if (uElement is UMethod) uElement.returnType else null
@@ -150,8 +156,10 @@ class SpringSearchServiceFacade(private val project: Project) {
 
         val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
         val owners = InjectionPointOwners.of(beanClasses.asSequence())
-        val componentClasses = nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
-            .mapTo(HashSet()) { it.psiClass }
+        val componentBeans = if (isNative || isExternalProjectExist(project))
+            nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
+        else springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+        val componentClasses = componentBeans.mapTo(HashSet()) { it.psiClass }
 
         val allFieldsWithAutowired = owners.asSequence()
             .mapNotNull { owner -> owner.toUElementOfType<UClass>()?.fields }
