@@ -100,6 +100,68 @@ class AbstractComponentGutterTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("foo"), SpringGutterTestUtil.getGutterTargetsStrings(gutter))
     }
 
+    fun testSingleConstructorInjectionIsAbstractComponentTarget() {
+        configure(
+            """
+            @Component public abstract class <caret>AbstractFoo {}
+            @Component class FirstFoo extends AbstractFoo {}
+            @Component class Consumer { Consumer(AbstractFoo foo) {} }
+            """.trimIndent()
+        )
+        assertAbstractNonBean("candidates.AbstractFoo")
+        assertActiveBeans("candidates.FirstFoo", "candidates.Consumer")
+        val consumer = JavaPsiFacade.getInstance(project)
+            .findClass("candidates.Consumer", GlobalSearchScope.projectScope(project))!!
+        val constructor = consumer.constructors.single()
+        assertNull(constructor.getAnnotation(SpringCoreClasses.AUTOWIRED))
+        assertEquals("foo", constructor.parameterList.parameters.single().name)
+        assertEquals(
+            listOf("FirstFoo", "foo"),
+            SpringGutterTestUtil.getGutterTargetsStrings(springGutterAtCaret()).sorted()
+        )
+    }
+
+    fun testFactoryBeanCountsAsAbstractComponentImplementation() {
+        configureFactoryImplementation()
+        assertEquals(
+            SpringCoreBundle.message("explyt.spring.gutter.abstract.component.tooltip", 1),
+            springGutterAtCaret().tooltipText
+        )
+    }
+
+    fun testFactoryBeanMethodIsAbstractComponentTarget() {
+        configureFactoryImplementation()
+        assertEquals(
+            listOf("firstFoo"),
+            SpringGutterTestUtil.getGutterTargetsStrings(springGutterAtCaret())
+        )
+    }
+
+    private fun configureFactoryImplementation() {
+        configure(
+            """
+            @Component public abstract class <caret>AbstractFoo {}
+            class FirstFoo extends AbstractFoo {}
+            @org.springframework.context.annotation.Configuration
+            class Cfg {
+                @org.springframework.context.annotation.Bean
+                public FirstFoo firstFoo() { return new FirstFoo(); }
+            }
+            """.trimIndent()
+        )
+        assertAbstractNonBean("candidates.AbstractFoo")
+        assertActiveBeans("candidates.Cfg")
+        val facade = JavaPsiFacade.getInstance(project)
+        val implementation = facade.findClass("candidates.FirstFoo", GlobalSearchScope.projectScope(project))!!
+        assertFalse(implementation.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT))
+        val factory = facade.findClass("candidates.Cfg", GlobalSearchScope.projectScope(project))!!
+            .findMethodsByName("firstFoo", false).single()
+        assertNotNull(factory.getAnnotation(SpringCoreClasses.BEAN))
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .filter { it.name == "firstFoo" && it.psiClass == implementation }
+        assertEquals("The subclass must be registered by its factory method", listOf(factory), beans.map { it.psiMember })
+    }
+
     private fun configure(source: String) {
         myFixture.configureByText(
             "Candidates.java",
