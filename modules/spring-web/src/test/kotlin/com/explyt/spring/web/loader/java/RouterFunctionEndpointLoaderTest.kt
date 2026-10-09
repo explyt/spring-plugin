@@ -451,6 +451,134 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testServletEmptyPathPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.path(""), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveEmptyPathPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.path(""), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testServletAndPathPredicatesComposeInOrder() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.path("/a").and(RequestPredicates.path("/b")), b -> b.GET("/c", h::list)).build()""",
+            listOf("/a/b/c" to "GET")
+        )
+    }
+
+    fun testReactiveAndPathPredicatesComposeInOrder() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.path("/a").and(RequestPredicates.path("/b")), b -> b.GET("/c", h::list)).build()""",
+            listOf("/a/b/c" to "GET")
+        )
+    }
+
+    fun testServletUnknownAndSideDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.path("/a").and(api), b -> b.GET("/b", h::list)).build()""",
+            emptyList(), prelude = """RequestPredicate api = RequestPredicates.path("/api");"""
+        )
+    }
+
+    fun testReactiveUnknownAndSideDropsSubtree() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.path("/a").and(api), b -> b.GET("/b", h::list)).build()""",
+            emptyList(), prelude = """RequestPredicate api = RequestPredicates.path("/api");"""
+        )
+    }
+
+    fun testServletHeadersPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.headers(headers -> true), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveHeadersPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.headers(headers -> true), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testServletMethodPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.method(org.springframework.http.HttpMethod.GET), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveMethodPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.method(org.springframework.http.HttpMethod.GET), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testServletMethodsPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.methods(org.springframework.http.HttpMethod.GET, org.springframework.http.HttpMethod.POST), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveMethodsPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.methods(org.springframework.http.HttpMethod.GET, org.springframework.http.HttpMethod.POST), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testServletAllPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.all(), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveAllPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.all(), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testServletParamPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.param("x", value -> true), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
+    fun testReactiveQueryParamPredicateAddsNoPrefix() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.queryParam("x", value -> true), b -> b.GET("/b", h::list)).build()""",
+            listOf("/b" to "GET")
+        )
+    }
+
     private fun assertBuilderRoutes(
         type: EndpointType,
         route: String,
