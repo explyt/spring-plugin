@@ -12,7 +12,6 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.searches.AnnotatedElementsSearch
 
 /**
  * Picks the one Spring application a bean query is scoped to.
@@ -79,8 +78,8 @@ class BeanApplicationResolver(private val project: Project) {
     }
 
     private fun candidates(injectionFile: PsiFile?): List<PsiClass> {
-        val applications = PackageScanService.getInstance(project).getSpringBootAppAnnotations().asSequence()
-            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, GlobalSearchScope.projectScope(project)) }
+        val applications = PackageScanService.getInstance(project)
+            .applicationClasses(GlobalSearchScope.projectScope(project)).asSequence()
             .onEach { ProgressManager.checkCanceled() }
             .filter { it.isValid && it.qualifiedName != null }
             .distinctBy { it.qualifiedName to ModuleUtilCore.findModuleForPsiElement(it)?.name }

@@ -9,6 +9,7 @@ import com.explyt.base.LibraryClassCache
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCAN
 import com.explyt.spring.core.SpringCoreClasses.COMPONENT_SCANS
+import com.explyt.spring.core.SpringCoreClasses.ENABLE_AUTO_CONFIGURATION
 import com.explyt.spring.core.SpringCoreClasses.IMPORT
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_APPLICATION
 import com.explyt.spring.core.SpringCoreClasses.SPRING_BOOT_TEST
@@ -26,6 +27,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiClass
@@ -65,7 +67,9 @@ class PackageScanService(private val project: Project) {
         val importModuleRootDataList = importClasses.mapNotNull { toModulePackages(it, true) }
         val allModuleRootDataList = moduleRootDataList + importModuleRootDataList
 
-        val packagesByModuleName = allModuleRootDataList.groupingBy { it.moduleName }
+        val packagesByModuleName = allModuleRootDataList
+            .filterNot { it.rootComponentQualified != null && it.packages.isEmpty() }
+            .groupingBy { it.moduleName }
             .fold(setOf<String>()) { acc, ell -> acc + ell.packages.map { normalizePackage(it) } }
         val rootComponentQualified = moduleRootDataList.mapNotNullTo(mutableSetOf()) { it.rootComponentQualified }
         val importQualified = importClasses.mapNotNullTo(mutableSetOf()) { it.qualifiedName }
@@ -123,17 +127,19 @@ class PackageScanService(private val project: Project) {
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return null
         val uClass = psiClass.toUElementOfType<UClass>() ?: return null
 
-        val holderSpringBoot = SpringSearchService.getInstance(project)
-            .getMetaAnnotations(module, SPRING_BOOT_APPLICATION)
+        val holderApplication = SpringSearchService.getInstance(project)
+            .getMetaAnnotations(module, ENABLE_AUTO_CONFIGURATION)
 
-        val springBootAnnotations = uClass.uAnnotations.filter { holderSpringBoot.contains(it) }
-        if (springBootAnnotations.isEmpty()) return null
+        val applicationAnnotations = uClass.uAnnotations.filter { holderApplication.contains(it) }
+        if (applicationAnnotations.isEmpty()) return null
 
         val holderScan = SpringSearchService.getInstance(project).getMetaAnnotations(module, COMPONENT_SCAN)
-        val bootPackages = springBootAnnotations.flatMapTo(mutableSetOf()) { getPackages(it, holderScan) }
+        val bootPackages = applicationAnnotations.asSequence()
+            .filter { holderScan.contains(it) }
+            .flatMapTo(mutableSetOf()) { getPackages(it, holderScan) }
 
         val scanPackages = uClass.uAnnotations.asSequence()
-            .filter { !springBootAnnotations.contains(it) }
+            .filter { !applicationAnnotations.contains(it) }
             .filter { holderScan.contains(it) }
             .flatMapTo(mutableSetOf()) { getPackages(it, holderScan) }
 
@@ -248,10 +254,24 @@ class PackageScanService(private val project: Project) {
     }
 
     fun getSpringBootAppAnnotations(): Set<PsiClass> {
-        val springBootAppClass = LibraryClassCache.searchForLibraryClass(project, SPRING_BOOT_APPLICATION)
-            ?: return emptySet()
-        val childrenBoot = MetaAnnotationUtil.getChildren(springBootAppClass, GlobalSearchScope.allScope(project))
-        return (childrenBoot + springBootAppClass).toSet()
+        val allScope = GlobalSearchScope.allScope(project)
+        return listOfNotNull(
+            LibraryClassCache.searchForLibraryClass(project, ENABLE_AUTO_CONFIGURATION),
+            LibraryClassCache.searchForLibraryClass(project, SPRING_BOOT_APPLICATION),
+        ).flatMapTo(mutableSetOf()) { MetaAnnotationUtil.getChildren(it, allScope) + it }
+    }
+
+    fun applicationClasses(scope: GlobalSearchScope): List<PsiClass> {
+        val fileIndex = ProjectFileIndex.getInstance(project)
+        val inTestSources = { psiClass: PsiClass ->
+            psiClass.containingFile?.virtualFile?.let { fileIndex.isInTestSourceContent(it) } ?: false
+        }
+        return getSpringBootAppAnnotations().asSequence()
+            .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, scope) }
+            .filterNot { it.isAnnotationType }
+            .distinct()
+            .sortedWith(compareBy(inTestSources).thenBy { it.qualifiedName.orEmpty() })
+            .toList()
     }
 
     companion object {
