@@ -647,10 +647,10 @@ object SpringWebUtil {
         var currentNode = callExpression.uastParent
         while (currentNode != null) {
             ProgressManager.checkCanceled()
-            if (currentNode is UCallExpression && currentNode.callName() == NEST) {
+            if (currentNode is UCallExpression && isNestCall(currentNode)) {
                 // A receiver that is not a path - `accept(APPLICATION_JSON).nest { }` - narrows the routes without
                 // prefixing them, so the routes stay; only this route's own unresolved path drops it.
-                val prefixes = getNestPrefixes(currentNode)
+                val prefixes = getNestPrefixesOrNullIfUnresolved(currentNode).orEmpty()
                 if (prefixes.isNotEmpty()) paths = prefixes.flatMap { prefix -> paths.map { prefix + it } }
             }
             currentNode = currentNode.uastParent
@@ -669,15 +669,17 @@ object SpringWebUtil {
         return RoutePathResolver.resolveUriValues(uriArgument).takeIf { it.isNotEmpty() }
     }
 
-    private fun getNestPrefixes(nestCall: UCallExpression): List<String> {
-        val predicate = nestPredicate(nestCall) ?: return emptyList()
-        val pathPredicate = predicate.asRouterDslPathPredicate()
-        if (pathPredicate != null) {
-            val pathArgument = pathPredicate.valueArguments.single()
-            return RoutePathResolver.resolveUriValues(pathArgument)
-        }
-        return RoutePathResolver.resolveUriValues(predicate)
+    fun isNestCall(call: UCallExpression): Boolean = call.callName() == NEST
+
+    fun getNestPrefixesOrNullIfUnresolved(nestCall: UCallExpression): List<String>? {
+        val predicate = nestPredicate(nestCall) ?: return null
+        val pathArgument = predicate.asRouterDslPathPredicate()?.valueArguments?.single()
+        val prefixes = RoutePathResolver.resolveUriValues(pathArgument ?: predicate)
+        val isPathFree = pathArgument == null && !predicate.isText()
+        return prefixes.takeIf { it.isNotEmpty() || isPathFree }
     }
+
+    private fun UExpression.isText(): Boolean = getExpressionType()?.canonicalText in TEXT_TYPES
 
     private fun nestPredicate(nestCall: UCallExpression): UExpression? =
         nestCall.receiver ?: nestCall.valueArguments.takeIf { it.size == 2 }?.first()
@@ -734,6 +736,7 @@ object SpringWebUtil {
             }
 
     private const val NEST = "nest"
+    private val TEXT_TYPES = setOf(CommonClassNames.JAVA_LANG_STRING, "kotlin.String")
     private const val NULLABLE_SIMPLE_NAME = "Nullable"
 
     private val MultipleSlashes = Regex("//+")
