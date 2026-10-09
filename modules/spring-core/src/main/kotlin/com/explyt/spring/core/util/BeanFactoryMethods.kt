@@ -16,7 +16,7 @@ import com.intellij.psi.PsiModifier
 object BeanFactoryMethods {
     fun of(psiClass: PsiClass): Sequence<PsiMethod> {
         val visited = mutableSetOf<PsiClass>()
-        val beanNames = mutableSetOf<String>()
+        val factoryKeys = mutableSetOf<Pair<String, String>>()
         val methods = mutableListOf<PsiMethod>()
 
         fun visit(current: PsiClass) {
@@ -24,7 +24,9 @@ object BeanFactoryMethods {
             ProgressManager.checkCanceled()
             current.methods.forEach { method ->
                 if (current.isInterface && method.hasModifierProperty(PsiModifier.ABSTRACT)) return@forEach
-                if (method.isMetaAnnotatedBy(SpringCoreClasses.BEAN) && beanNames.add(method.resolveBeanName.first())) {
+                if (method.isMetaAnnotatedBy(SpringCoreClasses.BEAN)
+                    && factoryKeys.add(method.resolveBeanName.first() to method.name)
+                ) {
                     methods += method
                 }
             }

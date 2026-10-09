@@ -5,7 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
-- fix: Count overriding `@Bean` methods with the same bean name as one bean, keep overrides under another name as separate beans, and exclude abstract interface `@Bean` methods (#506)
+- fix: Count overriding or same-name overloaded `@Bean` methods with the same bean name as one bean, keep different method names separate even with the same bean name, and exclude abstract interface `@Bean` methods (#506)
 - fix: `@Bean(name = …)` beans are named by their declared name; `@Qualifier` matches them (#506)
 - fix: Evaluate `@Profile` constants by value and keep undecidable profile expressions active (#562)
 - fix: Evaluate `@ConditionalOnProperty` like Spring Boot: every repeated annotation and every listed name must match, `havingValue` is compared ignoring case, a `false` value without `havingValue` does not match, `matchIfMissing` applies only to a missing key, the value of an active profile file overrides the default file in YAML as in `.properties`, a `${VAR:default}` value falls back to its default, and `@ConditionalOnBooleanProperty` is evaluated too, so a configuration Boot turns off is no longer reported as an active bean, and one Boot turns on no longer disappears (#496)
