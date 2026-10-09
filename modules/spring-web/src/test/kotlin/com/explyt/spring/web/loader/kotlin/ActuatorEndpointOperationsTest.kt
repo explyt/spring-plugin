@@ -11,6 +11,9 @@ import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.view.EndpointsTreeData
+import com.explyt.spring.web.view.EndpointsViewFilter
+import com.intellij.psi.PsiEnumConstant
+import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
@@ -23,6 +26,7 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
 
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springBootActuatorAutoConfigure_4_1_0,
+        TestLibrary.springBootHealth_4_1_0,
         TestLibrary.springWeb_6_1_4,
     )
 
@@ -154,6 +158,40 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
             allActuatorEndpoints().any { EndpointType.ACTUATOR.name in it.requestMethods }
         )
         assertEquals("the tool window keeps one unnamed row for it", listOf(""), EndpointsTreeData.rowVerbsOf(endpoint))
+    }
+
+    fun testHealthAllRemainingSelectorDeclaresACaptureRestPath() {
+        val endpoint = healthForPath()
+
+        assertEquals("/actuator/health/{*path}", endpoint.path)
+    }
+
+    fun testToolWindowFindsHealthForANestedComponentPath() {
+        val endpoint = healthForPath()
+        val rows = EndpointsTreeData.rowsOf(endpoint)
+
+        val matched = EndpointsViewFilter.apply(
+            rows, "/actuator/health/db/redis", emptySet(), emptySet(), EndpointsViewFilter.declaredBasePaths()
+        )
+
+        assertEquals(listOf("/actuator/health/{*path}"), matched.map { it.path })
+    }
+
+    private fun healthForPath(): EndpointElement {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        val endpoint = endpointsOf("HealthEndpoint").single { (it.psiElement as? PsiMethod)?.name == "healthForPath" }
+        val method = endpoint.psiElement as PsiMethod
+        val selector = method.parameterList.parameters.last().getAnnotation(
+            "org.springframework.boot.actuate.endpoint.annotation.Selector"
+        )
+        assertNotNull("precondition: healthForPath carries @Selector", selector)
+        val match = (selector!!.findAttributeValue("match") as? PsiReferenceExpression)?.resolve() as? PsiEnumConstant
+        assertEquals("precondition: healthForPath captures ALL_REMAINING", "ALL_REMAINING", match?.name)
+        assertEquals(
+            "org.springframework.boot.actuate.endpoint.annotation.Selector.Match",
+            match?.containingClass?.qualifiedName
+        )
+        return endpoint
     }
 
     private fun endpointsOf(className: String): List<EndpointElement> =
