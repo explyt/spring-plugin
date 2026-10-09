@@ -32,10 +32,16 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiParameter
+import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UResolvable
+import org.jetbrains.uast.toUElementOfType
 
 /**
  * Actuator endpoints of the module, one element per operation: the ones the project declares and the built-in ones
@@ -222,9 +228,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             .firstOrNull { method.isMetaAnnotatedBy(it.key) }
             ?.value ?: return null
 
-        val selectors = method.parameterList.parameters
-            .filter { it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
-            .joinToString("") { "/{${it.name}}" }
+        val selectors = selectorPath(method)
 
         val operation = method.getMetaAnnotation(OPERATION_BY_METHOD.getValue(httpMethod))
         val produces = ActuatorMediaTypes.producedBy(method, operation, gates.customMediaTypes)
@@ -249,6 +253,30 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         application = gates.application, producesSource = produces?.source
     )
 
+    private fun selectorPath(method: PsiMethod): String {
+        val selectors = method.parameterList.parameters
+            .filter { it.isMetaAnnotatedBy(SpringCoreClasses.ACTUATOR_SELECTOR) }
+        return selectors.withIndex().joinToString("") { (index, parameter) ->
+            if (index == selectors.lastIndex && capturesAllRemaining(parameter)) {
+                "/{*${parameter.name}}"
+            } else {
+                "/{${parameter.name}}"
+            }
+        }
+    }
+
+    private fun capturesAllRemaining(parameter: PsiParameter): Boolean =
+        selectorMatchOf(parameter) == SpringCoreClasses.ACTUATOR_SELECTOR_MATCH_ALL_REMAINING
+
+    private fun selectorMatchOf(parameter: PsiParameter): String? {
+        val selector = parameter.getMetaAnnotation(SpringCoreClasses.ACTUATOR_SELECTOR) ?: return null
+        val psiMatch = (selector.findAttributeValue(SpringCoreClasses.ACTUATOR_SELECTOR_MATCH) as? PsiReferenceExpression)
+            ?.resolve() as? PsiEnumConstant
+        if (psiMatch != null) return psiMatch.name
+        val uastMatch = selector.toUElementOfType<UAnnotation>()
+            ?.findAttributeValue(SpringCoreClasses.ACTUATOR_SELECTOR_MATCH) as? UResolvable
+        return (uastMatch?.resolve() as? PsiEnumConstant)?.name
+    }
 
     private fun joinPath(vararg segments: String): String =
         segments.asSequence()
