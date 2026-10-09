@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Explyt Ltd
+ * Copyright (c) 2026 Explyt Ltd
  * SPDX-License-Identifier: Apache-2.0
  */
 
