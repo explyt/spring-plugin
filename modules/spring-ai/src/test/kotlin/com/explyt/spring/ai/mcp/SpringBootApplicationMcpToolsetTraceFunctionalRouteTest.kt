@@ -239,6 +239,52 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )
     }
 
+    fun testUnresolvedStringNestTraceHidesItsRoute() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE
+            .replace(
+                "import org.springframework.web.reactive.function.server.coRouter",
+                """
+                import org.springframework.web.reactive.function.server.coRouter
+
+                fun someString(): String = System.getenv("X")
+                """.trimIndent()
+            )
+            .replace("GET(\"/co/items\", handler::list)", "someString().nest { GET(\"/b\", handler::list) }")
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        assertRouteModelled("/b", "GET")
+
+        val head = traceAt(CATALOG_FILE, source, "GET(\"/b\"")["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertFalse(head.has("route"))
+        assertEquals(listOf("CatalogService.list"), targetsOf(head))
+    }
+
+    fun testUnresolvedDslPathNestTraceHidesItsRoute() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace(
+            "GET(\"/co/items\", handler::list)",
+            """
+            val x = System.getenv("X") ?: ""
+            path(x).nest { GET("/b", handler::list) }
+            """.trimIndent()
+        )
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        assertRouteModelled("/b", "GET")
+
+        val head = traceAt(CATALOG_FILE, source, "GET(\"/b\"")["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertFalse(head.has("route"))
+        assertEquals(listOf("CatalogService.list"), targetsOf(head))
+    }
+
+    fun testComposedPathPredicateNestTraceKeepsTheChildRoute() = runBlocking<Unit> {
+        assertCatalogNestTrace(
+            "(path(\"/a\") and accept(org.springframework.http.MediaType.APPLICATION_JSON)).nest { GET(\"/b\", handler::list) }",
+            "/b"
+        )
+    }
+
     fun testJavaBuilderPathNestTraceHasNoInventedRoute() = runBlocking<Unit> {
         val source = ORDER_ROUTES_SOURCE.replace(
             ".GET(\"/java/orders\", handler::list)",
