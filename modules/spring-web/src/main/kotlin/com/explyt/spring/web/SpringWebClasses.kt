@@ -97,6 +97,23 @@ object SpringWebClasses {
 
     val ROUTE_FUNCTION_BUILDERS = listOf(ROUTE_FUNCTION_BUILDER, SERVLET_ROUTE_FUNCTION_BUILDER)
 
+    val ROUTE_FUNCTION_BUILDER_VERBS = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
+    const val ROUTE_FUNCTION_BUILDER_PATH = "path"
+    const val ROUTE_FUNCTION_BUILDER_NEST = "nest"
+
+    const val REQUEST_PREDICATES = "org.springframework.web.reactive.function.server.RequestPredicates"
+    const val SERVLET_REQUEST_PREDICATES = "org.springframework.web.servlet.function.RequestPredicates"
+    val REQUEST_PREDICATES_CLASSES = listOf(REQUEST_PREDICATES, SERVLET_REQUEST_PREDICATES)
+    const val REQUEST_PREDICATES_PATH = "path"
+    val REQUEST_PREDICATES_PATH_FREE_FACTORIES = setOf(
+        "accept", "contentType", "headers", "method", "methods", "all", "param", "queryParam"
+    )
+
+    const val REQUEST_PREDICATE = "org.springframework.web.reactive.function.server.RequestPredicate"
+    const val SERVLET_REQUEST_PREDICATE = "org.springframework.web.servlet.function.RequestPredicate"
+    val REQUEST_PREDICATE_CLASSES = listOf(REQUEST_PREDICATE, SERVLET_REQUEST_PREDICATE)
+    const val REQUEST_PREDICATE_AND = "and"
+
     /**
      * Entry points of the Kotlin router DSL. `router` names both the reactive and the servlet DSL, so the stack is
      * told apart by the enclosing bean's type rather than by this name.
@@ -119,9 +136,7 @@ object SpringWebClasses {
      * Route methods of the Kotlin router DSL. `method` carries its verb in the argument instead of the name, so a
      * caller matching on this list must read the verb rather than reuse the called name.
      */
-    val ROUTER_DSL_ROUTE_METHODS = listOf(
-        "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", ROUTER_DSL_GENERIC_METHOD
-    )
+    val ROUTER_DSL_ROUTE_METHODS = ROUTE_FUNCTION_BUILDER_VERBS + ROUTER_DSL_GENERIC_METHOD
 
     /** HTTP verbs offered as tool window filter entries, kept in step with the icons rendered per verb. */
     val HTTP_METHOD_FILTER = listOf(
