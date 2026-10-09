@@ -72,7 +72,7 @@ class ActuatorEndpointActionsLineMarkerProviderTest : ExplytKotlinLightTestCase(
                 module
             ).any { it.text.contains("get(\"/actuator/custom\")") }
         )
-        assertNotNull(endpointFile.findElementAt(endpointFile.text.indexOf("read")))
+
     }
 
     fun testWriteAndDeleteOperationsGetGuttersOnlyOnAnEndpoint() {

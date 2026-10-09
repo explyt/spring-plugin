@@ -21,8 +21,27 @@ class ActuatorUrlReferenceMultiModuleTest : ExplytMultiModuleTestCase() {
         TestLibrary.springTest_6_0_7,
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.springBootAutoConfigure_4_1_0,
-        TestLibrary.springBootActuatorAutoConfigure_4_1_0
+        TestLibrary.springBootActuatorAutoConfigure_4_1_0,
+        TestLibrary.springBootHealth_4_1_0
     )
+
+    fun testTwoServingApplicationsProduceOneHealthTarget() {
+        addFileToModule(module, "Application.kt", "import org.springframework.boot.autoconfigure.SpringBootApplication\n@SpringBootApplication class Application")
+        addFileToModule(module, "application.properties", "management.endpoints.web.exposure.include=health\n")
+        val secondApplication = addDependencyModule("app-b")
+        addFileToModule(secondApplication, "ApplicationB.kt", "import org.springframework.boot.autoconfigure.SpringBootApplication\n@SpringBootApplication class ApplicationB")
+        addFileToModule(secondApplication, "application.properties", "management.endpoints.web.exposure.include=health\n")
+        val testModule = addDependentModule("app-test")
+        val request = addTestSourceFileToModule(testModule, "com/example/test/HealthTest.java", "package com.example.test; import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get; class HealthTest { void request() { get(\"/actuator/health\"); } }")
+        myFixture.configureFromExistingVirtualFile(request.virtualFile)
+        myFixture.editor.caretModel.moveToOffset(request.text.indexOf("health") + 2)
+        val reference = myFixture.file.findTypedReferenceAt<ExplytControllerMethodReference>(myFixture.caretOffset)
+        assertNotNull("precondition: health URL reference exists", reference)
+        val targets = reference!!.multiResolve(true).mapNotNull { it.element as? PsiMethod }
+        assertEquals(1, targets.size)
+        assertEquals("health", targets.single().name)
+        assertNotNull(reference.resolve())
+    }
 
     fun testDependentModuleWithoutApplicationKeepsActuatorUrlUnresolved() {
         val testModule = addDependentModule("app-test")
