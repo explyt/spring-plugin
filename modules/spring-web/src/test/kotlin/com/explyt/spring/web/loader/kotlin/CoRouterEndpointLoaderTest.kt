@@ -10,6 +10,7 @@ import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
+import com.explyt.spring.web.SpringWebClasses
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.uast.UCallExpression
@@ -254,11 +255,82 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
     }
 
     fun testTwoArgumentPathRouteDoesNotPrefixItsSibling() {
-        addRouterConfig("""
+        addRouterConfig(
+            """
             path("/x", handler::handle)
             GET("/y", handler::handle)
-        """)
+        """
+        )
         assertEquals(listOf("/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringValueArgumentNestKeepsItsPrefix() {
+        addRouterConfig("""nest("/a") { GET("/b", handler::handle) }""")
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testConstantPathPredicateNestKeepsItsPrefix() {
+        addRouterConfig(
+            """path(API).nest { GET("/b", handler::handle) }""",
+            companionBody = """const val API = "/api""""
+        )
+        assertPathPredicateCall(isNestReceiver = true)
+        assertEquals(listOf("/api/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testComposedPathPredicateDoesNotGuessAPrefix() {
+        addRouterConfig(
+            """(path("/a") and accept(MediaType.APPLICATION_JSON)).nest { GET("/b", handler::handle) }""",
+            imports = "import org.springframework.http.MediaType"
+        )
+        assertPathPredicateCall()
+        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testUnrelatedPathCallDoesNotContributeAPrefix() {
+        addRouterConfig(
+            """
+            NonDsl.path("/a").nest { GET("/b", handler::handle) }
+            """,
+            imports = "object NonDsl { fun path(value: String): String = value }"
+        )
+        val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir("GatewayProxyRouterConfig.kt"))!!
+        val call = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .mapNotNull { it.toUElementOfType<UCallExpression>() }
+            .single { it.methodName == "path" }
+        val method = call.resolve()!!
+        assertFalse(method.containingClass?.qualifiedName in SpringWebClasses.ROUTER_DSL_CLASSES)
+        assertEquals("java.lang.String", method.returnType?.canonicalText)
+        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testCoRouterDoublePathPredicateNestKeepsBothPrefixes() {
+        addRouterConfig("""path("/a").nest { path("/b").nest { GET("/c", handler::handle) } }""")
+        assertPathPredicateCall(isNestReceiver = true)
+        assertEquals(listOf("/a/b/c" to "GET"), webFluxEndpoints())
+    }
+
+    fun testReactiveRouterDoublePathPredicateNestKeepsBothPrefixes() {
+        myFixture.addFileToProject(
+            "ReactiveRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.router
+
+            @Configuration
+            class ReactiveRouterConfig {
+                @Bean
+                fun routes(): RouterFunction<ServerResponse> = router {
+                    path("/a").nest { path("/b").nest { GET("/c") { ServerResponse.ok().build() } } }
+                }
+            }
+            """.trimIndent()
+        )
+        assertPathPredicateCall("ReactiveRouterConfig.kt", "RouterFunctionDsl", isNestReceiver = true)
+        assertEquals(listOf("/a/b/c" to "GET"), webFluxEndpoints())
     }
 
     private fun assertPathPredicateCall(
@@ -270,16 +342,28 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         val psiFile = myFixture.psiManager.findFile(file)!!
         val calls = PsiTreeUtil.findChildrenOfType(psiFile, KtCallExpression::class.java)
             .mapNotNull { it.toUElementOfType<UCallExpression>() }
-        val pathCall = calls.single { it.methodName == "path" }
-        val method = pathCall.resolve()!!
-        assertEquals("org.springframework.web.reactive.function.server.$dslClass", method.containingClass?.qualifiedName)
-        assertEquals("org.springframework.web.reactive.function.server.RequestPredicate", method.returnType?.canonicalText)
-        assertEquals(1, pathCall.valueArgumentCount)
-        if (isNestReceiver) {
-            val nest = calls.single { it.methodName == "nest" && it.receiver is UCallExpression }
-            val receiver = nest.receiver as UCallExpression
-            assertEquals("path", receiver.methodName)
-            assertEquals(method, receiver.resolve())
+        val pathCalls = calls.filter { it.methodName == "path" }
+        assertTrue(pathCalls.isNotEmpty())
+        pathCalls.forEach { pathCall ->
+            val method = pathCall.resolve()!!
+            assertEquals(
+                "org.springframework.web.reactive.function.server.$dslClass",
+                method.containingClass?.qualifiedName
+            )
+            assertTrue(method.containingClass?.qualifiedName in SpringWebClasses.ROUTER_DSL_CLASSES)
+            assertEquals(
+                "org.springframework.web.reactive.function.server.RequestPredicate",
+                method.returnType?.canonicalText
+            )
+            assertEquals(1, pathCall.valueArgumentCount)
+            if (isNestReceiver) {
+                val nest = calls.single {
+                    it.methodName == "nest" && (it.receiver as? UCallExpression)?.sourcePsi == pathCall.sourcePsi
+                }
+                val receiver = nest.receiver as UCallExpression
+                assertEquals("path", receiver.methodName)
+                assertEquals(method, receiver.resolve())
+            }
         }
     }
 

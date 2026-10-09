@@ -12,6 +12,7 @@ import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.loader.SpringWebFluxEndpointsLoader
 import com.explyt.spring.web.loader.SpringWebMvcFnEndpointsLoader
+import com.explyt.spring.web.SpringWebClasses
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.uast.UCallExpression
@@ -130,6 +131,18 @@ class MixedStackRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
     }
 
     fun testServletRouterPathPredicateNestKeepsItsPrefix() {
+        assertServletPathPredicateNest(
+            """path("/a").nest { GET("/b") { ServerResponse.ok().build() } }""", "/a/b"
+        )
+    }
+
+    fun testServletRouterDoublePathPredicateNestKeepsBothPrefixes() {
+        assertServletPathPredicateNest(
+            """path("/a").nest { path("/b").nest { GET("/c") { ServerResponse.ok().build() } } }""", "/a/b/c"
+        )
+    }
+
+    private fun assertServletPathPredicateNest(routes: String, expectedPath: String) {
         val file = myFixture.addFileToProject(
             "NestedServletRouterConfig.kt",
             """
@@ -143,22 +156,29 @@ class MixedStackRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
             class NestedServletRouterConfig {
                 @Bean
                 fun routes(): RouterFunction<ServerResponse> = router {
-                    path("/a").nest { GET("/b") { ServerResponse.ok().build() } }
+                    $routes
                 }
             }
             """.trimIndent()
         )
-        val nest = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+        val nests = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
             .mapNotNull { it.toUElementOfType<UCallExpression>() }
-            .single { it.methodName == "nest" }
-        val receiver = nest.receiver as UCallExpression
-        val method = receiver.resolve()!!
-        assertEquals("path", receiver.methodName)
-        assertEquals("org.springframework.web.servlet.function.RouterFunctionDsl", method.containingClass?.qualifiedName)
-        assertEquals("org.springframework.web.servlet.function.RequestPredicate", method.returnType?.canonicalText)
-        assertEquals(1, receiver.valueArgumentCount)
+            .filter { it.methodName == "nest" }
+        assertTrue(nests.isNotEmpty())
+        nests.forEach { nest ->
+            val receiver = nest.receiver as UCallExpression
+            val method = receiver.resolve()!!
+            assertEquals("path", receiver.methodName)
+            assertEquals(
+                "org.springframework.web.servlet.function.RouterFunctionDsl",
+                method.containingClass?.qualifiedName
+            )
+            assertTrue(method.containingClass?.qualifiedName in SpringWebClasses.ROUTER_DSL_CLASSES)
+            assertEquals("org.springframework.web.servlet.function.RequestPredicate", method.returnType?.canonicalText)
+            assertEquals(1, receiver.valueArgumentCount)
+        }
         assertBothLoadersAreApplicable()
-        assertEquals(listOf("/a/b" to "GET", SERVLET_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_MVC))
+        assertEquals(listOf(expectedPath to "GET", SERVLET_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_MVC))
         assertEquals(listOf(REACTIVE_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_WEBFLUX))
     }
 
