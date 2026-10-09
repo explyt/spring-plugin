@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Recognise applications declared with `@EnableAutoConfiguration` instead of `@SpringBootApplication`: such a class is an application for the bean model, the Spring MCP bean tools and the built-in Actuator endpoints, scans its package only when it also carries `@ComponentScan`, and is itself a bean either way (#532)
 - fix: Count overriding or same-name overloaded `@Bean` methods with the same bean name as one bean, keep different method names separate even with the same bean name, and exclude abstract interface `@Bean` methods (#506)
 - fix: Abstract classes without a `@Lookup` method and non-static inner classes annotated as components are no longer reported as beans, while component interfaces stay candidates; abstract components get their own gutter marker listing implementing beans and injection points, and injection points inherited from abstract base classes are shown in bean usages (#506)
 - fix: `@Bean(name = …)` beans are named by their declared name; `@Qualifier` matches them (#506)
