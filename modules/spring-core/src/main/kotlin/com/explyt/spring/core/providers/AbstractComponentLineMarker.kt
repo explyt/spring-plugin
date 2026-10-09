@@ -62,7 +62,10 @@ object AbstractComponentLineMarker {
         beans.asSequence()
             .onEach { ProgressManager.checkCanceled() }
             .filter { it.psiClass.isValid && it.psiMember.isValid }
-            .filter { it.psiClass != abstractClass && it.psiClass.isInheritor(abstractClass, true) }
+            .filter {
+                it.psiMember != abstractClass
+                        && (it.psiClass == abstractClass || it.psiClass.isInheritor(abstractClass, true))
+            }
             .map { it.psiMember }
             .distinct()
             .toList()
