@@ -9,6 +9,7 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.toSmartPointer
 
 /**
@@ -23,6 +24,54 @@ class EndpointsViewFilterTest : ExplytJavaLightTestCase() {
     )
 
     private val rows: List<EndpointElementViewData> by lazy { loadRows() }
+
+    fun testControllerCaptureRestMatchesManySegments() {
+        val rows = fileControllerRows()
+        val capture = rows.single { it.path == "/files/{*path}" }
+
+        assertTrue(SpringWebUtil.isEndpointMatches(capture.path, "/files/a/b/c"))
+    }
+
+    fun testControllerDoubleWildcardMatchesManySegments() {
+        val wildcard = fileControllerRows().single { it.path == "/static/**" }
+
+        assertTrue(SpringWebUtil.isEndpointMatches(wildcard.path, "/static/a/b"))
+    }
+
+    fun testControllerDoubleWildcardMatchesZeroSegments() {
+        val wildcard = fileControllerRows().single { it.path == "/static/**" }
+
+        assertTrue(SpringWebUtil.isEndpointMatches(wildcard.path, "/static"))
+    }
+
+    fun testToolWindowFindsControllerCaptureRestForANestedPath() {
+        val rows = fileControllerRows()
+        val matched = EndpointsViewFilter.apply(
+            rows, "/files/a/b/c", emptySet(), emptySet(), EndpointsViewFilter.declaredBasePaths()
+        )
+
+        assertEquals(listOf("/files/{*path}"), matched.map { it.path })
+    }
+
+    private fun fileControllerRows(): List<EndpointElementViewData> {
+        myFixture.addFileToProject(
+            "com/example/FileController.java", """
+            package com.example;
+            import org.springframework.web.bind.annotation.*;
+
+            @RestController
+            public class FileController {
+                @GetMapping("/files/{*path}") public String files() { return "files"; }
+                @GetMapping("/static/**") public String resources() { return "resources"; }
+            }
+            """.trimIndent()
+        )
+        val endpoints = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .filter { it.containingClass?.name == "FileController" }
+        assertEquals(listOf("/files/{*path}", "/static/**"), endpoints.map { it.path }.sorted())
+        assertTrue(endpoints.all { it.type == EndpointType.SPRING_MVC })
+        return endpoints.flatMap(EndpointsTreeData::rowsOf)
+    }
 
     private fun rows(): List<EndpointElementViewData> = rows
 
