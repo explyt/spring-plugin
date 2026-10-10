@@ -1093,8 +1093,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Kotlin sealed subclasses and @JsonSubTypes - each with the 'typeId' written for it, absent " +
                 "otherwise; " +
                 "'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
-                "is written next to the fields; a Page<T> is described by its content type, an approximation of " +
-                "the page Spring Data writes), produces/consumes media types, and " +
+                "is written next to the fields; a Spring Data Page or Slice is described as Spring Data writes it, " +
+                "with 'wireShape' PAGE_DIRECT (PageImpl's getters), PAGED_MODEL ('content' and 'page', under " +
+                "pageSerializationMode VIA_DTO) or SLICE_DIRECT, 'wireShapeSource' naming where the page mode was " +
+                "read - DEFAULT, @EnableSpringDataWebSupport on its class, or " +
+                "spring.data.web.pageable.serialization-mode on a servlet application - or UNKNOWN with the " +
+                "PAGE_DIRECT shape when the property is unresolvable or the annotation is on a reactive " +
+                "application, and 'wireShapeAssumed': true when a declared Page or Slice is taken for " +
+                "PageImpl or SliceImpl), produces/consumes media types, and " +
                 "'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +
                 "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +
@@ -2569,6 +2575,15 @@ data class DtoSchemaJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val polymorphic: Boolean? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val discriminator: DiscriminatorJson? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val variants: List<DtoSchemaJson>? = null,
+    /** How Spring Data writes a page or slice: `PAGE_DIRECT`, `PAGED_MODEL` or `SLICE_DIRECT`. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShape: String? = null,
+    /**
+     * Where the page serialization mode was read: `DEFAULT`, `spring.data.web.pageable.serialization-mode`,
+     * `@EnableSpringDataWebSupport on <class>`, or `UNKNOWN` when it cannot be read and the default shape is shown.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShapeSource: String? = null,
+    /** `true` when a declared `Page` or `Slice` was taken for the Spring Data implementation Spring Data writes. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShapeAssumed: Boolean? = null,
 )
 
 data class DiscriminatorJson(
