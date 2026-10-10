@@ -13,6 +13,9 @@ import com.explyt.spring.core.properties.references.ActuatorEndpoint
 import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PackageScanService
+import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.conditional.ConditionVerdict
+import com.explyt.spring.core.service.conditional.combined
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.ActuatorAccess
@@ -118,11 +121,33 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val access = ActuatorAccess.of(module, definitions)
         val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
         val customMediaTypes = declaresEndpointMediaTypesBean(module)
+        val beanConditions = BeanConditions(module)
 
         return endpoints.flatMap {
-            val gates = Gates(exposure.exposureOf(it.id), access.accessOf(it), application, customMediaTypes)
+            val gates = Gates(
+                exposure.exposureOf(it.id), access.accessOf(it), application, customMediaTypes,
+                beanConditions.of(it.psiClass)
+            )
             endpointElements(it, basePath, propertyValue, gates) { requestMappingMah }
         }
+    }
+
+    private inner class BeanConditions(private val module: Module) {
+        private val fileIndex = ProjectFileIndex.getInstance(project)
+        private val verdictsByClass by lazy {
+            SpringSearchService.getInstance(project).conditionVerdicts(module).entries
+                .groupBy({ it.key.psiClass }, { it.value })
+        }
+
+        fun of(endpointClass: PsiClass): ConditionVerdict? {
+            val file = endpointClass.containingFile?.virtualFile ?: return null
+            if (!fileIndex.isInSourceContent(file)) return null
+            return verdictsByClass[endpointClass]?.mostActive()
+        }
+
+        private fun List<ConditionVerdict>.mostActive(): ConditionVerdict =
+            if (ConditionVerdict.Active in this) ConditionVerdict.Active
+            else filterIsInstance<ConditionVerdict.Undecided>().ifEmpty { this }.asSequence().combined()
     }
 
     /**
@@ -182,6 +207,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val access: EndpointAccess,
         val application: PsiClass?,
         val customMediaTypes: Boolean,
+        val beanCondition: ConditionVerdict?,
     )
 
     private fun endpointElements(
@@ -265,7 +291,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
     ) = EndpointElement(
         path, requestMethods, psiElement, endpoint.psiClass, null, getType(),
         exposure = gates.exposure, produces = produces?.mediaTypes.orEmpty(), access = access,
-        application = gates.application, producesSource = produces?.source
+        application = gates.application, producesSource = produces?.source, beanCondition = gates.beanCondition
     )
 
     private fun selectorPath(method: PsiMethod): String {
