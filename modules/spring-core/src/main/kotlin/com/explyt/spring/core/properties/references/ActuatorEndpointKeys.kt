@@ -144,11 +144,6 @@ object ActuatorEndpointKeys {
         val annotations: Collection<PsiClass>,
     )
 
-    /**
-     * The endpoints the project declares: the module with its dependency modules - a shared starter may declare
-     * `@Endpoint` next to the application module holding `application.yaml` (#382) - and never its libraries, whose
-     * endpoints already ship metadata. The `Access` probe does read the libraries, since the class ships in a jar.
-     */
     private fun projectDiscovery(module: Module) = Discovery(
         endpointScope = GlobalSearchScope.moduleWithDependenciesScope(module),
         accessScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module).union(runtimeLibraries(module)),
