@@ -9,7 +9,9 @@ import com.explyt.spring.core.JacksonClasses
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiAnonymousClass
+import com.intellij.psi.PsiArrayInitializerMemberValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiEnumConstant
@@ -58,12 +60,13 @@ internal object JacksonPolymorphism {
 
     private fun hierarchyOf(psiClass: PsiClass): List<PsiClass> {
         val visited = linkedSetOf<PsiClass>()
-        val queue = ArrayDeque(listOf(psiClass))
-        while (queue.isNotEmpty()) {
+        fun visit(type: PsiClass) {
             ProgressManager.checkCanceled()
-            val next = queue.removeFirst()
-            if (visited.add(next)) queue.addAll(next.supers)
+            if (!visited.add(type)) return
+            type.interfaces.forEach(::visit)
+            if (!type.isInterface) type.superClass?.let(::visit)
         }
+        visit(psiClass)
         return visited.toList()
     }
 
@@ -72,14 +75,14 @@ internal object JacksonPolymorphism {
 
     private fun typeInfoOf(hierarchy: List<PsiClass>): JacksonTypeInfo? {
         val annotation = annotationIn(hierarchy, JacksonClasses.JSON_TYPE_INFO) ?: return null
-        val use = annotation.enumAttribute("use") ?: return null
+        val use = annotation.enumAttribute("use")?.takeUnless { it == NONE } ?: return null
         val include = annotation.enumAttribute("include")
             ?.takeUnless { it == EXTERNAL_PROPERTY }
             ?: PROPERTY
         val property = (annotation.findDeclaredAttributeValue("property")?.evaluate() as? String)
             ?.takeIf { it.isNotEmpty() }
             ?: DEFAULT_PROPERTIES[use]
-        return JacksonTypeInfo(use, include, property)
+        return JacksonTypeInfo(use, include, property.takeUnless { include in WRAPPERS })
     }
 
     private fun UAnnotation.enumAttribute(name: String): String? {
@@ -90,9 +93,8 @@ internal object JacksonPolymorphism {
 
     private fun declaredSubtypesOf(base: PsiClass, hierarchy: List<PsiClass>): List<DeclaredSubtype> {
         val annotation = annotationIn(hierarchy, JacksonClasses.JSON_SUB_TYPES) ?: return emptyList()
-        return elementsOf(annotation.findDeclaredAttributeValue("value")).mapNotNull { element ->
+        return subtypeEntriesOf(annotation).mapNotNull { type ->
             ProgressManager.checkCanceled()
-            val type = nestedAnnotationOf(element) ?: return@mapNotNull null
             val literal = type.findDeclaredAttributeValue("value") as? UClassLiteralExpression
             val subclass = literal?.let(::classOf) ?: return@mapNotNull null
             val name = (type.findDeclaredAttributeValue("name")?.evaluate() as? String)?.takeIf { it.isNotEmpty() }
@@ -100,7 +102,19 @@ internal object JacksonPolymorphism {
         }
     }
 
+    private fun subtypeEntriesOf(annotation: UAnnotation): List<UAnnotation> {
+        val fromSource = elementsOf(annotation.findDeclaredAttributeValue("value")).mapNotNull(::nestedAnnotationOf)
+        if (fromSource.isNotEmpty()) return fromSource
+        val declared = when (val value = annotation.javaPsi?.findDeclaredAttributeValue("value")) {
+            is PsiAnnotation -> listOf(value)
+            is PsiArrayInitializerMemberValue -> value.initializers.filterIsInstance<PsiAnnotation>()
+            else -> emptyList()
+        }
+        return declared.mapNotNull { it.toUElementOfType<UAnnotation>() }
+    }
+
     private fun nestedAnnotationOf(element: UExpression): UAnnotation? {
+        if (element is UAnnotation) return element
         val source = element.sourcePsi ?: return null
         val call = (source as? KtQualifiedExpression)?.selectorExpression ?: source
         return call.toUElementOfType<UAnnotation>()
@@ -149,12 +163,15 @@ internal object JacksonPolymorphism {
             ?.let { AnnotationUtil.getStringAttributeValue(it, "value") }
             ?.takeIf { it.isNotEmpty() }
 
+    private const val NONE = "NONE"
     private const val NAME = "NAME"
     private const val SIMPLE_NAME = "SIMPLE_NAME"
     private const val CLASS = "CLASS"
     private const val MINIMAL_CLASS = "MINIMAL_CLASS"
     private const val PROPERTY = "PROPERTY"
     private const val EXTERNAL_PROPERTY = "EXTERNAL_PROPERTY"
+
+    private val WRAPPERS = setOf("WRAPPER_OBJECT", "WRAPPER_ARRAY")
 
     private val DEFAULT_PROPERTIES = mapOf(
         NAME to "@type",

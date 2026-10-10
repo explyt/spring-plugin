@@ -83,12 +83,23 @@ internal object ResponseSchemaReader {
             namingStrategySource = naming?.source,
             polymorphic = polymorphism?.let { true },
             discriminator = polymorphism?.typeInfo?.let { DiscriminatorJson(it.use, it.include, it.property) },
-            variants = polymorphism?.variants?.mapNotNull { variantSchemaOf(it, depth - 1, configured) }?.ifEmpty { null },
+            variants = polymorphism?.variants?.takeIf { it.isNotEmpty() }
+                ?.mapNotNull { variantSchemaOf(it, depth - 1, configured) },
         )
     }
 
     private fun variantSchemaOf(variant: PolymorphicVariant, depth: Int, configured: JacksonNaming?): DtoSchemaJson? {
-        val type = JavaPsiFacade.getElementFactory(variant.psiClass.project).createType(variant.psiClass)
+        val psiClass = variant.psiClass
+        if (depth <= 0) {
+            val className = psiClass.qualifiedName ?: return null
+            return DtoSchemaJson(
+                className = className,
+                typeId = variant.typeId,
+                fields = null,
+                schemaOmitted = SchemaOmitted.DEPTH_LIMIT.name,
+            )
+        }
+        val type = JavaPsiFacade.getElementFactory(psiClass.project).createType(psiClass)
         return schemaOf(type, depth, configured)?.copy(typeId = variant.typeId)
     }
 
@@ -427,6 +438,7 @@ internal object ResponseSchemaReader {
         COLLECTION_TYPE,
         ABSTRACT_TYPE,
         NO_VISIBLE_PROPERTIES,
+        DEPTH_LIMIT,
     }
 
     /** Reactive and coroutine containers outside those packages, whose payload is their first type argument. */
