@@ -35,20 +35,35 @@ import com.intellij.psi.util.TypeConversionUtil
 class ScopedBeanMatcher(private val project: Project) {
 
     fun lookup(snapshot: ScopedBeanSnapshot, selector: BeanLookupSelector): BeanSelection {
-        val named = selector.beanName?.let { name ->
-            snapshot.records.filter { record ->
+        val queryType = selector.typeFqn?.let { resolveQueryType(it, snapshot.application) }
+        val named = named(snapshot.records, selector)
+
+        val match = queryType
+            ?.let { matchType(named, it) }
+            ?: BeanMatch(named, MatchCompleteness.COMPLETE, 0, emptySet())
+
+        val decided = (if (selector.beanName != null && named.isEmpty()) unexportedAliasesOf(snapshot, match) else match)
+            .withUndecidedConditions()
+            .copy(inactiveRecords = inactiveMatches(snapshot, selector, queryType))
+        return BeanSelection(outcomeOf(decided), decided)
+    }
+
+    private fun inactiveMatches(
+        snapshot: ScopedBeanSnapshot,
+        selector: BeanLookupSelector,
+        queryType: PsiType?
+    ): List<ScopedBeanRecord> {
+        val named = named(snapshot.inactiveRecords, selector)
+        return queryType?.let { matchType(named, it).records } ?: named
+    }
+
+    private fun named(records: List<ScopedBeanRecord>, selector: BeanLookupSelector): List<ScopedBeanRecord> =
+        selector.beanName?.let { name ->
+            records.filter { record ->
                 ProgressManager.checkCanceled()
                 name in record.knownNames
             }
-        } ?: snapshot.records
-
-        val match = selector.typeFqn
-            ?.let { typeFqn -> matchType(named, resolveQueryType(typeFqn, snapshot.application)) }
-            ?: BeanMatch(named, MatchCompleteness.COMPLETE, 0, emptySet())
-
-        val decided = if (selector.beanName != null && named.isEmpty()) unexportedAliasesOf(snapshot, match) else match
-        return BeanSelection(outcomeOf(decided), decided)
-    }
+        } ?: records
 
     /**
      * A name that matched nothing may still be an alias of a record whose aliases were never exported: absence is

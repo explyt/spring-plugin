@@ -562,6 +562,8 @@ class SpringSearchService(private val project: Project) {
     fun conditionVerdicts(module: Module): Map<PsiBean, ConditionVerdict> =
         getAllBeansClasses(module).verdicts
 
+    fun foundBeans(module: Module): FoundBeans = getAllBeansClasses(module)
+
     fun conditionVerdictOf(member: PsiMember, module: Module): ConditionVerdict? =
         getAllBeansClasses(module).verdicts
             .filterKeys { it.psiMember == member }.values.distinct()

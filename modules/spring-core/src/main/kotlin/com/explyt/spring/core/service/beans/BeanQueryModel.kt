@@ -5,6 +5,9 @@
 
 package com.explyt.spring.core.service.beans
 
+import com.explyt.spring.core.service.conditional.ConditionEvidence
+import com.explyt.spring.core.service.conditional.ConditionReason
+import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiVariable
@@ -130,8 +133,47 @@ data class ScopedBeanRecord(
     val details: BeanDetailsEvidence,
     val limitations: Set<String>,
     val runtimeRole: String? = null,
-    val recordedTypeFqn: String? = null
+    val recordedTypeFqn: String? = null,
+    val condition: BeanConditionRecord? = null
 )
+
+enum class BeanConditionState { INACTIVE, UNDECIDED }
+
+data class BeanConditionRecord(
+    val state: BeanConditionState,
+    val reasons: List<String>,
+    val annotation: String,
+    val carrier: String,
+    val detail: String?,
+    val assumptions: List<String>
+) {
+    val undecided: Boolean get() = state == BeanConditionState.UNDECIDED
+
+    companion object {
+        const val CONDITIONS_UNDECIDED = "CONDITIONS_UNDECIDED"
+        const val CONDITIONS_NOT_EVALUATED = "CONDITIONS_NOT_EVALUATED"
+        val PROFILE_NOT_DECIDABLE = ConditionReason.PROFILE_NOT_DECIDABLE.name
+
+        fun of(verdict: ConditionVerdict?): BeanConditionRecord? = when (verdict) {
+            null, ConditionVerdict.Active -> null
+            is ConditionVerdict.Inactive -> of(BeanConditionState.INACTIVE, listOf(verdict.condition))
+            is ConditionVerdict.Undecided -> verdict.conditions.takeIf { it.isNotEmpty() }
+                ?.let { of(BeanConditionState.UNDECIDED, it) }
+        }
+
+        private fun of(state: BeanConditionState, evidence: List<ConditionEvidence>): BeanConditionRecord {
+            val first = evidence.first()
+            return BeanConditionRecord(
+                state = state,
+                reasons = evidence.map { it.reason.name }.distinct(),
+                annotation = first.annotationFqn,
+                carrier = first.carrierFqn,
+                detail = first.detail,
+                assumptions = evidence.flatMap { it.assumptions }.map { it.name }.distinct().sorted()
+            )
+        }
+    }
+}
 
 /**
  * The beans of one chosen model.
@@ -147,7 +189,8 @@ data class ScopedBeanSnapshot(
     val application: BeanApplicationIdentity,
     val selection: BeanContextSelection,
     val modelStamp: String,
-    val records: List<ScopedBeanRecord>
+    val records: List<ScopedBeanRecord>,
+    val inactiveRecords: List<ScopedBeanRecord> = emptyList()
 )
 
 /** What a lookup asks for. Both filters may be set, and then they intersect rather than widen. */
@@ -172,8 +215,20 @@ data class BeanMatch(
     val records: List<ScopedBeanRecord>,
     val completeness: MatchCompleteness,
     val unresolvedCount: Int,
-    val limitations: Set<String>
-)
+    val limitations: Set<String>,
+    val inactiveRecords: List<ScopedBeanRecord> = emptyList()
+) {
+    fun withUndecidedConditions(): BeanMatch {
+        val undecided = records.mapNotNull { it.condition }.filter { it.undecided }
+        if (undecided.isEmpty()) return this
+        val profileLimitations = undecided.flatMap { it.reasons }
+            .filter { it == BeanConditionRecord.PROFILE_NOT_DECIDABLE }
+        return copy(
+            completeness = MatchCompleteness.PARTIAL,
+            limitations = limitations + BeanConditionRecord.CONDITIONS_UNDECIDED + profileLimitations
+        )
+    }
+}
 
 /**
  * The verdict of one query, relative to the selected model.
