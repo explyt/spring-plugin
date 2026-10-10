@@ -579,6 +579,42 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testServletVerbPredicateNestKeepsItsPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.PUT("/a"), b -> b.POST("/b", h::list)).build()""",
+            listOf("/a/b" to "POST"),
+            predicateFactories = setOf("PUT")
+        )
+    }
+
+    fun testReactiveVerbPredicateNestKeepsItsPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.PUT("/a"), b -> b.POST("/b", h::list)).build()""",
+            listOf("/a/b" to "POST"),
+            predicateFactories = setOf("PUT")
+        )
+    }
+
+    fun testServletVerbAndPathFreePredicateNestKeepsItsPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_MVC,
+            """route().nest(RequestPredicates.PUT("/a").and(RequestPredicates.accept(APPLICATION_JSON)), b -> b.POST("/b", h::list)).build()""",
+            listOf("/a/b" to "POST"),
+            predicateFactories = setOf("PUT", "accept")
+        )
+    }
+
+    fun testReactiveVerbAndPathFreePredicateNestKeepsItsPath() {
+        assertBuilderRoutes(
+            EndpointType.SPRING_WEBFLUX,
+            """route().nest(RequestPredicates.PUT("/a").and(RequestPredicates.accept(APPLICATION_JSON)), b -> b.POST("/b", h::list)).build()""",
+            listOf("/a/b" to "POST"),
+            predicateFactories = setOf("PUT", "accept")
+        )
+    }
+
     private fun assertBuilderRoutes(
         type: EndpointType,
         route: String,
@@ -586,7 +622,8 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
         members: String = "",
         staticPathImport: Boolean = false,
         unrelatedVerb: Boolean = false,
-        prelude: String = ""
+        prelude: String = "",
+        predicateFactories: Set<String> = emptySet()
     ) {
         val functionPackage = when (type) {
             EndpointType.SPRING_MVC -> "org.springframework.web.servlet.function"
@@ -649,6 +686,14 @@ class RouterFunctionEndpointLoaderTest : ExplytJavaLightTestCase() {
                 expectedOwner,
                 call.resolveMethod()?.containingClass?.qualifiedName
             )
+        }
+        val factoryCalls = PsiTreeUtil.findChildrenOfType(config, PsiMethodCallExpression::class.java)
+            .filter { it.methodExpression.referenceName in predicateFactories }
+        assertEquals(predicateFactories, factoryCalls.mapTo(mutableSetOf()) { it.methodExpression.referenceName })
+        factoryCalls.forEach { call ->
+            val method = call.resolveMethod()
+            assertEquals(call.text, "$functionPackage.RequestPredicates", method?.containingClass?.qualifiedName)
+            assertEquals(call.text, "$functionPackage.RequestPredicate", method?.returnType?.canonicalText)
         }
 
         assertEquals(expected, endpointsOfType(type))
