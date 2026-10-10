@@ -1,0 +1,380 @@
+/*
+ * Copyright (c) 2026 Explyt Ltd
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.explyt.spring.ai.mcp.beans
+
+import com.explyt.spring.ai.mcp.SpringBootApplicationMcpToolset
+import com.explyt.spring.test.ExplytJavaLightTestCase
+import com.explyt.spring.test.TestLibrary
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.intellij.mcpserver.McpExpectedError
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.search.GlobalSearchScope
+import kotlinx.coroutines.runBlocking
+
+class BeanListingPageTest : ExplytJavaLightTestCase() {
+
+    override fun getTestDataPath(): String = super.getTestDataPath() + "mcp/"
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springBootAutoConfigure_3_1_1,
+        TestLibrary.springWebMvc_6_0_7,
+        TestLibrary.jakarta_persistence_3_1_0,
+        TestLibrary.kotlin_1_9_22,
+    )
+
+    private val toolset = SpringBootApplicationMcpToolset()
+    private val mapper = ObjectMapper()
+    private val nativeFixture by lazy { NativeBeanListingFixture(project) }
+
+    override fun tearDown() {
+        try {
+            nativeFixture.clear()
+        } finally {
+            super.tearDown()
+        }
+    }
+
+    fun testListingIsAnEnvelope() = runBlocking<Unit> {
+        copyDemoApplication()
+
+        val page = listing(DEMO_APPLICATION, "CONTROLLER")
+
+        assertTrue("The listing must be an object, got $page", page.isObject)
+        assertEquals("OK", page["status"]?.asText())
+        assertTrue("Rows are served under 'beans', got $page", page["beans"]?.isArray == true)
+        assertTrue("A listing names its revision, got $page", page["revision"]?.asText().orEmpty().isNotEmpty())
+        assertEquals(page["beans"].size(), page["totalCount"]?.asInt())
+        assertEquals(0, page["offset"]?.asInt())
+    }
+
+    fun testProjectBeanIsMarkedProject() = runBlocking<Unit> {
+        copyDemoApplication()
+        assertResolves("com.example.app.service.DemoService")
+
+        val service = rows(listing(DEMO_APPLICATION, "COMPONENT"))
+            .firstOrNull { it["className"].asText() == "com.example.app.service.DemoService" }
+
+        assertNotNull("Precondition: DemoService is listed as a component", service)
+        assertEquals("PROJECT", service!!["origin"]?.asText())
+    }
+
+    fun testLibraryTypedFactoryBeanIsProject() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+        assertResolves("com.explyt.demo.TimeConfig")
+
+        val clock = rows(listing(BEAN_QUERY_APPLICATION, "COMPONENT"))
+            .firstOrNull { it["beanName"].asText() == "systemClock" }
+
+        assertNotNull("Precondition: systemClock is listed", clock)
+        assertEquals("java.time.Clock", clock!!["className"].asText())
+        assertEquals(
+            "The factory is declared in the project although its type is the JDK's",
+            "PROJECT", clock["origin"]?.asText()
+        )
+    }
+
+    fun testLibraryBeanIsMarkedLibrary() = runBlocking<Unit> {
+        copyDemoApplication()
+        assertTrue(
+            "Precondition: $LIBRARY_CONTROLLER comes from a library jar",
+            JavaPsiFacade.getInstance(project).findClass(LIBRARY_CONTROLLER, GlobalSearchScope.allScope(project))
+                ?.containingFile?.virtualFile?.path.orEmpty().contains(".jar!/")
+        )
+
+        val controller = rows(listing(DEMO_APPLICATION, "CONTROLLER"))
+            .firstOrNull { it["className"].asText() == LIBRARY_CONTROLLER }
+
+        assertNotNull("Precondition: basicErrorController is listed", controller)
+        assertEquals("LIBRARY", controller!!["origin"]?.asText())
+    }
+
+    fun testOriginFilterProject() = runBlocking<Unit> {
+        copyDemoApplication()
+        val everything = listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000)
+        assertTrue(
+            "Precondition: the fixture has library controllers to filter out, got $everything",
+            rows(everything).any { it["origin"]?.asText() == "LIBRARY" }
+        )
+        assertTrue(
+            "Precondition: every fixture row has a known origin, got $everything",
+            rows(everything).all { it.has("origin") }
+        )
+
+        val page = listing(DEMO_APPLICATION, "CONTROLLER", origin = "project", limit = 50, maxChars = 16000)
+
+        assertEquals("OK", page["status"]?.asText())
+        assertEquals(
+            setOf("demoController", "resolverController", "routeController"),
+            rows(page).map { it["beanName"].asText() }.toSet()
+        )
+        assertTrue("Every row is PROJECT, got $page", rows(page).all { it["origin"]?.asText() == "PROJECT" })
+        assertEquals(3, page["totalCount"]?.asInt())
+        assertFalse("No row lacks an origin here, so nothing is counted as unknown: $page", page.has("unknownOriginCount"))
+    }
+
+    fun testUnknownOriginIsRejectedWithTheValidValues() = runBlocking<Unit> {
+        copyDemoApplication()
+
+        val error = rejected { listingText(DEMO_APPLICATION, "CONTROLLER", origin = "MINE") }
+
+        assertEquals("Unknown origin 'MINE'. Valid values: PROJECT, LIBRARY.", error)
+    }
+
+    fun testPagingContinuation() = runBlocking<Unit> {
+        copyDemoApplication()
+        val unpaged = listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000)
+        val total = unpaged["totalCount"]?.asInt() ?: -1
+        assertTrue("Precondition: more than one controller to page through, got $unpaged", total > 1)
+
+        val first = listing(DEMO_APPLICATION, "CONTROLLER", limit = 1)
+        assertEquals("OK", first["status"]?.asText())
+        assertTrue("A one-row page of $total is truncated, got $first", first["truncated"]?.asBoolean() == true)
+        assertEquals(1, first["nextOffset"]?.asInt())
+
+        val revision = first["revision"].asText()
+        val served = rows(first).toMutableList()
+        var page = first
+        while (page["truncated"]?.asBoolean() == true) {
+            page = listing(
+                DEMO_APPLICATION, "CONTROLLER",
+                offset = page["nextOffset"].asInt(), limit = 1, expectedRevision = revision
+            )
+            assertEquals("OK", page["status"]?.asText())
+            assertEquals(revision, page["revision"]?.asText())
+            served += rows(page)
+        }
+
+        val keys = served.map(::rowKey)
+        assertEquals("No row repeats across pages: $keys", keys.size, keys.toSet().size)
+        assertEquals(rows(unpaged).map(::rowKey), keys)
+    }
+
+    fun testRevisionChangesWithOrigin() = runBlocking<Unit> {
+        copyDemoApplication()
+
+        val all = listing(DEMO_APPLICATION, "CONTROLLER")
+        val projectOnly = listing(DEMO_APPLICATION, "CONTROLLER", origin = "PROJECT")
+
+        assertEquals("OK", all["status"]?.asText())
+        assertEquals("OK", projectOnly["status"]?.asText())
+        assertFalse(
+            "Another origin filter is another answer and must carry another revision",
+            all["revision"].asText() == projectOnly["revision"].asText()
+        )
+    }
+
+    fun testStaleRevisionIsResultChanged() = runBlocking<Unit> {
+        copyDemoApplication()
+
+        val page = listing(DEMO_APPLICATION, "CONTROLLER", offset = 1, limit = 1, expectedRevision = "stale")
+
+        assertEquals("ERROR", page["status"]?.asText())
+        assertEquals("RESULT_CHANGED", page["error"]?.get("code")?.asText())
+    }
+
+    fun testOrderProjectFirst() = runBlocking<Unit> {
+        copyDemoApplication()
+
+        val beans = rows(listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000))
+        assertTrue(
+            "Precondition: both origins are present, got $beans",
+            beans.map { it["origin"]?.asText() }.containsAll(listOf("PROJECT", "LIBRARY"))
+        )
+
+        val expected = beans.sortedWith(
+            compareBy<JsonNode>(
+                { ORIGIN_ORDER.indexOf(it["origin"]?.asText()) },
+                { it["beanName"].asText() },
+                { it["className"].asText() }
+            )
+        )
+        assertEquals(expected.map(::rowKey), beans.map(::rowKey))
+    }
+
+    fun testTheDefaultPageFitsTheClientBudget() = runBlocking<Unit> {
+        copyDemoApplication()
+
+        val json = toolset.applicationBeans(
+            applicationClassName = DEMO_APPLICATION,
+            projectPath = project.basePath,
+            beanType = "COMPONENT",
+            source = "STATIC",
+        )
+        val page = mapper.readTree(json)
+
+        assertTrue(
+            "Precondition: more components than one default page holds, got $page",
+            (page["totalCount"]?.asInt() ?: 0) > DEFAULT_LIMIT
+        )
+        assertTrue("A default page holds at most $DEFAULT_LIMIT rows, got $page", rows(page).size <= DEFAULT_LIMIT)
+        assertTrue("A partial default page says so, got $page", page["truncated"]?.asBoolean() == true)
+        assertTrue("payload was ${json.length} chars", json.length <= DEFAULT_MAX_CHARS)
+        assertTrue(
+            "MCP-wrapped payload was ${wrappedLength(json)} chars",
+            wrappedLength(json) <= MAX_CLIENT_PAYLOAD
+        )
+    }
+
+
+    fun testUnknownOriginRowsAreCountedAcrossFilteredPages() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass(BEAN_QUERY_APPLICATION, GlobalSearchScope.projectScope(project))!!
+        val missingType = "com.explyt.demo.RemovedService"
+        assertNull("Precondition: the native row has no resolvable class",
+            JavaPsiFacade.getInstance(project).findClass(missingType, GlobalSearchScope.allScope(project)))
+        myFixture.addClass("package com.explyt.demo; @org.springframework.stereotype.Service public class SecondConsumer {}")
+        nativeFixture.install(application, listOf(
+            "clockConsumer" to "com.explyt.demo.ClockConsumer",
+            "secondConsumer" to "com.explyt.demo.SecondConsumer",
+            "removedService" to missingType
+        ))
+        val all = listing(BEAN_QUERY_APPLICATION, "COMPONENT", source = "NATIVE", limit = 50)
+        assertEquals(3, all["totalCount"].asInt())
+        assertTrue("Precondition: the listing uses the native snapshot",
+            rows(all).all { it["source"].asText() == "NATIVE_SNAPSHOT" })
+        val unknown = rows(all).single { it["beanName"].asText() == "removedService" }
+        assertEquals(missingType, unknown["className"].asText())
+        assertFalse(unknown.has("origin"))
+        assertFalse(all.has("unknownOriginCount"))
+
+        val first = listing(BEAN_QUERY_APPLICATION, "COMPONENT", origin = "PROJECT", source = "NATIVE", limit = 1)
+        assertEquals(2, first["totalCount"].asInt())
+        assertEquals(1, first["unknownOriginCount"].asInt())
+        assertEquals(true, first["truncated"].asBoolean())
+        assertEquals(listOf("clockConsumer"), rows(first).map { it["beanName"].asText() })
+        val second = listing(BEAN_QUERY_APPLICATION, "COMPONENT", origin = "PROJECT", source = "NATIVE",
+            limit = 1, offset = first["nextOffset"].asInt(), expectedRevision = first["revision"].asText())
+        assertEquals(1, second["unknownOriginCount"].asInt())
+        assertEquals(listOf("secondConsumer"), rows(second).map { it["beanName"].asText() })
+        assertTrue(rows(first).plus(rows(second)).all { it["origin"].asText() == "PROJECT" })
+        assertEquals(false, second["truncated"].asBoolean())
+        assertTrue("Terminal nextOffset is present as JSON null: $second", second["nextOffset"]?.isNull == true)
+    }
+
+    fun testLibraryOriginFilter() = runBlocking<Unit> {
+        copyDemoApplication()
+        val page = listing(DEMO_APPLICATION, "CONTROLLER", origin = "LIBRARY")
+        assertEquals(2, page["totalCount"].asInt())
+        assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
+            rows(page).map { it["beanName"].asText() }.toSet())
+        assertTrue(rows(page).all { it["origin"].asText() == "LIBRARY" })
+        assertFalse(page.has("unknownOriginCount"))
+    }
+
+    fun testOffsetPastEndIsTerminal() = runBlocking<Unit> {
+        copyDemoApplication()
+        val first = listing(DEMO_APPLICATION, "CONTROLLER")
+        val offset = first["totalCount"].asInt() + 1
+        val page = listing(DEMO_APPLICATION, "CONTROLLER", offset = offset,
+            expectedRevision = first["revision"].asText())
+        assertEquals(emptyList<JsonNode>(), rows(page))
+        assertEquals(offset, page["offset"].asInt())
+        assertEquals(first["totalCount"], page["totalCount"])
+        assertEquals(false, page["truncated"].asBoolean())
+        assertTrue("Terminal nextOffset is present as JSON null: $page", page["nextOffset"]?.isNull == true)
+    }
+
+    fun testUnknownOriginRowsSortLast() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass(BEAN_QUERY_APPLICATION, GlobalSearchScope.projectScope(project))!!
+        val missingType = "com.explyt.demo.RemovedService"
+        assertNull(JavaPsiFacade.getInstance(project).findClass(missingType, GlobalSearchScope.allScope(project)))
+        nativeFixture.install(application, listOf(
+            "zProject" to "com.explyt.demo.ClockConsumer",
+            "libraryConfigurer" to "org.springframework.context.support.PropertySourcesPlaceholderConfigurer",
+            "aUnknown" to missingType
+        ))
+        val page = listing(BEAN_QUERY_APPLICATION, "COMPONENT", source = "NATIVE", limit = 50)
+        val beans = rows(page)
+        assertEquals(3, beans.size)
+        assertFalse("Precondition: the unresolved row has no origin", beans.single { it["beanName"].asText() == "aUnknown" }.has("origin"))
+        assertEquals(listOf("zProject", "aUnknown", "libraryConfigurer"), beans.map { it["beanName"].asText() })
+        val firstUnknown = beans.indexOfFirst { !it.has("origin") }
+        assertTrue(beans.take(firstUnknown).all { it.has("origin") })
+        assertTrue(beans.drop(firstUnknown).all { !it.has("origin") })
+    }
+
+    private fun wrappedLength(json: String): Int =
+        mapper.writeValueAsString(mapper.createArrayNode().add(json)).length
+
+    private fun copyDemoApplication() {
+        myFixture.copyDirectoryToProject("springBootApp", "")
+        assertResolves(DEMO_APPLICATION)
+    }
+
+    private fun assertResolves(className: String) {
+        assertNotNull(
+            "Precondition: $className resolves in the fixture",
+            JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.projectScope(project))
+        )
+    }
+
+    private fun rows(page: JsonNode): List<JsonNode> {
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        val beans = page["beans"]
+        assertTrue("Expected a 'beans' array, got $page", beans?.isArray == true)
+        return beans.toList()
+    }
+
+    private fun rowKey(row: JsonNode): String = row["beanName"].asText() + "|" + row["className"].asText()
+
+    private suspend fun listing(
+        application: String,
+        beanType: String,
+        origin: String? = null,
+        offset: Int = 0,
+        limit: Int = DEFAULT_LIMIT,
+        maxChars: Int = DEFAULT_MAX_CHARS,
+        expectedRevision: String? = null,
+        source: String = "STATIC",
+    ): JsonNode = mapper.readTree(
+        listingText(application, beanType, origin, offset, limit, maxChars, expectedRevision, source)
+    )
+
+    private suspend fun listingText(
+        application: String,
+        beanType: String,
+        origin: String? = null,
+        offset: Int = 0,
+        limit: Int = DEFAULT_LIMIT,
+        maxChars: Int = DEFAULT_MAX_CHARS,
+        expectedRevision: String? = null,
+        source: String = "STATIC",
+    ): String = toolset.applicationBeans(
+        applicationClassName = application,
+        projectPath = project.basePath,
+        beanType = beanType,
+        source = source,
+        origin = origin,
+        offset = offset,
+        limit = limit,
+        maxChars = maxChars,
+        expectedRevision = expectedRevision,
+    )
+
+    private suspend fun rejected(call: suspend () -> String): String {
+        try {
+            val answer = call()
+            fail("Expected the argument to be rejected, got $answer")
+            error("unreachable")
+        } catch (error: McpExpectedError) {
+            return error.message.orEmpty()
+        }
+    }
+
+    private companion object {
+        const val DEMO_APPLICATION = "com.example.app.DemoApplication"
+        const val BEAN_QUERY_APPLICATION = "com.explyt.demo.App"
+        const val LIBRARY_CONTROLLER = "org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController"
+        val ORIGIN_ORDER = listOf("PROJECT", "LIBRARY", null)
+        const val DEFAULT_LIMIT = 8
+        const val DEFAULT_MAX_CHARS = 1800
+        const val MAX_CLIENT_PAYLOAD = 2000
+    }
+}

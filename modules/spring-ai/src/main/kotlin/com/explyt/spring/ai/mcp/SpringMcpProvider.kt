@@ -10,6 +10,8 @@ import com.explyt.spring.core.SpringCoreClasses
 
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.ai.mcp.beans.BeanOrigin
+import com.explyt.spring.ai.mcp.beans.BeanQueryRevision
 import com.explyt.spring.ai.mcp.entities.EntityInventory
 import com.explyt.spring.ai.mcp.entities.EntityRecord
 import com.explyt.spring.ai.mcp.entities.EntitySchema
@@ -97,6 +99,18 @@ private const val HTTP_METHOD_DESCRIPTION =
 /** The values `explyt_get_spring_http_endpoints` can filter by: the endpoint types it lists at all. */
 private val WEB_ENDPOINT_TYPES = EndpointType.entries.filter { it.isWeb }.map { it.name }
 
+private const val BEAN_PAGE_LIMIT = 8
+private const val BEAN_PAGE_MAX_CHARS = 1800
+private const val FIELD_BEANS = "beans"
+private const val FIELD_UNKNOWN_ORIGIN_COUNT = "unknownOriginCount"
+
+private val BEAN_LISTING_ORDER: Comparator<SpringBean> = compareBy<SpringBean>(
+    { it.origin?.ordinal ?: BeanOrigin.entries.size },
+    { it.beanName },
+    { it.className },
+    { it.moduleName },
+)
+
 class SpringBootApplicationMcpToolset : McpToolset {
 
     @McpTool("explyt_get_spring_boot_applications", title = "Spring Boot applications in the project")
@@ -138,7 +152,17 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Lists the beans of one Spring Boot application, filtered by stereotype, from the IDE's bean " +
                 "model: it includes @Bean factory methods, meta-annotated stereotypes and @Import-ed configurations, " +
                 "which a text search for '@Service' or '@Component' never finds. " +
-                "Returns each bean's name, fully-qualified class and module, one row per name a bean answers to. " +
+                "Returns {status, revision, totalCount, offset, truncated, nextOffset, beans}: each row of 'beans' " +
+                "carries the bean's name, fully-qualified class and module, one row per name a bean answers to. " +
+                "'origin' is PROJECT or LIBRARY, read from where the bean is declared rather than from its type - " +
+                "a project @Bean returning java.time.Clock is PROJECT; it is absent when the model has no " +
+                "declaration to read it from. Rows come PROJECT first, then LIBRARY, then those of unknown origin, " +
+                "each by beanName and className. Pass origin=PROJECT or origin=LIBRARY to keep one of them: rows " +
+                "of unknown origin are then left out and counted in 'unknownOriginCount', absent when none was. " +
+                "A page holds at most 'limit' beans (8 by default) within 'maxChars' of compact JSON (1800 by " +
+                "default) and can end earlier, because the budget is measured on the finished document. When " +
+                "'truncated' is true, repeat the call with 'offset' = 'nextOffset' and 'expectedRevision' = " +
+                "'revision' to continue the same answer; a changed filter or a re-read model answers RESULT_CHANGED. " +
                 "Every row also names the model that answered in 'source': STATIC is an estimate of the module, " +
                 "NATIVE_SNAPSHOT a context recorded at 'snapshotImportedAt' (ISO-8601 UTC, absent when unknown) " +
                 "and never live, with 'contextId' naming it. 'limitations' appears only on a row whose own bean " +
@@ -179,6 +203,19 @@ class SpringBootApplicationMcpToolset : McpToolset {
         source: String = "AUTO",
         @McpDescription("Id of the loaded context to answer from, when several are loaded for this application.")
         contextId: String? = null,
+        @McpDescription(
+            "Optional filter by where a bean is declared, case-insensitive: PROJECT or LIBRARY. Leave empty for " +
+                    "all beans. Any other value is rejected with the list of valid values."
+        )
+        origin: String? = null,
+        @McpDescription("Index of the first bean to return; needs expectedRevision when above 0")
+        offset: Int = 0,
+        @McpDescription("Maximum beans on this page, 1..50, $BEAN_PAGE_LIMIT by default")
+        limit: Int = BEAN_PAGE_LIMIT,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $BEAN_PAGE_MAX_CHARS by default")
+        maxChars: Int = BEAN_PAGE_MAX_CHARS,
+        @McpDescription("The 'revision' of the first page, required to continue that same answer")
+        expectedRevision: String? = null,
     ): String {
         val project = getCurrentProject(projectPath)
             ?: projectPath?.takeIf { it.isNotBlank() }?.let { mcpFail(projectProblem(it)) }
@@ -190,7 +227,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val preference = BeanSourcePreference.valueOf(
             McpChoiceArguments.required(source, "source", BeanSourcePreference.entries.map { it.name })
         )
-        val springBeans = withContext(Dispatchers.IO) {
+        val originFilter = origin
+            ?.let { McpChoiceArguments.optional(it, "origin", BeanOrigin.names) }
+            ?.let(BeanOrigin::valueOf)
+        val page = PageRequest(offset = offset, limit = limit, maxChars = maxChars, expectedRevision = expectedRevision)
+        val listing = withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val applicationPsiClass = ApplicationClassName
                     .findClass(project, applicationClassName, project.projectScope())
@@ -205,17 +246,36 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 }
             }
         }
-        val beans = springBeans.asSequence()
-            .filter { it.beanType == mcpBeanType }
-            .map {
-                McpSpringBean(
-                    it.beanName, it.className, it.moduleName, it.source, it.contextId, it.snapshotImportedAt,
-                    it.limitations
-                )
-            }
-            .toList()
-        return mapper.writeValueAsString(beans)
+        val ofType = listing.rows.filter { it.beanType == mcpBeanType }
+        val beans = ofType
+            .filter { originFilter == null || it.origin == originFilter }
+            .sortedWith(BEAN_LISTING_ORDER)
+        val unknownOriginCount = if (originFilter == null) 0 else ofType.count { it.origin == null }
+        val revision = BeanQueryRevision.compute(
+            listing.modelStamp,
+            mapOf(
+                "applicationClassName" to applicationClassName.trim(),
+                "beanType" to mcpBeanType.name,
+                "source" to preference.name,
+                "contextId" to contextId,
+                "origin" to originFilter?.name,
+            )
+        )
+        val envelope = mapper.createObjectNode()
+        if (unknownOriginCount > 0) envelope.put(FIELD_UNKNOWN_ORIGIN_COUNT, unknownOriginCount)
+        return BoundedPageWriter().write(
+            envelope = envelope,
+            itemsField = FIELD_BEANS,
+            totalCount = beans.size,
+            itemAt = { index -> mapper.valueToTree(beans[index].toMcpSpringBean()) },
+            revision = revision,
+            page = page,
+        )
     }
+
+    private fun SpringBean.toMcpSpringBean() = McpSpringBean(
+        beanName, className, moduleName, source, contextId, snapshotImportedAt, limitations, origin?.name
+    )
 
 
     private fun toSpringBootApplicationDto(psiClass: PsiClass): SpringBootApplicationJson? {
@@ -2085,6 +2145,8 @@ data class McpSpringBean(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val snapshotImportedAt: String?,
     @param:McpDescription("what the model cannot promise about this row's own bean; absent when nothing")
     @get:JsonInclude(JsonInclude.Include.NON_EMPTY) val limitations: List<String>,
+    @param:McpDescription("PROJECT or LIBRARY, read from where the bean is declared; absent when unknown")
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val origin: String?,
 )
 
 data class EndpointJson(
