@@ -5,6 +5,8 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
+import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.conditional.ConditionReason
 import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -152,6 +154,100 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         assertTrue("answer of ${answer.length} chars exceeds $CLIENT_ROOT_BUDGET: $answer", answer.length <= CLIENT_ROOT_BUDGET)
     }
 
+    fun testDisabledConditionEvaluationLeavesNoBeanCondition() = runBlocking<Unit> {
+        val settings = SpringToolRunConfigurationsSettingsState.getInstance()
+        val wasEnabled = settings.isBeanFilterEnabled
+        settings.isBeanFilterEnabled = false
+        try {
+            addProperties(EXPOSE_ALL)
+            addPsEtlEndpoint()
+            assertEquals(
+                "precondition: without condition evaluation the model holds no verdict",
+                listOf(null),
+                endpointModelOf(PS_ETL).map { it.beanCondition }.distinct()
+            )
+
+            val psEtl = exactMatch(PS_ETL_PATH)
+
+            assertEquals("EXPOSED", psEtl["exposed"]?.asText())
+            assertEquals("UNRESTRICTED", psEtl["access"]?.asText())
+            assertFalse("no verdict, no beanCondition, got $psEtl", psEtl.has("beanCondition"))
+            assertEquals(1, listActuator(compact = true).count { it["fullPath"].asText() == PS_ETL_PATH })
+        } finally {
+            settings.isBeanFilterEnabled = wasEnabled
+        }
+    }
+
+    fun testNearestRouteOfAMissCarriesTheBeanCondition() = runBlocking<Unit> {
+        addProperties(EXPOSE_ALL)
+        addPsEtlEndpoint()
+        assertEndpointModelSays<ConditionVerdict.Inactive>(PS_ETL)
+
+        val root = mapper.readTree(toolset.findEndpoint(urlPattern = "$PS_ETL_PATH/zzqqmissing", projectPath = projectPath()))
+
+        assertEquals("precondition: the URL matches nothing, got $root", 0, root["endpoints"].size())
+        assertEquals("precondition: the neighbourhood is psEtl's prefix", PS_ETL_PATH, root["sharedPrefix"]?.asText())
+        val psEtl = root["nearestByPrefix"].single { it["fullPath"].asText() == PS_ETL_PATH }
+        assertEquals("INACTIVE", beanConditionOf(psEtl)["state"]?.asText())
+        assertEquals(PS_ETL, beanConditionOf(psEtl)["carrier"]?.asText())
+    }
+
+    fun testEndpointWithAnActiveAndAnInactiveBeanHasNoBeanCondition() = runBlocking<Unit> {
+        addProperties(EXPOSE_ALL)
+        addTwiceRegisteredEndpoint()
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+        val verdicts = SpringSearchService.getInstance(project).conditionVerdicts(module)
+            .filterKeys { it.psiClass.qualifiedName == TWICE }
+            .values
+        assertEquals("precondition: two beans of $TWICE, got $verdicts", 2, verdicts.size)
+        assertEquals(1, verdicts.count { it is ConditionVerdict.Active })
+        assertEquals(1, verdicts.count { it is ConditionVerdict.Inactive })
+        assertEndpointModelSays<ConditionVerdict.Active>(TWICE)
+
+        val listed = listActuator(compact = true).filter { it["fullPath"].asText() == TWICE_PATH }
+        val found = exactMatch(TWICE_PATH)
+
+        assertEquals(1, listed.size)
+        assertFalse("the most active bean decides, got ${listed.single()}", listed.single().has("beanCondition"))
+        assertFalse("the most active bean decides, got $found", found.has("beanCondition"))
+    }
+
+    private fun addTwiceRegisteredEndpoint() {
+        myFixture.addFileToProject(
+            "com/app/TwiceEndpoint.kt", """
+            package com.app
+
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.stereotype.Component
+
+            @Component
+            @Endpoint(id = "twice")
+            class TwiceEndpoint {
+                @ReadOperation
+                fun status() = "idle"
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/app/TwiceEndpointConfig.kt", """
+            package com.app
+
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+
+            @Configuration
+            @ConditionalOnProperty(name = ["clickhouse.enabled"], havingValue = "true")
+            class TwiceEndpointConfig {
+                @Bean
+                fun secondTwiceEndpoint() = TwiceEndpoint()
+            }
+            """.trimIndent()
+        )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
+
     private fun addProperties(vararg lines: String) {
         myFixture.addFileToProject("application.properties", lines.joinToString("\n"))
     }
@@ -261,5 +357,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         const val CLICKHOUSE_CONFIG = "com.app.ClickhouseEndpointConfig"
         const val HEALTH_ENDPOINT = "org.springframework.boot.health.actuate.endpoint.HealthEndpoint"
         const val CLIENT_ROOT_BUDGET = 2000
+        const val TWICE = "com.app.TwiceEndpoint"
+        const val TWICE_PATH = "/actuator/twice"
     }
 }
