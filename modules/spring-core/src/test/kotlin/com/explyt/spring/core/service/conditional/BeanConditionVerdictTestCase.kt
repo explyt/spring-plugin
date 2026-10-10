@@ -9,6 +9,7 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.psi.PsiMember
+import org.jetbrains.uast.toUElementOfType
 
 abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
 
@@ -272,6 +273,131 @@ abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
         assertFalse("com.app.InactiveProfileConfig" in excludedBeans())
     }
 
+    fun testUnreadablePropertyNamesHavePropertyReason() {
+        val config = addGapConfiguration(
+            "UnreadableNamesConfig",
+            "@ConditionalOnProperty(name = SOME_UNRESOLVED_CONSTANT)",
+            "@ConditionalOnProperty(name = [SOME_UNRESOLVED_CONSTANT])"
+        )
+        assertAnnotatedBy(config, CONDITIONAL_ON_PROPERTY)
+        val source = config.navigationElement
+        val value = if (fixtures is com.explyt.spring.core.service.conditional.kotlin.KotlinConditionFixtures) {
+            com.intellij.psi.util.PsiTreeUtil.findChildrenOfType(source, org.jetbrains.kotlin.psi.KtNameReferenceExpression::class.java)
+                .single { it.getReferencedName() == "SOME_UNRESOLVED_CONSTANT" }
+        } else {
+            com.intellij.psi.util.PsiTreeUtil.findChildrenOfType(source, com.intellij.psi.PsiReferenceExpression::class.java)
+                .single { it.referenceName == "SOME_UNRESOLVED_CONSTANT" }
+        }
+        assertEquals("Precondition: property name expression is retained", "SOME_UNRESOLVED_CONSTANT", value.text)
+        assertNull("Precondition: property name cannot be evaluated", value.toUElementOfType<org.jetbrains.uast.UExpression>()!!.evaluate())
+
+        assertTrue("Precondition: unresolved names do not hide the bean", "com.app.UnreadableNamesConfig" in activeBeans())
+        val evidence = undecidedEvidence(verdictOf(config)).single()
+        assertEquals(CONDITIONAL_ON_PROPERTY, evidence.annotationFqn)
+        assertEquals(ConditionReason.PROPERTY_UNRESOLVABLE, evidence.reason)
+    }
+
+    fun testSatisfiedBeanConditionIsActive() {
+        fixtures.addPlainComponent()
+        val config = addGapConfiguration(
+            "SatisfiedBeanConfig", "@ConditionalOnBean(PlainService.class)", "@ConditionalOnBean(PlainService::class)"
+        )
+        assertAnnotatedBy(config, CONDITIONAL_ON_BEAN)
+        assertTrue("Precondition: required bean exists", "com.app.PlainService" in activeBeans())
+
+        assertEquals(ConditionVerdict.Active, verdictOf(config))
+    }
+
+    fun testSatisfiedClassConditionIsActive() {
+        val config = addGapConfiguration(
+            "SatisfiedClassConfig", "@ConditionalOnClass(String.class)", "@ConditionalOnClass(String::class)"
+        )
+        assertAnnotatedBy(config, "org.springframework.boot.autoconfigure.condition.ConditionalOnClass")
+        assertNotNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("java.lang.String", config.resolveScope))
+
+        assertEquals(ConditionVerdict.Active, verdictOf(config))
+    }
+
+    fun testMemberVerdictAgreesWithEveryDiscoveredBean() {
+        addProperties("product.enabled=false")
+        addGapSource(
+            "ProductRegistrar",
+            "public class ProductRegistrar { @Configuration @ConditionalOnProperty(name = \"product.enabled\", havingValue = \"true\") public static class DisabledProduct {} public static class ActiveProduct {} }",
+            "class ProductRegistrar { @Configuration @ConditionalOnProperty(name = [\"product.enabled\"], havingValue = \"true\") class DisabledProduct; class ActiveProduct }"
+        )
+        val registrar = beanClass("com.app.ProductRegistrar")
+        val disabled = registrar.innerClasses.single { it.name == "DisabledProduct" }
+        val active = registrar.innerClasses.single { it.name == "ActiveProduct" }
+        assertAnnotatedBy(disabled, CONDITIONAL_ON_PROPERTY)
+        assertPropertyDefined("product.enabled")
+        val beans = listOf(
+            com.explyt.spring.core.service.PsiBean("disabledProduct", disabled, psiMember = registrar),
+            com.explyt.spring.core.service.PsiBean("activeProduct", active, psiMember = registrar)
+        )
+        registerConditionBeans(beans)
+        val facade = com.explyt.spring.core.service.SpringSearchServiceFacade.getInstance(project)
+        val excluded = facade.getExcludedBeansClasses(module)
+        val activeSet = facade.getAllActiveBeans(module)
+        val related = (activeSet + excluded).filter { it.psiMember == registrar }
+        assertEquals("Precondition: one member registers two distinct bean types", 2, related.size)
+        assertTrue("Precondition: one registration is excluded", related.any { it in excluded })
+        assertTrue("Precondition: one registration is active", related.any { it in activeSet })
+        assertTrue("Precondition: a class carrier will be checked again as a distinct member", related.any { it.psiMember is com.intellij.psi.PsiClass && it.psiMember != it.psiClass && it in activeSet })
+
+        for (bean in activeSet + excluded) {
+            val verdict = verdictOf(bean)
+            assertNotNull("Every discovered bean must have a verdict: ${bean.name}", verdict)
+            assertEquals("Verdict must agree with exclusion of ${bean.name}", bean in excluded, verdict is ConditionVerdict.Inactive)
+        }
+    }
+
+    fun testRepeatedClassCarrierDoesNotOverwriteInactiveVerdict() {
+        addProperties("blocker.enabled=false")
+        addGapSource(
+            "RepeatedCarrier",
+            "@ConditionalOnMissingBean(name = \"blocker\") public class RepeatedCarrier { public static class Blocker {} public static class ActiveProduct {} public static class Owner {} }",
+            "@ConditionalOnMissingBean(name = [\"blocker\"]) class RepeatedCarrier { class Blocker; class ActiveProduct; class Owner }"
+        )
+        addGapSource(
+            "ExcludedBlocker",
+            "@ConditionalOnProperty(name = \"blocker.enabled\", havingValue = \"true\") public class ExcludedBlocker {}",
+            "@ConditionalOnProperty(name = [\"blocker.enabled\"], havingValue = \"true\") class ExcludedBlocker"
+        )
+        val carrier = beanClass("com.app.RepeatedCarrier")
+        val owner = carrier.innerClasses.single { it.name == "Owner" }
+        addGapSource("IndependentProduct", "public class IndependentProduct {}", "class IndependentProduct")
+        val product = beanClass("com.app.IndependentProduct")
+        val blockerClass = beanClass("com.app.ExcludedBlocker")
+        assertAnnotatedBy(carrier, "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean")
+        assertAnnotatedBy(blockerClass, CONDITIONAL_ON_PROPERTY)
+        assertPropertyDefined("blocker.enabled")
+        val first = com.explyt.spring.core.service.PsiBean("firstRegistration", carrier, psiMember = owner)
+        val blocker = com.explyt.spring.core.service.PsiBean("blocker", blockerClass)
+        val later = com.explyt.spring.core.service.PsiBean("laterRegistration", product, psiMember = carrier)
+        registerConditionBeans(listOf(first, blocker, later))
+        val facade = com.explyt.spring.core.service.SpringSearchServiceFacade.getInstance(project)
+        val excluded = facade.getExcludedBeansClasses(module)
+        val active = facade.getAllActiveBeans(module)
+        assertTrue("Precondition: first carrier check excludes its registration", first in excluded)
+        assertTrue("Precondition: required blocker disappears before the later check", blocker in excluded)
+        assertTrue("Precondition: later registration is discovered", later in active + excluded)
+        assertTrue("Precondition: carrier is checked again as a class-valued member", later.psiMember is com.intellij.psi.PsiClass && later.psiMember != later.psiClass)
+
+        for (bean in active + excluded) {
+            val verdict = verdictOf(bean)
+            assertNotNull("Every discovered bean must have a verdict: ${bean.name}", verdict)
+            assertEquals("Verdict must agree with exclusion of ${bean.name}", bean in excluded, verdict is ConditionVerdict.Inactive)
+        }
+    }
+
+    private fun registerConditionBeans(beans: List<com.explyt.spring.core.service.PsiBean>) {
+        val point = com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer.EP_NAME.getPoint(project)
+        point.registerExtension(object : com.explyt.spring.core.service.beans.discoverer.AdditionalBeansDiscoverer() {
+            override fun discoverBeans(module: com.intellij.openapi.module.Module): Collection<com.explyt.spring.core.service.PsiBean> = beans
+        }, testRootDisposable)
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+    }
+
     private fun addGapConfiguration(name: String, javaAnnotations: String, kotlinAnnotations: String): com.intellij.psi.PsiClass {
         addGapSource(name, "@Configuration $javaAnnotations public class $name {}", "@Configuration $kotlinAnnotations class $name")
         return beanClass("com.app.$name")
@@ -287,6 +413,9 @@ abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
         myFixture.addFileToProject("com/app/$name.${if (kotlin) "kt" else "java"}", source)
         ModificationTrackerManager.getInstance(project).invalidateAll()
     }
+
+    private fun verdictOf(bean: com.explyt.spring.core.service.PsiBean): ConditionVerdict? =
+        SpringSearchService.getInstance(project).conditionVerdictOf(bean, module)
 
     private fun verdictOf(member: PsiMember): ConditionVerdict? {
         ModificationTrackerManager.getInstance(project).invalidateAll()
