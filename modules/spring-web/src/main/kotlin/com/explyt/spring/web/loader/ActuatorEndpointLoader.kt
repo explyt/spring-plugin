@@ -18,6 +18,9 @@ import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.ActuatorAccess
 import com.explyt.spring.web.util.ActuatorExposure
 import com.explyt.spring.web.util.ActuatorMediaTypes
+import com.explyt.spring.web.util.ApplicationBasePath
+import com.explyt.spring.web.util.ApplicationModules
+import com.explyt.spring.web.util.EndpointUrlMatcher
 import com.explyt.spring.web.util.SpringWebUtil
 
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
@@ -68,6 +71,18 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         LibraryClassCache.searchForLibraryClass(project, SpringCoreClasses.ACTUATOR_ENDPOINT) != null
 
     override fun getType(): EndpointType = EndpointType.ACTUATOR
+
+    override fun getEndpointElements(urlPath: String, module: Module): List<EndpointElement> {
+        val served = ApplicationModules.servingModulesOf(module).ifEmpty { listOf(module) }
+            .flatMap { serving -> searchEndpoints(serving).map { ServedEndpoint(it, serving) } }
+        return EndpointUrlMatcher.match(
+            served, urlPath, EndpointUrlMatcher.Policy.REFERENCE,
+            routeOf = { it.endpoint.path },
+            basePathOf = { ApplicationBasePath.cachedOf(it.servingModule) },
+        ).endpoints.map { it.endpoint }.distinctBy { it.psiElement }
+    }
+
+    private data class ServedEndpoint(val endpoint: EndpointElement, val servingModule: Module)
 
     override fun searchEndpoints(module: Module): List<EndpointElement> {
         return CachedValuesManager.getManager(project).getCachedValue(module) {
