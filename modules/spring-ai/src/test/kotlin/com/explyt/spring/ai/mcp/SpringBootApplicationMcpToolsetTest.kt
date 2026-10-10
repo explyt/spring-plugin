@@ -48,14 +48,37 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
         return page["beans"]
     }
 
-    private suspend fun fullListing(applicationClassName: String, beanType: String): String =
-        toolset.applicationBeans(
-            applicationClassName = applicationClassName,
-            projectPath = projectPath(),
-            beanType = beanType,
-            limit = BoundedPageWriter.MAX_LIMIT,
-            maxChars = BoundedPageWriter.MAX_CHARS
-        )
+    private suspend fun fullListing(applicationClassName: String, beanType: String): String {
+        val beans = mapper.createArrayNode()
+        var offset = 0
+        var revision: String? = null
+        while (true) {
+            val page = mapper.readTree(toolset.applicationBeans(
+                applicationClassName = applicationClassName,
+                projectPath = projectPath(),
+                beanType = beanType,
+                offset = offset,
+                expectedRevision = revision,
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS
+            ))
+            assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+            page["beans"].forEach { beans.add(it) }
+            revision = page["revision"].asText()
+            if (!page["truncated"].asBoolean()) {
+                assertEquals(page["totalCount"].asInt(), beans.size())
+                val complete = mapper.createObjectNode()
+                    .put("status", "OK")
+                    .put("totalCount", beans.size())
+                    .put("truncated", false)
+                complete.set<JsonNode>("beans", beans)
+                return mapper.writeValueAsString(complete)
+            }
+            val nextOffset = page["nextOffset"].asInt()
+            assertTrue("Continuation must advance, got $page", nextOffset > offset)
+            offset = nextOffset
+        }
+    }
 
     private fun texts(node: JsonNode, field: String): List<String> =
         node.mapNotNull { it[field]?.asText() }
