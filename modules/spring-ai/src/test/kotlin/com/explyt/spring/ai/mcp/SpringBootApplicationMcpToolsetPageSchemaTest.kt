@@ -485,6 +485,80 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         )
     }
 
+    fun testOwnPageImplementationIsNotRewrappedUnderViaDto() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+        addFile(
+            "com/example/shop/WindowPage.java", """
+            package com.example.shop;
+
+            import org.springframework.data.domain.Page;
+
+            public abstract class WindowPage<T> implements Page<T> {
+                public String getWindow() { return ""; }
+            }
+            """.trimIndent()
+        )
+        addFile(
+            "com/example/shop/WindowPageController.java", """
+            package com.example.shop;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class WindowPageController {
+                @GetMapping("/orders/window-page")
+                public WindowPage<OrderDto> page() { return null; }
+            }
+            """.trimIndent()
+        )
+        assertResolves("com.example.shop.WindowPage")
+
+        val schema = schemaOf("/orders/window-page", "com.example.shop.WindowPage<$ORDER_DTO>")
+
+        assertEquals(schema.toString(), "com.example.shop.WindowPage", schema["className"].asText())
+        assertFalse("a Page not extending PageImpl is written by itself: $schema", "page" in names(schema))
+        assertFalse(schema.toString(), schema["wireShape"]?.asText() == "PAGED_MODEL")
+        assertTrue("its own getter is written: $schema", "window" in names(schema))
+    }
+
+    fun testSliceImplSubclassStaysDirectUnderViaDto() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+        addFile(
+            "com/example/shop/OrderSlice.java", """
+            package com.example.shop;
+
+            import java.util.List;
+            import org.springframework.data.domain.SliceImpl;
+
+            public class OrderSlice<T> extends SliceImpl<T> {
+                public OrderSlice(List<T> content) { super(content); }
+            }
+            """.trimIndent()
+        )
+        addFile(
+            "com/example/shop/OrderSliceController.java", """
+            package com.example.shop;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class OrderSliceController {
+                @GetMapping("/orders/custom-slice")
+                public OrderSlice<OrderDto> slice() { return null; }
+            }
+            """.trimIndent()
+        )
+        assertResolves("org.springframework.data.domain.SliceImpl")
+
+        val schema = schemaOf("/orders/custom-slice", "com.example.shop.OrderSlice<$ORDER_DTO>")
+
+        assertFalse("a slice is never re-wrapped: $schema", "page" in names(schema))
+        assertFalse(schema.toString(), schema["wireShape"]?.asText() == "PAGED_MODEL")
+        assertEquals(schema.toString(), SLICE_DIRECT_KEYS, names(schema).toSet())
+    }
+
     private fun addCustomPage() {
         addFile(
             "com/example/shop/OrderPage.java", """
