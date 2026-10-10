@@ -67,7 +67,7 @@ data class Referrer(
 
 /**
  * @property path the path the application serves, with configuration placeholders resolved.
- * @property pathTemplate the path as declared, placeholders included; equal to [path] when nothing was resolved.
+ * @property pathTemplate the endpoint path template with mapping prefixes and values joined and normalised, before configuration placeholders are resolved; equal to [path] when nothing was resolved.
  * @property requestMethods the verbs the endpoint answers; empty when its declaration restricts none, such as a bare
  * `@RequestMapping`.
  * @property exposure whether the configuration publishes the endpoint over HTTP; `null` for an endpoint that is
