@@ -98,13 +98,15 @@ object SpringWebClasses {
     val ROUTE_FUNCTION_BUILDERS = listOf(ROUTE_FUNCTION_BUILDER, SERVLET_ROUTE_FUNCTION_BUILDER)
 
     val ROUTE_FUNCTION_BUILDER_VERBS = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
-    const val ROUTE_FUNCTION_BUILDER_PATH = "path"
-    const val ROUTE_FUNCTION_BUILDER_NEST = "nest"
+    const val ROUTE_PATH = "path"
+    const val ROUTE_NEST = "nest"
+    const val ROUTE_FUNCTION_BUILDER_PATH = ROUTE_PATH
+    const val ROUTE_FUNCTION_BUILDER_NEST = ROUTE_NEST
 
     const val REQUEST_PREDICATES = "org.springframework.web.reactive.function.server.RequestPredicates"
     const val SERVLET_REQUEST_PREDICATES = "org.springframework.web.servlet.function.RequestPredicates"
     val REQUEST_PREDICATES_CLASSES = listOf(REQUEST_PREDICATES, SERVLET_REQUEST_PREDICATES)
-    const val REQUEST_PREDICATES_PATH = "path"
+    const val REQUEST_PREDICATES_PATH = ROUTE_PATH
     val REQUEST_PREDICATES_PATH_FREE_FACTORIES = setOf(
         "accept", "contentType", "headers", "method", "methods", "all", "param", "queryParam"
     )
@@ -126,7 +128,8 @@ object SpringWebClasses {
         "org.springframework.web.servlet.function.RouterFunctionDsl"
     )
 
-    const val ROUTER_DSL_PATH_PREDICATE = "path"
+    val REQUEST_PREDICATE_FACTORY_CLASSES = REQUEST_PREDICATES_CLASSES + ROUTER_DSL_CLASSES
+    val REQUEST_PREDICATE_OPERATOR_CLASSES = REQUEST_PREDICATE_CLASSES + ROUTER_DSL_CLASSES
 
     const val OPEN_FEIGN_CLIENT_CONFIG = "spring.cloud.openfeign.client.config"
 
