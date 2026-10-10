@@ -8,6 +8,7 @@ package com.explyt.spring.ai.mcp.beans
 import com.explyt.spring.ai.mcp.McpSourceLocation
 import com.explyt.spring.ai.mcp.McpSourcePositions
 import com.explyt.spring.core.service.beans.BeanAnnotationEvidence
+import com.explyt.spring.core.service.beans.BeanConditionRecord
 import com.explyt.spring.core.service.beans.BeanDetailsReader
 import com.explyt.spring.core.service.beans.BeanLookupSelector
 import com.explyt.spring.core.service.beans.BeanModelSource
@@ -49,7 +50,9 @@ class BeanResponseMapper(private val project: Project) {
             unresolvedCount = selection.match.unresolvedCount,
             totalCount = ordered.size,
             candidateAt = { index -> candidate(ordered[index], lookup, includeDetails) },
-            injection = injection?.let(::injection)
+            injection = injection?.let(::injection),
+            inactiveCandidates = selection.match.inactiveRecords.sortedWith(CANDIDATE_ORDER)
+                .map { inactiveCandidate(it, lookup, includeDetails) }
         )
     }
 
@@ -86,7 +89,35 @@ class BeanResponseMapper(private val project: Project) {
         node.put("kind", record.kind.name)
         matchedName(record, lookup)?.let { node.put("matchedName", it) }
         declaration(record.declaration)?.let { node.set<ObjectNode>("declaration", it) }
+        record.condition?.let { node.set<ObjectNode>("condition", condition(it, includeDetails)) }
         if (includeDetails) node.set<ObjectNode>("details", details(record))
+        return node
+    }
+
+    private fun inactiveCandidate(
+        record: ScopedBeanRecord, lookup: BeanLookupSelector?, includeDetails: Boolean
+    ): ObjectNode {
+        val node = mapper.createObjectNode()
+        node.put("name", record.name)
+        node.put("type", record.typeName)
+        node.put("kind", record.kind.name)
+        matchedName(record, lookup)?.let { node.put("matchedName", it) }
+        declaration(record.declaration)?.let { node.set<ObjectNode>("declaration", it) }
+        record.condition?.let { node.set<ObjectNode>("condition", condition(it, includeDetails)) }
+        if (includeDetails) node.put("id", record.id)
+        return node
+    }
+
+    private fun condition(condition: BeanConditionRecord, includeDetails: Boolean): ObjectNode {
+        val node = mapper.createObjectNode()
+        node.put("state", condition.state.name)
+        if (condition.undecided) node.putArray("reasons").apply { condition.reasons.forEach(::add) }
+        node.put("annotation", condition.annotation)
+        node.put("carrier", condition.carrier)
+        condition.detail?.let { node.put("detail", it) }
+        if (includeDetails && condition.assumptions.isNotEmpty()) {
+            node.putArray("assumptions").apply { condition.assumptions.forEach(::add) }
+        }
         return node
     }
 

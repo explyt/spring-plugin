@@ -27,7 +27,8 @@ data class BeanResponseContent(
     val unresolvedCount: Int,
     val totalCount: Int,
     val candidateAt: (Int) -> ObjectNode,
-    val injection: ObjectNode? = null
+    val injection: ObjectNode? = null,
+    val inactiveCandidates: List<ObjectNode> = emptyList()
 )
 
 typealias BeanPageRequest = PageRequest
@@ -54,6 +55,9 @@ class BoundedBeanResponseWriter {
         envelope.put("matchCompleteness", content.matchCompleteness)
         envelope.put("unresolvedCount", content.unresolvedCount)
         content.injection?.let { envelope.set<ObjectNode>("injection", it) }
+        if (content.inactiveCandidates.isNotEmpty()) {
+            envelope.putArray("inactiveCandidates").addAll(content.inactiveCandidates)
+        }
         return envelope
     }
 
