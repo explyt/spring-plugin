@@ -24,6 +24,7 @@ import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
 import com.intellij.psi.util.InheritanceUtil
 import com.intellij.psi.util.PropertyUtilBase
+import com.intellij.psi.util.PsiUtil
 import org.jetbrains.kotlin.asJava.classes.KtLightClass
 import org.jetbrains.kotlin.asJava.elements.KtLightField
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
@@ -55,26 +56,26 @@ internal object ResponseSchemaReader {
      * applies to every class of the schema that does not declare its own `@JsonNaming`.
      */
     fun schemaOf(type: PsiType, depth: Int, module: Module? = null): DtoSchemaJson? =
-        schemaOf(type, depth, module?.let(JacksonNaming::configuredFor))
+        schemaOf(type, depth, SchemaContext(module?.let(JacksonNaming::configuredFor), module))
 
-    private fun schemaOf(type: PsiType, depth: Int, configured: JacksonNaming?): DtoSchemaJson? {
+    private fun schemaOf(type: PsiType, depth: Int, context: SchemaContext): DtoSchemaJson? {
         if (depth <= 0) return null
         val resolved = (type as? PsiClassType)?.resolve() ?: return null
         val fqn = resolved.qualifiedName ?: return null
 
+        if (fqn in SpringDataChunkSchemas.CHUNKS && !ProjectSources.declares(resolved)) {
+            return chunkSchemaOf(type, fqn, depth, context)
+        }
+        if (isPageImplSubclass(resolved)) return pageImplSubclassSchemaOf(type, resolved, fqn, depth, context)
         if (isContainer(resolved, fqn)) {
-            return type.parameters.firstOrNull()?.let { schemaOf(it, depth, configured) }
+            return type.parameters.firstOrNull()?.let { schemaOf(it, depth, context) }
         }
         if (resolved.isEnum) return enumSchemaOf(resolved, fqn)
 
-        val naming = JacksonNaming.declaredOn(resolved) ?: configured
-        val names = Names(naming, configured)
+        val naming = JacksonNaming.declaredOn(resolved) ?: context.configured
+        val names = Names(naming, context)
         if (!ProjectSources.declares(resolved)) return librarySchemaOf(resolved, fqn, depth, names)
-        val fields = if (isJavaBean(resolved)) {
-            beanPropertiesOf(resolved, depth, names).ifEmpty { fieldsOf(resolved, depth, names) }
-        } else {
-            fieldsOf(resolved, depth, names).ifEmpty { propertiesOf(resolved, depth, names) }
-        }
+        val fields = projectFieldsOf(resolved, depth, names)
         val polymorphism = JacksonPolymorphism.of(resolved)
         return DtoSchemaJson(
             className = fqn,
@@ -84,11 +85,87 @@ internal object ResponseSchemaReader {
             polymorphic = polymorphism?.let { true },
             discriminator = polymorphism?.typeInfo?.let { DiscriminatorJson(it.use, it.include, it.property) },
             variants = polymorphism?.variants?.takeIf { it.isNotEmpty() }
-                ?.mapNotNull { variantSchemaOf(it, depth - 1, configured) },
+                ?.mapNotNull { variantSchemaOf(it, depth - 1, context) },
         )
     }
 
-    private fun variantSchemaOf(variant: PolymorphicVariant, depth: Int, configured: JacksonNaming?): DtoSchemaJson? {
+    /**
+     * A Spring Data page or slice as Spring Data writes it: `PageImpl` and `SliceImpl` through their getters, or a
+     * `PageImpl` re-wrapped into `PagedModel` when the application asks for `VIA_DTO`. A declared `Page` or `Slice`
+     * is taken for its Spring Data implementation, which a custom one is not.
+     */
+    private fun chunkSchemaOf(type: PsiClassType, fqn: String, depth: Int, context: SchemaContext): DtoSchemaJson {
+        val element = type.parameters.firstOrNull()
+        val assumed = true.takeIf { fqn == PAGE || fqn == SLICE }
+        if (fqn == SLICE || fqn == SLICE_IMPL) {
+            return DtoSchemaJson(
+                className = SLICE_IMPL,
+                fields = listOf(contentOf(element, depth, context)) + SpringDataChunkSchemas.sliceProperties(depth),
+                wireShape = PageWireShape.SLICE_DIRECT.name,
+                wireShapeAssumed = assumed,
+            )
+        }
+        val serialization = context.pageSerialization
+        if (serialization.mode == PageSerializationMode.VIA_DTO) return pagedModelOf(element, depth, context, assumed)
+        return DtoSchemaJson(
+            className = PAGE_IMPL,
+            fields = listOf(contentOf(element, depth, context)) + SpringDataChunkSchemas.pageProperties(depth),
+            wireShape = PageWireShape.PAGE_DIRECT.name,
+            wireShapeSource = serialization.source,
+            wireShapeAssumed = assumed,
+        )
+    }
+
+    private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
+        if (isJavaBean(psiClass)) {
+            beanPropertiesOf(psiClass, depth, names).ifEmpty { fieldsOf(psiClass, depth, names) }
+        } else {
+            fieldsOf(psiClass, depth, names).ifEmpty { propertiesOf(psiClass, depth, names) }
+        }
+
+    private fun isPageImplSubclass(psiClass: PsiClass): Boolean =
+        psiClass.qualifiedName != PAGE_IMPL && InheritanceUtil.isInheritor(psiClass, PAGE_IMPL)
+
+    private fun pageImplSubclassSchemaOf(
+        type: PsiClassType,
+        psiClass: PsiClass,
+        fqn: String,
+        depth: Int,
+        context: SchemaContext,
+    ): DtoSchemaJson {
+        val element = PsiUtil.substituteTypeParameter(type, PAGE_IMPL, 0, false)
+        val serialization = context.pageSerialization
+        if (serialization.mode == PageSerializationMode.VIA_DTO) return pagedModelOf(element, depth, context, null)
+        val pageFields = listOf(contentOf(element, depth, context)) + SpringDataChunkSchemas.pageProperties(depth)
+        val pageKeys = pageFields.mapTo(HashSet()) { it.name }
+        val names = Names(JacksonNaming.declaredOn(psiClass) ?: context.configured, context)
+        val ownFields = projectFieldsOf(psiClass, depth, names).filter { it.name !in pageKeys }
+        return DtoSchemaJson(
+            className = fqn,
+            fields = pageFields + ownFields,
+            wireShape = PageWireShape.PAGE_DIRECT.name,
+            wireShapeSource = serialization.source,
+        )
+    }
+
+    private fun pagedModelOf(element: PsiType?, depth: Int, context: SchemaContext, assumed: Boolean?): DtoSchemaJson =
+        DtoSchemaJson(
+            className = SpringDataChunkSchemas.PAGED_MODEL,
+            fields = listOf(contentOf(element, depth, context), SpringDataChunkSchemas.pagedModelMetadata(depth)),
+            wireShape = PageWireShape.PAGED_MODEL.name,
+            wireShapeSource = context.pageSerialization.source,
+            wireShapeAssumed = assumed,
+        )
+
+    private fun contentOf(element: PsiType?, depth: Int, context: SchemaContext): DtoFieldJson = DtoFieldJson(
+        name = "content",
+        declaredName = null,
+        type = element?.let { "$LIST<${it.canonicalText}>" } ?: LIST,
+        nullable = false,
+        nested = element?.let { schemaOf(it, depth - 1, context) },
+    )
+
+    private fun variantSchemaOf(variant: PolymorphicVariant, depth: Int, context: SchemaContext): DtoSchemaJson? {
         val psiClass = variant.psiClass
         if (depth <= 0) {
             val className = psiClass.qualifiedName ?: return null
@@ -100,7 +177,7 @@ internal object ResponseSchemaReader {
             )
         }
         val type = JavaPsiFacade.getElementFactory(psiClass.project).createType(psiClass)
-        return schemaOf(type, depth, configured)?.copy(typeId = variant.typeId)
+        return schemaOf(type, depth, context)?.copy(typeId = variant.typeId)
     }
 
     private fun librarySchemaOf(psiClass: PsiClass, fqn: String, depth: Int, names: Names): DtoSchemaJson {
@@ -319,12 +396,17 @@ internal object ResponseSchemaReader {
             declaredName = declaredName.takeIf { written != declaredName },
             type = renderDtoType(type, origin),
             nullable = nullable,
-            nested = schemaOf(type, depth - 1, names.configured),
+            nested = schemaOf(type, depth - 1, names.context),
         )
     }
 
-    /** The naming that renames this class's properties, and the configured one its nested classes start from. */
-    private class Names(val own: JacksonNaming?, val configured: JacksonNaming?)
+    /** The naming that renames this class's properties, and the context its nested classes start from. */
+    private class Names(val own: JacksonNaming?, val context: SchemaContext)
+
+    /** What the handler module configures for every class of one schema, read once and only when needed. */
+    private class SchemaContext(val configured: JacksonNaming?, module: Module?) {
+        val pageSerialization: PageSerialization by lazy { PageSerialization.of(module) }
+    }
 
     private fun isWrittenField(field: PsiField): Boolean =
         field !is PsiEnumConstant &&
@@ -394,6 +476,12 @@ internal object ResponseSchemaReader {
     private val NON_NULL_ANNOTATIONS = setOf("NotNull", "NonNull", "Nonnull")
 
     private const val SPRING_PACKAGE = "org.springframework."
+
+    private const val LIST = "java.util.List"
+    private const val PAGE = SpringDataChunkSchemas.PAGE
+    private const val PAGE_IMPL = SpringDataChunkSchemas.PAGE_IMPL
+    private const val SLICE = SpringDataChunkSchemas.SLICE
+    private const val SLICE_IMPL = SpringDataChunkSchemas.SLICE_IMPL
 
     /** Packages whose library classes are described by their first type argument, or by nothing without one. */
     private val VALUE_TYPE_PACKAGES = listOf(JDK_PACKAGE, "kotlin.")
