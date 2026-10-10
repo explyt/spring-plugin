@@ -253,6 +253,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("secondConsumer"), rows(second).map { it["beanName"].asText() })
         assertTrue(rows(first).plus(rows(second)).all { it["origin"].asText() == "PROJECT" })
         assertEquals(false, second["truncated"].asBoolean())
+        assertTrue("Terminal nextOffset is present as JSON null: $second", second["nextOffset"]?.isNull == true)
     }
 
     fun testLibraryOriginFilter() = runBlocking<Unit> {
@@ -263,6 +264,40 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
             rows(page).map { it["beanName"].asText() }.toSet())
         assertTrue(rows(page).all { it["origin"].asText() == "LIBRARY" })
         assertFalse(page.has("unknownOriginCount"))
+    }
+
+    fun testOffsetPastEndIsTerminal() = runBlocking<Unit> {
+        copyDemoApplication()
+        val first = listing(DEMO_APPLICATION, "CONTROLLER")
+        val offset = first["totalCount"].asInt() + 1
+        val page = listing(DEMO_APPLICATION, "CONTROLLER", offset = offset,
+            expectedRevision = first["revision"].asText())
+        assertEquals(emptyList<JsonNode>(), rows(page))
+        assertEquals(offset, page["offset"].asInt())
+        assertEquals(first["totalCount"], page["totalCount"])
+        assertEquals(false, page["truncated"].asBoolean())
+        assertTrue("Terminal nextOffset is present as JSON null: $page", page["nextOffset"]?.isNull == true)
+    }
+
+    fun testUnknownOriginRowsSortLast() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass(BEAN_QUERY_APPLICATION, GlobalSearchScope.projectScope(project))!!
+        val missingType = "com.explyt.demo.RemovedService"
+        assertNull(JavaPsiFacade.getInstance(project).findClass(missingType, GlobalSearchScope.allScope(project)))
+        nativeFixture.install(application, listOf(
+            "zProject" to "com.explyt.demo.ClockConsumer",
+            "libraryConfigurer" to "org.springframework.context.support.PropertySourcesPlaceholderConfigurer",
+            "aUnknown" to missingType
+        ))
+        val page = listing(BEAN_QUERY_APPLICATION, "COMPONENT", source = "NATIVE", limit = 50)
+        val beans = rows(page)
+        assertEquals(3, beans.size)
+        assertFalse("Precondition: the unresolved row has no origin", beans.single { it["beanName"].asText() == "aUnknown" }.has("origin"))
+        assertEquals(listOf("zProject", "aUnknown", "libraryConfigurer"), beans.map { it["beanName"].asText() })
+        val firstUnknown = beans.indexOfFirst { !it.has("origin") }
+        assertTrue(beans.take(firstUnknown).all { it.has("origin") })
+        assertTrue(beans.drop(firstUnknown).all { !it.has("origin") })
     }
 
     private fun wrappedLength(json: String): Int =

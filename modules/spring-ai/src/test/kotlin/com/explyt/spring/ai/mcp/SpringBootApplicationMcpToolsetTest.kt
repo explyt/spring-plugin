@@ -44,6 +44,7 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     private fun beansOf(json: String): JsonNode {
         val page = mapper.readTree(json)
         assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        assertEquals("Expected a complete listing of ${page["totalCount"]} beans, got $page", false, page["truncated"]?.asBoolean())
         return page["beans"]
     }
 
