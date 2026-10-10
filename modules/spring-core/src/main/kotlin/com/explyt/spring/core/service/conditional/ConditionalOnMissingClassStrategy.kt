@@ -6,42 +6,23 @@
 package com.explyt.spring.core.service.conditional
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
-import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.search.PsiShortNamesCache
 
-class ConditionalOnMissingClassStrategy(private val module: Module) : ExclusionStrategy {
-    private val annotationHolder = SpringSearchService.getInstance(module.project)
-        .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_MISSING_CLASS)
+class ConditionalOnMissingClassStrategy(private val module: Module) : AnnotationConditionStrategy(
+    listOf(
+        SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_MISSING_CLASS)
+    ),
+    setOf(ConditionAssumption.COMPILE_CLASSPATH_IS_RUNTIME)
+) {
 
-    override fun shouldExclude(dependant: PsiMember, foundBeans: Collection<PsiBean>): Boolean {
-        if (dependant.annotations.none { annotationHolder.contains(it) }) {
-            return false
-        }
-
-        val types = annotationHolder.getAnnotationMemberValues(dependant, setOf("value"))
-            .asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .toSet()
-
-        for (typeQn in types) {
-            val className = typeQn.split('.').lastOrNull() ?: continue
-
-            val classFound = PsiShortNamesCache.getInstance(module.project)
-                .getClassesByName(
-                    className,
-                    GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-                )
-                .any { it.qualifiedName == typeQn }
-
-            if (classFound) return true
-        }
-
-        return false
-    }
-
+    override fun unmetRequirement(
+        holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
+    ): String? = ConditionClassReferences(holder, carrier).classNames("value")
+        .firstOrNull { module.hasClass(it) }
+        ?.let { "class $it is on the classpath" }
 }

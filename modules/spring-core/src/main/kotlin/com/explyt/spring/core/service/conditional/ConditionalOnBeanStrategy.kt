@@ -15,57 +15,41 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 
-class ConditionalOnBeanStrategy(module: Module) : ExclusionStrategy {
-    private val annotationBeanHolder = SpringSearchService.getInstance(module.project)
-        .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_BEAN)
-    private val annotationSingleHolder = SpringSearchService.getInstance(module.project)
-        .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_SINGLE_BEAN)
+class ConditionalOnBeanStrategy(module: Module) : AnnotationConditionStrategy(
+    listOf(SpringCoreClasses.CONDITIONAL_ON_BEAN, SpringCoreClasses.CONDITIONAL_ON_SINGLE_BEAN)
+        .map { SpringSearchService.getInstance(module.project).getMetaAnnotations(module, it) },
+    setOf(ConditionAssumption.STATIC_BEAN_MODEL_COMPLETE)
+) {
 
-    override fun shouldExclude(dependant: PsiMember, foundBeans: Collection<PsiBean>): Boolean {
-        val exclude = shouldExclude(annotationBeanHolder, dependant, foundBeans)
-        if (exclude) return true
+    override fun unmetRequirement(
+        holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
+    ): String? {
+        val foundBeanNames = activeBeans.mapTo(mutableSetOf()) { it.name }
 
-        val excludeSingle = shouldExclude(annotationSingleHolder, dependant, foundBeans)
-        return excludeSingle
-    }
-
-    private fun shouldExclude(
-        annotationHolder: MetaAnnotationsHolder, dependant: PsiMember, foundBeans: Collection<PsiBean>,
-    ): Boolean {
-        if (dependant.annotations.none { annotationHolder.contains(it) }) {
-            return false
-        }
-        val foundBeanNames = foundBeans.mapTo(mutableSetOf()) { it.name }
-
-        val names = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
+        val names = holder.getAnnotationMemberValues(carrier, setOf("name"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
-        if (names.isNotEmpty() && names.any { !foundBeanNames.contains(it) }) {
-            return true
-        }
+        names.firstOrNull { it !in foundBeanNames }?.let { return "no bean named $it" }
 
-        val foundBeanClassQn = foundBeans.mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
-        val types = annotationHolder.getAnnotationMemberValues(dependant, setOf("type"))
+        val foundBeanClassQn = activeBeans.mapNotNullTo(mutableSetOf()) { it.psiClass.qualifiedName }
+        val types = holder.getAnnotationMemberValues(carrier, setOf("type"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
-        if (types.isNotEmpty() && types.any { !foundBeanClassQn.contains(it) }) {
-            return true
-        }
+        types.firstOrNull { it !in foundBeanClassQn }?.let { return "no bean of type $it" }
 
-        val classAttributes = annotationHolder.getAnnotationMemberValues(dependant, setOf("value"))
+        val classAttributes = holder.getAnnotationMemberValues(carrier, setOf("value"))
         val classesQn = if (names.isEmpty() && types.isEmpty() && classAttributes.isEmpty()) {
-            setOfNotNull(dependant.resolvePsiClass?.qualifiedName)
+            setOfNotNull(carrier.resolvePsiClass?.qualifiedName)
         } else {
             val typeNames = PsiAnnotationUtils.getTypeNames(classAttributes)
-            if (classAttributes.size != typeNames.size) {
-                return true
-            }
+            if (classAttributes.size != typeNames.size) return UNRESOLVED_TYPE
             typeNames
         }
-        if (classAttributes.isNotEmpty() && classesQn.isEmpty()) {
-            return true
-        }
-        return classesQn.isNotEmpty() && classesQn.any { !foundBeanClassQn.contains(it) }
+        if (classAttributes.isNotEmpty() && classesQn.isEmpty()) return UNRESOLVED_TYPE
+        return classesQn.firstOrNull { it !in foundBeanClassQn }?.let { "no bean of type $it" }
     }
 
+    private companion object {
+        const val UNRESOLVED_TYPE = "bean type cannot be resolved"
+    }
 }
