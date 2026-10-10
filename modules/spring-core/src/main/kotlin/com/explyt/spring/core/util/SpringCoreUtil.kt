@@ -21,7 +21,7 @@ import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.settings.SpringPropertyFolderState
 import com.explyt.util.ExplytAnnotationUtil
-import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
+
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.deepPsiClassType
@@ -438,13 +438,7 @@ object SpringCoreUtil {
         return getMetaAnnotation(annotationNames)?.getStringValue()
     }
 
-    fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? {
-        val annotation = getMetaAnnotation(SpringCoreClasses.BEAN) ?: return null
-        return (annotation.getStringMemberValues("value") + annotation.getStringMemberValues("name"))
-            .filter(String::isNotBlank)
-            .toCollection(LinkedHashSet())
-            .ifEmpty { null }
-    }
+    fun PsiModifierListOwner.resolveBeanNameByAnnotation(): Set<String>? = BeanAnnotationNames.of(this)
 
     fun PsiAnnotation.resolveBeanName(): String? {
         if (isMetaAnnotatedByOrSelf(SpringCoreClasses.QUALIFIER)) {
@@ -782,6 +776,7 @@ object SpringCoreUtil {
     }
 
     const val SPRING_BOOT_MAVEN = "org.springframework.boot:spring-boot"
+    const val SPRING_CORE_MAVEN = "org.springframework:spring-core"
     const val SPRING_BOOT_ACTUATOR_MAVEN = "org.springframework.boot:spring-boot-actuator"
     const val BASE_PACKAGES = "basePackages"
     const val SCAN_BASE_PACKAGES = "scanBasePackages"
