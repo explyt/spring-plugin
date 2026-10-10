@@ -874,7 +874,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 qualifiedName.substringAfterLast('.') in BINDING_NEUTRAL_ANNOTATION_NAMES
     }
 
-
     // ---- explyt_get_spring_http_endpoints ----
 
     @McpTool("explyt_get_spring_http_endpoints", title = "HTTP endpoints of one controller or the whole project")
@@ -2005,7 +2004,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
             "org.jetbrains.annotations.",
             "kotlin.",
         )
-
 
         /** Matched by simple name too, so an annotation whose library is not on the classpath still reads as neutral. */
         private val BINDING_NEUTRAL_ANNOTATION_NAMES = setOf(

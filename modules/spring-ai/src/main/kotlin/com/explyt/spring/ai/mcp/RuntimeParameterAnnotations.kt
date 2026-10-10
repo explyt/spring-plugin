@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.util.ExplytPsiUtil.resolveUAnnotationType
 import com.intellij.psi.CommonClassNames
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiArrayInitializerMemberValue
@@ -16,16 +17,24 @@ import com.intellij.psi.PsiReference
 import java.lang.annotation.ElementType
 import java.lang.annotation.RetentionPolicy
 
-private val CLASS_RETAINED_NULLABILITY_ANNOTATIONS = setOf(
+private val UNRESOLVABLE_KOTLIN_NULLABILITY_ANNOTATIONS = setOf(
     "org.jetbrains.annotations.NotNull",
     "org.jetbrains.annotations.Nullable",
 )
 
 internal fun PsiAnnotation.isRuntimeParameterAnnotation(): Boolean {
-    if (qualifiedName in CLASS_RETAINED_NULLABILITY_ANNOTATIONS) return false
-    val annotationClass = resolveAnnotationType() ?: resolveUAnnotationType() ?: return true
+    val annotationClass = annotationClass()
+        ?: return qualifiedName !in UNRESOLVABLE_KOTLIN_NULLABILITY_ANNOTATIONS
     return annotationClass.retentionPolicy() == RetentionPolicy.RUNTIME.name &&
             annotationClass.targets()?.contains(ElementType.PARAMETER.name) != false
+}
+
+private fun PsiAnnotation.annotationClass(): PsiClass? =
+    resolveAnnotationType() ?: resolveUAnnotationType() ?: findAnnotationClassByName()
+
+private fun PsiAnnotation.findAnnotationClassByName(): PsiClass? {
+    val name = qualifiedName ?: return null
+    return JavaPsiFacade.getInstance(project).findClass(name, resolveScope)?.takeIf { it.isAnnotationType }
 }
 
 private fun PsiClass.retentionPolicy(): String =
