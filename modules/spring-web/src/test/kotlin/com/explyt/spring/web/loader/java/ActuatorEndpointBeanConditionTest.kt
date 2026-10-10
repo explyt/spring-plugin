@@ -121,4 +121,43 @@ class ActuatorEndpointBeanConditionTest : ActuatorEndpointBeanConditionTestCase(
             """.trimIndent()
         )
     }
+
+    override fun addSupertypeFactoryEndpoint() {
+        myFixture.addFileToProject("com/app/EtlEndpoint.java", """
+            package com.app;
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            @Endpoint(id = "etl")
+            public class EtlEndpoint { @ReadOperation public String read() { return "ok"; } }
+        """.trimIndent())
+        myFixture.addFileToProject("com/app/EtlEndpointConfig.java", """
+            package com.app;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+            @Configuration
+            @ConditionalOnProperty(name = "etl.enabled", havingValue = "true")
+            public class EtlEndpointConfig {
+                @Bean public Object etlEndpoint() { return new EtlEndpoint(); }
+            }
+        """.trimIndent())
+    }
+
+    override fun addDuplicateEndpointRegistrations() {
+        myFixture.addFileToProject("com/app/TwiceEndpoint.java", """
+            package com.app;
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.stereotype.Component;
+            @Component
+            @Endpoint(id = "twice")
+            public class TwiceEndpoint { @ReadOperation public String read() { return "ok"; } }
+            @Configuration
+            @ConditionalOnProperty(name = "twice.enabled", havingValue = "true")
+            class TwiceConfig { @Bean public TwiceEndpoint gatedTwice() { return new TwiceEndpoint(); } }
+        """.trimIndent())
+    }
 }

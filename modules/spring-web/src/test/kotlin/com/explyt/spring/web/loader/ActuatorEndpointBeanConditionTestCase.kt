@@ -29,6 +29,8 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
     protected abstract fun addUnconditionalComponentEndpoint()
     protected abstract fun addEndpointRegisteredByGatedConfiguration()
     protected abstract fun addRestController()
+    protected abstract fun addSupertypeFactoryEndpoint()
+    protected abstract fun addDuplicateEndpointRegistrations()
 
     override fun setUp() {
         super.setUp()
@@ -120,6 +122,34 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
         assertEquals(listOf(null), controllerEndpoints.map { it.beanCondition }.distinct())
     }
 
+    fun testSupertypeFactoryEndpointPinsCurrentNullCondition() {
+        addProperties(EXPOSE_ALL)
+        addSupertypeFactoryEndpoint()
+        val factory = projectClass(SUPERTYPE_CONFIG).findMethodsByName("etlEndpoint", false).single()
+        assertBeanModelSays<ConditionVerdict.Inactive>(factory)
+
+        val endpoints = endpointsOf(SUPERTYPE_ENDPOINT)
+
+        assertEquals(listOf("/actuator/etl"), endpoints.map { it.path })
+        assertEquals(listOf(null), endpoints.map { it.beanCondition }.distinct())
+    }
+
+    fun testDuplicateRegistrationsExposeTheActiveCondition() {
+        addProperties(EXPOSE_ALL)
+        addDuplicateEndpointRegistrations()
+        val verdicts = SpringSearchService.getInstance(project).conditionVerdicts(module)
+            .filterKeys { it.psiClass.qualifiedName == DUPLICATE_ENDPOINT }
+            .values
+        assertEquals(2, verdicts.size)
+        assertEquals(1, verdicts.count { it is ConditionVerdict.Active })
+        assertEquals(1, verdicts.count { it is ConditionVerdict.Inactive })
+
+        val endpoints = endpointsOf(DUPLICATE_ENDPOINT)
+
+        assertEquals(listOf("/actuator/twice"), endpoints.map { it.path }.distinct())
+        assertEquals(listOf(ConditionVerdict.Active), endpoints.map { it.beanCondition }.distinct())
+    }
+
     fun testInactiveEndpointStaysInTheListing() {
         addProperties(EXPOSE_ALL)
         addPropertyGatedComponentEndpoint()
@@ -181,5 +211,8 @@ abstract class ActuatorEndpointBeanConditionTestCase : ExplytBaseLightTestCase()
         const val CACHE_STATS = "com.app.CacheStatsEndpoint"
         const val ETL_CONTROLLER = "com.app.EtlController"
         const val HEALTH_ENDPOINT = "org.springframework.boot.health.actuate.endpoint.HealthEndpoint"
+        const val SUPERTYPE_ENDPOINT = "com.app.EtlEndpoint"
+        const val SUPERTYPE_CONFIG = "com.app.EtlEndpointConfig"
+        const val DUPLICATE_ENDPOINT = "com.app.TwiceEndpoint"
     }
 }

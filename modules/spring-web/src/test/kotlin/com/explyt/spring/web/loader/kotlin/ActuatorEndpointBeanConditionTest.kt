@@ -121,4 +121,41 @@ class ActuatorEndpointBeanConditionTest : ActuatorEndpointBeanConditionTestCase(
             """.trimIndent()
         )
     }
+
+    override fun addSupertypeFactoryEndpoint() {
+        myFixture.addFileToProject("com/app/EtlEndpoint.kt", """
+            package com.app
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            @Endpoint(id = "etl")
+            class EtlEndpoint { @ReadOperation fun read() = "ok" }
+        """.trimIndent())
+        myFixture.addFileToProject("com/app/EtlEndpointConfig.kt", """
+            package com.app
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            @Configuration
+            @ConditionalOnProperty(name = ["etl.enabled"], havingValue = "true")
+            class EtlEndpointConfig { @Bean fun etlEndpoint(): Any = EtlEndpoint() }
+        """.trimIndent())
+    }
+
+    override fun addDuplicateEndpointRegistrations() {
+        myFixture.addFileToProject("com/app/TwiceEndpoint.kt", """
+            package com.app
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.stereotype.Component
+            @Component
+            @Endpoint(id = "twice")
+            class TwiceEndpoint { @ReadOperation fun read() = "ok" }
+            @Configuration
+            @ConditionalOnProperty(name = ["twice.enabled"], havingValue = "true")
+            class TwiceConfig { @Bean fun gatedTwice(): TwiceEndpoint = TwiceEndpoint() }
+        """.trimIndent())
+    }
 }
