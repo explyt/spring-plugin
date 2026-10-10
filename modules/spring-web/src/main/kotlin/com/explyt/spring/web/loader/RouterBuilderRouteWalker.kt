@@ -6,6 +6,8 @@
 package com.explyt.spring.web.loader
 
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.route.RoutePredicates
+import com.explyt.spring.web.route.RoutePrefix
 import com.explyt.spring.web.util.RoutePathResolver
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.openapi.progress.ProgressManager
@@ -19,8 +21,6 @@ data class BuilderRoute(val path: String, val verb: String)
 object RouterBuilderRouteWalker {
 
     private const val MAX_NESTING = 8
-    private val UNDECIDABLE = emptyList<String>()
-    private val PATH_FREE = listOf("")
 
     fun routesOf(builderExpression: PsiExpression): List<BuilderRoute> = walkChain(builderExpression, "", 0)
 
@@ -46,10 +46,10 @@ object RouterBuilderRouteWalker {
 
             arguments.size != 2 -> emptyList()
 
-            method.name == SpringWebClasses.ROUTE_FUNCTION_BUILDER_PATH ->
+            method.name == SpringWebClasses.ROUTE_PATH ->
                 nestedRoutes(uriValues(arguments[0]), arguments[1], prefix, nesting)
 
-            method.name == SpringWebClasses.ROUTE_FUNCTION_BUILDER_NEST ->
+            method.name == SpringWebClasses.ROUTE_NEST ->
                 nestedRoutes(predicatePrefixes(arguments[0]), arguments[1], prefix, nesting)
 
             else -> emptyList()
@@ -85,32 +85,12 @@ object RouterBuilderRouteWalker {
         return chains.flatMap { walkChain(it, prefix, nesting) }
     }
 
-    private fun predicatePrefixes(predicate: PsiExpression?): List<String> {
-        val call = unwrap(predicate) as? PsiMethodCallExpression ?: return UNDECIDABLE
-        val method = call.resolveMethod() ?: return UNDECIDABLE
-        val arguments = call.argumentList.expressions
-        return when {
-            method.isDeclaredIn(SpringWebClasses.REQUEST_PREDICATES_CLASSES) -> when {
-                method.name == SpringWebClasses.REQUEST_PREDICATES_PATH && arguments.size == 1 ->
-                    uriValues(arguments.single())
-
-                method.name in SpringWebClasses.REQUEST_PREDICATES_PATH_FREE_FACTORIES -> PATH_FREE
-                else -> UNDECIDABLE
-            }
-
-            method.isDeclaredIn(SpringWebClasses.REQUEST_PREDICATE_CLASSES) &&
-                    method.name == SpringWebClasses.REQUEST_PREDICATE_AND && arguments.size == 1 -> {
-                val left = predicatePrefixes(call.methodExpression.qualifierExpression)
-                val right = predicatePrefixes(arguments.single())
-                left.flatMap { outer -> right.map { inner -> join(outer, inner) } }
-            }
-
-            else -> UNDECIDABLE
+    private fun predicatePrefixes(predicate: PsiExpression): List<String> =
+        when (val prefix = predicate.toUElementOfType<UExpression>()?.let(RoutePredicates::prefixOf)) {
+            is RoutePrefix.Decided -> prefix.segments
+            RoutePrefix.PathFree -> listOf("")
+            RoutePrefix.Undecidable, null -> emptyList()
         }
-    }
-
-    private fun PsiMethod.isDeclaredIn(classNames: Collection<String>): Boolean =
-        containingClass?.qualifiedName in classNames
 
     private fun returnedExpressions(body: PsiElement?): List<PsiExpression> = when (body) {
         is PsiExpression -> listOf(body)
