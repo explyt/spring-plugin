@@ -121,7 +121,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         val access = ActuatorAccess.of(module, definitions)
         val requestMappingMah by lazy { MetaAnnotationsHolder.of(module, SpringWebClasses.REQUEST_MAPPING) }
         val customMediaTypes = declaresEndpointMediaTypesBean(module)
-        val beanConditions = BeanConditions(module)
+        val beanConditions = BeanConditions(module, endpoints.mapTo(mutableSetOf()) { it.psiClass })
 
         return endpoints.flatMap {
             val gates = Gates(
@@ -132,17 +132,21 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
         }
     }
 
-    private inner class BeanConditions(private val module: Module) {
-        private val fileIndex = ProjectFileIndex.getInstance(project)
-        private val verdictsByClass by lazy {
-            SpringSearchService.getInstance(project).conditionVerdicts(module).entries
+    private inner class BeanConditions(private val module: Module, endpointClasses: Set<PsiClass>) {
+        private val verdictsByEndpointClass by lazy {
+            val projectClasses = endpointClasses.filter(::isInSourceContent)
+            if (projectClasses.isEmpty()) return@lazy emptyMap()
+            val verdictsByClass = SpringSearchService.getInstance(project).conditionVerdicts(module).entries
                 .groupBy({ it.key.psiClass }, { it.value })
+            projectClasses.mapNotNull { psiClass -> verdictsByClass[psiClass]?.let { psiClass to it.mostActive() } }
+                .toMap()
         }
 
-        fun of(endpointClass: PsiClass): ConditionVerdict? {
-            val file = endpointClass.containingFile?.virtualFile ?: return null
-            if (!fileIndex.isInSourceContent(file)) return null
-            return verdictsByClass[endpointClass]?.mostActive()
+        fun of(endpointClass: PsiClass): ConditionVerdict? = verdictsByEndpointClass[endpointClass]
+
+        private fun isInSourceContent(psiClass: PsiClass): Boolean {
+            val file = psiClass.containingFile?.virtualFile ?: return false
+            return ProjectFileIndex.getInstance(project).isInSourceContent(file)
         }
 
         private fun List<ConditionVerdict>.mostActive(): ConditionVerdict =
