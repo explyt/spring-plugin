@@ -2302,10 +2302,12 @@ private fun ConditionVerdict.toBeanConditionJson(): EndpointBeanConditionJson? =
 
 private const val BEAN_CONDITION_DESCRIPTION =
     "A project Actuator endpoint whose bean a condition excludes stays listed with 'beanCondition' " +
-        "{state: INACTIVE, annotation, carrier, detail} naming that condition, or with state UNDECIDED and " +
-        "'reasons' when its conditions cannot be decided statically - 'exposed' and 'access' describe the " +
-        "configured exposure, not whether the bean exists, and the key is absent when no condition excludes " +
-        "the bean or leaves it undecided. "
+        "{state: INACTIVE, annotation, carrier, detail} naming that condition, or with state UNDECIDED when " +
+        "its conditions cannot be decided statically - then 'annotation', 'carrier' and 'detail' name the " +
+        "first undecided condition and 'reasons' lists the reason of every undecided one. 'exposed' and " +
+        "'access' describe the configured exposure, not whether the bean exists. The key is absent when no " +
+        "condition excludes the bean or leaves it undecided, and when bean condition evaluation is disabled " +
+        "in the settings. "
 
 data class EndpointListJson<T>(
     val totalCount: Int,
