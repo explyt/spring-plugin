@@ -9,7 +9,6 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
-
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 

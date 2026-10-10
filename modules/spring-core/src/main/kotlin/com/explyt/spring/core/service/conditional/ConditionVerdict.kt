@@ -46,7 +46,6 @@ fun Sequence<ConditionVerdict>.combined(): ConditionVerdict {
     return if (undecided.isEmpty()) ConditionVerdict.Active else ConditionVerdict.Undecided(undecided)
 }
 
-
 val PsiMember.conditionCarrierFqn: String
     get() = if (this is PsiClass) qualifiedName ?: name.orEmpty()
     else "${containingClass?.qualifiedName}#$name"
