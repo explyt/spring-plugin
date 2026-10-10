@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
@@ -19,21 +20,17 @@ import kotlinx.coroutines.runBlocking
  * it, not by its type argument.
  *
  * `PageImpl` is written through its getters (`DIRECT`) unless `@EnableSpringDataWebSupport(pageSerializationMode =
- * VIA_DTO)` or `spring.data.web.pageable.serialization-mode` re-wraps it into `PagedModel` (`content` + `page`).
- * `SliceImpl` is never re-wrapped. The schema names the shape in `wireShape` and where the mode was read in
- * `wireShapeSource` - `UNKNOWN` when it cannot be read, never a confident guess - and `wireShapeAssumed` says that the
- * declared interface was taken for its Spring Data implementation.
+ * VIA_DTO)` or, on a servlet application, `spring.data.web.pageable.serialization-mode` re-wraps it into `PagedModel`
+ * (`content` + `page`). `SliceImpl` is never re-wrapped. The schema names the shape in `wireShape` and where the mode was
+ * read in `wireShapeSource` - `UNKNOWN` when it cannot be read, never a confident guess - and `wireShapeAssumed` says
+ * that the declared interface was taken for its Spring Data implementation.
+ *
+ * The property is read by the rule the bean model applies to `@ConditionalOnProperty`: a file of an inactive profile is
+ * not loaded, an active profile's file is, and an unresolvable placeholder is reported rather than guessed.
  */
-class SpringBootApplicationMcpToolsetPageSchemaTest : ExplytJavaLightTestCase() {
+abstract class PageSchemaTestCase : ExplytJavaLightTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(
-        TestLibrary.springBootAutoConfigure_3_1_1,
-        TestLibrary.springWebMvc_6_0_7,
-        TestLibrary.springDataJpa_3_4_0,
-        TestLibrary.jacksonAnnotations_2_15_2,
-        TestLibrary.jacksonDatabind_2_15_2,
-        TestLibrary.kotlin_1_9_22,
-    )
+    protected abstract val stack: WebApplicationStack
 
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
@@ -44,172 +41,12 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : ExplytJavaLightTestCase() 
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
-    fun testPageWithoutWebSupportIsWrittenDirectByDefault() = runBlocking<Unit> {
-        val schema = pageSchema("/orders/page")
+    protected suspend fun pageSchema(url: String): JsonNode = schemaOf(url, "$PAGE<$ORDER_DTO>")
 
-        assertDirectPage(schema)
-        assertEquals("DEFAULT", schema["wireShapeSource"].asText())
-        assertTrue("a declared Page is taken for PageImpl", schema["wireShapeAssumed"].asBoolean())
-    }
+    protected suspend fun sliceSchema(url: String): JsonNode = schemaOf(url, "$SLICE<$ORDER_DTO>")
 
-    fun testPageContentIsTheElementSchema() = runBlocking<Unit> {
-        val content = field(pageSchema("/orders/page"), "content")
-
-        assertEquals("java.util.List<$ORDER_DTO>", content["type"].asText())
-        assertEquals(ORDER_DTO, content["nested"]["className"].asText())
-        assertEquals(listOf("id", "note"), names(content["nested"]))
-    }
-
-    fun testViaDtoAnnotationWritesPagedModel() = runBlocking<Unit> {
-        addWebConfig("VIA_DTO")
-
-        val schema = pageSchema("/orders/page")
-
-        assertPagedModel(schema)
-        assertEquals("@EnableSpringDataWebSupport on $WEB_CONFIG", schema["wireShapeSource"].asText())
-    }
-
-    fun testViaDtoAnnotationInKotlinWritesPagedModel() = runBlocking<Unit> {
-        myFixture.addFileToProject(
-            "com/example/config/KotlinWebConfig.kt", """
-            package com.example.config
-
-            import org.springframework.context.annotation.Configuration
-            import org.springframework.data.web.config.EnableSpringDataWebSupport
-            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode
-
-            @Configuration
-            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
-            class KotlinWebConfig
-            """.trimIndent()
-        )
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
-        assertResolves(ENABLE_WEB_SUPPORT)
-
-        val schema = pageSchema("/orders/page")
-
-        assertPagedModel(schema)
-        assertEquals("@EnableSpringDataWebSupport on com.example.config.KotlinWebConfig", schema["wireShapeSource"].asText())
-    }
-
-    fun testExplicitDirectAnnotationWritesPageDirect() = runBlocking<Unit> {
-        addWebConfig("DIRECT")
-
-        val schema = pageSchema("/orders/page")
-
-        assertDirectPage(schema)
-        assertEquals("@EnableSpringDataWebSupport on $WEB_CONFIG", schema["wireShapeSource"].asText())
-    }
-
-    fun testAnnotationWithoutModeAttributeIsDirect() = runBlocking<Unit> {
-        addWebConfig(null)
-
-        val schema = pageSchema("/orders/page")
-
-        assertDirectPage(schema)
-        assertEquals("@EnableSpringDataWebSupport on $WEB_CONFIG", schema["wireShapeSource"].asText())
-    }
-
-    fun testViaDtoPropertyWritesPagedModel() = runBlocking<Unit> {
-        addProperties("spring.data.web.pageable.serialization-mode=via-dto")
-
-        val schema = pageSchema("/orders/page")
-
-        assertPagedModel(schema)
-        assertEquals(SERIALIZATION_MODE_KEY, schema["wireShapeSource"].asText())
-    }
-
-    fun testAnnotationOutranksTheProperty() = runBlocking<Unit> {
-        addWebConfig("DIRECT")
-        addProperties("spring.data.web.pageable.serialization-mode=via-dto")
-
-        val schema = pageSchema("/orders/page")
-
-        assertDirectPage(schema)
-        assertEquals("@EnableSpringDataWebSupport on $WEB_CONFIG", schema["wireShapeSource"].asText())
-    }
-
-    fun testPlaceholderModeIsReportedUnknownWithTheDefaultShape() = runBlocking<Unit> {
-        addProperties("spring.data.web.pageable.serialization-mode=\${PAGE_MODE}")
-
-        val schema = pageSchema("/orders/page")
-
-        assertDirectPage(schema)
-        assertEquals("UNKNOWN", schema["wireShapeSource"].asText())
-    }
-
-    fun testProfileOnlyModeIsReportedUnknownWithTheDefaultShape() = runBlocking<Unit> {
-        myFixture.addFileToProject("application-prod.properties", "spring.data.web.pageable.serialization-mode=via-dto")
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
-
-        val schema = pageSchema("/orders/page")
-
-        assertDirectPage(schema)
-        assertEquals("UNKNOWN", schema["wireShapeSource"].asText())
-    }
-
-    fun testSliceIsWrittenDirect() = runBlocking<Unit> {
-        val schema = schemaOf("/orders/slice", "$SLICE<$ORDER_DTO>")
-
-        assertDirectSlice(schema)
-    }
-
-    fun testSliceStaysDirectUnderViaDto() = runBlocking<Unit> {
-        addWebConfig("VIA_DTO")
-
-        val schema = schemaOf("/orders/slice", "$SLICE<$ORDER_DTO>")
-
-        assertDirectSlice(schema)
-    }
-
-    fun testResponseEntityOfPageUnwrapsToThePage() = runBlocking<Unit> {
-        val schema = schemaOf("/orders/entity-page", "org.springframework.http.ResponseEntity<$PAGE<$ORDER_DTO>>")
-
-        assertDirectPage(schema)
-        assertEquals("DEFAULT", schema["wireShapeSource"].asText())
-    }
-
-    fun testKotlinSuspendHandlerReturningPageIsThePage() = runBlocking<Unit> {
-        myFixture.addFileToProject(
-            "com/example/shop/SuspendOrderController.kt", """
-            package com.example.shop
-
-            import org.springframework.data.domain.Page
-            import org.springframework.web.bind.annotation.GetMapping
-            import org.springframework.web.bind.annotation.RestController
-
-            @RestController
-            class SuspendOrderController {
-                @GetMapping("/orders/suspend-page")
-                suspend fun page(): Page<OrderDto> = TODO()
-            }
-            """.trimIndent()
-        )
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
-
-        val schema = schemaOf("/orders/suspend-page", "$PAGE<$ORDER_DTO>")
-
-        assertDirectPage(schema)
-    }
-
-    fun testListOfDtoIsUnchanged() = runBlocking<Unit> {
-        val schema = schemaOf("/orders/list", "java.util.List<$ORDER_DTO>")
-
-        assertEquals(listOf("className", "fields"), keys(schema))
-        assertEquals(ORDER_DTO, schema["className"].asText())
-        assertEquals(listOf("id", "note"), names(schema))
-    }
-
-    fun testPlainDtoIsUnchanged() = runBlocking<Unit> {
-        val schema = schemaOf("/orders/one", ORDER_DTO)
-
-        assertEquals(listOf("className", "fields"), keys(schema))
-        assertEquals(listOf("id", "note"), names(schema))
-    }
-
-    private suspend fun pageSchema(url: String): JsonNode = schemaOf(url, "$PAGE<$ORDER_DTO>")
-
-    private suspend fun schemaOf(url: String, declaredReturnType: String): JsonNode {
+    protected suspend fun schemaOf(url: String, declaredReturnType: String): JsonNode {
+        assertEquals("the application stack the fixture models", stack, WebApplicationStack.of(module))
         assertResolves(PAGE)
         assertResolves(SLICE)
         val endpoints = mapper.readTree(
@@ -223,21 +60,25 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : ExplytJavaLightTestCase() 
         return schema
     }
 
-    private fun assertDirectPage(schema: JsonNode) {
+    protected fun assertDirectPage(schema: JsonNode) {
         assertEquals(schema.toString(), "org.springframework.data.domain.PageImpl", schema["className"]?.asText())
         assertEquals("PAGE_DIRECT", schema["wireShape"]?.asText())
         assertEquals(PAGE_DIRECT_KEYS, names(schema).toSet())
         assertEquals(ORDER_DTO, field(schema, "content")["nested"]["className"].asText())
     }
 
-    private fun assertDirectSlice(schema: JsonNode) {
+    protected fun assertDirectSlice(schema: JsonNode) {
         assertEquals(schema.toString(), "org.springframework.data.domain.SliceImpl", schema["className"]?.asText())
         assertEquals("SLICE_DIRECT", schema["wireShape"]?.asText())
         assertEquals(SLICE_DIRECT_KEYS, names(schema).toSet())
         assertEquals(ORDER_DTO, field(schema, "content")["nested"]["className"].asText())
+        assertEquals(
+            "a declared Slice may be a PageImpl at run time, so the SliceImpl shape is assumed",
+            true, schema["wireShapeAssumed"]?.asBoolean()
+        )
     }
 
-    private fun assertPagedModel(schema: JsonNode) {
+    protected fun assertPagedModel(schema: JsonNode) {
         assertEquals(schema.toString(), "org.springframework.data.web.PagedModel", schema["className"]?.asText())
         assertEquals("PAGED_MODEL", schema["wireShape"]?.asText())
         assertEquals(setOf("content", "page"), names(schema).toSet())
@@ -248,7 +89,15 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : ExplytJavaLightTestCase() 
         )
     }
 
-    private fun addWebConfig(mode: String?) {
+    protected fun assertSource(expected: String, schema: JsonNode) {
+        assertEquals(schema.toString(), expected, schema["wireShapeSource"]?.asText())
+    }
+
+    protected fun assertPageAssumed(schema: JsonNode) {
+        assertEquals("a declared Page is taken for PageImpl", true, schema["wireShapeAssumed"]?.asBoolean())
+    }
+
+    protected fun addWebConfig(mode: String?) {
         val attribute = mode?.let { "(pageSerializationMode = PageSerializationMode.$it)" }.orEmpty()
         myFixture.addFileToProject(
             "com/example/config/WebConfig.java", """
@@ -269,32 +118,32 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : ExplytJavaLightTestCase() 
         assertResolves("$ENABLE_WEB_SUPPORT.PageSerializationMode")
     }
 
-    private fun addProperties(text: String) {
-        myFixture.addFileToProject("application.properties", text)
+    protected fun addFile(path: String, text: String) {
+        myFixture.addFileToProject(path, text)
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
-    private fun assertResolves(fqn: String) {
+    protected fun assertResolves(fqn: String) {
         assertNotNull(
             "the fixture must resolve $fqn, or the test proves nothing",
             JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
         )
     }
 
-    private fun keys(schema: JsonNode): List<String> = schema.fieldNames().asSequence().toList()
+    protected fun keys(schema: JsonNode): List<String> = schema.fieldNames().asSequence().toList()
 
-    private fun names(schema: JsonNode): List<String> = schema["fields"]?.map { it["name"].asText() }.orEmpty()
+    protected fun names(schema: JsonNode): List<String> = schema["fields"]?.map { it["name"].asText() }.orEmpty()
 
-    private fun field(schema: JsonNode, name: String): JsonNode =
+    protected fun field(schema: JsonNode, name: String): JsonNode =
         schema["fields"]?.singleOrNull { it["name"].asText() == name }
             ?: throw AssertionError("no field '$name' in $schema")
 
-    private companion object {
+    protected companion object {
         const val PAGE = "org.springframework.data.domain.Page"
         const val SLICE = "org.springframework.data.domain.Slice"
         const val ENABLE_WEB_SUPPORT = "org.springframework.data.web.config.EnableSpringDataWebSupport"
         const val ORDER_DTO = "com.example.shop.OrderDto"
-        const val WEB_CONFIG = "com.example.config.WebConfig"
+        const val WEB_CONFIG_SOURCE = "@EnableSpringDataWebSupport on com.example.config.WebConfig"
         const val SERIALIZATION_MODE_KEY = "spring.data.web.pageable.serialization-mode"
 
         val SLICE_DIRECT_KEYS = setOf(
@@ -352,5 +201,227 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : ExplytJavaLightTestCase() 
                 }
             """,
         )
+    }
+}
+
+class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
+
+    override val stack = WebApplicationStack.SERVLET
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springBootAutoConfigure_3_1_1,
+        TestLibrary.springWebMvc_6_0_7,
+        TestLibrary.springDataJpa_3_4_0,
+        TestLibrary.jacksonAnnotations_2_15_2,
+        TestLibrary.jacksonDatabind_2_15_2,
+        TestLibrary.kotlin_1_9_22,
+    )
+
+    fun testPageWithoutWebSupportIsWrittenDirectByDefault() = runBlocking<Unit> {
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource("DEFAULT", schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testPageContentIsTheElementSchema() = runBlocking<Unit> {
+        val content = field(pageSchema("/orders/page"), "content")
+
+        assertEquals("java.util.List<$ORDER_DTO>", content["type"].asText())
+        assertEquals(ORDER_DTO, content["nested"]["className"].asText())
+        assertEquals(listOf("id", "note"), names(content["nested"]))
+    }
+
+    fun testViaDtoAnnotationWritesPagedModel() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testViaDtoAnnotationInKotlinWritesPagedModel() = runBlocking<Unit> {
+        addFile(
+            "com/example/config/KotlinWebConfig.kt", """
+            package com.example.config
+
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.data.web.config.EnableSpringDataWebSupport
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode
+
+            @Configuration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
+            class KotlinWebConfig
+            """.trimIndent()
+        )
+        assertResolves(ENABLE_WEB_SUPPORT)
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource("@EnableSpringDataWebSupport on com.example.config.KotlinWebConfig", schema)
+    }
+
+    fun testExplicitDirectAnnotationWritesPageDirect() = runBlocking<Unit> {
+        addWebConfig("DIRECT")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testAnnotationWithoutModeAttributeIsDirect() = runBlocking<Unit> {
+        addWebConfig(null)
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testViaDtoPropertyWritesPagedModel() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(SERIALIZATION_MODE_KEY, schema)
+    }
+
+    fun testAnnotationOutranksTheProperty() = runBlocking<Unit> {
+        addWebConfig("DIRECT")
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testPlaceholderModeIsReportedUnknownWithTheDefaultShape() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=\${PAGE_MODE}")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource("UNKNOWN", schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testModeInAnInactiveProfileFileIsNotLoaded() = runBlocking<Unit> {
+        addFile("application-prod.properties", "$SERIALIZATION_MODE_KEY=VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource("DEFAULT", schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testModeInAnActiveProfileFileIsLoaded() = runBlocking<Unit> {
+        addFile("application.properties", "spring.profiles.active=prod")
+        addFile("application-prod.properties", "$SERIALIZATION_MODE_KEY=VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(SERIALIZATION_MODE_KEY, schema)
+    }
+
+    fun testSliceIsWrittenDirect() = runBlocking<Unit> {
+        assertDirectSlice(sliceSchema("/orders/slice"))
+    }
+
+    fun testSliceStaysDirectUnderViaDto() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+
+        assertDirectSlice(sliceSchema("/orders/slice"))
+    }
+
+    fun testResponseEntityOfPageUnwrapsToThePage() = runBlocking<Unit> {
+        val schema = schemaOf("/orders/entity-page", "org.springframework.http.ResponseEntity<$PAGE<$ORDER_DTO>>")
+
+        assertDirectPage(schema)
+        assertSource("DEFAULT", schema)
+    }
+
+    fun testKotlinSuspendHandlerReturningPageIsThePage() = runBlocking<Unit> {
+        addFile(
+            "com/example/shop/SuspendOrderController.kt", """
+            package com.example.shop
+
+            import org.springframework.data.domain.Page
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class SuspendOrderController {
+                @GetMapping("/orders/suspend-page")
+                suspend fun page(): Page<OrderDto> = TODO()
+            }
+            """.trimIndent()
+        )
+
+        assertDirectPage(schemaOf("/orders/suspend-page", "$PAGE<$ORDER_DTO>"))
+    }
+
+    fun testListOfDtoIsUnchanged() = runBlocking<Unit> {
+        val schema = schemaOf("/orders/list", "java.util.List<$ORDER_DTO>")
+
+        assertEquals(listOf("className", "fields"), keys(schema))
+        assertEquals(ORDER_DTO, schema["className"].asText())
+        assertEquals(listOf("id", "note"), names(schema))
+    }
+
+    fun testPlainDtoIsUnchanged() = runBlocking<Unit> {
+        val schema = schemaOf("/orders/one", ORDER_DTO)
+
+        assertEquals(listOf("className", "fields"), keys(schema))
+        assertEquals(listOf("id", "note"), names(schema))
+    }
+}
+
+/**
+ * Boot's `SpringDataWebAutoConfiguration`, which binds `spring.data.web.pageable.serialization-mode`, is servlet-only,
+ * so the property means nothing to a reactive application. `@EnableSpringDataWebSupport` itself is stack-neutral: its
+ * import selector adds `SpringDataJacksonConfiguration`, whose `PageModule` bean Boot installs into the `ObjectMapper`
+ * the WebFlux codecs use.
+ */
+class SpringBootApplicationMcpToolsetReactivePageSchemaTest : PageSchemaTestCase() {
+
+    override val stack = WebApplicationStack.REACTIVE
+
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springReactiveWeb_3_1_1,
+        TestLibrary.springDataJpa_3_4_0,
+    )
+
+    fun testPropertyIsIgnoredOnAReactiveApplication() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource("DEFAULT", schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testViaDtoAnnotationWritesPagedModelOnAReactiveApplication() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testPlainDtoIsUnchangedOnAReactiveApplication() = runBlocking<Unit> {
+        val schema = schemaOf("/orders/one", ORDER_DTO)
+
+        assertEquals(listOf("className", "fields"), keys(schema))
+        assertEquals(listOf("id", "note"), names(schema))
     }
 }
