@@ -109,6 +109,7 @@ private val BEAN_LISTING_ORDER: Comparator<SpringBean> = compareBy<SpringBean>(
     { it.origin?.ordinal ?: BeanOrigin.entries.size },
     { it.beanName },
     { it.className },
+    { it.moduleName },
 )
 
 class SpringBootApplicationMcpToolset : McpToolset {
