@@ -6,6 +6,7 @@
 package com.explyt.spring.core.service.java
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.ComposedBeanNameFixture
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
@@ -136,42 +137,46 @@ class SpringSearchServiceTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("x", "y"), records.single().knownNames.toList())
     }
 
-    fun testComposedBeanAliasAttributeIsNotReadYet() {
-        myFixture.addFileToProject("beanname/App.java", """
-            package beanname;
-            import org.springframework.boot.autoconfigure.SpringBootApplication;
-            import org.springframework.context.annotation.Bean;
-            import org.springframework.core.annotation.AliasFor;
-            import java.lang.annotation.Retention;
-            import java.lang.annotation.RetentionPolicy;
-            @Bean
-            @Retention(RetentionPolicy.RUNTIME)
-            @interface MyBean {
-                @AliasFor(annotation = Bean.class, attribute = "name")
-                String[] beanName() default {};
-            }
-            @SpringBootApplication
-            public class App {
-                @MyBean(beanName = "x")
-                public Foo foo() { return new Foo(); }
-            }
-            class Foo {}
-        """.trimIndent())
-        val application = JavaPsiFacade.getInstance(project)
-            .findClass("beanname.App", GlobalSearchScope.projectScope(project))!!
-        val method = application.findMethodsByName("foo", false).single()
-        val annotation = method.getAnnotation("beanname.MyBean")!!
-        assertEquals("beanname.MyBean", annotation.resolveAnnotationType()?.qualifiedName)
-        assertEquals(listOf("x"), annotation.getStringMemberValues("beanName"))
-        assertTrue(method.name !in annotation.getStringMemberValues("beanName"))
-        val declaration = annotation.resolveAnnotationType()!!
-        assertEquals(SpringCoreClasses.BEAN, declaration.getAnnotation(SpringCoreClasses.BEAN)!!.resolveAnnotationType()?.qualifiedName)
-        val alias = declaration.findMethodsByName("beanName", false).single()
-            .getAnnotation("org.springframework.core.annotation.AliasFor")!!
-        assertEquals("org.springframework.core.annotation.AliasFor", alias.resolveAnnotationType()?.qualifiedName)
-        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
-            .filter { it.psiClass.qualifiedName == "beanname.Foo" }
-        assertEquals(listOf("foo"), beans.map { it.name })
+    fun testComposedBeanNameAlias() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"name\") String[] beanName() default {};",
+        "@MyBean(beanName = \"x\")", "beanName", "name", listOf("x"), listOf("x")
+    )
+
+    fun testComposedBeanValueAlias() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"value\") String[] beanName() default {};",
+        "@MyBean(beanName = \"x\")", "beanName", "value", listOf("x"), listOf("x")
+    )
+
+    fun testComposedBeanAliasWithTwoNames() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"name\") String[] beanName() default {};",
+        "@MyBean(beanName = {\"x\", \"y\"})", "beanName", "name", listOf("x", "y"), listOf("x", "y")
+    )
+
+    fun testComposedBeanAliasLeftEmptyFallsBackToMethodName() = assertComposedBeanName(
+        "@AliasFor(annotation = Bean.class, attribute = \"name\") String[] beanName() default {};",
+        "@MyBean", "beanName", "name", emptyList(), listOf("foo")
+    )
+
+    fun testComposedNameAttributeWithoutAliasForOverridesByConventionInSpring6() = assertComposedBeanName(
+        "String[] name() default {};",
+        "@MyBean(name = \"x\")", "name", null, listOf("x"), listOf("x")
+    )
+
+    fun testComposedValueAttributeWithoutAliasForIsNotAnOverride() = assertComposedBeanName(
+        "String[] value() default {};",
+        "@MyBean(\"x\")", "value", null, listOf("x"), listOf("foo")
+    )
+
+    private fun assertComposedBeanName(
+        attributeDeclaration: String,
+        usage: String,
+        attribute: String,
+        aliasTarget: String?,
+        declaredValues: List<String>,
+        expectedNames: List<String>,
+    ) {
+        ComposedBeanNameFixture.addJava(myFixture, attributeDeclaration, usage)
+        ComposedBeanNameFixture.assertComposedBeanNames(myFixture, module, attribute, aliasTarget, declaredValues, expectedNames)
     }
 
     private fun assertBeanName(annotation: String, attribute: String, values: List<String>, expectedName: String) {
