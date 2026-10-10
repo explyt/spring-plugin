@@ -241,6 +241,75 @@ class BeanSnapshotServiceTest : ExplytKotlinLightTestCase() {
 
     fun testNativeKotlinBeanAliases() = assertNativeBeanNames(true, listOf("x", "y"))
 
+    fun testNativeJavaComposedBeanAliases() = assertNativeComposedBeanNames(false, listOf("x", "y"))
+
+    fun testNativeKotlinComposedBeanAliases() = assertNativeComposedBeanNames(true, listOf("x", "y"))
+
+    private fun assertNativeComposedBeanNames(kotlin: Boolean, names: List<String>) {
+        val values = names.joinToString { "\"$it\"" }
+        val source = if (kotlin) {
+            """
+            package com.explyt.demo
+            import org.springframework.boot.autoconfigure.SpringBootApplication
+            import org.springframework.context.annotation.Bean
+            import org.springframework.core.annotation.AliasFor
+            import java.time.Clock
+            @Bean
+            annotation class MyBean(
+                @get:AliasFor(annotation = Bean::class, attribute = "name") val beanName: Array<String> = [],
+            )
+            @SpringBootApplication
+            open class App {
+                @MyBean(beanName = [$values])
+                open fun foo(): Clock = Clock.systemUTC()
+            }
+            """.trimIndent()
+        } else {
+            """
+            package com.explyt.demo;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.core.annotation.AliasFor;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.time.Clock;
+            @Bean
+            @Retention(RetentionPolicy.RUNTIME)
+            @interface MyBean {
+                @AliasFor(annotation = Bean.class, attribute = "name") String[] beanName() default {};
+            }
+            @SpringBootApplication
+            public class App {
+                @MyBean(beanName = {$values})
+                public Clock foo() { return Clock.systemUTC(); }
+            }
+            """.trimIndent()
+        }
+        myFixture.addFileToProject("com/explyt/demo/App.${if (kotlin) "kt" else "java"}", source)
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass("com.explyt.demo.App", GlobalSearchScope.projectScope(project))!!
+        val factory = application.findMethodsByName("foo", false).single()
+        val annotation = factory.getAnnotation("com.explyt.demo.MyBean")!!
+        val composed = JavaPsiFacade.getInstance(project).findClass("com.explyt.demo.MyBean", GlobalSearchScope.projectScope(project))!!
+        assertTrue(composed.isAnnotationType)
+        assertEquals(
+            "org.springframework.context.annotation.Bean",
+            composed.getAnnotation("org.springframework.context.annotation.Bean")?.resolveAnnotationType()?.qualifiedName
+        )
+        assertEquals(names, annotation.getStringMemberValues("beanName"))
+        assertTrue(factory.name !in names)
+        installNativeRoot(application, names.first(), "foo", "java.time.Clock")
+        val snapshot = SpringSearchServiceFacade.getInstance(project)
+            .getBeanSnapshot(application, BeanSourcePreference.NATIVE)
+        assertEquals(BeanModelSource.NATIVE_SNAPSHOT, snapshot.selection.source)
+        assertEquals(1, snapshot.records.size)
+        val record = snapshot.records.single()
+        assertEquals(names.first(), record.name)
+        assertEquals(names, record.knownNames.toList())
+        assertEquals(factory, record.declaration)
+        assertFalse(NativeBeanSnapshotReader.ALIASES_NOT_EXPORTED in record.limitations)
+    }
+
     private fun assertNativeBeanNames(kotlin: Boolean, names: List<String>) {
         val values = names.joinToString { "\"$it\"" }
         val source = if (kotlin) {

@@ -148,6 +148,55 @@ public class SomeServiceTest {
 
     fun testBeanAliasQualifier() = assertBeanNameQualifier("@Bean(name = {\"x\", \"y\"})", "y")
 
+    fun testComposedBeanNameAliasQualifier() {
+        myFixture.configureByText(
+            "App.java",
+            """
+            package beanname;
+            import org.springframework.boot.autoconfigure.SpringBootApplication;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.core.annotation.AliasFor;
+            import org.springframework.beans.factory.annotation.Autowired;
+            import org.springframework.beans.factory.annotation.Qualifier;
+            import org.springframework.stereotype.Component;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            @Bean
+            @Retention(RetentionPolicy.RUNTIME)
+            @interface MyBean {
+                @AliasFor(annotation = Bean.class, attribute = "name")
+                String[] beanName() default {};
+            }
+            @SpringBootApplication
+            public class App {
+                @MyBean(beanName = "x")
+                public Foo foo() { return new Foo(); }
+                @Bean
+                public Foo other() { return new Foo(); }
+            }
+            class Foo {}
+            @Component
+            class Consumer {
+                @Autowired
+                @Qualifier("x")
+                Foo foo;
+            }
+            """.trimIndent()
+        )
+        val scope = GlobalSearchScope.projectScope(project)
+        val facade = JavaPsiFacade.getInstance(project)
+        val application = facade.findClass("beanname.App", scope)!!
+        val composed = application.findMethodsByName("foo", false).single().getAnnotation("beanname.MyBean")!!
+        val declaration = composed.resolveAnnotationType()!!
+        assertEquals(SpringCoreClasses.BEAN, declaration.getAnnotation(SpringCoreClasses.BEAN)?.resolveAnnotationType()?.qualifiedName)
+        assertNotNull(declaration.findMethodsByName("beanName", false).single().getAnnotation("org.springframework.core.annotation.AliasFor"))
+        assertEquals(listOf("x"), composed.getStringMemberValues("beanName"))
+        val injection = facade.findClass("beanname.Consumer", scope)!!.findFieldByName("foo", false)!!
+        assertEquals(listOf("x"), injection.getAnnotation(SpringCoreClasses.QUALIFIER)!!.getStringMemberValues())
+        val autowiringErrors = myFixture.doHighlighting().mapNotNull { it.description }.filter { it.startsWith("Autowire failed") }
+        assertEquals(emptyList<String>(), autowiringErrors)
+    }
+
     private fun assertBeanNameQualifier(annotation: String, qualifier: String, missing: Boolean = false) {
         myFixture.configureByText(
             "App.java",
