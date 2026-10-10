@@ -22,6 +22,8 @@ import com.explyt.spring.web.editor.openapi.OpenApiUtils.isAbsolutePath
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALUE
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
+import com.explyt.spring.web.route.RoutePredicates
+import com.explyt.spring.web.route.RoutePrefix
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -642,20 +644,17 @@ object SpringWebUtil {
     }
 
     fun getPathsFromCallExpression(callExpression: UCallExpression): List<String> {
-        var paths = getOwnPaths(callExpression) ?: return emptyList()
+        var route = RoutePrefix.of(getOwnPaths(callExpression).orEmpty())
 
         var currentNode = callExpression.uastParent
-        while (currentNode != null) {
+        while (currentNode != null && route != RoutePrefix.Undecidable) {
             ProgressManager.checkCanceled()
             if (currentNode is UCallExpression && isNestCall(currentNode)) {
-                // A receiver that is not a path - `accept(APPLICATION_JSON).nest { }` - narrows the routes without
-                // prefixing them, so the routes stay; only this route's own unresolved path drops it.
-                val prefixes = getNestPrefixesOrNullIfUnresolved(currentNode).orEmpty()
-                if (prefixes.isNotEmpty()) paths = prefixes.flatMap { prefix -> paths.map { prefix + it } }
+                route = RoutePredicates.prefixOfNest(currentNode).then(route)
             }
             currentNode = currentNode.uastParent
         }
-        return paths
+        return (route as? RoutePrefix.Decided)?.segments.orEmpty()
     }
 
     /**
@@ -663,35 +662,21 @@ object SpringWebUtil {
      * segment rather than no path at all — returning no path would drop the route.
      */
     private fun getOwnPaths(callExpression: UCallExpression): List<String>? {
+        if (RoutePredicates.returnsRequestPredicate(callExpression)) return null
         if (callExpression.methodName == SpringWebClasses.ROUTER_DSL_GENERIC_METHOD) return listOf("")
 
         val uriArgument = callExpression.valueArguments.firstOrNull() ?: return null
         return RoutePathResolver.resolveUriValues(uriArgument).takeIf { it.isNotEmpty() }
     }
 
-    fun isNestCall(call: UCallExpression): Boolean = call.callName() == NEST
+    fun isNestCall(call: UCallExpression): Boolean = call.callName() == SpringWebClasses.ROUTE_NEST
 
-    fun getNestPrefixesOrNullIfUnresolved(nestCall: UCallExpression): List<String>? {
-        val predicate = nestPredicate(nestCall) ?: return null
-        val pathArgument = predicate.asRouterDslPathPredicate()?.valueArguments?.single()
-        val prefixes = RoutePathResolver.resolveUriValues(pathArgument ?: predicate)
-        val isPathFree = pathArgument == null && !predicate.isText()
-        return prefixes.takeIf { it.isNotEmpty() || isPathFree }
-    }
-
-    private fun UExpression.isText(): Boolean = getExpressionType()?.canonicalText in TEXT_TYPES
-
-    private fun nestPredicate(nestCall: UCallExpression): UExpression? =
-        nestCall.receiver ?: nestCall.valueArguments.takeIf { it.size == 2 }?.first()
-
-    private fun UExpression.asRouterDslPathPredicate(): UCallExpression? {
-        val call = ((this as? UQualifiedReferenceExpression)?.selector ?: this) as? UCallExpression ?: return null
-        if (call.methodName != SpringWebClasses.ROUTER_DSL_PATH_PREDICATE || call.valueArgumentCount != 1) return null
-
-        val method = call.resolve() ?: return null
-        val isDslMember = method.containingClass?.qualifiedName in SpringWebClasses.ROUTER_DSL_CLASSES
-        return call.takeIf { isDslMember && method.parameterList.parametersCount == 1 }
-    }
+    fun getNestPrefixesOrNullIfUnresolved(nestCall: UCallExpression): List<String>? =
+        when (val prefix = RoutePredicates.prefixOfNest(nestCall)) {
+            is RoutePrefix.Decided -> prefix.segments
+            RoutePrefix.PathFree -> emptyList()
+            RoutePrefix.Undecidable -> null
+        }
 
     fun simplifyUrl(urlPath: String): String {
         var result = if (urlPath.startsWith("/")) urlPath else "/$urlPath"
@@ -737,8 +722,7 @@ object SpringWebUtil {
                         && it.type.canonicalText == CommonClassNames.JAVA_LANG_STRING
             }
 
-    private const val NEST = "nest"
-    private val TEXT_TYPES = setOf(CommonClassNames.JAVA_LANG_STRING, "kotlin.String")
+
     private const val NULLABLE_SIMPLE_NAME = "Nullable"
 
     private val MultipleSlashes = Regex("//+")
