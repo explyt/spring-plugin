@@ -32,13 +32,18 @@ class ScopedBeanInjectionResolver(private val project: Project) {
                 BeanMatch(emptyList(), MatchCompleteness.PARTIAL, 0, point.facts.limitations)
             )
 
-        val byType = ScopedBeanMatcher(project).matchType(snapshot.records, beanType)
-        val byQualifier = point.variable.getQualifierAnnotation()?.let { narrowByQualifier(byType, it) } ?: byType
+        val matcher = ScopedBeanMatcher(project)
+        val qualifier = point.variable.getQualifierAnnotation()
+        val byType = matcher.matchType(snapshot.records, beanType)
+        val byQualifier = qualifier?.let { narrowByQualifier(byType, it) } ?: byType
         val selected = when (point.facts.shape) {
             InjectionShape.SINGLE, InjectionShape.OPTIONAL -> select(byQualifier)
             else -> byQualifier
         }
-        return BeanSelection(outcome(point.facts.shape, selected), selected)
+        val inactiveByType = matcher.matchType(snapshot.inactiveRecords, beanType)
+        val inactive = (qualifier?.let { narrowByQualifier(inactiveByType, it) } ?: inactiveByType).records
+        val conditioned = selected.withUndecidedConditions().copy(inactiveRecords = inactive)
+        return BeanSelection(outcome(point.facts.shape, conditioned), conditioned)
     }
 
     /**

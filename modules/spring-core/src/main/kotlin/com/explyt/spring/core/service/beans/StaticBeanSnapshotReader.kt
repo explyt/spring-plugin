@@ -8,6 +8,7 @@ package com.explyt.spring.core.service.beans
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.openapi.module.Module
@@ -30,25 +31,41 @@ import com.intellij.psi.PsiType
  */
 class StaticBeanSnapshotReader(private val project: Project) {
 
+    data class Records(val active: List<ScopedBeanRecord>, val inactive: List<ScopedBeanRecord>)
+
     @Suppress("DEPRECATION")
-    fun read(module: Module, injectionFile: PsiFile?): List<ScopedBeanRecord> {
+    fun read(module: Module, injectionFile: PsiFile?): Records {
         val searchService = SpringSearchService.getInstance(project)
         // The active model, not `getProjectBeans`: the latter enumerates stereotypes without the conditional
         // filtering that decides whether a bean is in the context at all.
         val active = searchService.getActiveBeansClasses(module) + searchService.getStaticBeans(module)
+        val excluded = searchService.getExcludedBeansClasses(module)
+        val verdicts = searchService.conditionVerdicts(module)
         val fromTestSource = injectionFile?.virtualFile
             ?.let { ProjectRootManager.getInstance(project).fileIndex.isInTestSourceContent(it) } ?: false
 
-        return active.asSequence()
-            .onEach { ProgressManager.checkCanceled() }
-            .filter { it.psiClass.isValid && it.psiMember.isValid }
-            // A production query must not see test-only beans. The decision follows the file the query is about,
-            // never the selected editor, so the same request answers the same way.
-            .filter { fromTestSource || !it.isFromTestSource() }
-            .map { DeclaredBean(it, declaredNamesOf(it, module)) }
-            .toList()
-            .groupBy { it.identity }
-            .map { (_, declarations) -> toRecord(canonicalOf(declarations), module) }
+        fun recordsOf(beans: Collection<PsiBean>, conditionOf: (PsiBean) -> BeanConditionRecord?) =
+            beans.asSequence()
+                .onEach { ProgressManager.checkCanceled() }
+                .filter { it.psiClass.isValid && it.psiMember.isValid }
+                // A production query must not see test-only beans. The decision follows the file the query is
+                // about, never the selected editor, so the same request answers the same way.
+                .filter { fromTestSource || !it.isFromTestSource() }
+                .map { DeclaredBean(it, declaredNamesOf(it, module)) }
+                .toList()
+                .groupBy { it.identity }
+                .map { (_, declarations) ->
+                    val canonical = canonicalOf(declarations)
+                    toRecord(canonical, module, conditionOf(canonical.bean))
+                }
+
+        val activeRecords = recordsOf(active) { bean ->
+            BeanConditionRecord.of(verdicts[bean])?.takeIf { it.undecided }
+        }
+        val inactiveRecords = recordsOf(excluded.filter { verdicts[it] is ConditionVerdict.Inactive }) { bean ->
+            BeanConditionRecord.of(verdicts[bean])
+        }
+        return Records(activeRecords, inactiveRecords)
     }
 
     /**
@@ -64,7 +81,7 @@ class StaticBeanSnapshotReader(private val project: Project) {
         return declarations.firstOrNull { it.bean.name == canonicalName } ?: declarations.first()
     }
 
-    private fun toRecord(declared: DeclaredBean, module: Module): ScopedBeanRecord {
+    private fun toRecord(declared: DeclaredBean, module: Module, condition: BeanConditionRecord?): ScopedBeanRecord {
         val bean = declared.bean
         val factory = bean.psiMember as? PsiMethod
         val knownNames = (listOf(bean.name) + declared.declaredNames).filterTo(LinkedHashSet()) { it.isNotBlank() }
@@ -87,7 +104,8 @@ class StaticBeanSnapshotReader(private val project: Project) {
             primary = primary,
             priority = null,
             details = BeanDetailsEvidence(aliases = knownNames.toList(), primary = primary),
-            limitations = emptySet()
+            limitations = emptySet(),
+            condition = condition
         )
     }
 

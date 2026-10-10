@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.service.beans
 
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.ProfilesService
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.intellij.openapi.components.Service
@@ -43,14 +44,17 @@ class BeanSnapshotService(private val project: Project) {
 
         val records = when (val context = selection.nativeContext) {
             null -> StaticBeanSnapshotReader(project).read(applicationModule, injectionFile)
-            else -> NativeBeanSnapshotReader(project).read(context, applicationModule)
+            else -> StaticBeanSnapshotReader.Records(
+                NativeBeanSnapshotReader(project).read(context, applicationModule), emptyList()
+            )
         }
 
         return ScopedBeanSnapshot(
             application = identity,
-            selection = selection,
+            selection = selection.withConditionEvaluation(),
             modelStamp = modelStampOf(selection),
-            records = records
+            records = records.active,
+            inactiveRecords = records.inactive
         )
     }
 
@@ -78,6 +82,10 @@ class BeanSnapshotService(private val project: Project) {
         }
         return BeanSnapshotIdentity.hash(parts)
     }
+
+    private fun BeanContextSelection.withConditionEvaluation(): BeanContextSelection =
+        if (nativeContext != null || SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled) this
+        else copy(limitations = limitations + BeanConditionRecord.CONDITIONS_NOT_EVALUATED)
 
     private fun identityOf(application: PsiClass): BeanApplicationIdentity = BeanApplicationIdentity(
         className = application.qualifiedName ?: error("An application without a qualified name cannot be scoped"),
