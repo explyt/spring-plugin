@@ -10,6 +10,9 @@ object JacksonClasses {
     const val JSON_VALUE = "com.fasterxml.jackson.annotation.JsonValue"
     const val JSON_PROPERTY = "com.fasterxml.jackson.annotation.JsonProperty"
     const val JSON_IGNORE = "com.fasterxml.jackson.annotation.JsonIgnore"
+    const val JSON_TYPE_INFO = "com.fasterxml.jackson.annotation.JsonTypeInfo"
+    const val JSON_SUB_TYPES = "com.fasterxml.jackson.annotation.JsonSubTypes"
+    const val JSON_TYPE_NAME = "com.fasterxml.jackson.annotation.JsonTypeName"
 
     /** `@JsonNaming` lives in databind, whose package differs between Jackson 2 and Jackson 3. */
     val JSON_NAMING_ANNOTATIONS = setOf(

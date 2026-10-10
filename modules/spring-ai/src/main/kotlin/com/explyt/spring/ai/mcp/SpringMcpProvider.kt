@@ -338,8 +338,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "configuration - and the dropped part is reported as 'assumedPrefix', a guess. Both are null when " +
                 "the path matched as written. " +
                 "'fullPath' is the path the application serves, with configuration placeholders such as " +
-                "'\${app.path:/l}' resolved; 'pathTemplate' holds the path as declared and is present only when it " +
-                "differs from 'fullPath'. " +
+                "'\${app.path:/l}' resolved; 'pathTemplate' is the endpoint path template with mapping prefixes and " +
+                "values joined and normalised, before configuration placeholders are resolved; it equals 'path' when " +
+                "nothing was resolved. " +
                 "When 'endpoints' is empty, no route answers the URL even without a leading prefix, and " +
                 "'nearestByPrefix' lists the existing routes that share the longest leading path with it - the " +
                 "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path as " +
@@ -968,8 +969,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "operation, RESOURCE, BOOT_DEFAULT, or CUSTOM_ENDPOINT_MEDIA_TYPES when the application declares " +
                 "its own EndpointMediaTypes bean, whose types are not read. " +
                 "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
-                "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
-                "absent otherwise. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
+                "'\${app.path:/l}/{code}', also carries 'pathTemplate' with mapping prefixes and values joined and " +
+                "normalised before configuration placeholders are resolved; it equals 'path' when nothing was " +
+                "resolved. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
                 "built-in Actuator one, has a null 'filePath' and names the jar in 'library' instead, a key absent " +
                 "for a project endpoint - no answer carries a path of the machine. " +
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
@@ -1063,7 +1065,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "endpoint, and before changing its request or response shape, to see what callers currently depend " +
                 "on. " +
                 "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
-                "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
+                "resolved, with 'pathTemplate' holding the endpoint path template with mapping prefixes and values " +
+                "joined and normalised before configuration placeholders are resolved, equal to 'path' when nothing " +
+                "was resolved, only when it differs), every declared handler " +
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
                 "expanded up to 3 levels: in 'name' a @JsonProperty name, else the name the declared Jackson naming " +
                 "strategy gives - @JsonNaming or spring.jackson.property-naming-strategy, reported as 'namingStrategy' " +
@@ -1075,9 +1079,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
                 "which are not the wire values; a non-generic library class such as an Actuator descriptor is " +
-                "expanded like a project DTO, and a library object type that is not carries 'schemaOmitted': " +
-                "LIBRARY_INFRASTRUCTURE, JSON_TREE, CUSTOM_SERIALIZATION, MAP_TYPE, COLLECTION_TYPE, ABSTRACT_TYPE or " +
-                "NO_VISIBLE_PROPERTIES; 'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
+                "expanded like a project DTO, and a library object type that is not, or a polymorphic variant past " +
+                "the depth limit, carries 'schemaOmitted': LIBRARY_INFRASTRUCTURE, JSON_TREE, CUSTOM_SERIALIZATION, " +
+                "MAP_TYPE, COLLECTION_TYPE, ABSTRACT_TYPE, NO_VISIBLE_PROPERTIES or DEPTH_LIMIT; a project abstract, " +
+                "interface, sealed or @JsonSubTypes type carries 'polymorphic': true, 'discriminator' when " +
+                "@JsonTypeInfo applies ('use', 'include' except for DEDUCTION, and 'property' except for " +
+                "WRAPPER_OBJECT, WRAPPER_ARRAY and DEDUCTION) and 'variants' when Jackson knows the subtypes - " +
+                "Kotlin sealed subclasses and @JsonSubTypes - each with the 'typeId' written for it, absent " +
+                "otherwise; " +
+                "'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
                 "is written next to the fields; a Page<T> is described by its content type, an approximation of " +
                 "the page Spring Data writes), produces/consumes media types, and " +
                 "'serviceCalls': every " +
@@ -2482,6 +2492,7 @@ data class EndpointContractJson(
  */
 data class DtoSchemaJson(
     val className: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val typeId: String? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val fields: List<DtoFieldJson>?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumValues: List<String>? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
@@ -2497,10 +2508,19 @@ data class DtoSchemaJson(
      * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
-    /** Why a library object type is not expanded into [fields]; see `ResponseSchemaReader.SchemaOmitted`. */
+    /** Why the type is not expanded into [fields]; see `ResponseSchemaReader.SchemaOmitted`. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val schemaOmitted: String? = null,
     /** `true` when entries of a map are written next to [fields], as a Jackson `@JsonAnyGetter` writes them. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val additionalProperties: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val polymorphic: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val discriminator: DiscriminatorJson? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val variants: List<DtoSchemaJson>? = null,
+)
+
+data class DiscriminatorJson(
+    val use: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val include: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val property: String?,
 )
 
 data class DtoFieldJson(
