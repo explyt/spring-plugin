@@ -130,14 +130,18 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
     fun testNestedApplicationClassResolvesWithADollarInTheBeanListing() = runBlocking<Unit> {
         addNestedApplication()
 
-        val beans = mapper.readTree(
+        val page = mapper.readTree(
             toolset.applicationBeans(
                 applicationClassName = "com.example.app.PetClinicTests\$TestConfiguration",
                 projectPath = projectPath(),
                 beanType = "COMPONENT",
                 source = "STATIC",
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS,
             )
         )
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        val beans = page["beans"]
 
         assertTrue("Expected the nested application's component, got $beans", beans.any {
             it["className"].asText() == "com.example.app.PetClinicTests.Clock"
