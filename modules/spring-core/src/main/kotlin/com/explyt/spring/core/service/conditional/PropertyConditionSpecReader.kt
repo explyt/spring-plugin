@@ -20,7 +20,10 @@ import org.jetbrains.uast.toUElementOfType
 class PropertyConditionSpecReader(private val propertyAnnotations: MetaAnnotationsHolder) {
     private val metaSpecsByAnnotation = HashMap<String, List<PropertyConditionSpec>>()
 
-    fun read(member: PsiMember): List<PropertyConditionSpec> = member.annotations.flatMap { specsOf(it) }
+    fun read(member: PsiMember): List<Pair<PsiAnnotation, List<PropertyConditionSpec>>> =
+        member.annotations.mapNotNull { annotation -> read(annotation).takeIf { it.isNotEmpty() }?.let { annotation to it } }
+
+    fun read(annotation: PsiAnnotation): List<PropertyConditionSpec> = specsOf(annotation)
 
     private fun specsOf(annotation: PsiAnnotation, visited: Set<String> = emptySet()): List<PropertyConditionSpec> {
         val name = annotation.qualifiedName ?: return emptyList()

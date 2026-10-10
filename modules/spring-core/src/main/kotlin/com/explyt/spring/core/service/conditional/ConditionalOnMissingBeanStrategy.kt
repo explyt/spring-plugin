@@ -6,6 +6,7 @@
 package com.explyt.spring.core.service.conditional
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.util.PsiAnnotationUtils
@@ -14,44 +15,43 @@ import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 
-class ConditionalOnMissingBeanStrategy(module: Module) : ExclusionStrategy {
-    private val annotationHolder = SpringSearchService.getInstance(module.project)
-        .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_MISSING_BEAN)
+class ConditionalOnMissingBeanStrategy(module: Module) : AnnotationConditionStrategy(
+    listOf(
+        SpringSearchService.getInstance(module.project)
+            .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_MISSING_BEAN)
+    ),
+    setOf(ConditionAssumption.STATIC_BEAN_MODEL_COMPLETE)
+) {
 
-    override fun shouldExclude(dependant: PsiMember, foundBeans: Collection<PsiBean>): Boolean {
-        if (dependant.annotations.none { annotationHolder.contains(it) }) {
-            return false
-        }
-
-        val names = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
+    override fun unmetRequirement(
+        holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
+    ): String? {
+        val names = holder.getAnnotationMemberValues(carrier, setOf("name"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
-        if (names.isNotEmpty() && foundBeans.any { names.contains(it.name) }) {
-            return true
-        }
+        activeBeans.firstOrNull { it.name in names }?.let { return "bean named ${it.name} exists" }
 
-        val types = annotationHolder.getAnnotationMemberValues(dependant, setOf("type"))
+        val types = holder.getAnnotationMemberValues(carrier, setOf("type"))
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
             .toSet()
-        if (types.isNotEmpty() && foundBeans.any { types.contains(it.psiClass.qualifiedName) }) {
-            return true
-        }
+        activeBeans.firstOrNull { it.psiClass.qualifiedName in types }
+            ?.let { return "bean of type ${it.psiClass.qualifiedName} exists" }
 
-        val classAttributes = annotationHolder.getAnnotationMemberValues(dependant, setOf("value"))
+        val classAttributes = holder.getAnnotationMemberValues(carrier, setOf("value"))
         val classesQn = if (names.isEmpty() && types.isEmpty() && classAttributes.isEmpty()) {
-            setOfNotNull(dependant.resolvePsiClass?.qualifiedName)
+            setOfNotNull(carrier.resolvePsiClass?.qualifiedName)
         } else {
             PsiAnnotationUtils.getTypeNames(classAttributes)
         }
-
-        return classesQn.isNotEmpty() && foundBeans.asSequence().filter { isNotSame(it, dependant) }
-            .any { classesQn.contains(it.psiClass.qualifiedName) }
+        if (classesQn.isEmpty()) return null
+        return activeBeans.asSequence()
+            .filter { isNotSame(it, carrier) }
+            .firstOrNull { it.psiClass.qualifiedName in classesQn }
+            ?.let { "bean ${it.name} of type ${it.psiClass.qualifiedName} exists" }
     }
 
-    //todo - tests jdbcClient & kafkaTemplate
-    private fun isNotSame(bean: PsiBean, dependant: PsiMember): Boolean {
-        if (bean.psiMember == dependant) return false
-        return bean.psiMember.containingClass != dependant
+    private fun isNotSame(bean: PsiBean, carrier: PsiMember): Boolean {
+        if (bean.psiMember == carrier) return false
+        return bean.psiMember.containingClass != carrier
     }
-
 }

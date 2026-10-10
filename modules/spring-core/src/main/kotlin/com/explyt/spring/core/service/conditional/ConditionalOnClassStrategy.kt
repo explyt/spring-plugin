@@ -6,6 +6,7 @@
 package com.explyt.spring.core.service.conditional
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
@@ -17,45 +18,32 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import com.intellij.psi.util.childrenOfType
 
-class ConditionalOnClassStrategy(private val module: Module) : ExclusionStrategy {
-    private val annotationHolder = SpringSearchService.getInstance(module.project)
-        .getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_CLASS)
+class ConditionalOnClassStrategy(private val module: Module) : AnnotationConditionStrategy(
+    listOf(SpringSearchService.getInstance(module.project).getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_CLASS)),
+    setOf(ConditionAssumption.COMPILE_CLASSPATH_IS_RUNTIME)
+) {
 
-    override fun shouldExclude(dependant: PsiMember, foundBeans: Collection<PsiBean>): Boolean {
-        if (dependant.annotations.none { annotationHolder.contains(it) }) {
-            return false
-        }
-
-        val classAttributeTypes = annotationHolder.getAnnotationMemberValues(dependant, setOf("value"))
+    override fun unmetRequirement(
+        holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
+    ): String? {
+        val unresolvedClass = holder.getAnnotationMemberValues(carrier, setOf("value"))
             .asSequence()
             .flatMap { it.childrenOfType<PsiTypeElement>() }
-            .map { it.type }
-            .toList()
+            .firstOrNull { it.type.resolvedPsiClass == null }
+        if (unresolvedClass != null) return "class ${unresolvedClass.text} is not on the classpath"
 
-        if (classAttributeTypes.isNotEmpty() && classAttributeTypes.any { it.resolvedPsiClass == null }) {
-            return true
-        }
-
-        val typesQn = annotationHolder.getAnnotationMemberValues(dependant, setOf("name"))
+        return holder.getAnnotationMemberValues(carrier, setOf("name"))
             .asSequence()
             .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .toSet()
-            .takeIf { it.isNotEmpty() } ?: return false
-
-        for (typeQn in typesQn) {
-            val className = typeQn.split('.').lastOrNull() ?: continue
-
-            val classFound = PsiShortNamesCache.getInstance(module.project)
-                .getClassesByName(
-                    className,
-                    GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-                )
-                .any { it.qualifiedName == typeQn }
-
-            if (!classFound) return true
-        }
-
-        return false
+            .distinct()
+            .firstOrNull { !module.hasClass(it) }
+            ?.let { "class $it is not on the classpath" }
     }
+}
 
+internal fun Module.hasClass(qualifiedName: String): Boolean {
+    val className = qualifiedName.split('.').last()
+    return PsiShortNamesCache.getInstance(project)
+        .getClassesByName(className, GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(this))
+        .any { it.qualifiedName == qualifiedName }
 }
