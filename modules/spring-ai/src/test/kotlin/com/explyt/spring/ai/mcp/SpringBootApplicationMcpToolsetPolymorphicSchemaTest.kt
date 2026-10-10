@@ -220,12 +220,17 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
             """
         )
 
+        assertAnnotated("$PACKAGE.Expr", JSON_TYPE_INFO)
+        assertNotNull("Precondition: Lit resolves", findProjectClass("$PACKAGE.Lit"))
+        assertNotNull("Precondition: Neg resolves", findProjectClass("$PACKAGE.Neg"))
         val schema = responseSchema("/api/expr")
 
         assertPolymorphic(schema)
         assertEquals(setOf("$PACKAGE.Lit", "$PACKAGE.Neg"), variantsOf(schema).keys)
-        val levels = schemaLevels(schema)
-        assertTrue("The self-reference is cut within the depth budget of 3, got $levels levels: $schema", levels in 2..3)
+        assertEquals("Exactly three expanded schema levels", 3, schemaLevels(schema))
+        val neg = schema["variants"].single { it["className"].asText() == "$PACKAGE.Neg" }
+        val operand = neg["fields"].single { it["name"].asText() == "operand" }["nested"]
+        assertDepthLimitedVariants(operand, mapOf("$PACKAGE.Lit" to "Lit", "$PACKAGE.Neg" to "Neg"))
     }
 
     fun testPlainDtoIsUnchanged() = runBlocking<Unit> {
@@ -415,6 +420,163 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         assertEquals("Cash", variantsOf(schema).values.single().typeId)
     }
 
+    fun testWrapperObjectHasNoDiscriminatorProperty() = runBlocking<Unit> {
+        addKotlinController(
+            "WrapperPayment", "WrapperPayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.WRAPPER_OBJECT)
+            sealed interface WrapperPayment
+
+            class Card : WrapperPayment
+            """
+        )
+        assertAnnotated("$PACKAGE.WrapperPayment", JSON_TYPE_INFO)
+        assertNotNull("Precondition: Card resolves", findProjectClass("$PACKAGE.Card"))
+        val wrapper = responseSchema("/api/wrapperpayment")
+        assertEquals("WRAPPER_OBJECT", wrapper["discriminator"]["include"].asText())
+        assertNull(wrapper["discriminator"]["property"])
+    }
+
+    fun testJavaSingleSubtypeAnnotationWithoutBraces() = runBlocking<Unit> {
+        addJavaType("Card", "public class Card extends SinglePayment { public long amount; }")
+        addJavaController("SinglePayment", "new Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo;
+            import com.fasterxml.jackson.annotation.JsonSubTypes;
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+            @JsonSubTypes(@JsonSubTypes.Type(value = Card.class, name = "card"))
+            public abstract class SinglePayment {}
+            """)
+        assertAnnotated("$PACKAGE.SinglePayment", JSON_TYPE_INFO)
+        assertAnnotated("$PACKAGE.SinglePayment", JSON_SUB_TYPES)
+        assertEquals(mapOf("$PACKAGE.Card" to VariantView("card", listOf("amount"))), variantsOf(responseSchema("/api/singlepayment")))
+    }
+
+    fun testWrapperArrayHasNoDiscriminatorProperty() = runBlocking<Unit> {
+        addKotlinController(
+            "ArrayPayment", "ArrayPayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.WRAPPER_ARRAY)
+            sealed interface ArrayPayment
+
+            class Card : ArrayPayment
+            """
+        )
+        assertAnnotated("$PACKAGE.ArrayPayment", JSON_TYPE_INFO)
+        assertNotNull("Precondition: Card resolves", findProjectClass("$PACKAGE.Card"))
+        val schema = responseSchema("/api/arraypayment")
+        assertEquals("WRAPPER_ARRAY", schema["discriminator"]["include"].asText())
+        assertNull("A wrapper array has no type-id property", schema["discriminator"]["property"])
+    }
+
+    fun testPaymentAtTheDepthBudgetRetainsVariantStubs() = runBlocking<Unit> {
+        addKotlinController(
+            "Order", "Order", "Order(Shipping(Card(\"4242\")))", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            data class Order(val shipping: Shipping)
+            data class Shipping(val payment: Payment)
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+            sealed interface Payment
+
+            data class Card(val number: String) : Payment
+            data class Cash(val amount: Long) : Payment
+            """
+        )
+        assertAnnotated("$PACKAGE.Payment", JSON_TYPE_INFO)
+        listOf("Order", "Shipping", "Card", "Cash").forEach {
+            assertNotNull("Precondition: $it resolves", findProjectClass("$PACKAGE.$it"))
+        }
+        val schema = responseSchema("/api/order")
+        val shipping = schema["fields"].single { it["name"].asText() == "shipping" }["nested"]
+        val payment = shipping["fields"].single { it["name"].asText() == "payment" }["nested"]
+        assertEquals("Exactly three expanded schema levels", 3, schemaLevels(schema))
+        assertDepthLimitedVariants(payment, mapOf("$PACKAGE.Card" to "Card", "$PACKAGE.Cash" to "Cash"))
+    }
+
+    fun testNoneHasNoDiscriminatorOrVariantIds() = runBlocking<Unit> {
+        addKotlinController(
+            "NonePayment", "NonePayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
+            sealed interface NonePayment
+
+            class Card : NonePayment
+            class Cash : NonePayment
+            """
+        )
+        assertAnnotated("$PACKAGE.NonePayment", JSON_TYPE_INFO)
+        assertNotNull("Precondition: Card resolves", findProjectClass("$PACKAGE.Card"))
+        assertNotNull("Precondition: Cash resolves", findProjectClass("$PACKAGE.Cash"))
+        val schema = responseSchema("/api/nonepayment")
+        assertEquals(setOf("$PACKAGE.Card", "$PACKAGE.Cash"), variantsOf(schema).keys)
+        assertTrue("NONE variants have no typeId", schema["variants"].all { !it.has("typeId") })
+        assertNull("NONE disables type metadata", schema["discriminator"])
+    }
+
+    fun testSubtypeNoneCancelsInheritedNameTypeInfo() = runBlocking<Unit> {
+        addKotlinController(
+            "ChildPayment", "ChildPayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+            interface ParentPayment
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
+            sealed interface ChildPayment : ParentPayment
+
+            class Card : ChildPayment
+            """
+        )
+        assertAnnotated("$PACKAGE.ParentPayment", JSON_TYPE_INFO)
+        assertAnnotated("$PACKAGE.ChildPayment", JSON_TYPE_INFO)
+        assertNotNull("Precondition: Card resolves", findProjectClass("$PACKAGE.Card"))
+        val schema = responseSchema("/api/childpayment")
+        assertEquals(setOf("$PACKAGE.Card"), variantsOf(schema).keys)
+        assertTrue("NONE variants have no typeId", schema["variants"].all { !it.has("typeId") })
+        assertNull("Subtype NONE overrides inherited NAME", schema["discriminator"])
+    }
+
+    fun testJavaInterfaceTypeInfoPrecedesSuperclassTypeInfo() = runBlocking<Unit> {
+        addJavaType("BasePayment", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo;
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "base")
+            public abstract class BasePayment {}
+            """)
+        addJavaType("Tagged", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo;
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "iface")
+            public interface Tagged {}
+            """)
+        addJavaType("Card", "public class Card extends Payment { public long amount; }")
+        addJavaController("Payment", "new Card()", """
+            import com.fasterxml.jackson.annotation.JsonSubTypes;
+            @JsonSubTypes({@JsonSubTypes.Type(value = Card.class, name = "card")})
+            public abstract class Payment extends BasePayment implements Tagged {}
+            """)
+        assertAnnotated("$PACKAGE.BasePayment", JSON_TYPE_INFO)
+        assertAnnotated("$PACKAGE.Tagged", JSON_TYPE_INFO)
+        assertAnnotated("$PACKAGE.Payment", JSON_SUB_TYPES)
+        assertNotNull("Precondition: Card resolves", findProjectClass("$PACKAGE.Card"))
+        val schema = responseSchema("/api/payment")
+        assertEquals(mapOf("$PACKAGE.Card" to VariantView("card", listOf("amount"))), variantsOf(schema))
+        assertEquals("Jackson visits implemented interfaces before the superclass", "iface", schema["discriminator"]["property"].asText())
+    }
+
+    private fun assertDepthLimitedVariants(schema: JsonNode, expected: Map<String, String>) {
+        assertNotNull("A depth-limited polymorphic type keeps its known variants: $schema", schema["variants"])
+        val variants = schema["variants"].toList()
+        assertEquals(expected.size, variants.size)
+        assertEquals(expected, variants.associate { it["className"].asText() to it["typeId"].asText() })
+        variants.forEach {
+            assertEquals("DEPTH_LIMIT", it["schemaOmitted"]?.asText())
+            assertFalse("An omitted variant has no fields key: $it", it.has("fields"))
+        }
+    }
+
     private data class VariantView(val typeId: String?, val fields: List<String>)
 
     private fun variantsOf(schema: JsonNode): Map<String, VariantView> {
@@ -433,10 +595,10 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
     }
 
     private fun schemaLevels(schema: JsonNode?): Int {
-        if (schema == null || schema.isNull) return 0
+        if (schema == null || schema.isNull || schema["schemaOmitted"]?.asText() == "DEPTH_LIMIT") return 0
         val variantLevels = schema["variants"].orEmpty().maxOfOrNull(::schemaLevels) ?: 0
         val nestedLevels = schema["fields"].orEmpty().maxOfOrNull { schemaLevels(it["nested"]) } ?: 0
-        return maxOf(1, variantLevels, nestedLevels + 1)
+        return 1 + maxOf(variantLevels, nestedLevels)
     }
 
     private fun JsonNode?.orEmpty(): List<JsonNode> = this?.toList().orEmpty()
