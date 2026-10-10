@@ -409,13 +409,21 @@ class SpringBootApplicationMcpToolsetReactivePageSchemaTest : PageSchemaTestCase
         assertPageAssumed(schema)
     }
 
-    fun testViaDtoAnnotationWritesPagedModelOnAReactiveApplication() = runBlocking<Unit> {
+    fun testWebSupportAnnotationOnAReactiveApplicationIsUnknown() = runBlocking<Unit> {
+        assertNull(
+            "reactive fixture must not resolve Spring MVC WebConfigurer",
+            JavaPsiFacade.getInstance(project).findClass(
+                "org.springframework.web.servlet.config.annotation.WebMvcConfigurer",
+                GlobalSearchScope.allScope(project),
+            )
+        )
         addWebConfig("VIA_DTO")
 
         val schema = pageSchema("/orders/page")
 
-        assertPagedModel(schema)
-        assertSource(WEB_CONFIG_SOURCE, schema)
+        assertDirectPage(schema)
+        assertSource("UNKNOWN", schema)
+        assertPageAssumed(schema)
     }
 
     fun testPlainDtoIsUnchangedOnAReactiveApplication() = runBlocking<Unit> {
