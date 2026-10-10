@@ -105,6 +105,108 @@ class ComposedBeanNameChainTest : ExplytKotlinLightTestCase() {
         listOf("x"),
     )
 
+    fun testMirroredValueAttributeFollowsConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        annotation class MyBean(
+            @get:AliasFor("name") val value: Array<String> = [],
+            @get:AliasFor("value") val name: Array<String> = [],
+        )
+        """,
+        "@MyBean(\"x\")",
+        mapOf(("beanname.MyBean" to "value") to listOf("x")),
+        listOf("x"),
+    )
+
+    fun testExplicitAliasWinsOverConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        annotation class MyBean(
+            @get:AliasFor(annotation = Bean::class, attribute = "name") val beanName: Array<String> = [],
+            val name: Array<String> = [],
+        )
+        """,
+        "@MyBean(beanName = [\"x\"], name = [\"y\"])",
+        mapOf(("beanname.MyBean" to "beanName") to listOf("x"), ("beanname.MyBean" to "name") to listOf("y")),
+        listOf("x"),
+    )
+
+    fun testConventionNameIsIgnoredWhenAnExplicitAliasExistsInSpring6() = assertBeanNames(
+        """
+        @Bean
+        annotation class MyBean(
+            @get:AliasFor(annotation = Bean::class, attribute = "name") val beanName: Array<String> = [],
+            val name: Array<String> = [],
+        )
+        """,
+        "@MyBean(name = [\"y\"])",
+        mapOf(("beanname.MyBean" to "name") to listOf("y")),
+        listOf("foo"),
+    )
+
+    fun testMirroredNameAttributeFollowsConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        annotation class MyBean(
+            @get:AliasFor("name") val value: Array<String> = [],
+            @get:AliasFor("value") val name: Array<String> = [],
+        )
+        """,
+        "@MyBean(name = [\"x\"])",
+        mapOf(("beanname.MyBean" to "name") to listOf("x")),
+        listOf("x"),
+    )
+
+    fun testEmptyExplicitAliasHidesMetaBeanName() = assertBeanNames(
+        """
+        @Bean("fixed")
+        annotation class MyBean(
+            @get:AliasFor(annotation = Bean::class, attribute = "name") val beanName: Array<String> = [],
+        )
+        """,
+        "@MyBean",
+        mapOf(("beanname.MyBean" to "beanName") to emptyList()),
+        listOf("foo"),
+    )
+
+    fun testExplicitAliasOverridesMetaBeanName() = assertBeanNames(
+        """
+        @Bean("fixed")
+        annotation class MyBean(
+            @get:AliasFor(annotation = Bean::class, attribute = "name") val beanName: Array<String> = [],
+        )
+        """,
+        "@MyBean(beanName = [\"x\"])",
+        mapOf(("beanname.MyBean" to "beanName") to listOf("x")),
+        listOf("x"),
+    )
+
+    fun testConventionNameIsIgnoredWhenAnExplicitValueAliasExistsInSpring6() = assertBeanNames(
+        """
+        @Bean
+        annotation class MyBean(
+            @get:AliasFor(annotation = Bean::class, attribute = "value") val beanName: Array<String> = [],
+            val name: Array<String> = [],
+        )
+        """,
+        "@MyBean(name = [\"y\"])",
+        mapOf(("beanname.MyBean" to "name") to listOf("y")),
+        listOf("foo"),
+    )
+
+    fun testExplicitValueAliasWinsOverConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        annotation class MyBean(
+            @get:AliasFor(annotation = Bean::class, attribute = "value") val beanName: Array<String> = [],
+            val name: Array<String> = [],
+        )
+        """,
+        "@MyBean(beanName = [\"x\"], name = [\"y\"])",
+        mapOf(("beanname.MyBean" to "beanName") to listOf("x"), ("beanname.MyBean" to "name") to listOf("y")),
+        listOf("x"),
+    )
+
     private fun assertBeanNames(
         declarations: String,
         usage: String,

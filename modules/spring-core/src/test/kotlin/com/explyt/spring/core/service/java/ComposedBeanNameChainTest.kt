@@ -117,6 +117,116 @@ class ComposedBeanNameChainTest : ExplytJavaLightTestCase() {
         listOf("x"),
     )
 
+    fun testMirroredValueAttributeFollowsConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor("name") String[] value() default {};
+            @AliasFor("value") String[] name() default {};
+        }
+        """,
+        "@MyBean(\"x\")",
+        mapOf(("beanname.MyBean" to "value") to listOf("x")),
+        listOf("x"),
+    )
+
+    fun testExplicitAliasWinsOverConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor(annotation = Bean.class, attribute = "name") String[] beanName() default {};
+            String[] name() default {};
+        }
+        """,
+        "@MyBean(beanName = \"x\", name = \"y\")",
+        mapOf(("beanname.MyBean" to "beanName") to listOf("x"), ("beanname.MyBean" to "name") to listOf("y")),
+        listOf("x"),
+    )
+
+    fun testConventionNameIsIgnoredWhenAnExplicitAliasExistsInSpring6() = assertBeanNames(
+        """
+        @Bean
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor(annotation = Bean.class, attribute = "name") String[] beanName() default {};
+            String[] name() default {};
+        }
+        """,
+        "@MyBean(name = \"y\")",
+        mapOf(("beanname.MyBean" to "name") to listOf("y")),
+        listOf("foo"),
+    )
+
+    fun testMirroredNameAttributeFollowsConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor("name") String[] value() default {};
+            @AliasFor("value") String[] name() default {};
+        }
+        """,
+        "@MyBean(name = \"x\")",
+        mapOf(("beanname.MyBean" to "name") to listOf("x")),
+        listOf("x"),
+    )
+
+    fun testEmptyExplicitAliasHidesMetaBeanName() = assertBeanNames(
+        """
+        @Bean("fixed")
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor(annotation = Bean.class, attribute = "name") String[] beanName() default {};
+        }
+        """,
+        "@MyBean",
+        mapOf(("beanname.MyBean" to "beanName") to emptyList()),
+        listOf("foo"),
+    )
+
+    fun testExplicitAliasOverridesMetaBeanName() = assertBeanNames(
+        """
+        @Bean("fixed")
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor(annotation = Bean.class, attribute = "name") String[] beanName() default {};
+        }
+        """,
+        "@MyBean(beanName = \"x\")",
+        mapOf(("beanname.MyBean" to "beanName") to listOf("x")),
+        listOf("x"),
+    )
+
+    fun testConventionNameIsIgnoredWhenAnExplicitValueAliasExistsInSpring6() = assertBeanNames(
+        """
+        @Bean
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor(annotation = Bean.class, attribute = "value") String[] beanName() default {};
+            String[] name() default {};
+        }
+        """,
+        "@MyBean(name = \"y\")",
+        mapOf(("beanname.MyBean" to "name") to listOf("y")),
+        listOf("foo"),
+    )
+
+    fun testExplicitValueAliasWinsOverConventionNameInSpring6() = assertBeanNames(
+        """
+        @Bean
+        @Retention(RetentionPolicy.RUNTIME)
+        @interface MyBean {
+            @AliasFor(annotation = Bean.class, attribute = "value") String[] beanName() default {};
+            String[] name() default {};
+        }
+        """,
+        "@MyBean(beanName = \"x\", name = \"y\")",
+        mapOf(("beanname.MyBean" to "beanName") to listOf("x"), ("beanname.MyBean" to "name") to listOf("y")),
+        listOf("x"),
+    )
+
     private fun assertBeanNames(
         declarations: String,
         usage: String,

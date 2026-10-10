@@ -36,6 +36,28 @@ class ComposedBeanNameSpring7Test : ExplytKotlinLightTestCase() {
         "@MyBean(name = [\"x\"])", "name", null, listOf("x"), listOf("foo")
     )
 
+    fun testMirroredValueAttributeIsIgnoredInSpring7() = assertMirroredBeanName("@MyBean(\"x\")", "value")
+
+    fun testMirroredNameAttributeIsIgnoredInSpring7() = assertMirroredBeanName("@MyBean(name = [\"x\"])", "name")
+
+    private fun assertMirroredBeanName(usage: String, attribute: String) {
+        ComposedBeanNameFixture.assertSpringCoreMajorVersion(myFixture, module, 7)
+        ComposedBeanNameFixture.addKotlinApplication(
+            myFixture,
+            """
+            @Bean
+            annotation class MyBean(
+                @get:AliasFor("name") val value: Array<String> = [],
+                @get:AliasFor("value") val name: Array<String> = [],
+            )
+            """,
+            usage,
+        )
+        ComposedBeanNameFixture.assertFactoryBeanNames(
+            myFixture, module, mapOf(("beanname.MyBean" to attribute) to listOf("x")), listOf("foo")
+        )
+    }
+
     private fun assertComposedBeanName(
         attributeDeclaration: String,
         usage: String,

@@ -36,6 +36,29 @@ class ComposedBeanNameSpring7Test : ExplytJavaLightTestCase() {
         "@MyBean(name = \"x\")", "name", null, listOf("x"), listOf("foo")
     )
 
+    fun testMirroredValueAttributeIsIgnoredInSpring7() = assertMirroredBeanName("@MyBean(\"x\")", "value")
+
+    fun testMirroredNameAttributeIsIgnoredInSpring7() = assertMirroredBeanName("@MyBean(name = \"x\")", "name")
+
+    private fun assertMirroredBeanName(usage: String, attribute: String) {
+        ComposedBeanNameFixture.assertSpringCoreMajorVersion(myFixture, module, 7)
+        ComposedBeanNameFixture.addJavaApplication(
+            myFixture,
+            """
+            @Bean
+            @Retention(RetentionPolicy.RUNTIME)
+            @interface MyBean {
+                @AliasFor("name") String[] value() default {};
+                @AliasFor("value") String[] name() default {};
+            }
+            """,
+            usage,
+        )
+        ComposedBeanNameFixture.assertFactoryBeanNames(
+            myFixture, module, mapOf(("beanname.MyBean" to attribute) to listOf("x")), listOf("foo")
+        )
+    }
+
     private fun assertComposedBeanName(
         attributeDeclaration: String,
         usage: String,
