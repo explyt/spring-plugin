@@ -74,15 +74,18 @@ internal data class FrameworkArgumentRule(
     val stacks: ArgumentStacks,
     val wrapping: ArgumentWrapping = ArgumentWrapping.NONE,
     val source: ArgumentSource = ArgumentSource.FRAMEWORK,
+    val unannotatedOnly: Boolean = false,
 ) {
-    fun appliesTo(type: PsiType, stack: WebApplicationStack?): Boolean =
-        stacks.admits(stack) && wrapping.candidates(type).any { match.test(it, typeFqn) }
+    fun appliesTo(type: PsiType, stack: WebApplicationStack?, annotated: Boolean): Boolean =
+        !(annotated && unannotatedOnly) &&
+                stacks.admits(stack) &&
+                wrapping.candidates(type).any { match.test(it, typeFqn) }
 }
 
 internal object FrameworkArguments {
 
-    fun sourceOf(type: PsiType, stack: WebApplicationStack?): ArgumentSource? =
-        RULES.firstOrNull { it.appliesTo(type, stack) }?.source
+    fun sourceOf(type: PsiType, stack: WebApplicationStack?, annotated: Boolean): ArgumentSource? =
+        RULES.firstOrNull { it.appliesTo(type, stack, annotated) }?.source
 
     private const val PRINCIPAL = "java.security.Principal"
     private const val ERRORS = "org.springframework.validation.Errors"
@@ -117,9 +120,9 @@ internal object FrameworkArguments {
             "java.io.Writer",
             "org.springframework.web.servlet.mvc.support.RedirectAttributes",
             MODEL,
-            MODEL_MAP,
         )
-        add(ArgumentStacks.SERVLET, TypeMatch.EXACT, CommonClassNames.JAVA_UTIL_MAP)
+        add(ArgumentStacks.SERVLET, TypeMatch.SUBTYPE, MODEL_MAP, unannotatedOnly = true)
+        add(ArgumentStacks.SERVLET, TypeMatch.EXACT, CommonClassNames.JAVA_UTIL_MAP, unannotatedOnly = true)
         add(ArgumentStacks.SERVLET, TypeMatch.SUBTYPE, ERRORS)
         add(ArgumentStacks.SERVLET, TypeMatch.EXACT,
             "org.springframework.web.servlet.support.ServletUriComponentsBuilder",
@@ -127,7 +130,7 @@ internal object FrameworkArguments {
 
         add(ArgumentStacks.REACTIVE, TypeMatch.SUBTYPE, MODEL)
         add(ArgumentStacks.REACTIVE, TypeMatch.SUBTYPE, MODEL_MAP, source = ArgumentSource.UNKNOWN)
-        add(ArgumentStacks.REACTIVE, TypeMatch.SUBTYPE, CommonClassNames.JAVA_UTIL_MAP)
+        add(ArgumentStacks.REACTIVE, TypeMatch.SUBTYPE, CommonClassNames.JAVA_UTIL_MAP, unannotatedOnly = true)
         add(ArgumentStacks.REACTIVE, TypeMatch.SUBTYPE, ERRORS, wrapping = ArgumentWrapping.REACTIVE_ADAPTER)
         add(ArgumentStacks.REACTIVE, TypeMatch.SUBTYPE,
             "org.springframework.web.server.ServerWebExchange",
@@ -152,7 +155,8 @@ internal object FrameworkArguments {
         vararg typeFqns: String,
         wrapping: ArgumentWrapping = ArgumentWrapping.NONE,
         source: ArgumentSource = ArgumentSource.FRAMEWORK,
+        unannotatedOnly: Boolean = false,
     ) {
-        typeFqns.mapTo(this) { FrameworkArgumentRule(it, match, stacks, wrapping, source) }
+        typeFqns.mapTo(this) { FrameworkArgumentRule(it, match, stacks, wrapping, source, unannotatedOnly) }
     }
 }

@@ -61,7 +61,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.util.InheritanceUtil
-
 import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -820,7 +819,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String {
-        val frameworkSource = FrameworkArguments.sourceOf(param.type, stack)
+        val annotated = HandlerMethods.bindingAnnotationOf(param, ::isRuntimeVisible) != null
+        val frameworkSource = FrameworkArguments.sourceOf(param.type, stack, annotated)
         return when {
             inherited(param, SpringWebClasses.COOKIE_VALUE) != null -> "COOKIE"
             inherited(param, SpringWebClasses.MODEL_ATTRIBUTE) != null -> "MODEL"
@@ -872,6 +872,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val qualifiedName = annotation.qualifiedName ?: return false
         return BINDING_NEUTRAL_ANNOTATION_PACKAGES.any { qualifiedName.startsWith(it) } ||
                 qualifiedName.substringAfterLast('.') in BINDING_NEUTRAL_ANNOTATION_NAMES
+    }
+
+    private fun isRuntimeVisible(annotation: PsiAnnotation): Boolean {
+        val qualifiedName = annotation.qualifiedName ?: return true
+        return COMPILE_TIME_ANNOTATION_PACKAGES.none { qualifiedName.startsWith(it) }
     }
 
     // ---- explyt_get_spring_http_endpoints ----
@@ -2001,6 +2006,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
             "javax.validation.",
             "org.springframework.validation.annotation.",
             "org.springframework.format.annotation.",
+            "org.jetbrains.annotations.",
+            "kotlin.",
+        )
+
+        private val COMPILE_TIME_ANNOTATION_PACKAGES = listOf(
             "org.jetbrains.annotations.",
             "kotlin.",
         )
