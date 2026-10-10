@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClassType
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -30,6 +31,8 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.kotlin_1_9_22,
         TestLibrary("jakarta.servlet:jakarta.servlet-api:6.0.0"),
+        TestLibrary("org.jspecify:jspecify:1.0.0"),
+        TestLibrary("org.projectlombok:lombok:1.18.46"),
     )
 
     override val realJdk: Boolean = true
@@ -309,6 +312,87 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
             }
             """.trimIndent()
         )
+    }
+
+    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSupplied() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.jspecify.annotations.Nullable", "lombok.NonNull")
+        addRetainedMapController()
+
+        assertMapAnnotations("com.example.app.RetainedMapController", mapOf("jspecify" to "org.jspecify.annotations.Nullable", "lombok" to "lombok.NonNull", "spring" to "org.springframework.lang.Nullable"))
+
+        assertEquals(
+            mapOf("jspecify" to "FRAMEWORK", "lombok" to "FRAMEWORK", "spring" to "MODEL"),
+            sourcesOf(contractParameters("/servlet/retention")),
+        )
+    }
+
+    fun testKotlinNullableMapIsFrameworkSupplied() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.jetbrains.annotations.Nullable")
+        myFixture.addFileToProject(
+            "com/example/app/KotlinRetainedMapController.kt", """
+            package com.example.app
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class KotlinRetainedMapController {
+                @GetMapping("/servlet/kotlin-retention")
+                fun retention(model: Map<String, Any>?): String = ""
+            }
+            """.trimIndent()
+        )
+
+        assertMapAnnotations("com.example.app.KotlinRetainedMapController", mapOf("model" to "org.jetbrains.annotations.Nullable"))
+
+        assertEquals(
+            mapOf("model" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/kotlin-retention")),
+        )
+    }
+
+    private fun addRetainedMapController() {
+        myFixture.addFileToProject(
+            "com/example/app/RetainedMapController.java", """
+            package com.example.app;
+
+            import java.util.Map;
+            import lombok.NonNull;
+            import org.jspecify.annotations.Nullable;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            class RetainedMapController {
+                @GetMapping("/servlet/retention")
+                public String retention(
+                        @Nullable Map<String, Object> jspecify,
+                        @NonNull Map<String, Object> lombok,
+                        @org.springframework.lang.Nullable Map<String, Object> spring
+                ) {
+                    return "";
+                }
+            }
+            """.trimIndent()
+        )
+        val facade = JavaPsiFacade.getInstance(project)
+        for (annotation in listOf("org.jspecify.annotations.Nullable", "lombok.NonNull", "org.springframework.lang.Nullable")) {
+            assertNotNull(annotation, facade.findClass(annotation, module.moduleWithLibrariesScope))
+        }
+    }
+
+    private fun assertMapAnnotations(className: String, expected: Map<String, String>) {
+        val controller = JavaPsiFacade.getInstance(project)
+            .findClass(className, module.moduleWithLibrariesScope)!!
+        val parameters = controller.findMethodsByName("retention", false).single().parameterList.parameters
+        for (parameter in parameters) {
+            assertEquals("java.util.Map", (parameter.type as PsiClassType).resolve()?.qualifiedName)
+            val annotation = (parameter.annotations.toList() + parameter.type.annotations.toList())
+                .firstOrNull { it.qualifiedName == expected.getValue(parameter.name) }
+            assertNotNull("${parameter.name} annotation", annotation)
+            assertNotNull("${parameter.name} annotation type", annotation!!.resolveAnnotationType() ?: JavaPsiFacade.getInstance(project)
+                .findClass(annotation.qualifiedName!!, module.moduleWithLibrariesScope))
+        }
     }
 
     private fun assertServletStackResolving(vararg classNames: String) {

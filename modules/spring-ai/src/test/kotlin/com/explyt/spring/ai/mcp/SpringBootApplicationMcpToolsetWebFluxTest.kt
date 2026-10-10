@@ -11,6 +11,7 @@ import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClassType
 import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
@@ -18,6 +19,8 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springReactiveWeb_3_1_1,
         TestLibrary("jakarta.servlet:jakarta.servlet-api:6.0.0"),
+        TestLibrary("org.jspecify:jspecify:1.0.0"),
+        TestLibrary("org.projectlombok:lombok:1.18.46"),
     )
 
     override val realJdk: Boolean = true
@@ -387,6 +390,47 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
             ),
             sourcesOf(contractParameters("/api/annotated/value")),
         )
+    }
+
+    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSuppliedOnWebFlux() = runBlocking<Unit> {
+        assertReactiveStackResolving("java.util.Map", "org.jspecify.annotations.Nullable", "lombok.NonNull")
+        myFixture.addFileToProject("com/example/app/web/RetainedMapController.java", """
+            package com.example.app.web;
+
+            import java.util.Map;
+            import lombok.NonNull;
+            import org.jspecify.annotations.Nullable;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class RetainedMapController {
+                @GetMapping("/api/retention")
+                public String retention(@Nullable Map<String, Object> jspecify, @NonNull Map<String, Object> lombok) {
+                    return "";
+                }
+            }
+        """.trimIndent())
+
+        assertMapAnnotations("com.example.app.web.RetainedMapController", mapOf("jspecify" to "org.jspecify.annotations.Nullable", "lombok" to "lombok.NonNull"))
+
+        assertEquals(
+            mapOf("jspecify" to "FRAMEWORK", "lombok" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/api/retention")),
+        )
+    }
+
+    private fun assertMapAnnotations(className: String, expected: Map<String, String>) {
+        val controller = JavaPsiFacade.getInstance(project)
+            .findClass(className, module.moduleWithLibrariesScope)!!
+        val parameters = controller.findMethodsByName("retention", false).single().parameterList.parameters
+        for (parameter in parameters) {
+            assertEquals("java.util.Map", (parameter.type as PsiClassType).resolve()?.qualifiedName)
+            val annotation = (parameter.annotations.toList() + parameter.type.annotations.toList())
+                .firstOrNull { it.qualifiedName == expected.getValue(parameter.name) }
+            assertNotNull("${parameter.name} annotation", annotation)
+            assertNotNull("${parameter.name} annotation type", annotation!!.resolveAnnotationType())
+        }
     }
 
     private fun assertReactiveStackResolving(vararg classNames: String) {
