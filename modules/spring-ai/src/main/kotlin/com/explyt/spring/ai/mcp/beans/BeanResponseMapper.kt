@@ -42,6 +42,7 @@ class BeanResponseMapper(private val project: Project) {
         includeDetails: Boolean
     ): BeanResponseContent {
         val ordered = selection.match.records.sortedWith(CANDIDATE_ORDER)
+        val inactive = selection.match.inactiveRecords.sortedWith(CANDIDATE_ORDER)
         return BeanResponseContent(
             mode = if (injection != null) MODE_INJECTION else MODE_LOOKUP,
             model = model(snapshot, selection),
@@ -51,8 +52,8 @@ class BeanResponseMapper(private val project: Project) {
             totalCount = ordered.size,
             candidateAt = { index -> candidate(ordered[index], lookup, includeDetails) },
             injection = injection?.let(::injection),
-            inactiveCandidates = selection.match.inactiveRecords.sortedWith(CANDIDATE_ORDER)
-                .map { inactiveCandidate(it, lookup, includeDetails) }
+            inactiveCount = inactive.size,
+            inactiveAt = { index -> inactiveCandidate(inactive[index], lookup, includeDetails) }
         )
     }
 
@@ -98,13 +99,13 @@ class BeanResponseMapper(private val project: Project) {
         record: ScopedBeanRecord, lookup: BeanLookupSelector?, includeDetails: Boolean
     ): ObjectNode {
         val node = mapper.createObjectNode()
+        node.put("id", record.id)
         node.put("name", record.name)
         node.put("type", record.typeName)
         node.put("kind", record.kind.name)
         matchedName(record, lookup)?.let { node.put("matchedName", it) }
         declaration(record.declaration)?.let { node.set<ObjectNode>("declaration", it) }
         record.condition?.let { node.set<ObjectNode>("condition", condition(it, includeDetails)) }
-        if (includeDetails) node.put("id", record.id)
         return node
     }
 

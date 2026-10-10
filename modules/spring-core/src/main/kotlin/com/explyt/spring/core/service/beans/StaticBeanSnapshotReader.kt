@@ -38,9 +38,10 @@ class StaticBeanSnapshotReader(private val project: Project) {
         val searchService = SpringSearchService.getInstance(project)
         // The active model, not `getProjectBeans`: the latter enumerates stereotypes without the conditional
         // filtering that decides whether a bean is in the context at all.
-        val active = searchService.getActiveBeansClasses(module) + searchService.getStaticBeans(module)
-        val excluded = searchService.getExcludedBeansClasses(module)
-        val verdicts = searchService.conditionVerdicts(module)
+        val found = searchService.foundBeans(module)
+        val active = found.active + searchService.getStaticBeans(module)
+        val excluded = found.excluded
+        val verdicts = found.verdicts
         val fromTestSource = injectionFile?.virtualFile
             ?.let { ProjectRootManager.getInstance(project).fileIndex.isInTestSourceContent(it) } ?: false
 

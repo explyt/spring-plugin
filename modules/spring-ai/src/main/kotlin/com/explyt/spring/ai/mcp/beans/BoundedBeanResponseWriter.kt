@@ -28,7 +28,8 @@ data class BeanResponseContent(
     val totalCount: Int,
     val candidateAt: (Int) -> ObjectNode,
     val injection: ObjectNode? = null,
-    val inactiveCandidates: List<ObjectNode> = emptyList()
+    val inactiveCount: Int = 0,
+    val inactiveAt: (Int) -> ObjectNode = { throw IndexOutOfBoundsException(it) }
 )
 
 typealias BeanPageRequest = PageRequest
@@ -42,12 +43,12 @@ typealias BeanPageRequest = PageRequest
 class BoundedBeanResponseWriter {
 
     fun write(content: BeanResponseContent, revision: String, page: BeanPageRequest): String =
-        writer.write(envelope(content), FIELD_CANDIDATES, content.totalCount, content.candidateAt, revision, page)
+        writer.write(envelope(content, page), FIELD_CANDIDATES, content.totalCount, content.candidateAt, revision, page)
 
     fun writeError(problem: BeanQueryProblem, maxChars: Int): String =
         writer.writeError(problem.code, problem.message, problem.choices, maxChars)
 
-    private fun envelope(content: BeanResponseContent): ObjectNode {
+    private fun envelope(content: BeanResponseContent, page: BeanPageRequest): ObjectNode {
         val envelope = mapper.createObjectNode()
         envelope.put("mode", content.mode)
         envelope.set<ObjectNode>("model", content.model)
@@ -55,10 +56,24 @@ class BoundedBeanResponseWriter {
         envelope.put("matchCompleteness", content.matchCompleteness)
         envelope.put("unresolvedCount", content.unresolvedCount)
         content.injection?.let { envelope.set<ObjectNode>("injection", it) }
-        if (content.inactiveCandidates.isNotEmpty()) {
-            envelope.putArray("inactiveCandidates").addAll(content.inactiveCandidates)
+        if (content.inactiveCount > 0) {
+            envelope.put(FIELD_INACTIVE_COUNT, content.inactiveCount)
+            if (page.offset == 0) putInactiveSample(envelope, content, page.maxChars.coerceIn(0, MAX_CHARS) / 2)
         }
         return envelope
+    }
+
+    private fun putInactiveSample(envelope: ObjectNode, content: BeanResponseContent, budget: Int) {
+        val sample = mapper.createArrayNode()
+        for (index in 0 until minOf(content.inactiveCount, MAX_INACTIVE_SAMPLE)) {
+            sample.add(content.inactiveAt(index))
+            if (mapper.writeValueAsString(sample).length > budget) {
+                sample.remove(sample.size() - 1)
+                break
+            }
+        }
+        if (!sample.isEmpty) envelope.set<ObjectNode>(FIELD_INACTIVE_CANDIDATES, sample)
+        if (sample.size() < content.inactiveCount) envelope.put(FIELD_INACTIVE_TRUNCATED, true)
     }
 
     private val writer = BoundedPageWriter()
@@ -74,5 +89,9 @@ class BoundedBeanResponseWriter {
         const val FALLBACK_BUDGET = BoundedPageWriter.FALLBACK_BUDGET
 
         private const val FIELD_CANDIDATES = "candidates"
+        private const val FIELD_INACTIVE_COUNT = "inactiveCount"
+        private const val FIELD_INACTIVE_CANDIDATES = "inactiveCandidates"
+        private const val FIELD_INACTIVE_TRUNCATED = "inactiveCandidatesTruncated"
+        private const val MAX_INACTIVE_SAMPLE = 3
     }
 }
