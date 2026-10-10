@@ -251,7 +251,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
             )
             .replace("GET(\"/co/items\", handler::list)", "someString().nest { GET(\"/b\", handler::list) }")
         addSource(MAIN_ROOT, CATALOG_FILE, source)
-        assertRouteModelled("/b", "GET")
+        assertRouteNotModelled("/b", "GET")
 
         val head = traceAt(CATALOG_FILE, source, "GET(\"/b\"")["chain"][0]
 
@@ -269,7 +269,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
             """.trimIndent()
         )
         addSource(MAIN_ROOT, CATALOG_FILE, source)
-        assertRouteModelled("/b", "GET")
+        assertRouteNotModelled("/b", "GET")
 
         val head = traceAt(CATALOG_FILE, source, "GET(\"/b\"")["chain"][0]
 
@@ -281,7 +281,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
     fun testComposedPathPredicateNestTraceKeepsTheChildRoute() = runBlocking<Unit> {
         assertCatalogNestTrace(
             "(path(\"/a\") and accept(org.springframework.http.MediaType.APPLICATION_JSON)).nest { GET(\"/b\", handler::list) }",
-            "/b"
+            "/a/b"
         )
     }
 
@@ -494,6 +494,16 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )["endpoints"]
         assertTrue(
             "Precondition: the endpoint model holds $httpMethod $path, got $endpoints",
+            endpoints.any { it["fullPath"].asText() == path }
+        )
+    }
+
+    private suspend fun assertRouteNotModelled(path: String, httpMethod: String) {
+        val endpoints = mapper.readTree(
+            toolset.findEndpoint(urlPattern = path, projectPath = project.basePath!!, httpMethod = httpMethod)
+        )["endpoints"]
+        assertFalse(
+            "Precondition: the endpoint model does not hold $httpMethod $path, got $endpoints",
             endpoints.any { it["fullPath"].asText() == path }
         )
     }
