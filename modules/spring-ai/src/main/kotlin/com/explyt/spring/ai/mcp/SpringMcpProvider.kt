@@ -1095,7 +1095,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
                 "is written next to the fields; a Spring Data Page or Slice is described as Spring Data writes it, " +
                 "with 'wireShape' PAGE_DIRECT (PageImpl's getters), PAGED_MODEL ('content' and 'page', under " +
-                "pageSerializationMode VIA_DTO, which also re-wraps a project subclass of PageImpl) or SLICE_DIRECT, " +
+                "pageSerializationMode VIA_DTO, which also re-wraps a project subclass of PageImpl; otherwise such " +
+                "a subclass is PAGE_DIRECT under its own class name, with its own getters after the page keys) or " +
+                "SLICE_DIRECT, " +
                 "'wireShapeSource' naming where the page mode was " +
                 "read - DEFAULT, @EnableSpringDataWebSupport on its class, or " +
                 "spring.data.web.pageable.serialization-mode on a servlet application - or UNKNOWN with the " +
@@ -2584,7 +2586,6 @@ data class DtoSchemaJson(
      * `@EnableSpringDataWebSupport on <class>`, or `UNKNOWN` when it cannot be read and the default shape is shown.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShapeSource: String? = null,
-    /** `true` when a declared `Page` or `Slice` was taken for the Spring Data implementation Spring Data writes. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val wireShapeAssumed: Boolean? = null,
 )
 

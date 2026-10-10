@@ -66,9 +66,7 @@ internal object ResponseSchemaReader {
         if (fqn in SpringDataChunkSchemas.CHUNKS && !ProjectSources.declares(resolved)) {
             return chunkSchemaOf(type, fqn, depth, context)
         }
-        if (isRewrappedPageImpl(resolved, context)) {
-            return pagedModelOf(PsiUtil.substituteTypeParameter(type, PAGE_IMPL, 0, false), depth, context, null)
-        }
+        if (isPageImplSubclass(resolved)) return pageImplSubclassSchemaOf(type, resolved, fqn, depth, context)
         if (isContainer(resolved, fqn)) {
             return type.parameters.firstOrNull()?.let { schemaOf(it, depth, context) }
         }
@@ -77,11 +75,7 @@ internal object ResponseSchemaReader {
         val naming = JacksonNaming.declaredOn(resolved) ?: context.configured
         val names = Names(naming, context)
         if (!ProjectSources.declares(resolved)) return librarySchemaOf(resolved, fqn, depth, names)
-        val fields = if (isJavaBean(resolved)) {
-            beanPropertiesOf(resolved, depth, names).ifEmpty { fieldsOf(resolved, depth, names) }
-        } else {
-            fieldsOf(resolved, depth, names).ifEmpty { propertiesOf(resolved, depth, names) }
-        }
+        val fields = projectFieldsOf(resolved, depth, names)
         val polymorphism = JacksonPolymorphism.of(resolved)
         return DtoSchemaJson(
             className = fqn,
@@ -122,10 +116,37 @@ internal object ResponseSchemaReader {
         )
     }
 
-    private fun isRewrappedPageImpl(psiClass: PsiClass, context: SchemaContext): Boolean =
-        psiClass.qualifiedName != PAGE_IMPL &&
-                InheritanceUtil.isInheritor(psiClass, PAGE_IMPL) &&
-                context.pageSerialization.mode == PageSerializationMode.VIA_DTO
+    private fun projectFieldsOf(psiClass: PsiClass, depth: Int, names: Names): List<DtoFieldJson> =
+        if (isJavaBean(psiClass)) {
+            beanPropertiesOf(psiClass, depth, names).ifEmpty { fieldsOf(psiClass, depth, names) }
+        } else {
+            fieldsOf(psiClass, depth, names).ifEmpty { propertiesOf(psiClass, depth, names) }
+        }
+
+    private fun isPageImplSubclass(psiClass: PsiClass): Boolean =
+        psiClass.qualifiedName != PAGE_IMPL && InheritanceUtil.isInheritor(psiClass, PAGE_IMPL)
+
+    private fun pageImplSubclassSchemaOf(
+        type: PsiClassType,
+        psiClass: PsiClass,
+        fqn: String,
+        depth: Int,
+        context: SchemaContext,
+    ): DtoSchemaJson {
+        val element = PsiUtil.substituteTypeParameter(type, PAGE_IMPL, 0, false)
+        val serialization = context.pageSerialization
+        if (serialization.mode == PageSerializationMode.VIA_DTO) return pagedModelOf(element, depth, context, null)
+        val pageFields = listOf(contentOf(element, depth, context)) + SpringDataChunkSchemas.pageProperties(depth)
+        val pageKeys = pageFields.mapTo(HashSet()) { it.name }
+        val names = Names(JacksonNaming.declaredOn(psiClass) ?: context.configured, context)
+        val ownFields = projectFieldsOf(psiClass, depth, names).filter { it.name !in pageKeys }
+        return DtoSchemaJson(
+            className = fqn,
+            fields = pageFields + ownFields,
+            wireShape = PageWireShape.PAGE_DIRECT.name,
+            wireShapeSource = serialization.source,
+        )
+    }
 
     private fun pagedModelOf(element: PsiType?, depth: Int, context: SchemaContext, assumed: Boolean?): DtoSchemaJson =
         DtoSchemaJson(
