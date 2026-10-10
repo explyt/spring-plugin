@@ -60,19 +60,18 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
     /**
      * Creates a module named [name] with a single source root and makes the main [module] depend on
      * it, mirroring `implementation(project(":name"))`. The new module gets the same [libraries] and
-     * inherits the project SDK, so Spring annotations resolve inside it.
+     * inherits the project SDK, so Spring annotations resolve inside it. The edge is [exported] unless
+     * told otherwise.
      *
      * @return the created module, to be passed to [addFileToModule].
      */
-    protected fun addDependencyModule(name: String): Module {
+    protected fun addDependencyModule(name: String, exported: Boolean = true): Module {
         val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("$name/src")
         val dependency = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), name, sourceRoot)
 
         ModuleRootModificationUtil.setSdkInherited(dependency)
         attachLibraries(dependency)
-        // `exported = true` so the main module also sees the dependency's libraries, which is what
-        // Gradle's `api`/`implementation` graph gives the application module at compile time.
-        ModuleRootModificationUtil.addDependency(module, dependency, DependencyScope.COMPILE, true)
+        ModuleRootModificationUtil.addDependency(module, dependency, DependencyScope.COMPILE, exported)
 
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         return dependency
@@ -151,6 +150,22 @@ abstract class ExplytMultiModuleTestCase : JavaCodeInsightFixtureTestCase() {
     private fun sourceRootOf(module: Module): VirtualFile =
         ModuleRootManager.getInstance(module).sourceRoots.firstOrNull()
             ?: error("Module '${module.name}' has no source root")
+
+    protected fun addLibraries(
+        target: Module,
+        libraries: List<TestLibrary>,
+        scope: DependencyScope = DependencyScope.COMPILE,
+        exported: Boolean = false,
+    ) {
+        if (libraries.isEmpty()) return
+
+        ModuleRootModificationUtil.updateModel(target) { model ->
+            libraries.forEach {
+                addFromMaven(model, it.mavenCoordinates, it.includeTransitiveDependencies, scope, exported)
+            }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
 
     private fun attachLibraries(module: Module) {
         if (libraries.isEmpty()) return
