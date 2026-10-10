@@ -819,7 +819,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
     }
 
     private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String {
-        val annotated = HandlerMethods.bindingAnnotationOf(param, ::isRuntimeVisible) != null
+        val annotated = HandlerMethods.bindingAnnotationOf(param) { it.isRuntimeParameterAnnotation() } != null
         val frameworkSource = FrameworkArguments.sourceOf(param.type, stack, annotated)
         return when {
             inherited(param, SpringWebClasses.COOKIE_VALUE) != null -> "COOKIE"
@@ -874,10 +874,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 qualifiedName.substringAfterLast('.') in BINDING_NEUTRAL_ANNOTATION_NAMES
     }
 
-    private fun isRuntimeVisible(annotation: PsiAnnotation): Boolean {
-        val qualifiedName = annotation.qualifiedName ?: return true
-        return COMPILE_TIME_ANNOTATION_PACKAGES.none { qualifiedName.startsWith(it) }
-    }
 
     // ---- explyt_get_spring_http_endpoints ----
 
@@ -2010,10 +2006,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
             "kotlin.",
         )
 
-        private val COMPILE_TIME_ANNOTATION_PACKAGES = listOf(
-            "org.jetbrains.annotations.",
-            "kotlin.",
-        )
 
         /** Matched by simple name too, so an annotation whose library is not on the classpath still reads as neutral. */
         private val BINDING_NEUTRAL_ANNOTATION_NAMES = setOf(
