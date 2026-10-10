@@ -41,6 +41,45 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
 
     private fun parseArray(json: String): JsonNode = mapper.readTree(json)
 
+    private fun beansOf(json: String): JsonNode {
+        val page = mapper.readTree(json)
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        assertEquals("Expected a complete listing of ${page["totalCount"]} beans, got $page", false, page["truncated"]?.asBoolean())
+        return page["beans"]
+    }
+
+    private suspend fun fullListing(applicationClassName: String, beanType: String): String {
+        val beans = mapper.createArrayNode()
+        var offset = 0
+        var revision: String? = null
+        while (true) {
+            val page = mapper.readTree(toolset.applicationBeans(
+                applicationClassName = applicationClassName,
+                projectPath = projectPath(),
+                beanType = beanType,
+                offset = offset,
+                expectedRevision = revision,
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS
+            ))
+            assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+            page["beans"].forEach { beans.add(it) }
+            revision = page["revision"].asText()
+            if (!page["truncated"].asBoolean()) {
+                assertEquals(page["totalCount"].asInt(), beans.size())
+                val complete = mapper.createObjectNode()
+                    .put("status", "OK")
+                    .put("totalCount", beans.size())
+                    .put("truncated", false)
+                complete.set<JsonNode>("beans", beans)
+                return mapper.writeValueAsString(complete)
+            }
+            val nextOffset = page["nextOffset"].asInt()
+            assertTrue("Continuation must advance, got $page", nextOffset > offset)
+            offset = nextOffset
+        }
+    }
+
     private fun texts(node: JsonNode, field: String): List<String> =
         node.mapNotNull { it[field]?.asText() }
 
@@ -101,12 +140,8 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     fun testApplicationBeansComponent() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
-        val result = toolset.applicationBeans(
-            applicationClassName = "com.example.app.DemoApplication",
-            projectPath = projectPath(),
-            beanType = "COMPONENT"
-        )
-        val classNames = texts(parseArray(result), "className")
+        val result = fullListing("com.example.app.DemoApplication", "COMPONENT")
+        val classNames = texts(beansOf(result), "className")
         assertTrue(
             "Expected DemoService as COMPONENT bean, got $classNames",
             classNames.contains("com.example.app.service.DemoService")
@@ -116,12 +151,8 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     fun testApplicationBeansController() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
-        val result = toolset.applicationBeans(
-            applicationClassName = "com.example.app.DemoApplication",
-            projectPath = projectPath(),
-            beanType = "CONTROLLER"
-        )
-        val classNames = texts(parseArray(result), "className")
+        val result = fullListing("com.example.app.DemoApplication", "CONTROLLER")
+        val classNames = texts(beansOf(result), "className")
         assertTrue(
             "Expected DemoController as CONTROLLER bean, got $classNames",
             classNames.contains("com.example.app.web.DemoController")
@@ -131,12 +162,8 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     fun testApplicationBeansRepository() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
-        val result = toolset.applicationBeans(
-            applicationClassName = "com.example.app.DemoApplication",
-            projectPath = projectPath(),
-            beanType = "REPOSITORY"
-        )
-        val classNames = texts(parseArray(result), "className")
+        val result = fullListing("com.example.app.DemoApplication", "REPOSITORY")
+        val classNames = texts(beansOf(result), "className")
         assertTrue(
             "Expected DemoRepository as REPOSITORY bean, got $classNames",
             classNames.contains("com.example.app.repository.DemoRepository")
@@ -167,21 +194,19 @@ class SpringBootApplicationMcpToolsetTest : ExplytJavaLightTestCase() {
     fun testApplicationBeansKeepsALibraryTypedFactoryBean() = runBlocking<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
 
-        val result = toolset.applicationBeans(
-            applicationClassName = "com.explyt.demo.App",
-            projectPath = projectPath(),
-            beanType = "COMPONENT"
-        )
+        val result = fullListing("com.explyt.demo.App", "COMPONENT")
 
-        val beans = parseArray(result)
-        assertTrue("The listing must stay a plain array", beans.isArray)
+        val page = mapper.readTree(result)
+        assertTrue("The listing is a paged envelope, got $page", page.isObject)
+        val beans = beansOf(result)
+        assertTrue("Rows are served under 'beans', got $page", beans.isArray)
         val clock = beans.firstOrNull { it["beanName"].asText() == "systemClock" }
         assertNotNull("Expected systemClock among ${texts(beans, "beanName")}", clock)
         assertEquals("java.time.Clock", clock!!["className"].asText())
         assertEquals(
-            "A row names the bean and the model that answered, and nothing else: what the model cannot promise " +
-                    "as a whole follows from 'source' and is not repeated on every row",
-            setOf("beanName", "className", "moduleName", "source"),
+            "A row names the bean, the model that answered and where it is declared, and nothing else: what the " +
+                    "model cannot promise as a whole follows from 'source' and is not repeated on every row",
+            setOf("beanName", "className", "moduleName", "source", "origin"),
             clock.fieldNames().asSequence().toSet()
         )
         assertEquals("A static answer says it is the module estimate through its source", "STATIC", clock["source"].asText())

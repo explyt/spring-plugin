@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.ai.mcp.beans.BeanOrigin
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.messaging.MessageMappingEndpointLoader
 import com.explyt.spring.core.service.SpringSearchServiceFacade
@@ -38,7 +39,7 @@ class McpBeanSearchService(private val project: Project) {
         application: PsiClass,
         source: BeanSourcePreference,
         contextId: String?
-    ): List<SpringBean> {
+    ): BeanListing {
         val snapshot = SpringSearchServiceFacade.getInstance(project)
             .getBeanSnapshot(application, source, contextId)
         val mappingClasses = ModuleUtilCore.findModuleForPsiElement(application)
@@ -50,10 +51,11 @@ class McpBeanSearchService(private val project: Project) {
             contextId = snapshot.selection.nativeContext?.id,
             snapshotImportedAt = snapshot.selection.nativeContext?.importedAt?.let { Instant.ofEpochMilli(it).toString() }
         )
-        return snapshot.records.asSequence()
+        val rows = snapshot.records.asSequence()
             .onEach { ProgressManager.checkCanceled() }
             .flatMap { record -> record.rows(mappingClasses, provenance) }
             .toList()
+        return BeanListing(snapshot.modelStamp, rows)
     }
 
     /**
@@ -79,11 +81,12 @@ class McpBeanSearchService(private val project: Project) {
         val type = beanType(mappingClasses)
         val module = declarationModule ?: declaration?.projectModule() ?: ""
         val rowLimitations = limitations.sorted()
+        val origin = BeanOrigin.of(declaration)
         return knownNames.ifEmpty { setOf(name) }.asSequence()
             .map {
                 SpringBean(
                     it, className, type, module,
-                    provenance.source, provenance.contextId, provenance.snapshotImportedAt, rowLimitations
+                    provenance.source, provenance.contextId, provenance.snapshotImportedAt, rowLimitations, origin
                 )
             }
     }
@@ -161,7 +164,10 @@ data class SpringBean(
     val contextId: String?,
     val snapshotImportedAt: String?,
     val limitations: List<String>,
+    val origin: BeanOrigin?,
 )
+
+data class BeanListing(val modelStamp: String, val rows: List<SpringBean>)
 
 enum class McpBeanTypes {
     ASPECT,
