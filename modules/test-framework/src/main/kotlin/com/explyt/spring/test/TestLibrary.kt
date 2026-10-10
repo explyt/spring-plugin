@@ -75,6 +75,7 @@ fun addFromMaven(
     mavenCoordinates: String,
     includeTransitiveDependencies: Boolean = true,
     dependencyScope: DependencyScope = DependencyScope.COMPILE,
+    exported: Boolean = false,
 ) {
     val remoteRepositoryDescriptions = listOf(RemoteRepositoryDescription.MAVEN_CENTRAL)
     val libraryProperties = RepositoryLibraryProperties(mavenCoordinates, includeTransitiveDependencies)
@@ -97,6 +98,7 @@ fun addFromMaven(
     val libraryOrderEntry = model.findLibraryOrderEntry(library)
         ?: throw IllegalStateException("Unable to find registered library $mavenCoordinates")
     libraryOrderEntry.scope = dependencyScope
+    libraryOrderEntry.isExported = exported
     libraryModel.commit()
     tableModel.commit()
 }

@@ -144,19 +144,27 @@ object ActuatorEndpointKeys {
         val annotations: Collection<PsiClass>,
     )
 
-    /**
-     * The endpoints the project declares: the module with its dependency modules - a shared starter may declare
-     * `@Endpoint` next to the application module holding `application.yaml` (#382) - and never its libraries, whose
-     * endpoints already ship metadata. The `Access` probe does read the libraries, since the class ships in a jar.
-     */
     private fun projectDiscovery(module: Module) = Discovery(
         endpointScope = GlobalSearchScope.moduleWithDependenciesScope(module),
-        accessScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module),
-        annotations = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.ACTUATOR_ENDPOINT, false)
+        accessScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module).union(runtimeLibraries(module)),
+        annotations = compileAndRuntimeEndpointAnnotations(module)
     )
 
+    private fun compileAndRuntimeEndpointAnnotations(module: Module): Collection<PsiClass> {
+        val compile = MetaAnnotationUtil.getAnnotationTypesWithChildren(module, SpringCoreClasses.ACTUATOR_ENDPOINT, false)
+        val runtimeScope = module.getModuleRuntimeScope(false)
+        val runtime = JavaPsiFacade.getInstance(module.project)
+            .findClass(SpringCoreClasses.ACTUATOR_ENDPOINT, runtimeScope)
+            ?.let { annotationWithChildren(it, runtimeScope) }
+            .orEmpty()
+        return (compile + runtime).distinctBy { it.qualifiedName }
+    }
+
+    private fun runtimeLibraries(module: Module): GlobalSearchScope =
+        module.getModuleRuntimeScope(false).intersectWith(ProjectScope.getLibrariesScope(module.project))
+
     private fun libraryDiscovery(module: Module): Discovery? {
-        val libraries = module.getModuleRuntimeScope(false).intersectWith(ProjectScope.getLibrariesScope(module.project))
+        val libraries = runtimeLibraries(module)
         val facade = JavaPsiFacade.getInstance(module.project)
         facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT_AUTO_CONFIGURATION, libraries) ?: return null
         val endpointAnnotation = facade.findClass(SpringCoreClasses.ACTUATOR_ENDPOINT, libraries) ?: return null
