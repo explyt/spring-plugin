@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp.beans
 
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.conditional.ConditionAssumption
 import com.explyt.spring.core.service.conditional.ConditionReason
 import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -269,12 +270,293 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("payload was ${json.length} chars", json.length <= MAX_DEFAULT_PAYLOAD)
     }
 
+    fun testTwoUndecidedConditionsOnOneBeanAreBothReported() = runBlocking {
+        addProperties("twin.enabled=\${TWIN_ENABLED}")
+        addMyCondition()
+        addJava(
+            "TwinService",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Conditional;
+            import org.springframework.stereotype.Component;
+
+            @Component
+            @Conditional(MyCondition.class)
+            @ConditionalOnProperty(name = "twin.enabled", havingValue = "true")
+            public class TwinService {}
+            """
+        )
+        val verdict = verdictOf("com.explyt.demo.TwinService")
+        assertTrue("Precondition: TwinService must be Undecided, got $verdict", verdict is ConditionVerdict.Undecided)
+        assertEquals(
+            "Precondition: both reasons are in the model",
+            setOf(ConditionReason.PROPERTY_UNRESOLVABLE, ConditionReason.UNSUPPORTED_CONDITION),
+            (verdict as ConditionVerdict.Undecided).conditions.map { it.reason }.toSet()
+        )
+
+        val root = call(beanName = "twinService")
+
+        assertEquals("INDETERMINATE", root["outcome"].asText())
+        val condition = conditionOf(root["candidates"].single())
+        assertEquals("UNDECIDED", condition["state"].asText())
+        assertEquals(setOf("PROPERTY_UNRESOLVABLE", "UNSUPPORTED_CONDITION"), reasonsOf(condition).toSet())
+        assertEquals(2, reasonsOf(condition).size)
+    }
+
+    fun testDetailsAddIdAndAssumptionsToAnInactiveCandidate() = runBlocking {
+        addMissingBeanService()
+        val verdict = verdictOf(NEEDS_MISSING)
+        assertTrue("Precondition: NeedsMissing must be Inactive, got $verdict", verdict is ConditionVerdict.Inactive)
+        assertEquals(
+            setOf(ConditionAssumption.STATIC_BEAN_MODEL_COMPLETE),
+            (verdict as ConditionVerdict.Inactive).condition.assumptions
+        )
+
+        val root = call(beanName = "needsMissing", includeDetails = true)
+
+        val inactive = singleInactiveCandidateOf(root)
+        assertTrue("id expected with details, got $inactive", inactive["id"]?.asText().orEmpty().isNotBlank())
+        val condition = conditionOf(inactive)
+        assertEquals(CONDITIONAL_ON_BEAN, condition["annotation"].asText())
+        assertEquals(listOf("STATIC_BEAN_MODEL_COMPLETE"), condition["assumptions"].map { it.asText() })
+        assertFalse("an INACTIVE condition carries no reasons, got $condition", condition.has("reasons"))
+    }
+
+    fun testWithoutDetailsAnInactiveCandidateHasNeitherIdNorAssumptions() = runBlocking {
+        addMissingBeanService()
+        assertVerdict<ConditionVerdict.Inactive>(NEEDS_MISSING)
+
+        val inactive = singleInactiveCandidateOf(call(beanName = "needsMissing"))
+
+        assertFalse("compact answer carries no id, got $inactive", inactive.has("id"))
+        assertFalse("compact answer carries no assumptions, got $inactive", conditionOf(inactive).has("assumptions"))
+    }
+
+    fun testInjectionWithAMatchingQualifierListsTheInactiveBean() = runBlocking {
+        val root = qualifiedInjection("fast")
+
+        assertEquals("NO_CANDIDATE", root["outcome"].asText())
+        val inactive = singleInactiveCandidateOf(root)
+        assertEquals("fastEngine", inactive["name"].asText())
+        assertEquals("INACTIVE", conditionOf(inactive)["state"].asText())
+    }
+
+    fun testInjectionWithAnotherQualifierDoesNotListTheInactiveBean() = runBlocking {
+        val root = qualifiedInjection("slow")
+
+        assertEquals("NO_CANDIDATE", root["outcome"].asText())
+        assertTrue("no inactive candidate expected, got $root", inactiveCandidatesOf(root).isEmpty())
+    }
+
+    fun testLookupByAnAliasOfAnInactiveBeanNamesTheMatchedAlias() = runBlocking {
+        addJava(
+            "Engine",
+            """
+            package com.explyt.demo;
+
+            public class Engine {}
+            """
+        )
+        addJava(
+            "AliasConfig",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            public class AliasConfig {
+                @Bean(name = {"mainEngine", "spareEngine"})
+                @ConditionalOnProperty(name = "engine.enabled", havingValue = "true")
+                public Engine engine() {
+                    return new Engine();
+                }
+            }
+            """
+        )
+        assertMethodVerdictInactive("com.explyt.demo.AliasConfig", "engine", "com.explyt.demo.AliasConfig#engine")
+
+        val root = call(beanName = "spareEngine")
+
+        assertEquals("NONE", root["outcome"].asText())
+        val inactive = singleInactiveCandidateOf(root)
+        assertEquals("mainEngine", inactive["name"].asText())
+        assertEquals("spareEngine", inactive["matchedName"].asText())
+        assertEquals("BEAN_METHOD", inactive["kind"].asText())
+    }
+
+    fun testFactoryMethodOfAnInactiveConfigurationNamesTheConfigurationAsCarrier() = runBlocking {
+        addJava(
+            "EtlJob",
+            """
+            package com.explyt.demo;
+
+            public class EtlJob {}
+            """
+        )
+        addJava(
+            "EtlConfig",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            @ConditionalOnProperty(name = "etl.enabled", havingValue = "true")
+            public class EtlConfig {
+                @Bean
+                public EtlJob etlJob() {
+                    return new EtlJob();
+                }
+            }
+            """
+        )
+        assertMethodVerdictInactive("com.explyt.demo.EtlConfig", "etlJob", "com.explyt.demo.EtlConfig")
+
+        val root = call(beanName = "etlJob")
+
+        assertEquals("NONE", root["outcome"].asText())
+        val inactive = singleInactiveCandidateOf(root)
+        assertEquals("etlJob", inactive["name"].asText())
+        assertEquals("BEAN_METHOD", inactive["kind"].asText())
+        val condition = conditionOf(inactive)
+        assertEquals("INACTIVE", condition["state"].asText())
+        assertEquals("com.explyt.demo.EtlConfig", condition["carrier"].asText())
+        assertTrue("detail must name the property, got $condition", "etl.enabled" in condition["detail"].asText())
+    }
+
+    fun testProfileInactiveBeanIsFilteredBeforeTheVerdictAndStaysUnlisted() = runBlocking {
+        addProperties("spring.profiles.active=prod")
+        addJava(
+            "DevOnlyService",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.context.annotation.Profile;
+            import org.springframework.stereotype.Component;
+
+            @Component
+            @Profile("dev")
+            public class DevOnlyService {}
+            """
+        )
+        val verdict = verdictOf("com.explyt.demo.DevOnlyService")
+        assertNull("Precondition: a profile-inactive bean never reaches the verdicts, got $verdict", verdict)
+
+        val root = call(beanName = "devOnlyService")
+
+        assertEquals("NONE", root["outcome"].asText())
+        assertEquals("COMPLETE", root["matchCompleteness"].asText())
+        assertTrue("profile-inactive beans are not listed yet, got $root", inactiveCandidatesOf(root).isEmpty())
+    }
+
+    private suspend fun qualifiedInjection(qualifier: String): JsonNode {
+        addJava(
+            "Engine",
+            """
+            package com.explyt.demo;
+
+            public interface Engine {}
+            """
+        )
+        addJava(
+            "FastEngine",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.beans.factory.annotation.Qualifier;
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+            import org.springframework.stereotype.Component;
+
+            @Component
+            @Qualifier("fast")
+            @ConditionalOnProperty(name = "engine.fast.enabled", havingValue = "true")
+            public class FastEngine implements Engine {}
+            """
+        )
+        val client = addJava(
+            "EngineClient",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.beans.factory.annotation.Qualifier;
+            import org.springframework.stereotype.Component;
+
+            @Component
+            public class EngineClient {
+                public EngineClient(@Qualifier("$qualifier") Engine engine) {}
+            }
+            """
+        )
+        assertVerdict<ConditionVerdict.Inactive>("com.explyt.demo.FastEngine")
+        val marker = "Engine engine"
+        val (line, column) = positionOf(client, marker, "Engine ".length)
+        return call(filePath = "com/explyt/demo/EngineClient.java", line = line, column = column)
+    }
+
+    private fun addMyCondition() = addJava(
+        "MyCondition",
+        """
+        package com.explyt.demo;
+
+        import org.springframework.context.annotation.Condition;
+        import org.springframework.context.annotation.ConditionContext;
+        import org.springframework.core.type.AnnotatedTypeMetadata;
+
+        public class MyCondition implements Condition {
+            @Override
+            public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+                return false;
+            }
+        }
+        """
+    )
+
+    private fun addMissingBeanService() {
+        addJava(
+            "Missing",
+            """
+            package com.explyt.demo;
+
+            public class Missing {}
+            """
+        )
+        addJava(
+            "NeedsMissing",
+            """
+            package com.explyt.demo;
+
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+            import org.springframework.stereotype.Component;
+
+            @Component
+            @ConditionalOnBean(Missing.class)
+            public class NeedsMissing {}
+            """
+        )
+    }
+
+    private fun assertMethodVerdictInactive(classFqn: String, methodName: String, carrier: String) {
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+        val method = myFixture.findClass(classFqn).findMethodsByName(methodName, false).single()
+        val verdict = SpringSearchService.getInstance(project).conditionVerdictOf(method, module)
+        assertTrue("Precondition: $classFqn#$methodName must be Inactive, got $verdict", verdict is ConditionVerdict.Inactive)
+        assertEquals("Precondition: carrier", carrier, (verdict as ConditionVerdict.Inactive).condition.carrierFqn)
+    }
+
     private suspend fun call(
         typeFqn: String? = null,
         beanName: String? = null,
         filePath: String? = null,
         line: Int? = null,
-        column: Int? = null
+        column: Int? = null,
+        includeDetails: Boolean = false
     ): JsonNode = mapper.readTree(
         toolset().findSpringBean(
             projectPath = project.basePath!!,
@@ -284,7 +566,8 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
             beanName = beanName,
             filePath = filePath,
             line = line,
-            column = column
+            column = column,
+            includeDetails = includeDetails
         )
     )
 
@@ -419,6 +702,8 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         const val INACTIVE_FOO = "com.explyt.demo.InactiveFoo"
         const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
         const val CONDITIONAL = "org.springframework.context.annotation.Conditional"
+        const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
+        const val NEEDS_MISSING = "com.explyt.demo.NeedsMissing"
         const val CONDITIONS_UNDECIDED = "CONDITIONS_UNDECIDED"
         const val PROFILE_NOT_DECIDABLE = "PROFILE_NOT_DECIDABLE"
         const val CONDITIONS_NOT_EVALUATED = "CONDITIONS_NOT_EVALUATED"
