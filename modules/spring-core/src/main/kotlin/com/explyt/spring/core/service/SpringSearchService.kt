@@ -527,7 +527,7 @@ class SpringSearchService(private val project: Project) {
             pass.active.filter { it.psiClass != it.psiMember }
                 .forEach { pass.check(it.psiMember, listOf(it)) }
 
-            return FoundBeans(pass.active, pass.excluded, conditionVerdictsByMember(foundBeans, pass.carrierVerdicts))
+            return FoundBeans(pass.active, pass.excluded, conditionVerdictsByBean(foundBeans, pass.carrierVerdicts))
         } catch (e: AlreadyDisposedException) {
             return FoundBeans(foundBeans, emptySet())
         }
@@ -553,11 +553,17 @@ class SpringSearchService(private val project: Project) {
     data class FoundBeans(
         val active: Set<PsiBean>,
         val excluded: Set<PsiBean>,
-        val verdicts: Map<PsiMember, ConditionVerdict> = emptyMap()
+        val verdicts: Map<PsiBean, ConditionVerdict> = emptyMap()
     )
 
+    fun conditionVerdictOf(bean: PsiBean, module: Module): ConditionVerdict? =
+        getAllBeansClasses(module).verdicts[bean]
+
     fun conditionVerdictOf(member: PsiMember, module: Module): ConditionVerdict? =
-        getAllBeansClasses(module).verdicts[member]
+        getAllBeansClasses(module).verdicts
+            .filterKeys { it.psiMember == member }.values.distinct()
+            .takeIf { it.isNotEmpty() }
+            ?.asSequence()?.combined()
 
     private fun conditionStrategies(module: Module): List<ConditionStrategy> {
         val supported = listOf(
@@ -572,11 +578,10 @@ class SpringSearchService(private val project: Project) {
         return supported + UnsupportedConditionStrategy(module, supported)
     }
 
-    private fun conditionVerdictsByMember(
+    private fun conditionVerdictsByBean(
         beans: Set<PsiBean>, carrierVerdicts: Map<PsiMember, ConditionVerdict>
-    ): Map<PsiMember, ConditionVerdict> = beans
-        .groupBy({ it.psiMember }, { bean -> conditionCarriersOf(bean).mapNotNull { carrierVerdicts[it] }.combined() })
-        .mapValues { (_, verdicts) -> verdicts.mostActive() }
+    ): Map<PsiBean, ConditionVerdict> =
+        beans.associateWith { bean -> conditionCarriersOf(bean).mapNotNull { carrierVerdicts[it] }.combined() }
 
     private fun conditionCarriersOf(bean: PsiBean): Sequence<PsiMember> {
         val classes: Sequence<PsiMember> = getRootPsiClasses(bean).asReversed().asSequence()
@@ -592,8 +597,9 @@ class SpringSearchService(private val project: Project) {
             ProgressManager.checkCanceled()
             if (dependants.all { excluded.contains(it) }) return
 
-            val verdict = strategies.asSequence().map { it.verdictOf(carrier, active) }.combined()
-            carrierVerdicts[carrier] = verdict
+            val verdict = carrierVerdicts.getOrPut(carrier) {
+                strategies.asSequence().map { it.verdictOf(carrier, active) }.combined()
+            }
             if (verdict is ConditionVerdict.Inactive) {
                 excluded.addAll(dependants)
                 active.removeAll(dependants.toSet())

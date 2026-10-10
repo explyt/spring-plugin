@@ -46,10 +46,6 @@ fun Sequence<ConditionVerdict>.combined(): ConditionVerdict {
     return if (undecided.isEmpty()) ConditionVerdict.Active else ConditionVerdict.Undecided(undecided)
 }
 
-fun Collection<ConditionVerdict>.mostActive(): ConditionVerdict =
-    firstOrNull { it == ConditionVerdict.Active }
-        ?: firstOrNull { it is ConditionVerdict.Undecided }
-        ?: first()
 
 val PsiMember.conditionCarrierFqn: String
     get() = if (this is PsiClass) qualifiedName ?: name.orEmpty()
