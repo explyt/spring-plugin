@@ -500,14 +500,51 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
     }
 
-    fun testTwoArgumentPathRouteDoesNotPrefixItsSibling() {
+    fun testTwoArgumentPathRouteIsListedForAnyMethod() {
         addRouterConfig(
             """
             path("/x", handler::handle)
             GET("/y", handler::handle)
         """
         )
-        assertEquals(listOf("/y" to "GET"), webFluxEndpoints())
+        assertTwoArgumentPathRouteResolvesTo(CO_ROUTER_DSL)
+        assertEquals(listOf("/x" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testReactiveRouterTwoArgumentPathRouteIsListedForAnyMethod() {
+        myFixture.addFileToProject(
+            "ReactiveRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.router
+
+            @Configuration
+            class ReactiveRouterConfig {
+                @Bean
+                fun routes(): RouterFunction<ServerResponse> = router {
+                    path("/x") { ServerResponse.ok().build() }
+                    GET("/y") { ServerResponse.ok().build() }
+                }
+            }
+            """.trimIndent()
+        )
+        assertTwoArgumentPathRouteResolvesTo(REACTIVE_ROUTER_DSL, "ReactiveRouterConfig.kt")
+        assertEquals(listOf("/x" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testTwoArgumentPathRouteUnderNestComposesThePrefix() {
+        addRouterConfig(""""/a".nest { path("/x", handler::handle) }""")
+        assertTwoArgumentPathRouteResolvesTo(CO_ROUTER_DSL)
+        assertEquals(listOf("/a/x" to ""), webFluxEndpoints())
+    }
+
+    fun testOneArgumentPathPredicateIsNotARoute() {
+        addRouterConfig("""path("/a").nest { GET("/b", handler::handle) }""")
+        assertCallsResolveTo("path", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
     }
 
     fun testStringValueArgumentNestKeepsItsPrefix() {
@@ -641,6 +678,17 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         }
     }
 
+    private fun assertTwoArgumentPathRouteResolvesTo(owner: String, fileName: String = "GatewayProxyRouterConfig.kt") {
+        assertCallsResolveTo("path", owner, returnType = "void", argumentCount = 2, fileName = fileName)
+        callsInFixture(fileName)
+            .filter { (it.sourcePsi as? KtCallExpression)?.calleeExpression?.text == "path" }
+            .forEach { call ->
+                val parameters = call.resolve()!!.parameterList.parameters
+                assertEquals(call.sourcePsi?.text, 2, parameters.size)
+                assertEquals(call.sourcePsi?.text, "java.lang.String", parameters.first().type.canonicalText)
+            }
+    }
+
     private fun nonDslPathCall(): UCallExpression = callsInFixture()
         .single { it.methodName == "path" && it.receiver?.asSourceString() == "NonDsl" }
 
@@ -755,5 +803,5 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         .sortedBy { it.first + it.second }
         .toList()
 
-    private fun toPathAndMethod(endpoint: EndpointElement) = endpoint.path to endpoint.requestMethods.single()
+    private fun toPathAndMethod(endpoint: EndpointElement) = endpoint.path to endpoint.requestMethods.joinToString()
 }
