@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Spring Core
+- fix: Evaluate `@ConditionalOnClass` and `@ConditionalOnMissingClass` on Kotlin beans like on Java ones: their values, class literals and class names alike, are read from the Kotlin source, so an unresolved class literal such as `@ConditionalOnClass(Missing::class)` now turns the bean off instead of being ignored (#496)
 - fix: Find project Actuator endpoints declared in a library module whose Actuator dependency is not exported, as when the application depends on Actuator `runtimeOnly`: `@Endpoint` was resolved only on the application's compile classpath, so such an endpoint was missing from the Endpoints tool window and the Spring MCP endpoint tools, and its `management.endpoint.<id>.*` keys were reported as unresolved (#538)
 - fix: Recognise applications declared with `@EnableAutoConfiguration` instead of `@SpringBootApplication`: such a class is an application for the bean model, the Spring MCP bean tools and the built-in Actuator endpoints, scans its package only when it also carries `@ComponentScan`, and is itself a bean either way (#532)
 - fix: Count overriding or same-name overloaded `@Bean` methods with the same bean name as one bean, keep different method names separate even with the same bean name, and exclude abstract interface `@Bean` methods (#506)
