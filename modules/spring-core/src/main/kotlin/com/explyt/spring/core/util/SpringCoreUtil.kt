@@ -21,7 +21,6 @@ import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.settings.SpringPropertyFolderState
 import com.explyt.util.ExplytAnnotationUtil
-
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytPsiUtil.allSupers
 import com.explyt.util.ExplytPsiUtil.deepPsiClassType

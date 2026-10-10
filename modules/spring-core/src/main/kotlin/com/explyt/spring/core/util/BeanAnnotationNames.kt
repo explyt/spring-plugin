@@ -10,6 +10,7 @@ import com.explyt.spring.core.service.AliasUtils
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytPsiUtil.resolveUAnnotationType
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.JavaPsiFacade
@@ -29,16 +30,23 @@ object BeanAnnotationNames {
 
     fun of(owner: PsiModifierListOwner): Set<String>? {
         val beanAnnotation = owner.annotations.firstOrNull { isBeanOrMetaAnnotatedByBean(it) } ?: return null
-        return Reader(conventionMapsName(owner))
-            .namesOf(beanAnnotation, isRoot = true, visitedTypes = emptySet())
-            ?.ifEmpty { null }
+        val names = if (beanAnnotation.qualifiedName == SpringCoreClasses.BEAN) {
+            declaredNames(beanAnnotation)
+        } else {
+            Reader(lazy { conventionMapsName(owner) }).namesOf(beanAnnotation, isRoot = true, visitedTypes = emptySet())
+        }
+        return names?.ifEmpty { null }
     }
 
     private fun conventionMapsName(owner: PsiModifierListOwner): Boolean {
-        val module = ModuleUtilCore.findModuleForPsiElement(owner) ?: return false
+        val module = moduleOf(owner) ?: return false
         val major = SpringBootUtil.getSpringCoreMajorVersion(module) ?: return false
         return major <= LAST_SPRING_MAJOR_WITH_CONVENTION_MAPPING
     }
+
+    private fun moduleOf(owner: PsiModifierListOwner): Module? =
+        ModuleUtilCore.findModuleForPsiElement(owner)
+            ?: owner.containingFile?.originalFile?.let { ModuleUtilCore.findModuleForPsiElement(it) }
 
     private fun isBeanOrMetaAnnotatedByBean(annotation: PsiAnnotation): Boolean {
         val annotationName = annotation.qualifiedName ?: return false
@@ -55,7 +63,13 @@ object BeanAnnotationNames {
         return type?.takeIf { it.isAnnotationType }
     }
 
-    private class Reader(private val conventionMapsName: Boolean) {
+    private fun declaredNames(bean: PsiAnnotation): Set<String> =
+        BEAN_NAME_ATTRIBUTES.flatMap { bean.getStringMemberValues(it) }.toNames()
+
+    private fun List<String>.toNames(): Set<String> = filter(String::isNotBlank).toCollection(LinkedHashSet())
+
+    private class Reader(conventionMapsName: Lazy<Boolean>) {
+        private val conventionMapsName by conventionMapsName
 
         fun namesOf(annotation: PsiAnnotation, isRoot: Boolean, visitedTypes: Set<String>): Set<String>? {
             ProgressManager.checkCanceled()
@@ -68,41 +82,69 @@ object BeanAnnotationNames {
                 .filter { isBeanOrMetaAnnotatedByBean(it) }
                 .firstNotNullOfOrNull { namesOf(it, isRoot = false, visitedTypes = visited) }
                 ?: return null
-            return beanNameAttributes(type, isRoot, visited)
-                .flatMap { annotation.getStringMemberValues(it) }
-                .toNames()
-                .ifEmpty { metaNames }
+            val nameAttributes = beanNameAttributes(type, isRoot, visited)
+            if (nameAttributes.isEmpty()) return metaNames
+            return nameAttributes.flatMap { annotation.getStringMemberValues(it) }.toNames()
         }
 
-        private fun declaredNames(bean: PsiAnnotation): Set<String> =
-            BEAN_NAME_ATTRIBUTES.flatMap { bean.getStringMemberValues(it) }.toNames()
+        private fun beanNameAttributes(type: PsiClass, isRoot: Boolean, visitedTypes: Set<String>): List<String> {
+            val explicit = type.methods.filter { aliasesBeanName(type, it, visitedTypes, emptySet()) }
+            if (explicit.isNotEmpty() || !isRoot) return explicit.map { it.name }
+            val conventionName = type.findMethodsByName(NAME, false).firstOrNull { overridesByConvention(type, it) }
+                ?: return emptyList()
+            if (!conventionMapsName) return emptyList()
+            return sameTypeMirrorsOf(type, conventionName).map { it.name }
+        }
 
-        private fun beanNameAttributes(type: PsiClass, isRoot: Boolean, visitedTypes: Set<String>): List<String> =
-            type.methods.filter { mapsToBeanName(type, it, isRoot, visitedTypes, emptySet()) }.map { it.name }
+        private fun overridesByConvention(type: PsiClass, attribute: PsiMethod): Boolean {
+            val alias = attribute.getAnnotation(SpringCoreClasses.ALIAS_FOR) ?: return true
+            return (aliasTargetOf(alias) ?: type).qualifiedName == type.qualifiedName
+        }
 
-        private fun mapsToBeanName(
+        private fun sameTypeMirrorsOf(type: PsiClass, attribute: PsiMethod): Set<PsiMethod> {
+            val mirrors = linkedSetOf(attribute)
+            val pending = ArrayDeque(listOf(attribute))
+            while (pending.isNotEmpty()) {
+                ProgressManager.checkCanceled()
+                val current = pending.removeFirst()
+                type.methods
+                    .filter { it !in mirrors }
+                    .filter { sameTypeAliasTarget(type, current) == it.name || sameTypeAliasTarget(type, it) == current.name }
+                    .forEach {
+                        mirrors += it
+                        pending += it
+                    }
+            }
+            return mirrors
+        }
+
+        private fun sameTypeAliasTarget(type: PsiClass, attribute: PsiMethod): String? {
+            val alias = attribute.getAnnotation(SpringCoreClasses.ALIAS_FOR) ?: return null
+            if ((aliasTargetOf(alias) ?: type).qualifiedName != type.qualifiedName) return null
+            return AliasUtils.getAliasedMethodName(alias)
+        }
+
+        private fun aliasesBeanName(
             type: PsiClass,
             attribute: PsiMethod,
-            isRoot: Boolean,
             visitedTypes: Set<String>,
             visitedAttributes: Set<PsiMethod>,
         ): Boolean {
             ProgressManager.checkCanceled()
             if (attribute in visitedAttributes) return false
-            val alias = attribute.getAnnotation(SpringCoreClasses.ALIAS_FOR)
-                ?: return isRoot && conventionMapsName && attribute.name == NAME
+            val alias = attribute.getAnnotation(SpringCoreClasses.ALIAS_FOR) ?: return false
             val targetAttribute = AliasUtils.getAliasedMethodName(alias) ?: attribute.name
             val target = aliasTargetOf(alias) ?: type
             return when (val targetName = target.qualifiedName) {
                 null -> false
                 SpringCoreClasses.BEAN -> targetAttribute in BEAN_NAME_ATTRIBUTES
                 type.qualifiedName -> type.findMethodsByName(targetAttribute, false).any {
-                    mapsToBeanName(type, it, isRoot, visitedTypes, visitedAttributes + attribute)
+                    aliasesBeanName(type, it, visitedTypes, visitedAttributes + attribute)
                 }
 
                 in visitedTypes -> false
                 else -> target.findMethodsByName(targetAttribute, false).any {
-                    mapsToBeanName(target, it, isRoot = false, visitedTypes = visitedTypes + targetName, emptySet())
+                    aliasesBeanName(target, it, visitedTypes + targetName, emptySet())
                 }
             }
         }
@@ -112,7 +154,5 @@ object BeanAnnotationNames {
             val target = uAlias?.let { AliasUtils.getAliasedClass(it) } ?: AliasUtils.getAliasedClass(alias)
             return target?.takeIf { it.isAnnotationType }
         }
-
-        private fun List<String>.toNames(): Set<String> = filter(String::isNotBlank).toCollection(LinkedHashSet())
     }
 }
