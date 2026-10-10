@@ -338,8 +338,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "configuration - and the dropped part is reported as 'assumedPrefix', a guess. Both are null when " +
                 "the path matched as written. " +
                 "'fullPath' is the path the application serves, with configuration placeholders such as " +
-                "'\${app.path:/l}' resolved; 'pathTemplate' holds the path as declared and is present only when it " +
-                "differs from 'fullPath'. " +
+                "'\${app.path:/l}' resolved; 'pathTemplate' is the endpoint path template with mapping prefixes and " +
+                "values joined and normalised, before configuration placeholders are resolved; it equals 'path' when " +
+                "nothing was resolved. " +
                 "When 'endpoints' is empty, no route answers the URL even without a leading prefix, and " +
                 "'nearestByPrefix' lists the existing routes that share the longest leading path with it - the " +
                 "controller and the conventions a new route has to fit; 'sharedPrefix' names that common path as " +
@@ -968,8 +969,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "operation, RESOURCE, BOOT_DEFAULT, or CUSTOM_ENDPOINT_MEDIA_TYPES when the application declares " +
                 "its own EndpointMediaTypes bean, whose types are not read. " +
                 "'fullPath' has configuration placeholders resolved; an endpoint declared with one, such as " +
-                "'\${app.path:/l}/{code}', also carries 'pathTemplate' with the declaration as written - the key is " +
-                "absent otherwise. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
+                "'\${app.path:/l}/{code}', also carries 'pathTemplate' with mapping prefixes and values joined and " +
+                "normalised before configuration placeholders are resolved; it equals 'path' when nothing was " +
+                "resolved. 'filePath' is project-relative; an endpoint declared in a jar, such as a " +
                 "built-in Actuator one, has a null 'filePath' and names the jar in 'library' instead, a key absent " +
                 "for a project endpoint - no answer carries a path of the machine. " +
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
@@ -1063,7 +1065,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "endpoint, and before changing its request or response shape, to see what callers currently depend " +
                 "on. " +
                 "Returns the full API contract of the endpoint: HTTP method, full path (configuration placeholders " +
-                "resolved, with 'pathTemplate' holding the declared path only when it differs), every declared handler " +
+                "resolved, with 'pathTemplate' holding the endpoint path template with mapping prefixes and values " +
+                "joined and normalised before configuration placeholders are resolved, equal to 'path' when nothing " +
+                "was resolved, only when it differs), every declared handler " +
                 "parameter with its type, return type, response DTO field schema as Jackson writes it (recursively " +
                 "expanded up to 3 levels: in 'name' a @JsonProperty name, else the name the declared Jackson naming " +
                 "strategy gives - @JsonNaming or spring.jackson.property-naming-strategy, reported as 'namingStrategy' " +
