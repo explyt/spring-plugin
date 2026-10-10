@@ -9,7 +9,7 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
-import com.intellij.codeInsight.AnnotationUtil
+
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
 
@@ -23,10 +23,7 @@ class ConditionalOnMissingClassStrategy(private val module: Module) : Annotation
 
     override fun unmetRequirement(
         holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
-    ): String? = holder.getAnnotationMemberValues(carrier, setOf("value"))
-        .asSequence()
-        .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        .distinct()
+    ): String? = ConditionClassReferences(holder, carrier).classNames("value")
         .firstOrNull { module.hasClass(it) }
         ?.let { "class $it is on the classpath" }
 }

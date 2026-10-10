@@ -9,14 +9,10 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.PsiBean
 import com.explyt.spring.core.service.SpringSearchService
-import com.explyt.util.ExplytPsiUtil.resolvedPsiClass
-import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.PsiMember
-import com.intellij.psi.PsiTypeElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
-import com.intellij.psi.util.childrenOfType
 
 class ConditionalOnClassStrategy(private val module: Module) : AnnotationConditionStrategy(
     listOf(SpringSearchService.getInstance(module.project).getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_CLASS)),
@@ -26,16 +22,11 @@ class ConditionalOnClassStrategy(private val module: Module) : AnnotationConditi
     override fun unmetRequirement(
         holder: MetaAnnotationsHolder, carrier: PsiMember, activeBeans: Collection<PsiBean>
     ): String? {
-        val unresolvedClass = holder.getAnnotationMemberValues(carrier, setOf("value"))
-            .asSequence()
-            .flatMap { it.childrenOfType<PsiTypeElement>() }
-            .firstOrNull { it.type.resolvedPsiClass == null }
-        if (unresolvedClass != null) return "class ${unresolvedClass.text} is not on the classpath"
+        val references = ConditionClassReferences(holder, carrier)
+        val unresolvedClass = references.unresolvedClassLiteral("value")
+        if (unresolvedClass != null) return "class $unresolvedClass is not on the classpath"
 
-        return holder.getAnnotationMemberValues(carrier, setOf("name"))
-            .asSequence()
-            .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-            .distinct()
+        return references.classNames("name")
             .firstOrNull { !module.hasClass(it) }
             ?.let { "class $it is not on the classpath" }
     }
