@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
+import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.explyt.spring.ai.mcp.SpringBootApplicationMcpToolset
 import com.explyt.spring.core.externalsystem.model.BeanSearch
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
@@ -163,15 +164,21 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
         source: String = "STATIC",
         contextId: String? = null,
         projectPath: String? = project.basePath!!
-    ): List<JsonNode> = mapper.readTree(
-        toolset.applicationBeans(
-            applicationClassName = APPLICATION,
-            projectPath = projectPath,
-            beanType = beanType,
-            source = source,
-            contextId = contextId
+    ): List<JsonNode> {
+        val page = mapper.readTree(
+            toolset.applicationBeans(
+                applicationClassName = APPLICATION,
+                projectPath = projectPath,
+                beanType = beanType,
+                source = source,
+                contextId = contextId,
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS
+            )
         )
-    ).toList()
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        return page["beans"].toList()
+    }
 
     private fun names(beans: List<JsonNode>): List<String> = beans.map { it["beanName"].asText() }
 

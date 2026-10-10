@@ -14,10 +14,6 @@ import com.intellij.mcpserver.McpExpectedError
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import kotlinx.coroutines.runBlocking
-import java.lang.reflect.InvocationTargetException
-import kotlin.reflect.full.callSuspendBy
-import kotlin.reflect.full.functions
-import kotlin.reflect.full.instanceParameter
 
 class BeanListingPageTest : ExplytJavaLightTestCase() {
 
@@ -190,6 +186,33 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals(expected.map(::rowKey), beans.map(::rowKey))
     }
 
+    fun testTheDefaultPageFitsTheClientBudget() = runBlocking<Unit> {
+        copyDemoApplication()
+
+        val json = toolset.applicationBeans(
+            applicationClassName = DEMO_APPLICATION,
+            projectPath = project.basePath,
+            beanType = "COMPONENT",
+            source = "STATIC",
+        )
+        val page = mapper.readTree(json)
+
+        assertTrue(
+            "Precondition: more components than one default page holds, got $page",
+            (page["totalCount"]?.asInt() ?: 0) > DEFAULT_LIMIT
+        )
+        assertTrue("A default page holds at most $DEFAULT_LIMIT rows, got $page", rows(page).size <= DEFAULT_LIMIT)
+        assertTrue("A partial default page says so, got $page", page["truncated"]?.asBoolean() == true)
+        assertTrue("payload was ${json.length} chars", json.length <= DEFAULT_MAX_CHARS)
+        assertTrue(
+            "MCP-wrapped payload was ${wrappedLength(json)} chars",
+            wrappedLength(json) <= MAX_CLIENT_PAYLOAD
+        )
+    }
+
+    private fun wrappedLength(json: String): Int =
+        mapper.writeValueAsString(mapper.createArrayNode().add(json)).length
+
     private fun copyDemoApplication() {
         myFixture.copyDirectoryToProject("springBootApp", "")
         assertResolves(DEMO_APPLICATION)
@@ -215,9 +238,9 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         application: String,
         beanType: String,
         origin: String? = null,
-        offset: Int? = null,
-        limit: Int? = null,
-        maxChars: Int? = null,
+        offset: Int = 0,
+        limit: Int = DEFAULT_LIMIT,
+        maxChars: Int = DEFAULT_MAX_CHARS,
         expectedRevision: String? = null,
     ): JsonNode = mapper.readTree(
         listingText(application, beanType, origin, offset, limit, maxChars, expectedRevision)
@@ -227,33 +250,21 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         application: String,
         beanType: String,
         origin: String? = null,
-        offset: Int? = null,
-        limit: Int? = null,
-        maxChars: Int? = null,
+        offset: Int = 0,
+        limit: Int = DEFAULT_LIMIT,
+        maxChars: Int = DEFAULT_MAX_CHARS,
         expectedRevision: String? = null,
-    ): String {
-        val arguments = mapOf(
-            "applicationClassName" to application,
-            "projectPath" to project.basePath,
-            "beanType" to beanType,
-            "source" to "STATIC",
-            "origin" to origin,
-            "offset" to offset,
-            "limit" to limit,
-            "maxChars" to maxChars,
-            "expectedRevision" to expectedRevision,
-        ).filterValues { it != null }
-        val function = SpringBootApplicationMcpToolset::class.functions.single { it.name == "applicationBeans" }
-        val parameters = function.parameters.associateBy { it.name }
-        val missing = arguments.keys - parameters.keys
-        assertTrue("applicationBeans takes no ${missing.joinToString()} argument", missing.isEmpty())
-        val bound = arguments.mapKeys { parameters.getValue(it.key) } + (function.instanceParameter!! to toolset)
-        return try {
-            function.callSuspendBy(bound) as String
-        } catch (e: InvocationTargetException) {
-            throw e.targetException
-        }
-    }
+    ): String = toolset.applicationBeans(
+        applicationClassName = application,
+        projectPath = project.basePath,
+        beanType = beanType,
+        source = "STATIC",
+        origin = origin,
+        offset = offset,
+        limit = limit,
+        maxChars = maxChars,
+        expectedRevision = expectedRevision,
+    )
 
     private suspend fun rejected(call: suspend () -> String): String {
         try {
@@ -270,5 +281,8 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         const val BEAN_QUERY_APPLICATION = "com.explyt.demo.App"
         const val LIBRARY_CONTROLLER = "org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController"
         val ORIGIN_ORDER = listOf("PROJECT", "LIBRARY", null)
+        const val DEFAULT_LIMIT = 8
+        const val DEFAULT_MAX_CHARS = 1800
+        const val MAX_CLIENT_PAYLOAD = 2000
     }
 }
