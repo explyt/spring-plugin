@@ -53,8 +53,16 @@ class PropertyConditionSpecReader(private val propertyAnnotations: MetaAnnotatio
         names = strings(propertyAnnotations.getAnnotationMemberValues(annotation, setOf(NAME, VALUE))),
         havingValue = strings(propertyAnnotations.getAnnotationMemberValues(annotation, setOf(HAVING_VALUE))).firstOrNull(),
         matchIfMissing = propertyAnnotations.getAnnotationMemberValues(annotation, setOf(MATCH_IF_MISSING))
-            .firstNotNullOfOrNull { booleanConstant(it) } ?: false
+            .firstNotNullOfOrNull { booleanConstant(it) } ?: false,
+        unreadableNames = hasUnreadableSourceValue(annotation, setOf(PREFIX, NAME, VALUE))
     )
+
+    private fun hasUnreadableSourceValue(annotation: PsiAnnotation, attributes: Set<String>): Boolean {
+        val source = annotation.toUElementOfType<UAnnotation>() ?: return false
+        return propertyAnnotations.getAnnotationMemberValues(source, attributes)
+            .flatMap { MetaAnnotationsHolder.getValues(it) }
+            .any { it.evaluate() !is String }
+    }
 
     private fun booleanSpec(annotation: PsiAnnotation) = PropertyConditionSpec.of(
         prefix = AnnotationUtil.getStringAttributeValue(annotation, PREFIX),

@@ -13,12 +13,15 @@ import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiMember
 
 class ConditionalOnPropertyStrategy(val module: Module) : ConditionStrategy {
+    private val searchService = SpringSearchService.getInstance(module.project)
     private val specReader = PropertyConditionSpecReader(
-        SpringSearchService.getInstance(module.project).getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
+        searchService.getMetaAnnotations(module, SpringCoreClasses.CONDITIONAL_ON_PROPERTY)
     )
+    private val handledAnnotations = PROPERTY_CONDITION_ANNOTATIONS.map { searchService.getMetaAnnotations(module, it) }
     private val values by lazy { PropertyConditionValues(module) }
 
-    override fun handles(annotation: PsiAnnotation): Boolean = specReader.read(annotation).isNotEmpty()
+    override fun handles(annotation: PsiAnnotation): Boolean =
+        annotation.qualifiedName in PROPERTY_CONDITION_ANNOTATIONS || handledAnnotations.any { it.contains(annotation) }
 
     override fun verdictOf(carrier: PsiMember, activeBeans: Collection<PsiBean>): ConditionVerdict =
         specReader.read(carrier).asSequence()
@@ -34,4 +37,13 @@ class ConditionalOnPropertyStrategy(val module: Module) : ConditionStrategy {
                 reason = reason
             )
         }
+
+    private companion object {
+        val PROPERTY_CONDITION_ANNOTATIONS = listOf(
+            SpringCoreClasses.CONDITIONAL_ON_PROPERTY,
+            SpringCoreClasses.CONDITIONAL_ON_PROPERTIES,
+            SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTY,
+            SpringCoreClasses.CONDITIONAL_ON_BOOLEAN_PROPERTIES
+        )
+    }
 }

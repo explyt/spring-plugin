@@ -15,7 +15,8 @@ data class PropertyConditionSpec(
     val prefix: String,
     val names: List<String>,
     val havingValue: String,
-    val matchIfMissing: Boolean
+    val matchIfMissing: Boolean,
+    val unreadableNames: Boolean = false
 ) {
     val keys: List<String> get() = names.map { "$prefix$it" }
 
@@ -36,6 +37,7 @@ data class PropertyConditionSpec(
                 }
             }
         }
+        if (unreadableNames) unresolvable += UNREADABLE_NAMES
         if (unresolvable.isEmpty()) return ConditionVerdict.Active
         val detail = "${unresolvable.joinToString()} cannot be resolved"
         return ConditionVerdict.Undecided(listOf(evidence(detail, ConditionReason.PROPERTY_UNRESOLVABLE)))
@@ -50,9 +52,17 @@ data class PropertyConditionSpec(
 
     companion object {
         private const val FALSE = "false"
+        private const val UNREADABLE_NAMES = "property name"
 
-        fun of(prefix: String?, names: List<String>, havingValue: String?, matchIfMissing: Boolean) =
-            PropertyConditionSpec(normalizedPrefix(prefix), names, havingValue.orEmpty(), matchIfMissing)
+        fun of(
+            prefix: String?,
+            names: List<String>,
+            havingValue: String?,
+            matchIfMissing: Boolean,
+            unreadableNames: Boolean = false
+        ) = PropertyConditionSpec(
+            normalizedPrefix(prefix), names, havingValue.orEmpty(), matchIfMissing, unreadableNames || names.isEmpty()
+        )
 
         private fun normalizedPrefix(prefix: String?): String {
             val trimmed = prefix?.trim().orEmpty()
