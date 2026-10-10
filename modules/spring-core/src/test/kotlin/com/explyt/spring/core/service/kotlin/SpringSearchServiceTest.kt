@@ -6,6 +6,7 @@
 package com.explyt.spring.core.service.kotlin
 
 import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.service.ComposedBeanNameFixture
 import com.explyt.spring.core.service.SpringSearchService
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.beans.BeanSourcePreference
@@ -106,6 +107,49 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
         assertEquals("One factory must produce one snapshot record", 1, records.size)
         assertEquals("x", records.single().name)
         assertEquals(listOf("x", "y"), records.single().knownNames.toList())
+    }
+
+    fun testComposedBeanNameAlias() = assertComposedBeanName(
+        "@get:AliasFor(annotation = Bean::class, attribute = \"name\") val beanName: Array<String> = []",
+        "@MyBean(beanName = [\"x\"])", "beanName", "name", listOf("x"), listOf("x")
+    )
+
+    fun testComposedBeanValueAlias() = assertComposedBeanName(
+        "@get:AliasFor(annotation = Bean::class, attribute = \"value\") val beanName: Array<String> = []",
+        "@MyBean(beanName = [\"x\"])", "beanName", "value", listOf("x"), listOf("x")
+    )
+
+    fun testComposedBeanAliasWithTwoNames() = assertComposedBeanName(
+        "@get:AliasFor(annotation = Bean::class, attribute = \"name\") val beanName: Array<String> = []",
+        "@MyBean(beanName = [\"x\", \"y\"])", "beanName", "name", listOf("x", "y"), listOf("x", "y")
+    )
+
+    fun testComposedBeanAliasLeftEmptyFallsBackToMethodName() = assertComposedBeanName(
+        "@get:AliasFor(annotation = Bean::class, attribute = \"name\") val beanName: Array<String> = []",
+        "@MyBean", "beanName", "name", emptyList(), listOf("foo")
+    )
+
+    fun testComposedNameAttributeWithoutAliasForOverridesByConventionInSpring6() {
+        ComposedBeanNameFixture.assertSpringCoreMajorVersion(myFixture, module, 6)
+        assertComposedBeanName("val name: Array<String> = []", "@MyBean(name = [\"x\"])", "name", null, listOf("x"), listOf("x"))
+    }
+
+    fun testComposedValueAttributeWithoutAliasForIsNotAnOverride() = assertComposedBeanName(
+        "val value: Array<String> = []",
+        "@MyBean(value = [\"x\"])", "value", null, listOf("x"), listOf("foo")
+    )
+
+
+    private fun assertComposedBeanName(
+        attributeDeclaration: String,
+        usage: String,
+        attribute: String,
+        aliasTarget: String?,
+        declaredValues: List<String>,
+        expectedNames: List<String>,
+    ) {
+        ComposedBeanNameFixture.addKotlin(myFixture, attributeDeclaration, usage)
+        ComposedBeanNameFixture.assertComposedBeanNames(myFixture, module, attribute, aliasTarget, declaredValues, expectedNames)
     }
 
     private fun assertBeanName(annotation: String, attribute: String, values: List<String>, expectedName: String) {

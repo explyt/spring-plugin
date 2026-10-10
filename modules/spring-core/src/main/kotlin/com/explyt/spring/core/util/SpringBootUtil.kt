@@ -6,13 +6,17 @@
 package com.explyt.spring.core.util
 
 import com.explyt.spring.core.util.SpringCoreUtil.SPRING_BOOT_MAVEN
+import com.explyt.spring.core.util.SpringCoreUtil.SPRING_CORE_MAVEN
 import com.intellij.java.library.JavaLibraryUtil
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.ArrayUtil
+import com.intellij.util.concurrency.annotations.RequiresReadLock
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.text.VersionComparatorUtil
 import org.jetbrains.kotlin.idea.base.util.module
@@ -24,8 +28,18 @@ private const val SPRING_BOOT_KAFKA = "spring-kafka"
 private const val SPRING_BOOT_3_VERSION = "3.0"
 
 private const val SPRING_BOOT_4_VERSION = "4.0"
+private val SPRING_CORE_MAJOR_VERSION_KEY = Key.create<CachedValue<Int?>>("explyt.spring.core.major.version")
 
 object SpringBootUtil {
+
+    @RequiresReadLock
+    fun getSpringCoreMajorVersion(module: Module): Int? =
+        CachedValuesManager.getManager(module.project).getCachedValue(module, SPRING_CORE_MAJOR_VERSION_KEY, {
+            val majorVersion = JavaLibraryUtil.getLibraryVersion(module, SPRING_CORE_MAVEN)
+                ?.substringBefore('.')
+                ?.toIntOrNull()
+            CachedValueProvider.Result.create(majorVersion, ProjectRootManager.getInstance(module.project))
+        }, false)
 
     @Suppress("UnstableApiUsage")
     fun getSpringBootVersion(module: Module): SpringBootVersion? {
