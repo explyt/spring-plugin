@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PsiTestUtil
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -143,6 +144,7 @@ abstract class PageSchemaTestCase : ExplytJavaLightTestCase() {
         const val SLICE = "org.springframework.data.domain.Slice"
         const val ENABLE_WEB_SUPPORT = "org.springframework.data.web.config.EnableSpringDataWebSupport"
         const val ORDER_DTO = "com.example.shop.OrderDto"
+        const val CUSTOM_PAGE = "com.example.shop.OrderPage"
         const val WEB_CONFIG_SOURCE = "@EnableSpringDataWebSupport on com.example.config.WebConfig"
         const val SERIALIZATION_MODE_KEY = "spring.data.web.pageable.serialization-mode"
 
@@ -366,6 +368,184 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         )
 
         assertDirectPage(schemaOf("/orders/suspend-page", "$PAGE<$ORDER_DTO>"))
+    }
+
+    fun testUnknownModeValueIsReportedUnknownWithTheDefaultShape() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=garbage")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource("UNKNOWN", schema)
+    }
+
+    fun testUpperCaseModeValueWritesPagedModel() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(SERIALIZATION_MODE_KEY, schema)
+    }
+
+    fun testWebSupportInATestSourceRootDoesNotChangeTheProductionShape() = runBlocking<Unit> {
+        val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
+        PsiTestUtil.addSourceRoot(module, testRoot, true)
+        try {
+            addFile(
+                "src/test/java/com/example/config/TestWebConfig.java", """
+                package com.example.config;
+
+                import org.springframework.context.annotation.Configuration;
+                import org.springframework.data.web.config.EnableSpringDataWebSupport;
+                import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+                @Configuration
+                @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
+                public class TestWebConfig {
+                }
+                """.trimIndent()
+            )
+            assertResolves("com.example.config.TestWebConfig")
+
+            val schema = pageSchema("/orders/page")
+
+            assertDirectPage(schema)
+            assertSource("DEFAULT", schema)
+        } finally {
+            PsiTestUtil.removeSourceRoot(module, testRoot)
+        }
+    }
+
+    fun testPagesInsideAListAreDescribedWithTheConfiguredShape() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+        addNestedPagesController()
+
+        val schema = schemaOf("/orders/pages", "java.util.List<$PAGE<$ORDER_DTO>>")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+        assertPageAssumed(schema)
+    }
+
+    fun testPageFieldOfADtoIsDescribedWithTheConfiguredShape() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+        addNestedPagesController()
+
+        val schema = schemaOf("/orders/report", "com.example.shop.OrderReport")
+
+        assertEquals(listOf("orders"), names(schema))
+        val orders = field(schema, "orders")
+        assertEquals("$PAGE<$ORDER_DTO>", orders["type"].asText())
+        assertPagedModel(orders["nested"])
+        assertSource(WEB_CONFIG_SOURCE, orders["nested"])
+    }
+
+    fun testPageOfAnUnresolvedElementKeepsThePageShape() = runBlocking<Unit> {
+        addFile(
+            "com/example/shop/UnresolvedController.java", """
+            package com.example.shop;
+
+            import org.springframework.data.domain.Page;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class UnresolvedController {
+                @GetMapping("/orders/missing")
+                public Page<Missing> missing() { return null; }
+            }
+            """.trimIndent()
+        )
+        assertNull(
+            "the element type must stay unresolved",
+            JavaPsiFacade.getInstance(project).findClass("com.example.shop.Missing", GlobalSearchScope.allScope(project))
+        )
+
+        val schema = schemaOf("/orders/missing", "$PAGE<Missing>")
+
+        assertEquals(schema.toString(), "org.springframework.data.domain.PageImpl", schema["className"].asText())
+        assertEquals("PAGE_DIRECT", schema["wireShape"].asText())
+        assertEquals(PAGE_DIRECT_KEYS, names(schema).toSet())
+        val content = field(schema, "content")
+        assertEquals("java.util.List<Missing>", content["type"].asText())
+        assertTrue("an unresolved element has no schema: $content", content["nested"].isNull)
+    }
+
+    fun testCustomPageImplSubclassIsDescribedByItsGetters() = runBlocking<Unit> {
+        addCustomPage()
+
+        val schema = schemaOf("/orders/custom-page", "$CUSTOM_PAGE<$ORDER_DTO>")
+
+        assertEquals(CUSTOM_PAGE, schema["className"].asText())
+        assertFalse("a project page is not one of the Spring Data classes: $schema", schema.has("wireShape"))
+        assertTrue(
+            "the page properties inherited from PageImpl are written: ${names(schema)}",
+            names(schema).containsAll(PAGE_DIRECT_KEYS - "empty")
+        )
+    }
+
+    private fun addCustomPage() {
+        addFile(
+            "com/example/shop/OrderPage.java", """
+            package com.example.shop;
+
+            import java.util.List;
+            import org.springframework.data.domain.PageImpl;
+
+            public class OrderPage<T> extends PageImpl<T> {
+                public OrderPage(List<T> content) { super(content); }
+            }
+            """.trimIndent()
+        )
+        addFile(
+            "com/example/shop/CustomPageController.java", """
+            package com.example.shop;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class CustomPageController {
+                @GetMapping("/orders/custom-page")
+                public OrderPage<OrderDto> page() { return null; }
+            }
+            """.trimIndent()
+        )
+        assertResolves("org.springframework.data.domain.PageImpl")
+    }
+
+    private fun addNestedPagesController() {
+        addFile(
+            "com/example/shop/OrderReport.java", """
+            package com.example.shop;
+
+            import org.springframework.data.domain.Page;
+
+            public class OrderReport {
+                public Page<OrderDto> getOrders() { return null; }
+            }
+            """.trimIndent()
+        )
+        addFile(
+            "com/example/shop/NestedPagesController.java", """
+            package com.example.shop;
+
+            import java.util.List;
+            import org.springframework.data.domain.Page;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class NestedPagesController {
+                @GetMapping("/orders/pages")
+                public List<Page<OrderDto>> pages() { return List.of(); }
+
+                @GetMapping("/orders/report")
+                public OrderReport report() { return new OrderReport(); }
+            }
+            """.trimIndent()
+        )
     }
 
     fun testListOfDtoIsUnchanged() = runBlocking<Unit> {
