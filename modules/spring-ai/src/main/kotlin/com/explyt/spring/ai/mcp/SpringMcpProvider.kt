@@ -61,7 +61,6 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
 import com.intellij.psi.search.searches.MethodReferencesSearch
 import com.intellij.psi.util.InheritanceUtil
-import com.intellij.psi.util.PsiUtil
 import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -819,38 +818,25 @@ class SpringBootApplicationMcpToolset : McpToolset {
             ?: param.name
     }
 
-    private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String = when {
-        inherited(param, SpringWebClasses.COOKIE_VALUE) != null -> "COOKIE"
-        inherited(param, SpringWebClasses.MODEL_ATTRIBUTE) != null -> "MODEL"
-        isFrameworkSupplied(param.type, stack) -> "FRAMEWORK"
-        HandlerMethods.bindingAnnotationOf(param) { !isBindingNeutral(it) } != null -> "UNKNOWN"
-        else -> defaultSourceOf(param.type, stack == WebApplicationStack.SERVLET)
+    private fun sourceOfUncollected(param: PsiParameter, stack: WebApplicationStack?): String {
+        val annotated = HandlerMethods.bindingAnnotationOf(param) { it.isRuntimeParameterAnnotation() } != null
+        val frameworkSource = FrameworkArguments.sourceOf(param.type, stack, annotated)
+        return when {
+            inherited(param, SpringWebClasses.COOKIE_VALUE) != null -> "COOKIE"
+            inherited(param, SpringWebClasses.MODEL_ATTRIBUTE) != null -> "MODEL"
+            frameworkSource != null -> frameworkSource.name
+            HandlerMethods.bindingAnnotationOf(param) { !isBindingNeutral(it) } != null -> "UNKNOWN"
+            else -> defaultSourceOf(param.type, stack == WebApplicationStack.SERVLET)
+        }
     }
-
-    private fun isFrameworkSupplied(type: PsiType, stack: WebApplicationStack?): Boolean = when {
-        FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(type, it) } -> true
-        stack != WebApplicationStack.REACTIVE -> false
-        REACTIVE_FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(type, it) } -> true
-        qualifiedNameOf(type) in REACTIVE_FRAMEWORK_SUPPLIED_EXACT_TYPES -> true
-        else -> isReactiveWrapperOfFrameworkSupplied(type)
-    }
-
-    private fun isReactiveWrapperOfFrameworkSupplied(type: PsiType): Boolean {
-        val payload = REACTIVE_ADAPTED_WRAPPER_TYPES.firstNotNullOfOrNull { wrapper ->
-            PsiUtil.substituteTypeParameter(type, wrapper, 0, false)
-        } ?: return false
-        return REACTIVE_WRAPPED_FRAMEWORK_SUPPLIED_TYPES.any { InheritanceUtil.isInheritor(payload, it) }
-    }
-
-    private fun qualifiedNameOf(type: PsiType): String? = (type as? PsiClassType)?.resolve()?.qualifiedName
 
     /**
      * Where Spring's catch-all resolvers put a parameter no annotation claims - the tail of the resolver chain of
      * both servlet MVC and WebFlux: `RequestParamMethodArgumentResolver(useDefaultResolution = true)` for a simple
      * type, then the model-attribute resolver (`annotationNotRequired = true`) for any other.
      *
-     * The types Spring claims ahead of that tail without an annotation keep their own source: an unannotated `Map`
-     * is the model, a multipart part is a request part on servlet MVC, and `HttpEntity`, `Pageable` and `Sort` stay
+     * The types Spring claims ahead of that tail without an annotation keep their own source: a multipart part is a
+     * request part on servlet MVC, and `HttpEntity`, `Pageable` and `Sort` stay
      * `UNKNOWN` because their resolvers read a wire format of their own. A type that does not resolve stays
      * `UNKNOWN` too: whether it is simple is the question that cannot be answered.
      */
@@ -859,7 +845,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         return when {
             !isResolved(value) -> "UNKNOWN"
             OWN_WIRE_FORMAT_TYPES.any { InheritanceUtil.isInheritor(value, it) } -> "UNKNOWN"
-            value is PsiClassType && value.resolve()?.qualifiedName == CommonClassNames.JAVA_UTIL_MAP -> "FRAMEWORK"
             isMultipartPart(value) -> if (servletApplication) "PART" else "UNKNOWN"
             SpringSimpleValueTypes.isSimpleProperty(value) -> "QUERY"
             else -> "MODEL"
@@ -2023,70 +2008,6 @@ class SpringBootApplicationMcpToolset : McpToolset {
         /** Matched by simple name too, so an annotation whose library is not on the classpath still reads as neutral. */
         private val BINDING_NEUTRAL_ANNOTATION_NAMES = setOf(
             "Valid", "Validated", "DateTimeFormat", "NumberFormat", "NotNull", "NonNull", "Nonnull", "Nullable",
-        )
-
-        /**
-         * Types Spring's own argument resolvers supply from the container rather than from a named place in the
-         * request — the "Method Arguments" table of the Spring MVC reference.
-         *
-         * Deliberately excludes `Pageable`, `Sort` and `HttpEntity`. Those are resolved by Spring too, but they
-         * *do* have a client-visible wire format (`?page=&size=&sort=`, the request body), and calling them
-         * `FRAMEWORK` would tell a reader generating a client that there is nothing to send. Leaving them
-         * `UNKNOWN` errs toward "look at this", which is the safe direction for this tool.
-         *
-         * Matched by inheritance, so `HttpServletRequest` matches `ServletRequest` and `BindingResult` matches
-         * `Errors` without listing every subtype.
-         */
-        private val FRAMEWORK_SUPPLIED_TYPES = listOf(
-            "jakarta.servlet.ServletRequest",
-            "jakarta.servlet.ServletResponse",
-            "jakarta.servlet.http.HttpSession",
-            "jakarta.servlet.http.Part",
-            "javax.servlet.ServletRequest",
-            "javax.servlet.ServletResponse",
-            "javax.servlet.http.HttpSession",
-            "java.security.Principal",
-            "java.util.Locale",
-            "java.util.TimeZone",
-            "java.time.ZoneId",
-            "java.io.InputStream",
-            "java.io.OutputStream",
-            "java.io.Reader",
-            "java.io.Writer",
-            "org.springframework.http.HttpMethod",
-            "org.springframework.ui.Model",
-            "org.springframework.ui.ModelMap",
-            "org.springframework.validation.Errors",
-            "org.springframework.web.context.request.WebRequest",
-            "org.springframework.web.util.UriComponentsBuilder",
-            "org.springframework.web.servlet.mvc.support.RedirectAttributes",
-            "org.springframework.web.bind.support.SessionStatus",
-            "org.springframework.security.core.Authentication",
-        )
-
-        private const val WEB_SESSION = "org.springframework.web.server.WebSession"
-
-        private val REACTIVE_FRAMEWORK_SUPPLIED_TYPES = listOf(
-            "org.springframework.web.server.ServerWebExchange",
-            "org.springframework.http.server.reactive.ServerHttpRequest",
-            "org.springframework.http.server.reactive.ServerHttpResponse",
-            WEB_SESSION,
-        )
-
-        private val REACTIVE_FRAMEWORK_SUPPLIED_EXACT_TYPES = setOf(
-            "org.springframework.web.util.UriBuilder",
-        )
-
-        private val REACTIVE_ADAPTED_WRAPPER_TYPES = listOf(
-            "org.reactivestreams.Publisher",
-            "java.util.concurrent.Flow.Publisher",
-            "java.util.concurrent.CompletionStage",
-        )
-
-        private val REACTIVE_WRAPPED_FRAMEWORK_SUPPLIED_TYPES = listOf(
-            WEB_SESSION,
-            "java.security.Principal",
-            "org.springframework.validation.Errors",
         )
 
         private val ENTITY_ANNOTATION_FQNS = JpaClasses.entity.allFqns
