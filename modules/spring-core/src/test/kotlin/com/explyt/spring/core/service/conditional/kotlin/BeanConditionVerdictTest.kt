@@ -10,6 +10,36 @@ import com.explyt.spring.core.service.conditional.ConditionFixtures
 
 class BeanConditionVerdictTest : BeanConditionVerdictTestCase() {
     override val fixtures: ConditionFixtures by lazy { KotlinConditionFixtures(myFixture) }
+    override val realJdk: Boolean get() = name == "testTypealiasClassLiteralIsActive"
+
+    fun testTypealiasClassLiteralIsActive() {
+        val file = myFixture.addFileToProject(
+            "com/app/AliasClassConfig.kt",
+            """
+            package com.app
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
+            typealias Clock = java.time.Clock
+            @Configuration
+            @ConditionalOnClass(Clock::class)
+            class AliasClassConfig
+            """.trimIndent()
+        ) as org.jetbrains.kotlin.psi.KtFile
+        val alias = file.declarations.filterIsInstance<org.jetbrains.kotlin.psi.KtTypeAlias>().single()
+        val references = com.intellij.psi.util.PsiTreeUtil.findChildrenOfType(
+            alias.getTypeReference()!!, org.jetbrains.kotlin.psi.KtNameReferenceExpression::class.java
+        )
+        val clock = references.single { it.getReferencedName() == "Clock" }
+        assertNotNull("Precondition: typealias target resolves", clock.references.firstNotNullOfOrNull { it.resolve() })
+        assertNotNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("java.time.Clock", com.intellij.psi.search.GlobalSearchScope.allScope(project)))
+        val config = beanClass("com.app.AliasClassConfig")
+        assertAnnotatedBy(config, "org.springframework.boot.autoconfigure.condition.ConditionalOnClass")
+        com.explyt.spring.core.tracker.ModificationTrackerManager.getInstance(project).invalidateAll()
+
+        assertEquals(com.explyt.spring.core.service.conditional.ConditionVerdict.Active,
+            com.explyt.spring.core.service.SpringSearchService.getInstance(project).conditionVerdictOf(config, module))
+        assertTrue("com.app.AliasClassConfig" in activeBeans())
+    }
 
     fun testMissingClassHasRuntimeClasspathAssumption() {
         myFixture.addFileToProject(

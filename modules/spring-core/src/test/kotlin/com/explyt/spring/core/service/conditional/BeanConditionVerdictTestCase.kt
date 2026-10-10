@@ -381,6 +381,9 @@ abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
         assertTrue("Precondition: first carrier check excludes its registration", first in excluded)
         assertTrue("Precondition: required blocker disappears before the later check", blocker in excluded)
         assertTrue("Precondition: later registration is discovered", later in active + excluded)
+        assertTrue("The first carrier verdict excludes every registration", later in excluded)
+        assertFalse("A revisited carrier must not reactivate its later registration", later in active)
+        assertEquals(verdictOf(first), verdictOf(later))
         assertTrue("Precondition: carrier is checked again as a class-valued member", later.psiMember is com.intellij.psi.PsiClass && later.psiMember != later.psiClass)
 
         for (bean in active + excluded) {
@@ -388,6 +391,75 @@ abstract class BeanConditionVerdictTestCase : BeanConditionTestCase() {
             assertNotNull("Every discovered bean must have a verdict: ${bean.name}", verdict)
             assertEquals("Verdict must agree with exclusion of ${bean.name}", bean in excluded, verdict is ConditionVerdict.Inactive)
         }
+    }
+
+    fun testGenericClassLiteralIsActive() {
+        val config = addGapConfiguration(
+            "GenericClassConfig", "@ConditionalOnClass(java.util.List.class)", "@ConditionalOnClass(List::class)"
+        )
+        assertAnnotatedBy(config, "org.springframework.boot.autoconfigure.condition.ConditionalOnClass")
+        assertNotNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("java.util.List", config.resolveScope))
+
+        assertEquals(ConditionVerdict.Active, verdictOf(config))
+        assertTrue("com.app.GenericClassConfig" in activeBeans())
+    }
+
+    fun testMissingClassNameSatisfiesMissingClassCondition() {
+        val config = addGapConfiguration(
+            "MissingNameConfig", "@ConditionalOnMissingClass(\"com.app.Missing\")", "@ConditionalOnMissingClass(value = [\"com.app.Missing\"])"
+        )
+        assertAnnotatedBy(config, "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass")
+        assertNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("com.app.Missing", config.resolveScope))
+
+        assertEquals(ConditionVerdict.Active, verdictOf(config))
+        assertTrue("com.app.MissingNameConfig" in activeBeans())
+    }
+
+    fun testExistingClassNameViolatesMissingClassCondition() {
+        val config = addGapConfiguration(
+            "ExistingNameConfig", "@ConditionalOnMissingClass(\"java.lang.String\")", "@ConditionalOnMissingClass(value = [\"java.lang.String\"])"
+        )
+        val annotation = "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass"
+        assertAnnotatedBy(config, annotation)
+        assertNotNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("java.lang.String", config.resolveScope))
+
+        val evidence = inactiveEvidence(verdictOf(config))
+        assertEquals(annotation, evidence.annotationFqn)
+        assertEquals(setOf(ConditionAssumption.COMPILE_CLASSPATH_IS_RUNTIME), evidence.assumptions)
+        assertTrue("com.app.ExistingNameConfig" in excludedBeans())
+    }
+
+    fun testConstantMissingClassNameMatchesLiteral() {
+        addGapSource(
+            "ClassNames", "public class ClassNames { public static final String MISSING_FQN = \"com.app.Missing\"; }",
+            "object ClassNames { const val MISSING_FQN = \"com.app.Missing\" }"
+        )
+        val config = addGapConfiguration(
+            "ConstantMissingConfig", "@ConditionalOnMissingClass(ClassNames.MISSING_FQN)", "@ConditionalOnMissingClass(value = [ClassNames.MISSING_FQN])"
+        )
+        assertAnnotatedBy(config, "org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass")
+        assertNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("com.app.Missing", config.resolveScope))
+        val field = beanClass("com.app.ClassNames").findFieldByName("MISSING_FQN", false)!!
+        assertEquals("Precondition: class-name constant resolves", "com.app.Missing", field.computeConstantValue())
+
+        assertEquals(ConditionVerdict.Active, verdictOf(config))
+    }
+
+    fun testMetaAnnotationWithMissingClassNameIsInactive() {
+        addGapSource(
+            "RequiresMissing",
+            "@java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) @ConditionalOnClass(name = \"com.app.Missing\") public @interface RequiresMissing {}",
+            "@Retention(AnnotationRetention.RUNTIME) @ConditionalOnClass(name = [\"com.app.Missing\"]) annotation class RequiresMissing"
+        )
+        val config = addGapConfiguration("MetaMissingClassConfig", "@RequiresMissing", "@RequiresMissing")
+        assertAnnotatedBy(beanClass("com.app.RequiresMissing"), "org.springframework.boot.autoconfigure.condition.ConditionalOnClass")
+        assertAnnotatedBy(config, "com.app.RequiresMissing")
+        assertNull(com.intellij.psi.JavaPsiFacade.getInstance(project).findClass("com.app.Missing", config.resolveScope))
+
+        val evidence = inactiveEvidence(verdictOf(config))
+        assertEquals("com.app.RequiresMissing", evidence.annotationFqn)
+        assertEquals(ConditionReason.NOT_MATCHED, evidence.reason)
+        assertTrue("com.app.MetaMissingClassConfig" in excludedBeans())
     }
 
     private fun registerConditionBeans(beans: List<com.explyt.spring.core.service.PsiBean>) {
