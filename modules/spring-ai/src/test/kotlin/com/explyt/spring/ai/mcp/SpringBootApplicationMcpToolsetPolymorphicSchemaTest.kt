@@ -17,7 +17,7 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
 
     override val libraries: Array<TestLibrary> = arrayOf(
         TestLibrary.springWebMvc_6_0_7,
-        TestLibrary.jacksonAnnotations_2_15_2,
+        TestLibrary("com.fasterxml.jackson.core:jackson-annotations:2.21", false),
         TestLibrary.kotlin_1_9_22,
     )
 
@@ -258,6 +258,163 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
     }
 
+    fun testSimpleNameUsesTheNestedClassSimpleName() = runBlocking<Unit> {
+        addKotlinController(
+            "NestedPayment", "NestedPayment", "Outer.Card()", """
+            import com.fasterxml.jackson.annotation.JsonSubTypes
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.SIMPLE_NAME)
+            @JsonSubTypes(JsonSubTypes.Type(value = Outer.Card::class))
+            abstract class NestedPayment
+
+            class Outer {
+                class Card : NestedPayment()
+            }
+            """
+        )
+
+        assertAnnotated("$PACKAGE.NestedPayment", JSON_TYPE_INFO)
+        assertAnnotated("$PACKAGE.NestedPayment", JSON_SUB_TYPES)
+        val id = JavaPsiFacade.getInstance(project).findClass("$JSON_TYPE_INFO.Id", module.moduleWithLibrariesScope)
+        assertNotNull("Precondition: SIMPLE_NAME resolves in jackson-annotations", id?.findFieldByName("SIMPLE_NAME", false))
+        val schema = responseSchema("/api/nestedpayment")
+        assertEquals("@type", schema["discriminator"]["property"].asText())
+        assertEquals("Card", variantsOf(schema).values.single().typeId)
+    }
+
+    fun testClassUsesTheBinaryFqnAndDefaultClassProperty() = runBlocking<Unit> {
+        addKotlinController(
+            "ClassPayment", "ClassPayment", "Outer.Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
+            sealed interface ClassPayment
+
+            class Outer {
+                class Card : ClassPayment
+            }
+            """
+        )
+
+        val schema = responseSchema("/api/classpayment")
+        assertEquals("@class", schema["discriminator"]["property"].asText())
+        assertEquals("$PACKAGE.Outer.Card", schema["variants"].single()["className"].asText())
+        assertEquals("$PACKAGE.Outer\$Card", schema["variants"].single()["typeId"].asText())
+    }
+
+    fun testMinimalClassUsesALeadingDotRelativeToTheBasePackage() = runBlocking<Unit> {
+        addKotlinController(
+            "MinimalPayment", "MinimalPayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.MINIMAL_CLASS)
+            sealed interface MinimalPayment
+
+            class Card : MinimalPayment
+            """
+        )
+
+        val schema = responseSchema("/api/minimalpayment")
+        assertEquals("@c", schema["discriminator"]["property"].asText())
+        assertEquals(".Card", variantsOf(schema).values.single().typeId)
+    }
+
+    fun testDeductionHasNoPropertyOrVariantTypeIds() = runBlocking<Unit> {
+        addKotlinController(
+            "DeductionPayment", "DeductionPayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
+            sealed interface DeductionPayment
+
+            class Card : DeductionPayment
+            """
+        )
+
+        val schema = responseSchema("/api/deductionpayment")
+        assertEquals(setOf("use", "include"), schema["discriminator"].fieldNames().asSequence().toSet())
+        assertEquals("DEDUCTION", schema["discriminator"]["use"].asText())
+        assertEquals("PROPERTY", schema["discriminator"]["include"].asText())
+        assertNull(variantsOf(schema).values.single().typeId)
+    }
+
+    fun testJsonTypeNameIsUsedWhenSubtypeNameIsAbsentAndExplicitNameWins() = runBlocking<Unit> {
+        addJavaController("NamedPayment", "new Visa()", """
+            import com.fasterxml.jackson.annotation.JsonSubTypes;
+            import com.fasterxml.jackson.annotation.JsonTypeInfo;
+            import com.fasterxml.jackson.annotation.JsonTypeName;
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+            @JsonSubTypes({
+                @JsonSubTypes.Type(value = Visa.class),
+                @JsonSubTypes.Type(value = Cash.class, name = "cash")
+            })
+            public abstract class NamedPayment {}
+
+            @JsonTypeName("visa")
+            class Visa extends NamedPayment {}
+
+            @JsonTypeName("ignored")
+            class Cash extends NamedPayment {}
+            """)
+
+        val variants = variantsOf(responseSchema("/api/namedpayment"))
+        assertEquals("visa", variants.getValue("$PACKAGE.Visa").typeId)
+        assertEquals("cash", variants.getValue("$PACKAGE.Cash").typeId)
+    }
+
+    fun testTypeInfoDeclaredOnAnImplementedInterfaceIsInherited() = runBlocking<Unit> {
+        addKotlinController(
+            "InheritedPayment", "InheritedPayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+            interface PaymentContract
+
+            abstract class InheritedPayment : PaymentContract
+
+            class Card : InheritedPayment()
+            """
+        )
+
+        val schema = responseSchema("/api/inheritedpayment")
+        assertEquals("@type", schema["discriminator"]["property"].asText())
+        assertNull("A non-sealed abstract type without registered subtypes is not enumerated", schema["variants"])
+    }
+
+    fun testExistingPropertyIsReported() = runBlocking<Unit> {
+        addKotlinController(
+            "ExistingPayment", "ExistingPayment", "Card()", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "kind")
+            sealed interface ExistingPayment
+
+            class Card : ExistingPayment
+            """
+        )
+        val existing = responseSchema("/api/existingpayment")
+        assertEquals("EXISTING_PROPERTY", existing["discriminator"]["include"].asText())
+        assertEquals("kind", existing["discriminator"]["property"].asText())
+    }
+
+    fun testKotlinSealedObjectIsAKnownVariant() = runBlocking<Unit> {
+        addKotlinController(
+            "ObjectPayment", "ObjectPayment", "Cash", """
+            import com.fasterxml.jackson.annotation.JsonTypeInfo
+
+            @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+            sealed interface ObjectPayment
+
+            object Cash : ObjectPayment
+            """
+        )
+
+        val schema = responseSchema("/api/objectpayment")
+        assertEquals("Cash", variantsOf(schema).values.single().typeId)
+    }
+
     private data class VariantView(val typeId: String?, val fields: List<String>)
 
     private fun variantsOf(schema: JsonNode): Map<String, VariantView> {
@@ -287,7 +444,9 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
     private fun assertAnnotated(className: String, annotation: String) {
         val psiClass = findProjectClass(className)
         assertNotNull("Precondition: $className resolves", psiClass)
-        assertTrue("Precondition: @$annotation on $className resolves to the library class", psiClass!!.hasAnnotation(annotation))
+        val resolved = psiClass!!.getAnnotation(annotation)?.resolveAnnotationType()
+        assertNotNull("Precondition: @$annotation on $className resolves to the library class", resolved)
+        assertFalse("Precondition: the annotation is not a project stub", GlobalSearchScope.projectScope(project).contains(resolved!!.containingFile.virtualFile))
     }
 
     private fun findProjectClass(className: String) =
@@ -337,6 +496,10 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
             toolset.getEndpointContract(urlPattern = url, projectPath = project.basePath, httpMethod = "GET")
         )["endpoints"]
         assertEquals("Exactly one contract for $url", 1, endpoints.size())
+        val returnType = endpoints[0]["returnType"].asText()
+        val fqn = endpoints[0]["responseSchema"]["className"].asText()
+        assertTrue("Precondition: handler declares the schema response type: $returnType", returnType.contains(fqn))
+        assertNotNull("Precondition: handler response type $fqn resolves", JavaPsiFacade.getInstance(project).findClass(fqn, module.moduleWithLibrariesScope))
         return endpoints[0]["responseSchema"]
     }
 
