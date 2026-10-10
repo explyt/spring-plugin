@@ -147,6 +147,7 @@
 
 ### Spring MCP
 
+- fix: Classify unannotated handler parameters the way Spring's argument resolvers do on each web stack: servlet types such as `HttpServletRequest`, `InputStream` or `Writer` are no longer `FRAMEWORK` on WebFlux, `MultipartRequest`, `PushBuilder` and the Spring 7 API version (`SemanticApiVersionParser.Version`, also in `Optional`) are, exact-type resolvers no longer claim subtypes (`SimpleTimeZone`/`ZoneOffset` are `QUERY`, a project `UriComponentsBuilder` or `SessionStatus` subclass is `MODEL`), an unannotated `jakarta.servlet.http.Part` is `PART`, and on WebFlux a `HashMap` is the model while a plain `ModelMap` is `UNKNOWN` (#537)
 - fix: Report the route of MCP call traces started inside `path("/a").nest { }` in the Kotlin router DSL with its prefix (`GET /a/b`), matching the endpoint list (follow-up of #576)
 - fix: Name contract `serviceCalls[].target` and functional-route handler calls from source declarations: companion members use their outer class and `internal` functions omit JVM suffixes; target strings change, keys stay unchanged (#571)
 - fix: Report SINGLE_TABLE subclass columns as nullable with `nullableReason: SINGLE_TABLE_SUBCLASS` when inheritance relaxes their constraints, while preserving primary keys and explicit `@Column(nullable = false)`, `@JoinColumn(nullable = false)` and to-one `optional = false` (#560)
