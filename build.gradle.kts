@@ -61,6 +61,15 @@ subprojects {
         }
     }
 
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        val mainClassesDirs = the<SourceSetContainer>()["main"].output.classesDirs
+        tasks.named<KotlinJvmCompile>("compileTestKotlin") {
+            inputs.files(mainClassesDirs)
+                .withPropertyName("mainClassesAbi")
+                .withNormalizer(CompileClasspathNormalizer::class.java)
+        }
+    }
+
     tasks.withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
         options.compilerArgs = options.compilerArgs + "-Xlint:all"
