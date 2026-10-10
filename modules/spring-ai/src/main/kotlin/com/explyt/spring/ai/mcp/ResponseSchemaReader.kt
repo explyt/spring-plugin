@@ -9,6 +9,7 @@ import com.explyt.spring.core.JacksonClasses
 import com.explyt.spring.core.properties.FoldedPropertyValue
 import com.intellij.codeInsight.AnnotationUtil
 import com.intellij.openapi.module.Module
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClassObjectAccessExpression
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
@@ -74,12 +75,21 @@ internal object ResponseSchemaReader {
         } else {
             fieldsOf(resolved, depth, names).ifEmpty { propertiesOf(resolved, depth, names) }
         }
+        val polymorphism = JacksonPolymorphism.of(resolved)
         return DtoSchemaJson(
             className = fqn,
             fields = fields,
             namingStrategy = naming?.name,
             namingStrategySource = naming?.source,
+            polymorphic = polymorphism?.let { true },
+            discriminator = polymorphism?.typeInfo?.let { DiscriminatorJson(it.use, it.include, it.property) },
+            variants = polymorphism?.variants?.mapNotNull { variantSchemaOf(it, depth - 1, configured) }?.ifEmpty { null },
         )
+    }
+
+    private fun variantSchemaOf(variant: PolymorphicVariant, depth: Int, configured: JacksonNaming?): DtoSchemaJson? {
+        val type = JavaPsiFacade.getElementFactory(variant.psiClass.project).createType(variant.psiClass)
+        return schemaOf(type, depth, configured)?.copy(typeId = variant.typeId)
     }
 
     private fun librarySchemaOf(psiClass: PsiClass, fqn: String, depth: Int, names: Names): DtoSchemaJson {

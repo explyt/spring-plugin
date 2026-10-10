@@ -2482,6 +2482,7 @@ data class EndpointContractJson(
  */
 data class DtoSchemaJson(
     val className: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val typeId: String? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val fields: List<DtoFieldJson>?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val enumValues: List<String>? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val jsonValue: String? = null,
@@ -2501,6 +2502,15 @@ data class DtoSchemaJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val schemaOmitted: String? = null,
     /** `true` when entries of a map are written next to [fields], as a Jackson `@JsonAnyGetter` writes them. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val additionalProperties: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val polymorphic: Boolean? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val discriminator: DiscriminatorJson? = null,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val variants: List<DtoSchemaJson>? = null,
+)
+
+data class DiscriminatorJson(
+    val use: String,
+    val include: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val property: String?,
 )
 
 data class DtoFieldJson(
