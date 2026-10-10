@@ -28,6 +28,15 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
 
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
+    private val nativeFixture by lazy { NativeBeanListingFixture(project) }
+
+    override fun tearDown() {
+        try {
+            nativeFixture.clear()
+        } finally {
+            super.tearDown()
+        }
+    }
 
     fun testListingIsAnEnvelope() = runBlocking<Unit> {
         copyDemoApplication()
@@ -210,6 +219,52 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         )
     }
 
+
+    fun testUnknownOriginRowsAreCountedAcrossFilteredPages() = runBlocking<Unit> {
+        myFixture.copyDirectoryToProject("beanQuery", "")
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass(BEAN_QUERY_APPLICATION, GlobalSearchScope.projectScope(project))!!
+        val missingType = "com.explyt.demo.RemovedService"
+        assertNull("Precondition: the native row has no resolvable class",
+            JavaPsiFacade.getInstance(project).findClass(missingType, GlobalSearchScope.allScope(project)))
+        myFixture.addClass("package com.explyt.demo; @org.springframework.stereotype.Service public class SecondConsumer {}")
+        nativeFixture.install(application, listOf(
+            "clockConsumer" to "com.explyt.demo.ClockConsumer",
+            "secondConsumer" to "com.explyt.demo.SecondConsumer",
+            "removedService" to missingType
+        ))
+        val all = listing(BEAN_QUERY_APPLICATION, "COMPONENT", source = "NATIVE", limit = 50)
+        assertEquals(3, all["totalCount"].asInt())
+        assertTrue("Precondition: the listing uses the native snapshot",
+            rows(all).all { it["source"].asText() == "NATIVE_SNAPSHOT" })
+        val unknown = rows(all).single { it["beanName"].asText() == "removedService" }
+        assertEquals(missingType, unknown["className"].asText())
+        assertFalse(unknown.has("origin"))
+        assertFalse(all.has("unknownOriginCount"))
+
+        val first = listing(BEAN_QUERY_APPLICATION, "COMPONENT", origin = "PROJECT", source = "NATIVE", limit = 1)
+        assertEquals(2, first["totalCount"].asInt())
+        assertEquals(1, first["unknownOriginCount"].asInt())
+        assertEquals(true, first["truncated"].asBoolean())
+        assertEquals(listOf("clockConsumer"), rows(first).map { it["beanName"].asText() })
+        val second = listing(BEAN_QUERY_APPLICATION, "COMPONENT", origin = "PROJECT", source = "NATIVE",
+            limit = 1, offset = first["nextOffset"].asInt(), expectedRevision = first["revision"].asText())
+        assertEquals(1, second["unknownOriginCount"].asInt())
+        assertEquals(listOf("secondConsumer"), rows(second).map { it["beanName"].asText() })
+        assertTrue(rows(first).plus(rows(second)).all { it["origin"].asText() == "PROJECT" })
+        assertEquals(false, second["truncated"].asBoolean())
+    }
+
+    fun testLibraryOriginFilter() = runBlocking<Unit> {
+        copyDemoApplication()
+        val page = listing(DEMO_APPLICATION, "CONTROLLER", origin = "LIBRARY")
+        assertEquals(2, page["totalCount"].asInt())
+        assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
+            rows(page).map { it["beanName"].asText() }.toSet())
+        assertTrue(rows(page).all { it["origin"].asText() == "LIBRARY" })
+        assertFalse(page.has("unknownOriginCount"))
+    }
+
     private fun wrappedLength(json: String): Int =
         mapper.writeValueAsString(mapper.createArrayNode().add(json)).length
 
@@ -242,8 +297,9 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         limit: Int = DEFAULT_LIMIT,
         maxChars: Int = DEFAULT_MAX_CHARS,
         expectedRevision: String? = null,
+        source: String = "STATIC",
     ): JsonNode = mapper.readTree(
-        listingText(application, beanType, origin, offset, limit, maxChars, expectedRevision)
+        listingText(application, beanType, origin, offset, limit, maxChars, expectedRevision, source)
     )
 
     private suspend fun listingText(
@@ -254,11 +310,12 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         limit: Int = DEFAULT_LIMIT,
         maxChars: Int = DEFAULT_MAX_CHARS,
         expectedRevision: String? = null,
+        source: String = "STATIC",
     ): String = toolset.applicationBeans(
         applicationClassName = application,
         projectPath = project.basePath,
         beanType = beanType,
-        source = "STATIC",
+        source = source,
         origin = origin,
         offset = offset,
         limit = limit,
