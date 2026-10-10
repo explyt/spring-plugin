@@ -10,6 +10,7 @@ import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.util.ExplytAnnotationUtil.getStringMemberValues
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import junit.framework.TestCase.assertEquals
@@ -64,6 +65,92 @@ object ComposedBeanNameFixture {
             class Foo
             """.trimIndent()
         )
+    }
+
+    fun addJavaApplication(fixture: CodeInsightTestFixture, declarations: String, usage: String) {
+        fixture.addFileToProject(
+            "beanname/App.java",
+            """
+            |package beanname;
+            |import org.springframework.boot.autoconfigure.SpringBootApplication;
+            |import org.springframework.context.annotation.Bean;
+            |import org.springframework.core.annotation.AliasFor;
+            |import java.lang.annotation.Retention;
+            |import java.lang.annotation.RetentionPolicy;
+            |${declarations.trimIndent()}
+            |@SpringBootApplication
+            |public class App {
+            |    $usage
+            |    public Foo foo() { return new Foo(); }
+            |}
+            |class Foo {}
+            """.trimMargin()
+        )
+    }
+
+    fun addKotlinApplication(fixture: CodeInsightTestFixture, declarations: String, usage: String) {
+        fixture.addFileToProject(
+            "beanname/App.kt",
+            """
+            |package beanname
+            |import org.springframework.boot.autoconfigure.SpringBootApplication
+            |import org.springframework.context.annotation.Bean
+            |import org.springframework.core.annotation.AliasFor
+            |${declarations.trimIndent()}
+            |@SpringBootApplication
+            |open class App {
+            |    $usage
+            |    open fun foo(): Foo = Foo()
+            |}
+            |class Foo
+            """.trimMargin()
+        )
+    }
+
+    fun assertFactoryBeanNames(
+        fixture: CodeInsightTestFixture,
+        module: Module,
+        annotationValues: Map<Pair<String, String>, List<String>>,
+        expectedNames: List<String>,
+    ) {
+        val project = fixture.project
+        val application = JavaPsiFacade.getInstance(project)
+            .findClass("beanname.App", GlobalSearchScope.projectScope(project))!!
+        val method = application.findMethodsByName("foo", false).single()
+        annotationValues.forEach { (annotationAndAttribute, values) ->
+            val (annotationName, attribute) = annotationAndAttribute
+            val annotation = method.getAnnotation(annotationName)
+            assertNotNull("$annotationName on the factory method", annotation)
+            val declaration = annotation!!.resolveAnnotationType()
+                ?: JavaPsiFacade.getInstance(project).findClass(annotationName, GlobalSearchScope.allScope(project))
+            assertEquals("$annotationName resolves", annotationName, declaration?.qualifiedName)
+            assertTrue("$annotationName is Spring @Bean or meta-annotated with it", isBeanAnnotation(fixture, declaration!!, emptySet()))
+            assertEquals("Declared $annotationName.$attribute values", values, annotation.getStringMemberValues(attribute))
+        }
+        assertTrue("Expected names differ from the method name unless they fall back to it",
+            expectedNames == listOf(method.name) || method.name !in expectedNames)
+
+        val records = SpringSearchServiceFacade.getInstance(project)
+            .getBeanSnapshot(application, BeanSourcePreference.STATIC).records
+            .filter { it.typeName == "beanname.Foo" }
+        assertEquals("One factory must produce one snapshot record", 1, records.size)
+        assertEquals("Snapshot bean name", expectedNames.first(), records.single().name)
+        assertEquals("Snapshot known names", expectedNames, records.single().knownNames.toList())
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .filter { it.psiClass.qualifiedName == "beanname.Foo" }
+        assertEquals("Active model bean names", expectedNames.toSet(), beans.map { it.name }.toSet())
+    }
+
+    private fun isBeanAnnotation(fixture: CodeInsightTestFixture, type: PsiClass, visited: Set<String>): Boolean {
+        val name = type.qualifiedName ?: return false
+        if (name == SpringCoreClasses.BEAN) return true
+        if (name in visited || name.startsWith("java.") || name.startsWith("kotlin.")) return false
+        return type.annotations.any { meta ->
+            val metaType = meta.resolveAnnotationType() ?: meta.qualifiedName?.let {
+                JavaPsiFacade.getInstance(fixture.project).findClass(it, GlobalSearchScope.allScope(fixture.project))
+            }
+            metaType?.let { isBeanAnnotation(fixture, it, visited + name) } == true
+        }
     }
 
     fun assertSpringCoreMajorVersion(fixture: CodeInsightTestFixture, module: Module, major: Int) {
