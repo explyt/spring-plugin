@@ -147,6 +147,7 @@
 
 ### Spring MCP
 
+- feat: Answer `explyt_get_spring_beans` with a bounded, paginated listing — a **breaking change** to its response, which is now `{status, revision, totalCount, offset, truncated, nextOffset, beans}` instead of a bare array (8 beans within 1800 characters by default, continued with `offset` = `nextOffset` and `expectedRevision` = `revision`); every row names its `origin`, PROJECT or LIBRARY, read from where the bean is declared, rows come project-first, and `origin=PROJECT|LIBRARY` filters them, counting rows of unknown origin in `unknownOriginCount` (#500)
 - fix: Report the route of MCP call traces started inside `path("/a").nest { }` in the Kotlin router DSL with its prefix (`GET /a/b`), matching the endpoint list (follow-up of #576)
 - fix: Name contract `serviceCalls[].target` and functional-route handler calls from source declarations: companion members use their outer class and `internal` functions omit JVM suffixes; target strings change, keys stay unchanged (#571)
 - fix: Report SINGLE_TABLE subclass columns as nullable with `nullableReason: SINGLE_TABLE_SUBCLASS` when inheritance relaxes their constraints, while preserving primary keys and explicit `@Column(nullable = false)`, `@JoinColumn(nullable = false)` and to-one `optional = false` (#560)
