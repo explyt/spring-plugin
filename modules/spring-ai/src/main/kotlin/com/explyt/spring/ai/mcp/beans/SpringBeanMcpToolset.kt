@@ -40,12 +40,15 @@ class SpringBeanMcpToolset : McpToolset {
                 "what the model cannot promise as a whole and what the returned and undecided records cannot, " +
                 "never the limitations of unrelated beans. " +
                 "'NONE' means nothing matched in that model, never that no declaration exists. " +
-                "In a STATIC answer a candidate whose @Conditional/@Profile the IDE cannot decide carries " +
-                "'condition' {state UNDECIDED, reasons, annotation, carrier, detail} and makes the answer " +
-                "INDETERMINATE with CONDITIONS_UNDECIDED (and PROFILE_NOT_DECIDABLE) in 'model.limitations'; " +
-                "beans that match but are excluded by a condition are listed in 'inactiveCandidates' with " +
-                "'condition' {state INACTIVE, ...} and never count toward 'outcome'; with condition evaluation " +
-                "disabled in the settings 'model.limitations' holds CONDITIONS_NOT_EVALUATED. " +
+                "In a STATIC answer a candidate whose @Conditional or @Profile the IDE cannot decide carries " +
+                "'condition' {state UNDECIDED, every undecided 'reasons', and the first condition's " +
+                "'annotation', 'carrier' and 'detail'} and makes the answer INDETERMINATE with " +
+                "CONDITIONS_UNDECIDED (and PROFILE_NOT_DECIDABLE) in 'model.limitations'. Matching beans " +
+                "excluded by a @Conditional other than @Profile never count toward 'outcome': they are counted " +
+                "in 'inactiveCount' on every page and up to 3 are sampled in 'inactiveCandidates' on the first " +
+                "page, each with 'condition' {state INACTIVE, ...}, and 'inactiveCandidatesTruncated' is true " +
+                "when not all fit; beans inactive by @Profile are filtered earlier and not listed. With condition " +
+                "evaluation disabled in the settings 'model.limitations' holds CONDITIONS_NOT_EVALUATED. " +
                 "A candidate's 'declaration' carries the project-relative 'filePath' and 'line' of the declaring " +
                 "member, or a null 'filePath' and 'library' naming the jar for a bean declared in one - never a " +
                 "path of the machine. " +

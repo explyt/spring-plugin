@@ -41,7 +41,8 @@ class ScopedBeanInjectionResolver(private val project: Project) {
             else -> byQualifier
         }
         val inactiveByType = matcher.matchType(snapshot.inactiveRecords, beanType)
-        val inactive = (qualifier?.let { narrowByQualifier(inactiveByType, it) } ?: inactiveByType).records
+        val inactive = (qualifier?.let { narrowByQualifier(inactiveByType, it) } ?: inactiveByType)
+            .takeUnless { QUALIFIER_NOT_CONSTANT in it.limitations }?.records.orEmpty()
         val conditioned = selected.withUndecidedConditions().copy(inactiveRecords = inactive)
         return BeanSelection(outcome(point.facts.shape, conditioned), conditioned)
     }
