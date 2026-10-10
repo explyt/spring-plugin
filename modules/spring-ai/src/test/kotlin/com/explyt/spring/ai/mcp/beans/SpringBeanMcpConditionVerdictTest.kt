@@ -7,6 +7,8 @@ package com.explyt.spring.ai.mcp.beans
 
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.beans.NativeBeanSnapshotReader
+import com.explyt.spring.core.service.beans.ScopedBeanInjectionResolver
 import com.explyt.spring.core.service.conditional.ConditionAssumption
 import com.explyt.spring.core.service.conditional.ConditionReason
 import com.explyt.spring.core.service.conditional.ConditionVerdict
@@ -324,13 +326,13 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertFalse("an INACTIVE condition carries no reasons, got $condition", condition.has("reasons"))
     }
 
-    fun testWithoutDetailsAnInactiveCandidateHasNeitherIdNorAssumptions() = runBlocking {
+    fun testWithoutDetailsAnInactiveCandidateHasIdButNoAssumptions() = runBlocking {
         addMissingBeanService()
         assertVerdict<ConditionVerdict.Inactive>(NEEDS_MISSING)
 
         val inactive = singleInactiveCandidateOf(call(beanName = "needsMissing"))
 
-        assertFalse("compact answer carries no id, got $inactive", inactive.has("id"))
+        assertTrue("an inactive candidate carries its id like an active one, got $inactive", inactive["id"]?.asText().orEmpty().isNotBlank())
         assertFalse("compact answer carries no assumptions, got $inactive", conditionOf(inactive).has("assumptions"))
     }
 
@@ -456,7 +458,167 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         assertTrue("profile-inactive beans are not listed yet, got $root", inactiveCandidatesOf(root).isEmpty())
     }
 
-    private suspend fun qualifiedInjection(qualifier: String): JsonNode {
+    fun testManyInactiveCandidatesAreSampledWithinTheDefaultBudget() = runBlocking {
+        addWorkers(active = 0, inactive = INACTIVE_WORKERS)
+
+        val json = toolset().findSpringBean(projectPath = project.basePath!!, typeFqn = WORKER)
+        val root = mapper.readTree(json)
+
+        assertEquals("answer was $json", "OK", root["status"].asText())
+        assertTrue("payload was ${json.length} chars", json.length <= MAX_DEFAULT_PAYLOAD)
+        assertEquals("NONE", root["outcome"].asText())
+        assertEquals("inactiveCount must count every match, got $json", INACTIVE_WORKERS, root["inactiveCount"]?.asInt())
+        assertTrue("sample size must be 1..3, got $json", inactiveCandidatesOf(root).size in 1..MAX_INACTIVE_SAMPLE)
+        assertTrue("a short sample is flagged, got $json", root["inactiveCandidatesTruncated"]?.asBoolean() == true)
+    }
+
+    fun testASingleInactiveCandidateIsCountedAndNotFlaggedTruncated() = runBlocking {
+        addProperties("admin.marker=present")
+        addSyncAdminController()
+        assertVerdict<ConditionVerdict.Inactive>(SYNC_ADMIN_CONTROLLER)
+
+        val root = call(beanName = "syncAdminController")
+
+        assertEquals("inactiveCount expected, got $root", 1, root["inactiveCount"]?.asInt())
+        assertEquals("syncAdminController", singleInactiveCandidateOf(root)["name"].asText())
+        assertFalse("a complete sample carries no truncation key, got $root", root.has("inactiveCandidatesTruncated"))
+    }
+
+    fun testAContinuationPageCountsInactiveCandidatesWithoutRepeatingThem() = runBlocking {
+        addWorkers(active = DEFAULT_LIMIT + 1, inactive = 1)
+
+        val first = call(typeFqn = WORKER)
+        assertEquals("Precondition: the first page is truncated, got $first", true, first["truncated"]?.asBoolean())
+        assertEquals("page 1 counts the inactive bean, got $first", 1, first["inactiveCount"]?.asInt())
+        assertEquals("page 1 samples the inactive bean", 1, inactiveCandidatesOf(first).size)
+
+        val second = call(
+            typeFqn = WORKER,
+            offset = first["nextOffset"].asInt(),
+            expectedRevision = first["revision"].asText()
+        )
+
+        assertEquals("OK", second["status"].asText())
+        assertFalse("Precondition: page 2 serves active candidates, got $second", second["candidates"].isEmpty)
+        assertEquals("page 2 keeps the count, got $second", 1, second["inactiveCount"]?.asInt())
+        assertFalse("page 2 does not repeat the sample, got $second", second.has("inactiveCandidates"))
+    }
+
+    fun testManyInactiveCandidatesDoNotCrowdOutActiveOnes() = runBlocking {
+        addWorkers(active = 3, inactive = INACTIVE_WORKERS)
+
+        val json = toolset().findSpringBean(projectPath = project.basePath!!, typeFqn = WORKER)
+        val root = mapper.readTree(json)
+
+        assertEquals("answer was $json", "OK", root["status"].asText())
+        assertTrue("payload was ${json.length} chars", json.length <= MAX_DEFAULT_PAYLOAD)
+        assertEquals("MULTIPLE", root["outcome"].asText())
+        assertFalse("active candidates must be served, got $json", root["candidates"].isEmpty)
+        assertEquals(INACTIVE_WORKERS, root["inactiveCount"]?.asInt())
+    }
+
+    fun testANonConstantQualifierEmitsNoUnfilteredInactiveCandidates() = runBlocking {
+        val root = qualifiedInjection("EngineNames.FAST", nonConstantNames = true)
+
+        assertTrue(
+            "Precondition: the qualifier is reported as non-constant, got $root",
+            ScopedBeanInjectionResolver.QUALIFIER_NOT_CONSTANT in limitationsOf(root)
+        )
+        assertEquals("INDETERMINATE", root["outcome"].asText())
+        assertFalse("no unfiltered inactive sample, got $root", root.has("inactiveCandidates"))
+        assertFalse("no unfiltered inactive count, got $root", root.has("inactiveCount"))
+    }
+
+    fun testANativeAnswerWithTheFilterDisabledClaimsNoConditionEvaluation() = runBlocking {
+        val nativeFixture = NativeBeanListingFixture(project)
+        val settings = SpringToolRunConfigurationsSettingsState.getInstance()
+        val enabled = settings.isBeanFilterEnabled
+        settings.isBeanFilterEnabled = false
+        try {
+            nativeFixture.install(myFixture.findClass(APPLICATION), listOf("nativeClock" to "java.time.Clock"))
+            assertEquals(
+                "Precondition: the native root must be loaded",
+                1, NativeBeanSnapshotReader(project).contexts().size
+            )
+
+            val root = mapper.readTree(
+                toolset().findSpringBean(
+                    projectPath = project.basePath!!,
+                    applicationClassName = APPLICATION,
+                    source = "NATIVE",
+                    beanName = "nativeClock"
+                )
+            )
+
+            assertEquals("answer was $root", "OK", root["status"].asText())
+            assertEquals("Precondition: the native model answers", "NATIVE_SNAPSHOT", root["model"]["source"].asText())
+            assertEquals("SINGLE", root["outcome"].asText())
+            assertFalse("limitations were ${limitationsOf(root)}", CONDITIONS_NOT_EVALUATED in limitationsOf(root))
+            assertFalse(root["candidates"].single().has("condition"))
+        } finally {
+            nativeFixture.clear()
+            settings.isBeanFilterEnabled = enabled
+            ModificationTrackerManager.getInstance(project).invalidateAll()
+        }
+    }
+
+    private fun addWorkers(active: Int, inactive: Int) {
+        addJava(
+            "Worker",
+            """
+            package com.explyt.demo;
+
+            public interface Worker {}
+            """
+        )
+        val activeWorkers = (1..active).map { "ActiveWorker$it" }
+        activeWorkers.forEach { name ->
+            addJava(
+                name,
+                """
+                package com.explyt.demo;
+
+                import org.springframework.stereotype.Component;
+
+                @Component
+                public class $name implements Worker {}
+                """
+            )
+        }
+        val inactiveWorkers = (1..inactive).map { "ConditionalWorker$it" }
+        inactiveWorkers.forEach { name ->
+            addJava(
+                name,
+                """
+                package com.explyt.demo;
+
+                import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+                import org.springframework.stereotype.Component;
+
+                @Component
+                @ConditionalOnProperty(name = "worker.$name.enabled", havingValue = "true")
+                public class $name implements Worker {}
+                """
+            )
+        }
+        activeWorkers.forEach { assertVerdict<ConditionVerdict.Active>("com.explyt.demo.$it") }
+        inactiveWorkers.forEach { assertVerdict<ConditionVerdict.Inactive>("com.explyt.demo.$it") }
+    }
+
+    private suspend fun qualifiedInjection(qualifier: String, nonConstantNames: Boolean = false): JsonNode {
+        if (nonConstantNames) {
+            addJava(
+                "EngineNames",
+                """
+                package com.explyt.demo;
+
+                public class EngineNames {
+                    public static String FAST = "fast";
+                }
+                """
+            )
+        }
+        val qualifierText = if (nonConstantNames) qualifier else "\"$qualifier\""
         addJava(
             "Engine",
             """
@@ -490,7 +652,7 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
 
             @Component
             public class EngineClient {
-                public EngineClient(@Qualifier("$qualifier") Engine engine) {}
+                public EngineClient(@Qualifier($qualifierText) Engine engine) {}
             }
             """
         )
@@ -556,7 +718,9 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         filePath: String? = null,
         line: Int? = null,
         column: Int? = null,
-        includeDetails: Boolean = false
+        includeDetails: Boolean = false,
+        offset: Int = 0,
+        expectedRevision: String? = null
     ): JsonNode = mapper.readTree(
         toolset().findSpringBean(
             projectPath = project.basePath!!,
@@ -567,7 +731,9 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
             filePath = filePath,
             line = line,
             column = column,
-            includeDetails = includeDetails
+            includeDetails = includeDetails,
+            offset = offset,
+            expectedRevision = expectedRevision
         )
     )
 
@@ -704,6 +870,10 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         const val CONDITIONAL = "org.springframework.context.annotation.Conditional"
         const val CONDITIONAL_ON_BEAN = "org.springframework.boot.autoconfigure.condition.ConditionalOnBean"
         const val NEEDS_MISSING = "com.explyt.demo.NeedsMissing"
+        const val INACTIVE_WORKERS = 15
+        const val MAX_INACTIVE_SAMPLE = 3
+        const val DEFAULT_LIMIT = 5
+        const val WORKER = "com.explyt.demo.Worker"
         const val CONDITIONS_UNDECIDED = "CONDITIONS_UNDECIDED"
         const val PROFILE_NOT_DECIDABLE = "PROFILE_NOT_DECIDABLE"
         const val CONDITIONS_NOT_EVALUATED = "CONDITIONS_NOT_EVALUATED"
