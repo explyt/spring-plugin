@@ -1075,9 +1075,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "no transient or @JsonIgnore members, an enum as its wire values in 'enumValues' or, with " +
                 "@JsonValue, as the 'jsonValue' member, its 'valueType' and the constant names in 'enumConstants', " +
                 "which are not the wire values; a non-generic library class such as an Actuator descriptor is " +
-                "expanded like a project DTO, and a library object type that is not carries 'schemaOmitted': " +
-                "LIBRARY_INFRASTRUCTURE, JSON_TREE, CUSTOM_SERIALIZATION, MAP_TYPE, COLLECTION_TYPE, ABSTRACT_TYPE or " +
-                "NO_VISIBLE_PROPERTIES; 'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
+                "expanded like a project DTO, and a library object type that is not, or a polymorphic variant past " +
+                "the depth limit, carries 'schemaOmitted': LIBRARY_INFRASTRUCTURE, JSON_TREE, CUSTOM_SERIALIZATION, " +
+                "MAP_TYPE, COLLECTION_TYPE, ABSTRACT_TYPE, NO_VISIBLE_PROPERTIES or DEPTH_LIMIT; a project abstract, " +
+                "interface, sealed or @JsonSubTypes type carries 'polymorphic': true, 'discriminator' when " +
+                "@JsonTypeInfo applies ('use', 'include' except for DEDUCTION, and 'property' except for " +
+                "WRAPPER_OBJECT, WRAPPER_ARRAY and DEDUCTION) and 'variants' when Jackson knows the subtypes - " +
+                "Kotlin sealed subclasses and @JsonSubTypes - each with the 'typeId' written for it, absent " +
+                "otherwise; " +
+                "'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
                 "is written next to the fields; a Page<T> is described by its content type, an approximation of " +
                 "the page Spring Data writes), produces/consumes media types, and " +
                 "'serviceCalls': every " +
@@ -2498,7 +2504,7 @@ data class DtoSchemaJson(
      * builder or customizer bean of the project that makes it `UNKNOWN`, with the property it may override when set.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val namingStrategySource: String? = null,
-    /** Why a library object type is not expanded into [fields]; see `ResponseSchemaReader.SchemaOmitted`. */
+    /** Why the type is not expanded into [fields]; see `ResponseSchemaReader.SchemaOmitted`. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val schemaOmitted: String? = null,
     /** `true` when entries of a map are written next to [fields], as a Jackson `@JsonAnyGetter` writes them. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val additionalProperties: Boolean? = null,
@@ -2509,7 +2515,7 @@ data class DtoSchemaJson(
 
 data class DiscriminatorJson(
     val use: String,
-    val include: String,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val include: String?,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val property: String?,
 )
 

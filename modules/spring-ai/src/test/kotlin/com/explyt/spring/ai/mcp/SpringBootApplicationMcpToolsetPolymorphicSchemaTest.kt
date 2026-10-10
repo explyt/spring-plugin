@@ -338,9 +338,8 @@ class SpringBootApplicationMcpToolsetPolymorphicSchemaTest : ExplytJavaLightTest
         )
 
         val schema = responseSchema("/api/deductionpayment")
-        assertEquals(setOf("use", "include"), schema["discriminator"].fieldNames().asSequence().toSet())
+        assertEquals(setOf("use"), schema["discriminator"].fieldNames().asSequence().toSet())
         assertEquals("DEDUCTION", schema["discriminator"]["use"].asText())
-        assertEquals("PROPERTY", schema["discriminator"]["include"].asText())
         assertNull(variantsOf(schema).values.single().typeId)
     }
 

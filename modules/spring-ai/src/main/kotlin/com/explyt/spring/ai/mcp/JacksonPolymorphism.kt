@@ -33,7 +33,7 @@ import org.jetbrains.uast.toUElementOfType
 
 internal data class Polymorphism(val typeInfo: JacksonTypeInfo?, val variants: List<PolymorphicVariant>)
 
-internal data class JacksonTypeInfo(val use: String, val include: String, val property: String?)
+internal data class JacksonTypeInfo(val use: String, val include: String?, val property: String?)
 
 internal data class PolymorphicVariant(val psiClass: PsiClass, val typeId: String?)
 
@@ -76,6 +76,7 @@ internal object JacksonPolymorphism {
     private fun typeInfoOf(hierarchy: List<PsiClass>): JacksonTypeInfo? {
         val annotation = annotationIn(hierarchy, JacksonClasses.JSON_TYPE_INFO) ?: return null
         val use = annotation.enumAttribute("use")?.takeUnless { it == NONE } ?: return null
+        if (use == DEDUCTION) return JacksonTypeInfo(use, include = null, property = null)
         val include = annotation.enumAttribute("include")
             ?.takeUnless { it == EXTERNAL_PROPERTY }
             ?: PROPERTY
@@ -164,6 +165,7 @@ internal object JacksonPolymorphism {
             ?.takeIf { it.isNotEmpty() }
 
     private const val NONE = "NONE"
+    private const val DEDUCTION = "DEDUCTION"
     private const val NAME = "NAME"
     private const val SIMPLE_NAME = "SIMPLE_NAME"
     private const val CLASS = "CLASS"
