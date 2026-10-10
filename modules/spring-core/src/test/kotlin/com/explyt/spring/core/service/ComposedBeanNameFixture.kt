@@ -66,6 +66,14 @@ object ComposedBeanNameFixture {
         )
     }
 
+    fun assertSpringCoreMajorVersion(fixture: CodeInsightTestFixture, module: Module, major: Int) {
+        val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
+        val springVersion = JavaPsiFacade.getInstance(fixture.project).findClass("org.springframework.core.SpringVersion", scope)
+        assertNotNull("spring-core is on the module classpath", springVersion)
+        val jarName = springVersion!!.containingFile.virtualFile.path.substringBefore("!/").substringAfterLast('/')
+        assertTrue("spring-core jar $jarName is version $major.x", jarName.startsWith("spring-core-$major."))
+    }
+
     fun assertComposedBeanNames(
         fixture: CodeInsightTestFixture,
         module: Module,

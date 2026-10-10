@@ -129,10 +129,10 @@ class SpringSearchServiceTest : ExplytKotlinLightTestCase() {
         "@MyBean", "beanName", "name", emptyList(), listOf("foo")
     )
 
-    fun testComposedNameAttributeWithoutAliasForOverridesByConventionInSpring6() = assertComposedBeanName(
-        "val name: Array<String> = []",
-        "@MyBean(name = [\"x\"])", "name", null, listOf("x"), listOf("x")
-    )
+    fun testComposedNameAttributeWithoutAliasForOverridesByConventionInSpring6() {
+        ComposedBeanNameFixture.assertSpringCoreMajorVersion(myFixture, module, 6)
+        assertComposedBeanName("val name: Array<String> = []", "@MyBean(name = [\"x\"])", "name", null, listOf("x"), listOf("x"))
+    }
 
     fun testComposedValueAttributeWithoutAliasForIsNotAnOverride() = assertComposedBeanName(
         "val value: Array<String> = []",
