@@ -485,6 +485,16 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         )
     }
 
+    fun testPageImplSubclassIsRewrappedUnderViaDto() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+        addCustomPage()
+
+        val schema = schemaOf("/orders/custom-page", "$CUSTOM_PAGE<$ORDER_DTO>")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
     fun testOwnPageImplementationIsNotRewrappedUnderViaDto() = runBlocking<Unit> {
         addWebConfig("VIA_DTO")
         addFile(
@@ -620,6 +630,114 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
             }
             """.trimIndent()
         )
+    }
+
+    fun testDirectPageDescribesPageableAndSortAsWritten() = runBlocking<Unit> {
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertPageableAndSortAsWritten(schema)
+    }
+
+    fun testDirectSliceDescribesPageableAndSortAsWritten() = runBlocking<Unit> {
+        val schema = sliceSchema("/orders/slice")
+
+        assertDirectSlice(schema)
+        assertPageableAndSortAsWritten(schema)
+    }
+
+    fun testViaDtoDeclarationWinsOverAnEarlierDirectOne() = runBlocking<Unit> {
+        addWebConfigNamed("AlphaWebConfig", "DIRECT")
+        addWebConfig("VIA_DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
+    }
+
+    fun testTwoDirectDeclarationsStayDirect() = runBlocking<Unit> {
+        addWebConfigNamed("AlphaWebConfig", "DIRECT")
+        addWebConfig("DIRECT")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertTrue(schema.toString(), schema["wireShapeSource"].asText().startsWith("@EnableSpringDataWebSupport on "))
+    }
+
+    fun testCamelCaseModeValueIsReadLeniently() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=viaDto")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(SERIALIZATION_MODE_KEY, schema)
+    }
+
+    fun testDottedModeValueIsReadLeniently() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=VIA.DTO")
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource(SERIALIZATION_MODE_KEY, schema)
+    }
+
+    fun testClassNameAsModeValueIsReportedUnknown() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=PagedModel")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource("UNKNOWN", schema)
+    }
+
+    private fun assertPageableAndSortAsWritten(schema: JsonNode) {
+        val sort = field(schema, "sort")["nested"]
+        assertNotNull("sort carries its written properties: $schema", sort?.takeUnless { it.isNull })
+        assertNull(sort.toString(), sort["schemaOmitted"])
+        assertEquals(
+            sort.toString(),
+            mapOf("empty" to "boolean", "sorted" to "boolean", "unsorted" to "boolean"),
+            typesOf(sort)
+        )
+        val pageable = field(schema, "pageable")["nested"]
+        assertNotNull("pageable carries its written properties: $schema", pageable?.takeUnless { it.isNull })
+        assertNull(pageable.toString(), pageable["schemaOmitted"])
+        assertEquals(
+            pageable.toString(),
+            mapOf(
+                "pageNumber" to "int", "pageSize" to "int", "sort" to "org.springframework.data.domain.Sort",
+                "offset" to "long", "paged" to "boolean", "unpaged" to "boolean",
+            ),
+            typesOf(pageable)
+        )
+        assertEquals(
+            "Pageable.unpaged() is written as the string INSTANCE, so the object shape is assumed: $pageable",
+            true, pageable["wireShapeAssumed"]?.asBoolean()
+        )
+    }
+
+    private fun typesOf(schema: JsonNode): Map<String, String> =
+        schema["fields"]?.associate { it["name"].asText() to it["type"].asText() }.orEmpty()
+
+    private fun addWebConfigNamed(className: String, mode: String) {
+        addFile(
+            "com/example/config/$className.java", """
+            package com.example.config;
+
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Configuration
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.$mode)
+            public class $className {
+            }
+            """.trimIndent()
+        )
+        assertResolves("com.example.config.$className")
     }
 
     fun testListOfDtoIsUnchanged() = runBlocking<Unit> {
