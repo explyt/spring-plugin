@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
+import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.explyt.spring.ai.mcp.SpringBootApplicationMcpToolset
 import com.explyt.spring.core.externalsystem.model.BeanSearch
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
@@ -123,14 +124,21 @@ class StaleSnapshotBeanToolsTest : ExplytJavaLightTestCase() {
         )
     )
 
-    private suspend fun listing(): List<JsonNode> = mapper.readTree(
-        SpringBootApplicationMcpToolset().applicationBeans(
-            applicationClassName = APPLICATION,
-            projectPath = project.basePath!!,
-            beanType = "COMPONENT",
-            source = "NATIVE"
+    private suspend fun listing(): List<JsonNode> {
+        val page = mapper.readTree(
+            SpringBootApplicationMcpToolset().applicationBeans(
+                applicationClassName = APPLICATION,
+                projectPath = project.basePath!!,
+                beanType = "COMPONENT",
+                source = "NATIVE",
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS
+            )
         )
-    ).toList()
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        assertEquals("Expected a complete listing of ${page["totalCount"]} beans, got $page", false, page["truncated"]?.asBoolean())
+        return page["beans"].toList()
+    }
 
     private fun installStaleSnapshot() {
         val application = addApplication()

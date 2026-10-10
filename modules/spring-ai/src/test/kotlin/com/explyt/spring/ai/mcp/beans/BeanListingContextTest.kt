@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp.beans
 
+import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.explyt.spring.ai.mcp.SpringBootApplicationMcpToolset
 import com.explyt.spring.core.externalsystem.model.BeanSearch
 import com.explyt.spring.core.externalsystem.model.SpringBeanData
@@ -43,13 +44,11 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
 
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
-    private val linkedPaths = mutableListOf<String>()
+    private val nativeFixture by lazy { NativeBeanListingFixture(project) }
 
     override fun tearDown() {
         try {
-            val settings = ExternalSystemApiUtil.getSettings(project, SYSTEM_ID)
-            linkedPaths.forEach { settings.unlinkExternalProject(it) }
-            linkedPaths.clear()
+            nativeFixture.clear()
         } finally {
             super.tearDown()
         }
@@ -163,15 +162,22 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
         source: String = "STATIC",
         contextId: String? = null,
         projectPath: String? = project.basePath!!
-    ): List<JsonNode> = mapper.readTree(
-        toolset.applicationBeans(
-            applicationClassName = APPLICATION,
-            projectPath = projectPath,
-            beanType = beanType,
-            source = source,
-            contextId = contextId
+    ): List<JsonNode> {
+        val page = mapper.readTree(
+            toolset.applicationBeans(
+                applicationClassName = APPLICATION,
+                projectPath = projectPath,
+                beanType = beanType,
+                source = source,
+                contextId = contextId,
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS
+            )
         )
-    ).toList()
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        assertEquals("Expected a complete listing of ${page["totalCount"]} beans, got $page", false, page["truncated"]?.asBoolean())
+        return page["beans"].toList()
+    }
 
     private fun names(beans: List<JsonNode>): List<String> = beans.map { it["beanName"].asText() }
 
@@ -194,27 +200,7 @@ class BeanListingContextTest : ExplytJavaLightTestCase() {
     }
 
     private fun installNativeRoot(application: PsiClass, beanName: String, type: String, suffix: String = "") {
-        val base = application.navigationElement.containingFile.virtualFile.canonicalPath!!
-        val path = base + suffix
-        project.getService(NativeSettings::class.java).linkProject(NativeProjectSettings().apply {
-            externalProjectPath = path
-            qualifiedMainClassName = application.qualifiedName
-        })
-        linkedPaths += path
-
-        val root = DataNode(
-            ProjectKeys.PROJECT,
-            ProjectData(SYSTEM_ID, application.name!! + suffix, project.basePath!!, path),
-            null
-        )
-        root.createChild(BeanSearch.KEY, BeanSearch(true, path))
-        root.createChild(
-            SpringBeanData.KEY,
-            SpringBeanData(beanName, type, "singleton", null, null, SpringBeanType.OTHER, true, true, false)
-        )
-        ExternalProjectsDataStorage.getInstance(project)
-            .update(InternalExternalProjectInfo(SYSTEM_ID, path, root))
-        ModificationTrackerManager.getInstance(project).invalidateAll()
+        nativeFixture.install(application, listOf(beanName to type), suffix)
     }
 
     private companion object {

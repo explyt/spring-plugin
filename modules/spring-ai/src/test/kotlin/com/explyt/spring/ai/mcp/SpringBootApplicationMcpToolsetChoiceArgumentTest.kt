@@ -116,7 +116,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
     }
 
     fun testBeanTypeAndSourceAreCaseInsensitive() = runBlocking<Unit> {
-        val beans = mapper.readTree(
+        val page = mapper.readTree(
             toolset.applicationBeans(
                 applicationClassName = "com.example.app.DemoApplication",
                 projectPath = projectPath(),
@@ -125,7 +125,8 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
             )
         )
 
-        assertTrue("The fixture has components", beans.size() > 0)
+        assertEquals("Expected an OK envelope, got $page", "OK", page["status"]?.asText())
+        assertTrue("The fixture has components", page["beans"].size() > 0)
     }
 
     private suspend fun rejected(call: suspend () -> String): String {
