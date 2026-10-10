@@ -1095,12 +1095,14 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'additionalProperties': true when a @JsonAnyGetter map, such as ProblemDetail's, " +
                 "is written next to the fields; a Spring Data Page or Slice is described as Spring Data writes it, " +
                 "with 'wireShape' PAGE_DIRECT (PageImpl's getters), PAGED_MODEL ('content' and 'page', under " +
-                "pageSerializationMode VIA_DTO) or SLICE_DIRECT, 'wireShapeSource' naming where the page mode was " +
+                "pageSerializationMode VIA_DTO, which also re-wraps a project subclass of PageImpl) or SLICE_DIRECT, " +
+                "'wireShapeSource' naming where the page mode was " +
                 "read - DEFAULT, @EnableSpringDataWebSupport on its class, or " +
                 "spring.data.web.pageable.serialization-mode on a servlet application - or UNKNOWN with the " +
                 "PAGE_DIRECT shape when the property is unresolvable or the annotation is on a reactive " +
                 "application, and 'wireShapeAssumed': true when a declared Page or Slice is taken for " +
-                "PageImpl or SliceImpl), produces/consumes media types, and " +
+                "PageImpl or SliceImpl, and on the 'pageable' schema, which Pageable.unpaged() writes as the " +
+                "string INSTANCE), produces/consumes media types, and " +
                 "'serviceCalls': every " +
                 "call the handler makes on an injected project bean - including a bean method passed as a callable " +
                 "reference, such as 'validator::validate', a repository method the bean's interface inherits, " +

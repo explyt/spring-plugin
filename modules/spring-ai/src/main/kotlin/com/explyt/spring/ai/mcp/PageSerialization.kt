@@ -43,14 +43,22 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
 
         fun of(module: Module?): PageSerialization {
             module ?: return UNKNOWN
-            val webSupport = webSupportDeclaredIn(module)
+            val declarations = webSupportDeclaredIn(module)
             val reactive = WebApplicationStack.of(module) == WebApplicationStack.REACTIVE
             return when {
-                webSupport != null && reactive -> UNKNOWN
-                webSupport != null -> declared(modeDeclaredBy(webSupport), "@EnableSpringDataWebSupport on ${webSupport.qualifiedName}")
+                declarations.isNotEmpty() && reactive -> UNKNOWN
+                declarations.isNotEmpty() -> decisiveOf(declarations)
                 reactive -> DEFAULT
                 else -> configuredIn(module)
             }
+        }
+
+        private fun decisiveOf(declarations: List<PsiClass>): PageSerialization {
+            val modes = declarations.map { it to modeDeclaredBy(it) }
+            val (decisive, mode) = modes.firstOrNull { it.second == PageSerializationMode.VIA_DTO }
+                ?: modes.firstOrNull { it.second == PageSerializationMode.UNKNOWN }
+                ?: modes.first()
+            return declared(mode, "@EnableSpringDataWebSupport on ${decisive.qualifiedName}")
         }
 
         private fun configuredIn(module: Module): PageSerialization =
@@ -63,14 +71,14 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
         private fun declared(mode: PageSerializationMode, source: String): PageSerialization =
             if (mode == PageSerializationMode.UNKNOWN) UNKNOWN else PageSerialization(mode, source)
 
-        private fun webSupportDeclaredIn(module: Module): PsiClass? {
+        private fun webSupportDeclaredIn(module: Module): List<PsiClass> {
             val production = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module, false)
             val annotation = JavaPsiFacade.getInstance(module.project).findClass(ENABLE_WEB_SUPPORT, production)
-                ?: return null
+                ?: return emptyList()
             val projectSources = production.intersectWith(ProjectScope.getProjectScope(module.project))
             return AnnotatedElementsSearch.searchPsiClasses(annotation, projectSources)
                 .filter { it.qualifiedName != null }
-                .minByOrNull { it.qualifiedName.orEmpty() }
+                .sortedBy { it.qualifiedName }
         }
 
         private fun modeDeclaredBy(psiClass: PsiClass): PageSerializationMode {
@@ -87,11 +95,12 @@ internal enum class PageSerializationMode {
     DIRECT, VIA_DTO, UNKNOWN;
 
     companion object {
-        /** Boot's relaxed enum conversion: case, `-` and `_` do not matter, so `via-dto` is `VIA_DTO`. */
         fun parse(text: String): PageSerializationMode {
-            val normalized = text.trim().uppercase().replace('-', '_')
-            return entries.firstOrNull { it != UNKNOWN && it.name == normalized } ?: UNKNOWN
+            val lenient = lenientFormOf(text)
+            return entries.firstOrNull { it != UNKNOWN && lenientFormOf(it.name) == lenient } ?: UNKNOWN
         }
+
+        private fun lenientFormOf(text: String): String = text.filter { it.isLetterOrDigit() }.lowercase()
     }
 }
 
