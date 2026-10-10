@@ -6,6 +6,7 @@
 package com.explyt.spring.web.loader
 
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointUrlMatcher
 import com.intellij.openapi.extensions.ProjectExtensionPointName
@@ -89,6 +90,7 @@ data class EndpointElement(
     val access: EndpointAccess? = null,
     val application: PsiClass? = null,
     val producesSource: ProducesSource? = null,
+    val beanCondition: ConditionVerdict? = null,
 )
 
 enum class ProducesSource {
