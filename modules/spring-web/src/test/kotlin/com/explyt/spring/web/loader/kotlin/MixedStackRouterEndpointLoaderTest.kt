@@ -142,6 +142,40 @@ class MixedStackRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    fun testServletRouterStaticRequestPredicatesPathNestKeepsItsPrefix() {
+        val file = myFixture.addFileToProject(
+            "StaticPredicateServletRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.servlet.function.RequestPredicates
+            import org.springframework.web.servlet.function.RouterFunction
+            import org.springframework.web.servlet.function.ServerResponse
+            import org.springframework.web.servlet.function.router
+
+            @Configuration
+            class StaticPredicateServletRouterConfig {
+                @Bean
+                fun routes(): RouterFunction<ServerResponse> = router {
+                    RequestPredicates.path("/a").nest { GET("/b") { ServerResponse.ok().build() } }
+                }
+            }
+            """.trimIndent()
+        )
+        val calls = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .mapNotNull { it.toUElementOfType<UCallExpression>() }
+        val nest = calls.single { it.methodName == "nest" }
+        val method = calls.single { it.methodName == "path" }.resolve()!!
+        assertEquals("org.springframework.web.servlet.function.RequestPredicates", method.containingClass?.qualifiedName)
+        assertEquals("org.springframework.web.servlet.function.RequestPredicate", method.returnType?.canonicalText)
+        assertEquals(
+            "org.springframework.web.servlet.function.RouterFunctionDsl",
+            nest.resolve()?.containingClass?.qualifiedName
+        )
+        assertBothLoadersAreApplicable()
+        assertEquals(listOf("/a/b" to "GET", SERVLET_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_MVC))
+    }
+
     private fun assertServletPathPredicateNest(routes: String, expectedPath: String) {
         val file = myFixture.addFileToProject(
             "NestedServletRouterConfig.kt",

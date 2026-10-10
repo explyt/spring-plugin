@@ -13,9 +13,22 @@ import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtPrefixExpression
+import org.jetbrains.uast.UBinaryExpression
 import org.jetbrains.uast.UCallExpression
+import org.jetbrains.uast.UPrefixExpression
 import org.jetbrains.uast.toUElementOfType
+
+private const val REACTIVE_FUNCTION_PACKAGE = "org.springframework.web.reactive.function.server"
+private const val CO_ROUTER_DSL = "$REACTIVE_FUNCTION_PACKAGE.CoRouterFunctionDsl"
+private const val REACTIVE_ROUTER_DSL = "$REACTIVE_FUNCTION_PACKAGE.RouterFunctionDsl"
+private const val REQUEST_PREDICATES = "$REACTIVE_FUNCTION_PACKAGE.RequestPredicates"
+private const val REQUEST_PREDICATE = "$REACTIVE_FUNCTION_PACKAGE.RequestPredicate"
+private const val MEDIA_TYPE_IMPORT = "import org.springframework.http.MediaType"
+private const val PREDICATE_IMPORTS = "import $REACTIVE_FUNCTION_PACKAGE.RequestPredicate\n" +
+        "import $REACTIVE_FUNCTION_PACKAGE.RequestPredicates"
 
 class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
 
@@ -262,38 +275,200 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertTrue(isNest(1))
     }
 
-    fun testPathFreeAndComposedPredicatesHaveNoPrefix() {
+    fun testPathFreePredicateHasNoPrefixAndComposedOneKeepsItsPath() {
         addRouterConfig(
             """
             accept(MediaType.APPLICATION_JSON).nest { GET("/a", handler::handle) }
             (path("/b") and accept(MediaType.APPLICATION_JSON)).nest { GET("/c", handler::handle) }
             """,
-            imports = "import org.springframework.http.MediaType"
+            imports = MEDIA_TYPE_IMPORT
         )
+        assertOperatorResolvesTo("and", CO_ROUTER_DSL)
 
         assertEquals(emptyList<String>(), nestPrefixes(0))
-        assertEquals(emptyList<String>(), nestPrefixes(1))
+        assertEquals(listOf("/b"), nestPrefixes(1))
     }
 
-    fun testUnresolvedStringNestPrefixIsNullAndRouteStaysInTheModel() {
+    fun testUnresolvedStringNestDropsItsRoutesAndKeepsSiblings() {
         addRouterConfig(
-            """someString().nest { GET("/b", handler::handle) }""",
+            """
+            someString().nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """,
             companionBody = """fun someString(): String = System.getenv("X")"""
         )
 
         assertNull(nestPrefixes(0))
-        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
     }
 
-    fun testUnresolvedDslPathNestPrefixIsNullAndRouteStaysInTheModel() {
+    fun testUnresolvedDslPathNestDropsItsRoutesAndKeepsSiblings() {
         addRouterConfig(
             """
             val x = readLine() ?: ""
             path(x).nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
             """
         )
+        assertPathPredicateCall(isNestReceiver = true)
 
         assertNull(nestPrefixes(0))
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStaticRequestPredicatesPathNestKeepsItsPrefix() {
+        addRouterConfig(
+            """RequestPredicates.path("/a").nest { GET("/b", handler::handle) }""",
+            imports = PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("path", REQUEST_PREDICATES)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testReactiveRouterStaticRequestPredicatesPathNestKeepsItsPrefix() {
+        myFixture.addFileToProject(
+            "ReactiveRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RequestPredicates
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.router
+
+            @Configuration
+            class ReactiveRouterConfig {
+                @Bean
+                fun routes(): RouterFunction<ServerResponse> = router {
+                    RequestPredicates.path("/a").nest { GET("/b") { ServerResponse.ok().build() } }
+                }
+            }
+            """.trimIndent()
+        )
+        assertCallsResolveTo("path", REQUEST_PREDICATES, fileName = "ReactiveRouterConfig.kt")
+        assertCallsResolveTo(
+            "nest", REACTIVE_ROUTER_DSL, returnType = "void", argumentCount = 1, fileName = "ReactiveRouterConfig.kt"
+        )
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testComposedDotAndPathPredicateNestKeepsThePathPrefix() {
+        addRouterConfig(
+            """path("/a").and(accept(MediaType.APPLICATION_JSON)).nest { GET("/b", handler::handle) }""",
+            imports = MEDIA_TYPE_IMPORT
+        )
+        assertPathPredicateCall()
+        assertCallsResolveTo("and", REQUEST_PREDICATE)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testPathFreeAndPathPredicateNestTakesThePathFromTheRightSide() {
+        addRouterConfig(
+            """(accept(MediaType.APPLICATION_JSON) and path("/a")).nest { GET("/b", handler::handle) }""",
+            imports = MEDIA_TYPE_IMPORT
+        )
+        assertPathPredicateCall()
+        assertCallsResolveTo("accept", CO_ROUTER_DSL, returnType = null)
+        assertOperatorResolvesTo("and", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringAndPredicateNestKeepsItsPrefix() {
+        addRouterConfig(
+            """("/a" and accept(MediaType.APPLICATION_JSON)).nest { GET("/b", handler::handle) }""",
+            imports = MEDIA_TYPE_IMPORT
+        )
+        assertOperatorResolvesTo("and", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testDslVerbPredicateNestKeepsItsPathAndIsNotARoute() {
+        addRouterConfig("""GET("/a").nest { GET("/b", handler::handle) }""")
+        assertCallsResolveTo("GET", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStaticVerbPredicateNestKeepsItsPath() {
+        addRouterConfig(
+            """RequestPredicates.GET("/a").nest { GET("/b", handler::handle) }""",
+            imports = PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("GET", REQUEST_PREDICATES)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testComposedDslVerbPredicateIsNotARoute() {
+        addRouterConfig(
+            """(GET("/a") and accept(MediaType.APPLICATION_JSON)).nest { GET("/b", handler::handle) }""",
+            imports = MEDIA_TYPE_IMPORT
+        )
+        assertCallsResolveTo("GET", CO_ROUTER_DSL)
+        assertOperatorResolvesTo("and", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testVariablePredicateNestDropsItsRoutesAndKeepsSiblings() {
+        addRouterConfig(
+            """
+            val api = path("/a")
+            api.nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """
+        )
+        assertPathPredicateCall()
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testHelperPredicateNestDropsItsRoutesAndKeepsSiblings() {
+        addRouterConfig(
+            """
+            api().nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """,
+            companionBody = """fun api(): RequestPredicate = RequestPredicates.path("/a")""",
+            imports = PREDICATE_IMPORTS
+        )
+        assertCallsResolveTo("path", REQUEST_PREDICATES)
+        assertCallsResolveTo("api", "GatewayProxyRouterConfig.Companion", argumentCount = 0)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testOrPredicateNestDropsItsRoutesAndKeepsSiblings() {
+        addRouterConfig(
+            """
+            (path("/a") or path("/c")).nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """
+        )
+        assertPathPredicateCall()
+        assertOperatorResolvesTo("or", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testNegatedPredicateNestDropsItsRoutesAndKeepsSiblings() {
+        addRouterConfig(
+            """
+            (!path("/a")).nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """
+        )
+        assertPathPredicateCall()
+        assertOperatorResolvesTo("!", CO_ROUTER_DSL)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testContentTypeNestDoesNotContributeAPathPrefix() {
+        addRouterConfig(
+            """contentType(MediaType.APPLICATION_JSON).nest { GET("/b", handler::handle) }""",
+            imports = MEDIA_TYPE_IMPORT
+        )
+        assertCallsResolveTo("contentType", CO_ROUTER_DSL, returnType = null)
+        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testHeadersNestDoesNotContributeAPathPrefix() {
+        addRouterConfig("""headers { true }.nest { GET("/b", handler::handle) }""")
+        assertCallsResolveTo("headers", CO_ROUTER_DSL)
         assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
     }
 
@@ -306,8 +481,9 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
     fun testAcceptNestDoesNotContributeAPathPrefix() {
         addRouterConfig(
             """accept(MediaType.APPLICATION_JSON).nest { GET("/b", handler::handle) }""",
-            imports = "import org.springframework.http.MediaType"
+            imports = MEDIA_TYPE_IMPORT
         )
+        assertCallsResolveTo("accept", CO_ROUTER_DSL, returnType = null)
         assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
     }
 
@@ -349,30 +525,45 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/api/b" to "GET"), webFluxEndpoints())
     }
 
-    fun testComposedPathPredicateDoesNotGuessAPrefix() {
+    fun testComposedPathPredicateKeepsThePathPrefix() {
         addRouterConfig(
             """(path("/a") and accept(MediaType.APPLICATION_JSON)).nest { GET("/b", handler::handle) }""",
-            imports = "import org.springframework.http.MediaType"
+            imports = MEDIA_TYPE_IMPORT
         )
         assertPathPredicateCall()
-        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+        assertOperatorResolvesTo("and", CO_ROUTER_DSL)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
     }
 
-    fun testUnrelatedPathCallDoesNotContributeAPrefix() {
+    fun testUnrelatedStringPathCallNestDropsItsRoutesAndKeepsSiblings() {
         addRouterConfig(
             """
             NonDsl.path("/a").nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
             """,
             imports = "object NonDsl { fun path(value: String): String = value }"
         )
-        val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir("GatewayProxyRouterConfig.kt"))!!
-        val call = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
-            .mapNotNull { it.toUElementOfType<UCallExpression>() }
-            .single { it.methodName == "path" }
-        val method = call.resolve()!!
+        val method = nonDslPathCall().resolve()!!
         assertFalse(method.containingClass?.qualifiedName in SpringWebClasses.ROUTER_DSL_CLASSES)
         assertEquals("java.lang.String", method.returnType?.canonicalText)
-        assertEquals(listOf("/b" to "GET"), webFluxEndpoints())
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
+    }
+
+    fun testUnrelatedPredicatePathCallNestDropsItsRoutesAndKeepsSiblings() {
+        addRouterConfig(
+            """
+            NonDsl.path("/a").nest { GET("/b", handler::handle) }
+            GET("/s", handler::handle)
+            """,
+            imports = """
+            $PREDICATE_IMPORTS
+            object NonDsl { fun path(value: String): RequestPredicate = RequestPredicates.path(value) }
+            """.trimIndent()
+        )
+        val method = nonDslPathCall().resolve()!!
+        assertEquals("NonDsl", method.containingClass?.qualifiedName)
+        assertEquals(REQUEST_PREDICATE, method.returnType?.canonicalText)
+        assertEquals(listOf("/s" to "GET"), webFluxEndpoints())
     }
 
     fun testCoRouterDoublePathPredicateNestKeepsBothPrefixes() {
@@ -450,6 +641,45 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         }
     }
 
+    private fun nonDslPathCall(): UCallExpression = callsInFixture()
+        .single { it.methodName == "path" && it.receiver?.asSourceString() == "NonDsl" }
+
+    private fun assertCallsResolveTo(
+        name: String,
+        owner: String,
+        returnType: String? = REQUEST_PREDICATE,
+        argumentCount: Int = 1,
+        fileName: String = "GatewayProxyRouterConfig.kt"
+    ) {
+        val calls = callsInFixture(fileName).filter {
+            (it.sourcePsi as? KtCallExpression)?.calleeExpression?.text == name && it.valueArgumentCount == argumentCount
+        }
+        assertTrue("Fixture must contain $name with $argumentCount argument(s)", calls.isNotEmpty())
+        calls.forEach { call ->
+            val method = call.resolve()
+            assertNotNull("${call.sourcePsi?.text} must resolve", method)
+            assertEquals(call.sourcePsi?.text, owner, method!!.containingClass?.qualifiedName)
+            returnType?.let { assertEquals(call.sourcePsi?.text, it, method.returnType?.canonicalText) }
+        }
+    }
+
+    private fun assertOperatorResolvesTo(operator: String, owner: String) {
+        val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir("GatewayProxyRouterConfig.kt"))!!
+        val binary = PsiTreeUtil.findChildrenOfType(file, KtBinaryExpression::class.java)
+            .filter { it.operationReference.text == operator }
+            .map { it.toUElementOfType<UBinaryExpression>()!!.resolveOperator() }
+        val prefix = PsiTreeUtil.findChildrenOfType(file, KtPrefixExpression::class.java)
+            .filter { it.operationReference.text == operator }
+            .map { it.toUElementOfType<UPrefixExpression>()!!.resolveOperator() }
+        val operators = binary + prefix
+        assertTrue("Fixture must contain the $operator operator", operators.isNotEmpty())
+        operators.forEach { method ->
+            assertNotNull("$operator must resolve", method)
+            assertEquals(owner, method!!.containingClass?.qualifiedName)
+            assertEquals(REQUEST_PREDICATE, method.returnType?.canonicalText)
+        }
+    }
+
     private fun nestPrefixes(index: Int): List<String>? = SpringWebUtil.getNestPrefixesOrNullIfUnresolved(nestCall(index))
 
     private fun isNest(index: Int): Boolean = SpringWebUtil.isNestCall(nestCall(index))
@@ -457,8 +687,8 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
     private fun nestCall(index: Int): UCallExpression = callsInFixture()
         .filter { SpringWebUtil.isNestCall(it) }[index]
 
-    private fun callsInFixture(): List<UCallExpression> {
-        val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir("GatewayProxyRouterConfig.kt"))!!
+    private fun callsInFixture(fileName: String = "GatewayProxyRouterConfig.kt"): List<UCallExpression> {
+        val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir(fileName))!!
         return PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
             .mapNotNull { it.toUElementOfType<UCallExpression>() }
     }
