@@ -8,9 +8,11 @@ package com.explyt.spring.ai.mcp
 import com.explyt.spring.ai.mcp.beans.SpringBeanMcpToolset
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
+import com.intellij.psi.JavaPsiFacade
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -27,6 +29,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         TestLibrary.springWebMvc_6_0_7,
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.kotlin_1_9_22,
+        TestLibrary("jakarta.servlet:jakarta.servlet-api:6.0.0"),
     )
 
     override val realJdk: Boolean = true
@@ -152,6 +155,195 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
 
         assertEquals("OK", root["status"].asText())
         assertEquals("com.example.app.PetClinicTests.TestConfiguration", root["model"]["application"].asText())
+    }
+
+    fun testMultipartRequestInterfacesAreSuppliedByTheServletRequestResolver() = runBlocking<Unit> {
+        assertServletStackResolving(MULTIPART_REQUEST, MULTIPART_HTTP_SERVLET_REQUEST, HTTP_SERVLET_REQUEST)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("multipart" to "FRAMEWORK", "multipartServlet" to "FRAMEWORK", "request" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/multipart")),
+        )
+    }
+
+    fun testPushBuilderIsSuppliedByTheServletRequestResolver() = runBlocking<Unit> {
+        assertServletStackResolving(PUSH_BUILDER, HTTP_SERVLET_REQUEST)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("push" to "FRAMEWORK", "request" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/push")),
+        )
+    }
+
+    fun testUnannotatedJakartaPartIsAMultipartPartLikeAMultipartFile() = runBlocking<Unit> {
+        assertServletStackResolving(JAKARTA_PART, MULTIPART_FILE)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("attachment" to "PART", "attachments" to "PART", "file" to "PART"),
+            sourcesOf(contractParameters("/servlet/part")),
+        )
+    }
+
+    fun testKotlinUnannotatedJakartaPartIsAMultipartPart() = runBlocking<Unit> {
+        assertServletStackResolving(JAKARTA_PART, MULTIPART_FILE)
+        myFixture.addFileToProject(
+            "com/example/app/AttachmentController.kt", """
+            package com.example.app
+
+            import jakarta.servlet.http.Part
+            import org.springframework.web.bind.annotation.PostMapping
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.web.multipart.MultipartFile
+
+            @RestController
+            class AttachmentController {
+                @PostMapping("/kotlin/part")
+                fun upload(attachment: Part, file: MultipartFile): String = ""
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            mapOf("attachment" to "PART", "file" to "PART"),
+            sourcesOf(contractParameters("/kotlin/part")),
+        )
+    }
+
+    fun testZoneSubclassesMissTheExactServletPredicateAndBindAsSimpleQueryValues() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.SimpleTimeZone", "java.time.ZoneOffset")
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("zone" to "FRAMEWORK", "simpleZone" to "QUERY", "zoneId" to "FRAMEWORK", "offset" to "QUERY"),
+            sourcesOf(contractParameters("/servlet/zones")),
+        )
+    }
+
+    fun testProjectSubtypesOfExactOnlyBuilderAndSessionStatusAreModelAttributes() = runBlocking<Unit> {
+        assertServletStackResolving(URI_COMPONENTS_BUILDER, SERVLET_URI_COMPONENTS_BUILDER, SESSION_STATUS)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf(
+                "builder" to "FRAMEWORK",
+                "servletBuilder" to "FRAMEWORK",
+                "projectBuilder" to "MODEL",
+                "status" to "FRAMEWORK",
+                "projectStatus" to "MODEL",
+            ),
+            sourcesOf(contractParameters("/servlet/builders")),
+        )
+    }
+
+    fun testServletModelMapAndMapAreTheModelWhileAHashMapIsAModelAttribute() = runBlocking<Unit> {
+        assertServletStackResolving("org.springframework.ui.ModelMap", "java.util.HashMap")
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("model" to "FRAMEWORK", "modelMap" to "FRAMEWORK", "map" to "FRAMEWORK", "hashMap" to "MODEL"),
+            sourcesOf(contractParameters("/servlet/model")),
+        )
+    }
+
+    private fun assertServletStackResolving(vararg classNames: String) {
+        assertEquals(WebApplicationStack.SERVLET, WebApplicationStack.of(module))
+        val facade = JavaPsiFacade.getInstance(project)
+        for (className in classNames) {
+            assertNotNull("$className on the module classpath", facade.findClass(className, module.moduleWithLibrariesScope))
+        }
+    }
+
+    private fun addJavaServletArgumentsController() {
+        myFixture.addFileToProject(
+            "com/example/app/ProjectUriComponentsBuilder.java", """
+            package com.example.app;
+
+            import org.springframework.web.util.UriComponentsBuilder;
+
+            public class ProjectUriComponentsBuilder extends UriComponentsBuilder {
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/app/ProjectSessionStatus.java", """
+            package com.example.app;
+
+            import org.springframework.web.bind.support.SessionStatus;
+
+            public class ProjectSessionStatus implements SessionStatus {
+                private boolean complete;
+                public void setComplete() { complete = true; }
+                public boolean isComplete() { return complete; }
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/app/ServletArgumentsController.java", """
+            package com.example.app;
+
+            import jakarta.servlet.http.HttpServletRequest;
+            import jakarta.servlet.http.Part;
+            import jakarta.servlet.http.PushBuilder;
+            import java.time.ZoneId;
+            import java.time.ZoneOffset;
+            import java.util.HashMap;
+            import java.util.List;
+            import java.util.Map;
+            import java.util.SimpleTimeZone;
+            import java.util.TimeZone;
+            import org.springframework.ui.Model;
+            import org.springframework.ui.ModelMap;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PostMapping;
+            import org.springframework.web.bind.annotation.RestController;
+            import org.springframework.web.bind.support.SessionStatus;
+            import org.springframework.web.multipart.MultipartFile;
+            import org.springframework.web.multipart.MultipartHttpServletRequest;
+            import org.springframework.web.multipart.MultipartRequest;
+            import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+            import org.springframework.web.util.UriComponentsBuilder;
+
+            @RestController
+            class ServletArgumentsController {
+                @PostMapping("/servlet/multipart")
+                public String multipart(MultipartRequest multipart, MultipartHttpServletRequest multipartServlet,
+                                        HttpServletRequest request) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/push")
+                public String push(PushBuilder push, HttpServletRequest request) {
+                    return "";
+                }
+
+                @PostMapping("/servlet/part")
+                public String part(Part attachment, List<Part> attachments, MultipartFile file) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/zones")
+                public String zones(TimeZone zone, SimpleTimeZone simpleZone, ZoneId zoneId, ZoneOffset offset) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/builders")
+                public String builders(UriComponentsBuilder builder, ServletUriComponentsBuilder servletBuilder,
+                                       ProjectUriComponentsBuilder projectBuilder, SessionStatus status,
+                                       ProjectSessionStatus projectStatus) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/model")
+                public String model(Model model, ModelMap modelMap, Map<String, Object> map,
+                                    HashMap<String, Object> hashMap) {
+                    return "";
+                }
+            }
+            """.trimIndent()
+        )
     }
 
     /** Picked by its path: `/owners` also matches `/owners/{ownerId}/edit` as a containing path. */
@@ -307,5 +499,17 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
             }
             """.trimIndent()
         )
+    }
+
+    private companion object {
+        const val HTTP_SERVLET_REQUEST = "jakarta.servlet.http.HttpServletRequest"
+        const val PUSH_BUILDER = "jakarta.servlet.http.PushBuilder"
+        const val JAKARTA_PART = "jakarta.servlet.http.Part"
+        const val MULTIPART_FILE = "org.springframework.web.multipart.MultipartFile"
+        const val MULTIPART_REQUEST = "org.springframework.web.multipart.MultipartRequest"
+        const val MULTIPART_HTTP_SERVLET_REQUEST = "org.springframework.web.multipart.MultipartHttpServletRequest"
+        const val URI_COMPONENTS_BUILDER = "org.springframework.web.util.UriComponentsBuilder"
+        const val SERVLET_URI_COMPONENTS_BUILDER = "org.springframework.web.servlet.support.ServletUriComponentsBuilder"
+        const val SESSION_STATUS = "org.springframework.web.bind.support.SessionStatus"
     }
 }
