@@ -248,6 +248,68 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
+    fun testAnnotatedMapsAreNotFrameworkSuppliedOnServlet() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.springframework.web.bind.annotation.MatrixVariable", "org.springframework.web.bind.annotation.RequestAttribute")
+        addAnnotatedMapController()
+
+        assertEquals(
+            mapOf(
+                "matrix" to "UNKNOWN",
+                "attrs" to "UNKNOWN",
+                "user" to "UNKNOWN",
+                "validated" to "MODEL",
+                "requestParam" to "QUERY",
+            ),
+            sourcesOf(contractParameters("/servlet/annotated/{path}")),
+        )
+    }
+
+    private fun addAnnotatedMapController() {
+        myFixture.addFileToProject(
+            "com/example/app/CurrentUser.java", """
+            package com.example.app;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.PARAMETER)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface CurrentUser {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/app/AnnotatedMapController.java", """
+            package com.example.app;
+
+            import java.util.Map;
+            import jakarta.validation.Valid;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.MatrixVariable;
+            import org.springframework.web.bind.annotation.PathVariable;
+            import org.springframework.web.bind.annotation.RequestAttribute;
+            import org.springframework.web.bind.annotation.RequestParam;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            class AnnotatedMapController {
+                @GetMapping("/servlet/annotated/{path}")
+                public String annotated(
+                        @MatrixVariable Map<String, String> matrix,
+                        @RequestAttribute Map<String, Object> attrs,
+                        @CurrentUser Map<String, Object> user,
+                        @Valid Map<String, Object> validated,
+                        @RequestParam Map<String, String> requestParam,
+                        @PathVariable String path
+                ) {
+                    return path;
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
     private fun assertServletStackResolving(vararg classNames: String) {
         assertEquals(WebApplicationStack.SERVLET, WebApplicationStack.of(module))
         val facade = JavaPsiFacade.getInstance(project)
@@ -297,6 +359,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
             import org.springframework.ui.Model;
             import org.springframework.ui.ModelMap;
             import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PathVariable;
             import org.springframework.web.bind.annotation.PostMapping;
             import org.springframework.web.bind.annotation.RestController;
             import org.springframework.web.bind.support.SessionStatus;

@@ -338,6 +338,57 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testAnnotatedMapsAreNotFrameworkSuppliedOnWebFlux() = runBlocking<Unit> {
+        assertReactiveStackResolving("java.util.Map", "org.springframework.web.bind.annotation.MatrixVariable", "org.springframework.web.bind.annotation.RequestAttribute")
+        myFixture.addFileToProject("com/example/app/web/CurrentUser.java", """
+            package com.example.app.web;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.PARAMETER)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface CurrentUser {}
+        """.trimIndent())
+        myFixture.addFileToProject("com/example/app/web/AnnotatedMapController.java", """
+            package com.example.app.web;
+
+            import java.util.Map;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.MatrixVariable;
+            import org.springframework.web.bind.annotation.PathVariable;
+            import org.springframework.web.bind.annotation.RequestAttribute;
+            import org.springframework.web.bind.annotation.RequestParam;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class AnnotatedMapController {
+                @GetMapping("/api/annotated/{path}")
+                public String annotated(
+                        @MatrixVariable Map<String, String> matrix,
+                        @RequestAttribute Map<String, Object> attrs,
+                        @CurrentUser Map<String, Object> user,
+                        @RequestParam Map<String, String> requestParam,
+                        @PathVariable String path) {
+                    return path;
+                }
+            }
+        """.trimIndent())
+
+        assertEquals(
+            mapOf(
+                "matrix" to "UNKNOWN",
+                "attrs" to "UNKNOWN",
+                "user" to "UNKNOWN",
+                "requestParam" to "QUERY",
+                "path" to "PATH",
+            ),
+            sourcesOf(contractParameters("/api/annotated/value")),
+        )
+    }
+
     private fun assertReactiveStackResolving(vararg classNames: String) {
         assertEquals(WebApplicationStack.REACTIVE, WebApplicationStack.of(module))
         val facade = JavaPsiFacade.getInstance(project)
