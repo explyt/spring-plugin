@@ -472,17 +472,60 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertTrue("an unresolved element has no schema: $content", content["nested"].isNull)
     }
 
-    fun testCustomPageImplSubclassIsDescribedByItsGetters() = runBlocking<Unit> {
+    fun testDirectPageImplSubclassIsWrittenWithEveryPageKeyAndItsOwnGetters() = runBlocking<Unit> {
         addCustomPage()
 
         val schema = schemaOf("/orders/custom-page", "$CUSTOM_PAGE<$ORDER_DTO>")
 
-        assertEquals(CUSTOM_PAGE, schema["className"].asText())
-        assertFalse("a project page is not one of the Spring Data classes: $schema", schema.has("wireShape"))
-        assertTrue(
-            "the page properties inherited from PageImpl are written: ${names(schema)}",
-            names(schema).containsAll(PAGE_DIRECT_KEYS - "empty")
+        assertEquals(schema.toString(), PAGE_DIRECT_KEYS + "tag", names(schema).toSet())
+        assertEquals(schema.toString(), ORDER_DTO, field(schema, "content")["nested"]?.get("className")?.asText())
+        assertPageableAndSortAsWritten(schema)
+    }
+
+    fun testUnknownModeLeavesAPageImplSubclassDirectAndSaysSo() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=\${PAGE_MODE}")
+        addCustomPage()
+
+        val schema = schemaOf("/orders/custom-page", "$CUSTOM_PAGE<$ORDER_DTO>")
+
+        assertEquals(schema.toString(), "PAGE_DIRECT", schema["wireShape"]?.asText())
+        assertSource("UNKNOWN", schema)
+    }
+
+    fun testPageImplSubclassWithAFixedElementIsRewrappedUnderViaDto() = runBlocking<Unit> {
+        addWebConfig("VIA_DTO")
+        addFile(
+            "com/example/shop/OrderDtoPage.java", """
+            package com.example.shop;
+
+            import java.util.List;
+            import org.springframework.data.domain.PageImpl;
+
+            public class OrderDtoPage extends PageImpl<OrderDto> {
+                public OrderDtoPage(List<OrderDto> content) { super(content); }
+            }
+            """.trimIndent()
         )
+        addFile(
+            "com/example/shop/OrderDtoPageController.java", """
+            package com.example.shop;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class OrderDtoPageController {
+                @GetMapping("/orders/fixed-page")
+                public OrderDtoPage page() { return null; }
+            }
+            """.trimIndent()
+        )
+        assertResolves("com.example.shop.OrderDtoPage")
+
+        val schema = schemaOf("/orders/fixed-page", "com.example.shop.OrderDtoPage")
+
+        assertPagedModel(schema)
+        assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
     fun testPageImplSubclassIsRewrappedUnderViaDto() = runBlocking<Unit> {
@@ -579,6 +622,8 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
 
             public class OrderPage<T> extends PageImpl<T> {
                 public OrderPage(List<T> content) { super(content); }
+
+                public String getTag() { return ""; }
             }
             """.trimIndent()
         )
