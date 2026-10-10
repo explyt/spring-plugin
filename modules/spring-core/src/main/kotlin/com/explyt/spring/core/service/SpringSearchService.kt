@@ -43,6 +43,7 @@ import com.intellij.openapi.diagnostic.RuntimeExceptionWithAttachments
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -517,28 +518,16 @@ class SpringSearchService(private val project: Project) {
             if (!SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled) {
                 return FoundBeans(foundBeans, emptySet())
             }
-            val active = foundBeans.toMutableSet()
-            val excluded = mutableSetOf<PsiBean>()
-
-            val exclusionStrategies = listOf(
-                ConditionalOnClassStrategy(module),
-                ConditionalOnMissingClassStrategy(module),
-                ConditionalOnBeanStrategy(module),
-                ConditionalOnMissingBeanStrategy(module),
-                ConditionalOnPropertyStrategy(module),
-                OnWebApplicationConditionStrategy(module)
-            )
+            val pass = ConditionPass(foundBeans, conditionStrategies(module))
 
             val beansGroupByClass = foundBeans.asSequence()
                 .flatMap { getRootPsiClasses(it).map { clazz -> Pair(clazz, it) } }
                 .groupBy({ it.first }, { it.second })
-            beansGroupByClass.forEach { (key, value) ->
-                checkClassToExclude(key, value, active, excluded, exclusionStrategies)
-            }
-            active.filter { it.psiClass != it.psiMember }
-                .forEach { checkClassToExclude(it.psiMember, listOf(it), active, excluded, exclusionStrategies) }
+            beansGroupByClass.forEach { (key, value) -> pass.check(key, value) }
+            pass.active.filter { it.psiClass != it.psiMember }
+                .forEach { pass.check(it.psiMember, listOf(it)) }
 
-            return FoundBeans(active, excluded)
+            return FoundBeans(pass.active, pass.excluded, conditionVerdictsByBean(foundBeans, pass.carrierVerdicts))
         } catch (e: AlreadyDisposedException) {
             return FoundBeans(foundBeans, emptySet())
         }
@@ -561,21 +550,60 @@ class SpringSearchService(private val project: Project) {
         return rootClasses
     }
 
-    data class FoundBeans(val active: Set<PsiBean>, val excluded: Set<PsiBean>)
+    data class FoundBeans(
+        val active: Set<PsiBean>,
+        val excluded: Set<PsiBean>,
+        val verdicts: Map<PsiBean, ConditionVerdict> = emptyMap()
+    )
 
+    fun conditionVerdictOf(bean: PsiBean, module: Module): ConditionVerdict? =
+        getAllBeansClasses(module).verdicts[bean]
 
-    private fun checkClassToExclude(
-        psiMember: PsiMember,
-        dependantsFromClassBeans: Collection<PsiBean>,
-        activeBeans: MutableSet<PsiBean>,
-        excludeBeans: MutableSet<PsiBean>,
-        exclusionStrategies: List<ExclusionStrategy>
-    ) {
-        if (dependantsFromClassBeans.all { excludeBeans.contains(it) }) return
+    fun conditionVerdictOf(member: PsiMember, module: Module): ConditionVerdict? =
+        getAllBeansClasses(module).verdicts
+            .filterKeys { it.psiMember == member }.values.distinct()
+            .takeIf { it.isNotEmpty() }
+            ?.asSequence()?.combined()
 
-        if (exclusionStrategies.any { it.shouldExclude(psiMember, activeBeans) }) {
-            excludeBeans.addAll(dependantsFromClassBeans)
-            activeBeans.removeAll(dependantsFromClassBeans.toSet())
+    private fun conditionStrategies(module: Module): List<ConditionStrategy> {
+        val supported = listOf(
+            ConditionalOnClassStrategy(module),
+            ConditionalOnMissingClassStrategy(module),
+            ConditionalOnBeanStrategy(module),
+            ConditionalOnMissingBeanStrategy(module),
+            ConditionalOnPropertyStrategy(module),
+            OnWebApplicationConditionStrategy(module),
+            ProfileConditionStrategy(module)
+        )
+        return supported + UnsupportedConditionStrategy(module, supported)
+    }
+
+    private fun conditionVerdictsByBean(
+        beans: Set<PsiBean>, carrierVerdicts: Map<PsiMember, ConditionVerdict>
+    ): Map<PsiBean, ConditionVerdict> =
+        beans.associateWith { bean -> conditionCarriersOf(bean).mapNotNull { carrierVerdicts[it] }.combined() }
+
+    private fun conditionCarriersOf(bean: PsiBean): Sequence<PsiMember> {
+        val classes: Sequence<PsiMember> = getRootPsiClasses(bean).asReversed().asSequence()
+        return if (bean.psiClass != bean.psiMember) classes + bean.psiMember else classes
+    }
+
+    private class ConditionPass(foundBeans: Set<PsiBean>, private val strategies: List<ConditionStrategy>) {
+        val active: MutableSet<PsiBean> = foundBeans.toMutableSet()
+        val excluded: MutableSet<PsiBean> = mutableSetOf()
+        val carrierVerdicts: MutableMap<PsiMember, ConditionVerdict> = mutableMapOf()
+
+        fun check(carrier: PsiMember, dependants: Collection<PsiBean>) {
+            ProgressManager.checkCanceled()
+            if (dependants.all { excluded.contains(it) }) return
+
+            val verdict = carrierVerdicts.getOrPut(carrier) {
+                strategies.asSequence().map { it.verdictOf(carrier, active) }.combined()
+            }
+            if (verdict is ConditionVerdict.Inactive) {
+                excluded.addAll(dependants)
+                active.removeAll(dependants.toSet())
+            }
         }
     }
 
