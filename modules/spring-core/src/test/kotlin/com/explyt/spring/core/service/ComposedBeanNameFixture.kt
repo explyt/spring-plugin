@@ -121,6 +121,6 @@ object ComposedBeanNameFixture {
         assertEquals("Snapshot known names", expectedNames, records.single().knownNames.toList())
         val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
             .filter { it.psiClass.qualifiedName == "beanname.Foo" }
-        assertEquals("Active model bean name", listOf(expectedNames.first()), beans.map { it.name })
+        assertEquals("Active model bean names", expectedNames.toSet(), beans.map { it.name }.toSet())
     }
 }
