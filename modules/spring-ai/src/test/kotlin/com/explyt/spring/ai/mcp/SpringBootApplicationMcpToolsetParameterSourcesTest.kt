@@ -259,6 +259,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
                 "user" to "UNKNOWN",
                 "validated" to "MODEL",
                 "requestParam" to "QUERY",
+                "path" to "PATH",
             ),
             sourcesOf(contractParameters("/servlet/annotated/{path}")),
         )
