@@ -351,6 +351,31 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
+    fun testKotlinNonNullMapIsFrameworkSupplied() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.jetbrains.annotations.NotNull")
+        myFixture.addFileToProject(
+            "com/example/app/KotlinNonNullMapController.kt", """
+            package com.example.app
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class KotlinNonNullMapController {
+                @GetMapping("/servlet/kotlin-non-null")
+                fun retention(model: Map<String, Any>): String = ""
+            }
+            """.trimIndent()
+        )
+
+        assertMapAnnotations("com.example.app.KotlinNonNullMapController", mapOf("model" to "org.jetbrains.annotations.NotNull"))
+
+        assertEquals(
+            mapOf("model" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/kotlin-non-null")),
+        )
+    }
+
     private fun addRetainedMapController() {
         myFixture.addFileToProject(
             "com/example/app/RetainedMapController.java", """
