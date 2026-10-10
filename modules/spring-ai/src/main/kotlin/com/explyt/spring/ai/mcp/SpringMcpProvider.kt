@@ -19,6 +19,7 @@ import com.explyt.spring.ai.mcp.entities.SqlIdentifier
 import com.explyt.spring.core.service.beans.ApplicationClassName
 import com.explyt.spring.core.service.beans.BeanQueryException
 import com.explyt.spring.core.service.beans.BeanSourcePreference
+import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.util.SpringBootUtil
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.loader.EndpointElement
@@ -312,6 +313,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "management.endpoints.access.default and .max-permitted grant it. Exposure and access are " +
                 "independent gates: an exposed operation with NONE answers 404, and under READ_ONLY a write or " +
                 "delete operation reads NONE. " +
+                BEAN_CONDITION_DESCRIPTION +
                 "Returns an object with 'totalCount' (how many endpoints matched), 'truncated' (true when more " +
                 "matched than were returned), 'endpoints' and 'nearestByPrefix'. Each endpoint carries full path, " +
                 "HTTP methods, controller class, method name, parameters with their binding source, return type, " +
@@ -655,6 +657,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             producesSource = endpoint.producesSource?.name,
             exposed = endpoint.exposure?.name,
             access = endpoint.access?.name,
+            beanCondition = endpoint.beanCondition?.toBeanConditionJson(),
             testSource = declaredInTests(endpoint).takeIf { it },
             application = endpoint.application?.qualifiedName,
         )
@@ -681,6 +684,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             producesSource = core.producesSource,
             exposed = core.exposed,
             access = core.access,
+            beanCondition = core.beanCondition,
             testSource = core.testSource,
             application = core.application,
         )
@@ -953,6 +957,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "profile or an environment variable can change exposure at run time. Each Actuator operation also " +
                 "carries 'access' (UNRESTRICTED, READ_ONLY, NONE, UNKNOWN), a gate independent of exposure: an " +
                 "exposed operation with NONE answers 404. Other endpoints have no 'exposed' or 'access' key. " +
+                BEAN_CONDITION_DESCRIPTION +
                 "Returns an object with 'totalCount' (how many endpoints matched the filters), 'offset' (the index " +
                 "the returned page starts at), 'truncated' (true when more matches remain after this page), and " +
                 "'endpoints'. One endpoint looks exactly like this - note 'httpMethods' is an array, and the keys " +
@@ -1119,6 +1124,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "BODY (fields of its JSON body) and of a read or delete operation QUERY; its record also carries " +
                 "'exposed' and 'access', two independent gates - with access NONE it answers 404 even when " +
                 "exposed. " +
+                BEAN_CONDITION_DESCRIPTION +
                 "'required' is null whenever nothing declares it. " +
                 "'contractStatus' is COMPLETE when a handler method declares the endpoint and PARTIAL for a " +
                 "functional route (coRouter/router/RouterFunctions.route) or an OpenAPI declaration, which have no " +
@@ -1200,6 +1206,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             endpointType = endpoint.type.readable,
             exposed = core.exposed,
             access = core.access,
+            beanCondition = core.beanCondition,
             testSource = core.testSource,
             contractStatus = if (handler != null) COMPLETE_CONTRACT else PARTIAL_CONTRACT,
             contractUnavailableReason = if (handler != null) null else contractUnavailableReason(endpoint),
@@ -2183,6 +2190,8 @@ data class EndpointJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
     /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /** The condition excluding a project Actuator endpoint's bean; see [CompactEndpointJson.beanCondition]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val beanCondition: EndpointBeanConditionJson?,
     /** Whether the endpoint is declared in a test source root; see [CompactEndpointJson.testSource]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
     /** The application whose context lists an Actuator endpoint; see [CompactEndpointJson.application]. */
@@ -2246,6 +2255,11 @@ data class CompactEndpointJson(
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
     /**
+     * For a project Actuator endpoint only, the condition that excludes its bean (`INACTIVE`) or leaves it
+     * undecidable statically (`UNDECIDED`). Absent when no condition excludes the bean or leaves it undecided.
+     */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val beanCondition: EndpointBeanConditionJson?,
+    /**
      * `true` for an endpoint declared in a test source root - a probe controller inside a test class - which every
      * endpoint tool lists after the production endpoints. Absent for production and library endpoints.
      */
@@ -2256,6 +2270,42 @@ data class CompactEndpointJson(
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val application: String?,
 )
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class EndpointBeanConditionJson(
+    val state: String,
+    val annotation: String?,
+    val carrier: String?,
+    val detail: String?,
+    val reasons: List<String>?,
+)
+
+private fun ConditionVerdict.toBeanConditionJson(): EndpointBeanConditionJson? = when (this) {
+    ConditionVerdict.Active -> null
+    is ConditionVerdict.Inactive -> EndpointBeanConditionJson(
+        state = "INACTIVE",
+        annotation = condition.annotationFqn,
+        carrier = condition.carrierFqn,
+        detail = condition.detail,
+        reasons = null,
+    )
+    is ConditionVerdict.Undecided -> conditions.firstOrNull().let { first ->
+        EndpointBeanConditionJson(
+            state = "UNDECIDED",
+            annotation = first?.annotationFqn,
+            carrier = first?.carrierFqn,
+            detail = first?.detail,
+            reasons = conditions.map { it.reason.name },
+        )
+    }
+}
+
+private const val BEAN_CONDITION_DESCRIPTION =
+    "A project Actuator endpoint whose bean a condition excludes stays listed with 'beanCondition' " +
+        "{state: INACTIVE, annotation, carrier, detail} naming that condition, or with state UNDECIDED and " +
+        "'reasons' when its conditions cannot be decided statically - 'exposed' and 'access' describe the " +
+        "configured exposure, not whether the bean exists, and the key is absent when no condition excludes " +
+        "the bean or leaves it undecided. "
 
 data class EndpointListJson<T>(
     val totalCount: Int,
@@ -2462,6 +2512,8 @@ data class EndpointContractJson(
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val exposed: String?,
     /** The access an Actuator operation is granted; see [CompactEndpointJson.access]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val access: String?,
+    /** The condition excluding a project Actuator endpoint's bean; see [CompactEndpointJson.beanCondition]. */
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val beanCondition: EndpointBeanConditionJson?,
     /** Whether the endpoint is declared in a test source root; see [CompactEndpointJson.testSource]. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean?,
     /**
