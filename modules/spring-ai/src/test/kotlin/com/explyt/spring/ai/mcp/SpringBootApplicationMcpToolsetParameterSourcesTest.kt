@@ -8,9 +8,12 @@ package com.explyt.spring.ai.mcp
 import com.explyt.spring.ai.mcp.beans.SpringBeanMcpToolset
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClassType
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -27,6 +30,9 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         TestLibrary.springWebMvc_6_0_7,
         TestLibrary.springBootAutoConfigure_3_1_1,
         TestLibrary.kotlin_1_9_22,
+        TestLibrary("jakarta.servlet:jakarta.servlet-api:6.0.0"),
+        TestLibrary("org.jspecify:jspecify:1.0.0"),
+        TestLibrary("org.projectlombok:lombok:1.18.46"),
     )
 
     override val realJdk: Boolean = true
@@ -156,6 +162,365 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
 
         assertEquals("OK", root["status"].asText())
         assertEquals("com.example.app.PetClinicTests.TestConfiguration", root["model"]["application"].asText())
+    }
+
+    fun testMultipartRequestInterfacesAreSuppliedByTheServletRequestResolver() = runBlocking<Unit> {
+        assertServletStackResolving(MULTIPART_REQUEST, MULTIPART_HTTP_SERVLET_REQUEST, HTTP_SERVLET_REQUEST)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("multipart" to "FRAMEWORK", "multipartServlet" to "FRAMEWORK", "request" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/multipart")),
+        )
+    }
+
+    fun testPushBuilderIsSuppliedByTheServletRequestResolver() = runBlocking<Unit> {
+        assertServletStackResolving(PUSH_BUILDER, HTTP_SERVLET_REQUEST)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("push" to "FRAMEWORK", "request" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/push")),
+        )
+    }
+
+    fun testUnannotatedJakartaPartIsAMultipartPartLikeAMultipartFile() = runBlocking<Unit> {
+        assertServletStackResolving(JAKARTA_PART, MULTIPART_FILE)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("attachment" to "PART", "attachments" to "PART", "file" to "PART"),
+            sourcesOf(contractParameters("/servlet/part")),
+        )
+    }
+
+    fun testKotlinUnannotatedJakartaPartIsAMultipartPart() = runBlocking<Unit> {
+        assertServletStackResolving(JAKARTA_PART, MULTIPART_FILE)
+        myFixture.addFileToProject(
+            "com/example/app/AttachmentController.kt", """
+            package com.example.app
+
+            import jakarta.servlet.http.Part
+            import org.springframework.web.bind.annotation.PostMapping
+            import org.springframework.web.bind.annotation.RestController
+            import org.springframework.web.multipart.MultipartFile
+
+            @RestController
+            class AttachmentController {
+                @PostMapping("/kotlin/part")
+                fun upload(attachment: Part, file: MultipartFile): String = ""
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            mapOf("attachment" to "PART", "file" to "PART"),
+            sourcesOf(contractParameters("/kotlin/part")),
+        )
+    }
+
+    fun testZoneSubclassesMissTheExactServletPredicateAndBindAsSimpleQueryValues() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.SimpleTimeZone", "java.time.ZoneOffset")
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("zone" to "FRAMEWORK", "simpleZone" to "QUERY", "zoneId" to "FRAMEWORK", "offset" to "QUERY"),
+            sourcesOf(contractParameters("/servlet/zones")),
+        )
+    }
+
+    fun testProjectSubtypesOfExactOnlyBuilderAndSessionStatusAreModelAttributes() = runBlocking<Unit> {
+        assertServletStackResolving(URI_COMPONENTS_BUILDER, SERVLET_URI_COMPONENTS_BUILDER, SESSION_STATUS)
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf(
+                "builder" to "FRAMEWORK",
+                "servletBuilder" to "FRAMEWORK",
+                "projectBuilder" to "MODEL",
+                "status" to "FRAMEWORK",
+                "projectStatus" to "MODEL",
+            ),
+            sourcesOf(contractParameters("/servlet/builders")),
+        )
+    }
+
+    fun testServletModelMapAndMapAreTheModelWhileAHashMapIsAModelAttribute() = runBlocking<Unit> {
+        assertServletStackResolving("org.springframework.ui.ModelMap", "java.util.HashMap")
+        addJavaServletArgumentsController()
+
+        assertEquals(
+            mapOf("model" to "FRAMEWORK", "modelMap" to "FRAMEWORK", "map" to "FRAMEWORK", "hashMap" to "MODEL"),
+            sourcesOf(contractParameters("/servlet/model")),
+        )
+    }
+
+    fun testAnnotatedMapsAreNotFrameworkSuppliedOnServlet() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.springframework.web.bind.annotation.MatrixVariable", "org.springframework.web.bind.annotation.RequestAttribute")
+        addAnnotatedMapController()
+
+        assertEquals(
+            mapOf(
+                "matrix" to "UNKNOWN",
+                "attrs" to "UNKNOWN",
+                "user" to "UNKNOWN",
+                "validated" to "MODEL",
+                "requestParam" to "QUERY",
+                "path" to "PATH",
+            ),
+            sourcesOf(contractParameters("/servlet/annotated/{path}")),
+        )
+    }
+
+    private fun addAnnotatedMapController() {
+        myFixture.addFileToProject(
+            "com/example/app/CurrentUser.java", """
+            package com.example.app;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.PARAMETER)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface CurrentUser {}
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/app/AnnotatedMapController.java", """
+            package com.example.app;
+
+            import java.util.Map;
+            import jakarta.validation.Valid;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.MatrixVariable;
+            import org.springframework.web.bind.annotation.PathVariable;
+            import org.springframework.web.bind.annotation.RequestAttribute;
+            import org.springframework.web.bind.annotation.RequestParam;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            class AnnotatedMapController {
+                @GetMapping("/servlet/annotated/{path}")
+                public String annotated(
+                        @MatrixVariable Map<String, String> matrix,
+                        @RequestAttribute Map<String, Object> attrs,
+                        @CurrentUser Map<String, Object> user,
+                        @Valid Map<String, Object> validated,
+                        @RequestParam Map<String, String> requestParam,
+                        @PathVariable String path
+                ) {
+                    return path;
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSupplied() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.jspecify.annotations.Nullable", "lombok.NonNull")
+        addRetainedMapController()
+
+        assertMapAnnotations("com.example.app.RetainedMapController", mapOf("jspecify" to "org.jspecify.annotations.Nullable", "lombok" to "lombok.NonNull", "spring" to "org.springframework.lang.Nullable"))
+
+        assertEquals(
+            mapOf("jspecify" to "FRAMEWORK", "lombok" to "FRAMEWORK", "spring" to "MODEL"),
+            sourcesOf(contractParameters("/servlet/retention")),
+        )
+    }
+
+    fun testKotlinNullableMapIsFrameworkSupplied() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.jetbrains.annotations.Nullable")
+        myFixture.addFileToProject(
+            "com/example/app/KotlinRetainedMapController.kt", """
+            package com.example.app
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class KotlinRetainedMapController {
+                @GetMapping("/servlet/kotlin-retention")
+                fun retention(model: Map<String, Any>?): String = ""
+            }
+            """.trimIndent()
+        )
+
+        assertMapAnnotations("com.example.app.KotlinRetainedMapController", mapOf("model" to "org.jetbrains.annotations.Nullable"))
+
+        assertEquals(
+            mapOf("model" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/kotlin-retention")),
+        )
+    }
+
+    fun testKotlinNonNullMapIsFrameworkSupplied() = runBlocking<Unit> {
+        assertServletStackResolving("java.util.Map", "org.jetbrains.annotations.NotNull")
+        myFixture.addFileToProject(
+            "com/example/app/KotlinNonNullMapController.kt", """
+            package com.example.app
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class KotlinNonNullMapController {
+                @GetMapping("/servlet/kotlin-non-null")
+                fun retention(model: Map<String, Any>): String = ""
+            }
+            """.trimIndent()
+        )
+
+        assertMapAnnotations("com.example.app.KotlinNonNullMapController", mapOf("model" to "org.jetbrains.annotations.NotNull"))
+
+        assertEquals(
+            mapOf("model" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/servlet/kotlin-non-null")),
+        )
+    }
+
+    private fun addRetainedMapController() {
+        myFixture.addFileToProject(
+            "com/example/app/RetainedMapController.java", """
+            package com.example.app;
+
+            import java.util.Map;
+            import lombok.NonNull;
+            import org.jspecify.annotations.Nullable;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            class RetainedMapController {
+                @GetMapping("/servlet/retention")
+                public String retention(
+                        @Nullable Map<String, Object> jspecify,
+                        @NonNull Map<String, Object> lombok,
+                        @org.springframework.lang.Nullable Map<String, Object> spring
+                ) {
+                    return "";
+                }
+            }
+            """.trimIndent()
+        )
+        val facade = JavaPsiFacade.getInstance(project)
+        for (annotation in listOf("org.jspecify.annotations.Nullable", "lombok.NonNull", "org.springframework.lang.Nullable")) {
+            assertNotNull(annotation, facade.findClass(annotation, module.moduleWithLibrariesScope))
+        }
+    }
+
+    private fun assertMapAnnotations(className: String, expected: Map<String, String>) {
+        val controller = JavaPsiFacade.getInstance(project)
+            .findClass(className, module.moduleWithLibrariesScope)!!
+        val parameters = controller.findMethodsByName("retention", false).single().parameterList.parameters
+        for (parameter in parameters) {
+            assertEquals("java.util.Map", (parameter.type as PsiClassType).resolve()?.qualifiedName)
+            val annotation = (parameter.annotations.toList() + parameter.type.annotations.toList())
+                .firstOrNull { it.qualifiedName == expected.getValue(parameter.name) }
+            assertNotNull("${parameter.name} annotation", annotation)
+            assertNotNull("${parameter.name} annotation type", annotation!!.resolveAnnotationType() ?: JavaPsiFacade.getInstance(project)
+                .findClass(annotation.qualifiedName!!, module.moduleWithLibrariesScope))
+        }
+    }
+
+    private fun assertServletStackResolving(vararg classNames: String) {
+        assertEquals(WebApplicationStack.SERVLET, WebApplicationStack.of(module))
+        val facade = JavaPsiFacade.getInstance(project)
+        for (className in classNames) {
+            assertNotNull("$className on the module classpath", facade.findClass(className, module.moduleWithLibrariesScope))
+        }
+    }
+
+    private fun addJavaServletArgumentsController() {
+        myFixture.addFileToProject(
+            "com/example/app/ProjectUriComponentsBuilder.java", """
+            package com.example.app;
+
+            import org.springframework.web.util.UriComponentsBuilder;
+
+            public class ProjectUriComponentsBuilder extends UriComponentsBuilder {
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/app/ProjectSessionStatus.java", """
+            package com.example.app;
+
+            import org.springframework.web.bind.support.SessionStatus;
+
+            public class ProjectSessionStatus implements SessionStatus {
+                private boolean complete;
+                public void setComplete() { complete = true; }
+                public boolean isComplete() { return complete; }
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "com/example/app/ServletArgumentsController.java", """
+            package com.example.app;
+
+            import jakarta.servlet.http.HttpServletRequest;
+            import jakarta.servlet.http.Part;
+            import jakarta.servlet.http.PushBuilder;
+            import java.time.ZoneId;
+            import java.time.ZoneOffset;
+            import java.util.HashMap;
+            import java.util.List;
+            import java.util.Map;
+            import java.util.SimpleTimeZone;
+            import java.util.TimeZone;
+            import org.springframework.ui.Model;
+            import org.springframework.ui.ModelMap;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PathVariable;
+            import org.springframework.web.bind.annotation.PostMapping;
+            import org.springframework.web.bind.annotation.RestController;
+            import org.springframework.web.bind.support.SessionStatus;
+            import org.springframework.web.multipart.MultipartFile;
+            import org.springframework.web.multipart.MultipartHttpServletRequest;
+            import org.springframework.web.multipart.MultipartRequest;
+            import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+            import org.springframework.web.util.UriComponentsBuilder;
+
+            @RestController
+            class ServletArgumentsController {
+                @PostMapping("/servlet/multipart")
+                public String multipart(MultipartRequest multipart, MultipartHttpServletRequest multipartServlet,
+                                        HttpServletRequest request) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/push")
+                public String push(PushBuilder push, HttpServletRequest request) {
+                    return "";
+                }
+
+                @PostMapping("/servlet/part")
+                public String part(Part attachment, List<Part> attachments, MultipartFile file) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/zones")
+                public String zones(TimeZone zone, SimpleTimeZone simpleZone, ZoneId zoneId, ZoneOffset offset) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/builders")
+                public String builders(UriComponentsBuilder builder, ServletUriComponentsBuilder servletBuilder,
+                                       ProjectUriComponentsBuilder projectBuilder, SessionStatus status,
+                                       ProjectSessionStatus projectStatus) {
+                    return "";
+                }
+
+                @GetMapping("/servlet/model")
+                public String model(Model model, ModelMap modelMap, Map<String, Object> map,
+                                    HashMap<String, Object> hashMap) {
+                    return "";
+                }
+            }
+            """.trimIndent()
+        )
     }
 
     /** Picked by its path: `/owners` also matches `/owners/{ownerId}/edit` as a containing path. */
@@ -311,5 +676,17 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
             }
             """.trimIndent()
         )
+    }
+
+    private companion object {
+        const val HTTP_SERVLET_REQUEST = "jakarta.servlet.http.HttpServletRequest"
+        const val PUSH_BUILDER = "jakarta.servlet.http.PushBuilder"
+        const val JAKARTA_PART = "jakarta.servlet.http.Part"
+        const val MULTIPART_FILE = "org.springframework.web.multipart.MultipartFile"
+        const val MULTIPART_REQUEST = "org.springframework.web.multipart.MultipartRequest"
+        const val MULTIPART_HTTP_SERVLET_REQUEST = "org.springframework.web.multipart.MultipartHttpServletRequest"
+        const val URI_COMPONENTS_BUILDER = "org.springframework.web.util.UriComponentsBuilder"
+        const val SERVLET_URI_COMPONENTS_BUILDER = "org.springframework.web.servlet.support.ServletUriComponentsBuilder"
+        const val SESSION_STATUS = "org.springframework.web.bind.support.SessionStatus"
     }
 }

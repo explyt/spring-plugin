@@ -11,11 +11,19 @@ import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClassType
 import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springReactiveWeb_3_1_1)
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springReactiveWeb_3_1_1,
+        TestLibrary("jakarta.servlet:jakarta.servlet-api:6.0.0"),
+        TestLibrary("org.jspecify:jspecify:1.0.0"),
+        TestLibrary("org.projectlombok:lombok:1.18.46"),
+    )
+
+    override val realJdk: Boolean = true
 
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
@@ -158,6 +166,273 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testServletOnlyTypesAreModelAttributesBecauseWebFluxHasNoServletResolver() = runBlocking<Unit> {
+        assertReactiveStackResolving(
+            "jakarta.servlet.http.HttpServletRequest", "jakarta.servlet.ServletRequest", "jakarta.servlet.http.HttpSession",
+            "org.springframework.web.context.request.WebRequest", SERVER_WEB_EXCHANGE,
+        )
+        myFixture.addFileToProject("com/example/app/web/ServletTypesController.java", """
+            package com.example.app.web;
+
+            import jakarta.servlet.ServletRequest;
+            import jakarta.servlet.http.HttpServletRequest;
+            import jakarta.servlet.http.HttpSession;
+            import java.io.InputStream;
+            import java.io.OutputStream;
+            import java.io.Reader;
+            import java.io.Writer;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+            import org.springframework.web.context.request.WebRequest;
+            import org.springframework.web.server.ServerWebExchange;
+
+            @RestController
+            public class ServletTypesController {
+                @GetMapping("/api/servlet-types")
+                public String servletTypes(HttpServletRequest request, ServletRequest servletRequest, HttpSession session,
+                                           InputStream body, Reader reader, OutputStream out, Writer writer,
+                                           WebRequest webRequest, ServerWebExchange exchange) {
+                    return "";
+                }
+            }
+        """.trimIndent())
+
+        assertEquals(
+            mapOf(
+                "request" to "MODEL",
+                "servletRequest" to "MODEL",
+                "session" to "MODEL",
+                "body" to "MODEL",
+                "reader" to "MODEL",
+                "out" to "MODEL",
+                "writer" to "MODEL",
+                "webRequest" to "MODEL",
+                "exchange" to "FRAMEWORK",
+            ),
+            sourcesOf(contractParameters("/api/servlet-types")),
+        )
+    }
+
+    fun testPlainModelMapIsNotSuppliedByWebFluxWhileAModelImplementationIs() = runBlocking<Unit> {
+        assertReactiveStackResolving(MODEL_MAP, "org.springframework.ui.ExtendedModelMap", "org.springframework.ui.Model")
+        myFixture.addFileToProject("com/example/app/web/ModelMapController.java", """
+            package com.example.app.web;
+
+            import org.springframework.ui.ExtendedModelMap;
+            import org.springframework.ui.Model;
+            import org.springframework.ui.ModelMap;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class ModelMapController {
+                @GetMapping("/api/model-map")
+                public String modelMap(Model model, ExtendedModelMap extended, ModelMap modelMap) {
+                    return "";
+                }
+            }
+        """.trimIndent())
+
+        assertEquals(
+            mapOf("model" to "FRAMEWORK", "extended" to "FRAMEWORK", "modelMap" to "UNKNOWN"),
+            sourcesOf(contractParameters("/api/model-map")),
+        )
+    }
+
+    fun testUnannotatedMapSubtypeIsTheModelOnWebFlux() = runBlocking<Unit> {
+        assertReactiveStackResolving("java.util.HashMap", "java.util.Map")
+        myFixture.addFileToProject("com/example/app/web/MapController.java", """
+            package com.example.app.web;
+
+            import java.util.HashMap;
+            import java.util.Map;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class MapController {
+                @GetMapping("/api/map")
+                public String map(Map<String, Object> map, HashMap<String, Object> hashMap) {
+                    return "";
+                }
+            }
+        """.trimIndent())
+
+        assertEquals(
+            mapOf("map" to "FRAMEWORK", "hashMap" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/api/map")),
+        )
+    }
+
+    fun testZoneSubclassesMissTheExactExchangePredicateAndBindAsSimpleQueryValues() = runBlocking<Unit> {
+        assertReactiveStackResolving("java.util.SimpleTimeZone", "java.time.ZoneOffset")
+        myFixture.addFileToProject("com/example/app/web/ZoneController.java", """
+            package com.example.app.web;
+
+            import java.time.ZoneId;
+            import java.time.ZoneOffset;
+            import java.util.SimpleTimeZone;
+            import java.util.TimeZone;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class ZoneController {
+                @GetMapping("/api/zones")
+                public String zones(TimeZone zone, SimpleTimeZone simpleZone, ZoneId zoneId, ZoneOffset offset) {
+                    return "";
+                }
+            }
+        """.trimIndent())
+
+        assertEquals(
+            mapOf("zone" to "FRAMEWORK", "simpleZone" to "QUERY", "zoneId" to "FRAMEWORK", "offset" to "QUERY"),
+            sourcesOf(contractParameters("/api/zones")),
+        )
+    }
+
+    fun testProjectSubtypesOfExactOnlyBuilderAndSessionStatusAreModelAttributesOnWebFlux() = runBlocking<Unit> {
+        assertReactiveStackResolving(URI_COMPONENTS_BUILDER, SESSION_STATUS)
+        myFixture.addFileToProject("com/example/app/web/ProjectUriComponentsBuilder.java", """
+            package com.example.app.web;
+
+            import org.springframework.web.util.UriComponentsBuilder;
+
+            public class ProjectUriComponentsBuilder extends UriComponentsBuilder {
+            }
+        """.trimIndent())
+        myFixture.addFileToProject("com/example/app/web/ProjectSessionStatus.java", """
+            package com.example.app.web;
+
+            import org.springframework.web.bind.support.SessionStatus;
+
+            public class ProjectSessionStatus implements SessionStatus {
+                private boolean complete;
+                public void setComplete() { complete = true; }
+                public boolean isComplete() { return complete; }
+            }
+        """.trimIndent())
+        myFixture.addFileToProject("com/example/app/web/BuilderController.java", """
+            package com.example.app.web;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+            import org.springframework.web.bind.support.SessionStatus;
+            import org.springframework.web.util.UriComponentsBuilder;
+
+            @RestController
+            public class BuilderController {
+                @GetMapping("/api/builders")
+                public String builders(UriComponentsBuilder builder, ProjectUriComponentsBuilder projectBuilder,
+                                       SessionStatus status, ProjectSessionStatus projectStatus) {
+                    return "";
+                }
+            }
+        """.trimIndent())
+
+        assertEquals(
+            mapOf(
+                "builder" to "FRAMEWORK",
+                "projectBuilder" to "MODEL",
+                "status" to "FRAMEWORK",
+                "projectStatus" to "MODEL",
+            ),
+            sourcesOf(contractParameters("/api/builders")),
+        )
+    }
+
+    fun testAnnotatedMapsAreNotFrameworkSuppliedOnWebFlux() = runBlocking<Unit> {
+        assertReactiveStackResolving("java.util.Map", "org.springframework.web.bind.annotation.MatrixVariable", "org.springframework.web.bind.annotation.RequestAttribute")
+        myFixture.addFileToProject("com/example/app/web/CurrentUser.java", """
+            package com.example.app.web;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.PARAMETER)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface CurrentUser {}
+        """.trimIndent())
+        myFixture.addFileToProject("com/example/app/web/AnnotatedMapController.java", """
+            package com.example.app.web;
+
+            import java.util.Map;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.MatrixVariable;
+            import org.springframework.web.bind.annotation.PathVariable;
+            import org.springframework.web.bind.annotation.RequestAttribute;
+            import org.springframework.web.bind.annotation.RequestParam;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class AnnotatedMapController {
+                @GetMapping("/api/annotated/{path}")
+                public String annotated(
+                        @MatrixVariable Map<String, String> matrix,
+                        @RequestAttribute Map<String, Object> attrs,
+                        @CurrentUser Map<String, Object> user,
+                        @RequestParam Map<String, String> requestParam,
+                        @PathVariable String path) {
+                    return path;
+                }
+            }
+        """.trimIndent())
+
+        assertEquals(
+            mapOf(
+                "matrix" to "UNKNOWN",
+                "attrs" to "UNKNOWN",
+                "user" to "UNKNOWN",
+                "requestParam" to "QUERY",
+                "path" to "PATH",
+            ),
+            sourcesOf(contractParameters("/api/annotated/value")),
+        )
+    }
+
+    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSuppliedOnWebFlux() = runBlocking<Unit> {
+        assertReactiveStackResolving("java.util.Map", "org.jspecify.annotations.Nullable", "lombok.NonNull")
+        myFixture.addFileToProject("com/example/app/web/RetainedMapController.java", """
+            package com.example.app.web;
+
+            import java.util.Map;
+            import lombok.NonNull;
+            import org.jspecify.annotations.Nullable;
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class RetainedMapController {
+                @GetMapping("/api/retention")
+                public String retention(@Nullable Map<String, Object> jspecify, @NonNull Map<String, Object> lombok) {
+                    return "";
+                }
+            }
+        """.trimIndent())
+
+        assertMapAnnotations("com.example.app.web.RetainedMapController", mapOf("jspecify" to "org.jspecify.annotations.Nullable", "lombok" to "lombok.NonNull"))
+
+        assertEquals(
+            mapOf("jspecify" to "FRAMEWORK", "lombok" to "FRAMEWORK"),
+            sourcesOf(contractParameters("/api/retention")),
+        )
+    }
+
+    private fun assertMapAnnotations(className: String, expected: Map<String, String>) {
+        val controller = JavaPsiFacade.getInstance(project)
+            .findClass(className, module.moduleWithLibrariesScope)!!
+        val parameters = controller.findMethodsByName("retention", false).single().parameterList.parameters
+        for (parameter in parameters) {
+            assertEquals("java.util.Map", (parameter.type as PsiClassType).resolve()?.qualifiedName)
+            val annotation = (parameter.annotations.toList() + parameter.type.annotations.toList())
+                .firstOrNull { it.qualifiedName == expected.getValue(parameter.name) }
+            assertNotNull("${parameter.name} annotation", annotation)
+            assertNotNull("${parameter.name} annotation type", annotation!!.resolveAnnotationType())
+        }
+    }
+
     private fun assertReactiveStackResolving(vararg classNames: String) {
         assertEquals(WebApplicationStack.REACTIVE, WebApplicationStack.of(module))
         val facade = JavaPsiFacade.getInstance(project)
@@ -250,5 +525,7 @@ class SpringBootApplicationMcpToolsetWebFluxTest : ExplytJavaLightTestCase() {
         const val MONO = "reactor.core.publisher.Mono"
         const val FLUX = "reactor.core.publisher.Flux"
         const val COMPLETABLE_FUTURE = "java.util.concurrent.CompletableFuture"
+        const val MODEL_MAP = "org.springframework.ui.ModelMap"
+        const val SESSION_STATUS = "org.springframework.web.bind.support.SessionStatus"
     }
 }
