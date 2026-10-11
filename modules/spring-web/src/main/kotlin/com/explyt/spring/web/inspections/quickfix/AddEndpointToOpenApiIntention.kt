@@ -15,6 +15,7 @@ import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathBuilder
 import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathHttpTypeBuilder
 import com.explyt.spring.web.builder.openapi.yaml.OpenApiYamlPathBuilder
 import com.explyt.spring.web.builder.openapi.yaml.OpenApiYamlPathHttpTypeBuilder
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonData
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlData
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
@@ -57,6 +58,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     override fun getText() = SpringWebBundle.message("explyt.openapi.gutter.method")
 
     override fun isAvailable(project: Project, editor: Editor?, file: PsiFile?): Boolean {
+        if (endpoint.requestMethods.isEmpty()) return false
         val psiElement = endpoint.psiElement
         if (!psiElement.isValid) return false
 
@@ -73,7 +75,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: return
 
         ReadAction.nonBlocking<List<PsiFile>> {
-            (findOpenApiYamlData(project) + findOpenApiYamlData(project))
+            (findOpenApiYamlData(project) + findOpenApiJsonData(project))
                 .map { it.psiFile }
                 .filter { ModuleUtilCore.findModuleForFile(it) == module }
         }
