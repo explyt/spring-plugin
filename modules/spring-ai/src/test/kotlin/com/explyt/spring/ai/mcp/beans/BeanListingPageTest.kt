@@ -259,11 +259,19 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     fun testLibraryOriginFilter() = runBlocking<Unit> {
         copyDemoApplication()
         val page = listing(DEMO_APPLICATION, "CONTROLLER", origin = "LIBRARY")
-        assertEquals(2, page["totalCount"].asInt())
+        val beans = rows(page)
+        val active = beans.takeWhile { it["condition"]?.get("state")?.asText() != "INACTIVE" }
+        val inactive = beans.drop(active.size)
         assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
-            rows(page).map { it["beanName"].asText() }.toSet())
-        assertTrue(rows(page).all { it["origin"].asText() == "LIBRARY" })
+            active.map { it["beanName"].asText() }.toSet())
+        assertEquals(setOf("basicErrorController", "graphQlRSocketController"),
+            inactive.map { it["beanName"].asText() }.toSet())
+        assertTrue("inactive library rows follow the active ones: $beans",
+            inactive.all { it["condition"]["state"].asText() == "INACTIVE" })
+        assertEquals(active.size + inactive.size, page["totalCount"].asInt())
+        assertTrue(beans.all { it["origin"].asText() == "LIBRARY" })
         assertFalse(page.has("unknownOriginCount"))
+        assertFalse("listed inactive library rows are not counted again: $page", page.has("inactiveLibraryCount"))
     }
 
     fun testOffsetPastEndIsTerminal() = runBlocking<Unit> {
