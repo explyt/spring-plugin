@@ -129,7 +129,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "scopes every later bean question to the wrong module. " +
                 "Returns each application's fully-qualified class name, Spring Boot version, starters, module and " +
                 "build tool - the version and starters answer 'which Boot line and which features are on the " +
-                "classpath' without opening the build file."
+                "classpath' without opening the build file. " +
+                "Test-source applications carry testSource: true and are listed after production ones; annotation types are never applications."
     )
     suspend fun getAllSpringBootApplications(
         @McpDescription(PROJECT_PATH_DESCRIPTION)
@@ -138,11 +139,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val applications = withContext(Dispatchers.IO) {
             smartReadAction(project) {
-                val springBootAppAnnotations = PackageScanService.getInstance(project).getSpringBootAppAnnotations()
-                springBootAppAnnotations.asSequence()
-                    .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, project.projectScope()) }
-                    .distinctBy { it.qualifiedName }
-                    .toList()
+                PackageScanService.getInstance(project).applicationClasses(project.projectScope())
                     .mapNotNull { toSpringBootApplicationDto(it) }
             }
         }
@@ -313,7 +310,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
             springBootVersion = SpringBootUtil.getSpringBootVersion(psiClass),
             springBootStarters = springBootInfo?.second ?: emptyList(),
             moduleName = ModuleUtilCore.findModuleForPsiElement(psiClass)?.name,
-            buildTool = springBootInfo?.first
+            buildTool = springBootInfo?.first,
+            testSource = ProjectSources.declaresInTests(psiClass).takeIf { it }
         )
     }
 
@@ -2183,6 +2181,7 @@ data class SpringBootApplicationJson(
     val springBootStarters: List<String>,
     val moduleName: String?,
     val buildTool: String?,
+    @get:JsonInclude(JsonInclude.Include.NON_NULL) val testSource: Boolean? = null,
 )
 
 data class SpringBootApplication(
