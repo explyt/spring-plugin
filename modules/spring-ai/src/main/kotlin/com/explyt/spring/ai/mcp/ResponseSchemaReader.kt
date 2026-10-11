@@ -67,7 +67,7 @@ internal object ResponseSchemaReader {
             return chunkSchemaOf(type, fqn, depth, context)
         }
         if (fqn == SpringDataChunkSchemas.PAGED_MODEL && !ProjectSources.declares(resolved)) {
-            return pagedModelOf(type.parameters.firstOrNull(), depth, context, null, PageSerialization.DECLARED_TYPE)
+            return pagedModelOf(type.parameters.firstOrNull(), depth, context, null, PageWireShape.DECLARED_TYPE)
         }
         if (isPageImplSubclass(resolved)) return pageImplSubclassSchemaOf(type, resolved, fqn, depth, context)
         if (isContainer(resolved, fqn)) {

@@ -5,10 +5,12 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.web.util.WebApplicationStack
+import com.explyt.util.ExplytPsiUtil.resolveUAnnotationType
 import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
@@ -17,6 +19,7 @@ import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.toUElementOfType
@@ -38,7 +41,7 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
     companion object {
         const val PROPERTY = "spring.data.web.pageable.serialization-mode"
         const val ENABLE_WEB_SUPPORT = "org.springframework.data.web.config.EnableSpringDataWebSupport"
-        const val DECLARED_TYPE = "DECLARED_TYPE"
+
         private const val MODE_ATTRIBUTE = "pageSerializationMode"
 
         private val DEFAULT = PageSerialization(PageSerializationMode.DIRECT, "DEFAULT")
@@ -89,11 +92,30 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
         private fun modeDeclaredBy(psiClass: PsiClass, webSupport: MetaAnnotationsHolder): PageSerializationMode {
             val annotation = psiClass.toUElementOfType<UClass>()?.uAnnotations?.firstOrNull(webSupport::contains)
                 ?: return PageSerializationMode.UNKNOWN
+            if (leavesItsOwnModeAttributeUnset(annotation, webSupport)) return PageSerializationMode.UNKNOWN
             val values = webSupport.getAnnotationMemberValues(annotation, setOf(MODE_ATTRIBUTE))
             if (values.isEmpty()) return PageSerializationMode.DIRECT
             val constant = (values.singleOrNull() as? UResolvable)?.resolve() as? PsiEnumConstant
             return constant?.name?.let(PageSerializationMode::parse) ?: PageSerializationMode.UNKNOWN
         }
+
+        private fun leavesItsOwnModeAttributeUnset(annotation: UAnnotation, webSupport: MetaAnnotationsHolder): Boolean {
+            val fqn = annotation.qualifiedName ?: return false
+            if (fqn == ENABLE_WEB_SUPPORT) return false
+            val composed = annotationTypeOf(annotation, fqn) ?: return false
+            val modeAttributes = composed.methods.map { it.name }.filter { name ->
+                name == MODE_ATTRIBUTE ||
+                        webSupport.isAttributeRelatedWith(fqn, name, ENABLE_WEB_SUPPORT, setOf(MODE_ATTRIBUTE))
+            }
+            if (modeAttributes.isEmpty()) return false
+            return annotation.attributeValues.none { (it.name ?: SpringProperties.VALUE) in modeAttributes }
+        }
+
+        private fun annotationTypeOf(annotation: UAnnotation, fqn: String): PsiClass? =
+            annotation.javaPsi?.resolveUAnnotationType()
+                ?: annotation.sourcePsi?.let {
+                    JavaPsiFacade.getInstance(it.project).findClass(fqn, GlobalSearchScope.allScope(it.project))
+                }
     }
 }
 
@@ -111,4 +133,10 @@ internal enum class PageSerializationMode {
 }
 
 /** The JSON a Spring Data page or slice is written as. */
-internal enum class PageWireShape { PAGE_DIRECT, PAGED_MODEL, SLICE_DIRECT }
+internal enum class PageWireShape {
+    PAGE_DIRECT, PAGED_MODEL, SLICE_DIRECT;
+
+    companion object {
+        const val DECLARED_TYPE = "DECLARED_TYPE"
+    }
+}
