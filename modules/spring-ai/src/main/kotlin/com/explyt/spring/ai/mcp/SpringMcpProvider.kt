@@ -10,6 +10,7 @@ import com.explyt.spring.core.SpringCoreClasses
 
 import com.explyt.spring.core.service.PackageScanService
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.ai.mcp.beans.BeanConditionJson
 import com.explyt.spring.ai.mcp.beans.BeanOrigin
 import com.explyt.spring.ai.mcp.beans.BeanQueryRevision
 import com.explyt.spring.ai.mcp.entities.EntityInventory
@@ -43,6 +44,7 @@ import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.MultiVendorClass
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.mcpserver.McpToolset
 import com.intellij.mcpserver.annotations.McpDescription
@@ -102,8 +104,12 @@ private const val BEAN_PAGE_LIMIT = 8
 private const val BEAN_PAGE_MAX_CHARS = 1800
 private const val FIELD_BEANS = "beans"
 private const val FIELD_UNKNOWN_ORIGIN_COUNT = "unknownOriginCount"
+private const val FIELD_INACTIVE_LIBRARY_COUNT = "inactiveLibraryCount"
+private const val FIELD_LIMITATIONS = "limitations"
+private const val FIELD_CONDITION = "condition"
 
 private val BEAN_LISTING_ORDER: Comparator<SpringBean> = compareBy<SpringBean>(
+    { it.inactive },
     { it.origin?.ordinal ?: BeanOrigin.entries.size },
     { it.beanName },
     { it.className },
@@ -156,13 +162,21 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "declaration to read it from. Rows come PROJECT first, then LIBRARY, then those of unknown origin, " +
                 "each by beanName and className. Pass origin=PROJECT or origin=LIBRARY to keep one of them: rows " +
                 "of unknown origin are then left out and counted in 'unknownOriginCount', absent when none was. " +
+                "Project beans (and those of unknown origin) excluded by a @Conditional (except @Profile, which is " +
+                "filtered earlier) are listed after all the others with 'condition': {state: INACTIVE, annotation, " +
+                "carrier, detail}; the rows of library beans excluded by a condition are only counted in " +
+                "'inactiveLibraryCount', absent when there was none, unless origin=LIBRARY is requested, which " +
+                "lists them after the active library rows. A bean whose condition cannot be decided keeps its place " +
+                "with 'condition': {state: UNDECIDED, reasons, annotation, carrier, detail}. The envelope-level " +
+                "'limitations' holds CONDITIONS_NOT_EVALUATED when condition evaluation is disabled, and is absent " +
+                "otherwise. " +
                 "A page holds at most 'limit' beans (8 by default) within 'maxChars' of compact JSON (1800 by " +
                 "default) and can end earlier, because the budget is measured on the finished document. When " +
                 "'truncated' is true, repeat the call with 'offset' = 'nextOffset' and 'expectedRevision' = " +
                 "'revision' to continue the same answer; a changed filter or a re-read model answers RESULT_CHANGED. " +
                 "Every row also names the model that answered in 'source': STATIC is an estimate of the module, " +
                 "NATIVE_SNAPSHOT a context recorded at 'snapshotImportedAt' (ISO-8601 UTC, absent when unknown) " +
-                "and never live, with 'contextId' naming it. 'limitations' appears only on a row whose own bean " +
+                "and never live, with 'contextId' naming it. A row's 'limitations' appears only when its own bean " +
                 "has one, such as ALIASES_NOT_EXPORTED (the bean may answer to names the context did not export). " +
                 "When sources changed after 'snapshotImportedAt', pass source=STATIC for an answer read from them. " +
                 "An empty 'moduleName' means the bean has no module in this project - a library bean, or one a " +
@@ -244,7 +258,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
             }
         }
         val ofType = listing.rows.filter { it.beanType == mcpBeanType }
-        val beans = ofType
+        val (inactiveLibrary, listable) = ofType.partition {
+            originFilter == null && it.inactive && it.origin == BeanOrigin.LIBRARY
+        }
+        val beans = listable
             .filter { originFilter == null || it.origin == originFilter }
             .sortedWith(BEAN_LISTING_ORDER)
         val unknownOriginCount = if (originFilter == null) 0 else ofType.count { it.origin == null }
@@ -260,15 +277,24 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
         val envelope = mapper.createObjectNode()
         if (unknownOriginCount > 0) envelope.put(FIELD_UNKNOWN_ORIGIN_COUNT, unknownOriginCount)
+        if (inactiveLibrary.isNotEmpty()) envelope.put(FIELD_INACTIVE_LIBRARY_COUNT, inactiveLibrary.size)
+        if (listing.limitations.isNotEmpty()) {
+            envelope.putArray(FIELD_LIMITATIONS).apply { listing.limitations.forEach(::add) }
+        }
         return BoundedPageWriter().write(
             envelope = envelope,
             itemsField = FIELD_BEANS,
             totalCount = beans.size,
-            itemAt = { index -> mapper.valueToTree(beans[index].toMcpSpringBean()) },
+            itemAt = { index -> beans[index].toRow() },
             revision = revision,
             page = page,
         )
     }
+
+    private fun SpringBean.toRow(): ObjectNode =
+        mapper.valueToTree<ObjectNode>(toMcpSpringBean()).apply {
+            condition?.let { set<ObjectNode>(FIELD_CONDITION, BeanConditionJson.of(it)) }
+        }
 
     private fun SpringBean.toMcpSpringBean() = McpSpringBean(
         beanName, className, moduleName, source, contextId, snapshotImportedAt, limitations, origin?.name
