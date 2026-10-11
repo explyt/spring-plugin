@@ -55,7 +55,11 @@ abstract class PageSchemaTestCase : ExplytJavaLightTestCase() {
         )["endpoints"]
         assertEquals("exactly one handler for GET $url: $endpoints", 1, endpoints.size())
         val contract = endpoints.single()
-        assertEquals("the handler resolves to the Spring Data type", declaredReturnType, contract["returnType"].asText())
+        assertEquals(
+            "the handler resolves to the Spring Data type",
+            declaredReturnType,
+            contract["returnType"].asText()
+        )
         val schema = contract["responseSchema"]
         assertTrue("a response schema is expected, got $contract", schema != null && !schema.isNull)
         return schema
@@ -142,6 +146,7 @@ abstract class PageSchemaTestCase : ExplytJavaLightTestCase() {
     protected companion object {
         const val PAGE = "org.springframework.data.domain.Page"
         const val SLICE = "org.springframework.data.domain.Slice"
+        const val PAGED_MODEL = "org.springframework.data.web.PagedModel"
         const val ENABLE_WEB_SUPPORT = "org.springframework.data.web.config.EnableSpringDataWebSupport"
         const val ORDER_DTO = "com.example.shop.OrderDto"
         const val CUSTOM_PAGE = "com.example.shop.OrderPage"
@@ -180,6 +185,7 @@ abstract class PageSchemaTestCase : ExplytJavaLightTestCase() {
                 import java.util.List;
                 import org.springframework.data.domain.Page;
                 import org.springframework.data.domain.Slice;
+                import org.springframework.data.web.PagedModel;
                 import org.springframework.http.ResponseEntity;
                 import org.springframework.web.bind.annotation.GetMapping;
                 import org.springframework.web.bind.annotation.RestController;
@@ -194,6 +200,12 @@ abstract class PageSchemaTestCase : ExplytJavaLightTestCase() {
 
                     @GetMapping("/orders/entity-page")
                     public ResponseEntity<Page<OrderDto>> entityPage() { return null; }
+
+                @GetMapping("/orders/model")
+                    public PagedModel<OrderDto> pagedModel() { return null; }
+
+                @GetMapping("/orders/entity-model")
+                    public ResponseEntity<PagedModel<OrderDto>> entityPagedModel() { return null; }
 
                     @GetMapping("/orders/list")
                     public List<OrderDto> list() { return List.of(); }
@@ -350,6 +362,102 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("DEFAULT", schema)
     }
 
+    fun testPagedModelReturnDescribesItsDeclaredWireShape() = runBlocking<Unit> {
+        val schema = schemaOf("/orders/model", "$PAGED_MODEL<$ORDER_DTO>")
+
+        assertPagedModel(schema)
+        assertSource("DECLARED_TYPE", schema)
+    }
+
+    fun testPagedModelReturnKeepsItsDeclaredWireShapeWithViaDtoProperty() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
+
+        val schema = schemaOf("/orders/model", "$PAGED_MODEL<$ORDER_DTO>")
+
+        assertPagedModel(schema)
+        assertSource("DECLARED_TYPE", schema)
+    }
+
+    fun testResponseEntityOfPagedModelDescribesItsDeclaredWireShape() = runBlocking<Unit> {
+        val schema = schemaOf(
+            "/orders/entity-model",
+            "org.springframework.http.ResponseEntity<$PAGED_MODEL<$ORDER_DTO>>",
+        )
+
+        assertPagedModel(schema)
+        assertSource("DECLARED_TYPE", schema)
+    }
+
+    fun testKotlinSuspendHandlerReturningPagedModelIsThePagedModel() = runBlocking<Unit> {
+        addFile(
+            "com/example/shop/SuspendPagedModelController.kt", """
+            package com.example.shop
+
+            import org.springframework.data.web.PagedModel
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class SuspendPagedModelController {
+                @GetMapping("/orders/suspend-model")
+                suspend fun page(): PagedModel<OrderDto> = TODO()
+            }
+            """.trimIndent()
+        )
+
+        val schema = schemaOf("/orders/suspend-model", "$PAGED_MODEL<$ORDER_DTO>")
+
+        assertPagedModel(schema)
+        assertSource("DECLARED_TYPE", schema)
+    }
+
+    fun testBlankSerializationModeUsesBootDirectDefault() = runBlocking<Unit> {
+        addFile("application.properties", "$SERIALIZATION_MODE_KEY=")
+
+        val schema = pageSchema("/orders/page")
+
+        assertDirectPage(schema)
+        assertSource("DEFAULT", schema)
+    }
+
+    fun testComposedWebSupportAnnotationControlsPageSerialization() = runBlocking<Unit> {
+        addFile(
+            "com/example/config/EnableMyWeb.java", """
+            package com.example.config;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
+            public @interface EnableMyWeb {
+            }
+            """.trimIndent()
+        )
+        addFile(
+            "com/example/config/ComposedWebConfig.java", """
+            package com.example.config;
+
+            import org.springframework.context.annotation.Configuration;
+
+            @Configuration
+            @EnableMyWeb
+            public class ComposedWebConfig {
+            }
+            """.trimIndent()
+        )
+
+        val schema = pageSchema("/orders/page")
+
+        assertPagedModel(schema)
+        assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
+    }
+
     fun testKotlinSuspendHandlerReturningPageIsThePage() = runBlocking<Unit> {
         addFile(
             "com/example/shop/SuspendOrderController.kt", """
@@ -459,7 +567,8 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         )
         assertNull(
             "the element type must stay unresolved",
-            JavaPsiFacade.getInstance(project).findClass("com.example.shop.Missing", GlobalSearchScope.allScope(project))
+            JavaPsiFacade.getInstance(project)
+                .findClass("com.example.shop.Missing", GlobalSearchScope.allScope(project))
         )
 
         val schema = schemaOf("/orders/missing", "$PAGE<Missing>")
