@@ -28,6 +28,8 @@ import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.toUElementOfType
 
+private const val FEIGN_DEFAULT_METHOD = "GET"
+
 class SpringWebFeignClientLoader(val project: Project) : SpringWebEndpointsLoader {
     private val cachedValuesManager = CachedValuesManager.getManager(project)
 
@@ -115,6 +117,7 @@ class SpringWebFeignClientLoader(val project: Project) : SpringWebEndpointsLoade
 
             val requestMethods = requestMapping.getAnnotationMemberValues(method, setOf("method"))
                 .map { it.text.split('.').last() }
+                .ifEmpty { listOf(FEIGN_DEFAULT_METHOD) }
 
             for (value in values) {
                 result += EndpointElement(

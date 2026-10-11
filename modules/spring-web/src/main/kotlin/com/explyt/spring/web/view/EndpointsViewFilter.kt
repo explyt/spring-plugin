@@ -6,6 +6,7 @@
 package com.explyt.spring.web.view
 
 import com.explyt.spring.web.loader.EndpointType
+import com.explyt.spring.web.loader.EndpointVerbs
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointUrlMatcher
 import com.intellij.openapi.module.Module
@@ -37,7 +38,7 @@ object EndpointsViewFilter {
             text.isPath() -> EndpointUrlMatcher.match(rows, text, EndpointUrlMatcher.Policy.SEARCH, { it.path }, basePathOf).endpoints
             else -> rows.filter { it.path.contains(text, ignoreCase = true) }
         }
-        return found.filter { (endpointTypes.isEmpty() || it.type in endpointTypes) && (httpMethods.isEmpty() || it.method in httpMethods) }
+        return found.filter { (endpointTypes.isEmpty() || it.type in endpointTypes) && it.answersAny(httpMethods) }
     }
 
     /** The base path the application of each row declares, read once per module for the lifetime of the function. */
@@ -49,6 +50,9 @@ object EndpointsViewFilter {
                 ?.let { module -> byModule.getOrPut(module) { ApplicationBasePath.cachedOf(module) } }
         }
     }
+
+    private fun EndpointElementViewData.answersAny(verbs: Set<String>): Boolean =
+        verbs.isEmpty() || verbs.any { EndpointVerbs.answers(method, it) }
 
     private fun String.isPath(): Boolean = contains('/')
 
