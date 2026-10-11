@@ -187,6 +187,37 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
         )
     }
 
+    fun testAnyMethodPathRouteMarkerDoesNotOfferAnOpenApiDescription() {
+        myFixture.configureByFiles("UserHandler.kt")
+        myFixture.configureByText(
+            "UserRouter.kt", """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.coRouter
+
+            @Configuration
+            class UserRouter(private val handler: UserHandler) {
+
+                @Bean
+                fun usersApi() = coRouter {
+                    path("/x", handler::getUserById)
+                    GET("/y", handler::getUserById)
+                }
+            }
+            """
+        )
+        myFixture.doHighlighting()
+
+        val offersByPath = myFixture.findAllGutters()
+            .filter { it.icon == SpringIcons.ReadAccess }
+            .filter { it.tooltipText == "Endpoint Actions" }
+            .mapNotNull { (it as? LineMarkerGutterIconRenderer<*>)?.lineMarkerInfo?.navigationHandler }
+            .map { it as EndpointIconGutterHandler }
+            .associate { it.endpointInfo.path to it.offersOpenApiDescription }
+
+        assertEquals(mapOf("/x" to false, "/y" to true), offersByPath)
+    }
+
     fun testTwoArgumentPathCallOutsideTheDslHasNoMarker() {
         myFixture.configureByFiles("UserHandler.kt")
         val file = myFixture.configureByText(
