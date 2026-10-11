@@ -390,7 +390,6 @@ private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
 private const val ENDPOINT_ATTRIBUTE = "endpoint"
 private val PATH_VARIABLE = Regex("""(\{\*?).+?}""")
 
-
 private const val READ_METHOD = "GET"
 private val READ_ONLY_REQUEST_METHODS = setOf("GET", "HEAD")
 
