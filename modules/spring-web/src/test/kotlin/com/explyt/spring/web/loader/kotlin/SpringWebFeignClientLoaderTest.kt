@@ -7,7 +7,9 @@ package com.explyt.spring.web.loader.kotlin
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
+import com.explyt.spring.web.view.EndpointsTreeData
 import junit.framework.TestCase
 
 private const val TEST_DATA_PATH = "loader/src"
@@ -70,4 +72,28 @@ class SpringWebFeignClientLoaderTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    fun testFeignClientLoader_verbless_request_mapping_is_get() {
+        myFixture.addFileToProject(
+            "com/example/AnyFeignClient.kt", """
+            package com.example
+
+            import org.springframework.cloud.openfeign.FeignClient
+            import org.springframework.web.bind.annotation.RequestMapping
+
+            @FeignClient(name = "any", url = "https://any.com")
+            interface AnyFeignClient {
+                @RequestMapping("/x")
+                fun any(): String
+            }
+            """.trimIndent()
+        )
+
+        val endpoint = SpringWebEndpointsLoader.EP_NAME.getExtensions(module.project)
+            .flatMap { it.searchEndpoints(module) }
+            .single { it.type == EndpointType.SPRING_OPEN_FEIGN }
+        TestCase.assertEquals("https://any.com/x", endpoint.path)
+
+        TestCase.assertEquals(listOf("GET"), endpoint.requestMethods)
+        TestCase.assertEquals(listOf("GET"), EndpointsTreeData.rowVerbsOf(endpoint))
+    }
 }
