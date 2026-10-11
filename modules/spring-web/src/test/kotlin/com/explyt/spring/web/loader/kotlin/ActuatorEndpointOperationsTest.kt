@@ -15,11 +15,15 @@ import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.view.EndpointsTreeData
 import com.explyt.spring.web.view.EndpointsViewFilter
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PsiTestUtil
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.toUElementOfType
@@ -36,6 +40,18 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         TestLibrary.springBootHealth_4_1_0,
         TestLibrary.springWeb_6_1_4,
     )
+
+    private var testSourceRoot: VirtualFile? = null
+
+    override fun tearDown() {
+        try {
+            testSourceRoot?.let { PsiTestUtil.removeSourceRoot(module, it) }
+        } catch (e: Throwable) {
+            addSuppressedException(e)
+        } finally {
+            super.tearDown()
+        }
+    }
 
     override fun setUp() {
         super.setUp()
@@ -467,6 +483,109 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         )
     }
 
+    /** Boot applies a test-source extension only in a test context, so it must not reshape a production endpoint. */
+    fun testTestSourceWebExtensionLeavesAProductionEndpointUnchanged() {
+        addTestSourceRoot()
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject("XEndpoint.kt", X_ENDPOINT)
+        myFixture.addFileToProject("$TEST_SOURCES/XTestWebExtension.kt", X_TEST_WEB_EXTENSION)
+        assertAnnotationResolves(ENDPOINT)
+        assertAnnotationResolves(ENDPOINT_WEB_EXTENSION)
+        assertDeclaredEndpoint("x", "XEndpoint")
+        assertWebExtensionOf("XTestWebExtension")
+        assertTestSource("XTestWebExtension", expected = true)
+        assertTestSource("XEndpoint", expected = false)
+
+        assertEquals(
+            listOf(Triple(listOf("GET"), "XEndpoint", "read")),
+            operationsAt("/actuator/x")
+        )
+    }
+
+    fun testTestSourceWebExtensionAppliesToATestSourceEndpoint() {
+        addTestSourceRoot()
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject("$TEST_SOURCES/XEndpoint.kt", X_ENDPOINT)
+        myFixture.addFileToProject("$TEST_SOURCES/XTestWebExtension.kt", X_TEST_WEB_EXTENSION)
+        assertAnnotationResolves(ENDPOINT)
+        assertAnnotationResolves(ENDPOINT_WEB_EXTENSION)
+        assertDeclaredEndpoint("x", "XEndpoint")
+        assertWebExtensionOf("XTestWebExtension")
+        assertTestSource("XTestWebExtension", expected = true)
+        assertTestSource("XEndpoint", expected = true)
+
+        assertEquals(
+            listOf(
+                Triple(listOf("GET"), "XTestWebExtension", "read"),
+                Triple(listOf("POST"), "XTestWebExtension", "write"),
+            ),
+            operationsAt("/actuator/x").sortedBy { it.first.joinToString() }
+        )
+    }
+
+    /** Boot compares path variables by position, so selectors named differently still share one request predicate. */
+    fun testWebExtensionSelectorWithAnotherNameReplacesTheEndpointSelectorOperation() {
+        addExtendedEndpoint(
+            endpointBody = "@ReadOperation fun read(@Selector name: String): String = name",
+            extensionBody = "@ReadOperation fun read(@Selector id: String): String = id",
+        )
+
+        assertEquals(
+            listOf(Triple("/actuator/x/{id}", listOf("GET"), "XWebExtension")),
+            selectorOperationsOfX()
+        )
+    }
+
+    fun testWebExtensionAllRemainingSelectorWithAnotherNameReplacesTheEndpointOne() {
+        addExtendedEndpoint(
+            endpointBody = "@ReadOperation fun read(@Selector(match = Selector.Match.ALL_REMAINING) path: String): String = path",
+            extensionBody = "@ReadOperation fun read(@Selector(match = Selector.Match.ALL_REMAINING) segments: String): String = segments",
+        )
+
+        assertEquals(
+            listOf(Triple("/actuator/x/{*segments}", listOf("GET"), "XWebExtension")),
+            selectorOperationsOfX()
+        )
+    }
+
+    fun testWebExtensionAllRemainingSelectorKeepsTheEndpointSingleSegmentSelector() {
+        addExtendedEndpoint(
+            endpointBody = "@ReadOperation fun read(@Selector name: String): String = name",
+            extensionBody = "@ReadOperation fun read(@Selector(match = Selector.Match.ALL_REMAINING) rest: String): String = rest",
+        )
+
+        assertEquals(
+            listOf(
+                Triple("/actuator/x/{*rest}", listOf("GET"), "XWebExtension"),
+                Triple("/actuator/x/{name}", listOf("GET"), "XEndpoint"),
+            ),
+            selectorOperationsOfX()
+        )
+    }
+
+    private fun selectorOperationsOfX(): List<Triple<String, List<String>, String?>> =
+        allActuatorEndpoints().filter { it.path.startsWith("/actuator/x/") || it.path == "/actuator/x" }
+            .map { Triple(it.path, it.requestMethods, (it.psiElement as? PsiMethod)?.containingClass?.name) }
+            .sortedBy { it.first }
+
+    private fun addTestSourceRoot() {
+        val root = myFixture.tempDirFixture.findOrCreateDir(TEST_SOURCES)
+        PsiTestUtil.addSourceRoot(module, root, true)
+        testSourceRoot = root
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+    }
+
+    private fun assertTestSource(className: String, expected: Boolean) {
+        val file = JavaPsiFacade.getInstance(project)
+            .findClass(className, GlobalSearchScope.projectScope(project))?.containingFile?.virtualFile
+        assertNotNull("precondition: $className is in the project", file)
+        assertEquals(
+            "precondition: $className is ${if (expected) "" else "not "}in test sources",
+            expected,
+            ProjectFileIndex.getInstance(project).isInTestSourceContent(file!!)
+        )
+    }
+
     private fun addExtendedEndpoint(endpointBody: String, extensionBody: String) {
         myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
         myFixture.addFileToProject(
@@ -703,5 +822,36 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         const val SERVLET_ENDPOINT = "org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpoint"
         const val ENDPOINT_WEB_EXTENSION = "org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension"
         const val INFO_ENDPOINT = "org.springframework.boot.actuate.info.InfoEndpoint"
+        const val TEST_SOURCES = "src/test/kotlin"
+
+        val X_ENDPOINT = """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.stereotype.Component
+
+            @Endpoint(id = "x")
+            @Component
+            class XEndpoint {
+                @ReadOperation
+                fun read(): String = "endpoint"
+            }
+            """.trimIndent()
+
+        val X_TEST_WEB_EXTENSION = """
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.boot.actuate.endpoint.annotation.WriteOperation
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension
+            import org.springframework.stereotype.Component
+
+            @EndpointWebExtension(endpoint = XEndpoint::class)
+            @Component
+            class XTestWebExtension {
+                @ReadOperation
+                fun read(): String = "test extension"
+
+                @WriteOperation
+                fun write(value: String) {}
+            }
+            """.trimIndent()
     }
 }
