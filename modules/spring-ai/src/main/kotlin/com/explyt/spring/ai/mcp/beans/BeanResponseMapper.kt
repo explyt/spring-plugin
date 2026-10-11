@@ -109,18 +109,8 @@ class BeanResponseMapper(private val project: Project) {
         return node
     }
 
-    private fun condition(condition: BeanConditionRecord, includeDetails: Boolean): ObjectNode {
-        val node = mapper.createObjectNode()
-        node.put("state", condition.state.name)
-        if (condition.undecided) node.putArray("reasons").apply { condition.reasons.forEach(::add) }
-        node.put("annotation", condition.annotation)
-        node.put("carrier", condition.carrier)
-        condition.detail?.let { node.put("detail", it) }
-        if (includeDetails && condition.assumptions.isNotEmpty()) {
-            node.putArray("assumptions").apply { condition.assumptions.forEach(::add) }
-        }
-        return node
-    }
+    private fun condition(condition: BeanConditionRecord, includeDetails: Boolean): ObjectNode =
+        BeanConditionJson.of(condition, includeAssumptions = includeDetails)
 
     /** Names the alias a query matched, so a caller who asked by one name recognises the canonical answer. */
     private fun matchedName(record: ScopedBeanRecord, lookup: BeanLookupSelector?): String? =
