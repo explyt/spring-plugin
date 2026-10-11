@@ -13,7 +13,7 @@ import com.explyt.util.ExplytPsiUtil.toSmartPointer
 /** The rows of the Endpoints tool window and the tree it groups them into: by endpoint type, then by class or file. */
 object EndpointsTreeData {
 
-    /** One row per HTTP method of [element]; none for an endpoint with neither a class nor a file to show it under. */
+    /** One row per verb label of [element] (`ALL` for a route answering any HTTP method); none for an endpoint with neither a class nor a file to show it under. */
     fun rowsOf(element: EndpointElement): List<EndpointElementViewData> {
         val classOrFileName = element.containingClass?.name
             ?: element.containingFile?.name ?: return emptyList()
