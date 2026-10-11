@@ -100,6 +100,40 @@ class AddEndpointToOpenApiIntentionPathEdgeCasesTest : ExplytMultiModuleTestCase
         assertEquals("createItem", ((operations.findProperty("post")!!.value as JsonObject).findProperty("operationId")?.value as JsonStringLiteral).value)
     }
 
+    fun testYamlActionKeepsTheOtherKeysOfThePathItem() {
+        val spec = addSpec(
+            "openapi.yaml", yamlWithPaths(
+                """
+                /items:
+                    summary: Items collection
+                    parameters:
+                      - name: tenant
+                        in: header
+                        schema:
+                          type: string
+                    post:
+                      operationId: createItem
+                """.trimIndent()
+            )
+        )
+        val endpoint = endpointOf(GET_ITEMS)
+        assertTrue("Precondition: GET /items is not documented", isOffered(endpoint))
+
+        val text = applyAction(endpoint, spec)
+
+        val paths = yamlPaths(text)!!
+        assertEquals(listOf("/items"), paths.keyValues.map { it.keyText })
+        val item = paths.keyValues.single().value as YAMLMapping
+        assertEquals(setOf("summary", "parameters", "post", "get"), item.keyValues.map { it.keyText }.toSet())
+        assertEquals("Items collection", item.getKeyValueByKey("summary")?.valueText)
+        val parameters = (item.getKeyValueByKey("parameters")!!.value as YAMLSequence).items
+        assertEquals(1, parameters.size)
+        val tenant = parameters.single().value as YAMLMapping
+        assertEquals("tenant", tenant.getKeyValueByKey("name")?.valueText)
+        assertEquals("header", tenant.getKeyValueByKey("in")?.valueText)
+        assertEquals("createItem", (item.getKeyValueByKey("post")!!.value as YAMLMapping).getKeyValueByKey("operationId")?.valueText)
+    }
+
     fun testJsonActionKeepsTheOtherKeysOfThePathItem() {
         val spec = addSpec(
             "openapi.json", jsonWithPaths(
