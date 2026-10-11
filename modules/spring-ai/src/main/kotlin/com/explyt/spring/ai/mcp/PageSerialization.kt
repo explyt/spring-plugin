@@ -5,9 +5,14 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.SpringCoreClasses
+import com.explyt.spring.core.SpringProperties
+import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.web.util.WebApplicationStack
+import com.explyt.util.ExplytPsiUtil.resolveUAnnotationType
+import com.intellij.codeInsight.MetaAnnotationUtil
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
@@ -15,6 +20,7 @@ import com.intellij.psi.PsiEnumConstant
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.ProjectScope
 import com.intellij.psi.search.searches.AnnotatedElementsSearch
+import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UResolvable
 import org.jetbrains.uast.toUElementOfType
@@ -36,6 +42,7 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
     companion object {
         const val PROPERTY = "spring.data.web.pageable.serialization-mode"
         const val ENABLE_WEB_SUPPORT = "org.springframework.data.web.config.EnableSpringDataWebSupport"
+
         private const val MODE_ATTRIBUTE = "pageSerializationMode"
 
         private val DEFAULT = PageSerialization(PageSerializationMode.DIRECT, "DEFAULT")
@@ -47,14 +54,14 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
             val reactive = WebApplicationStack.of(module) == WebApplicationStack.REACTIVE
             return when {
                 declarations.isNotEmpty() && reactive -> UNKNOWN
-                declarations.isNotEmpty() -> decisiveOf(declarations)
+                declarations.isNotEmpty() -> decisiveOf(declarations, MetaAnnotationsHolder.of(module, ENABLE_WEB_SUPPORT))
                 reactive -> DEFAULT
                 else -> configuredIn(module)
             }
         }
 
-        private fun decisiveOf(declarations: List<PsiClass>): PageSerialization {
-            val modes = declarations.map { it to modeDeclaredBy(it) }
+        private fun decisiveOf(declarations: List<PsiClass>, webSupport: MetaAnnotationsHolder): PageSerialization {
+            val modes = declarations.map { it to modeDeclaredBy(it, webSupport) }
             val (decisive, mode) = modes.firstOrNull { it.second == PageSerializationMode.VIA_DTO }
                 ?: modes.firstOrNull { it.second == PageSerializationMode.UNKNOWN }
                 ?: modes.first()
@@ -65,7 +72,8 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
             when (val value = PropertyConditionValues(module).valueOf(PROPERTY)) {
                 ConditionPropertyValue.Missing -> DEFAULT
                 ConditionPropertyValue.Unresolvable -> UNKNOWN
-                is ConditionPropertyValue.Known -> declared(PageSerializationMode.parse(value.text), PROPERTY)
+                is ConditionPropertyValue.Known ->
+                    if (value.text.isBlank()) DEFAULT else declared(PageSerializationMode.parse(value.text), PROPERTY)
             }
 
         private fun declared(mode: PageSerializationMode, source: String): PageSerialization =
@@ -73,21 +81,66 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
 
         private fun webSupportDeclaredIn(module: Module): List<PsiClass> {
             val production = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module, false)
-            val annotation = JavaPsiFacade.getInstance(module.project).findClass(ENABLE_WEB_SUPPORT, production)
-                ?: return emptyList()
+            JavaPsiFacade.getInstance(module.project).findClass(ENABLE_WEB_SUPPORT, production) ?: return emptyList()
             val projectSources = production.intersectWith(ProjectScope.getProjectScope(module.project))
-            return AnnotatedElementsSearch.searchPsiClasses(annotation, projectSources)
-                .filter { it.qualifiedName != null }
+            return MetaAnnotationUtil.getAnnotationTypesWithChildren(module, ENABLE_WEB_SUPPORT, false)
+                .flatMap { AnnotatedElementsSearch.searchPsiClasses(it, projectSources) }
+                .filter { !it.isAnnotationType && it.qualifiedName != null }
+                .distinctBy { it.qualifiedName }
                 .sortedBy { it.qualifiedName }
         }
 
-        private fun modeDeclaredBy(psiClass: PsiClass): PageSerializationMode {
-            val annotation = psiClass.toUElementOfType<UClass>()?.findAnnotation(ENABLE_WEB_SUPPORT)
+        private fun modeDeclaredBy(psiClass: PsiClass, webSupport: MetaAnnotationsHolder): PageSerializationMode {
+            val annotation = psiClass.toUElementOfType<UClass>()?.uAnnotations?.firstOrNull(webSupport::contains)
                 ?: return PageSerializationMode.UNKNOWN
-            val value = annotation.findDeclaredAttributeValue(MODE_ATTRIBUTE) ?: return PageSerializationMode.DIRECT
-            val constant = (value as? UResolvable)?.resolve() as? PsiEnumConstant
+            if (leavesTheModeToAnUnreadableDefault(annotation, webSupport)) return PageSerializationMode.UNKNOWN
+            val values = webSupport.getAnnotationMemberValues(annotation, setOf(MODE_ATTRIBUTE))
+            if (values.isEmpty()) return PageSerializationMode.DIRECT
+            val constant = (values.singleOrNull() as? UResolvable)?.resolve() as? PsiEnumConstant
             return constant?.name?.let(PageSerializationMode::parse) ?: PageSerializationMode.UNKNOWN
         }
+
+        private fun leavesTheModeToAnUnreadableDefault(
+            annotation: UAnnotation,
+            webSupport: MetaAnnotationsHolder,
+        ): Boolean {
+            val fqn = annotation.qualifiedName ?: return false
+            val composed = annotationTypeOf(annotation, fqn) ?: return false
+            val setAttributes = annotation.attributeValues.mapTo(mutableSetOf()) { it.name ?: SpringProperties.VALUE }
+            return hidesTheModeOnThePath(composed, setAttributes, false, webSupport, emptySet())
+        }
+
+        private fun hidesTheModeOnThePath(
+            composed: PsiClass,
+            setAttributes: Set<String>,
+            modeSetAbove: Boolean,
+            webSupport: MetaAnnotationsHolder,
+            visited: Set<String>,
+        ): Boolean {
+            val fqn = composed.qualifiedName ?: return false
+            if (fqn == ENABLE_WEB_SUPPORT || fqn in visited) return false
+            if (declaresAConventionModeAttribute(composed)) return true
+            val modeAliases = composed.methods.map { it.name }.filter { name ->
+                webSupport.isAttributeRelatedWith(fqn, name, ENABLE_WEB_SUPPORT, setOf(MODE_ATTRIBUTE))
+            }
+            val modeSet = modeSetAbove || modeAliases.any { it in setAttributes }
+            if (modeAliases.isNotEmpty() && !modeSet) return true
+            return composed.annotations.filter(webSupport::contains).any { meta ->
+                val metaType = meta.resolveUAnnotationType() ?: return@any false
+                val metaSetAttributes = meta.parameterList.attributes
+                    .mapTo(mutableSetOf()) { it.name ?: SpringProperties.VALUE }
+                hidesTheModeOnThePath(metaType, metaSetAttributes, modeSet, webSupport, visited + fqn)
+            }
+        }
+
+        private fun declaresAConventionModeAttribute(composed: PsiClass): Boolean =
+            composed.findMethodsByName(MODE_ATTRIBUTE, false).any { !it.hasAnnotation(SpringCoreClasses.ALIAS_FOR) }
+
+        private fun annotationTypeOf(annotation: UAnnotation, fqn: String): PsiClass? =
+            annotation.javaPsi?.resolveUAnnotationType()
+                ?: annotation.sourcePsi?.let {
+                    JavaPsiFacade.getInstance(it.project).findClass(fqn, GlobalSearchScope.allScope(it.project))
+                }
     }
 }
 
@@ -105,4 +158,10 @@ internal enum class PageSerializationMode {
 }
 
 /** The JSON a Spring Data page or slice is written as. */
-internal enum class PageWireShape { PAGE_DIRECT, PAGED_MODEL, SLICE_DIRECT }
+internal enum class PageWireShape {
+    PAGE_DIRECT, PAGED_MODEL, SLICE_DIRECT;
+
+    companion object {
+        const val DECLARED_TYPE = "DECLARED_TYPE"
+    }
+}
