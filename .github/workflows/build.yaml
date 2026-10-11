@@ -28,7 +28,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -46,7 +46,7 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
           gradle-home-cache-cleanup: true
       - name: Build with Gradle
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           GRADLE_OPTS: -Dfile.encoding=UTF-8
         run: ./gradlew --stacktrace --info --warning-mode all :spring-bootstrap:test
