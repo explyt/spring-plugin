@@ -11,6 +11,7 @@ import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtBinaryExpression
@@ -544,7 +545,29 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
     fun testOneArgumentPathPredicateIsNotARoute() {
         addRouterConfig("""path("/a").nest { GET("/b", handler::handle) }""")
         assertCallsResolveTo("path", CO_ROUTER_DSL)
+        val pathPredicate = callsInFixture().single { it.methodName == "path" }
+        assertEquals(1, pathPredicate.valueArgumentCount)
+        assertNull(RouterDslRoutes.requestMethodsOf(pathPredicate))
         assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testTwoArgumentPathCallOutsideTheDslIsNotARoute() {
+        addRouterConfig(
+            """
+            NonDsl.path("/x", handler::handle)
+            GET("/y", handler::handle)
+            """,
+            imports = "object NonDsl { fun path(pattern: String, handler: Any) {} }"
+        )
+        val call = nonDslPathCall()
+        val method = call.resolve()!!
+        assertEquals("NonDsl", method.containingClass?.qualifiedName)
+        assertEquals("void", method.returnType?.canonicalText)
+        assertEquals(2, call.valueArgumentCount)
+        assertEquals(2, method.parameterList.parametersCount)
+        assertEquals("java.lang.String", method.parameterList.parameters.first().type.canonicalText)
+        assertNull(RouterDslRoutes.requestMethodsOf(call))
+        assertEquals(listOf("/y" to "GET"), webFluxEndpoints())
     }
 
     fun testStringValueArgumentNestKeepsItsPrefix() {

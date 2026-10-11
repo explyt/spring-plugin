@@ -178,23 +178,58 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
 
         myFixture.doHighlighting()
 
-        val markers = myFixture.findAllGutters()
-            .filter { it.icon == SpringIcons.ReadAccess }
-            .filter { it.tooltipText == "Endpoint Actions" }
-            .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
-            .map { renderer ->
-                val endpointInfo = (renderer.lineMarkerInfo.navigationHandler as EndpointIconGutterHandler).endpointInfo
-                Triple(renderer.lineMarkerInfo.element?.text, endpointInfo.path, endpointInfo.requestMethods)
-            }
-            .sortedBy { it.second }
-
         assertEquals(
             listOf(
                 Triple("path", "/x", emptyList<String>()),
                 Triple("GET", "/y", listOf("GET"))
             ),
-            markers
+            endpointMarkers()
         )
     }
 
+    fun testTwoArgumentPathCallOutsideTheDslHasNoMarker() {
+        myFixture.configureByFiles("UserHandler.kt")
+        val file = myFixture.configureByText(
+            "UserRouter.kt", """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.coRouter
+
+            object NonDsl { fun path(pattern: String, handler: Any) {} }
+
+            @Configuration
+            class UserRouter(private val handler: UserHandler) {
+
+                @Bean
+                fun usersApi() = coRouter {
+                    NonDsl.path("/x", handler::getUserById)
+                    GET("/y", handler::getUserById)
+                }
+            }
+            """
+        )
+        val nonDslPath = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .single { it.calleeExpression?.text == "path" }
+            .toUElementOfType<UCallExpression>()!!
+        val method = nonDslPath.resolve()!!
+        assertEquals("NonDsl", method.containingClass?.qualifiedName)
+        assertEquals("void", method.returnType?.canonicalText)
+        assertEquals(2, nonDslPath.valueArgumentCount)
+        assertEquals(2, method.parameterList.parametersCount)
+        assertEquals("java.lang.String", method.parameterList.parameters.first().type.canonicalText)
+
+        myFixture.doHighlighting()
+
+        assertEquals(listOf(Triple("GET", "/y", listOf("GET"))), endpointMarkers())
+    }
+
+    private fun endpointMarkers(): List<Triple<String?, String, List<String>>> = myFixture.findAllGutters()
+        .filter { it.icon == SpringIcons.ReadAccess }
+        .filter { it.tooltipText == "Endpoint Actions" }
+        .mapNotNull { it as? LineMarkerGutterIconRenderer<*> }
+        .map { renderer ->
+            val endpointInfo = (renderer.lineMarkerInfo.navigationHandler as EndpointIconGutterHandler).endpointInfo
+            Triple(renderer.lineMarkerInfo.element?.text, endpointInfo.path, endpointInfo.requestMethods)
+        }
+        .sortedBy { it.second }
 }
