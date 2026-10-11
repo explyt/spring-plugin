@@ -106,6 +106,7 @@ private const val BEAN_PAGE_LIMIT = 8
 private const val BEAN_PAGE_MAX_CHARS = 1800
 private const val FIELD_BEANS = "beans"
 private const val FIELD_UNKNOWN_ORIGIN_COUNT = "unknownOriginCount"
+private const val FIELD_INACTIVE_LIBRARY_COUNT = "inactiveLibraryCount"
 private const val FIELD_LIMITATIONS = "limitations"
 private const val FIELD_CONDITION = "condition"
 
@@ -165,11 +166,13 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "declaration to read it from. Rows come PROJECT first, then LIBRARY, then those of unknown origin, " +
                 "each by beanName and className. Pass origin=PROJECT or origin=LIBRARY to keep one of them: rows " +
                 "of unknown origin are then left out and counted in 'unknownOriginCount', absent when none was. " +
-                "Beans excluded by a @Conditional (except @Profile, which is filtered earlier) are listed after all " +
-                "the others with 'condition': {state: INACTIVE, annotation, carrier, detail}; a bean whose condition " +
-                "cannot be decided keeps its place with 'condition': {state: UNDECIDED, reasons, annotation, " +
-                "carrier, detail}; the envelope's 'limitations' holds CONDITIONS_NOT_EVALUATED when condition " +
-                "evaluation is disabled, and is absent otherwise. " +
+                "Project beans excluded by a @Conditional (except @Profile, which is filtered earlier) are listed " +
+                "after all the others with 'condition': {state: INACTIVE, annotation, carrier, detail}; library " +
+                "beans excluded by a condition are only counted in 'inactiveLibraryCount', absent when none was, " +
+                "unless origin=LIBRARY is requested, which lists them after the active library rows. A bean whose " +
+                "condition cannot be decided keeps its place with 'condition': {state: UNDECIDED, reasons, " +
+                "annotation, carrier, detail}; the envelope's 'limitations' holds CONDITIONS_NOT_EVALUATED when " +
+                "condition evaluation is disabled, and is absent otherwise. " +
                 "A page holds at most 'limit' beans (8 by default) within 'maxChars' of compact JSON (1800 by " +
                 "default) and can end earlier, because the budget is measured on the finished document. When " +
                 "'truncated' is true, repeat the call with 'offset' = 'nextOffset' and 'expectedRevision' = " +
@@ -258,7 +261,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
             }
         }
         val ofType = listing.rows.filter { it.beanType == mcpBeanType }
-        val beans = ofType
+        val (inactiveLibrary, listable) = ofType.partition {
+            originFilter == null && it.inactive && it.origin == BeanOrigin.LIBRARY
+        }
+        val beans = listable
             .filter { originFilter == null || it.origin == originFilter }
             .sortedWith(BEAN_LISTING_ORDER)
         val unknownOriginCount = if (originFilter == null) 0 else ofType.count { it.origin == null }
@@ -274,6 +280,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
         val envelope = mapper.createObjectNode()
         if (unknownOriginCount > 0) envelope.put(FIELD_UNKNOWN_ORIGIN_COUNT, unknownOriginCount)
+        if (inactiveLibrary.isNotEmpty()) envelope.put(FIELD_INACTIVE_LIBRARY_COUNT, inactiveLibrary.size)
         if (listing.limitations.isNotEmpty()) {
             envelope.putArray(FIELD_LIMITATIONS).apply { listing.limitations.forEach(::add) }
         }
