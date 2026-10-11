@@ -53,7 +53,10 @@ class AddEndpointToOpenApiIntentionFormatGuardTest : ExplytMultiModuleTestCase()
         val file = parseYaml(text)
         val pathItem = ((file.documents.single().topLevelValue as YAMLMapping).getKeyValueByKey("paths")!!.value as YAMLMapping)
             .getKeyValueByKey("/items")!!.value as YAMLMapping
-        assertEquals("createItem", pathItem.getKeyValueByKey("post")!!.valueText)
+        assertEquals(
+            "createItem",
+            (pathItem.getKeyValueByKey("post")!!.value as YAMLMapping).getKeyValueByKey("operationId")?.valueText
+        )
     }
 
     fun testFlowStyleEmptyYamlPathsIsNotChanged() {
