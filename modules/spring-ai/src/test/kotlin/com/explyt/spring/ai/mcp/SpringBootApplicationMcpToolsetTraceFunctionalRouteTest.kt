@@ -350,6 +350,18 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertUrlReferences(head, CATALOG_TEST_FILE, "/created", requests, "post().uri(\"/created\")")
     }
 
+    fun testAnyMethodPathRouteStartsAtItsHandlerAndNamesAllMethods() = runBlocking<Unit> {
+        val source = CATALOG_SOURCE.replace("GET(\"/co/items\", handler::list)", "path(\"/co/any\", handler::list)")
+        addSource(MAIN_ROOT, CATALOG_FILE, source)
+        assertRouteModelled("/co/any", "")
+
+        val head = traceAt(CATALOG_FILE, source, "path(\"/co/any\", handler::list)")["chain"][0]
+
+        assertEquals("CatalogHandler.list", nameOf(head))
+        assertEquals(listOf("CatalogService.list"), targetsOf(head))
+        assertEquals("ALL /co/any", head["route"]?.asText())
+    }
+
     fun testIteratedPathsListBothRequestsAndMarkTheFirstPath() = runBlocking<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",

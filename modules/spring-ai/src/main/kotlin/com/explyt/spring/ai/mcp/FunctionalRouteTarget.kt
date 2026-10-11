@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInspection.isInheritorOf
 import com.intellij.openapi.editor.Document
@@ -40,8 +41,11 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
     val startBody: UElement?
         get() = (this as? Lambda)?.lambda?.body
 
+    private val requestMethods: List<String>?
+        get() = RouterDslRoutes.requestMethodsOf(call)
+
     val verb: String?
-        get() = SpringWebUtil.getRequestMethod(call)
+        get() = requestMethods?.singleOrNull()
 
     val paths: List<String>
         get() = if (isNestedUnderUnresolvedPrefix()) emptyList()
@@ -49,9 +53,9 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
 
     val route: String?
         get() {
-            val verb = verb ?: return null
+            val method = requestMethods?.let(McpHttpMethods::listed)?.singleOrNull() ?: return null
             val path = paths.firstOrNull() ?: return null
-            return "$verb $path"
+            return "$method $path"
         }
 
     private fun isNestedUnderUnresolvedPrefix(): Boolean {
@@ -106,11 +110,14 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
                 .filter { leaf.textRange.startOffset >= nameStartOf(it) }
                 .firstNotNullOfOrNull(::fromCall)
 
+        private fun isRoute(call: UCallExpression): Boolean =
+            call.methodName in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS || RouterDslRoutes.requestMethodsOf(call) != null
+
         private fun nameStartOf(call: UCallExpression): Int =
             (call.methodIdentifier?.sourcePsi ?: call.sourcePsi)?.textRange?.startOffset ?: Int.MAX_VALUE
 
         private fun fromCall(call: UCallExpression): FunctionalRouteTarget? {
-            if (call.methodName !in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) return null
+            if (!isRoute(call)) return null
             val factory = call.getParentOfType<UMethod>()?.javaPsi ?: return null
             val returnType = factory.returnType ?: return null
             if (ROUTER_FUNCTIONS.none { returnType.isInheritorOf(it) }) return null

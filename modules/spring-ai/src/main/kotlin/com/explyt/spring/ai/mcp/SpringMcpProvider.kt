@@ -643,7 +643,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
 
         return CompactEndpointJson(
-            httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
+            httpMethods = McpHttpMethods.listed(endpoint.requestMethods),
             fullPath = endpoint.path,
             pathTemplate = endpoint.pathTemplate.takeIf { it != endpoint.path },
             controllerClass = controllerClass?.qualifiedName,
@@ -1426,7 +1426,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "a line belonging to no method is refused with the nearest method declarations in that file. " +
                 "A trace started at a functional route begins at its handler; for a lambda route the start node " +
                 "is the @Bean factory with only that route's calls; 'route' names the verb and path, such as " +
-                "'GET /items', when they are known. " +
+                "'GET /items', or 'ALL /items' for a route answering every method, when they are known. " +
                 "Returns {status, chainLimitReached, revision, totalCount, offset, truncated, nextOffset, chain}. " +
                 "'chain' holds the traced methods, the starting method first, each with an 'id', the Spring " +
                 "stereotype of its class in 'layer' (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; " +
