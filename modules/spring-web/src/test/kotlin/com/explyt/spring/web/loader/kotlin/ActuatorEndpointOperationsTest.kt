@@ -5,9 +5,12 @@
 
 package com.explyt.spring.web.loader.kotlin
 
+import com.explyt.spring.core.properties.references.ActuatorEndpointKeys
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.EndpointAccess
 import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.loader.EndpointExposure
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.view.EndpointsTreeData
@@ -23,7 +26,8 @@ import org.jetbrains.uast.toUElementOfType
 
 /**
  * What an Actuator endpoint answers, operation by operation: the verbs and paths its mapping methods declare when it
- * is a controller endpoint, the media types an operation produces, and no invented verb when it declares neither.
+ * is a controller endpoint, the media types an operation produces, the operations a web extension adds, and nothing
+ * at all for an endpoint Boot does not serve because it declares no operation.
  */
 class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
 
@@ -140,8 +144,8 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         )
     }
 
-    /** An endpoint declaring nothing it answers keeps its row, but no verb is invented for it. */
-    fun testEndpointWithoutOperationsHasNoInventedVerb() {
+    /** Boot discovers an endpoint only when it has an operation, so one declaring none answers 404 and is not listed. */
+    fun testEndpointWithoutOperationsIsNotListed() {
         myFixture.addFileToProject(
             "EmptyEndpoint.kt",
             """
@@ -151,16 +155,245 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
             class EmptyEndpoint
             """.trimIndent()
         )
+        assertAnnotationResolves(ENDPOINT)
+        assertDeclaredEndpoint("empty", "EmptyEndpoint")
 
-        val endpoint = endpointsOf("EmptyEndpoint").single()
-
-        assertEquals("/actuator/empty", endpoint.path)
-        assertEquals(emptyList<String>(), endpoint.requestMethods)
+        assertNotListed("/actuator/empty")
         assertFalse(
             "no element names its endpoint type as a verb",
             allActuatorEndpoints().any { EndpointType.ACTUATOR.name in it.requestMethods }
         )
-        assertEquals("the tool window keeps one unnamed row for it", listOf(""), EndpointsTreeData.rowVerbsOf(endpoint))
+    }
+
+    fun testWebEndpointWithoutOperationsIsNotListed() {
+        myFixture.addFileToProject(
+            "EmptyWebEndpoint.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint
+
+            @WebEndpoint(id = "web")
+            class EmptyWebEndpoint
+            """.trimIndent()
+        )
+        assertAnnotationResolves(WEB_ENDPOINT)
+        assertDeclaredEndpoint("web", "EmptyWebEndpoint")
+
+        assertNotListed("/actuator/web")
+    }
+
+    /** Boot serves the operations an `@EndpointWebExtension` bean declares under the id of the endpoint it extends. */
+    fun testKotlinWebExtensionOperationIsListedUnderItsEndpoint() {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject(
+            "ExtEndpoint.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension
+            import org.springframework.stereotype.Component
+
+            @Endpoint(id = "ext")
+            @Component
+            class ExtEndpoint
+
+            @EndpointWebExtension(endpoint = ExtEndpoint::class)
+            @Component
+            class ExtWebExtension {
+                @ReadOperation
+                fun read(): String = "x"
+            }
+            """.trimIndent()
+        )
+
+        assertWebExtensionReadIsListed()
+    }
+
+    fun testJavaWebExtensionOperationIsListedUnderItsEndpoint() {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject(
+            "ExtEndpoint.java",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+            import org.springframework.stereotype.Component;
+
+            @Endpoint(id = "ext")
+            @Component
+            public class ExtEndpoint {
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "ExtWebExtension.java",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension;
+            import org.springframework.stereotype.Component;
+
+            @EndpointWebExtension(endpoint = ExtEndpoint.class)
+            @Component
+            public class ExtWebExtension {
+                @ReadOperation
+                public String read() { return "x"; }
+            }
+            """.trimIndent()
+        )
+
+        assertWebExtensionReadIsListed()
+    }
+
+    fun testWebExtensionOperationJoinsTheEndpointOwnOperations() {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject(
+            "MixEndpoint.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.boot.actuate.endpoint.annotation.WriteOperation
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension
+            import org.springframework.stereotype.Component
+
+            @Endpoint(id = "mix")
+            @Component
+            class MixEndpoint {
+                @ReadOperation
+                fun read(): String = "x"
+            }
+
+            @EndpointWebExtension(endpoint = MixEndpoint::class)
+            @Component
+            class MixWebExtension {
+                @WriteOperation
+                fun write(value: String) {}
+            }
+            """.trimIndent()
+        )
+        assertAnnotationResolves(ENDPOINT_WEB_EXTENSION)
+        assertDeclaredEndpoint("mix", "MixEndpoint")
+        assertWebExtensionOf("MixWebExtension")
+
+        val elements = allActuatorEndpoints().filter { it.path == "/actuator/mix" }
+
+        assertEquals(
+            listOf(
+                Triple(listOf("GET"), "MixEndpoint", "read"),
+                Triple(listOf("POST"), "MixWebExtension", "write"),
+            ),
+            elements.map {
+                val method = it.psiElement as? PsiMethod
+                Triple(it.requestMethods, method?.containingClass?.name, method?.name)
+            }.sortedBy { it.first.joinToString() }
+        )
+    }
+
+    /** A servlet endpoint has no operation yet Boot serves it, so it stays listed. */
+    fun testServletEndpointStaysListed() {
+        myFixture.addFileToProject(
+            "SrvEndpoint.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.web.EndpointServlet
+            import org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpoint
+            import java.util.function.Supplier
+
+            @Suppress("DEPRECATION", "removal")
+            @ServletEndpoint(id = "srv")
+            class SrvEndpoint : Supplier<EndpointServlet> {
+                override fun get(): EndpointServlet = TODO()
+            }
+            """.trimIndent()
+        )
+        assertAnnotationResolves(SERVLET_ENDPOINT)
+        assertDeclaredEndpoint("srv", "SrvEndpoint")
+
+        val endpoint = allActuatorEndpoints().single { it.path == "/actuator/srv" }
+
+        assertEquals("SrvEndpoint", endpoint.containingClass?.name)
+        assertEquals(emptyList<String>(), endpoint.requestMethods)
+    }
+
+    fun testEndpointWithAReadOperationIsListedAsGet() {
+        myFixture.addFileToProject(
+            "PlainEndpoint.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+
+            @Endpoint(id = "plain")
+            class PlainEndpoint {
+                @ReadOperation
+                fun read(): String = "x"
+            }
+            """.trimIndent()
+        )
+        assertDeclaredEndpoint("plain", "PlainEndpoint")
+
+        val endpoint = allActuatorEndpoints().single { it.path == "/actuator/plain" }
+
+        assertEquals(listOf("GET"), endpoint.requestMethods)
+        assertEquals("read", (endpoint.psiElement as? PsiMethod)?.name)
+    }
+
+    private fun assertWebExtensionReadIsListed() {
+        myFixture.addFileToProject(
+            "application.properties",
+            """
+            management.endpoints.web.exposure.include=ext
+            management.endpoint.ext.access=read-only
+            """.trimIndent()
+        )
+        assertAnnotationResolves(ENDPOINT_WEB_EXTENSION)
+        assertDeclaredEndpoint("ext", "ExtEndpoint")
+        assertWebExtensionOf("ExtWebExtension")
+
+        val elements = allActuatorEndpoints().filter { it.path == "/actuator/ext" }
+
+        assertEquals(
+            listOf(Triple(listOf("GET"), "ExtWebExtension", "read")),
+            elements.map {
+                val method = it.psiElement as? PsiMethod
+                Triple(it.requestMethods, method?.containingClass?.name, method?.name)
+            }
+        )
+        val element = elements.single()
+        assertEquals(EndpointExposure.EXPOSED, element.exposure)
+        assertEquals(EndpointAccess.READ_ONLY, element.access)
+    }
+
+    private fun assertAnnotationResolves(fqn: String) {
+        assertNotNull(
+            "precondition: $fqn is on the classpath",
+            JavaPsiFacade.getInstance(project).findClass(fqn, module.getModuleWithDependenciesAndLibrariesScope(false))
+        )
+    }
+
+    private fun assertDeclaredEndpoint(id: String, className: String) {
+        assertEquals(
+            "precondition: the loader discovers $className under id '$id'",
+            listOf(className),
+            ActuatorEndpointKeys.endpointsById(module)[id].orEmpty().map { it.psiClass.name }
+        )
+    }
+
+    private fun assertWebExtensionOf(className: String) {
+        val extension = JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.projectScope(project))
+        assertNotNull("precondition: $className is in the project", extension)
+        assertNotNull(
+            "precondition: $className carries a resolved @EndpointWebExtension",
+            extension!!.getAnnotation(ENDPOINT_WEB_EXTENSION)
+        )
+    }
+
+    private fun assertNotListed(path: String) {
+        val endpoints = allActuatorEndpoints()
+        assertEquals(
+            "no element at $path",
+            emptyList<String>(),
+            endpoints.filter { it.path == path }.map { "${it.requestMethods} ${it.path}" }
+        )
+        assertEquals(
+            "no tool-window row at $path",
+            emptyList<String>(),
+            endpoints.flatMap { EndpointsTreeData.rowsOf(it) }.filter { it.path == path }.map { "${it.method} ${it.path}" }
+        )
     }
 
     fun testHealthAllRemainingSelectorDeclaresACaptureRestPath() {
@@ -288,4 +521,11 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
             .filter { it.isApplicable(module) }
             .flatMap { it.searchEndpoints(module) }
             .toList()
+
+    private companion object {
+        const val ENDPOINT = "org.springframework.boot.actuate.endpoint.annotation.Endpoint"
+        const val WEB_ENDPOINT = "org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint"
+        const val SERVLET_ENDPOINT = "org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpoint"
+        const val ENDPOINT_WEB_EXTENSION = "org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension"
+    }
 }
