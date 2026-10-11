@@ -1121,9 +1121,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "with 'wireShape' PAGE_DIRECT (PageImpl's getters), PAGED_MODEL ('content' and 'page', under " +
                 "pageSerializationMode VIA_DTO, which also re-wraps a project subclass of PageImpl; otherwise such " +
                 "a subclass is PAGE_DIRECT under its own class name, with its own getters after the page keys) or " +
-                "SLICE_DIRECT, " +
+                "SLICE_DIRECT, a declared PagedModel is PAGED_MODEL whatever the mode, " +
                 "'wireShapeSource' naming where the page mode was " +
-                "read - DEFAULT, @EnableSpringDataWebSupport on its class, or " +
+                "read - DECLARED_TYPE for a declared PagedModel, DEFAULT, @EnableSpringDataWebSupport on its class, or " +
                 "spring.data.web.pageable.serialization-mode on a servlet application - or UNKNOWN with the " +
                 "PAGE_DIRECT shape when the property is unresolvable or the annotation is on a reactive " +
                 "application, and 'wireShapeAssumed': true when a declared Page or Slice is taken for " +
