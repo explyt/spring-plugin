@@ -9,6 +9,8 @@ import com.explyt.spring.ai.mcp.beans.BeanOrigin
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.messaging.MessageMappingEndpointLoader
 import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.service.beans.BeanConditionRecord
+import com.explyt.spring.core.service.beans.BeanConditionState
 import com.explyt.spring.core.service.beans.BeanSourcePreference
 import com.explyt.spring.core.service.beans.ScopedBeanRecord
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
@@ -51,11 +53,14 @@ class McpBeanSearchService(private val project: Project) {
             contextId = snapshot.selection.nativeContext?.id,
             snapshotImportedAt = snapshot.selection.nativeContext?.importedAt?.let { Instant.ofEpochMilli(it).toString() }
         )
-        val rows = snapshot.records.asSequence()
+        val rows = (snapshot.records.asSequence() + snapshot.inactiveRecords.asSequence())
             .onEach { ProgressManager.checkCanceled() }
             .flatMap { record -> record.rows(mappingClasses, provenance) }
             .toList()
-        return BeanListing(snapshot.modelStamp, rows)
+        val limitations = snapshot.selection.limitations
+            .filter { it == BeanConditionRecord.CONDITIONS_NOT_EVALUATED }
+            .sorted()
+        return BeanListing(snapshot.modelStamp, rows, limitations)
     }
 
     /**
@@ -86,7 +91,8 @@ class McpBeanSearchService(private val project: Project) {
             .map {
                 SpringBean(
                     it, className, type, module,
-                    provenance.source, provenance.contextId, provenance.snapshotImportedAt, rowLimitations, origin
+                    provenance.source, provenance.contextId, provenance.snapshotImportedAt, rowLimitations, origin,
+                    condition
                 )
             }
     }
@@ -165,9 +171,12 @@ data class SpringBean(
     val snapshotImportedAt: String?,
     val limitations: List<String>,
     val origin: BeanOrigin?,
-)
+    val condition: BeanConditionRecord? = null,
+) {
+    val inactive: Boolean get() = condition?.state == BeanConditionState.INACTIVE
+}
 
-data class BeanListing(val modelStamp: String, val rows: List<SpringBean>)
+data class BeanListing(val modelStamp: String, val rows: List<SpringBean>, val limitations: List<String> = emptyList())
 
 enum class McpBeanTypes {
     ASPECT,
