@@ -332,6 +332,181 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         assertEquals("read", (endpoint.psiElement as? PsiMethod)?.name)
     }
 
+    /** Boot keys an operation by its request predicate, so an extension operation with the same one replaces it. */
+    fun testWebExtensionOperationReplacesTheEndpointOperationWithTheSamePredicate() {
+        addExtendedEndpoint(
+            endpointBody = "@ReadOperation fun read(): String = \"endpoint\"",
+            extensionBody = "@ReadOperation fun read(): String = \"extension\"",
+        )
+
+        assertEquals(
+            listOf(Triple(listOf("GET"), "XWebExtension", "read")),
+            operationsAt("/actuator/x")
+        )
+    }
+
+    fun testJavaWebExtensionOperationReplacesTheEndpointOperationWithTheSamePredicate() {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject(
+            "XEndpoint.java",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.stereotype.Component;
+
+            @Endpoint(id = "x")
+            @Component
+            public class XEndpoint {
+                @ReadOperation
+                public String read() { return "endpoint"; }
+            }
+            """.trimIndent()
+        )
+        myFixture.addFileToProject(
+            "XWebExtension.java",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension;
+            import org.springframework.stereotype.Component;
+
+            @EndpointWebExtension(endpoint = XEndpoint.class)
+            @Component
+            public class XWebExtension {
+                @ReadOperation
+                public String read() { return "extension"; }
+            }
+            """.trimIndent()
+        )
+        assertExtendedEndpointPreconditions()
+
+        assertEquals(
+            listOf(Triple(listOf("GET"), "XWebExtension", "read")),
+            operationsAt("/actuator/x")
+        )
+    }
+
+    /** A non-selector parameter is a query parameter, so the predicate and the replaced operation stay the same. */
+    fun testWebExtensionOperationWithAnotherSignatureReplacesTheSamePredicate() {
+        addExtendedEndpoint(
+            endpointBody = "@ReadOperation fun read(): String = \"endpoint\"",
+            extensionBody = "@ReadOperation fun read(filter: String?): String = filter.orEmpty()",
+        )
+
+        assertEquals(
+            listOf(Triple(listOf("GET"), "XWebExtension", "read")),
+            operationsAt("/actuator/x")
+        )
+        val extensionRead = allActuatorEndpoints().single { it.path == "/actuator/x" }.psiElement as PsiMethod
+        assertEquals(listOf("filter"), extensionRead.parameterList.parameters.map { it.name })
+    }
+
+    fun testWebExtensionRootOperationKeepsTheEndpointSelectorOperation() {
+        addExtendedEndpoint(
+            endpointBody = "@ReadOperation fun read(@Selector name: String): String = name",
+            extensionBody = "@ReadOperation fun read(): String = \"extension\"",
+        )
+
+        assertEquals(
+            listOf(
+                Triple("/actuator/x", listOf("GET"), "XWebExtension"),
+                Triple("/actuator/x/{name}", listOf("GET"), "XEndpoint"),
+            ),
+            allActuatorEndpoints().filter { it.path.startsWith("/actuator/x") }
+                .map { Triple(it.path, it.requestMethods, (it.psiElement as? PsiMethod)?.containingClass?.name) }
+                .sortedBy { it.first }
+        )
+    }
+
+    fun testWebExtensionOperationWithOtherProducesJoinsTheEndpointOperation() {
+        addExtendedEndpoint(
+            endpointBody = "@ReadOperation(produces = [\"text/plain\"]) fun read(): String = \"endpoint\"",
+            extensionBody = "@ReadOperation(produces = [\"application/json\"]) fun read(): String = \"extension\"",
+        )
+
+        assertEquals(
+            listOf(
+                Triple(listOf("GET"), listOf("application/json"), "XWebExtension"),
+                Triple(listOf("GET"), listOf("text/plain"), "XEndpoint"),
+            ),
+            allActuatorEndpoints().filter { it.path == "/actuator/x" }
+                .map { Triple(it.requestMethods, it.produces, (it.psiElement as? PsiMethod)?.containingClass?.name) }
+                .sortedBy { it.second.joinToString() }
+        )
+    }
+
+    fun testProjectWebExtensionOfABuiltInEndpointReplacesItsOperation() {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject(
+            "CustomInfoWebExtension.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension
+            import org.springframework.boot.actuate.info.InfoEndpoint
+            import org.springframework.stereotype.Component
+
+            @EndpointWebExtension(endpoint = InfoEndpoint::class)
+            @Component
+            class CustomInfoWebExtension {
+                @ReadOperation
+                fun info(): Map<String, Any> = emptyMap()
+            }
+            """.trimIndent()
+        )
+        assertAnnotationResolves(ENDPOINT_WEB_EXTENSION)
+        assertAnnotationResolves(INFO_ENDPOINT)
+        assertEquals(
+            "precondition: the loader discovers the built-in InfoEndpoint under id 'info'",
+            listOf(INFO_ENDPOINT),
+            ActuatorEndpointKeys.libraryEndpointsById(module)["info"].orEmpty().map { it.psiClass.qualifiedName }
+        )
+        assertWebExtensionOf("CustomInfoWebExtension")
+
+        assertEquals(
+            listOf(Triple(listOf("GET"), "CustomInfoWebExtension", "info")),
+            operationsAt("/actuator/info")
+        )
+    }
+
+    private fun addExtendedEndpoint(endpointBody: String, extensionBody: String) {
+        myFixture.addFileToProject("DemoApplication.kt", APPLICATION)
+        myFixture.addFileToProject(
+            "XEndpoint.kt",
+            """
+            import org.springframework.boot.actuate.endpoint.annotation.Endpoint
+            import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
+            import org.springframework.boot.actuate.endpoint.annotation.Selector
+            import org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension
+            import org.springframework.stereotype.Component
+
+            @Endpoint(id = "x")
+            @Component
+            class XEndpoint {
+                $endpointBody
+            }
+
+            @EndpointWebExtension(endpoint = XEndpoint::class)
+            @Component
+            class XWebExtension {
+                $extensionBody
+            }
+            """.trimIndent()
+        )
+        assertExtendedEndpointPreconditions()
+    }
+
+    private fun assertExtendedEndpointPreconditions() {
+        assertAnnotationResolves(ENDPOINT)
+        assertAnnotationResolves(ENDPOINT_WEB_EXTENSION)
+        assertDeclaredEndpoint("x", "XEndpoint")
+        assertWebExtensionOf("XWebExtension")
+    }
+
+    private fun operationsAt(path: String): List<Triple<List<String>, String?, String?>> =
+        allActuatorEndpoints().filter { it.path == path }.map {
+            val method = it.psiElement as? PsiMethod
+            Triple(it.requestMethods, method?.containingClass?.name, method?.name)
+        }
+
     private fun assertWebExtensionReadIsListed() {
         myFixture.addFileToProject(
             "application.properties",
@@ -527,5 +702,6 @@ class ActuatorEndpointOperationsTest : ExplytKotlinLightTestCase() {
         const val WEB_ENDPOINT = "org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint"
         const val SERVLET_ENDPOINT = "org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpoint"
         const val ENDPOINT_WEB_EXTENSION = "org.springframework.boot.actuate.endpoint.web.annotation.EndpointWebExtension"
+        const val INFO_ENDPOINT = "org.springframework.boot.actuate.info.InfoEndpoint"
     }
 }
