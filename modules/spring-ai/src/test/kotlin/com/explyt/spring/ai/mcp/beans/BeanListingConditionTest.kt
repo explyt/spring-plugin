@@ -7,17 +7,24 @@ package com.explyt.spring.ai.mcp.beans
 
 import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.explyt.spring.ai.mcp.SpringBootApplicationMcpToolset
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.core.service.SpringSearchService
+import com.explyt.spring.core.service.SpringSearchServiceFacade
+import com.explyt.spring.core.service.beans.BeanConditionState
+import com.explyt.spring.core.service.beans.BeanSourcePreference
+import com.explyt.spring.core.service.beans.ScopedBeanRecord
 import com.explyt.spring.core.service.conditional.ConditionReason
 import com.explyt.spring.core.service.conditional.ConditionVerdict
 import com.explyt.spring.core.tracker.ModificationTrackerManager
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.IndexingTestUtil
@@ -286,10 +293,121 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
             assertEquals(listOf(ALPHA, SYNC_ADMIN, ZULU), projectBeanNames(beans))
             assertTrue("no verdict without evaluation, got $beans", beans.none { it.has("condition") })
             assertEquals(listOf("CONDITIONS_NOT_EVALUATED"), page["limitations"]?.map { it.asText() })
+            assertFalse("nothing is excluded without evaluation, got $page", page.has(INACTIVE_LIBRARY_COUNT))
         } finally {
             settings.isBeanFilterEnabled = enabled
             ModificationTrackerManager.getInstance(project).invalidateAll()
         }
+    }
+
+    fun testInactiveLibraryBeansAreCountedInsteadOfListedByDefault() = runBlocking<Unit> {
+        addProperties("admin.marker=present")
+        addActiveControllers()
+        addSyncAdminController()
+        assertVerdict<ConditionVerdict.Inactive>(SYNC_ADMIN_CONTROLLER)
+        val inactiveLibrary = inactiveLibraryRowNames(SpringCoreClasses.CONTROLLER)
+        assertTrue("Precondition: the model excludes library controllers by a condition", inactiveLibrary.isNotEmpty())
+
+        val page = listing(limit = BoundedPageWriter.MAX_LIMIT, maxChars = BoundedPageWriter.MAX_CHARS)
+
+        val beans = completeRows(page)
+        assertTrue(
+            "an inactive library bean is not listed by default, got $beans",
+            beans.none { it["origin"]?.asText() == LIBRARY && stateOf(it) == INACTIVE }
+        )
+        assertEquals(
+            "inactiveLibraryCount counts the library beans left out, got $page",
+            inactiveLibrary.size, page[INACTIVE_LIBRARY_COUNT]?.asInt()
+        )
+        assertEquals("totalCount counts the listed rows only, got $page", beans.size, page["totalCount"].asInt())
+        assertEquals("the inactive project row is still listed last, got $beans", SYNC_ADMIN, beans.last()["beanName"].asText())
+        assertEquals(INACTIVE, stateOf(beans.last()))
+        assertEquals(listOf(SYNC_ADMIN), beans.filter { stateOf(it) == INACTIVE }.map { it["beanName"].asText() })
+    }
+
+    fun testLibraryOriginListsInactiveLibraryBeansAfterTheActiveOnes() = runBlocking<Unit> {
+        addProperties("admin.marker=present")
+        addActiveControllers()
+        addSyncAdminController()
+        val inactiveLibrary = inactiveLibraryRowNames(SpringCoreClasses.CONTROLLER)
+        assertTrue("Precondition: the model excludes library controllers by a condition", inactiveLibrary.isNotEmpty())
+
+        val page = listing(origin = LIBRARY, limit = BoundedPageWriter.MAX_LIMIT, maxChars = BoundedPageWriter.MAX_CHARS)
+
+        val beans = completeRows(page)
+        assertTrue(beans.all { it["origin"].asText() == LIBRARY })
+        val active = beans.takeWhile { stateOf(it) != INACTIVE }
+        val inactive = beans.drop(active.size)
+        assertTrue("Precondition: the fixture has active library controllers, got $beans", active.isNotEmpty())
+        assertTrue("inactive library rows follow every active one, got $beans", inactive.all { stateOf(it) == INACTIVE })
+        assertEquals("origin=LIBRARY lists every inactive library bean, got $beans", inactiveLibrary, inactive.map { it["beanName"].asText() }.sorted())
+        assertEquals("inactive rows keep the origin/name order", inactive.sortedWith(LISTING_ORDER).map(::rowKey), inactive.map(::rowKey))
+        assertTrue(
+            "each inactive row names its condition, got $inactive",
+            inactive.all { conditionOf(it)["annotation"].asText().isNotBlank() && conditionOf(it)["carrier"].asText().isNotBlank() }
+        )
+        assertEquals(beans.size, page["totalCount"].asInt())
+        assertFalse("listed library rows are not counted again, got $page", page.has(INACTIVE_LIBRARY_COUNT))
+    }
+
+    fun testProjectOriginCarriesNoInactiveLibraryCount() = runBlocking<Unit> {
+        addProperties("admin.marker=present")
+        addActiveControllers()
+        addSyncAdminController()
+        assertTrue(
+            "Precondition: the model excludes library controllers by a condition",
+            inactiveLibraryRowNames(SpringCoreClasses.CONTROLLER).isNotEmpty()
+        )
+
+        val page = listing(origin = PROJECT)
+
+        val beans = completeRows(page)
+        assertEquals(listOf(ALPHA, ZULU, SYNC_ADMIN), beans.map { it["beanName"].asText() })
+        assertFalse("a PROJECT listing has no library rows to count, got $page", page.has(INACTIVE_LIBRARY_COUNT))
+    }
+
+    fun testComponentListingIsNotFloodedByInactiveLibraryBeans() = runBlocking<Unit> {
+        copyBeanQueryFixture()
+        assertTrue(
+            "Precondition: the model excludes library beans by a condition",
+            inactiveRecords().any { BeanOrigin.of(it.declaration) == BeanOrigin.LIBRARY }
+        )
+        val (projectPage, projectRows) = everyRow(COMPONENT, PROJECT)
+        val libraryRows = everyRow(COMPONENT, LIBRARY).second
+        val inactiveLibrary = libraryRows.count { stateOf(it) == INACTIVE }
+        assertTrue("Precondition: origin=LIBRARY lists inactive library components", inactiveLibrary > 0)
+        val unknownOrigin = projectPage["unknownOriginCount"]?.asInt() ?: 0
+        val expected = projectRows.size + libraryRows.size - inactiveLibrary + unknownOrigin
+
+        val (page, beans) = everyRow(COMPONENT, null)
+
+        assertEquals(
+            "the default listing holds the active rows and the inactive project rows only",
+            expected, page["totalCount"].asInt()
+        )
+        assertEquals(inactiveLibrary, page[INACTIVE_LIBRARY_COUNT]?.asInt())
+        assertTrue(beans.none { it["origin"]?.asText() == LIBRARY && stateOf(it) == INACTIVE })
+    }
+
+    fun testDefaultPageWithAnInactiveLibraryCountFitsTheClientBudget() = runBlocking<Unit> {
+        addProperties("admin.marker=present")
+        addActiveControllers()
+        addSyncAdminController()
+        val inactiveLibrary = inactiveLibraryRowNames(SpringCoreClasses.CONTROLLER)
+        assertTrue("Precondition: the model excludes library controllers by a condition", inactiveLibrary.isNotEmpty())
+
+        val json = listingToolset.applicationBeans(
+            applicationClassName = APPLICATION,
+            projectPath = project.basePath,
+            beanType = CONTROLLER,
+            source = "STATIC",
+        )
+        val page = mapper.readTree(json)
+
+        assertEquals("answer was $json", "OK", page["status"].asText())
+        assertEquals("answer was $json", inactiveLibrary.size, page[INACTIVE_LIBRARY_COUNT]?.asInt())
+        assertTrue("payload was ${json.length} chars", json.length <= DEFAULT_MAX_CHARS)
+        assertTrue("MCP-wrapped payload was ${wrappedLength(json)} chars", wrappedLength(json) <= MAX_CLIENT_PAYLOAD)
     }
 
     fun testNativeRowsCarryNoStaticCondition() = runBlocking<Unit> {
@@ -324,6 +442,50 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
                 """
             )
         }
+    }
+
+    private fun copyBeanQueryFixture() {
+        listOf("TimeConfig", "ClockConsumer").forEach { name ->
+            myFixture.copyFileToProject("mcp/beanQuery/com/explyt/demo/$name.java", "com/explyt/demo/$name.java")
+        }
+        settle()
+    }
+
+    private fun inactiveRecords(): List<ScopedBeanRecord> {
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+        val snapshot = SpringSearchServiceFacade.getInstance(project)
+            .getBeanSnapshot(myFixture.findClass(APPLICATION), BeanSourcePreference.STATIC)
+        assertTrue(
+            "Precondition: every inactive record is INACTIVE",
+            snapshot.inactiveRecords.all { it.condition?.state == BeanConditionState.INACTIVE }
+        )
+        return snapshot.inactiveRecords
+    }
+
+    private fun inactiveLibraryRowNames(stereotype: String): List<String> =
+        inactiveRecords()
+            .filter { BeanOrigin.of(it.declaration) == BeanOrigin.LIBRARY }
+            .filter { (it.declaredType as? PsiClassType)?.resolve()?.isMetaAnnotatedBy(stereotype) == true }
+            .flatMap { record -> record.knownNames.ifEmpty { setOf(record.name) } }
+            .sorted()
+
+    private suspend fun everyRow(beanType: String, origin: String?): Pair<JsonNode, List<JsonNode>> {
+        val first = listing(beanType = beanType, origin = origin, limit = BoundedPageWriter.MAX_LIMIT, maxChars = BoundedPageWriter.MAX_CHARS)
+        val served = rows(first).toMutableList()
+        var page = first
+        while (page["truncated"].asBoolean()) {
+            page = listing(
+                beanType = beanType,
+                origin = origin,
+                offset = page["nextOffset"].asInt(),
+                limit = BoundedPageWriter.MAX_LIMIT,
+                maxChars = BoundedPageWriter.MAX_CHARS,
+                expectedRevision = first["revision"].asText()
+            )
+            served += rows(page)
+        }
+        assertEquals("every page together serves totalCount rows", first["totalCount"].asInt(), served.size)
+        return first to served
     }
 
     private fun addSyncAdminController() = addJava(
@@ -481,13 +643,15 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         const val CONTROLLER = "CONTROLLER"
         const val COMPONENT = "COMPONENT"
         const val PROJECT = "PROJECT"
+        const val LIBRARY = "LIBRARY"
         const val INACTIVE = "INACTIVE"
+        const val INACTIVE_LIBRARY_COUNT = "inactiveLibraryCount"
         const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
         const val DEFAULT_LIMIT = 8
         const val DEFAULT_MAX_CHARS = 1800
         const val MAX_CLIENT_PAYLOAD = 2000
         val INACTIVE_CONTROLLERS = listOf("BatchController", "ExportController", "ImportController")
-        val ORIGIN_ORDER = listOf(PROJECT, "LIBRARY", null)
+        val ORIGIN_ORDER = listOf(PROJECT, LIBRARY, null)
         val LISTING_ORDER: Comparator<JsonNode> = compareBy(
             { ORIGIN_ORDER.indexOf(it["origin"]?.asText()) },
             { it["beanName"].asText() },
