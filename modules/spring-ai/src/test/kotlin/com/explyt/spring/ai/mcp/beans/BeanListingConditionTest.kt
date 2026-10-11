@@ -73,6 +73,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         assertEquals("active rows keep the origin/name order", active.sortedWith(LISTING_ORDER).map(::rowKey), active.map(::rowKey))
         assertEquals("inactive rows keep the origin/name order", excluded.sortedWith(LISTING_ORDER).map(::rowKey), excluded.map(::rowKey))
         assertEquals(listOf(ALPHA, ZULU, SYNC_ADMIN), projectBeanNames(beans))
+        assertFalse("evaluated conditions add no envelope limitation, got $page", page.has("limitations"))
 
         val condition = conditionOf(inactive!!)
         assertEquals(setOf("state", "annotation", "carrier", "detail"), keysOf(condition))
@@ -284,6 +285,7 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
             val beans = completeRows(page)
             assertEquals(listOf(ALPHA, SYNC_ADMIN, ZULU), projectBeanNames(beans))
             assertTrue("no verdict without evaluation, got $beans", beans.none { it.has("condition") })
+            assertEquals(listOf("CONDITIONS_NOT_EVALUATED"), page["limitations"]?.map { it.asText() })
         } finally {
             settings.isBeanFilterEnabled = enabled
             ModificationTrackerManager.getInstance(project).invalidateAll()
