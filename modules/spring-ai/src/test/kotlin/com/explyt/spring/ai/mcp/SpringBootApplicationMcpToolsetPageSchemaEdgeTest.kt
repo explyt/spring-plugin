@@ -366,6 +366,206 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
     }
 
+    fun testConventionModeSetToViaDtoAtTheUseSiteIsUnknown() = runBlocking<Unit> {
+        addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", CONVENTION_MODE_DIRECT)
+        assertDeclaresUnaliased(COMPOSED_WEB_SUPPORT, "pageSerializationMode")
+        addComposedUse("ComposedWebConfig", "@EnableComposedWeb(pageSerializationMode = PageSerializationMode.VIA_DTO)")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testKotlinConventionModeSetToViaDtoAtTheUseSiteIsUnknown() = runBlocking<Unit> {
+        addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", CONVENTION_MODE_DIRECT)
+        assertDeclaresUnaliased(COMPOSED_WEB_SUPPORT, "pageSerializationMode")
+        addKotlinComposedUse("@EnableComposedWeb(pageSerializationMode = PageSerializationMode.VIA_DTO)")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testConventionModeSetToDirectOverAViaDtoMetaIsUnknown() = runBlocking<Unit> {
+        addWebSupportAnnotation("EnableComposedWeb", META_VIA_DTO, CONVENTION_MODE_DIRECT)
+        assertDeclaresUnaliased(COMPOSED_WEB_SUPPORT, "pageSerializationMode")
+        addComposedUse("ComposedWebConfig", "@EnableComposedWeb(pageSerializationMode = PageSerializationMode.DIRECT)")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testNestedComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+        addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", ALIASED_MODE_VIA_DTO)
+        addOuterWebSupport()
+        addComposedUse("ComposedWebConfig", "@EnableOuterWeb")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testKotlinNestedComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+        addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", ALIASED_MODE_VIA_DTO)
+        addOuterWebSupport()
+        addKotlinComposedUse("@EnableOuterWeb")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testNestedComposedConventionDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+        addWebSupportAnnotation(
+            "EnableComposedWeb", "@EnableSpringDataWebSupport",
+            "PageSerializationMode pageSerializationMode() default PageSerializationMode.VIA_DTO;"
+        )
+        assertDeclaresUnaliased(COMPOSED_WEB_SUPPORT, "pageSerializationMode")
+        addOuterWebSupport()
+        addComposedUse("ComposedWebConfig", "@EnableOuterWeb")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("UNKNOWN", schema)
+        assertDirectPage(schema)
+    }
+
+    fun testNestedComposedAliasSetToViaDtoOnTheOuterAnnotationIsPagedModel() = runBlocking<Unit> {
+        addWebSupportAnnotation(
+            "EnableComposedWeb", "@EnableSpringDataWebSupport",
+            "$ALIAS_TO_MODE PageSerializationMode mode() default PageSerializationMode.DIRECT;"
+        )
+        addOuterWebSupport(meta = "@EnableComposedWeb(mode = PageSerializationMode.VIA_DTO)")
+        addComposedUse("ComposedWebConfig", "@EnableOuterWeb")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
+        assertPagedModel(schema)
+    }
+
+    fun testNestedComposedWithoutAttributesOverAViaDtoMetaIsPagedModel() = runBlocking<Unit> {
+        addWebSupportAnnotation("EnableComposedWeb", META_VIA_DTO, "")
+        assertEquals("no own attribute", 0, composedWebSupport().methods.size)
+        addOuterWebSupport()
+        addComposedUse("ComposedWebConfig", "@EnableOuterWeb")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
+        assertPagedModel(schema)
+    }
+
+    fun testPositionalUnrelatedValueOfAComposedAnnotationKeepsTheDirectDefault() = runBlocking<Unit> {
+        addWebSupportAnnotation("EnableMyWeb", "@EnableSpringDataWebSupport", "String value() default \"\";")
+        assertDeclaresUnaliased("com.example.config.EnableMyWeb", "value")
+        addComposedUse("ComposedWebConfig", "@EnableMyWeb(\"x\")", "com.example.config.EnableMyWeb")
+
+        val schema = pageSchema("/orders/page")
+
+        assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
+        assertDirectPage(schema)
+    }
+
+    private fun addWebSupportAnnotation(
+        simpleName: String,
+        meta: String,
+        members: String,
+        metaFqn: String = ENABLE_WEB_SUPPORT,
+    ) {
+        addFile(
+            "com/example/config/$simpleName.java", """
+            package com.example.config;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+            import org.springframework.core.annotation.AliasFor;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            $meta
+            public @interface $simpleName {
+                $members
+            }
+            """.trimIndent()
+        )
+        assertResolves("org.springframework.core.annotation.AliasFor")
+        assertMetaAnnotated("com.example.config.$simpleName", metaFqn)
+    }
+
+    private fun addOuterWebSupport(meta: String = "@EnableComposedWeb") {
+        addWebSupportAnnotation("EnableOuterWeb", meta, "", COMPOSED_WEB_SUPPORT)
+        assertEquals("the outer annotation declares no attribute", 0, annotationType(OUTER_WEB_SUPPORT).methods.size)
+    }
+
+    private fun addComposedUse(className: String, use: String, usedFqn: String = useFqnOf(use)) {
+        addFile(
+            "com/example/config/$className.java", """
+            package com.example.config;
+
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode;
+
+            @Configuration
+            $use
+            public class $className {
+            }
+            """.trimIndent()
+        )
+        assertAnnotatedWith("com.example.config.$className", usedFqn)
+    }
+
+    private fun addKotlinComposedUse(use: String) {
+        addFile(
+            "com/example/config/KotlinComposedWebConfig.kt", """
+            package com.example.config
+
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode
+
+            @Configuration
+            $use
+            class KotlinComposedWebConfig
+            """.trimIndent()
+        )
+        assertAnnotatedWith("com.example.config.KotlinComposedWebConfig", useFqnOf(use))
+    }
+
+    private fun useFqnOf(use: String): String = "com.example.config." + use.removePrefix("@").substringBefore('(')
+
+    private fun assertAnnotatedWith(fqn: String, annotationFqn: String) {
+        assertNotNull("$fqn is annotated with $annotationFqn", annotationType(fqn).getAnnotation(annotationFqn))
+    }
+
+    private fun assertMetaAnnotated(annotationFqn: String, metaFqn: String) {
+        val annotation = annotationType(annotationFqn)
+        assertTrue("$annotationFqn is an annotation type", annotation.isAnnotationType)
+        assertNotNull("$annotationFqn is meta-annotated with $metaFqn", annotation.getAnnotation(metaFqn))
+    }
+
+    private fun assertDeclaresUnaliased(annotationFqn: String, attribute: String) {
+        val method = annotationType(annotationFqn).findMethodsByName(attribute, false).singleOrNull()
+        assertNotNull("$annotationFqn declares '$attribute'", method)
+        assertFalse(
+            "'$attribute' carries no @AliasFor",
+            method!!.hasAnnotation("org.springframework.core.annotation.AliasFor")
+        )
+    }
+
+    private fun annotationType(fqn: String) =
+        JavaPsiFacade.getInstance(project).findClass(fqn, GlobalSearchScope.allScope(project))
+            ?: throw AssertionError("the fixture must resolve $fqn")
+
     private fun addComposedWebSupport(attribute: String, aliased: Boolean, default: String) {
         val alias = if (aliased) {
             "@AliasFor(annotation = EnableSpringDataWebSupport.class, attribute = \"pageSerializationMode\")"
@@ -475,6 +675,12 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         const val HATEOAS_PAGED_MODEL = "org.springframework.hateoas.PagedModel"
         const val PROJECT_PAGED_MODEL = "com.example.web.PagedModel"
         const val COMPOSED_WEB_SUPPORT = "com.example.config.EnableComposedWeb"
+        const val OUTER_WEB_SUPPORT = "com.example.config.EnableOuterWeb"
+        const val META_VIA_DTO = "@EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)"
+        const val ALIAS_TO_MODE =
+            "@AliasFor(annotation = EnableSpringDataWebSupport.class, attribute = \"pageSerializationMode\")"
+        const val ALIASED_MODE_VIA_DTO = "$ALIAS_TO_MODE PageSerializationMode mode() default PageSerializationMode.VIA_DTO;"
+        const val CONVENTION_MODE_DIRECT = "PageSerializationMode pageSerializationMode() default PageSerializationMode.DIRECT;"
     }
 }
 
