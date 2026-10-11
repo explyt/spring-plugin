@@ -11,6 +11,7 @@ import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
 import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtBinaryExpression
@@ -500,13 +501,72 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
     }
 
-    fun testTwoArgumentPathRouteDoesNotPrefixItsSibling() {
+    fun testTwoArgumentPathRouteIsListedForAnyMethod() {
         addRouterConfig(
             """
             path("/x", handler::handle)
             GET("/y", handler::handle)
         """
         )
+        assertTwoArgumentPathRouteResolvesTo(CO_ROUTER_DSL)
+        assertEquals(listOf("/x" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testReactiveRouterTwoArgumentPathRouteIsListedForAnyMethod() {
+        myFixture.addFileToProject(
+            "ReactiveRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.router
+
+            @Configuration
+            class ReactiveRouterConfig {
+                @Bean
+                fun routes(): RouterFunction<ServerResponse> = router {
+                    path("/x") { ServerResponse.ok().build() }
+                    GET("/y") { ServerResponse.ok().build() }
+                }
+            }
+            """.trimIndent()
+        )
+        assertTwoArgumentPathRouteResolvesTo(REACTIVE_ROUTER_DSL, "ReactiveRouterConfig.kt")
+        assertEquals(listOf("/x" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testTwoArgumentPathRouteUnderNestComposesThePrefix() {
+        addRouterConfig(""""/a".nest { path("/x", handler::handle) }""")
+        assertTwoArgumentPathRouteResolvesTo(CO_ROUTER_DSL)
+        assertEquals(listOf("/a/x" to ""), webFluxEndpoints())
+    }
+
+    fun testOneArgumentPathPredicateIsNotARoute() {
+        addRouterConfig("""path("/a").nest { GET("/b", handler::handle) }""")
+        assertCallsResolveTo("path", CO_ROUTER_DSL)
+        val pathPredicate = callsInFixture().single { it.methodName == "path" }
+        assertEquals(1, pathPredicate.valueArgumentCount)
+        assertNull(RouterDslRoutes.requestMethodsOf(pathPredicate))
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testTwoArgumentPathCallOutsideTheDslIsNotARoute() {
+        addRouterConfig(
+            """
+            NonDsl.path("/x", handler::handle)
+            GET("/y", handler::handle)
+            """,
+            imports = "object NonDsl { fun path(pattern: String, handler: Any) {} }"
+        )
+        val call = nonDslPathCall()
+        val method = call.resolve()!!
+        assertEquals("NonDsl", method.containingClass?.qualifiedName)
+        assertEquals("void", method.returnType?.canonicalText)
+        assertEquals(2, call.valueArgumentCount)
+        assertEquals(2, method.parameterList.parametersCount)
+        assertEquals("java.lang.String", method.parameterList.parameters.first().type.canonicalText)
+        assertNull(RouterDslRoutes.requestMethodsOf(call))
         assertEquals(listOf("/y" to "GET"), webFluxEndpoints())
     }
 
@@ -641,6 +701,17 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         }
     }
 
+    private fun assertTwoArgumentPathRouteResolvesTo(owner: String, fileName: String = "GatewayProxyRouterConfig.kt") {
+        assertCallsResolveTo("path", owner, returnType = "void", argumentCount = 2, fileName = fileName)
+        callsInFixture(fileName)
+            .filter { (it.sourcePsi as? KtCallExpression)?.calleeExpression?.text == "path" }
+            .forEach { call ->
+                val parameters = call.resolve()!!.parameterList.parameters
+                assertEquals(call.sourcePsi?.text, 2, parameters.size)
+                assertEquals(call.sourcePsi?.text, "java.lang.String", parameters.first().type.canonicalText)
+            }
+    }
+
     private fun nonDslPathCall(): UCallExpression = callsInFixture()
         .single { it.methodName == "path" && it.receiver?.asSourceString() == "NonDsl" }
 
@@ -755,5 +826,5 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         .sortedBy { it.first + it.second }
         .toList()
 
-    private fun toPathAndMethod(endpoint: EndpointElement) = endpoint.path to endpoint.requestMethods.single()
+    private fun toPathAndMethod(endpoint: EndpointElement) = endpoint.path to endpoint.requestMethods.joinToString()
 }
