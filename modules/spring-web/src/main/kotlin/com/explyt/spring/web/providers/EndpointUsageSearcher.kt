@@ -61,7 +61,7 @@ object EndpointUsageSearcher {
             .flatMap { it.endpoints }
             .filterIsInstance<EndpointData.ReferrerData>()
             .map { it.referrer }
-            .filter { it.path == path }
+            .filter { SpringWebUtil.isSamePathTemplate(it.path, path) }
             .filter { it.method == null || requestMethods.contains(it.method) }
             .mapToList { it.psiElement }
     }
@@ -125,7 +125,7 @@ object EndpointUsageSearcher {
             .flatMap { it.endpoints }
             .filterIsInstance<EndpointData.ReferrerData>()
             .map { it.referrer }
-            .filter { it.path == path }
+            .filter { SpringWebUtil.isSamePathTemplate(it.path, path) }
             .filter { it.method == null || requestMethods.contains(it.method) }
             .mapToList { it.psiElement }
     }
