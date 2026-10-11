@@ -7,6 +7,7 @@ package com.explyt.spring.web.loader
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.intellij.codeInspection.isInheritorOf
@@ -51,8 +52,8 @@ class SpringWebCoRouterLoader : EndpointHandler {
                     val lambdaExpression = node.valueArguments.firstOrNull() as? ULambdaExpression
                     lambdaExpression?.body?.accept(object : AbstractUastVisitor() {
                         override fun visitCallExpression(node: UCallExpression): Boolean {
-                            if (node.methodName in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) {
-                                endpoints += createEndpointElements(node, psiClass, endpointType)
+                            RouterDslRoutes.requestMethodsOf(node)?.let { requestMethods ->
+                                endpoints += createEndpointElements(node, requestMethods, psiClass, endpointType)
                             }
                             return super.visitCallExpression(node)
                         }
@@ -71,10 +72,10 @@ class SpringWebCoRouterLoader : EndpointHandler {
      */
     private fun createEndpointElements(
         callExpression: UCallExpression,
+        requestMethods: List<String>,
         psiClass: PsiClass,
         endpointType: EndpointType
     ): List<EndpointElement> {
-        val requestMethods = listOf(SpringWebUtil.getRequestMethod(callExpression) ?: return emptyList())
         val psiElement = callExpression.sourcePsi ?: return emptyList()
 
         return SpringWebUtil.getPathsFromCallExpression(callExpression).asSequence()
