@@ -8,8 +8,8 @@ package com.explyt.spring.web.providers
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.web.SpringWebBundle
-import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
+import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
@@ -40,18 +40,17 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
         if (psiElement.language != KotlinLanguage.INSTANCE) return null
 
         val uCallExpression = getUParentForIdentifier(psiElement) as? UCallExpression ?: return null
-        val methodName = uCallExpression.methodName ?: return null
-        if (methodName !in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) return null
+        if (!RouterDslRoutes.isRouteName(uCallExpression.methodName)) return null
 
         val method = findContainingMethod(uCallExpression) ?: return null
         if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
         val psiClass = method.javaPsi.containingClass ?: return null
         if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) return null
 
+        val requestMethods = RouterDslRoutes.requestMethodsOf(uCallExpression) ?: return null
+
         val fullPath = SpringWebUtil.getPathsFromCallExpression(uCallExpression).firstOrNull() ?: return null
         if (fullPath.isEmpty()) return null
-
-        val requestMethods = listOf(SpringWebUtil.getRequestMethod(uCallExpression) ?: return null)
 
         val description = uCallExpression.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = "java.lang.String"
@@ -73,7 +72,7 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
             psiElement.textRange,
             SpringIcons.ReadAccess,
             { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.tooltip") },
-            EndpointIconGutterHandler(endpointElement),
+            EndpointIconGutterHandler(endpointElement, offersOpenApiDescription = requestMethods.isNotEmpty()),
             GutterIconRenderer.Alignment.RIGHT,
             { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.icon.accessible") }
         )

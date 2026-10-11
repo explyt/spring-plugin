@@ -176,6 +176,44 @@ class MixedStackRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/a/b" to "GET", SERVLET_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_MVC))
     }
 
+    fun testServletRouterTwoArgumentPathRouteIsListedForAnyMethod() {
+        val file = myFixture.addFileToProject(
+            "PathRouteServletRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.servlet.function.RouterFunction
+            import org.springframework.web.servlet.function.ServerResponse
+            import org.springframework.web.servlet.function.router
+
+            @Configuration
+            class PathRouteServletRouterConfig {
+                @Bean
+                fun routes(handler: ServletUserHandler): RouterFunction<ServerResponse> = router {
+                    path("/x", handler::list)
+                    GET("/y", handler::list)
+                }
+            }
+            """.trimIndent()
+        )
+        val pathRoute = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .single { it.calleeExpression?.text == "path" }
+            .toUElementOfType<UCallExpression>()!!
+        val method = pathRoute.resolve()!!
+        assertEquals("org.springframework.web.servlet.function.RouterFunctionDsl", method.containingClass?.qualifiedName)
+        assertEquals("void", method.returnType?.canonicalText)
+        assertEquals(2, pathRoute.valueArgumentCount)
+        assertEquals(2, method.parameterList.parametersCount)
+        assertEquals("java.lang.String", method.parameterList.parameters.first().type.canonicalText)
+        assertBothLoadersAreApplicable()
+
+        assertEquals(
+            listOf(SERVLET_ROUTE to "GET", "/x" to "", "/y" to "GET"),
+            endpointsOfType(EndpointType.SPRING_MVC)
+        )
+        assertEquals(listOf(REACTIVE_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_WEBFLUX))
+    }
+
     private fun assertServletPathPredicateNest(routes: String, expectedPath: String) {
         val file = myFixture.addFileToProject(
             "NestedServletRouterConfig.kt",
@@ -277,5 +315,5 @@ class MixedStackRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
             .sortedBy { it.first + it.second }
             .toList()
 
-    private fun toPathAndMethod(endpoint: EndpointElement) = endpoint.path to endpoint.requestMethods.single()
+    private fun toPathAndMethod(endpoint: EndpointElement) = endpoint.path to endpoint.requestMethods.joinToString()
 }
