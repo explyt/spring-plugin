@@ -13,6 +13,8 @@ import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.view.EndpointsTreeData
+import com.explyt.spring.web.view.EndpointsViewFilter
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -512,6 +514,19 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/x" to "", "/y" to "GET"), webFluxEndpoints())
     }
 
+    fun testTwoArgumentPathRouteIsOneAllRowKeptByAVerbFilter() {
+        addRouterConfig("""path("/x", handler::handle)""")
+        val endpoint = webFluxEndpointElements().single()
+        assertEquals("/x", endpoint.path)
+        assertEquals(emptyList<String>(), endpoint.requestMethods)
+
+        assertEquals(listOf("ALL"), EndpointsTreeData.rowVerbsOf(endpoint))
+        val kept = EndpointsViewFilter.apply(
+            EndpointsTreeData.rowsOf(endpoint), "", setOf("GET"), emptySet(), EndpointsViewFilter.declaredBasePaths()
+        )
+        assertEquals(listOf("ALL"), kept.map { it.method })
+    }
+
     fun testReactiveRouterTwoArgumentPathRouteIsListedForAnyMethod() {
         myFixture.addFileToProject(
             "ReactiveRouterConfig.kt",
@@ -817,14 +832,16 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
      * Reads through the extension point rather than through a directly instantiated loader, so the test also proves
      * the loader is registered and reachable.
      */
-    private fun webFluxEndpoints(): List<Pair<String, String>> = SpringWebEndpointsLoader.EP_NAME
-        .getExtensions(module.project).asSequence()
-        .filter { it.getType() == EndpointType.SPRING_WEBFLUX }
-        .filter { it.isApplicable(module) }
-        .flatMap { it.searchEndpoints(module) }
+    private fun webFluxEndpoints(): List<Pair<String, String>> = webFluxEndpointElements().asSequence()
         .map(::toPathAndMethod)
         .sortedBy { it.first + it.second }
         .toList()
+
+    private fun webFluxEndpointElements(): List<EndpointElement> = SpringWebEndpointsLoader.EP_NAME
+        .getExtensions(module.project)
+        .filter { it.getType() == EndpointType.SPRING_WEBFLUX }
+        .filter { it.isApplicable(module) }
+        .flatMap { it.searchEndpoints(module) }
 
     private fun toPathAndMethod(endpoint: EndpointElement) = endpoint.path to endpoint.requestMethods.joinToString()
 }
