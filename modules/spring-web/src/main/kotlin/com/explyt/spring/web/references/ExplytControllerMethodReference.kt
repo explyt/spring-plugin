@@ -7,6 +7,7 @@ package com.explyt.spring.web.references
 
 import com.explyt.spring.web.loader.EndpointElement
 import com.explyt.spring.web.loader.EndpointType
+import com.explyt.spring.web.loader.EndpointVerbs
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.ApplicationModules
 import com.explyt.spring.web.util.EndpointPathPatterns
@@ -74,7 +75,7 @@ class ExplytControllerMethodReference(
             .distinctBy { it.path }
 
     private fun isRequestedMethod(it: EndpointElement) =
-        requestMethod == null || it.requestMethods.contains(requestMethod)
+        requestMethod == null || EndpointVerbs.answers(it, requestMethod)
 
 }
 
