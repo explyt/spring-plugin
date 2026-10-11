@@ -66,6 +66,9 @@ internal object ResponseSchemaReader {
         if (fqn in SpringDataChunkSchemas.CHUNKS && !ProjectSources.declares(resolved)) {
             return chunkSchemaOf(type, fqn, depth, context)
         }
+        if (fqn == SpringDataChunkSchemas.PAGED_MODEL && !ProjectSources.declares(resolved)) {
+            return pagedModelOf(type.parameters.firstOrNull(), depth, context, null, PageWireShape.DECLARED_TYPE)
+        }
         if (isPageImplSubclass(resolved)) return pageImplSubclassSchemaOf(type, resolved, fqn, depth, context)
         if (isContainer(resolved, fqn)) {
             return type.parameters.firstOrNull()?.let { schemaOf(it, depth, context) }
@@ -148,12 +151,18 @@ internal object ResponseSchemaReader {
         )
     }
 
-    private fun pagedModelOf(element: PsiType?, depth: Int, context: SchemaContext, assumed: Boolean?): DtoSchemaJson =
+    private fun pagedModelOf(
+        element: PsiType?,
+        depth: Int,
+        context: SchemaContext,
+        assumed: Boolean?,
+        source: String = context.pageSerialization.source,
+    ): DtoSchemaJson =
         DtoSchemaJson(
             className = SpringDataChunkSchemas.PAGED_MODEL,
             fields = listOf(contentOf(element, depth, context), SpringDataChunkSchemas.pagedModelMetadata(depth)),
             wireShape = PageWireShape.PAGED_MODEL.name,
-            wireShapeSource = context.pageSerialization.source,
+            wireShapeSource = source,
             wireShapeAssumed = assumed,
         )
 
