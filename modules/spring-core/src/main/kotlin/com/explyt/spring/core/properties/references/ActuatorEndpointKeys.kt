@@ -171,7 +171,7 @@ object ActuatorEndpointKeys {
         return Discovery(libraries, libraries, annotationWithChildren(endpointAnnotation, libraries))
     }
 
-    private fun annotationWithChildren(annotation: PsiClass, scope: GlobalSearchScope): Collection<PsiClass> {
+    fun annotationWithChildren(annotation: PsiClass, scope: GlobalSearchScope): Collection<PsiClass> {
         val byName = LinkedHashMap<String, PsiClass>()
         fun collect(psiClass: PsiClass) {
             val name = psiClass.qualifiedName ?: return
