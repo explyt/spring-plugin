@@ -166,20 +166,21 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "declaration to read it from. Rows come PROJECT first, then LIBRARY, then those of unknown origin, " +
                 "each by beanName and className. Pass origin=PROJECT or origin=LIBRARY to keep one of them: rows " +
                 "of unknown origin are then left out and counted in 'unknownOriginCount', absent when none was. " +
-                "Project beans excluded by a @Conditional (except @Profile, which is filtered earlier) are listed " +
-                "after all the others with 'condition': {state: INACTIVE, annotation, carrier, detail}; library " +
-                "beans excluded by a condition are only counted in 'inactiveLibraryCount', absent when none was, " +
-                "unless origin=LIBRARY is requested, which lists them after the active library rows. A bean whose " +
-                "condition cannot be decided keeps its place with 'condition': {state: UNDECIDED, reasons, " +
-                "annotation, carrier, detail}; the envelope's 'limitations' holds CONDITIONS_NOT_EVALUATED when " +
-                "condition evaluation is disabled, and is absent otherwise. " +
+                "Project beans (and those of unknown origin) excluded by a @Conditional (except @Profile, which is " +
+                "filtered earlier) are listed after all the others with 'condition': {state: INACTIVE, annotation, " +
+                "carrier, detail}; the rows of library beans excluded by a condition are only counted in " +
+                "'inactiveLibraryCount', absent when there was none, unless origin=LIBRARY is requested, which " +
+                "lists them after the active library rows. A bean whose condition cannot be decided keeps its place " +
+                "with 'condition': {state: UNDECIDED, reasons, annotation, carrier, detail}. The envelope-level " +
+                "'limitations' holds CONDITIONS_NOT_EVALUATED when condition evaluation is disabled, and is absent " +
+                "otherwise. " +
                 "A page holds at most 'limit' beans (8 by default) within 'maxChars' of compact JSON (1800 by " +
                 "default) and can end earlier, because the budget is measured on the finished document. When " +
                 "'truncated' is true, repeat the call with 'offset' = 'nextOffset' and 'expectedRevision' = " +
                 "'revision' to continue the same answer; a changed filter or a re-read model answers RESULT_CHANGED. " +
                 "Every row also names the model that answered in 'source': STATIC is an estimate of the module, " +
                 "NATIVE_SNAPSHOT a context recorded at 'snapshotImportedAt' (ISO-8601 UTC, absent when unknown) " +
-                "and never live, with 'contextId' naming it. 'limitations' appears only on a row whose own bean " +
+                "and never live, with 'contextId' naming it. A row's 'limitations' appears only when its own bean " +
                 "has one, such as ALIASES_NOT_EXPORTED (the bean may answer to names the context did not export). " +
                 "When sources changed after 'snapshotImportedAt', pass source=STATIC for an answer read from them. " +
                 "An empty 'moduleName' means the bean has no module in this project - a library bean, or one a " +
