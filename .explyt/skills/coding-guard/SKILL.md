@@ -149,7 +149,7 @@ Put new code in the module that owns the feature area; shared utilities go to `b
 ## 8. PR hygiene (from CONTRIBUTING.md)
 
 - One logical change per PR; reference the related issue (`Closes #123`).
-- Branch names like `feature/kotlin-bean-inspection` or `fix/openapi-npe`.
+- Branch names `username/feature-name`, e.g. `imuromtsev/kotlin-bean-inspection` (CONTRIBUTING.md).
 - Clean, Kotlin-idiomatic code with the SPDX header present in every new file.
 - Update docs/messages when behavior or usage changes; state how you verified the change.
 
