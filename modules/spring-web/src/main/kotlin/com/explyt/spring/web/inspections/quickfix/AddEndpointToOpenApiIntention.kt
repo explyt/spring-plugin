@@ -42,6 +42,11 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.findOrCreateDirectory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.SmartPointerManager
+import org.jetbrains.yaml.YAMLUtil
+import com.intellij.pom.Navigatable
+import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.kotlin.idea.core.util.toPsiDirectory
 import org.jetbrains.yaml.YAMLElementGenerator
@@ -150,15 +155,17 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
         }
     }
 
-    private fun addDescription(endpoint: EndpointInfo, openApiFile: JsonFile, project: Project) {
+    private fun addDescription(endpointInfo: EndpointInfo, openApiFile: JsonFile, project: Project) {
         val topLevelValue = openApiFile.topLevelValue as? JsonObject ?: return
 
         val parentObject = topLevelValue.findProperty("paths")?.value as? JsonObject ?: topLevelValue
+        val documentedPath = parentObject.documentedPathItemProperty(endpointInfo.path)?.name
+        val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
 
         WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
             val generator = JsonElementGenerator(project)
 
-            val propertyElement = if (parentObject == topLevelValue) {
+            if (parentObject == topLevelValue) {
                 val pathsElement = OpenApiJsonPathBuilder(endpoint.path)
                     .addEndpoint(endpoint)
                     .toJsonValue("paths", project)
@@ -176,38 +183,49 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val newElement = elementGenerator.createProperty(endpointPath, "{${builder}}")
                 parentObject.putPathItem(newElement, generator)
             }
-            ExplytPsiUtil.navigate(propertyElement)
+            navigateLater(writtenJsonOperation(openApiFile, endpoint))
         }
     }
 
-    private fun JsonObject.putPathItem(pathItem: JsonProperty, generator: JsonElementGenerator): JsonProperty? {
-        val documentedItem = documentedPathItem(pathItem.name)
+    private fun JsonObject.putPathItem(pathItem: JsonProperty, generator: JsonElementGenerator) {
+        val documentedItem = documentedPathItemProperty(pathItem.name)?.value as? JsonObject
         val operations = pathItem.value as? JsonObject
-        if (documentedItem == null || operations == null) return addPropertyToObject(pathItem, this, generator)
-
-        return operations.propertyList
-            .filter { documentedItem.findProperty(it.name) == null }
-            .mapNotNull { addPropertyToObject(it, documentedItem, generator) }
-            .lastOrNull()
-    }
-
-    private fun JsonObject.documentedPathItem(path: String): JsonObject? =
-        propertyList.firstNotNullOfOrNull { property ->
-            (property.value as? JsonObject)?.takeIf { isSamePath(property.name, path) }
+        if (documentedItem == null || operations == null) {
+            addPropertyToObject(pathItem, this, generator)
+            return
         }
 
-    private fun addDescription(endpoint: EndpointInfo, openApiFile: YAMLFile, project: Project) {
+        operations.propertyList
+            .filter { documentedItem.findProperty(it.name) == null }
+            .forEach { addPropertyToObject(it, documentedItem, generator) }
+    }
+
+    private fun JsonObject.documentedPathItemProperty(path: String): JsonProperty? =
+        propertyList.firstOrNull { it.value is JsonObject && SpringWebUtil.isSamePathTemplate(it.name, path) }
+
+    private fun writtenJsonOperation(openApiFile: JsonFile, endpoint: EndpointInfo): PsiElement? {
+        val paths = (openApiFile.topLevelValue as? JsonObject)?.findProperty("paths")?.value as? JsonObject
+            ?: return null
+        val pathItem = paths.documentedPathItemProperty(endpoint.path) ?: return null
+        val operation = endpoint.requestMethods.firstNotNullOfOrNull {
+            (pathItem.value as? JsonObject)?.findProperty(it.lowercase())
+        }
+        return operation ?: pathItem
+    }
+
+    private fun addDescription(endpointInfo: EndpointInfo, openApiFile: YAMLFile, project: Project) {
         val topLevelValue = openApiFile.documents.firstOrNull()?.topLevelValue as? YAMLMapping ?: return
         val parentKeyValue = topLevelValue.getKeyValueByKey("paths")?.value ?: topLevelValue
         val parentMapping = parentKeyValue as? YAMLMapping ?: return
+        val documentedPath = parentMapping.documentedPathItemKeyValue(endpointInfo.path)?.keyText
+        val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
 
         WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
-            val changedMapping = if (parentKeyValue == topLevelValue) {
+            if (parentKeyValue == topLevelValue) {
                 val pathsElement = OpenApiYamlPathBuilder(endpoint.path)
                     .addEndpoint(endpoint)
                     .toYamlKeyValue("paths", project)
                 parentMapping.putKeyValue(pathsElement)
-                parentMapping
             } else { //parentKeyValue = "paths"
                 val endpointPath = endpoint.path.ifBlank { "/" }
                 val builder = StringBuilder()
@@ -222,31 +240,72 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val pathElement = keyValueGenerator.createYamlKeyValue(endpointPath, valueString)
                 parentMapping.putPathItem(pathElement)
             }
-            ExplytPsiUtil.navigate(changedMapping.children.lastOrNull())
+            navigateLater(writtenYamlOperation(openApiFile, endpoint))
         }
     }
 
-    private fun YAMLMapping.putPathItem(pathItem: YAMLKeyValue): YAMLMapping {
-        val documentedItem = documentedPathItem(pathItem.keyText)
+    private fun YAMLMapping.putPathItem(pathItem: YAMLKeyValue) {
+        val documentedItem = documentedPathItemKeyValue(pathItem.keyText)?.value as? YAMLMapping
         val operations = pathItem.value as? YAMLMapping
         if (documentedItem == null || operations == null) {
             putKeyValue(pathItem)
-            return this
+            return
         }
 
-        operations.keyValues
-            .filter { documentedItem.getKeyValueByKey(it.keyText) == null }
-            .forEach { documentedItem.putKeyValue(it) }
-        return documentedItem
+        val missingOperations = operations.keyValues.filter { documentedItem.getKeyValueByKey(it.keyText) == null }
+        val lastKeyValue = documentedItem.keyValues.lastOrNull()
+        if (lastKeyValue == null) {
+            missingOperations.forEach { documentedItem.putKeyValue(it) }
+            return
+        }
+
+        val indent = YAMLUtil.getIndentToThisElement(lastKeyValue)
+        val inserted = missingOperations.joinToString("") { "\n" + " ".repeat(indent) + it.textIndentedTo(indent) }
+        val file = documentedItem.containingFile
+        val documentManager = PsiDocumentManager.getInstance(file.project)
+        val document = documentManager.getDocument(file) ?: return
+        documentManager.doPostponedOperationsAndUnblockDocument(document)
+        document.insertString(lastKeyValue.textRange.endOffset, inserted)
+        documentManager.commitDocument(document)
     }
 
-    private fun YAMLMapping.documentedPathItem(path: String): YAMLMapping? =
-        keyValues.firstNotNullOfOrNull { keyValue ->
-            (keyValue.value as? YAMLMapping)?.takeIf { isSamePath(keyValue.keyText, path) }
-        }
+    private fun YAMLKeyValue.textIndentedTo(indent: Int): String {
+        val ownIndent = YAMLUtil.getIndentToThisElement(this)
+        return text.lines().mapIndexed { index, line ->
+            if (index == 0 || line.isBlank()) line else " ".repeat(indent) + line.drop(ownIndent)
+        }.joinToString("\n")
+    }
 
-    private fun isSamePath(documentedPath: String, path: String) =
-        SpringWebUtil.simplifyUrl(documentedPath) == SpringWebUtil.simplifyUrl(path)
+    private fun YAMLMapping.documentedPathItemKeyValue(path: String): YAMLKeyValue? =
+        keyValues.firstOrNull { it.value is YAMLMapping && SpringWebUtil.isSamePathTemplate(it.keyText, path) }
+
+    private fun writtenYamlOperation(openApiFile: YAMLFile, endpoint: EndpointInfo): PsiElement? {
+        val topLevelValue = openApiFile.documents.firstOrNull()?.topLevelValue as? YAMLMapping ?: return null
+        val paths = topLevelValue.getKeyValueByKey("paths")?.value as? YAMLMapping ?: return null
+        val pathItem = paths.documentedPathItemKeyValue(endpoint.path) ?: return null
+        val operation = endpoint.requestMethods.firstNotNullOfOrNull {
+            (pathItem.value as? YAMLMapping)?.getKeyValueByKey(it.lowercase())
+        }
+        return operation ?: pathItem
+    }
+
+    private fun navigateLater(target: PsiElement?) {
+        if (target == null || !target.isValid || IntentionPreviewUtils.isIntentionPreviewActive()) return
+        val pointer = SmartPointerManager.createPointer(target)
+        ApplicationManager.getApplication().invokeLater {
+            (pointer.element?.takeIf { it.isValid } as? Navigatable)?.navigate(false)
+        }
+    }
+
+    private fun EndpointInfo.withPathVariablesOf(documentedPath: String): EndpointInfo {
+        val renames = SpringWebUtil.pathTemplateVariables(path)
+            .zip(SpringWebUtil.pathTemplateVariables(documentedPath))
+            .toMap()
+        if (renames.all { (name, documentedName) -> name == documentedName }) return this
+        return copy(pathVariables = pathVariables.map { variable ->
+            renames[variable.name]?.let { variable.copy(name = it) } ?: variable
+        })
+    }
 
     data class EndpointInfo(
         val path: String,

@@ -689,6 +689,22 @@ object SpringWebUtil {
         return result.split('?').first()
     }
 
+    fun isSamePathTemplate(path: String, otherPath: String): Boolean {
+        val segments = simplifyUrl(path).split('/')
+        val otherSegments = simplifyUrl(otherPath).split('/')
+        return segments.size == otherSegments.size && segments.zip(otherSegments).all { (segment, otherSegment) ->
+            segment == otherSegment || isPathTemplateVariable(segment) && isPathTemplateVariable(otherSegment)
+        }
+    }
+
+    fun pathTemplateVariables(path: String): List<String> =
+        simplifyUrl(path).split('/')
+            .filter { isPathTemplateVariable(it) }
+            .map { it.removeSurrounding("{", "}").removePrefix("*").substringBefore(':') }
+
+    private fun isPathTemplateVariable(segment: String) =
+        segment.length > 2 && segment.startsWith("{") && segment.endsWith("}")
+
     fun getHttpMethodIndex(psiMethod: PsiMethod) =
         psiMethod.parameterList
             .parameters
