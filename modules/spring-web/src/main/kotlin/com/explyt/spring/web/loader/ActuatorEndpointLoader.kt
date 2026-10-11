@@ -28,7 +28,6 @@ import com.explyt.spring.web.util.SpringWebUtil
 
 import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
-
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleUtilCore
@@ -134,7 +133,9 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
                 exposure.exposureOf(it.id), access.accessOf(it), application, customMediaTypes,
                 beanConditions.of(it.psiClass)
             )
+            val endpointInTests = isInTestSources(it.psiClass)
             val extensions = webExtensions[it.psiClass.qualifiedName].orEmpty()
+                .filter { extension -> endpointInTests || !isInTestSources(extension) }
             endpointElements(it, basePath, propertyValue, gates, extensions) { requestMappingMah }
         }
     }
@@ -155,13 +156,16 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
             .groupBy({ it.first }, { it.second })
     }
 
+    private fun isInTestSources(psiClass: PsiClass): Boolean {
+        val file = psiClass.containingFile?.virtualFile ?: return false
+        return ProjectFileIndex.getInstance(project).isInTestSourceContent(file)
+    }
 
     private fun extendedEndpointName(extension: PsiClass): String? {
         val annotation = extension.getMetaAnnotation(SpringCoreClasses.ACTUATOR_ENDPOINT_WEB_EXTENSION) ?: return null
-        val attribute = SpringCoreClasses.ACTUATOR_ENDPOINT_WEB_EXTENSION_ENDPOINT
-        val psiType = (annotation.findAttributeValue(attribute) as? PsiClassObjectAccessExpression)?.operand?.type
+        val psiType = (annotation.findAttributeValue(ENDPOINT_ATTRIBUTE) as? PsiClassObjectAccessExpression)?.operand?.type
         val type = psiType ?: (annotation.toUElementOfType<UAnnotation>()
-            ?.findAttributeValue(attribute) as? UClassLiteralExpression)?.type
+            ?.findAttributeValue(ENDPOINT_ATTRIBUTE) as? UClassLiteralExpression)?.type
         return (type as? PsiClassType)?.resolve()?.qualifiedName
     }
 
@@ -287,7 +291,7 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
     }
 
     private val EndpointElement.requestPredicate
-        get() = Triple(requestMethods, path, produces)
+        get() = Triple(requestMethods, PATH_VARIABLE.replace(path, "$1*}"), produces)
 
     /**
      * The operations of a controller endpoint: Boot serves its `@RequestMapping` methods under the endpoint path the
@@ -383,6 +387,8 @@ class ActuatorEndpointLoader(private val project: Project) : SpringWebEndpointsL
 private const val DEFAULT_BASE_PATH = "/actuator"
 private const val BASE_PATH_KEY = "management.endpoints.web.base-path"
 private const val PATH_MAPPING_KEY = "management.endpoints.web.path-mapping"
+private const val ENDPOINT_ATTRIBUTE = "endpoint"
+private val PATH_VARIABLE = Regex("""(\{\*?).+?}""")
 
 
 private const val READ_METHOD = "GET"
