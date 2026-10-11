@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.SpringProperties
 import com.explyt.spring.core.service.MetaAnnotationsHolder
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
@@ -92,24 +93,48 @@ internal data class PageSerialization(val mode: PageSerializationMode, val sourc
         private fun modeDeclaredBy(psiClass: PsiClass, webSupport: MetaAnnotationsHolder): PageSerializationMode {
             val annotation = psiClass.toUElementOfType<UClass>()?.uAnnotations?.firstOrNull(webSupport::contains)
                 ?: return PageSerializationMode.UNKNOWN
-            if (leavesItsOwnModeAttributeUnset(annotation, webSupport)) return PageSerializationMode.UNKNOWN
+            if (leavesTheModeToAnUnreadableDefault(annotation, webSupport)) return PageSerializationMode.UNKNOWN
             val values = webSupport.getAnnotationMemberValues(annotation, setOf(MODE_ATTRIBUTE))
             if (values.isEmpty()) return PageSerializationMode.DIRECT
             val constant = (values.singleOrNull() as? UResolvable)?.resolve() as? PsiEnumConstant
             return constant?.name?.let(PageSerializationMode::parse) ?: PageSerializationMode.UNKNOWN
         }
 
-        private fun leavesItsOwnModeAttributeUnset(annotation: UAnnotation, webSupport: MetaAnnotationsHolder): Boolean {
+        private fun leavesTheModeToAnUnreadableDefault(
+            annotation: UAnnotation,
+            webSupport: MetaAnnotationsHolder,
+        ): Boolean {
             val fqn = annotation.qualifiedName ?: return false
-            if (fqn == ENABLE_WEB_SUPPORT) return false
             val composed = annotationTypeOf(annotation, fqn) ?: return false
-            val modeAttributes = composed.methods.map { it.name }.filter { name ->
-                name == MODE_ATTRIBUTE ||
-                        webSupport.isAttributeRelatedWith(fqn, name, ENABLE_WEB_SUPPORT, setOf(MODE_ATTRIBUTE))
-            }
-            if (modeAttributes.isEmpty()) return false
-            return annotation.attributeValues.none { (it.name ?: SpringProperties.VALUE) in modeAttributes }
+            val setAttributes = annotation.attributeValues.mapTo(mutableSetOf()) { it.name ?: SpringProperties.VALUE }
+            return hidesTheModeOnThePath(composed, setAttributes, false, webSupport, emptySet())
         }
+
+        private fun hidesTheModeOnThePath(
+            composed: PsiClass,
+            setAttributes: Set<String>,
+            modeSetAbove: Boolean,
+            webSupport: MetaAnnotationsHolder,
+            visited: Set<String>,
+        ): Boolean {
+            val fqn = composed.qualifiedName ?: return false
+            if (fqn == ENABLE_WEB_SUPPORT || fqn in visited) return false
+            if (declaresAConventionModeAttribute(composed)) return true
+            val modeAliases = composed.methods.map { it.name }.filter { name ->
+                webSupport.isAttributeRelatedWith(fqn, name, ENABLE_WEB_SUPPORT, setOf(MODE_ATTRIBUTE))
+            }
+            val modeSet = modeSetAbove || modeAliases.any { it in setAttributes }
+            if (modeAliases.isNotEmpty() && !modeSet) return true
+            return composed.annotations.filter(webSupport::contains).any { meta ->
+                val metaType = meta.resolveUAnnotationType() ?: return@any false
+                val metaSetAttributes = meta.parameterList.attributes
+                    .mapTo(mutableSetOf()) { it.name ?: SpringProperties.VALUE }
+                hidesTheModeOnThePath(metaType, metaSetAttributes, modeSet, webSupport, visited + fqn)
+            }
+        }
+
+        private fun declaresAConventionModeAttribute(composed: PsiClass): Boolean =
+            composed.findMethodsByName(MODE_ATTRIBUTE, false).any { !it.hasAnnotation(SpringCoreClasses.ALIAS_FOR) }
 
         private fun annotationTypeOf(annotation: UAnnotation, fqn: String): PsiClass? =
             annotation.javaPsi?.resolveUAnnotationType()
