@@ -690,20 +690,46 @@ object SpringWebUtil {
     }
 
     fun isSamePathTemplate(path: String, otherPath: String): Boolean {
-        val segments = simplifyUrl(path).split('/')
-        val otherSegments = simplifyUrl(otherPath).split('/')
+        val segments = pathTemplateSegments(path)
+        val otherSegments = pathTemplateSegments(otherPath)
         return segments.size == otherSegments.size && segments.zip(otherSegments).all { (segment, otherSegment) ->
             segment == otherSegment || isPathTemplateVariable(segment) && isPathTemplateVariable(otherSegment)
         }
     }
 
     fun pathTemplateVariables(path: String): List<String> =
-        simplifyUrl(path).split('/')
+        pathTemplateSegments(path)
             .filter { isPathTemplateVariable(it) }
-            .map { it.removeSurrounding("{", "}").removePrefix("*").substringBefore(':') }
+            .map { it.substring(1, it.length - 1).removePrefix("*").substringBefore(':') }
 
-    private fun isPathTemplateVariable(segment: String) =
-        segment.length > 2 && segment.startsWith("{") && segment.endsWith("}")
+    private fun pathTemplateSegments(path: String): List<String> {
+        val segments = mutableListOf<String>()
+        val segment = StringBuilder()
+        var depth = 0
+        for (char in simplifyUrl(path)) {
+            if (char == '/' && depth == 0) {
+                segments += segment.toString()
+                segment.clear()
+                continue
+            }
+            if (char == '{') depth++
+            if (char == '}' && depth > 0) depth--
+            segment.append(char)
+        }
+        segments += segment.toString()
+        return segments
+    }
+
+    private fun isPathTemplateVariable(segment: String): Boolean {
+        if (segment.length < 3 || !segment.startsWith('{') || !segment.endsWith('}')) return false
+        var depth = 0
+        for ((index, char) in segment.withIndex()) {
+            if (char == '{') depth++
+            if (char == '}') depth--
+            if (depth < 0 || depth == 0 && index != segment.lastIndex) return false
+        }
+        return depth == 0
+    }
 
     fun getHttpMethodIndex(psiMethod: PsiMethod) =
         psiMethod.parameterList

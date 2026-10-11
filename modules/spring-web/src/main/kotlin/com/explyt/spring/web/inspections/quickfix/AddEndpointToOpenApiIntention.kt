@@ -23,6 +23,7 @@ import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
+import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 import com.intellij.json.psi.JsonElementGenerator
 import com.intellij.json.psi.JsonFile
 import com.intellij.json.psi.JsonObject
@@ -40,20 +41,20 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.findOrCreateDirectory
+import com.intellij.pom.Navigatable
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.SmartPointerManager
-import org.jetbrains.yaml.YAMLUtil
-import com.intellij.pom.Navigatable
-import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
 import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.kotlin.idea.core.util.toPsiDirectory
 import org.jetbrains.yaml.YAMLElementGenerator
 import org.jetbrains.yaml.YAMLFileType
+import org.jetbrains.yaml.YAMLUtil
 import org.jetbrains.yaml.psi.YAMLFile
 import org.jetbrains.yaml.psi.YAMLKeyValue
 import org.jetbrains.yaml.psi.YAMLMapping
+import org.jetbrains.yaml.psi.impl.YAMLHashImpl
 
 
 class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIntentionAction() {
@@ -156,13 +157,18 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     }
 
     private fun addDescription(endpointInfo: EndpointInfo, openApiFile: JsonFile, project: Project) {
-        val topLevelValue = openApiFile.topLevelValue as? JsonObject ?: return
-
-        val parentObject = topLevelValue.findProperty("paths")?.value as? JsonObject ?: topLevelValue
-        val documentedPath = parentObject.documentedPathItemProperty(endpointInfo.path)?.name
-        val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
-
         WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
+            commitDocumentOf(openApiFile)
+            val topLevelValue = openApiFile.topLevelValue as? JsonObject ?: return@run
+            val pathsProperty = topLevelValue.findProperty("paths")
+            if (pathsProperty != null && pathsProperty.value !is JsonObject) {
+                navigateLater(pathsProperty)
+                return@run
+            }
+
+            val parentObject = pathsProperty?.value as? JsonObject ?: topLevelValue
+            val documentedPath = parentObject.documentedPathItemProperty(endpointInfo.path)?.name
+            val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
             val generator = JsonElementGenerator(project)
 
             if (parentObject == topLevelValue) {
@@ -214,13 +220,19 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     }
 
     private fun addDescription(endpointInfo: EndpointInfo, openApiFile: YAMLFile, project: Project) {
-        val topLevelValue = openApiFile.documents.firstOrNull()?.topLevelValue as? YAMLMapping ?: return
-        val parentKeyValue = topLevelValue.getKeyValueByKey("paths")?.value ?: topLevelValue
-        val parentMapping = parentKeyValue as? YAMLMapping ?: return
-        val documentedPath = parentMapping.documentedPathItemKeyValue(endpointInfo.path)?.keyText
-        val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
-
         WriteCommandAction.writeCommandAction(project).run<RuntimeException> {
+            commitDocumentOf(openApiFile)
+            val topLevelValue = openApiFile.documents.firstOrNull()?.topLevelValue as? YAMLMapping ?: return@run
+            val parentKeyValue = topLevelValue.getKeyValueByKey("paths")?.value ?: topLevelValue
+            val parentMapping = parentKeyValue as? YAMLMapping ?: return@run
+            val flowStyleTarget = flowStyleTargetOf(parentMapping, endpointInfo.path)
+            if (flowStyleTarget != null) {
+                navigateLater(flowStyleTarget)
+                return@run
+            }
+
+            val documentedPath = parentMapping.documentedPathItemKeyValue(endpointInfo.path)?.keyText
+            val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
             if (parentKeyValue == topLevelValue) {
                 val pathsElement = OpenApiYamlPathBuilder(endpoint.path)
                     .addEndpoint(endpoint)
@@ -242,6 +254,16 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
             }
             navigateLater(writtenYamlOperation(openApiFile, endpoint))
         }
+    }
+
+    private fun flowStyleTargetOf(parentMapping: YAMLMapping, path: String): PsiElement? {
+        if (parentMapping is YAMLHashImpl) return parentMapping
+        return parentMapping.documentedPathItemKeyValue(path)?.takeIf { it.value is YAMLHashImpl }
+    }
+
+    private fun commitDocumentOf(file: PsiFile) {
+        val documentManager = PsiDocumentManager.getInstance(file.project)
+        documentManager.getDocument(file)?.let { documentManager.commitDocument(it) }
     }
 
     private fun YAMLMapping.putPathItem(pathItem: YAMLKeyValue) {
