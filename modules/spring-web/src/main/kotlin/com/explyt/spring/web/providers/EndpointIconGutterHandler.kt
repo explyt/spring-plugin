@@ -40,7 +40,7 @@ import java.awt.event.MouseEvent
 class EndpointIconGutterHandler(
     @get:VisibleForTesting val endpointInfo: EndpointInfo,
     private val statisticActionId: StatisticActionId = StatisticActionId.GUTTER_CONTROLLER_ENDPOINT_USAGE,
-    private val offersOpenApiDescription: Boolean = true,
+    @get:VisibleForTesting val offersOpenApiDescription: Boolean = true,
 ) : GutterIconNavigationHandler<PsiElement> {
 
     override fun navigate(e: MouseEvent, psiElement: PsiElement) {
