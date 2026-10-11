@@ -643,7 +643,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         )
 
         return CompactEndpointJson(
-            httpMethods = endpoint.requestMethods.ifEmpty { listOf("ALL") },
+            httpMethods = McpHttpMethods.listed(endpoint.requestMethods),
             fullPath = endpoint.path,
             pathTemplate = endpoint.pathTemplate.takeIf { it != endpoint.path },
             controllerClass = controllerClass?.qualifiedName,
@@ -1426,7 +1426,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "a line belonging to no method is refused with the nearest method declarations in that file. " +
                 "A trace started at a functional route begins at its handler; for a lambda route the start node " +
                 "is the @Bean factory with only that route's calls; 'route' names the verb and path, such as " +
-                "'GET /items', when they are known. " +
+                "'GET /items', or 'ALL /items' for a route answering every method, when they are known. " +
                 "Returns {status, chainLimitReached, revision, totalCount, offset, truncated, nextOffset, chain}. " +
                 "'chain' holds the traced methods, the starting method first, each with an 'id', the Spring " +
                 "stereotype of its class in 'layer' (CONTROLLER, SERVICE, REPOSITORY, COMPONENT, CONFIGURATION; " +
@@ -1457,7 +1457,9 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "the JVM, WebTestClient, and java.net.http, RestTemplate, TestRestTemplate and RestClient to this " +
                 "machine only; a request built inside a test helper from a parameter is not detected. A request " +
                 "listed there is not repeated in 'testReferences'. Without includeTests both fields are absent, which " +
-                "means not requested; an empty list means that no test was found. " +
+                "means not requested; an empty list means that no test was found. 'testUrlReferences' is also " +
+                "absent when requests cannot be matched to the starting route: its path is unknown, or it answers " +
+                "every HTTP method. " +
                 "A page holds at most 'limit' nodes ($TRACE_PAGE_LIMIT by default) within 'maxChars' of compact " +
                 "JSON ($TRACE_PAGE_CHARS by default) and can end earlier, because the budget is measured on the " +
                 "finished document. When 'truncated' is true, repeat the call with 'offset' = 'nextOffset' and " +
@@ -2410,12 +2412,11 @@ data class CallChainNodeJson(
     val testReferences: List<NodeTestReferenceJson>? = null,
     /**
      * On the method the trace started from, when it handles an endpoint: the test requests whose URL matches the
-     * endpoint - MockMvc to any host, `WebTestClient`, and real HTTP clients to this machine. Absent on every other node
-     * and when tests were not requested.
+     * endpoint - MockMvc to any host, `WebTestClient`, and real HTTP clients to this machine. Absent on every other node,
+     * when tests were not requested, and when requests cannot be matched to the route the trace started from.
      */
     @get:JsonInclude(JsonInclude.Include.NON_NULL)
     val testUrlReferences: List<UrlTestReferenceJson>? = null,
-    /** On the method the trace started from, when it starts from a functional route: its verb and path. */
     @get:JsonInclude(JsonInclude.Include.NON_NULL)
     val route: String? = null,
 )
