@@ -97,7 +97,7 @@ class ControllerEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor
             psiElement.textRange,
             SpringIcons.ReadAccess,
             { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.tooltip") },
-            EndpointIconGutterHandler(endpointElement),
+            EndpointIconGutterHandler(endpointElement, offersOpenApiDescription = requestMethods.isNotEmpty()),
             GutterIconRenderer.Alignment.RIGHT,
             { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.icon.accessible") }
         )
