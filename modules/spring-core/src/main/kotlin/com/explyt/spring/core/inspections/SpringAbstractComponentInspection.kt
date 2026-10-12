@@ -11,6 +11,7 @@ import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.providers.AbstractComponentLineMarker
 import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
+import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedByOrSelf
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
@@ -32,6 +33,7 @@ class SpringAbstractComponentInspection : SpringBaseUastLocalInspectionTool() {
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return emptyArray()
         val stereotype = SpringSearchUtils.findUAnnotation(module, uClass.uAnnotations, SpringCoreClasses.COMPONENT)
             ?: return emptyArray()
+        if (stereotype.javaPsi?.isMetaAnnotatedByOrSelf(typeHierarchyStereotypes) != false) return emptyArray()
         val anchor = stereotype.sourcePsi ?: return emptyArray()
         val annotationName = stereotype.qualifiedName?.substringAfterLast('.') ?: return emptyArray()
 
@@ -52,6 +54,14 @@ class SpringAbstractComponentInspection : SpringBaseUastLocalInspectionTool() {
             "explyt.spring.inspection.abstract.component.no.bean"
         else
             "explyt.spring.inspection.abstract.component.subclass.bean"
+    }
+
+    private companion object {
+        val typeHierarchyStereotypes = listOf(
+            SpringCoreClasses.CONTROLLER,
+            SpringCoreClasses.CONTROLLER_ADVICE,
+            SpringCoreClasses.REPOSITORY
+        )
     }
 }
 
