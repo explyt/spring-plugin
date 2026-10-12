@@ -9,6 +9,8 @@ import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootModificationUtil
@@ -445,6 +447,50 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
             element.manager.areElementsEquivalent(element.navigationElement, resolve().navigationElement)
     }
 
+    fun testBareRequestMappingListsTestRequestsOfEveryVerb() = runBlocking<Unit> {
+        addSource(ANY_ROOT, ANY_MAIN_FILE, ANY_MAIN_SOURCE)
+        addSource(ANY_TEST_ROOT, ANY_TEST_FILE, ANY_TEST_SOURCE, isTestSource = true)
+        assertEquals("Precondition: /any answers every method", listOf(emptyList<String>()), requestMethodsOf("/any"))
+        assertEquals("Precondition: /only-get answers GET", listOf(listOf("GET")), requestMethodsOf("/only-get"))
+
+        val references = traceAny("fun any(): String")["chain"][0]["testUrlReferences"]
+
+        assertNotNull("A bare @RequestMapping handler carries testUrlReferences", references)
+        assertEquals(listOf("/any"), references.map { it["endpointPath"].asText() })
+        assertEquals(listOf("$ANY_TEST_ROOT/$ANY_TEST_FILE"), references.map { it["filePath"].asText() })
+        assertEquals(
+            listOf(lineOf(ANY_TEST_SOURCE, "get(\"/any\")"), lineOf(ANY_TEST_SOURCE, "post(\"/any\")")),
+            references.single()["lines"].map { it.asInt() }.sorted()
+        )
+    }
+
+    fun testGetMappingIgnoresTestRequestsOfAnotherVerb() = runBlocking<Unit> {
+        addSource(ANY_ROOT, ANY_MAIN_FILE, ANY_MAIN_SOURCE)
+        addSource(ANY_TEST_ROOT, ANY_TEST_FILE, ANY_TEST_SOURCE, isTestSource = true)
+        assertEquals("Precondition: /only-get answers GET", listOf(listOf("GET")), requestMethodsOf("/only-get"))
+
+        val references = traceAny("fun onlyGet(): String")["chain"][0]["testUrlReferences"]
+
+        assertNotNull("Tests were requested, so the field is present", references)
+        assertEquals("A POST request does not reach a GET mapping, got $references", 0, references.size())
+    }
+
+    private fun requestMethodsOf(path: String): List<List<String>> = ReadAction.compute<List<List<String>>, Throwable> {
+        SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(myFixture.module)
+            .filter { it.path == path }
+            .map { it.requestMethods }
+    }
+
+    private suspend fun traceAny(handlerAnchor: String): JsonNode = mapper.readTree(
+        toolset.traceCallChain(
+            filePath = "$ANY_ROOT/$ANY_MAIN_FILE",
+            line = lineOf(ANY_MAIN_SOURCE, handlerAnchor),
+            projectPath = project.basePath!!,
+            depth = 3,
+            includeTests = true,
+        )
+    )
+
     /** Absent means "not requested"; an empty list would claim that no test depends on the method. */
     fun testTestFieldsAreAbsentWhenTestsAreNotRequested() = runBlocking<Unit> {
         val chain = traceFromHandler(includeTests = false)["chain"]
@@ -665,6 +711,49 @@ class SpringBootApplicationMcpToolsetTraceScopeTest : JavaCodeInsightFixtureTest
         const val BRAND_ROOT = "traceBrandTest"
         const val BRAND_TEST = "$BRAND_ROOT/com/example/links/ShortLinkBrandTest.kt"
         const val CLIENT_TEST = "$BRAND_ROOT/com/example/links/ShortLinkClientTest.kt"
+        const val ANY_ROOT = "traceAnyMain"
+        const val ANY_TEST_ROOT = "traceAnyTest"
+        const val ANY_MAIN_FILE = "com/example/any/AnyController.kt"
+        const val ANY_TEST_FILE = "com/example/any/AnyControllerTest.kt"
+
+        val ANY_MAIN_SOURCE = """
+            package com.example.any
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class AnyController {
+                @RequestMapping("/any")
+                fun any(): String = "any"
+
+                @GetMapping("/only-get")
+                fun onlyGet(): String = "get"
+            }
+        """.trimIndent()
+
+        val ANY_TEST_SOURCE = """
+            package com.example.any
+
+            import org.springframework.test.web.servlet.MockMvc
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+
+            class AnyControllerTest {
+                fun reads(mockMvc: MockMvc) {
+                    mockMvc.perform(get("/any"))
+                }
+
+                fun writes(mockMvc: MockMvc) {
+                    mockMvc.perform(post("/any"))
+                }
+
+                fun writesToAGetMapping(mockMvc: MockMvc) {
+                    mockMvc.perform(post("/only-get"))
+                }
+            }
+        """.trimIndent()
 
         fun handler(project: Project): PsiMethod =
             JavaPsiFacade.getInstance(project)
