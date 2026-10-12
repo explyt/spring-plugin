@@ -200,7 +200,7 @@ class SpringBeanNameConventionConflictUnknownSpringVersionInspectionTest : Sprin
 
     override fun setUp() {
         super.setUp()
-        BeanNameConventionConflictFixture.addUnknownSpringVersionStubs(myFixture)
+        BeanNameConventionConflictFixture.addUnknownSpringVersionStubs(module, testRootDisposable)
     }
 
     fun testConventionNameIsNotReportedWhenSpringVersionIsUnknown() =

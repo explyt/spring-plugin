@@ -8,7 +8,10 @@ package com.explyt.spring.core.inspections
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.util.SpringBootUtil
+import com.explyt.spring.test.util.TestLibrarySourceRoot
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.module.Module
 
@@ -24,12 +27,13 @@ import junit.framework.TestCase.assertTrue
 object BeanNameConventionConflictFixture {
     const val CONFIGURATION = "demo.AppConfiguration"
 
-    fun addUnknownSpringVersionStubs(fixture: CodeInsightTestFixture) {
-        fixture.addFileToProject(
+    fun addUnknownSpringVersionStubs(module: Module, parentDisposable: Disposable): TestLibrarySourceRoot {
+        val library = TestLibrarySourceRoot.create(module, parentDisposable, "spring-stubs")
+        library.addFile(
             "org/springframework/core/env/Environment.java",
             "package org.springframework.core.env; public interface Environment {}"
         )
-        fixture.addFileToProject(
+        library.addFile(
             "org/springframework/context/annotation/Bean.java",
             """
             package org.springframework.context.annotation;
@@ -39,7 +43,7 @@ object BeanNameConventionConflictFixture {
             public @interface Bean { String[] value() default {}; String[] name() default {}; }
             """.trimIndent()
         )
-        fixture.addFileToProject(
+        library.addFile(
             "org/springframework/core/annotation/AliasFor.java",
             """
             package org.springframework.core.annotation;
@@ -53,6 +57,7 @@ object BeanNameConventionConflictFixture {
             }
             """.trimIndent()
         )
+        return library
     }
 
     fun problems(fixture: CodeInsightTestFixture): List<HighlightInfo> {
@@ -62,17 +67,10 @@ object BeanNameConventionConflictFixture {
 
 fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnnotation: String, springMajor: Int?) {
         assertEquals("spring-core major version of the module", springMajor, SpringBootUtil.getSpringCoreMajorVersion(module))
-        if (springMajor != null) {
-            assertTrue(
-                "the inspection is available for the file",
-                SpringBeanNameConventionConflictInspection().isAvailableForFile(fixture.file)
-            )
-        } else {
-            assertNotNull(
-                "the source stub makes the Spring environment type resolvable",
-                findClassOrNull(fixture, "org.springframework.core.env.Environment")
-            )
-        }
+        assertTrue(
+            "the inspection is available for the file",
+            SpringBeanNameConventionConflictInspection().isAvailableForFile(fixture.file)
+        )
         val factory = findClass(fixture, CONFIGURATION).findMethodsByName("foo", false).single()
         val usage = factory.getAnnotation(usedAnnotation)
         assertNotNull("@$usedAnnotation is on the factory method", usage)
@@ -84,7 +82,8 @@ fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnn
         assertTrue(
             "the meta @Bean resolves to the expected source or library",
             if (springMajor == null) {
-                bean!!.qualifiedName == SpringCoreClasses.BEAN
+                bean!!.qualifiedName == SpringCoreClasses.BEAN &&
+                    ProjectFileIndex.getInstance(fixture.project).isInLibrary(bean!!.containingFile.virtualFile)
             } else {
                 bean!!.containingFile.virtualFile.path.substringBefore("!/").substringAfterLast('/').startsWith("spring-context-")
             }
