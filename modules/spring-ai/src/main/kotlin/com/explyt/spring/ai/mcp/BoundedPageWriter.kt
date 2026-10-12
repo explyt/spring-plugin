@@ -13,7 +13,9 @@ data class PageRequest(
     val offset: Int = 0,
     val limit: Int = 5,
     val maxChars: Int = 1800,
-    val expectedRevision: String? = null
+    val expectedRevision: String? = null,
+    val maxLimit: Int = BoundedPageWriter.MAX_LIMIT,
+    val revisionRequired: Boolean = true,
 )
 
 /**
@@ -75,6 +77,31 @@ class BoundedPageWriter {
             return writeTooLarge(minimumFor(envelope, itemsField, totalCount, itemAt, revision, page))
         }
         return mapper.writeValueAsString(root)
+    }
+
+    fun fitSample(
+        envelope: ObjectNode,
+        itemsField: String,
+        sampleField: String,
+        sample: List<ObjectNode>,
+        sampleTruncatedField: String,
+        totalCount: Int,
+        revision: String,
+        page: PageRequest
+    ): ObjectNode {
+        val fitted = envelope.deepCopy()
+        val served = fitted.putArray(sampleField)
+        fitted.put(sampleTruncatedField, true)
+        for (item in sample) {
+            served.add(item)
+            val probe = pageEnvelope(fitted, revision, totalCount, page.offset).apply { putArray(itemsField) }
+            if (encodedLength(probe) > page.maxChars) {
+                served.remove(served.size() - 1)
+                break
+            }
+        }
+        if (served.size() == sample.size) fitted.remove(sampleTruncatedField)
+        return fitted
     }
 
     fun writeError(
@@ -174,9 +201,9 @@ class BoundedPageWriter {
     /** Code and message of the first broken argument, or `null` when the request can be served. */
     private fun validate(page: PageRequest): Pair<String, String>? = when {
         page.offset < 0 -> invalid("offset must not be negative.")
-        page.limit !in MIN_LIMIT..MAX_LIMIT -> invalid("limit must be between $MIN_LIMIT and $MAX_LIMIT.")
+        page.limit !in MIN_LIMIT..page.maxLimit -> invalid("limit must be between $MIN_LIMIT and ${page.maxLimit}.")
         page.maxChars !in MIN_CHARS..MAX_CHARS -> invalid("maxChars must be between $MIN_CHARS and $MAX_CHARS.")
-        page.offset > 0 && page.expectedRevision == null ->
+        page.offset > 0 && page.expectedRevision == null && page.revisionRequired ->
             invalid("expectedRevision is required for a continuation; start again at offset 0.")
 
         else -> null
