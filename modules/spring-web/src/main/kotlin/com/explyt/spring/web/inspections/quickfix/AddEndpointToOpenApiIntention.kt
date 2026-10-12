@@ -15,10 +15,11 @@ import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathBuilder
 import com.explyt.spring.web.builder.openapi.json.OpenApiJsonPathHttpTypeBuilder
 import com.explyt.spring.web.builder.openapi.yaml.OpenApiYamlPathBuilder
 import com.explyt.spring.web.builder.openapi.yaml.OpenApiYamlPathHttpTypeBuilder
+import com.explyt.spring.web.loader.EndpointVerbs
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonData
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlData
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findUndocumentedOpenApiMethods
+import com.explyt.spring.web.providers.EndpointUsageSearcher.openApiMethodsOf
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction
@@ -66,13 +67,11 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     override fun getText() = SpringWebBundle.message("explyt.openapi.gutter.method")
 
     override fun isAvailable(project: Project, editor: Editor?, file: PsiFile?): Boolean {
-        if (endpoint.requestMethods.isEmpty()) return false
         val psiElement = endpoint.psiElement
         if (!psiElement.isValid) return false
 
         val module = ModuleUtilCore.findModuleForPsiElement(psiElement) ?: return false
-        return findOpenApiYamlEndpoints(endpoint.path, endpoint.requestMethods, module).isEmpty() &&
-                findOpenApiJsonEndpoints(endpoint.path, endpoint.requestMethods, module).isEmpty()
+        return findUndocumentedOpenApiMethods(endpoint.path, endpoint.requestMethods, module).isNotEmpty()
     }
 
     override fun generatePreview(project: Project, editor: Editor, file: PsiFile): IntentionPreviewInfo {
@@ -82,19 +81,20 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     override fun invoke(project: Project, editor: Editor?, file: PsiFile?) {
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: return
 
-        ReadAction.nonBlocking<List<PsiFile>> {
-            (findOpenApiYamlData(project) + findOpenApiJsonData(project))
+        ReadAction.nonBlocking<Pair<List<PsiFile>, EndpointInfo>> {
+            val openApiFiles = (findOpenApiYamlData(project) + findOpenApiJsonData(project))
                 .map { it.psiFile }
                 .filter { ModuleUtilCore.findModuleForFile(it) == module }
+            openApiFiles to endpoint.copy(requestMethods = openApiMethodsOf(endpoint.path, endpoint.requestMethods, module))
         }
-            .finishOnUiThread(ModalityState.current()) { openApiFiles ->
-                proceedFiles(openApiFiles, module)
+            .finishOnUiThread(ModalityState.current()) { (openApiFiles, documentedEndpoint) ->
+                proceedFiles(openApiFiles, documentedEndpoint, module)
             }
             .inSmartMode(project)
             .submit(AppExecutorUtil.getAppExecutorService())
     }
 
-    private fun proceedFiles(openApiFiles: List<PsiFile>, module: Module) {
+    private fun proceedFiles(openApiFiles: List<PsiFile>, endpoint: EndpointInfo, module: Module) {
         StatisticService.getInstance().addActionUsage(GUTTER_OPENAPI_GENERATE_ENDPOINT)
 
         val project = module.project
@@ -167,8 +167,11 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
             }
 
             val parentObject = pathsProperty?.value as? JsonObject ?: topLevelValue
-            val documentedPath = parentObject.documentedPathItemProperty(endpointInfo.path)?.name
-            val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
+            val documentedItem = parentObject.documentedPathItemProperty(endpointInfo.path)
+            val endpoint = documentedItem?.let { endpointInfo.withPathVariablesOf(it.name) } ?: endpointInfo
+            val documentedOperations = documentedItem?.value as? JsonObject
+            val writtenMethods = EndpointVerbs.openApiMethodsOf(endpoint.requestMethods)
+                .filter { documentedOperations?.findProperty(it.lowercase()) == null }
             val generator = JsonElementGenerator(project)
 
             if (parentObject == topLevelValue) {
@@ -180,7 +183,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val endpointPath = endpoint.path.ifBlank { "/" }
                 val builder = StringBuilder()
 
-                builder.iterateWithComma(endpoint.requestMethods) { httpType ->
+                builder.iterateWithComma(EndpointVerbs.openApiMethodsOf(endpoint.requestMethods)) { httpType ->
                     OpenApiJsonPathHttpTypeBuilder(endpoint, httpType, "", builder)
                         .build()
                 }
@@ -189,7 +192,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val newElement = elementGenerator.createProperty(endpointPath, "{${builder}}")
                 parentObject.putPathItem(newElement, generator)
             }
-            navigateLater(writtenJsonOperation(openApiFile, endpoint))
+            navigateLater(writtenJsonOperation(openApiFile, endpoint.path, writtenMethods))
         }
     }
 
@@ -209,11 +212,11 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     private fun JsonObject.documentedPathItemProperty(path: String): JsonProperty? =
         propertyList.firstOrNull { it.value is JsonObject && SpringWebUtil.isSamePathTemplate(it.name, path) }
 
-    private fun writtenJsonOperation(openApiFile: JsonFile, endpoint: EndpointInfo): PsiElement? {
+    private fun writtenJsonOperation(openApiFile: JsonFile, path: String, writtenMethods: List<String>): PsiElement? {
         val paths = (openApiFile.topLevelValue as? JsonObject)?.findProperty("paths")?.value as? JsonObject
             ?: return null
-        val pathItem = paths.documentedPathItemProperty(endpoint.path) ?: return null
-        val operation = endpoint.requestMethods.firstNotNullOfOrNull {
+        val pathItem = paths.documentedPathItemProperty(path) ?: return null
+        val operation = writtenMethods.firstNotNullOfOrNull {
             (pathItem.value as? JsonObject)?.findProperty(it.lowercase())
         }
         return operation ?: pathItem
@@ -231,8 +234,11 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 return@run
             }
 
-            val documentedPath = parentMapping.documentedPathItemKeyValue(endpointInfo.path)?.keyText
-            val endpoint = documentedPath?.let { endpointInfo.withPathVariablesOf(it) } ?: endpointInfo
+            val documentedItem = parentMapping.documentedPathItemKeyValue(endpointInfo.path)
+            val endpoint = documentedItem?.let { endpointInfo.withPathVariablesOf(it.keyText) } ?: endpointInfo
+            val documentedOperations = documentedItem?.value as? YAMLMapping
+            val writtenMethods = EndpointVerbs.openApiMethodsOf(endpoint.requestMethods)
+                .filter { documentedOperations?.getKeyValueByKey(it.lowercase()) == null }
             if (parentKeyValue == topLevelValue) {
                 val pathsElement = OpenApiYamlPathBuilder(endpoint.path)
                     .addEndpoint(endpoint)
@@ -242,7 +248,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val endpointPath = endpoint.path.ifBlank { "/" }
                 val builder = StringBuilder()
 
-                for (httpType in endpoint.requestMethods) {
+                for (httpType in EndpointVerbs.openApiMethodsOf(endpoint.requestMethods)) {
                     OpenApiYamlPathHttpTypeBuilder(endpoint, httpType, "", builder)
                         .build()
                 }
@@ -252,7 +258,7 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
                 val pathElement = keyValueGenerator.createYamlKeyValue(endpointPath, valueString)
                 parentMapping.putPathItem(pathElement)
             }
-            navigateLater(writtenYamlOperation(openApiFile, endpoint))
+            navigateLater(writtenYamlOperation(openApiFile, endpoint.path, writtenMethods))
         }
     }
 
@@ -301,11 +307,11 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     private fun YAMLMapping.documentedPathItemKeyValue(path: String): YAMLKeyValue? =
         keyValues.firstOrNull { it.value is YAMLMapping && SpringWebUtil.isSamePathTemplate(it.keyText, path) }
 
-    private fun writtenYamlOperation(openApiFile: YAMLFile, endpoint: EndpointInfo): PsiElement? {
+    private fun writtenYamlOperation(openApiFile: YAMLFile, path: String, writtenMethods: List<String>): PsiElement? {
         val topLevelValue = openApiFile.documents.firstOrNull()?.topLevelValue as? YAMLMapping ?: return null
         val paths = topLevelValue.getKeyValueByKey("paths")?.value as? YAMLMapping ?: return null
-        val pathItem = paths.documentedPathItemKeyValue(endpoint.path) ?: return null
-        val operation = endpoint.requestMethods.firstNotNullOfOrNull {
+        val pathItem = paths.documentedPathItemKeyValue(path) ?: return null
+        val operation = writtenMethods.firstNotNullOfOrNull {
             (pathItem.value as? YAMLMapping)?.getKeyValueByKey(it.lowercase())
         }
         return operation ?: pathItem

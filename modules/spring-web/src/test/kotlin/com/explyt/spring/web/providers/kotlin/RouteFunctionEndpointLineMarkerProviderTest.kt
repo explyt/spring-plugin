@@ -187,7 +187,7 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
         )
     }
 
-    fun testAnyMethodPathRouteMarkerDoesNotOfferAnOpenApiDescription() {
+    fun testAnyMethodPathRouteMarkerOffersAnOpenApiDescription() {
         myFixture.configureByFiles("UserHandler.kt")
         myFixture.configureByText(
             "UserRouter.kt", """
@@ -215,7 +215,7 @@ class RouteFunctionEndpointLineMarkerProviderTest : ExplytKotlinLightTestCase() 
             .map { it as EndpointIconGutterHandler }
             .associate { it.endpointInfo.path to it.offersOpenApiDescription }
 
-        assertEquals(mapOf("/x" to false, "/y" to true), offersByPath)
+        assertEquals(mapOf("/x" to true, "/y" to true), offersByPath)
     }
 
     fun testTwoArgumentPathCallOutsideTheDslHasNoMarker() {
