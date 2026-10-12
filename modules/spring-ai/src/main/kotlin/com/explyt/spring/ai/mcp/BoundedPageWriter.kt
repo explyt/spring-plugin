@@ -150,9 +150,8 @@ class BoundedPageWriter {
     /**
      * The envelope without items: everything whose size does not depend on the page.
      *
-     * `truncated` and `nextOffset` are written here with their widest shape - a number, not `null` - so that
-     * adding the continuation later can only shrink the response, never push an already-measured page over the
-     * budget.
+     * `truncated` and `nextOffset` are written here as `true` and a number, the shape of every page but the last;
+     * the last page re-measures its own continuation in the fill loop.
      */
     private fun pageEnvelope(envelope: ObjectNode, revision: String, totalCount: Int, offset: Int): ObjectNode {
         val root = mapper.createObjectNode()
@@ -195,7 +194,9 @@ class BoundedPageWriter {
     ): Int {
         val probe = pageEnvelope(envelope, revision, totalCount, page.offset)
         probe.putArray(itemsField).add(itemAt(page.offset))
-        return encodedLength(probe)
+        val widest = encodedLength(probe)
+        setContinuation(probe, totalCount, page.offset + 1)
+        return maxOf(widest, encodedLength(probe))
     }
 
     /** Code and message of the first broken argument, or `null` when the request can be served. */

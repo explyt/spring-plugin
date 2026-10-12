@@ -1244,8 +1244,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "'endpoints' with the closest match to the pattern first, 'basePath' when a base path the " +
                 "configuration declares was stripped from the URL, 'assumedPrefix' when an undeclared leading path " +
                 "had to be guessed and dropped, and 'nearestByPrefix' with 'sharedPrefix' when nothing " +
-                "matched - with a contract in place of each endpoint; every counted endpoint is returned, so " +
-                "endpoints.size equals totalCount unless truncated. " +
+                "matched - with a contract in place of each endpoint, plus 'status', 'revision', 'offset' and " +
+                "'nextOffset'; every counted endpoint is reachable, page by page. " +
+                LOOKUP_PAGE_DESCRIPTION +
+                "A contract is large, so 'maxChars' defaults to $CONTRACT_PAGE_CHARS. " +
                 "A contract of an endpoint declared in a test source root carries 'testSource': true and follows " +
                 "every production contract. " +
                 ACTUATOR_APPLICATION_DESCRIPTION + " " +
@@ -1263,9 +1265,15 @@ class SpringBootApplicationMcpToolset : McpToolset {
         projectPath: String? = null,
         @McpDescription(HTTP_METHOD_DESCRIPTION)
         httpMethod: String = "",
+        @McpDescription(ENDPOINT_OFFSET_DESCRIPTION)
+        offset: Int = 0,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $CONTRACT_PAGE_CHARS by default")
+        maxChars: Int = CONTRACT_PAGE_CHARS,
+        @McpDescription(EXPECTED_REVISION_DESCRIPTION)
+        expectedRevision: String? = null,
     ): String = lookupEndpoints(
         "explyt_get_spring_endpoint_contract", urlPattern, projectPath, httpMethod,
-        PageRequest(limit = MAX_ENDPOINT_RESULTS, maxChars = BoundedPageWriter.MAX_CHARS),
+        PageRequest(offset, MAX_ENDPOINT_RESULTS, maxChars, expectedRevision),
     ) { endpoint, project ->
         buildContract(endpoint, project)
     }
@@ -2422,6 +2430,13 @@ private const val BEAN_CONDITION_DESCRIPTION =
         "'access' describe the configured exposure, not whether the bean exists. The key is absent when no " +
         "condition excludes the bean or leaves it undecided, and when bean condition evaluation is disabled " +
         "in the settings. "
+
+data class EndpointListJson<T>(
+    val totalCount: Int,
+    val offset: Int,
+    val truncated: Boolean,
+    val endpoints: List<T>,
+)
 
 /**
  * The result of resolving one URL pattern, for the find and contract tools.
