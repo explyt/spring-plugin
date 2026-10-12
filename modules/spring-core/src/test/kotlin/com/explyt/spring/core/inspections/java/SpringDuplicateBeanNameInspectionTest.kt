@@ -124,6 +124,67 @@ class SpringDuplicateBeanNameInspectionTest : ExplytBaseLightTestCase() {
         )
     }
 
+    fun testProfileSwitchedPairIsNotReported() {
+        val problem = highlights(
+            """
+            @Configuration
+            public class Config {
+                @Bean("dataSource") @Profile("dev") Object h2() { return new Object(); }
+                @Bean("dataSource") @Profile("prod") Object pg() { return new Object(); }
+            }
+            """
+        )
+        assertConditionalAnnotationResolves("org.springframework.context.annotation.Profile")
+        assertTrue("Profile pair must not be reported", problem.isEmpty())
+    }
+
+    fun testConditionalOnPropertyPairIsNotReported() {
+        val problem = highlights(
+            """
+            @Configuration
+            public class Config {
+                @Bean("dataSource") @ConditionalOnProperty(name = "app.dev") Object h2() { return new Object(); }
+                @Bean("dataSource") @ConditionalOnProperty(name = "app.prod") Object pg() { return new Object(); }
+            }
+            """
+        )
+        assertConditionalAnnotationResolves("org.springframework.boot.autoconfigure.condition.ConditionalOnProperty")
+        assertTrue("ConditionalOnProperty pair must not be reported", problem.isEmpty())
+    }
+
+    fun testOnlyOneConditionalMethodIsNotReported() {
+        val problem = highlights(
+            """
+            @Configuration
+            public class Config {
+                @Bean("x") Object plain() { return new Object(); }
+                @Bean("x") @Profile("dev") Object conditional() { return new Object(); }
+            }
+            """
+        )
+        assertConditionalAnnotationResolves("org.springframework.context.annotation.Profile")
+        assertTrue("Pair with one conditional method must not be reported", problem.isEmpty())
+    }
+
+    fun testPlainPairRemainsReportedAlongsideConditionalPair() {
+        val problem = highlights(
+            """
+            @Configuration
+            public class Config {
+                @Bean("dataSource") @Profile("dev") Object h2() { return new Object(); }
+                @Bean("dataSource") @Profile("prod") Object pg() { return new Object(); }
+                @Bean("plain") Object first() { return new Object(); }
+                @Bean("plain") Object second() { return new Object(); }
+            }
+            """
+        )
+        assertConditionalAnnotationResolves("org.springframework.context.annotation.Profile")
+        assertTrue(
+            "Plain pair must remain reported",
+            problem.any { it.text == "second" && it.description.contains("'plain'") }
+        )
+    }
+
     fun testAllowedOverridingSuppressesTheProblem() {
         myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=true")
         ModificationTrackerManager.getInstance(project).invalidateAll()
@@ -186,11 +247,21 @@ class SpringDuplicateBeanNameInspectionTest : ExplytBaseLightTestCase() {
     private fun highlights(body: String): List<HighlightInfo> {
         myFixture.configureByText(
             "Config.java",
-            "package demo;\n\nimport org.springframework.context.annotation.Bean;\n" +
-                    "import org.springframework.context.annotation.Configuration;\n\n" + body.trimIndent()
+"package demo;\n\nimport org.springframework.context.annotation.Bean;\n" +
+                    "import org.springframework.context.annotation.Configuration;\n" +
+                    "import org.springframework.context.annotation.Profile;\n" +
+                    "import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\n\n" + body.trimIndent()
         )
         assertBeanAnnotationResolves()
         return myFixture.doHighlighting().filter { it.inspectionToolId == INSPECTION_ID }
+    }
+
+    private fun assertConditionalAnnotationResolves(annotation: String) {
+        assertNotNull("Precondition: $annotation must come from the fixture library", myFixture.findClass(annotation))
+        assertTrue(
+            "Precondition: demo.Config must use resolved $annotation",
+            myFixture.findClass("demo.Config").methods.any { it.hasAnnotation(annotation) }
+        )
     }
 
     private fun assertBeanAnnotationResolves() {
