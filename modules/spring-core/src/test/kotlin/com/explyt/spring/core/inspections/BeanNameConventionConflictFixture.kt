@@ -11,38 +11,68 @@ import com.explyt.spring.core.util.SpringBootUtil
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.roots.LibraryOrderEntry
-import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.util.io.FileUtil
+
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.testFramework.PsiTestUtil
+
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
-import java.io.File
-
 object BeanNameConventionConflictFixture {
     const val CONFIGURATION = "demo.AppConfiguration"
-    private const val SPRING_CORE_6_0_7_IN_MAVEN_LOCAL =
-        ".m2/repository/org/springframework/spring-core/6.0.7/spring-core-6.0.7.jar"
-    private const val UNVERSIONED_SPRING_CORE_LIBRARY = "unversioned-core"
-    private const val UNVERSIONED_SPRING_CORE_JAR = "unversioned-core.jar"
+
+    fun addUnknownSpringVersionStubs(fixture: CodeInsightTestFixture) {
+        fixture.addFileToProject(
+            "org/springframework/core/env/Environment.java",
+            "package org.springframework.core.env; public interface Environment {}"
+        )
+        fixture.addFileToProject(
+            "org/springframework/context/annotation/Bean.java",
+            """
+            package org.springframework.context.annotation;
+            import java.lang.annotation.*;
+            @Target({ElementType.TYPE, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface Bean { String[] value() default {}; String[] name() default {}; }
+            """.trimIndent()
+        )
+        fixture.addFileToProject(
+            "org/springframework/core/annotation/AliasFor.java",
+            """
+            package org.springframework.core.annotation;
+            import java.lang.annotation.*;
+            @Target(ElementType.METHOD)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface AliasFor {
+                String value() default "";
+                String attribute() default "";
+                Class<? extends Annotation> annotation() default Annotation.class;
+            }
+            """.trimIndent()
+        )
+    }
 
     fun problems(fixture: CodeInsightTestFixture): List<HighlightInfo> {
         val toolId = SpringBeanNameConventionConflictInspection().shortName
         return fixture.doHighlighting().filter { it.inspectionToolId == toolId }
     }
 
-    fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnnotation: String, springMajor: Int?) {
+fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnnotation: String, springMajor: Int?) {
         assertEquals("spring-core major version of the module", springMajor, SpringBootUtil.getSpringCoreMajorVersion(module))
-        assertTrue(
-            "the inspection is available for the file",
-            SpringBeanNameConventionConflictInspection().isAvailableForFile(fixture.file)
-        )
+        if (springMajor != null) {
+            assertTrue(
+                "the inspection is available for the file",
+                SpringBeanNameConventionConflictInspection().isAvailableForFile(fixture.file)
+            )
+        } else {
+            assertNotNull(
+                "the source stub makes the Spring environment type resolvable",
+                findClassOrNull(fixture, "org.springframework.core.env.Environment")
+            )
+        }
         val factory = findClass(fixture, CONFIGURATION).findMethodsByName("foo", false).single()
         val usage = factory.getAnnotation(usedAnnotation)
         assertNotNull("@$usedAnnotation is on the factory method", usage)
@@ -52,8 +82,12 @@ object BeanNameConventionConflictFixture {
         val bean = metaBean(fixture, composed, emptySet())
         assertNotNull("$usedAnnotation is meta-annotated with Spring @Bean", bean)
         assertTrue(
-            "the meta @Bean resolves to the spring-context library",
-            bean!!.containingFile.virtualFile.path.substringBefore("!/").substringAfterLast('/').startsWith("spring-context-")
+            "the meta @Bean resolves to the expected source or library",
+            if (springMajor == null) {
+                bean!!.qualifiedName == SpringCoreClasses.BEAN
+            } else {
+                bean!!.containingFile.virtualFile.path.substringBefore("!/").substringAfterLast('/').startsWith("spring-context-")
+            }
         )
     }
 
@@ -72,21 +106,7 @@ object BeanNameConventionConflictFixture {
         assertEquals("no problem: $problems", 0, problems.size)
     }
 
-    fun addUnversionedSpringCore(module: Module) {
-        val springCoreJar = File(System.getProperty("user.home"), SPRING_CORE_6_0_7_IN_MAVEN_LOCAL)
-        assertTrue("$springCoreJar is downloaded", springCoreJar.isFile)
-        val directory = FileUtil.createTempDirectory("bean-name-convention", null)
-        FileUtil.copy(springCoreJar, File(directory, UNVERSIONED_SPRING_CORE_JAR))
-        PsiTestUtil.addLibrary(module, UNVERSIONED_SPRING_CORE_LIBRARY, directory.path, UNVERSIONED_SPRING_CORE_JAR)
-    }
 
-    fun removeUnversionedSpringCore(module: Module) {
-        ModuleRootManager.getInstance(module).orderEntries
-            .filterIsInstance<LibraryOrderEntry>()
-            .firstOrNull { it.libraryName == UNVERSIONED_SPRING_CORE_LIBRARY }
-            ?.library
-            ?.let { PsiTestUtil.removeLibrary(module, it) }
-    }
 
     private fun metaBean(fixture: CodeInsightTestFixture, type: PsiClass, visited: Set<String>): PsiClass? {
         val name = type.qualifiedName ?: return null

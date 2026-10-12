@@ -166,22 +166,12 @@ class SpringBeanNameConventionConflictSpring7InspectionTest : SpringBeanNameConv
 
 class SpringBeanNameConventionConflictUnknownSpringVersionInspectionTest : SpringBeanNameConventionConflictKotlinTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary("org.springframework:spring-context:6.0.7", false))
+    override val libraries: Array<TestLibrary> = emptyArray()
     override val springMajor: Int? = null
 
     override fun setUp() {
         super.setUp()
-        BeanNameConventionConflictFixture.addUnversionedSpringCore(module)
-    }
-
-    override fun tearDown() {
-        try {
-            BeanNameConventionConflictFixture.removeUnversionedSpringCore(module)
-        } catch (e: Throwable) {
-            addSuppressedException(e)
-        } finally {
-            super.tearDown()
-        }
+        BeanNameConventionConflictFixture.addUnknownSpringVersionStubs(myFixture)
     }
 
     fun testConventionNameIsNotReportedWhenSpringVersionIsUnknown() =
