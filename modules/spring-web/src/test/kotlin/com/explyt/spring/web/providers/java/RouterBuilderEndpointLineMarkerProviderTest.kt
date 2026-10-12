@@ -105,11 +105,61 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testServletVerbPredicateOfAStaticRouteHasNoMarker() {
-        assertMarkersFollowModel(
+    fun testServletStaticRoutePredicateKeepsItsMarker() {
+        assertMarkersOutsideTheModel(
             EndpointType.SPRING_MVC,
-            """route(RequestPredicates.GET("/x"), h::list)""",
-            emptyList()
+            """return RouterFunctions.route(RequestPredicates.GET("/x"), h::list);""",
+            listOf("GET /x @RequestPredicates")
+        )
+    }
+
+    fun testServletStaticAndRouteChainKeepsItsMarkers() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_MVC,
+            STATIC_AND_ROUTE_CHAIN,
+            listOf("GET /x @RequestPredicates", "POST /y @RequestPredicates")
+        )
+    }
+
+    fun testReactiveStaticAndRouteChainKeepsItsMarkers() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_WEBFLUX,
+            STATIC_AND_ROUTE_CHAIN,
+            listOf("GET /x @RequestPredicates", "POST /y @RequestPredicates")
+        )
+    }
+
+    fun testServletLocalVariableBuilderStatementsKeepTheirMarkers() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_MVC,
+            LOCAL_VARIABLE_BUILDER,
+            listOf("GET /x @Builder", "POST /y @Builder")
+        )
+    }
+
+    fun testReactiveLocalVariableBuilderStatementsKeepTheirMarkers() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_WEBFLUX,
+            LOCAL_VARIABLE_BUILDER,
+            listOf("GET /x @Builder", "POST /y @Builder")
+        )
+    }
+
+    fun testServletIfElseBranchChainsKeepTheirMarkers() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_MVC,
+            IF_ELSE_BRANCH_CHAINS,
+            listOf("GET /x @Builder", "POST /y @Builder"),
+            members = FLAG_FIELD
+        )
+    }
+
+    fun testReactiveIfElseBranchChainsKeepTheirMarkers() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_WEBFLUX,
+            IF_ELSE_BRANCH_CHAINS,
+            listOf("GET /x @Builder", "POST /y @Builder"),
+            members = FLAG_FIELD
         )
     }
 
@@ -186,7 +236,27 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         assertEquals(expected.map { "$it @Builder" }, gutterRoutes())
     }
 
-    private fun configureRouterConfig(type: EndpointType, route: String, prelude: String, members: String) {
+    private fun assertMarkersOutsideTheModel(
+        type: EndpointType,
+        body: String,
+        expected: List<String>,
+        members: String = ""
+    ) {
+        configureRouterConfig(type, route = "", prelude = "", members = members, body = body)
+
+        assertEquals("Precondition: the endpoint model does not list this form (#627)", emptyList<String>(), modelRoutes(type))
+
+        myFixture.doHighlighting()
+        assertEquals(expected, gutterRoutes())
+    }
+
+    private fun configureRouterConfig(
+        type: EndpointType,
+        route: String,
+        prelude: String,
+        members: String,
+        body: String = "$prelude return RouterFunctions.$route;"
+    ) {
         val functionPackage = when (type) {
             EndpointType.SPRING_MVC -> "org.springframework.web.servlet.function"
             EndpointType.SPRING_WEBFLUX -> "org.springframework.web.reactive.function.server"
@@ -215,8 +285,7 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
 
                 @Bean
                 public RouterFunction<ServerResponse> routes(Handler h) {
-                    $prelude
-                    return RouterFunctions.$route;
+                    $body
                 }
 
                 public interface Handler {
@@ -248,4 +317,17 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
             "${endpointInfo.requestMethods.joinToString(",")} ${endpointInfo.path} @$anchorOwner"
         }
         .sorted()
+
+    private companion object {
+        const val STATIC_AND_ROUTE_CHAIN =
+            """return RouterFunctions.route(RequestPredicates.GET("/x"), h::list).andRoute(RequestPredicates.POST("/y"), h::list);"""
+
+        const val LOCAL_VARIABLE_BUILDER =
+            """RouterFunctions.Builder b = RouterFunctions.route(); b.GET("/x", h::list); b.POST("/y", h::list); return b.build();"""
+
+        const val IF_ELSE_BRANCH_CHAINS =
+            """if (flag) { return RouterFunctions.route().GET("/x", h::list).build(); } else { return RouterFunctions.route().POST("/y", h::list).build(); }"""
+
+        const val FLAG_FIELD = """private final boolean flag = Boolean.getBoolean("flag");"""
+    }
 }
