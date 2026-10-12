@@ -1477,8 +1477,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "machine only; a request built inside a test helper from a parameter is not detected. A request " +
                 "listed there is not repeated in 'testReferences'. Without includeTests both fields are absent, which " +
                 "means not requested; an empty list means that no test was found. 'testUrlReferences' is also " +
-                "absent when requests cannot be matched to the starting route: its path is unknown, or it answers " +
-                "every HTTP method. " +
+                "absent when requests cannot be matched to the starting route: its path or its methods are " +
+                "unknown. " +
                 "A page holds at most 'limit' nodes ($TRACE_PAGE_LIMIT by default) within 'maxChars' of compact " +
                 "JSON ($TRACE_PAGE_CHARS by default) and can end earlier, because the budget is measured on the " +
                 "finished document. When 'truncated' is true, repeat the call with 'offset' = 'nextOffset' and " +
