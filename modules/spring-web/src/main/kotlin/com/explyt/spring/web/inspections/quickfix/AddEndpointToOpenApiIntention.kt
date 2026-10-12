@@ -19,6 +19,7 @@ import com.explyt.spring.web.loader.EndpointVerbs
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonData
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlData
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findUndocumentedOpenApiMethods
+import com.explyt.spring.web.providers.EndpointUsageSearcher.openApiMethodsOf
 import com.explyt.spring.web.util.SpringWebUtil
 import com.explyt.util.ExplytPsiUtil
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction
@@ -80,19 +81,20 @@ class AddEndpointToOpenApiIntention(private val endpoint: EndpointInfo) : BaseIn
     override fun invoke(project: Project, editor: Editor?, file: PsiFile?) {
         val module = ModuleUtilCore.findModuleForPsiElement(endpoint.psiElement) ?: return
 
-        ReadAction.nonBlocking<List<PsiFile>> {
-            (findOpenApiYamlData(project) + findOpenApiJsonData(project))
+        ReadAction.nonBlocking<Pair<List<PsiFile>, EndpointInfo>> {
+            val openApiFiles = (findOpenApiYamlData(project) + findOpenApiJsonData(project))
                 .map { it.psiFile }
                 .filter { ModuleUtilCore.findModuleForFile(it) == module }
+            openApiFiles to endpoint.copy(requestMethods = openApiMethodsOf(endpoint.path, endpoint.requestMethods, module))
         }
-            .finishOnUiThread(ModalityState.current()) { openApiFiles ->
-                proceedFiles(openApiFiles, module)
+            .finishOnUiThread(ModalityState.current()) { (openApiFiles, documentedEndpoint) ->
+                proceedFiles(openApiFiles, documentedEndpoint, module)
             }
             .inSmartMode(project)
             .submit(AppExecutorUtil.getAppExecutorService())
     }
 
-    private fun proceedFiles(openApiFiles: List<PsiFile>, module: Module) {
+    private fun proceedFiles(openApiFiles: List<PsiFile>, endpoint: EndpointInfo, module: Module) {
         StatisticService.getInstance().addActionUsage(GUTTER_OPENAPI_GENERATE_ENDPOINT)
 
         val project = module.project

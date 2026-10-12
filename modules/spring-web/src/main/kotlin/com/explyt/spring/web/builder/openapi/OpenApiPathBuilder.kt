@@ -21,10 +21,7 @@ abstract class OpenApiPathBuilder(indent: String, builder: StringBuilder) : Abst
     protected fun operations(): List<Pair<EndpointInfo, String>> {
         val listedVerbs = endpointInfos.flatMap { it.requestMethods }
         return endpointInfos.flatMap { endpoint ->
-            val verbs = endpoint.requestMethods.ifEmpty {
-                EndpointVerbs.OPENAPI_METHODS.filter { verb -> listedVerbs.none { it.equals(verb, ignoreCase = true) } }
-            }
-            verbs.map { endpoint to it }
+            EndpointVerbs.openApiMethodsOf(endpoint.requestMethods, listedVerbs).map { endpoint to it }
         }
     }
 

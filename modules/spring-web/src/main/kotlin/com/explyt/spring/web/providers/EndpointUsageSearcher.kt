@@ -12,6 +12,7 @@ import com.explyt.spring.core.util.UastUtil.getArgumentValueAsEnumName
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.editor.openapi.OpenApiUtils
 import com.explyt.spring.web.loader.*
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
 import com.explyt.spring.web.util.ApplicationBasePath
 import com.explyt.spring.web.util.EndpointUrlMatcher
@@ -48,6 +49,8 @@ import org.jetbrains.yaml.psi.YAMLMapping
 
 private const val MAX_FILE_SIZE_BYTES = 1024 * 1024 //1mb
 
+private val SERVED_ENDPOINT_TYPES = listOf(EndpointType.SPRING_MVC, EndpointType.SPRING_WEBFLUX)
+
 object EndpointUsageSearcher {
 
     fun findOpenApiJsonEndpoints(
@@ -63,8 +66,17 @@ object EndpointUsageSearcher {
         val documented = referrers.mapNotNullTo(mutableSetOf()) { it.method }
         return OpenApiOperations(
             documented = referrers.map { it.psiElement },
-            undocumentedMethods = EndpointVerbs.openApiMethodsOf(requestMethods).filter { it.uppercase() !in documented }
+            undocumentedMethods = openApiMethodsOf(path, requestMethods, module).filter { it.uppercase() !in documented }
         )
+    }
+
+    fun openApiMethodsOf(path: String, requestMethods: List<String>, module: Module): List<String> {
+        if (requestMethods.isNotEmpty()) return requestMethods
+        val siblingVerbs = SpringWebEndpointsSearcher.getInstance(module.project)
+            .getAllEndpoints(module, SERVED_ENDPOINT_TYPES)
+            .filter { SpringWebUtil.isSamePathTemplate(it.path, path) }
+            .flatMap { it.requestMethods }
+        return EndpointVerbs.openApiMethodsOf(requestMethods, siblingVerbs)
     }
 
     fun findUndocumentedOpenApiMethods(path: String, requestMethods: List<String>, module: Module): List<String> =
