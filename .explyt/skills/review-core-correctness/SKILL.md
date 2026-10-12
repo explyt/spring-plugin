@@ -26,7 +26,9 @@ Use and reference these checklist IDs when applicable:
 2. Understand the intent before judging the code.
 3. Trace the happy path, then every unhappy path.
 4. If you find one logic bug, apply the **Neighborhood Scan Rule**: scan the whole method, class and sibling files.
-5. Do not replace reasoning with checklist ticking. Use the checklist to ensure coverage, not to avoid thinking.
+5. For static taint/SARIF findings, validate source-to-sink reachability before accepting the finding: trace filters, guards, type refinement, overload selection and lock predicates. Separate a real reachable path from a broad interface sink or a path excluded by an earlier condition.
+6. Distinguish a potential slow-operation hazard from a measured freeze. The code evidence can establish an unsafe EDT boundary; it cannot establish duration or user-visible impact without runtime evidence.
+7. Do not replace reasoning with checklist ticking. Use the checklist to ensure coverage, not to avoid thinking.
 
 ## Hard rules
 
@@ -49,6 +51,8 @@ The most important question: **does the code do what it claims to do?**
 - **Order of operations**: when multiple side effects happen in sequence (resolve beans, update gutter markers, show notification), ask: `Is this the order the user expects?` Getting this wrong silently breaks UX.
 - **Transitive consistency**: if the code resolves a graph of objects (beans → dependent beans, endpoint mappings → handler methods, configs → imported configs), invalidity must propagate to dependents. A resolved parent with an unresolved child is a logic bug.
 - **Silent early returns hiding bugs**: `val x = getSomething() ?: return` — ask in what case this is null and whether `return` masks a state bug.
+- **Reachability through filters**: a static sink reached through a generic interface, virtual call or loader registry must be checked against actual preceding filters and concrete implementations; do not report a defect from the sink signature alone.
+- **Thread-guard semantics**: a read-lock guard can invalidate a no-read-lock finding, while the same read lock does not make slow index work safe on EDT. Keep these verdicts separate.
 - **Return type semantics**: `getX()` (singular) → single item or null. `getXs()` (plural) → collection. Return `Set` if duplicates are impossible, `List` only if order matters.
 
 ### 2. Architecture and design

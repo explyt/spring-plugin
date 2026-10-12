@@ -6,7 +6,7 @@
 package com.explyt.spring.ai.action
 
 import com.explyt.spring.ai.SpringAiBundle
-import com.explyt.spring.ai.service.AiPluginService
+
 import com.explyt.spring.ai.service.AiUtils
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.util.ActionUtil
@@ -16,6 +16,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UFile
@@ -45,18 +46,23 @@ class ConvertDtoToEntityAction : AnAction(SpringAiBundle.message("explyt.spring.
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
+        val selectedFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
 
-        val dtoPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes }
-            ?.filter { !isPotentialSpringClass(it) } ?: return
+        submitAiPromptInSmartMode(project) { composeRequest(project, selectedFiles) }
+    }
+
+    private fun composeRequest(project: Project, selectedFiles: Array<VirtualFile>): AiPromptRequest {
+        val dtoPsiClasses = selectedFiles
+            .mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
+            .flatMap { it.classes }
+            .filter { !isPotentialSpringClass(it) }
 
         val dtoNames = dtoPsiClasses.map { it.javaPsi.name }
         val virtualFiles = dtoPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
         val jpaEntitySentence = AiUtils.getJpaEntitySentence(project)
 
         val prompt = SpringAiBundle.message("action.prompt.convert.dto", jpaEntitySentence, dtoNames)
-        AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
+        return AiPromptRequest(prompt, virtualFiles)
     }
 
     private fun isPotentialSpringClass(uClass: UClass): Boolean {
@@ -88,16 +94,21 @@ class ConvertEntityToDtoAction : AnAction(SpringAiBundle.message("explyt.spring.
 
     override fun actionPerformed(e: AnActionEvent) {
         val project: Project = e.project ?: return
+        val selectedFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
 
-        val entityPsiClasses = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
-            ?.mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
-            ?.flatMap { it.classes }
-            ?.filter { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) } ?: return
+        submitAiPromptInSmartMode(project) { composeRequest(project, selectedFiles) }
+    }
+
+    private fun composeRequest(project: Project, selectedFiles: Array<VirtualFile>): AiPromptRequest {
+        val entityPsiClasses = selectedFiles
+            .mapNotNull { it.toPsiFile(project)?.toUElement() as? UFile }
+            .flatMap { it.classes }
+            .filter { it.javaPsi.isMetaAnnotatedBy(JPA_ANNOTATIONS) }
 
         val entityNames = entityPsiClasses.map { it.javaPsi.name }
         val virtualFiles = entityPsiClasses.mapNotNull { it.javaPsi.containingFile?.virtualFile }
 
         val prompt = SpringAiBundle.message("action.prompt.convert.entity", entityNames)
-        AiPluginService.getInstance(project).performPrompt(prompt, virtualFiles)
+        return AiPromptRequest(prompt, virtualFiles)
     }
 }
