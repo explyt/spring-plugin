@@ -57,8 +57,12 @@ class BoundedPageWriter {
 
         val root = pageEnvelope(envelope, revision, totalCount, page.offset)
         val items = root.putArray(itemsField)
-        if (encodedLength(root) > page.maxChars) {
-            return writeTooLarge(encodedLength(root))
+        val envelopeLength = maxOf(
+            encodedLength(root),
+            terminalLength(root, totalCount, page.offset),
+        )
+        if (envelopeLength > page.maxChars) {
+            return writeTooLarge(envelopeLength)
         }
 
         var added = 0
@@ -229,6 +233,9 @@ class BoundedPageWriter {
         }
         return writeError(RESPONSE_TOO_LARGE, message, emptyList(), FALLBACK_BUDGET)
     }
+
+    private fun terminalLength(root: ObjectNode, totalCount: Int, offset: Int): Int =
+        root.deepCopy().apply { setContinuation(this, totalCount, offset) }.let(::encodedLength)
 
     private fun encodedLength(node: ObjectNode): Int = mapper.writeValueAsString(node).length
 

@@ -107,6 +107,8 @@ private const val ENDPOINT_OFFSET_DESCRIPTION =
     "Index of the first endpoint to return: the 'nextOffset' of the previous page"
 private const val EXPECTED_REVISION_DESCRIPTION =
     "The 'revision' of the first page, required to continue that same answer"
+private const val LISTING_REVISION_DESCRIPTION =
+    "Pass the 'revision' from the previous page to keep continuing the same answer; a different revision answers RESULT_CHANGED"
 private const val FIND_PAGE_CHARS = 8000
 private const val CONTRACT_PAGE_CHARS = BoundedPageWriter.MAX_CHARS
 private const val LIST_PAGE_CHARS = BoundedPageWriter.MAX_CHARS
@@ -1046,8 +1048,8 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "answers RESULT_CHANGED. One endpoint larger than 'maxChars' answers RESPONSE_TOO_LARGE naming the " +
                 "maxChars that fetches it. Endpoints come in a stable order, so pages never overlap: production " +
                 "before test sources, then by controller class, file and declaration position, path and HTTP " +
-                "methods. An endpoint declared in a test source root carries 'testSource': true and lands on the " +
-                "last pages; the key is absent otherwise. " +
+                "methods, then application. An endpoint declared in a test source root carries 'testSource': true and " +
+                "lands on the last pages; the key is absent otherwise. " +
                 ACTUATOR_APPLICATION_DESCRIPTION
     )
     suspend fun getHttpEndpoints(
@@ -1076,7 +1078,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         compact: Boolean = false,
         @McpDescription("Budget of the whole compact JSON answer, 512..16000, $LIST_PAGE_CHARS by default")
         maxChars: Int? = null,
-        @McpDescription(EXPECTED_REVISION_DESCRIPTION)
+        @McpDescription(LISTING_REVISION_DESCRIPTION)
         expectedRevision: String? = null,
     ): String {
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
