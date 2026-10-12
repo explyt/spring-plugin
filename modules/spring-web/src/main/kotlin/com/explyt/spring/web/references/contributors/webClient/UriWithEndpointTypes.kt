@@ -5,6 +5,7 @@
 
 package com.explyt.spring.web.references.contributors.webClient
 
+import com.explyt.spring.web.loader.EndpointVerbs
 import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.openapi.module.Module
@@ -45,12 +46,13 @@ data class UriWithEndpointTypes(val uri: String, val endpointTypes: Sequence<Psi
                 }
                 receiver = receiver.receiver as? UQualifiedReferenceExpression
             }
-            if (uri == null || method == null) return null
+            if (uri == null) return null
+            val verb = method ?: return null
 
             val endpointTypes = SpringWebEndpointsSearcher.getInstance(module.project)
                 .getAllEndpointElements(uri.replace("\"", ""), module)
                 .asSequence()
-                .filter { it.requestMethods.contains(method) }
+                .filter { EndpointVerbs.answers(it, verb) }
                 .mapNotNull { it.psiElement as? PsiMethod }
                 .mapNotNull { it.returnType as? PsiClassReferenceType }
 
