@@ -21,6 +21,7 @@ import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.lombok.utils.decapitalize
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.*
 
@@ -80,15 +81,16 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
     }
 
     private fun routeCallAnchoredAt(psiElement: PsiElement): UCallExpression? =
-        stringRouteCallAnchoredAt(psiElement)
-            ?: (getUParentForIdentifier(psiElement) as? UCallExpression)
-                ?.takeIf { RouterDslRoutes.isRouteName(it.methodName) }
+        (getUParentForIdentifier(psiElement) as? UCallExpression)
+            ?.takeIf { RouterDslRoutes.isRouteName(it.methodName) }
+            ?: receiverRouteCallAnchoredAt(psiElement)
 
-    private fun stringRouteCallAnchoredAt(psiElement: PsiElement): UCallExpression? {
-        val path = psiElement.parent as? KtStringTemplateExpression ?: return null
-        if (path.firstChild != psiElement) return null
-        val call = path.parent as? KtCallExpression ?: return null
-        if (call.calleeExpression != path) return null
+    private fun receiverRouteCallAnchoredAt(psiElement: PsiElement): UCallExpression? {
+        val callee = psiElement.parent
+        if (callee !is KtStringTemplateExpression && callee !is KtNameReferenceExpression) return null
+        if (callee.firstChild != psiElement) return null
+        val call = callee.parent as? KtCallExpression ?: return null
+        if (call.calleeExpression != callee) return null
         return call.toUElementOfType<UCallExpression>()
     }
 
