@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.RouterBuilderRouteWalker
 import com.explyt.spring.test.addFromMaven
 import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
@@ -16,7 +17,9 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.pom.java.LanguageLevel
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiManager
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
@@ -473,6 +476,71 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertNestedJavaRouteHasNoInventedRoute(".nest(api, b -> b.GET(\"/x\", handler::list))", template)
     }
 
+    fun testJavaLocalBuilderRouteKeepsItsRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val source = orderRoutesReturning(
+            """
+            RouterFunctions.Builder b = RouterFunctions.route();
+                    b.GET("/x", handler::list);
+                    return b.build();
+            """.trimIndent()
+        )
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/x\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertFalse("Precondition: the builder walker does not model a local builder", orderRoutesWalk().modelled)
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "b.GET(\"/x\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertEquals("GET /x", head["route"]?.asText())
+        assertUrlReferences(head, ORDER_TEST_FILE, "/x", requests, "get().uri(\"/x\")")
+    }
+
+    fun testJavaEarlyReturnRouteKeepsItsRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val source = orderRoutesReturning(
+            """
+            if (System.getenv("X") != null) {
+                        return RouterFunctions.route().GET("/a", handler::list).build();
+                    }
+                    return RouterFunctions.route().GET("/b", request -> ServerResponse.ok().build()).build();
+            """.trimIndent()
+        )
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/a\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertFalse(
+            "Precondition: the builder walker does not model the route of an early return",
+            "/a" in orderRoutesWalk().paths
+        )
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "GET(\"/a\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertEquals("GET /a", head["route"]?.asText())
+        assertUrlReferences(head, ORDER_TEST_FILE, "/a", requests, "get().uri(\"/a\")")
+    }
+
+    fun testJavaLocalBuilderNestedRouteHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
+        val source = orderRoutesReturning(
+            """
+            RouterFunctions.Builder b = RouterFunctions.route();
+                    b.path("/p", c -> c.GET("/x", handler::list));
+                    return b.build();
+            """.trimIndent()
+        )
+        val requests = ORDER_TEST_SOURCE.replace("get().uri(\"/java/orders\")", "get().uri(\"/x\")")
+        addSource(MAIN_ROOT, ORDER_ROUTES_FILE, source)
+        addSource(TEST_ROOT, ORDER_TEST_FILE, requests, isTestSource = true)
+        assertFalse("Precondition: the builder walker does not model a local builder", orderRoutesWalk().modelled)
+
+        val head = traceAt(ORDER_ROUTES_FILE, source, "c.GET(\"/x\", handler::list)", includeTests = true)["chain"][0]
+
+        assertEquals("OrderHandler.list", nameOf(head))
+        assertFalse("An unmodelled Java nesting prefix leaves the route unknown, got ${head["route"]}", head.has("route"))
+        val toX = head["testUrlReferences"]?.filter { it["endpointPath"].asText() == "/x" }.orEmpty()
+        assertTrue("No request is matched to the prefix-less path, got $toX", toX.isEmpty())
+    }
+
     fun testRouteWithoutAPathHasNoTestUrlReferences() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items/one\") { catalog.find()",
@@ -516,6 +584,21 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals("CatalogRoutes.catalogRoutes", nameOf(head))
         assertFalse(head.has("route"))
         assertTrue("The whole factory is traced, got ${targetsOf(head)}", "CatalogService.remove" in targetsOf(head))
+    }
+
+    private class WalkSummary(val modelled: Boolean, val paths: List<String>)
+
+    private fun orderRoutesWalk(): WalkSummary = ReadAction.compute<WalkSummary, Throwable> {
+        val routes = JavaPsiFacade.getInstance(project)
+            .findClass("com.example.routes.orders.OrderRoutes", GlobalSearchScope.projectScope(project))!!
+        val walk = RouterBuilderRouteWalker.walkOf(routes.findMethodsByName("orderRoutes", false).single())
+        WalkSummary(walk.modelled, walk.routes.map { it.path })
+    }
+
+    private fun orderRoutesReturning(body: String): String {
+        val start = ORDER_ROUTES_SOURCE.indexOf("return RouterFunctions.route()")
+        val end = ORDER_ROUTES_SOURCE.indexOf(".build();", start) + ".build();".length
+        return ORDER_ROUTES_SOURCE.replaceRange(start, end, body)
     }
 
     private suspend fun assertNestedJavaRouteKeepsItsFullPath(nestedRoute: String, anchor: String, path: String) {
