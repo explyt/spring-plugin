@@ -46,8 +46,8 @@ data class UriWithEndpointTypes(val uri: String, val endpointTypes: Sequence<Psi
                 }
                 receiver = receiver.receiver as? UQualifiedReferenceExpression
             }
-            if (uri == null || method == null) return null
-            val verb: String = method
+            if (uri == null) return null
+            val verb = method ?: return null
 
             val endpointTypes = SpringWebEndpointsSearcher.getInstance(module.project)
                 .getAllEndpointElements(uri.replace("\"", ""), module)
