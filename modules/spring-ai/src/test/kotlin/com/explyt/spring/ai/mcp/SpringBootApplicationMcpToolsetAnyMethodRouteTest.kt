@@ -39,6 +39,23 @@ class SpringBootApplicationMcpToolsetAnyMethodRouteTest : ExplytKotlinLightTestC
         assertEquals(listOf("ALL"), listedMethodsOf(SERVLET_ROUTER_PATH))
     }
 
+    fun testAnyMethodPathRouteMatchesEveryHttpMethodFilter() = runBlocking<Unit> {
+        val response = mapper.readTree(
+            toolset.findEndpoint(
+                urlPattern = CO_ROUTER_PATH,
+                httpMethod = "POST",
+                projectPath = projectPath(),
+            )
+        )
+
+        assertTrue(
+            response["endpoints"].any {
+                it["fullPath"].asText() == CO_ROUTER_PATH &&
+                        it["httpMethods"].map { method -> method.asText() } == listOf("ALL")
+            }
+        )
+    }
+
     fun testCoRouterAnyMethodPathRouteContractNamesItsHandler() = runBlocking<Unit> {
         assertContractNamesHandler(
             path = CO_ROUTER_PATH,
