@@ -362,12 +362,13 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals("ALL /co/any", head["route"]?.asText())
     }
 
-    fun testAnyMethodPathRouteOmitsTestUrlReferencesThatAVerbRouteCarries() = runBlocking<Unit> {
+    fun testAnyMethodPathRouteListsTestRequestsOfEveryVerbLikeAVerbRoute() = runBlocking<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             "path(\"/x\", handler::list)\n        GET(\"/y\", handler::list)"
         )
         addSource(MAIN_ROOT, CATALOG_FILE, source)
+        addSource(TEST_ROOT, CATALOG_TEST_FILE, ANY_METHOD_TEST_SOURCE, isTestSource = true)
         assertRouteModelled("/x", "")
         assertRouteModelled("/y", "GET")
 
@@ -376,10 +377,14 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
 
         assertEquals("ALL /x", anyMethod["route"]?.asText())
         assertEquals("GET /y", verb["route"]?.asText())
-        assertTrue("A verb route carries testUrlReferences, got $verb", verb.has("testUrlReferences"))
-        assertFalse(
-            "Requests cannot be matched to a route answering every method, got ${anyMethod["testUrlReferences"]}",
-            anyMethod.has("testUrlReferences")
+        assertUrlReferences(verb, CATALOG_TEST_FILE, "/y", ANY_METHOD_TEST_SOURCE, "get().uri(\"/y\")")
+        val toX = anyMethod["testUrlReferences"]
+        assertNotNull("A route answering every method carries testUrlReferences, got $anyMethod", toX)
+        assertEquals(listOf("/x"), toX.map { it["endpointPath"].asText() })
+        assertEquals(listOf("$TEST_ROOT/$CATALOG_TEST_FILE"), toX.map { it["filePath"].asText() })
+        assertEquals(
+            listOf(lineOf(ANY_METHOD_TEST_SOURCE, "get().uri(\"/x\")"), lineOf(ANY_METHOD_TEST_SOURCE, "post().uri(\"/x\")")),
+            toX.single()["lines"].map { it.asInt() }.sorted()
         )
     }
 
@@ -773,6 +778,26 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
 
                 fun removesItems(client: WebTestClient) {
                     client.delete().uri("/co/items").exchange()
+                }
+            }
+        """.trimIndent()
+
+        val ANY_METHOD_TEST_SOURCE = """
+            package com.example.routes.catalog
+
+            import org.springframework.test.web.reactive.server.WebTestClient
+
+            class CatalogRoutesTest {
+                fun readsX(client: WebTestClient) {
+                    client.get().uri("/x").exchange()
+                }
+
+                fun writesX(client: WebTestClient) {
+                    client.post().uri("/x").exchange()
+                }
+
+                fun readsY(client: WebTestClient) {
+                    client.get().uri("/y").exchange()
                 }
             }
         """.trimIndent()
