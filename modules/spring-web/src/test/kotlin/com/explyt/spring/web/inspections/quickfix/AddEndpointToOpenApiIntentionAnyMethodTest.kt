@@ -167,6 +167,124 @@ class AddEndpointToOpenApiIntentionAnyMethodTest : ExplytMultiModuleTestCase() {
         )
     }
 
+    fun testYamlActionLeavesTheSiblingHandlersVerbToThatHandler() {
+        val spec = addSpec("openapi.yaml", yamlSpec("/other" to listOf("get")))
+        val (any, _) = sharedPathEndpoints()
+
+        val text = applyActionFor(any, spec)
+
+        assertEquals(
+            "GET /x is dispatched to listed, so any documents only the other six verbs:\n$text",
+            SIBLING_FREE_OPERATIONS.map { it to "any" }, yamlOperationIds(text, "/x")
+        )
+    }
+
+    fun testJsonActionLeavesTheSiblingHandlersVerbToThatHandler() {
+        val spec = addSpec("openapi.json", jsonSpec("/other" to listOf("get")))
+        val (any, _) = sharedPathEndpoints()
+
+        val text = applyActionFor(any, spec)
+
+        assertEquals(
+            "GET /x is dispatched to listed, so any documents only the other six verbs:\n$text",
+            SIBLING_FREE_OPERATIONS.map { it to "any" }, jsonOperationIds(text, "/x")
+        )
+    }
+
+    fun testYamlActionForTheSiblingHandlerStillDocumentsItsVerbAfterTheAnyMethodHandler() {
+        val spec = addSpec("openapi.yaml", yamlSpec("/other" to listOf("get")))
+        val (any, listed) = sharedPathEndpoints()
+        applyActionFor(any, spec)
+
+        val text = applyActionFor(listed, spec)
+
+        assertEquals(
+            "Each verb of /x is documented once, GET by listed and the rest by any:\n$text",
+            SHARED_PATH_OPERATION_IDS, yamlOperationIds(text, "/x").sortedBy { SPRINGDOC_OPERATIONS.indexOf(it.first) }
+        )
+    }
+
+    fun testJsonActionForTheSiblingHandlerStillDocumentsItsVerbAfterTheAnyMethodHandler() {
+        val spec = addSpec("openapi.json", jsonSpec("/other" to listOf("get")))
+        val (any, listed) = sharedPathEndpoints()
+        applyActionFor(any, spec)
+
+        val text = applyActionFor(listed, spec)
+
+        assertEquals(
+            "Each verb of /x is documented once, GET by listed and the rest by any:\n$text",
+            SHARED_PATH_OPERATION_IDS, jsonOperationIds(text, "/x").sortedBy { SPRINGDOC_OPERATIONS.indexOf(it.first) }
+        )
+    }
+
+    fun testYamlActionIsNotOfferedWhenOnlyTheSiblingHandlersVerbIsUndocumented() {
+        addSpec("openapi.yaml", yamlSpec("/x" to SIBLING_FREE_OPERATIONS))
+        val (any, _) = sharedPathEndpoints()
+        assertEquals(
+            "Precondition: the spec documents the six verbs of /x other than GET",
+            SIBLING_FREE_OPERATIONS.size,
+            EndpointUsageSearcher.findOpenApiYamlEndpoints("/x", SIBLING_FREE_OPERATIONS.map { it.uppercase() }, module).size
+        )
+
+        assertFalse(
+            "The undocumented GET /x belongs to listed",
+            AddEndpointToOpenApiIntention(any).isAvailable(project, null, null)
+        )
+    }
+
+    fun testJsonActionIsNotOfferedWhenOnlyTheSiblingHandlersVerbIsUndocumented() {
+        addSpec("openapi.json", jsonSpec("/x" to SIBLING_FREE_OPERATIONS))
+        val (any, _) = sharedPathEndpoints()
+        assertEquals(
+            "Precondition: the spec documents the six verbs of /x other than GET",
+            SIBLING_FREE_OPERATIONS.size,
+            EndpointUsageSearcher.findOpenApiJsonEndpoints("/x", SIBLING_FREE_OPERATIONS.map { it.uppercase() }, module).size
+        )
+
+        assertFalse(
+            "The undocumented GET /x belongs to listed",
+            AddEndpointToOpenApiIntention(any).isAvailable(project, null, null)
+        )
+    }
+
+    private fun sharedPathEndpoints(): Pair<AddEndpointToOpenApiIntention.EndpointInfo, AddEndpointToOpenApiIntention.EndpointInfo> {
+        addFileToModule(
+            module, "com/example/SharedPathController.java", """
+            package com.example;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RequestMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class SharedPathController {
+                @RequestMapping("/x")
+                public String any() { return "any"; }
+
+                @GetMapping("/x")
+                public String listed() { return "listed"; }
+            }
+            """.trimIndent()
+        )
+        val any = endpointOf("com.example.SharedPathController", "any")
+        val listed = endpointOf("com.example.SharedPathController", "listed")
+        assertEquals("Precondition: any is mapped to /x", "/x", any.path)
+        assertEquals("Precondition: any declares no method", emptyList<String>(), any.requestMethods)
+        assertEquals("Precondition: listed is mapped to /x", "/x", listed.path)
+        assertEquals("Precondition: listed declares GET", listOf("GET"), listed.requestMethods)
+        return any to listed
+    }
+
+    private fun yamlOperationIds(text: String, path: String): List<Pair<String, String?>> =
+        yamlPathItem(text, path).keyValues.map {
+            it.keyText to (it.value as? YAMLMapping)?.getKeyValueByKey("operationId")?.valueText
+        }
+
+    private fun jsonOperationIds(text: String, path: String): List<Pair<String, String?>> =
+        jsonOperations(text, path).map {
+            it.name to ((it.value as? JsonObject)?.findProperty("operationId")?.value as? JsonStringLiteral)?.value
+        }
+
     private fun addSpec(name: String, text: String): VirtualFile {
         val spec = addFileToModule(module, name, text).virtualFile
         assertEquals(
@@ -235,6 +353,14 @@ class AddEndpointToOpenApiIntentionAnyMethodTest : ExplytMultiModuleTestCase() {
         return endpoint
     }
 
+    private fun endpointOf(className: String, methodName: String): AddEndpointToOpenApiIntention.EndpointInfo {
+        val method = JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.projectScope(project))!!
+            .findMethodsByName(methodName, false).single()
+        val markers = mutableListOf<LineMarkerInfo<*>>()
+        ControllerEndpointActionsLineMarkerProvider().collectSlowLineMarkers(mutableListOf(method.nameIdentifier!!), markers)
+        return (markers.single().navigationHandler as EndpointIconGutterHandler).endpointInfo
+    }
+
     private fun endpointOf(methodName: String): AddEndpointToOpenApiIntention.EndpointInfo {
         val scope = GlobalSearchScope.projectScope(project)
         if (JavaPsiFacade.getInstance(project).findClass("com.example.AnyController", scope) == null) {
@@ -257,15 +383,16 @@ class AddEndpointToOpenApiIntentionAnyMethodTest : ExplytMultiModuleTestCase() {
                 """.trimIndent()
             )
         }
-        val method = JavaPsiFacade.getInstance(project).findClass("com.example.AnyController", scope)!!
-            .findMethodsByName(methodName, false).single()
-        val markers = mutableListOf<LineMarkerInfo<*>>()
-        ControllerEndpointActionsLineMarkerProvider().collectSlowLineMarkers(mutableListOf(method.nameIdentifier!!), markers)
-        return (markers.single().navigationHandler as EndpointIconGutterHandler).endpointInfo
+        return endpointOf("com.example.AnyController", methodName)
     }
 }
 
 private val SPRINGDOC_OPERATIONS = listOf("get", "post", "put", "patch", "delete", "options", "head")
+
+private val SIBLING_FREE_OPERATIONS = SPRINGDOC_OPERATIONS - "get"
+
+private val SHARED_PATH_OPERATION_IDS =
+    listOf("get" to "listed") + SIBLING_FREE_OPERATIONS.map { it to "any" }
 
 private fun yamlSpec(vararg pathItems: Pair<String, List<String>>): String = buildString {
     appendLine("openapi: 3.0.1")
