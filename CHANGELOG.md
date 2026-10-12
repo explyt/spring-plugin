@@ -157,7 +157,7 @@
 
 ### Spring MCP
 
-- docs: Explain in the descriptions of `explyt_find_spring_endpoint`, `explyt_get_spring_endpoint_contract` and `explyt_get_spring_http_endpoints` that `httpMethods` is `["ALL"]` for a route that answers every HTTP method and that such a route passes every `httpMethod` filter value (#653)
+- docs: Explain in the descriptions of `explyt_find_spring_endpoint`, `explyt_get_spring_endpoint_contract` and `explyt_get_spring_http_endpoints` that `httpMethods` is `["ALL"]` for a route that answers every HTTP method and that such a route passes every value of the `httpMethod` filter of the find and contract tools (#653)
 - fix: List the test requests of every verb in 'testUrlReferences' of `explyt_trace_spring_call_chain` for a functional route that answers every HTTP method, as for a bare `@RequestMapping` handler (#659)
 - feat: Describe a handler returning `PagedModel<T>` in `explyt_get_spring_endpoint_contract` as the paged model it writes (`content` and `page`, `wireShapeSource: DECLARED_TYPE`) instead of its element type, use Boot's direct default for a blank `spring.data.web.pageable.serialization-mode`, and read a composed `@EnableSpringDataWebSupport` annotation from the class that uses it; a composed annotation that declares its own `pageSerializationMode` without `@AliasFor`, or leaves its mode alias unset, reports an unknown source (#639)
 - feat: List test-source applications last with `testSource` in the MCP application listing (#602)

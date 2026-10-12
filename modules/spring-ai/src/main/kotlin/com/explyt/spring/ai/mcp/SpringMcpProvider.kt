@@ -2345,9 +2345,8 @@ private fun ConditionVerdict.toBeanConditionJson(): EndpointBeanConditionJson? =
 }
 
 private const val ALL_HTTP_METHODS_DESCRIPTION =
-    "'httpMethods' is [\"ALL\"] for a route that answers every HTTP method - a mapping that declares no method, " +
-        "a router path(\"/x\", handler), an @HttpExchange without a method, a @ServletEndpoint; " +
-        "such a route passes every 'httpMethod' filter value. "
+    "'httpMethods' is [\"ALL\"] for a route that answers every HTTP method - a controller mapping that declares no method, " +
+        "a router path(\"/x\", handler), an @HttpExchange without a method, a @ServletEndpoint. "
 
 private const val BEAN_CONDITION_DESCRIPTION =
     "A project Actuator endpoint whose bean a condition excludes stays listed with 'beanCondition' " +
