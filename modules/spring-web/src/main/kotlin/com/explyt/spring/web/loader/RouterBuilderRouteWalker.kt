@@ -27,14 +27,34 @@ object RouterBuilderRouteWalker {
 
     private const val MAX_NESTING = 8
 
-    fun routesOf(beanMethod: PsiMethod): List<BuilderRoute> =
+    fun routesOf(beanMethod: PsiMethod): List<BuilderRoute> = walkOf(beanMethod).routes
+
+    fun modelsRoutesOf(beanMethod: PsiMethod): Boolean = walkOf(beanMethod).modelled
+
+    private class BeanMethodWalk(val modelled: Boolean, val routes: List<BuilderRoute>)
+
+    private fun walkOf(beanMethod: PsiMethod): BeanMethodWalk =
         CachedValuesManager.getCachedValue(beanMethod) {
+            val router = returnedRouterOf(beanMethod)
             CachedValueProvider.Result(
-                returnedRouterOf(beanMethod)?.let { walkChain(it, "", 0) }.orEmpty(),
+                BeanMethodWalk(
+                    router != null && callChainOf(router).any { it.isRouteRegistration() },
+                    router?.let { walkChain(it, "", 0) }.orEmpty()
+                ),
                 ModificationTrackerManager.getInstance(beanMethod.project).getUastModelAndLibraryTracker(),
                 PsiModificationTracker.MODIFICATION_COUNT
             )
         }
+
+    private fun PsiMethodCallExpression.isRouteRegistration(): Boolean {
+        ProgressManager.checkCanceled()
+        val name = methodExpression.referenceName
+        if (name !in SpringWebClasses.ROUTE_FUNCTION_BUILDER_VERBS
+            && name != SpringWebClasses.ROUTE_PATH
+            && name != SpringWebClasses.ROUTE_NEST
+        ) return false
+        return resolveMethod()?.containingClass?.qualifiedName in SpringWebClasses.ROUTE_FUNCTION_BUILDERS
+    }
 
     fun routesRegisteredBy(call: PsiMethodCallExpression): List<BuilderRoute> {
         val beanMethod = call.parentOfType<PsiMethod>() ?: return emptyList()
