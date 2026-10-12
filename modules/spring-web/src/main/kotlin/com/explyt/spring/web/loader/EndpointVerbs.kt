@@ -9,6 +9,13 @@ object EndpointVerbs {
 
     const val ALL = "ALL"
 
+    val OPENAPI_METHODS = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD")
+
+    fun openApiMethodsOf(requestMethods: List<String>, siblingVerbs: Collection<String> = emptyList()): List<String> =
+        requestMethods.ifEmpty {
+            OPENAPI_METHODS.filter { verb -> siblingVerbs.none { it.equals(verb, ignoreCase = true) } }
+        }
+
     fun labelsOf(endpoint: EndpointElement): List<String> = endpoint.requestMethods.ifEmpty { listOf(ALL) }
 
     fun answers(label: String, verb: String): Boolean = label == ALL || label.equals(verb, ignoreCase = true)
