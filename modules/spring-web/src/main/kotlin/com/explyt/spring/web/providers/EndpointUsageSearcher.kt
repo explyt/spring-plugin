@@ -57,12 +57,20 @@ object EndpointUsageSearcher {
     ): List<PsiElement> =
         openApiReferrers(findOpenApiJsonData(module.project), path, requestMethods, module).mapToList { it.psiElement }
 
-    fun findUndocumentedOpenApiMethods(path: String, requestMethods: List<String>, module: Module): List<String> {
-        val documented = (openApiReferrers(findOpenApiJsonData(module.project), path, requestMethods, module) +
-                openApiReferrers(findOpenApiYamlData(module.project), path, requestMethods, module))
-            .mapNotNullTo(mutableSetOf()) { it.method?.uppercase() }
-        return EndpointVerbs.openApiMethodsOf(requestMethods).filter { it.uppercase() !in documented }
+    fun findOpenApiOperations(path: String, requestMethods: List<String>, module: Module): OpenApiOperations {
+        val referrers = (openApiReferrers(findOpenApiJsonData(module.project), path, requestMethods, module) +
+                openApiReferrers(findOpenApiYamlData(module.project), path, requestMethods, module)).toList()
+        val documented = referrers.mapNotNullTo(mutableSetOf()) { it.method }
+        return OpenApiOperations(
+            documented = referrers.map { it.psiElement },
+            undocumentedMethods = EndpointVerbs.openApiMethodsOf(requestMethods).filter { it.uppercase() !in documented }
+        )
     }
+
+    fun findUndocumentedOpenApiMethods(path: String, requestMethods: List<String>, module: Module): List<String> =
+        findOpenApiOperations(path, requestMethods, module).undocumentedMethods
+
+    data class OpenApiOperations(val documented: List<PsiElement>, val undocumentedMethods: List<String>)
 
     private fun openApiReferrers(
         data: List<EndpointFileData>,

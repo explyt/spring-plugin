@@ -12,10 +12,9 @@ import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
 
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiOperations
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findTestRequestUsage
-import com.explyt.spring.web.providers.EndpointUsageSearcher.findUndocumentedOpenApiMethods
+
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -51,10 +50,7 @@ class EndpointIconGutterHandler(
         val path = endpointInfo.path
         val requestMethods = endpointInfo.requestMethods
 
-        val openapiEndpoints = findOpenApiJsonEndpoints(path, requestMethods, module) +
-                findOpenApiYamlEndpoints(path, requestMethods, module)
-
-        val undocumentedMethods = findUndocumentedOpenApiMethods(path, requestMethods, module)
+        val (openapiEndpoints, undocumentedMethods) = findOpenApiOperations(path, requestMethods, module)
 
         val testEndpointUsages = findTestRequestUsage(path, requestMethods, module)
 
