@@ -753,6 +753,41 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("/y" to "GET"), webFluxEndpoints())
     }
 
+    fun testConstantReceiverRouteIsListedForAnyMethod() {
+        addRouterConfig(
+            """
+            ITEMS { handler.handle(it) }
+            GET("/y", handler::handle)
+            """,
+            imports = """const val ITEMS = "/items""""
+        )
+        assertNonLiteralReceiverRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        assertEquals(listOf("/items" to "", "/y" to "GET"), webFluxEndpoints())
+    }
+
+    fun testConstantReceiverRouteUnderStringNestComposesThePrefix() {
+        addRouterConfig(
+            """"/api".nest { ITEMS { handler.handle(it) } }""",
+            imports = """const val ITEMS = "/items""""
+        )
+        assertNonLiteralReceiverRoutesResolveToDslInvoke(CO_ROUTER_DSL)
+        assertEquals(listOf("/api/items" to ""), webFluxEndpoints())
+    }
+
+    private fun assertNonLiteralReceiverRoutesResolveToDslInvoke(owner: String) {
+        val calls = callsInFixture().filter { it.methodName == "invoke" }
+        assertTrue("Fixture must contain a route on a non-literal String receiver", calls.isNotEmpty())
+        calls.forEach { call ->
+            assertFalse((call.sourcePsi as KtCallExpression).calleeExpression is KtStringTemplateExpression)
+            assertEquals("java.lang.String", call.receiverType?.canonicalText)
+            val method = call.resolve()
+            assertNotNull("${call.sourcePsi?.text} must resolve", method)
+            assertEquals(owner, method!!.containingClass?.qualifiedName)
+            assertEquals("invoke", method.name)
+            assertEquals("void", method.returnType?.canonicalText)
+        }
+    }
+
     private fun stringRouteCalls(fileName: String = "GatewayProxyRouterConfig.kt"): List<UCallExpression> {
         val file = myFixture.psiManager.findFile(myFixture.findFileInTempDir(fileName))!!
         return PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)

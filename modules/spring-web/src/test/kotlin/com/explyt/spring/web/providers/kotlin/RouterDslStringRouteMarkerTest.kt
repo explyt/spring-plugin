@@ -8,6 +8,8 @@ package com.explyt.spring.web.providers.kotlin
 import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.EndpointType
+import com.explyt.spring.web.loader.SpringWebEndpointsLoader
 import com.explyt.spring.web.providers.EndpointIconGutterHandler
 import com.intellij.codeInsight.daemon.LineMarkerInfo.LineMarkerGutterIconRenderer
 import com.intellij.psi.PsiFile
@@ -100,6 +102,108 @@ class RouterDslStringRouteMarkerTest : ExplytKotlinLightTestCase() {
 
         assertEquals(listOf("/y" to listOf("GET")), endpointMarkers())
     }
+
+    fun testConstantReceiverRouteHasAnAnyMethodMarker() {
+        val file = configureRouter(
+            "coRouter",
+            """
+            ITEMS { ServerResponse.ok().buildAndAwait() }
+            GET("/y") { ServerResponse.ok().buildAndAwait() }
+            """,
+            """const val ITEMS = "/items""""
+        )
+        assertNonLiteralReceiverRouteResolvesToDslInvoke(file)
+
+        myFixture.doHighlighting()
+
+        assertEquals(listOf("/items" to emptyList(), "/y" to listOf("GET")), endpointMarkers())
+        val itemsAnchor = endpointRenderers()
+            .single { (it.lineMarkerInfo.navigationHandler as EndpointIconGutterHandler).endpointInfo.path == "/items" }
+            .lineMarkerInfo.element!!
+        assertNull(itemsAnchor.firstChild)
+        assertEquals("ITEMS", itemsAnchor.text)
+    }
+
+    fun testNestedConstantReceiverRouteMarkerKeepsThePrefix() {
+        val file = configureRouter(
+            "coRouter",
+            """"/api".nest { ITEMS { ServerResponse.ok().buildAndAwait() } }""",
+            """const val ITEMS = "/items""""
+        )
+        assertNonLiteralReceiverRouteResolvesToDslInvoke(file)
+
+        myFixture.doHighlighting()
+
+        assertEquals(listOf("/api/items" to emptyList<String>()), endpointMarkers())
+        assertTrue(markerAnchors().all { it.firstChild == null })
+    }
+
+    fun testLocalValReceiverRouteMarkerAgreesWithTheEndpointModel() {
+        val file = configureRouter(
+            "coRouter",
+            """
+            val p = "/x"
+            p { ServerResponse.ok().buildAndAwait() }
+            GET("/y") { ServerResponse.ok().buildAndAwait() }
+            """
+        )
+        assertNonLiteralReceiverRouteResolvesToDslInvoke(file)
+
+        myFixture.doHighlighting()
+
+        assertEquals(webFluxEndpoints(), endpointMarkers())
+        assertTrue(("/y" to listOf("GET")) in webFluxEndpoints())
+    }
+
+    fun testUnresolvableStringReceiverRouteHasNoEndpointAndNoMarker() {
+        val file = myFixture.configureByText(
+            "ItemRouter.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.buildAndAwait
+            import org.springframework.web.reactive.function.server.coRouter
+
+            @Configuration
+            class ItemRouter {
+
+                @Bean
+                fun itemsApi(prefix: String) = coRouter {
+                    prefix { ServerResponse.ok().buildAndAwait() }
+                    GET("/y") { ServerResponse.ok().buildAndAwait() }
+                }
+            }
+            """.trimIndent()
+        )
+        assertNonLiteralReceiverRouteResolvesToDslInvoke(file)
+
+        myFixture.doHighlighting()
+
+        assertEquals(listOf("/y" to listOf("GET")), webFluxEndpoints())
+        assertEquals(listOf("/y" to listOf("GET")), endpointMarkers())
+    }
+
+    private fun assertNonLiteralReceiverRouteResolvesToDslInvoke(file: PsiFile) {
+        val call = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .mapNotNull { it.toUElementOfType<UCallExpression>() }
+            .single { it.methodName == "invoke" }
+        assertFalse((call.sourcePsi as KtCallExpression).calleeExpression is KtStringTemplateExpression)
+        assertEquals("java.lang.String", call.receiverType?.canonicalText)
+        val method = call.resolve()
+        assertNotNull("${call.sourcePsi?.text} must resolve", method)
+        assertEquals("$REACTIVE_FUNCTION_PACKAGE.CoRouterFunctionDsl", method!!.containingClass?.qualifiedName)
+        assertEquals("invoke", method.name)
+        assertEquals("void", method.returnType?.canonicalText)
+    }
+
+    private fun webFluxEndpoints(): List<Pair<String, List<String>>> = SpringWebEndpointsLoader.EP_NAME
+        .getExtensions(project)
+        .filter { it.getType() == EndpointType.SPRING_WEBFLUX }
+        .filter { it.isApplicable(module) }
+        .flatMap { it.searchEndpoints(module) }
+        .map { it.path to it.requestMethods }
+        .sortedBy { it.first }
 
     private fun configureRouter(dsl: String, routes: String, declarations: String = ""): PsiFile =
         myFixture.configureByText(
