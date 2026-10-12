@@ -54,11 +54,8 @@ abstract class SpringBeanNameConventionConflictJavaTestCase : ExplytInspectionJa
 
     protected abstract val springMajor: Int?
 
-    protected open fun prepareSpringLibraries() = Unit
-
     override fun setUp() {
         super.setUp()
-        prepareSpringLibraries()
         myFixture.enableInspections(SpringBeanNameConventionConflictInspection::class.java)
     }
 
@@ -198,12 +195,12 @@ class SpringBeanNameConventionConflictSpring7InspectionTest : SpringBeanNameConv
 
 class SpringBeanNameConventionConflictUnknownSpringVersionInspectionTest : SpringBeanNameConventionConflictJavaTestCase() {
 
-    override val libraries: Array<TestLibrary> = emptyArray()
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary("org.springframework:spring-context:6.0.7", false))
     override val springMajor: Int? = null
 
     override fun setUp() {
-        BeanNameConventionConflictFixture.addUnknownSpringVersionStubs(module, testRootDisposable)
         super.setUp()
+        BeanNameConventionConflictFixture.addSpringCoreWithoutCoordinates(module, testRootDisposable)
     }
 
     fun testConventionNameIsNotReportedWhenSpringVersionIsUnknown() =

@@ -8,56 +8,62 @@ package com.explyt.spring.core.inspections
 import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.util.SpringBootUtil
-import com.explyt.spring.test.util.TestLibrarySourceRoot
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
-import com.intellij.openapi.Disposable
-import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.jarRepository.JarRepositoryManager
+import com.intellij.jarRepository.RemoteRepositoryDescription
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.module.Module
-
+import com.intellij.openapi.roots.LibraryOrderEntry
+import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.vfs.JarFileSystem
+import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
-
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
+import org.jetbrains.idea.maven.utils.library.RepositoryLibraryProperties
+import java.nio.file.Files
+import java.nio.file.Path
+
 object BeanNameConventionConflictFixture {
     const val CONFIGURATION = "demo.AppConfiguration"
+    private const val SPRING_CORE_6_0_7 = "org.springframework:spring-core:6.0.7"
+    private const val UNVERSIONED_SPRING_CORE = "unversioned-core"
+    private const val UNVERSIONED_SPRING_CORE_JAR = "unversioned-core.jar"
 
-    fun addUnknownSpringVersionStubs(module: Module, parentDisposable: Disposable): TestLibrarySourceRoot {
-        val library = TestLibrarySourceRoot.create(module, parentDisposable, "spring-stubs")
-        library.addFile(
-            "org/springframework/core/env/Environment.java",
-            "package org.springframework.core.env; public interface Environment {}"
-        )
-        library.addFile(
-            "org/springframework/context/annotation/Bean.java",
-            """
-            package org.springframework.context.annotation;
-            import java.lang.annotation.*;
-            @Target({ElementType.TYPE, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
-            @Retention(RetentionPolicy.RUNTIME)
-            public @interface Bean { String[] value() default {}; String[] name() default {}; }
-            """.trimIndent()
-        )
-        library.addFile(
-            "org/springframework/core/annotation/AliasFor.java",
-            """
-            package org.springframework.core.annotation;
-            import java.lang.annotation.*;
-            @Target(ElementType.METHOD)
-            @Retention(RetentionPolicy.RUNTIME)
-            public @interface AliasFor {
-                String value() default "";
-                String attribute() default "";
-                Class<? extends Annotation> annotation() default Annotation.class;
-            }
-            """.trimIndent()
-        )
-        return library
+    fun addSpringCoreWithoutCoordinates(module: Module, parentDisposable: Disposable) {
+        val springCoreJar = JarRepositoryManager.loadDependenciesModal(
+            module.project,
+            RepositoryLibraryProperties(SPRING_CORE_6_0_7, false),
+            false,
+            false,
+            null,
+            listOf(RemoteRepositoryDescription.MAVEN_CENTRAL),
+        ).mapNotNull { JarFileSystem.getInstance().getVirtualFileForJar(it.file) }
+            .single { it.name.startsWith("spring-core-") }
+        val directory = Files.createTempDirectory(UNVERSIONED_SPRING_CORE).toRealPath()
+        Disposer.register(parentDisposable) { FileUtil.delete(directory) }
+        VfsRootAccess.allowRootAccess(parentDisposable, directory.toString())
+        Files.copy(Path.of(springCoreJar.path), directory.resolve(UNVERSIONED_SPRING_CORE_JAR))
+        PsiTestUtil.addLibrary(module, UNVERSIONED_SPRING_CORE, directory.toString(), UNVERSIONED_SPRING_CORE_JAR)
+        Disposer.register(parentDisposable) {
+            ModuleRootManager.getInstance(module).orderEntries
+                .filterIsInstance<LibraryOrderEntry>()
+                .firstOrNull { it.libraryName == UNVERSIONED_SPRING_CORE }
+                ?.library
+                ?.let { PsiTestUtil.removeLibrary(module, it) }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(module.project)
     }
 
     fun problems(fixture: CodeInsightTestFixture): List<HighlightInfo> {
@@ -65,7 +71,7 @@ object BeanNameConventionConflictFixture {
         return fixture.doHighlighting().filter { it.inspectionToolId == toolId }
     }
 
-fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnnotation: String, springMajor: Int?) {
+    fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnnotation: String, springMajor: Int?) {
         assertEquals("spring-core major version of the module", springMajor, SpringBootUtil.getSpringCoreMajorVersion(module))
         assertTrue(
             "the inspection is available for the file",
@@ -79,14 +85,12 @@ fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnn
         assertTrue("the composed declaration is an annotation type", composed!!.isAnnotationType)
         val bean = metaBean(fixture, composed, emptySet())
         assertNotNull("$usedAnnotation is meta-annotated with Spring @Bean", bean)
+        assertEquals("the meta annotation is Spring @Bean", SpringCoreClasses.BEAN, bean!!.qualifiedName)
+        val beanFile = bean.containingFile.virtualFile
+        assertTrue("the meta @Bean comes from a library", ProjectFileIndex.getInstance(fixture.project).isInLibrary(beanFile))
         assertTrue(
-            "the meta @Bean resolves to the expected source or library",
-            if (springMajor == null) {
-                bean!!.qualifiedName == SpringCoreClasses.BEAN &&
-                    ProjectFileIndex.getInstance(fixture.project).isInLibrary(bean!!.containingFile.virtualFile)
-            } else {
-                bean!!.containingFile.virtualFile.path.substringBefore("!/").substringAfterLast('/').startsWith("spring-context-")
-            }
+            "the meta @Bean comes from the spring-context jar",
+            beanFile.path.substringBefore("!/").substringAfterLast('/').startsWith("spring-context-")
         )
     }
 
@@ -104,8 +108,6 @@ fun assertPreconditions(fixture: CodeInsightTestFixture, module: Module, usedAnn
     fun assertNoConflict(problems: List<HighlightInfo>) {
         assertEquals("no problem: $problems", 0, problems.size)
     }
-
-
 
     private fun metaBean(fixture: CodeInsightTestFixture, type: PsiClass, visited: Set<String>): PsiClass? {
         val name = type.qualifiedName ?: return null
