@@ -41,11 +41,8 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
     val startBody: UElement?
         get() = (this as? Lambda)?.lambda?.body
 
-    private val requestMethods: List<String>?
+    val requestMethods: List<String>?
         get() = RouterDslRoutes.requestMethodsOf(call)
-
-    val verb: String?
-        get() = requestMethods?.singleOrNull()
 
     val paths: List<String>
         get() = if (isNestedUnderUnresolvedPrefix()) emptyList()
