@@ -218,9 +218,8 @@ object EndpointUsageSearcher {
                 .filterToSet { uCallExpression ->
                     val httpMethodIndex = SpringWebUtil.getHttpMethodIndex(psiMethod)
                     if (httpMethodIndex >= 0) {
-                        if (uCallExpression
-                                .getArgumentValueAsEnumName(httpMethodIndex) !in requestMethods
-                        ) return@filterToSet false
+                        val sent = uCallExpression.getArgumentValueAsEnumName(httpMethodIndex)
+                        if (!EndpointVerbs.answers(requestMethods, sent)) return@filterToSet false
                     }
 
                     val urlArg = uCallExpression.getArgumentForParameter(urlArgumentIndex(psiMethod))
@@ -268,7 +267,7 @@ object EndpointUsageSearcher {
                     .mapNotNull { it.element.context.toUElementOfType<UCallExpression>() }
                     .filter { call ->
                         val sent = TestRequestReceivers.httpMethodOf(call, method, receiver.verb)
-                        if (requestMethods.isNotEmpty() && sent != null && sent !in requestMethods) return@filter false
+                        if (sent != null && !EndpointVerbs.answers(requestMethods, sent)) return@filter false
                         val url = call.getArgumentForParameter(TestRequestReceivers.urlParameterIndex(method))
                             ?.let(UrlArgumentText::of)
                             ?: return@filter false
@@ -300,11 +299,8 @@ object EndpointUsageSearcher {
         if (name !in REQUEST_METHODS) return false
 
         val uppercaseName = name.uppercase()
-        if (uppercaseName !in REQUEST_METHODS_WITH_TYPE) {
-            if (uppercaseName !in requestMethods) return false
-        }
-
-        return urlArgumentIndex(psiMethod) != -1
+        val verbMatches = uppercaseName in REQUEST_METHODS_WITH_TYPE || EndpointVerbs.answers(requestMethods, uppercaseName)
+        return verbMatches && urlArgumentIndex(psiMethod) != -1
     }
 
     /** The URL argument of a request builder: a URL template, or the `java.net.URI` of the overloads that take one. */
@@ -325,15 +321,10 @@ object EndpointUsageSearcher {
     }
 
     fun findWebTestClientEndpointUsage(path: String, requestedMethods: List<String>, module: Module): List<PsiElement> {
-        return requestedMethods
-            .flatMap { findWebTestClientEndpointUsage(path, it, module) }
-    }
-
-    fun findWebTestClientEndpointUsage(path: String, methodName: String, module: Module): List<PsiElement> {
         val endpoint = SpringWebUtil.simplifyUrl(path)
         val basePath = ApplicationBasePath.cachedOf(module)
         return getGetWebTestMethods(module).asSequence()
-            .filter { it.name.uppercase() == methodName || it.name == "method" }
+            .filter { it.name == "method" || EndpointVerbs.answers(requestedMethods, it.name) }
             .flatMap {
                 SpringSearchUtils.searchReferenceByMethod(
                     module,
@@ -343,9 +334,7 @@ object EndpointUsageSearcher {
             }
             .mapNotNull { it.element.parent?.toUElementOfType<UCallExpression>() }
             .filter {
-                if (it.methodName != "method") return@filter true
-
-                it.getArgumentValueAsEnumName(0) == methodName
+                it.methodName != "method" || EndpointVerbs.answers(requestedMethods, it.getArgumentValueAsEnumName(0))
             }
             .mapNotNull {
                 it.uastParent?.uastParent as? UQualifiedReferenceExpression
