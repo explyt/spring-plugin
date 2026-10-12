@@ -7,10 +7,12 @@ package com.explyt.spring.core.inspections
 
 import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.core.SpringCoreBundle
+import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.service.conditional.ConditionPropertyValue
 import com.explyt.spring.core.service.conditional.PropertyConditionValues
 import com.explyt.spring.core.util.BeanFactoryMethods
 import com.explyt.spring.core.util.SpringCoreUtil.resolveBeanName
+import com.explyt.util.ExplytPsiUtil.getMetaAnnotation
 import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
@@ -36,9 +38,8 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
     }
 
     private fun collisionsIn(psiClass: PsiClass): List<Collision> {
-
         val firstDeclarations = HashMap<String, PsiMethod>()
-        return BeanFactoryMethods.of(psiClass).mapNotNull { method ->
+        return BeanFactoryMethods.of(psiClass).filterNot { it.isConditional() }.mapNotNull { method ->
             ProgressManager.checkCanceled()
             val names = method.resolveBeanName
             val collision = names.firstNotNullOfOrNull { name ->
@@ -48,6 +49,8 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
             collision?.takeIf { psiClass.manager.areElementsEquivalent(method.containingClass, psiClass) }
         }.toList()
     }
+
+    private fun PsiMethod.isConditional(): Boolean = getMetaAnnotation(SpringCoreClasses.CONDITIONAL) != null
 
     private fun overridingOf(psiClass: PsiClass): Overriding {
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return Overriding.DISALLOWED
