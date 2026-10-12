@@ -20,6 +20,8 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.lombok.utils.decapitalize
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.*
 
 class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
@@ -39,8 +41,7 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
 
         if (psiElement.language != KotlinLanguage.INSTANCE) return null
 
-        val uCallExpression = getUParentForIdentifier(psiElement) as? UCallExpression ?: return null
-        if (!RouterDslRoutes.isRouteName(uCallExpression.methodName)) return null
+        val uCallExpression = routeCallAnchoredAt(psiElement) ?: return null
 
         val method = findContainingMethod(uCallExpression) ?: return null
         if (!method.javaPsi.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
@@ -76,6 +77,19 @@ class CoRouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor()
             GutterIconRenderer.Alignment.RIGHT,
             { SpringWebBundle.message("explyt.spring.web.gutter.endpoint.actions.icon.accessible") }
         )
+    }
+
+    private fun routeCallAnchoredAt(psiElement: PsiElement): UCallExpression? =
+        stringRouteCallAnchoredAt(psiElement)
+            ?: (getUParentForIdentifier(psiElement) as? UCallExpression)
+                ?.takeIf { RouterDslRoutes.isRouteName(it.methodName) }
+
+    private fun stringRouteCallAnchoredAt(psiElement: PsiElement): UCallExpression? {
+        val path = psiElement.parent as? KtStringTemplateExpression ?: return null
+        if (path.firstChild != psiElement) return null
+        val call = path.parent as? KtCallExpression ?: return null
+        if (call.calleeExpression != path) return null
+        return call.toUElementOfType<UCallExpression>()
     }
 
     private fun getEndpointMethodName(uCallExpression: UCallExpression): String {
