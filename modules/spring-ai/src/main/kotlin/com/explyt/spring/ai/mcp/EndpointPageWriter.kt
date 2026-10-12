@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.ai.mcp.entities.EntityInventory
+import com.explyt.spring.core.runconfiguration.SpringToolRunConfigurationsSettingsState
 import com.explyt.spring.web.loader.EndpointElement
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -22,7 +23,8 @@ class EndpointPageWriter(private val project: Project) {
         page: PageRequest,
         nearestByPrefix: List<Any>? = null,
     ): String {
-        val revision = EntityInventory.revision(project, query)
+        val beanFilterEnabled = SpringToolRunConfigurationsSettingsState.getInstance().isBeanFilterEnabled
+        val revision = EntityInventory.revision(project, query + ("beanFilterEnabled" to beanFilterEnabled.toString()))
         val withNeighbourhood = when {
             nearestByPrefix == null -> envelope
             page.offset == 0 -> writer.fitSample(

@@ -434,11 +434,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * The URL is reduced to its request path and read as written first, then under a base path a module's
      * configuration declares ([DeclaredBasePaths]), then under ever longer leading prefixes no route declares
      * ([EndpointPathPatterns.readingsOf]); the first reading any route answers is the answer, and the prefix it
-     * dropped is reported rather than hidden - as [EndpointLookupJson.basePath] when the configuration declares it,
-     * as [EndpointLookupJson.assumedPrefix] when it is a guess. A deployed URL carries its context path, and without
+     * dropped is reported rather than hidden - as `basePath` when the configuration declares it,
+     * as `assumedPrefix` when it is a guess. A deployed URL carries its context path, and without
      * this a real, working URL answered "no such route" - which invites the caller to write a duplicate.
      *
-     * A URL that matches nothing is not a dead end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing
+     * A URL that matches nothing is not a dead end: `nearestByPrefix` carries the routes sharing
      * the longest leading path with it, which is where a route that does not exist yet would be added.
      */
     private suspend fun lookupEndpoints(
@@ -1133,6 +1133,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
             ?.qualifiedName.orEmpty(),
         filePath = (endpoint.psiElement.containingFile ?: endpoint.containingFile)?.virtualFile?.path.orEmpty(),
         declarationOffset = endpoint.psiElement.textOffset,
+        application = endpoint.application?.qualifiedName.orEmpty(),
     )
 
     private data class ListedEndpoint(
@@ -1141,6 +1142,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val controllerClass: String,
         val filePath: String,
         val declarationOffset: Int,
+        val application: String,
     ) {
         companion object {
             val ORDER: Comparator<ListedEndpoint> = compareBy(
@@ -1150,6 +1152,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 { it.declarationOffset },
                 { it.endpoint.path },
                 { it.endpoint.requestMethods.joinToString(",") },
+                { it.application },
             )
         }
     }
@@ -2430,41 +2433,6 @@ private const val BEAN_CONDITION_DESCRIPTION =
         "'access' describe the configured exposure, not whether the bean exists. The key is absent when no " +
         "condition excludes the bean or leaves it undecided, and when bean condition evaluation is disabled " +
         "in the settings. "
-
-data class EndpointListJson<T>(
-    val totalCount: Int,
-    val offset: Int,
-    val truncated: Boolean,
-    val endpoints: List<T>,
-)
-
-/**
- * The result of resolving one URL pattern, for the find and contract tools.
- *
- * [endpoints] lists the closest production match first, and among equally close ones the more specific path first,
- * the way Spring ranks path patterns, so of routes with different paths its first element is the one that dispatches.
- * Endpoints declared in test sources follow, marked `testSource`: such an endpoint exists only in a test context, not
- * in the running application.
- * Handlers sharing one path are chosen by the request's media types instead, which their `consumes` and `produces`
- * show; their order says nothing about dispatch. [basePath] is the leading path
- * stripped from the URL because the configuration of the answering routes' module declares it - a servlet context
- * path, a dispatcher servlet path or a WebFlux base path - a fact, not a guess. [assumedPrefix] is a leading path
- * dropped from the URL although nothing declares it - a context path living only in deployment configuration or a
- * gateway prefix - a guess. Both are null when the URL matched as written, and at most one of them is set.
- * [nearestByPrefix] is filled only when [endpoints] is empty: the routes
- * sharing the longest leading path ([sharedPrefix]) with the URL, which is where a route that does not exist yet
- * would be added. The two lists are empty rather than null so a client can always iterate them; [sharedPrefix] is
- * null exactly when [nearestByPrefix] is empty.
- */
-data class EndpointLookupJson<T>(
-    val totalCount: Int,
-    val truncated: Boolean,
-    val endpoints: List<T>,
-    val basePath: String?,
-    val assumedPrefix: String?,
-    val sharedPrefix: String?,
-    val nearestByPrefix: List<CompactEndpointJson>,
-)
 
 data class EndpointParameterJson(
     val name: String,
