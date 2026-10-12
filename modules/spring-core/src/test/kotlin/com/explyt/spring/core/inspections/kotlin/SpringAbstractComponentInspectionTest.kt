@@ -15,7 +15,12 @@ import com.intellij.psi.search.GlobalSearchScope
 
 class SpringAbstractComponentInspectionTest : ExplytInspectionJavaTestCase() {
 
-    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springContext_6_0_7)
+    override val libraries: Array<TestLibrary> = arrayOf(
+        TestLibrary.springContext_6_0_7,
+        TestLibrary.springWeb_6_0_7,
+        TestLibrary.springTest_6_0_7,
+        TestLibrary.springBootTest_3_2_3
+    )
 
     override fun setUp() {
         super.setUp()
@@ -154,6 +159,102 @@ class SpringAbstractComponentInspectionTest : ExplytInspectionJavaTestCase() {
         )
     }
 
+    fun testRestControllerOnAbstractBaseOfControllerBeanIsNotReported() {
+        assertSpringClassResolves(REST_CONTROLLER)
+        myFixture.configureByText(
+            "BaseController.kt",
+            """
+            @$REST_CONTROLLER
+            abstract class BaseController
+
+            @$REST_CONTROLLER
+            class ItemController : BaseController()
+            """.trimIndent()
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testControllerOnAbstractClassWithoutSubclassIsNotReported() {
+        assertSpringClassResolves(CONTROLLER)
+        myFixture.configureByText(
+            "BaseController.kt",
+            """
+            @$CONTROLLER
+            abstract class BaseController
+            """.trimIndent()
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testControllerAdviceOnAbstractClassIsNotReported() {
+        assertSpringClassResolves(CONTROLLER_ADVICE)
+        myFixture.configureByText(
+            "BaseAdvice.kt",
+            """
+            @$CONTROLLER_ADVICE
+            abstract class BaseAdvice
+            """.trimIndent()
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testRepositoryOnAbstractClassIsNotReported() {
+        assertSpringClassResolves(REPOSITORY)
+        myFixture.configureByText(
+            "BaseRepository.kt",
+            """
+            @$REPOSITORY
+            abstract class BaseRepository
+            """.trimIndent()
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testCustomControllerStereotypeOnAbstractClassIsNotReported() {
+        assertSpringClassResolves(CONTROLLER)
+        myFixture.configureByText(
+            "BaseApi.kt",
+            """
+            @$CONTROLLER
+            @Retention(AnnotationRetention.RUNTIME)
+            annotation class ApiController
+
+            @ApiController
+            abstract class BaseApi
+            """.trimIndent()
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testServiceOnAbstractClassIsReportedBesideWebStereotypes() {
+        assertSpringClassResolves(REST_CONTROLLER)
+        myFixture.configureByText(
+            "BaseService.kt",
+            """
+            import org.springframework.stereotype.Service
+
+            <warning descr="${noBean("Service")}">@Service</warning>
+            abstract class BaseService
+
+            @$REST_CONTROLLER
+            class ItemController
+            """.trimIndent()
+        )
+        myFixture.checkHighlighting()
+    }
+
+    fun testAbstractSpringBootTestBaseIsNotReported() {
+        assertSpringClassResolves(SPRING_BOOT_TEST)
+        myFixture.configureByText(
+            "BaseIntegrationTest.kt",
+            """
+            @$SPRING_BOOT_TEST
+            abstract class BaseIntegrationTest
+            """.trimIndent()
+        )
+        myFixture.checkHighlighting()
+    }
+
     private fun assertSpringClassResolves(fqn: String) {
         assertNotNull(
             "$fqn must resolve from the test library",
@@ -166,4 +267,12 @@ class SpringAbstractComponentInspectionTest : ExplytInspectionJavaTestCase() {
 
     private fun subclassBean(annotation: String) =
         SpringCoreBundle.message("explyt.spring.inspection.abstract.component.subclass.bean", annotation)
+
+    private companion object {
+        const val CONTROLLER = "org.springframework.stereotype.Controller"
+        const val REST_CONTROLLER = "org.springframework.web.bind.annotation.RestController"
+        const val CONTROLLER_ADVICE = "org.springframework.web.bind.annotation.ControllerAdvice"
+        const val REPOSITORY = "org.springframework.stereotype.Repository"
+        const val SPRING_BOOT_TEST = "org.springframework.boot.test.context.SpringBootTest"
+    }
 }
