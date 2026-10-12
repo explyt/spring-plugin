@@ -108,8 +108,7 @@ private const val ENDPOINT_OFFSET_DESCRIPTION =
 private const val EXPECTED_REVISION_DESCRIPTION =
     "The 'revision' of the first page, required to continue that same answer"
 private const val FIND_PAGE_CHARS = 8000
-private const val CONTRACT_PAGE_CHARS = 8000
-private const val LIST_PAGE_CHARS = 8000
+private const val CONTRACT_PAGE_CHARS = BoundedPageWriter.MAX_CHARS
 private const val LOOKUP_PAGE_DESCRIPTION =
     "A page holds at most 50 endpoints within 'maxChars' of compact JSON and can end earlier, because the budget " +
             "is measured on the finished document. When 'truncated' is true, repeat the call with 'offset' = " +
@@ -1038,7 +1037,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
                 "and on a large project the full form can exceed 100 KB on a single line. " +
                 "Returns {status, revision, totalCount, offset, truncated, nextOffset, endpoints}. A page holds at " +
-                "most 'limit' endpoints within 'maxChars' of compact JSON ($LIST_PAGE_CHARS by default) and can " +
+                "most 'limit' endpoints within 'maxChars' of compact JSON, when given, and can " +
                 "end earlier, because the budget is measured on the finished document. When 'truncated' is true, " +
                 "either narrow the result with the controller or endpoint-type filters, or repeat the call with " +
                 "'offset' = 'nextOffset' and 'expectedRevision' = 'revision' to continue the same answer; " +
@@ -1074,8 +1073,10 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "filters cannot narrow it before you know which controllers exist. Defaults to false."
         )
         compact: Boolean = false,
-        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $LIST_PAGE_CHARS by default")
-        maxChars: Int = LIST_PAGE_CHARS,
+        @McpDescription(
+            "Budget of the whole compact JSON answer, 512..16000; without it a page is bounded by 'limit' alone"
+        )
+        maxChars: Int? = null,
         @McpDescription(EXPECTED_REVISION_DESCRIPTION)
         expectedRevision: String? = null,
     ): String {
@@ -1085,7 +1086,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
         val page = PageRequest(
             offset = offset.coerceAtLeast(0),
             limit = limit.coerceIn(1, MAX_ENDPOINT_LIST_RESULTS),
-            maxChars = maxChars,
+            maxChars = maxChars ?: BoundedPageWriter.UNBOUNDED,
             expectedRevision = expectedRevision,
             maxLimit = MAX_ENDPOINT_LIST_RESULTS,
             revisionRequired = false,

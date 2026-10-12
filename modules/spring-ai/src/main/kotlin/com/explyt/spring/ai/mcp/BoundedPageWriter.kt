@@ -203,7 +203,8 @@ class BoundedPageWriter {
     private fun validate(page: PageRequest): Pair<String, String>? = when {
         page.offset < 0 -> invalid("offset must not be negative.")
         page.limit !in MIN_LIMIT..page.maxLimit -> invalid("limit must be between $MIN_LIMIT and ${page.maxLimit}.")
-        page.maxChars !in MIN_CHARS..MAX_CHARS -> invalid("maxChars must be between $MIN_CHARS and $MAX_CHARS.")
+        page.maxChars != UNBOUNDED && page.maxChars !in MIN_CHARS..MAX_CHARS ->
+            invalid("maxChars must be between $MIN_CHARS and $MAX_CHARS.")
         page.offset > 0 && page.expectedRevision == null && page.revisionRequired ->
             invalid("expectedRevision is required for a continuation; start again at offset 0.")
 
@@ -238,6 +239,7 @@ class BoundedPageWriter {
         const val MAX_LIMIT = 50
         const val MIN_CHARS = 512
         const val MAX_CHARS = 16000
+        const val UNBOUNDED = Int.MAX_VALUE
 
         /** Budget for an error that reports a broken budget; small enough to fit any client's floor. */
         const val FALLBACK_BUDGET = 512
