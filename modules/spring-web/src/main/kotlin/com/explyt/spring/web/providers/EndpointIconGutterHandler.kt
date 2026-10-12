@@ -15,6 +15,7 @@ import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiJsonEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findOpenApiYamlEndpoints
 import com.explyt.spring.web.providers.EndpointUsageSearcher.findTestRequestUsage
+import com.explyt.spring.web.providers.EndpointUsageSearcher.findUndocumentedOpenApiMethods
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
@@ -53,6 +54,8 @@ class EndpointIconGutterHandler(
         val openapiEndpoints = findOpenApiJsonEndpoints(path, requestMethods, module) +
                 findOpenApiYamlEndpoints(path, requestMethods, module)
 
+        val undocumentedMethods = findUndocumentedOpenApiMethods(path, requestMethods, module)
+
         val testEndpointUsages = findTestRequestUsage(path, requestMethods, module)
 
         val navigatableLineMarker = createNavigatableLinemarker(openapiEndpoints + testEndpointUsages, psiElement)
@@ -72,7 +75,7 @@ class EndpointIconGutterHandler(
                 endpointInfo,
                 editor,
                 navigatableLineMarker,
-                openapiEndpoints,
+                undocumentedMethods,
                 e
             )
         popup.show(RelativePoint(e))
@@ -97,14 +100,14 @@ class EndpointIconGutterHandler(
         endpointInfo: EndpointInfo,
         editor: Editor,
         navigatableLineMarker: RelatedItemLineMarkerInfo<PsiElement>?,
-        openapiEndpoints: List<PsiElement>,
+        undocumentedMethods: List<String>,
         mouseEvent: MouseEvent
     ): JBPopup {
         val intention = AddEndpointToOpenApiIntention(endpointInfo)
 
         val actions = mutableListOf<AnAction>()
 
-        if (offersOpenApiDescription && openapiEndpoints.isEmpty())
+        if (offersOpenApiDescription && undocumentedMethods.isNotEmpty())
             actions.add(
                 ApplyIntentionAction(
                     intention,

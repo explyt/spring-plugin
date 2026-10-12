@@ -54,16 +54,30 @@ object EndpointUsageSearcher {
         path: String,
         requestMethods: List<String>,
         module: Module
-    ): List<PsiElement> {
-        return findOpenApiJsonData(module.project).asSequence()
-            .filter { it.psiFile is JsonFile }
+    ): List<PsiElement> =
+        openApiReferrers(findOpenApiJsonData(module.project), path, requestMethods, module).mapToList { it.psiElement }
+
+    fun findUndocumentedOpenApiMethods(path: String, requestMethods: List<String>, module: Module): List<String> {
+        val documented = (openApiReferrers(findOpenApiJsonData(module.project), path, requestMethods, module) +
+                openApiReferrers(findOpenApiYamlData(module.project), path, requestMethods, module))
+            .mapNotNullTo(mutableSetOf()) { it.method?.uppercase() }
+        return EndpointVerbs.openApiMethodsOf(requestMethods).filter { it.uppercase() !in documented }
+    }
+
+    private fun openApiReferrers(
+        data: List<EndpointFileData>,
+        path: String,
+        requestMethods: List<String>,
+        module: Module
+    ): Sequence<Referrer> {
+        val methods = EndpointVerbs.openApiMethodsOf(requestMethods)
+        return data.asSequence()
             .filter { ModuleUtilCore.findModuleForFile(it.psiFile) == module }
             .flatMap { it.endpoints }
             .filterIsInstance<EndpointData.ReferrerData>()
             .map { it.referrer }
             .filter { SpringWebUtil.isSamePathTemplate(it.path, path) }
-            .filter { it.method == null || requestMethods.contains(it.method) }
-            .mapToList { it.psiElement }
+            .filter { referrer -> referrer.method == null || methods.any { it.equals(referrer.method, ignoreCase = true) } }
     }
 
     fun findOpenApiJsonData(project: Project): List<EndpointFileData> {
@@ -118,17 +132,8 @@ object EndpointUsageSearcher {
         path: String,
         requestMethods: List<String>,
         module: Module
-    ): List<PsiElement> {
-        return findOpenApiYamlData(module.project).asSequence()
-            .filter { it.psiFile is YAMLFile }
-            .filter { ModuleUtilCore.findModuleForFile(it.psiFile) == module }
-            .flatMap { it.endpoints }
-            .filterIsInstance<EndpointData.ReferrerData>()
-            .map { it.referrer }
-            .filter { SpringWebUtil.isSamePathTemplate(it.path, path) }
-            .filter { it.method == null || requestMethods.contains(it.method) }
-            .mapToList { it.psiElement }
-    }
+    ): List<PsiElement> =
+        openApiReferrers(findOpenApiYamlData(module.project), path, requestMethods, module).mapToList { it.psiElement }
 
     fun findOpenApiYamlData(project: Project): List<EndpointFileData> {
         return CachedValuesManager.getManager(project).getCachedValue(project) {
