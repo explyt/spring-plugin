@@ -113,6 +113,22 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         )
     }
 
+    fun testIdentifierInsideAnAnonymousHandlerGetsNoExtraMarker() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_MVC,
+            ANONYMOUS_SERVLET_HANDLER,
+            listOf("GET /x @RequestPredicates")
+        )
+    }
+
+    fun testReactiveIdentifierInsideAnAnonymousHandlerGetsNoExtraMarker() {
+        assertMarkersOutsideTheModel(
+            EndpointType.SPRING_WEBFLUX,
+            ANONYMOUS_REACTIVE_HANDLER,
+            listOf("GET /x @RequestPredicates")
+        )
+    }
+
     fun testServletStaticAndRouteChainKeepsItsMarkers() {
         assertMarkersOutsideTheModel(
             EndpointType.SPRING_MVC,
@@ -319,6 +335,18 @@ class RouterBuilderEndpointLineMarkerProviderTest : ExplytJavaLightTestCase() {
         .sorted()
 
     private companion object {
+        const val ANONYMOUS_SERVLET_HANDLER =
+            """return RouterFunctions.route(RequestPredicates.GET("/x"), new HandlerFunction<ServerResponse>() {
+                public ServerResponse handle(ServerRequest method) { return ServerResponse.ok().build(); }
+            });"""
+
+        const val ANONYMOUS_REACTIVE_HANDLER =
+            """return RouterFunctions.route(RequestPredicates.GET("/x"), new HandlerFunction<ServerResponse>() {
+                public reactor.core.publisher.Mono<ServerResponse> handle(ServerRequest method) {
+                    return reactor.core.publisher.Mono.empty();
+                }
+            });"""
+
         const val STATIC_AND_ROUTE_CHAIN =
             """return RouterFunctions.route(RequestPredicates.GET("/x"), h::list).andRoute(RequestPredicates.POST("/y"), h::list);"""
 
