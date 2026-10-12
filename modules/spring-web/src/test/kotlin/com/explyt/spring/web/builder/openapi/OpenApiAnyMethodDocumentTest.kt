@@ -12,6 +12,7 @@ import com.explyt.spring.web.providers.EndpointRunLineMarkerProvider
 import com.explyt.spring.web.providers.RunInSwaggerAction
 import com.explyt.spring.web.util.OpenApiFileUtil
 import com.explyt.spring.web.util.SpringWebUtil
+import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.json.JsonFileType
 import com.intellij.psi.JavaPsiFacade
@@ -90,6 +91,103 @@ class OpenApiAnyMethodDocumentTest : ExplytKotlinLightTestCase() {
         assertEquals(mapOf("/y" to listOf("get")), yamlDocumentOperations(endpoint))
     }
 
+    fun testYamlDocumentGivesEachVerbOnceWhenAJavaAnyMethodRouteSharesItsPathWithAGetMapping() {
+        addJavaSharedPathController()
+
+        val operations = yamlOperations(sharedPathEndpoints("com.example.JavaSharedPathController"))
+
+        assertEquals(setOf("/x"), operations.keys)
+        assertEachVerbOnceWithGetFromTheListedHandler(operations.getValue("/x"))
+    }
+
+    fun testJsonDocumentGivesEachVerbOnceWhenAJavaAnyMethodRouteSharesItsPathWithAGetMapping() {
+        addJavaSharedPathController()
+
+        val operations = strictJsonOperations(sharedPathEndpoints("com.example.JavaSharedPathController"))
+
+        assertEquals(setOf("/x"), operations.keys)
+        assertEachVerbOnceWithGetFromTheListedHandler(operations.getValue("/x"))
+    }
+
+    fun testYamlDocumentGivesEachVerbOnceWhenAKotlinAnyMethodRouteSharesItsPathWithAGetMapping() {
+        addKotlinSharedPathController()
+
+        val operations = yamlOperations(sharedPathEndpoints("com.example.KotlinSharedPathController"))
+
+        assertEquals(setOf("/x"), operations.keys)
+        assertEachVerbOnceWithGetFromTheListedHandler(operations.getValue("/x"))
+    }
+
+    fun testJsonDocumentGivesEachVerbOnceWhenAKotlinAnyMethodRouteSharesItsPathWithAGetMapping() {
+        addKotlinSharedPathController()
+
+        val operations = strictJsonOperations(sharedPathEndpoints("com.example.KotlinSharedPathController"))
+
+        assertEquals(setOf("/x"), operations.keys)
+        assertEachVerbOnceWithGetFromTheListedHandler(operations.getValue("/x"))
+    }
+
+    fun testDocumentKeepsOneOperationPerListedVerbWhenGetAndPostMappingsShareAPath() {
+        addJavaGetAndPostController()
+        val get = endpointInfoOf("com.example.JavaGetAndPostController", "read")
+        val post = endpointInfoOf("com.example.JavaGetAndPostController", "write")
+        assertEquals("/x", get.path)
+        assertEquals("/x", post.path)
+        assertEquals(listOf("GET"), get.requestMethods)
+        assertEquals(listOf("POST"), post.requestMethods)
+
+        val expected = mapOf("/x" to listOf("get" to "read", "post" to "write"))
+        assertEquals(expected, yamlOperations(listOf(get, post)))
+        assertEquals(expected, strictJsonOperations(listOf(get, post)))
+    }
+
+    private fun sharedPathEndpoints(className: String): List<EndpointInfo> {
+        val any = endpointInfoOf(className, "any")
+        val listed = endpointInfoOf(className, "listed")
+        assertEquals("Precondition: the any-method handler path", "/x", any.path)
+        assertEquals("Precondition: the listed handler path", "/x", listed.path)
+        assertEquals("Precondition: the any-method handler declares no method", emptyList<String>(), any.requestMethods)
+        assertEquals("Precondition: the listed handler declares GET", listOf("GET"), listed.requestMethods)
+        return listOf(any, listed)
+    }
+
+    private fun assertEachVerbOnceWithGetFromTheListedHandler(operations: List<Pair<String, String?>>) {
+        assertEquals(
+            "Each springdoc verb must appear exactly once under /x: $operations",
+            SPRINGDOC_OPERATIONS.associateWith { 1 },
+            operations.groupingBy { it.first }.eachCount(),
+        )
+        val handlerByVerb = operations.toMap()
+        assertEquals("GET dispatches to the @GetMapping handler", "listed", handlerByVerb["get"])
+        SPRINGDOC_OPERATIONS.filter { it != "get" }.forEach { verb ->
+            assertEquals("$verb belongs to the any-method handler", "any", handlerByVerb[verb])
+        }
+    }
+
+    private fun yamlOperations(endpoints: List<EndpointInfo>): Map<String, List<Pair<String, String?>>> {
+        val text = endpoints.fold(
+            OpenApiBuilderFactory.getOpenApiFileBuilder(YAMLFileType.YML).addServer(OpenApiFileUtil.DEFAULT_SERVER)
+        ) { builder, endpoint -> builder.addEndpoint(endpoint) }.toString()
+        val file = PsiFileFactory.getInstance(project).createFileFromText("check.yaml", YAMLLanguage.INSTANCE, text) as YAMLFile
+        assertFalse("The generated document must be valid YAML:\n$text", PsiTreeUtil.hasErrorElements(file))
+        val paths = (file.documents.single().topLevelValue as YAMLMapping).getKeyValueByKey("paths")!!.value as YAMLMapping
+        return paths.keyValues.associate { pathItem ->
+            pathItem.keyText to (pathItem.value as? YAMLMapping)?.keyValues?.map { operation ->
+                operation.keyText to (operation.value as? YAMLMapping)?.getKeyValueByKey("operationId")?.valueText
+            }.orEmpty()
+        }
+    }
+
+    private fun strictJsonOperations(endpoints: List<EndpointInfo>): Map<String, List<Pair<String, String?>>> {
+        val text = endpoints.fold(
+            OpenApiBuilderFactory.getOpenApiFileBuilder(JsonFileType.INSTANCE).addServer(OpenApiFileUtil.DEFAULT_SERVER)
+        ) { builder, endpoint -> builder.addEndpoint(endpoint) }.toString()
+        val paths = ObjectMapper().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION).readTree(text)["paths"]
+        return paths.fieldNames().asSequence().associateWith { path ->
+            paths[path].fieldNames().asSequence().map { verb -> verb to paths[path][verb]["operationId"]?.asText() }.toList()
+        }
+    }
+
     private fun projectEndpointInfo(className: String, methodName: String): EndpointInfo {
         val endpoint = endpointInfoOf(className, methodName)
         assertEquals("/x", endpoint.path)
@@ -159,6 +257,69 @@ class OpenApiAnyMethodDocumentTest : ExplytKotlinLightTestCase() {
 
                 @GetMapping("/y")
                 public String y() { return "y"; }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun addJavaSharedPathController() {
+        myFixture.addFileToProject(
+            "com/example/JavaSharedPathController.java", """
+            package com.example;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RequestMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class JavaSharedPathController {
+                @RequestMapping("/x")
+                public String any() { return "any"; }
+
+                @GetMapping("/x")
+                public String listed() { return "listed"; }
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun addKotlinSharedPathController() {
+        myFixture.addFileToProject(
+            "com/example/KotlinSharedPathController.kt", """
+            package com.example
+
+            import org.springframework.web.bind.annotation.GetMapping
+            import org.springframework.web.bind.annotation.RequestMapping
+            import org.springframework.web.bind.annotation.RestController
+
+            @RestController
+            class KotlinSharedPathController {
+                @RequestMapping("/x")
+                fun any(): String = "any"
+
+                @GetMapping("/x")
+                fun listed(): String = "listed"
+            }
+            """.trimIndent()
+        )
+    }
+
+    private fun addJavaGetAndPostController() {
+        myFixture.addFileToProject(
+            "com/example/JavaGetAndPostController.java", """
+            package com.example;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.PostMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class JavaGetAndPostController {
+                @GetMapping("/x")
+                public String read() { return "read"; }
+
+                @PostMapping("/x")
+                public String write() { return "write"; }
             }
             """.trimIndent()
         )
