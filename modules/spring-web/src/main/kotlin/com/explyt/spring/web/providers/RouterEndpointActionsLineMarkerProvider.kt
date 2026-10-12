@@ -52,14 +52,16 @@ class RouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
         if (identifier.text !in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) return null
         val psiMethodCall = identifier.parentOfType<PsiMethodCallExpression>() ?: return null
 
-        val routerFunction = psiMethodCall.parentOfType<PsiMethod>() ?: return null
+        val routerFunction = identifier.parentOfType<PsiMethod>() ?: return null
+        if (psiMethodCall.parentOfType<PsiMethod>() != routerFunction) return null
         if (!routerFunction.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
         val psiClass = routerFunction.containingClass ?: return null
         if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) return null
 
         val uMethodCall = psiMethodCall.toUElementOfType<UCallExpression>() ?: return null
-        val route = if (RouterBuilderRouteWalker.modelsRoutesOf(routerFunction)) {
-            modelledRouteOf(identifier, psiMethodCall, RouterBuilderRouteWalker.routesOf(routerFunction))
+        val walk = RouterBuilderRouteWalker.walkOf(routerFunction)
+        val route = if (walk.modelled) {
+            modelledRouteOf(identifier, psiMethodCall, walk.routes)
         } else {
             unmodelledRouteOf(uMethodCall)
         } ?: return null

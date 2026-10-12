@@ -17,7 +17,6 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiUtil
-import com.intellij.psi.util.parentOfType
 import org.jetbrains.uast.UExpression
 import org.jetbrains.uast.toUElementOfType
 
@@ -29,11 +28,9 @@ object RouterBuilderRouteWalker {
 
     fun routesOf(beanMethod: PsiMethod): List<BuilderRoute> = walkOf(beanMethod).routes
 
-    fun modelsRoutesOf(beanMethod: PsiMethod): Boolean = walkOf(beanMethod).modelled
+    class BeanMethodWalk(val modelled: Boolean, val routes: List<BuilderRoute>)
 
-    private class BeanMethodWalk(val modelled: Boolean, val routes: List<BuilderRoute>)
-
-    private fun walkOf(beanMethod: PsiMethod): BeanMethodWalk =
+    fun walkOf(beanMethod: PsiMethod): BeanMethodWalk =
         CachedValuesManager.getCachedValue(beanMethod) {
             val router = returnedRouterOf(beanMethod)
             CachedValueProvider.Result(
@@ -54,11 +51,6 @@ object RouterBuilderRouteWalker {
             && name != SpringWebClasses.ROUTE_NEST
         ) return false
         return resolveMethod()?.containingClass?.qualifiedName in SpringWebClasses.ROUTE_FUNCTION_BUILDERS
-    }
-
-    fun routesRegisteredBy(call: PsiMethodCallExpression): List<BuilderRoute> {
-        val beanMethod = call.parentOfType<PsiMethod>() ?: return emptyList()
-        return routesOf(beanMethod).filter { it.call == call }
     }
 
     private fun returnedRouterOf(beanMethod: PsiMethod): PsiExpression? =
