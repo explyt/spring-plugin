@@ -7,6 +7,7 @@ package com.explyt.spring.web.completion.java
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 
@@ -20,6 +21,70 @@ class WebTestClientMethodCompletionContributorTest : ExplytJavaLightTestCase() {
             TestLibrary.springBootAutoConfigure_3_1_1,
             TestLibrary.springReactiveWeb_3_1_1
         )
+
+    fun `test get request to an any-method mapping offers its body type`() {
+        addAnyMethodController()
+
+        assertTrue(bodyLookups("get", "/anyMono").any { it.contains("expectBody") })
+    }
+
+    fun `test post request to an any-method mapping offers its body type`() {
+        addAnyMethodController()
+
+        assertTrue(bodyLookups("post", "/anyMono").any { it.contains("expectBody") })
+    }
+
+    fun `test post request to a get mapping offers no body type`() {
+        addAnyMethodController()
+
+        assertEquals(emptyList<String>(), bodyLookups("post", "/onlyGetMono"))
+    }
+
+    fun `test get request to a get mapping offers its body type`() {
+        addAnyMethodController()
+
+        assertTrue(bodyLookups("get", "/onlyGetMono").any { it.contains("expectBody") })
+    }
+
+    private fun addAnyMethodController() {
+        myFixture.addFileToProject(
+            "com/example/AnyController.java", """
+            package com.example;
+
+            import org.springframework.web.bind.annotation.*;
+            import reactor.core.publisher.Mono;
+
+            @RestController
+            public class AnyController {
+                @RequestMapping("/anyMono") public Mono<String> anyMono() { return Mono.just("any"); }
+                @GetMapping("/onlyGetMono") public Mono<String> onlyGetMono() { return Mono.just("get"); }
+            }
+            """.trimIndent()
+        )
+        val byPath = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .filter { it.containingClass?.name == "AnyController" }
+            .associate { it.path to it.requestMethods }
+        assertEquals(mapOf("/anyMono" to emptyList(), "/onlyGetMono" to listOf("GET")), byPath)
+    }
+
+    private fun bodyLookups(verb: String, uri: String): List<String> {
+        myFixture.configureByText(
+            "AnyControllerTest.java", """
+            import org.springframework.test.web.reactive.server.WebTestClient;
+
+            class AnyControllerTest {
+                private WebTestClient webClient;
+
+                void justForTest() {
+                    webClient.$verb().uri("$uri").exchange().eb<caret>;
+                }
+            }
+            """.trimIndent()
+        )
+        return myFixture.completeBasic().orEmpty()
+            .mapNotNull { it as? LookupElementBuilder }
+            .map { it.toString() }
+    }
 
     fun `test bodyToMono for Order class`() {
         myFixture.copyDirectoryToProject("/", "/")

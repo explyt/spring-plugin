@@ -11,5 +11,10 @@ object EndpointVerbs {
 
     fun labelsOf(endpoint: EndpointElement): List<String> = endpoint.requestMethods.ifEmpty { listOf(ALL) }
 
-    fun answers(label: String, verb: String): Boolean = label == ALL || label == verb
+    fun answers(label: String, verb: String): Boolean = label == ALL || label.equals(verb, ignoreCase = true)
+
+    fun answers(endpoint: EndpointElement, verb: String): Boolean = answers(endpoint.requestMethods, verb)
+
+    fun answers(requestMethods: List<String>, verb: String?): Boolean =
+        requestMethods.isEmpty() || verb != null && requestMethods.any { it.equals(verb, ignoreCase = true) }
 }
