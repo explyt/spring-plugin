@@ -108,8 +108,8 @@ private const val ENDPOINT_OFFSET_DESCRIPTION =
 private const val EXPECTED_REVISION_DESCRIPTION =
     "The 'revision' of the first page, required to continue that same answer"
 private const val FIND_PAGE_CHARS = 8000
-private const val CONTRACT_PAGE_CHARS = 16000
-private const val LIST_PAGE_CHARS = 16000
+private const val CONTRACT_PAGE_CHARS = 8000
+private const val LIST_PAGE_CHARS = 8000
 private const val LOOKUP_PAGE_DESCRIPTION =
     "A page holds at most 50 endpoints within 'maxChars' of compact JSON and can end earlier, because the budget " +
             "is measured on the finished document. When 'truncated' is true, repeat the call with 'offset' = " +
@@ -434,11 +434,11 @@ class SpringBootApplicationMcpToolset : McpToolset {
      * The URL is reduced to its request path and read as written first, then under a base path a module's
      * configuration declares ([DeclaredBasePaths]), then under ever longer leading prefixes no route declares
      * ([EndpointPathPatterns.readingsOf]); the first reading any route answers is the answer, and the prefix it
-     * dropped is reported rather than hidden - as `basePath` when the configuration declares it,
-     * as `assumedPrefix` when it is a guess. A deployed URL carries its context path, and without
+     * dropped is reported rather than hidden - as [EndpointLookupJson.basePath] when the configuration declares it,
+     * as [EndpointLookupJson.assumedPrefix] when it is a guess. A deployed URL carries its context path, and without
      * this a real, working URL answered "no such route" - which invites the caller to write a duplicate.
      *
-     * A URL that matches nothing is not a dead end: `nearestByPrefix` carries the routes sharing
+     * A URL that matches nothing is not a dead end: [EndpointLookupJson.nearestByPrefix] carries the routes sharing
      * the longest leading path with it, which is where a route that does not exist yet would be added.
      */
     private suspend fun lookupEndpoints(
@@ -1037,10 +1037,17 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "for a project endpoint - no answer carries a path of the machine. " +
                 "Pass compact=true to omit 'parameters' and 'returnType' entirely - they dominate the response, " +
                 "and on a large project the full form can exceed 100 KB on a single line. " +
-                "When 'truncated' is true, either narrow the result with the controller or endpoint-type filters, " +
-                "or request the next page with 'offset' = 'offset' + number of returned endpoints. " +
-                "An endpoint declared in a test source root is listed too, carries 'testSource': true and follows " +
-                "every production endpoint, so it lands on the last pages; the key is absent otherwise. " +
+                "Returns {status, revision, totalCount, offset, truncated, nextOffset, endpoints}. A page holds at " +
+                "most 'limit' endpoints within 'maxChars' of compact JSON ($LIST_PAGE_CHARS by default) and can " +
+                "end earlier, because the budget is measured on the finished document. When 'truncated' is true, " +
+                "either narrow the result with the controller or endpoint-type filters, or repeat the call with " +
+                "'offset' = 'nextOffset' and 'expectedRevision' = 'revision' to continue the same answer; " +
+                "'nextOffset' is null on the last page, and another filter, another 'compact' or an edited project " +
+                "answers RESULT_CHANGED. One endpoint larger than 'maxChars' answers RESPONSE_TOO_LARGE naming the " +
+                "maxChars that fetches it. Endpoints come in a stable order, so pages never overlap: production " +
+                "before test sources, then by controller class, file and declaration position, path and HTTP " +
+                "methods. An endpoint declared in a test source root carries 'testSource': true and lands on the " +
+                "last pages; the key is absent otherwise. " +
                 ACTUATOR_APPLICATION_DESCRIPTION
     )
     suspend fun getHttpEndpoints(
@@ -1054,7 +1061,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "Any other value is rejected with the list of valid values."
         )
         endpointType: String = "",
-        @McpDescription("Index of the first endpoint to return, for paging through large projects. Defaults to 0.")
+        @McpDescription(ENDPOINT_OFFSET_DESCRIPTION)
         offset: Int = 0,
         @McpDescription(
             "Maximum number of endpoints to return. Defaults to $DEFAULT_ENDPOINT_PAGE_SIZE, " +
@@ -1067,14 +1074,24 @@ class SpringBootApplicationMcpToolset : McpToolset {
                     "filters cannot narrow it before you know which controllers exist. Defaults to false."
         )
         compact: Boolean = false,
+        @McpDescription("Budget of the whole compact JSON answer, 512..16000, $LIST_PAGE_CHARS by default")
+        maxChars: Int = LIST_PAGE_CHARS,
+        @McpDescription(EXPECTED_REVISION_DESCRIPTION)
+        expectedRevision: String? = null,
     ): String {
         val project = getCurrentProject(projectPath) ?: mcpFail(projectProblem(projectPath))
         val controllerSubstring = controllerFilter.trim().takeIf { it.isNotEmpty() }
         val typeFilter = McpChoiceArguments.optional(endpointType, "endpointType", WEB_ENDPOINT_TYPES)
-        val pageStart = offset.coerceAtLeast(0)
-        val pageSize = limit.coerceIn(1, MAX_ENDPOINT_LIST_RESULTS)
+        val page = PageRequest(
+            offset = offset.coerceAtLeast(0),
+            limit = limit.coerceIn(1, MAX_ENDPOINT_LIST_RESULTS),
+            maxChars = maxChars,
+            expectedRevision = expectedRevision,
+            maxLimit = MAX_ENDPOINT_LIST_RESULTS,
+            revisionRequired = false,
+        )
 
-        val result = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             smartReadAction(project) {
                 val listed = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints().asSequence()
                     .filter { it.type.isWeb }
@@ -1088,33 +1105,53 @@ class SpringBootApplicationMcpToolset : McpToolset {
                         }
                     }
                     .toList()
-                val (inTests, production) = listed.partition(::declaredInTests)
-                val matching = production + inTests
+                val matching = listed
+                    .map(::listedOf)
+                    .sortedWith(ListedEndpoint.ORDER)
+                    .map { it.endpoint }
 
-                // Convert only the requested page: building an EndpointJson resolves PSI (module, line number,
-                // parameters), which is far too expensive to do for every endpoint of a large project.
-                // 'compact' also skips the parameter extraction itself, so it is cheaper to compute and not
-                // merely smaller to send.
-                val page = matching.asSequence()
-                    .drop(pageStart)
-                    .take(pageSize)
-                    .onEach { ProgressManager.checkCanceled() }
-                val endpoints: List<Any> = if (compact) {
-                    page.map { toCompactEndpointJson(it, project) }.toList()
-                } else {
-                    page.map { toEndpointJson(it, project) }.toList()
-                }
-
-                EndpointListJson(
-                    totalCount = matching.size,
-                    offset = pageStart,
-                    truncated = pageStart + endpoints.size < matching.size,
-                    endpoints = endpoints,
+                EndpointPageWriter(project).write(
+                    envelope = mapper.createObjectNode(),
+                    endpoints = matching,
+                    toJson = { if (compact) toCompactEndpointJson(it, project) else toEndpointJson(it, project) },
+                    query = mapOf(
+                        "tool" to "explyt_get_spring_http_endpoints",
+                        "controllerFilter" to controllerSubstring,
+                        "endpointType" to typeFilter?.uppercase(),
+                        "compact" to compact.toString(),
+                    ),
+                    page = page,
                 )
             }
         }
+    }
 
-        return mapper.writeValueAsString(result)
+    private fun listedOf(endpoint: EndpointElement) = ListedEndpoint(
+        endpoint = endpoint,
+        inTestSources = declaredInTests(endpoint),
+        controllerClass = (endpoint.containingClass ?: declaringMethodOf(endpoint)?.containingClass)
+            ?.qualifiedName.orEmpty(),
+        filePath = (endpoint.psiElement.containingFile ?: endpoint.containingFile)?.virtualFile?.path.orEmpty(),
+        declarationOffset = endpoint.psiElement.textOffset,
+    )
+
+    private data class ListedEndpoint(
+        val endpoint: EndpointElement,
+        val inTestSources: Boolean,
+        val controllerClass: String,
+        val filePath: String,
+        val declarationOffset: Int,
+    ) {
+        companion object {
+            val ORDER: Comparator<ListedEndpoint> = compareBy(
+                { it.inTestSources },
+                { it.controllerClass },
+                { it.filePath },
+                { it.declarationOffset },
+                { it.endpoint.path },
+                { it.endpoint.requestMethods.joinToString(",") },
+            )
+        }
     }
 
     // ---- explyt_get_spring_endpoint_contract ----
@@ -2386,11 +2423,32 @@ private const val BEAN_CONDITION_DESCRIPTION =
         "condition excludes the bean or leaves it undecided, and when bean condition evaluation is disabled " +
         "in the settings. "
 
-data class EndpointListJson<T>(
+/**
+ * The result of resolving one URL pattern, for the find and contract tools.
+ *
+ * [endpoints] lists the closest production match first, and among equally close ones the more specific path first,
+ * the way Spring ranks path patterns, so of routes with different paths its first element is the one that dispatches.
+ * Endpoints declared in test sources follow, marked `testSource`: such an endpoint exists only in a test context, not
+ * in the running application.
+ * Handlers sharing one path are chosen by the request's media types instead, which their `consumes` and `produces`
+ * show; their order says nothing about dispatch. [basePath] is the leading path
+ * stripped from the URL because the configuration of the answering routes' module declares it - a servlet context
+ * path, a dispatcher servlet path or a WebFlux base path - a fact, not a guess. [assumedPrefix] is a leading path
+ * dropped from the URL although nothing declares it - a context path living only in deployment configuration or a
+ * gateway prefix - a guess. Both are null when the URL matched as written, and at most one of them is set.
+ * [nearestByPrefix] is filled only when [endpoints] is empty: the routes
+ * sharing the longest leading path ([sharedPrefix]) with the URL, which is where a route that does not exist yet
+ * would be added. The two lists are empty rather than null so a client can always iterate them; [sharedPrefix] is
+ * null exactly when [nearestByPrefix] is empty.
+ */
+data class EndpointLookupJson<T>(
     val totalCount: Int,
-    val offset: Int,
     val truncated: Boolean,
     val endpoints: List<T>,
+    val basePath: String?,
+    val assumedPrefix: String?,
+    val sharedPrefix: String?,
+    val nearestByPrefix: List<CompactEndpointJson>,
 )
 
 data class EndpointParameterJson(
