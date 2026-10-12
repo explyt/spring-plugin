@@ -6,16 +6,18 @@
 package com.explyt.spring.ai.action
 
 import com.explyt.spring.ai.SpringAiBundle
-import com.explyt.spring.ai.service.AiPluginService
+
 import com.explyt.spring.ai.service.AiUtils
 import com.explyt.spring.core.util.ActionUtil
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.isFile
 import com.intellij.openapi.vfs.readText
+import com.intellij.util.concurrency.AppExecutorUtil
 
 const val JPA_ENTITY = "javax.persistence.Entity"
 const val JAKARTA_ENTITY = "jakarta.persistence.Entity"
@@ -36,14 +38,22 @@ class ConvertDbMigrationFilesToEntityAction : AnAction(SpringAiBundle.message("e
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return
-        val files = getDbMigrationFiles(virtualFiles)
-        val file = files.firstOrNull() ?: return
+
+        AppExecutorUtil.getAppExecutorService().execute {
+            val files = getDbMigrationFiles(virtualFiles)
+            if (files.isEmpty() || project.isDisposed) return@execute
+            submitAiPromptInSmartMode(project) { composeRequest(project, files) }
+        }
+    }
+
+    private fun composeRequest(project: Project, files: List<VirtualFile>): AiPromptRequest {
+        val file = files.first()
         val jpaEntitySentence = AiUtils.getJpaEntitySentence(project)
         val languageSentence = AiUtils.getLanguageSentence(project, file)
         val prompt =
             "Convert DB migration - liquibase/flyway to the $jpaEntitySentence. From file - '${file.name}'. " +
                     "Create new classes. Save result files to the corresponding directory. $languageSentence"
-        AiPluginService.getInstance(project).performPrompt(prompt, files)
+        return AiPromptRequest(prompt, files)
     }
 
     private fun getDbMigrationFiles(virtualFiles: Array<out VirtualFile>): List<VirtualFile> {
