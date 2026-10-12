@@ -76,6 +76,9 @@ class BoundedPageWriter {
         if (added == 0 && page.offset < totalCount) {
             return writeTooLarge(minimumFor(envelope, itemsField, totalCount, itemAt, revision, page))
         }
+        if (added == 0 && encodedLength(root) > page.maxChars) {
+            return writeTooLarge(encodedLength(root))
+        }
         return mapper.writeValueAsString(root)
     }
 
@@ -95,7 +98,9 @@ class BoundedPageWriter {
         for (item in sample) {
             served.add(item)
             val probe = pageEnvelope(fitted, revision, totalCount, page.offset).apply { putArray(itemsField) }
-            if (encodedLength(probe) > page.maxChars) {
+            val placeholderLength = encodedLength(probe)
+            setContinuation(probe, totalCount, page.offset)
+            if (maxOf(placeholderLength, encodedLength(probe)) > page.maxChars) {
                 served.remove(served.size() - 1)
                 break
             }
