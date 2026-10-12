@@ -45,7 +45,7 @@ class SpringBeanNameConventionConflictInspection : SpringBaseUastLocalInspection
                 SpringCoreBundle.message(
                     "explyt.spring.inspection.bean.name.convention.conflict",
                     shortName,
-                    conflict.joinToString(", "),
+                    conflict.formatNames(),
                 ),
                 isOnTheFly,
                 emptyArray(),
@@ -59,6 +59,8 @@ class SpringBeanNameConventionConflictInspection : SpringBaseUastLocalInspection
         if (MergedAnnotationAttributes.isLanguageAnnotation(annotation)) return false
         return MergedAnnotationAttributes.annotationTypeOf(annotation)?.isMetaAnnotatedBy(SpringCoreClasses.BEAN) == true
     }
+
+    private fun List<String>.formatNames(): String = if (size == 1) first() else joinToString(", ", prefix = "{\"", postfix = "\"}")
 
     private fun conflictOf(override: ConventionOverride): List<String>? {
         if (override.useSite.attribute != NAME) return null

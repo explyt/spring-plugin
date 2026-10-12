@@ -12,7 +12,7 @@
 <p>Reports a composed <code>@Bean</code> annotation whose <code>name</code> attribute, set at the use site, conflicts
 with the name fixed by the meta <code>@Bean("...")</code> value.</p>
 
-<p>On Spring Framework 6 an annotation attribute called <code>name</code> without <code>@AliasFor</code> overrides
+<p>On Spring Framework 6 an annotation attribute called <code>name</code> without an <code>@AliasFor</code> to <code>@Bean</code> overrides
 <code>@Bean.name</code> by convention. When the meta-annotation fixes the bean name through <code>value</code> and the
 use site sets a different <code>name</code>, the application fails at startup with
 <code>AnnotationConfigurationException: Different @AliasFor mirror values</code>.</p>
