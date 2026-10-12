@@ -7,6 +7,8 @@ package com.explyt.spring.web.providers
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.web.loader.EndpointElement
+import com.explyt.spring.web.service.SpringWebEndpointsSearcher
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
@@ -241,6 +243,222 @@ class TestRequestReceiversUsageTest : ExplytKotlinLightTestCase() {
         assertEquals(listOf("javaHttp", "mockMvc"), callersOf(usages))
         assertEquals(usages.size, usages.distinct().size)
     }
+
+    fun testMockMvcRequestsOfEveryVerbReachAnAnyMethodMapping() {
+        val endpoint = anyMethodEndpoint()
+        myFixture.configureByText(
+            "AnyMockMvcTest.kt", """
+            import org.springframework.http.HttpMethod
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
+
+            class AnyMockMvcTest {
+                fun getting() { get("/any") }
+                fun posting() { post("/any") }
+                fun optionsRequest() { options("/any") }
+                fun requestByMethod() { request(HttpMethod.PUT, "/any") }
+                fun otherRoute() { get("/other") }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("getting", "optionsRequest", "posting", "requestByMethod"),
+            callersOf(EndpointUsageSearcher.findMockMvcEndpointUsage(endpoint.path, endpoint.requestMethods, module))
+        )
+    }
+
+    fun testWebTestClientRequestsOfEveryVerbReachAnAnyMethodMapping() {
+        val endpoint = anyMethodEndpoint()
+        myFixture.configureByText(
+            "AnyWebTest.kt", """
+            import org.springframework.http.HttpMethod
+            import org.springframework.test.web.reactive.server.WebTestClient
+
+            class AnyWebTest {
+                fun getting(client: WebTestClient) { client.get().uri("/any") }
+                fun posting(client: WebTestClient) { client.post().uri("/any") }
+                fun byMethod(client: WebTestClient) { client.method(HttpMethod.PATCH).uri("/any") }
+                fun otherRoute(client: WebTestClient) { client.get().uri("/other") }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("byMethod", "getting", "posting"),
+            callersOf(EndpointUsageSearcher.findWebTestClientEndpointUsage(endpoint.path, endpoint.requestMethods, module))
+        )
+    }
+
+    fun testNetworkClientRequestsOfEveryVerbStillReachAnAnyMethodMapping() {
+        val endpoint = anyMethodEndpoint()
+        myFixture.configureByText(
+            "AnyRestClientTest.kt", """
+            import org.springframework.web.client.RestClient
+
+            class AnyRestClientTest {
+                fun getting(client: RestClient) { client.get().uri("http://localhost:8080/any").retrieve() }
+                fun posting(client: RestClient) { client.post().uri("http://localhost:8080/any").retrieve() }
+                fun otherHost(client: RestClient) { client.get().uri("http://payments.example.com/any").retrieve() }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("getting", "posting"),
+            callersOf(EndpointUsageSearcher.findHttpClientEndpointUsage(endpoint.path, endpoint.requestMethods, module))
+        )
+    }
+
+    fun testEveryClientOfEveryVerbIsListedForAnAnyMethodMapping() {
+        val endpoint = anyMethodEndpoint()
+        myFixture.configureByText(
+            "AnyAllClientsTest.kt", """
+            import org.springframework.test.web.reactive.server.WebTestClient
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+            import org.springframework.web.client.RestClient
+
+            class AnyAllClientsTest {
+                fun mockMvc() { post("/any") }
+                fun webTestClient(client: WebTestClient) { client.post().uri("/any") }
+                fun restClient(client: RestClient) { client.post().uri("http://localhost/any").retrieve() }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("mockMvc", "restClient", "webTestClient"),
+            callersOf(EndpointUsageSearcher.findTestRequestUsage(endpoint.path, endpoint.requestMethods, module))
+        )
+    }
+
+    fun testRequestsOfAnotherVerbDoNotReachAGetMapping() {
+        myFixture.configureByText(
+            "ItemVerbTest.kt", """
+            import org.springframework.test.web.reactive.server.WebTestClient
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+
+            class ItemVerbTest {
+                fun mockMvcGet() { get("/api/items/1") }
+                fun mockMvcPost() { post("/api/items/1") }
+                fun webGet(client: WebTestClient) { client.get().uri("/api/items/1") }
+                fun webPost(client: WebTestClient) { client.post().uri("/api/items/1") }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("mockMvcGet", "webGet"),
+            callersOf(EndpointUsageSearcher.findTestRequestUsage("/api/items/{id}", listOf("GET"), module))
+        )
+    }
+
+    fun testRequestsOfEveryVerbReachAnAnyMethodRouterPath() {
+        myFixture.addFileToProject(
+            "com/example/AnyRoutes.kt", """
+            package com.example
+
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.reactive.function.server.RouterFunction
+            import org.springframework.web.reactive.function.server.ServerRequest
+            import org.springframework.web.reactive.function.server.ServerResponse
+            import org.springframework.web.reactive.function.server.buildAndAwait
+            import org.springframework.web.reactive.function.server.coRouter
+
+            class AnyHandler {
+                suspend fun handle(request: ServerRequest): ServerResponse = ServerResponse.ok().buildAndAwait()
+            }
+
+            @Configuration
+            class AnyRoutes {
+                @Bean
+                fun routes(handler: AnyHandler): RouterFunction<ServerResponse> = coRouter {
+                    path("/routed", handler::handle)
+                }
+            }
+            """.trimIndent()
+        )
+        val endpoint = SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .single { it.path == "/routed" }
+        assertEquals(emptyList<String>(), endpoint.requestMethods)
+        myFixture.configureByText(
+            "AnyRoutedTest.kt", """
+            import org.springframework.test.web.reactive.server.WebTestClient
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+
+            class AnyRoutedTest {
+                fun mockMvcGet() { get("/routed") }
+                fun mockMvcPost() { post("/routed") }
+                fun webGet(client: WebTestClient) { client.get().uri("/routed") }
+                fun webPost(client: WebTestClient) { client.post().uri("/routed") }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("mockMvcGet", "mockMvcPost", "webGet", "webPost"),
+            callersOf(EndpointUsageSearcher.findTestRequestUsage(endpoint.path, endpoint.requestMethods, module))
+        )
+    }
+
+    fun testLowercaseDeclaredMethodIsMatchedRegardlessOfCase() {
+        myFixture.addFileToProject(
+            "com/example/LowerClient.java", """
+            package com.example;
+
+            import org.springframework.web.service.annotation.HttpExchange;
+
+            public interface LowerClient {
+                @HttpExchange(value = "/lower", method = "get")
+                String lower();
+            }
+            """.trimIndent()
+        )
+        val endpoint = endpointsOf("LowerClient").single()
+        assertEquals("/lower", endpoint.path)
+        assertEquals(listOf("get"), endpoint.requestMethods)
+        myFixture.configureByText(
+            "LowerTest.kt", """
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+            import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+
+            class LowerTest {
+                fun getting() { get("/lower") }
+                fun posting() { post("/lower") }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("getting"),
+            callersOf(EndpointUsageSearcher.findMockMvcEndpointUsage(endpoint.path, endpoint.requestMethods, module))
+        )
+    }
+
+    private fun anyMethodEndpoint(): EndpointElement {
+        myFixture.addFileToProject(
+            "com/example/AnyController.java", """
+            package com.example;
+
+            import org.springframework.web.bind.annotation.*;
+
+            @RestController
+            public class AnyController {
+                @RequestMapping("/any") public String any() { return "any"; }
+            }
+            """.trimIndent()
+        )
+        val endpoint = endpointsOf("AnyController").single()
+        assertEquals("/any", endpoint.path)
+        assertEquals(emptyList<String>(), endpoint.requestMethods)
+        return endpoint
+    }
+
+    private fun endpointsOf(className: String): List<EndpointElement> =
+        SpringWebEndpointsSearcher.getInstance(project).getAllEndpoints(module)
+            .filter { it.containingClass?.name == className }
 
     private fun callersOf(usages: List<PsiElement>): List<String> = usages.map(::enclosingMethodName).sorted()
 
