@@ -20,17 +20,18 @@ class VerblessEndpointOpenApiActionTest : ExplytJavaLightTestCase() {
         TestLibrary.springWeb_6_0_7
     )
 
-    fun testVerblessMappingGutterDoesNotOfferAnOpenApiDescription() {
+    fun testVerblessMappingGutterOffersAnOpenApiDescription() {
         addController()
 
         val handler = gutterHandlerOf("items")
         assertEquals("/items", handler.endpointInfo.path)
         assertEquals("Precondition: the mapping declares no method", emptyList<String>(), handler.endpointInfo.requestMethods)
 
-        assertFalse(
-            "A mapping without a method must not offer Generate OpenApi Doc",
+        assertTrue(
+            "A mapping that answers every method must offer Generate OpenApi Doc",
             offersOpenApiDescription(handler)
         )
+        assertTrue(AddEndpointToOpenApiIntention(handler.endpointInfo).isAvailable(project, null, null))
     }
 
     fun testGetMappingGutterStillOffersAnOpenApiDescription() {
@@ -44,7 +45,7 @@ class VerblessEndpointOpenApiActionTest : ExplytJavaLightTestCase() {
         assertTrue(AddEndpointToOpenApiIntention(handler.endpointInfo).isAvailable(project, null, null))
     }
 
-    fun testVerblessMappingIntentionIsNotAvailableForADocumentedPath() {
+    fun testVerblessMappingIntentionIsAvailableWhileAnOperationIsUndocumented() {
         myFixture.addFileToProject("openapi.yaml", DOCUMENTED_ITEMS)
         addController()
 
@@ -54,8 +55,8 @@ class VerblessEndpointOpenApiActionTest : ExplytJavaLightTestCase() {
             2, EndpointUsageSearcher.findOpenApiYamlEndpoints("/items", listOf("GET", "POST"), module).size
         )
 
-        assertFalse(
-            "Generate OpenApi Doc must not be available for a mapping without a method",
+        assertTrue(
+            "GET and POST are documented, the five other operations of a mapping that answers every method are not",
             AddEndpointToOpenApiIntention(handler.endpointInfo).isAvailable(project, null, null)
         )
     }
