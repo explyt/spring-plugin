@@ -9,6 +9,7 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.intellij.mcpserver.annotations.McpTool
 import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KParameter
@@ -217,6 +218,50 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
         assertEquals(unbounded["sharedPrefix"].asText(), page["sharedPrefix"].asText())
     }
 
+    /**
+     * A miss serves no endpoint, so its page ends with the terminal continuation - `truncated` false and `nextOffset`
+     * null - and every budget just below a page holding k neighbours must either fit fewer of them or refuse.
+     * The budgets are the exact lengths of those pages less 1 to 4 characters, the window in which a page measured
+     * with a non-terminal continuation would be sent over its budget.
+     */
+    fun testAMissPageNeverExceedsItsBudget() = runBlocking<Unit> {
+        val unbounded = callJson(FIND, "urlPattern" to MISS_URL, "maxChars" to BoundedPageWriter.MAX_CHARS) as ObjectNode
+        assertOkPage(unbounded)
+        assertEquals("Precondition: the URL is a miss", 0, unbounded["totalCount"].asInt())
+        assertFalse("Precondition: the unbounded miss is the terminal page", unbounded["truncated"].asBoolean())
+        assertTrue("Precondition: the unbounded miss is the terminal page", unbounded["nextOffset"].isNull)
+        assertFalse(
+            "Precondition: the unbounded miss carries its whole neighbourhood",
+            unbounded.has(NEAREST_TRUNCATED)
+        )
+        val nearest = unbounded["nearestByPrefix"].toList()
+        assertTrue("Precondition: the miss has at least three neighbours, got $nearest", nearest.size >= 3)
+
+        val budgets = (1..nearest.size).flatMap { k ->
+            val pageLength = encodedLength(missPageWith(unbounded, nearest, k))
+            (pageLength - 4..pageLength - 1).map { k to it }
+        }.filter { (_, maxChars) -> maxChars in BoundedPageWriter.MIN_CHARS..BoundedPageWriter.MAX_CHARS }
+        assertTrue("Precondition: some page length must leave a valid budget 1-4 characters below it", budgets.isNotEmpty())
+
+        val overBudget = budgets.mapNotNull { (k, maxChars) ->
+            val json = call(FIND, "urlPattern" to MISS_URL, "maxChars" to maxChars)
+            val status = mapper.readTree(json)["status"]?.asText()
+            val error = mapper.readTree(json)["error"]?.get("code")?.asText()
+            assertTrue(
+                "maxChars $maxChars must answer OK or RESPONSE_TOO_LARGE, got $json",
+                status == "OK" || error == "RESPONSE_TOO_LARGE"
+            )
+            "k=$k maxChars=$maxChars length=${json.length}".takeIf { status == "OK" && json.length > maxChars }
+        }
+        assertTrue("A miss page must never exceed its budget, got $overBudget", overBudget.isEmpty())
+    }
+
+    private fun missPageWith(unbounded: ObjectNode, nearest: List<JsonNode>, k: Int): ObjectNode =
+        unbounded.deepCopy().apply {
+            putArray("nearestByPrefix").addAll(nearest.take(k))
+            if (k < nearest.size) put(NEAREST_TRUNCATED, true)
+        }
+
     fun testFindWithoutABudgetAnswersAsBefore() = runBlocking<Unit> {
         val page = callJson(FIND, "urlPattern" to DEMO_URL)
 
@@ -333,6 +378,7 @@ class SpringBootApplicationMcpToolsetEndpointPageTest : ExplytJavaLightTestCase(
 
         const val PAGING_KEYS_ALLOWANCE = 200
         const val MISS_BUDGET = 700
+        const val NEAREST_TRUNCATED = "nearestByPrefixTruncated"
         const val MAX_PAGES = 50
 
         val TODAY_FIND_DEMO = listOf(
