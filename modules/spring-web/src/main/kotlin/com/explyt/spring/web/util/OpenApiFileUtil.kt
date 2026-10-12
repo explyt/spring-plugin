@@ -5,7 +5,6 @@
 
 package com.explyt.spring.web.util
 
-import ai.grazie.utils.toLinkedSet
 import com.explyt.spring.web.builder.openapi.OpenApiBuilderFactory
 import com.explyt.spring.web.editor.openapi.OpenApiUIEditor
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention
@@ -16,6 +15,9 @@ import com.explyt.spring.web.tracker.OpenApiLanguagesModificationTracker
 import com.explyt.util.CacheKeyStore
 import com.intellij.ide.scratch.RootType
 import com.intellij.json.JsonFileType
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -32,8 +34,10 @@ import com.intellij.psi.SingleRootFileViewProvider
 import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.yaml.YAMLFileType
 import java.io.File
+import java.util.concurrent.Callable
 
 class OpenApiFileUtil {
 
@@ -108,28 +112,50 @@ class OpenApiFileUtil {
         project: Project,
         endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
         servers: List<String>,
-        layout: TextEditorWithPreview.Layout
+        layout: TextEditorWithPreview.Layout,
+        endpointServers: List<String>? = null
     ) {
-        val fileType = YAMLFileType.YML
+        ReadAction.nonBlocking(Callable {
+            buildContent(endpointInfos, servers, endpointServers ?: endpointServersOf(endpointInfos))
+        })
+            .inSmartMode(project)
+            .expireWhen { project.isDisposed }
+            .submit(AppExecutorUtil.getAppExecutorService())
+            .onSuccess { content ->
+                AppExecutorUtil.getAppExecutorService().execute {
+                    val file = File.createTempFile("openapi-", ".${YAMLFileType.YML.defaultExtension}")
+                    file.deleteOnExit()
+                    val document = OpenApiDocument(file, content)
+                    ApplicationManager.getApplication().invokeLater({
+                        show(project, document, layout)
+                    }, ModalityState.nonModal(), project.disposed)
+                }
+            }
+    }
 
-        val file = File.createTempFile("openapi-", ".${fileType.defaultExtension}")
-        file.deleteOnExit()
-        val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
-
-        val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(fileType)
+    private fun buildContent(
+        endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>,
+        servers: List<String>,
+        endpointServers: List<String>
+    ): String {
+        val openapiBuilder = OpenApiBuilderFactory.getOpenApiFileBuilder(YAMLFileType.YML)
         val serversToAdd = servers.ifEmpty { listOf(DEFAULT_SERVER) }
-        val servers = endpointInfos.firstOrNull()
-            ?.let { EndpointRunLineMarkerProvider.applyServerPortSettings(it.psiElement) } ?: emptyList()
-        val allServers = (servers + serversToAdd).toLinkedSet()
+        val allServers = LinkedHashSet<String>(8)
+        allServers.addAll(endpointServers)
+        allServers.addAll(serversToAdd)
         for (server in allServers) {
             openapiBuilder.addServer(server)
         }
         for (info in endpointInfos) {
             openapiBuilder.addEndpoint(info)
         }
+        return openapiBuilder.toString()
+    }
 
+    private fun show(project: Project, document: OpenApiDocument, layout: TextEditorWithPreview.Layout) {
+        val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(document.file) ?: return
         runWriteAction {
-            VfsUtil.saveText(virtualFile, openapiBuilder.toString())
+            VfsUtil.saveText(virtualFile, document.content)
             val openFileDescriptor = OpenFileDescriptor(project, virtualFile)
             val openapiEditor = FileEditorManager.getInstance(project)
                 .openEditor(openFileDescriptor, true)
@@ -138,6 +164,13 @@ class OpenApiFileUtil {
             openapiEditor.showPreview("", layout)
         }
     }
+
+    fun endpointServersOf(endpointInfos: List<AddEndpointToOpenApiIntention.EndpointInfo>): List<String> =
+        endpointInfos.firstOrNull()
+            ?.let { EndpointRunLineMarkerProvider.applyServerPortSettings(it.psiElement) }
+            .orEmpty()
+
+    private data class OpenApiDocument(val file: File, val content: String)
 
     private fun getSpecificationType(file: VirtualFile, psiFile: PsiFile): OpenApiSpecificationType {
         return when {

@@ -197,7 +197,7 @@ Signals that require the freeze-safety pass:
 - hot-path event handlers: `BulkFileListener`, `CaretListener`, `SelectionListener`;
 - dispose path: `dispose()`, `disposeUIResources()`, `projectClosed` with logic;
 - the code already has or adds `SlowOperations.allowSlowOperations` / `invokeAndWait`;
-- `logs/threadDumps-freeze-*` folders are present in the project root (regardless of the diff), or the user explicitly complains about lags / freezes / jitter / slow window opening.
+- `logs/threadDumps-freeze-*` folders are present in the project root (regardless of the diff), the user explicitly complains about lags / freezes / jitter / slow window opening, or the target is accompanied by an OpenTaint/SARIF slow-operation-on-EDT report.
 
 Freeze-safety routing does not replace the domain reviewer subskills — it only adds them to the review wave with extra freeze-safety context.
 
