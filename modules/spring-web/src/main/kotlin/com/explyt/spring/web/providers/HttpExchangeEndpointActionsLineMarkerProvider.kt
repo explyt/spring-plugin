@@ -70,7 +70,6 @@ class HttpExchangeEndpointActionsLineMarkerProvider : LineMarkerProviderDescript
 
         val requestMethods = requestMappingMah.getAnnotationMemberValues(psiMethod, setOf("method"))
             .map { ExplytPsiUtil.getUnquotedText(it) }
-        if (requestMethods.isEmpty()) return null
 
         val description = uMethod.comments.firstOrNull()?.getCommentText() ?: ""
         val returnTypeFqn = SpringWebUtil.getTypeFqn(HandlerSignature.declaredReturnType(psiMethod), psiMethod.language)
