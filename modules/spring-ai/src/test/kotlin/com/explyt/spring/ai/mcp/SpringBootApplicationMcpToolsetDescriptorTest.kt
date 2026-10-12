@@ -93,6 +93,34 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
      * sentences are what a tool router and a skimming agent match against.
      */
     @Test
+    fun `endpoint descriptions explain ALL http methods`() {
+        for (toolName in ENDPOINT_TOOL_NAMES) {
+            val description = toolNamed(toolName).toolDescription
+            assertTrue(
+                "$toolName must explain the ALL httpMethods value",
+                description.contains(ALL_METHODS_FRAGMENT)
+            )
+            assertTrue(
+                "$toolName must say that ALL answers every HTTP method",
+                description.contains("every HTTP method", ignoreCase = true)
+            )
+        }
+    }
+
+    @Test
+    fun `endpoint method filters explain ALL matches every filter value`() {
+        for (toolName in FILTERED_ENDPOINT_TOOL_NAMES) {
+            val parameter = toolNamed(toolName).parameters.single { it.name == "httpMethod" }
+            val description = parameter.findAnnotation<McpDescription>()!!.description
+            assertTrue(
+                "$toolName httpMethod filter must explain ALL matching every HTTP method",
+                description.contains("every HTTP method", ignoreCase = true) &&
+                        description.contains(ALL_METHODS_FRAGMENT)
+            )
+        }
+    }
+
+    @Test
     fun `every description leads with the moment to call the tool`() {
         for (tool in tools) {
             val lead = tool.toolDescription.split(". ").take(LEAD_SENTENCES).joinToString(". ")
@@ -103,7 +131,23 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
         }
     }
 
+    private fun toolNamed(name: String): KFunction<*> =
+        SpringBootApplicationMcpToolset::class.functions.single {
+            it.findAnnotation<McpTool>()?.name == name
+        }
+
     private companion object {
+        val ENDPOINT_TOOL_NAMES = setOf(
+            "explyt_find_spring_endpoint",
+            "explyt_get_spring_endpoint_contract",
+            "explyt_get_spring_http_endpoints",
+        )
+        val FILTERED_ENDPOINT_TOOL_NAMES = setOf(
+            "explyt_find_spring_endpoint",
+            "explyt_get_spring_endpoint_contract",
+        )
+        const val ALL_METHODS_FRAGMENT = "[\"ALL\"]"
+
         val TOOL_NAME = Regex("""explyt_[a-z_]+""")
         const val LEAD_SENTENCES = 2
         const val MAX_TOOL_NAME_LENGTH = 40
