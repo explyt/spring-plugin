@@ -10,8 +10,7 @@ import com.explyt.spring.core.SpringIcons
 import com.explyt.spring.web.SpringWebBundle
 import com.explyt.spring.web.SpringWebClasses
 import com.explyt.spring.web.inspections.quickfix.AddEndpointToOpenApiIntention.EndpointInfo
-import com.explyt.spring.web.util.RoutePathResolver
-import com.explyt.spring.web.util.SpringWebUtil
+import com.explyt.spring.web.loader.RouterBuilderRouteWalker
 import com.explyt.util.ExplytPsiUtil.isMetaAnnotatedBy
 import com.explyt.util.ExplytUastUtil.getCommentText
 import com.intellij.codeInsight.daemon.LineMarkerInfo
@@ -27,7 +26,6 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
 import org.jetbrains.uast.toUElementOfType
-import org.jetbrains.uast.visitor.AbstractUastVisitor
 
 class RouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
 
@@ -47,20 +45,17 @@ class RouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
         if (psiElement.language == KotlinLanguage.INSTANCE) return null
 
         val identifier = psiElement as? PsiIdentifier ?: return null
-        val methodName = identifier.text ?: return null
-        if (methodName !in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) return null
+        if (identifier.text !in SpringWebClasses.ROUTE_FUNCTION_BUILDER_VERBS) return null
+        val psiMethodCall = identifier.parent?.parent as? PsiMethodCallExpression ?: return null
+        if (psiMethodCall.methodExpression.referenceNameElement != identifier) return null
 
-        val routerFunction = psiElement.parentOfType<PsiMethod>() ?: return null
+        val routerFunction = psiMethodCall.parentOfType<PsiMethod>() ?: return null
         if (!routerFunction.isMetaAnnotatedBy(SpringCoreClasses.BEAN)) return null
         val psiClass = routerFunction.containingClass ?: return null
         if (!psiClass.isMetaAnnotatedBy(SpringCoreClasses.COMPONENT)) return null
 
-        val psiMethodCall = psiElement.parentOfType<PsiMethodCallExpression>() ?: return null
+        val route = RouterBuilderRouteWalker.routesRegisteredBy(psiMethodCall).firstOrNull() ?: return null
         val uMethodCall = psiMethodCall.toUElementOfType<UCallExpression>() ?: return null
-        val fullPath = getPathFromRouteFunction(uMethodCall)
-        if (fullPath.isEmpty()) return null
-
-        val requestMethods = listOf(SpringWebUtil.getRequestMethod(uMethodCall) ?: return null)
 
         val description = uMethodCall
             .comments
@@ -70,8 +65,8 @@ class RouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
         val endpointMethodName = getEndpointMethodName(uMethodCall)
 
         val endpointElement = EndpointInfo(
-            fullPath,
-            requestMethods,
+            route.path,
+            listOf(route.verb),
             psiElement,
             endpointMethodName,
             routerFunction.name,
@@ -95,20 +90,4 @@ class RouterEndpointActionsLineMarkerProvider : LineMarkerProviderDescriptor() {
 
         return methodReference.callableName
     }
-
-    private fun getPathFromRouteFunction(uMethodCall: UCallExpression): String {
-        var path = ""
-        uMethodCall.accept(object : AbstractUastVisitor() {
-            override fun visitCallExpression(node: UCallExpression): Boolean {
-                if (node.methodName in SpringWebClasses.ROUTER_DSL_ROUTE_METHODS) {
-                    val uriArgument = node.valueArguments.getOrNull(0) ?: return super.visitCallExpression(node)
-                    path = RoutePathResolver.resolveUriValues(uriArgument).firstOrNull()
-                        ?: return super.visitCallExpression(node)
-                }
-                return super.visitCallExpression(node)
-            }
-        })
-        return path
-    }
-
 }
