@@ -97,9 +97,9 @@ internal class CallChainTestReferences(private val module: Module, private val p
     }
 
     private fun requestsTo(route: FunctionalRouteTarget): List<Pair<String, List<PsiElement>>>? {
-        val verb = route.verb ?: return null
+        val requestMethods = route.requestMethods ?: return null
         val paths = route.paths.takeIf { it.isNotEmpty() } ?: return null
-        return paths.map { path -> path to EndpointUsageSearcher.findTestRequestUsage(path, listOf(verb), module) }
+        return paths.map { path -> path to EndpointUsageSearcher.findTestRequestUsage(path, requestMethods, module) }
     }
 
     /** Whether [reference] is part of the request [request] - its URL argument, or anything else inside the call. */
