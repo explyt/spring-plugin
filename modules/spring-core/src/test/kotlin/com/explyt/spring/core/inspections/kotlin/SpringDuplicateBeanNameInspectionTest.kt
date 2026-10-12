@@ -5,6 +5,7 @@
 
 package com.explyt.spring.core.inspections.kotlin
 
+import com.explyt.spring.core.SpringCoreBundle
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.inspections.SpringDuplicateBeanNameInspection
 import com.explyt.spring.core.tracker.ModificationTrackerManager
@@ -137,6 +138,31 @@ class SpringDuplicateBeanNameInspectionTest : ExplytBaseLightTestCase() {
                 }
                 """
             )
+        )
+    }
+
+    fun testUnresolvableOverridingPropertyUsesWarning() {
+        myFixture.addFileToProject("application.properties", "spring.main.allow-bean-definition-overriding=${'$'}{OVERRIDING}")
+        ModificationTrackerManager.getInstance(project).invalidateAll()
+
+        val problem = highlights(
+            """
+            @Configuration
+            open class Config {
+                @Bean("svc") fun a(): Any = Any()
+                @Bean("svc") fun b(): Any = Any()
+            }
+            """
+        ).single()
+
+        assertEquals(HighlightSeverity.WARNING, problem.severity)
+        assertEquals(
+            SpringCoreBundle.message(
+                "explyt.spring.inspection.bean.name.duplicate.overriding.unresolved",
+                "svc",
+                "a"
+            ),
+            problem.description
         )
     }
 
