@@ -41,8 +41,11 @@ abstract class SpringBeanNameConventionConflictKotlinTestCase : ExplytInspection
 
     protected abstract val springMajor: Int?
 
+    protected open fun prepareSpringLibraries() = Unit
+
     override fun setUp() {
         super.setUp()
+        prepareSpringLibraries()
         myFixture.enableInspections(SpringBeanNameConventionConflictInspection::class.java)
     }
 
@@ -170,8 +173,8 @@ class SpringBeanNameConventionConflictUnknownSpringVersionInspectionTest : Sprin
     override val springMajor: Int? = null
 
     override fun setUp() {
-        super.setUp()
         BeanNameConventionConflictFixture.addUnknownSpringVersionStubs(module, testRootDisposable)
+        super.setUp()
     }
 
     fun testConventionNameIsNotReportedWhenSpringVersionIsUnknown() =
