@@ -35,6 +35,7 @@ Use and reference these checklist IDs when applicable:
 
 - Caching raw `PsiElement` or `PsiMethod[]` in maps or service fields → use `SmartPointerManager.createPointer()`.
 - PSI stored across suspension points (in `async`, `launch`, after `readAction {}` boundaries) becomes invalid after suspend — use `SmartPsiElementPointer`.
+- A DTO such as `EndpointInfo` that still contains `PsiElement` is not automatically safe across background-to-UI handoff. Either replace the field with a pointer, or prove that every consumer is a pure precomputed read and revalidate before the UI operation.
 - Filter invalid PSI before returning collections: `.filter { it.isValid }`.
 - `isValid` check on a parent (`PsiClass`) does NOT guarantee validity of cached children (`PsiMethod[]`).
 - Line marker and gutter data that survives beyond one pass (e.g. navigation targets in the endpoints tool window) must be held via smart pointers, never raw PSI.
@@ -50,6 +51,8 @@ Use and reference these checklist IDs when applicable:
 
 ### 3. VFS / Document API
 
+- File reads such as `VirtualFile.readText()`, `contentsToByteArray()` and `File` I/O from `AnAction.actionPerformed()` must run on a pooled/I/O thread; `getActionUpdateThread() = BGT` does not cover `actionPerformed()`.
+- Temporary-file creation and `LocalFileSystem` lookup must not be added to the EDT callback just because the final editor opening belongs there. Prepare content and file data off the EDT, then keep only VFS/Document write and editor operations on the UI boundary.
 - Recursive `VirtualFile` traversal → only via `VfsUtilCore.iterateChildrenRecursively()` (handles symlinks). Manual recursion = infinite loop risk.
 - VFS refresh must NOT be called under read lock on a background thread → deadlock. Use `postRunnable` for post-refresh logic.
 - `ReadonlyStatusHandler.ensureFilesWritable()` before modifying a `Document` (quick-fixes touching build scripts or config files).
@@ -84,6 +87,7 @@ Use and reference these checklist IDs when applicable:
 - **`PsiFile.accept(PsiRecursiveElementVisitor())` on large files**: visits every node. If you only need elements of a specific type, use `SyntaxTraverser` or targeted `PsiTreeUtil.findChildrenOfType()` with depth limits.
 - **Repeated `resolve()` calls**: `PsiReference.resolve()` can be expensive. Never call it in a tight loop without caching results. Bean and endpoint resolution paths are the hottest offenders in this plugin.
 - `ReferencesSearch.search()`, `PsiSearchHelper`, `AnnotatedElementsSearch`, or `StubIndex.getElements()` inside another search loop can become quadratic or worse. Annotation-based bean scanning must not nest searches.
+- For static OpenTaint/SARIF findings, verify the complete path before fixing: apply loader/type filters first, then `isApplicable`/guards, and account for prior `when` type branches. A reported sink is only actionable when the source-to-sink path remains reachable after those predicates.
 - `FileDocumentManager.getDocument(vf)` for a large list of files accumulates strong references preventing GC. Process one document at a time, don't store.
 - `FileType` / `Language` instances as map keys → leak after plugin reload. Use `.id` / `.name` as keys.
 
