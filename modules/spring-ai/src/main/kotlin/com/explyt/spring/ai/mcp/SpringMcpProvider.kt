@@ -97,7 +97,8 @@ private val HTTP_METHODS = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD
 
 private const val HTTP_METHOD_DESCRIPTION =
     "Optional HTTP method filter, case-insensitive: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. Leave empty to " +
-            "match all methods. Any other value is rejected with the list of valid values."
+            "match all methods. Any other value is rejected with the list of valid values. " +
+            "A route that answers every HTTP method (httpMethods [\"ALL\"]) matches every value."
 
 /** The values `explyt_get_spring_http_endpoints` can filter by: the endpoint types it lists at all. */
 private val WEB_ENDPOINT_TYPES = EndpointType.entries.filter { it.isWeb }.map { it.name }
@@ -344,6 +345,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "project-relative 'filePath', line and endpoint type, and 'consumes'/'produces' when the mapping " +
                 "declares media types; an endpoint declared in a jar, such as a built-in Actuator one, has a null " +
                 "'filePath' and names the jar in 'library' instead - no answer carries a path of the machine. " +
+                ALL_HTTP_METHODS_DESCRIPTION +
                 "'endpoints' lists the closest production match to the pattern first: an exact path, then one " +
                 "matching it as a pattern, then one merely containing it, and within each group by path specificity, " +
                 "the way Spring ranks path patterns - literal before '{template}', fewer wildcards first - so of " +
@@ -992,6 +994,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "\"parameters\":[{\"name\":\"id\",\"source\":\"PATH\",\"type\":\"java.lang.Long\"," +
                 "\"required\":true,\"defaultValue\":null}],\"returnType\":\"com.example.app.dto.DemoDto\"," +
                 "\"endpointType\":\"Spring MVC\"}. " +
+                ALL_HTTP_METHODS_DESCRIPTION +
                 "'consumes' and 'produces' are present only when the mapping declares media types: two handlers " +
                 "sharing a path and a verb are told apart by them, not by their order. An Actuator operation " +
                 "lists the media types Boot answers with and carries 'producesSource': DECLARED, NONE for a void " +
@@ -1147,6 +1150,7 @@ class SpringBootApplicationMcpToolset : McpToolset {
                 "JDK, Kotlin and Spring are never listed. Reading the handler signature by hand misses what Spring " +
                 "binds implicitly and what the DTO's nested " +
                 "types serialise to. " +
+                ALL_HTTP_METHODS_DESCRIPTION +
                 "Each parameter carries a 'source': PATH, QUERY, PART, BODY, HEADER, COOKIE or MODEL for an " +
                 "annotation-bound one (whose 'name' is the wire name, not the Java name, and whose 'required' is " +
                 "declared); for an unannotated one, Spring's own default - QUERY, named after the parameter, for a " +
@@ -2339,6 +2343,11 @@ private fun ConditionVerdict.toBeanConditionJson(): EndpointBeanConditionJson? =
         )
     }
 }
+
+private const val ALL_HTTP_METHODS_DESCRIPTION =
+    "'httpMethods' is [\"ALL\"] for a route that answers every HTTP method - a mapping that declares no method, " +
+        "a router path(\"/x\", handler), an @HttpExchange without a method, a @ServletEndpoint; " +
+        "such a route passes every 'httpMethod' filter value. "
 
 private const val BEAN_CONDITION_DESCRIPTION =
     "A project Actuator endpoint whose bean a condition excludes stays listed with 'beanCondition' " +
