@@ -47,7 +47,7 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
         get() = RouterDslRoutes.requestMethodsOf(call)
 
     val paths: List<String>
-        get() = if (call.lang.id == KotlinLanguage.INSTANCE.id) routerDslPaths() else routerBuilderPaths()
+        get() = walkedBuilderPaths().ifEmpty { declaredPaths() }
 
     val route: String?
         get() {
@@ -56,11 +56,11 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
             return "$method $path"
         }
 
-    private fun routerDslPaths(): List<String> =
+    private fun declaredPaths(): List<String> =
         if (isNestedUnderUnresolvedPrefix()) emptyList()
         else SpringWebUtil.getPathsFromCallExpression(call).filter { it.isNotEmpty() }
 
-    private fun routerBuilderPaths(): List<String> {
+    private fun walkedBuilderPaths(): List<String> {
         val routeCall = call.sourcePsi as? PsiMethodCallExpression ?: return emptyList()
         return RouterBuilderRouteWalker.walkOf(factory).routes.filter { it.call == routeCall }.map { it.path }
     }
@@ -81,9 +81,15 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
         valueArguments.any { it.sourcePsi != null && it.sourcePsi == argument.sourcePsi }
 
     private fun UCallExpression.hidesPrefix(): Boolean =
-        SpringWebUtil.isNestCall(this) && SpringWebUtil.getNestPrefixesOrNullIfUnresolved(this) == null
+        if (lang.id == KotlinLanguage.INSTANCE.id) {
+            SpringWebUtil.isNestCall(this) && SpringWebUtil.getNestPrefixesOrNullIfUnresolved(this) == null
+        } else {
+            methodName in JAVA_NESTING_CALLS
+        }
 
     companion object {
+
+        private val JAVA_NESTING_CALLS = setOf("nest", "path")
 
         private val ROUTER_FUNCTIONS = listOf(SpringWebClasses.ROUTE_FUNCTION, SpringWebClasses.SERVLET_ROUTE_FUNCTION)
 
