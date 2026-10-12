@@ -124,14 +124,17 @@ This plugin uses JCEF for the OpenAPI/Swagger preview (`OpenApiCefBrowser`) and 
 - `AnAction` subclasses must **NOT** have mutable instance fields (memory leak — actions live for the app lifetime).
 - Must override `actionPerformed()` and `update()`. Must declare `getActionUpdateThread()` → `BGT` or `EDT`.
 - `update()` on BGT → no Swing access.
-- `update()` on EDT → no PSI/VFS/project model.
-- `update()` must be fast — no FS/network. Frequently refreshed toolbar actions must also avoid PSI resolution,
-  annotation checks, and index-backed run-configuration main-class lookup; `BGT` prevents EDT blocking but does not
-  make multi-second updates acceptable.
+- `update()` on EDT → no slow, index-backed, blocking or unknown-cost PSI/VFS/project-model work. A separately proven short read-only access may be valid when the action contract permits it.
+- `getActionUpdateThread() = BGT` affects only `update()`; it does not make `actionPerformed()` safe for PSI, indexes, UAST, project model or VFS reads. Trace both methods separately.
+- `update()` must be fast — no FS/network. Frequently refreshed toolbar actions should avoid PSI resolution,
+  annotation checks, and index-backed run-configuration main-class lookup unless the access is demonstrably cheap;
+  `BGT` prevents EDT blocking but does not make multi-second updates acceptable.
+- When `actionPerformed()` starts an async read, verify cancellation, project disposal, visible error/empty feedback and the final UI handoff. Do not silently return only because the project was disposed or the smart-mode computation was cancelled.
 - Gutter-related actions must not resolve beans in `update()`.
 - Dumb-mode actions → extend `DumbAwareAction`, not `override fun isDumbAware() = true`. `DumbAwareAction` does not
-  make index-backed work safe; keep `update()` index-free and make index-dependent execution non-dumb-aware or
-  explicitly unavailable until smart mode.
+  make index-backed work safe: an index-dependent `update()` must be demonstrably cheap and valid in dumb mode, or be
+  gated/backgrounded and make the action explicitly unavailable until smart mode. Do not use the class marker as a
+  substitute for proving the access cost and dumb-mode contract.
 - Every `<action>` and `<group>` in `plugin.xml` must have a unique `id`. Text/description via XML or resource bundle, not hardcoded in the constructor.
 - Static children → `DefaultActionGroup`, not `ActionGroup`.
 - `ActionToolbar.setTargetComponent(panel)` is mandatory.
