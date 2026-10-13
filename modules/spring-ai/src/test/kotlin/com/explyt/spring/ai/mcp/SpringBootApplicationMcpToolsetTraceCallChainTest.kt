@@ -344,13 +344,19 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
 
     fun testCompanionCallsLinkToDistinctOuterClassNodes() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("twoParsers")
+        val companion = JavaPsiFacade.getInstance(project)
+            .findClass("explyt.trace.VmId.Companion", GlobalSearchScope.projectScope(project))!!
+        val parse = companion.findMethodsByName("parse", false).filterIsInstance<KtLightMethod>().single { it.kotlinOrigin != null }
+        val sourceName = SourceNames.qualifiedNameOf(parse)!!
+        assertTrue("The fixture must expose a light-class owner distinct from its source owner", sourceName.substringBeforeLast(".") != companion.qualifiedName)
+        assertFalse("The source owner must not use a JVM light-class separator", sourceName.any { it == 36.toChar() })
         val calls = chain[0]["callsInto"].filter { it["target"].asText().endsWith(".parse") }
         assertEquals("Both companion calls must be present in callsInto", 2, calls.size)
         assertTrue("Both calls must link to expanded nodes: $calls", calls.all { it["node"].isIntegralNumber })
         val nodes = calls.map { call -> chain.single { it["id"].asInt() == call["node"].asInt() } }
         assertEquals(2, nodes.map { it["id"].asInt() }.distinct().size)
         assertEquals(
-            setOf("explyt.trace.VmId.Companion", "explyt.trace.OtherVmId.Companion"),
+            setOf("explyt.trace.VmId", "explyt.trace.OtherVmId"),
             nodes.map { it["className"].asText() }.toSet()
         )
         assertEquals(listOf("parse", "parse"), nodes.map { it["methodName"].asText() })
@@ -364,7 +370,13 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("PROJECT", call["kind"].asText())
         assertTrue("The nested companion must be expanded", call["node"].isIntegralNumber)
         val node = chain.single { it["id"].asInt() == call["node"].asInt() }
-        assertEquals("explyt.trace.Outer.InnerId.Companion", node["className"].asText())
+        val companion = JavaPsiFacade.getInstance(project)
+            .findClass("explyt.trace.Outer.InnerId.Companion", GlobalSearchScope.projectScope(project))!!
+        val parse = companion.findMethodsByName("parse", false).filterIsInstance<KtLightMethod>().single { it.kotlinOrigin != null }
+        val expectedClassName = SourceNames.qualifiedNameOf(parse)!!.substringBeforeLast(".")
+        assertTrue("The source class name must differ from the light-class name", expectedClassName != companion.qualifiedName)
+        assertFalse("The source class name must not contain a JVM separator", expectedClassName.any { it == 36.toChar() })
+        assertEquals(expectedClassName, node["className"].asText())
     }
 
     fun testCompanionNameFallsBackToClassNavigationWithoutKotlinMethodOrigin() = runBlockingReleasingWriteIntent {
