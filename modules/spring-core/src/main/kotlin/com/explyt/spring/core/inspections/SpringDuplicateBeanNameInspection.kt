@@ -85,7 +85,8 @@ class SpringDuplicateBeanNameInspection : SpringBaseUastLocalInspectionTool() {
                 else disallowed
 
             ConditionPropertyValue.Missing -> disallowed
-            ConditionPropertyValue.Unresolvable -> Overriding.UNRESOLVED
+            ConditionPropertyValue.Unresolvable ->
+                if (disallowed == Overriding.DISALLOWED) Overriding.UNRESOLVED else disallowed
         }
     }
 

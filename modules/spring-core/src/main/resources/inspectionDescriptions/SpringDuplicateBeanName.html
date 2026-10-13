@@ -28,7 +28,8 @@ Framework version cannot be determined.</p>
 <code>@ConditionalOnProperty</code>, are not reported: Spring evaluates their conditions before it registers the bean name,
 so only one of them may be active.</p>
 <p>When the value of <code>spring.main.allow-bean-definition-overriding</code> cannot be resolved, for example because it is
-a placeholder or depends on a profile, the problem is reported as a warning instead of an error, except for a collision
-of primary names in a <code>@Configuration</code> class on Spring Framework 7, which fails whatever the value is.</p>
+a placeholder or depends on a profile, an error is reported as a warning that says so, except for a collision of primary
+names in a <code>@Configuration</code> class on Spring Framework 7, which fails whatever the value is. A warning about a
+Spring Framework version before 6.2.0 or before 6.0, or a version that cannot be determined, is kept as it is.</p>
 </body>
 </html>
