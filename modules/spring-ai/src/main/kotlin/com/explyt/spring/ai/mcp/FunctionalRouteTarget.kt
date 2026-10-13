@@ -6,6 +6,7 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.web.SpringWebClasses
+import com.explyt.spring.web.loader.RouterBuilderRouteWalker
 import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.spring.web.util.SpringWebUtil
 import com.intellij.codeInspection.isInheritorOf
@@ -14,6 +15,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiMethodCallExpression
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UCallableReferenceExpression
@@ -45,8 +47,7 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
         get() = RouterDslRoutes.requestMethodsOf(call)
 
     val paths: List<String>
-        get() = if (isNestedUnderUnresolvedPrefix()) emptyList()
-        else SpringWebUtil.getPathsFromCallExpression(call).filter { it.isNotEmpty() }
+        get() = walkedBuilderPaths().ifEmpty { declaredPaths() }
 
     val route: String?
         get() {
@@ -54,6 +55,15 @@ internal sealed class FunctionalRouteTarget(val call: UCallExpression, val facto
             val path = paths.firstOrNull() ?: return null
             return "$method $path"
         }
+
+    private fun declaredPaths(): List<String> =
+        if (isNestedUnderUnresolvedPrefix()) emptyList()
+        else SpringWebUtil.getPathsFromCallExpression(call).filter { it.isNotEmpty() }
+
+    private fun walkedBuilderPaths(): List<String> {
+        val routeCall = call.sourcePsi as? PsiMethodCallExpression ?: return emptyList()
+        return RouterBuilderRouteWalker.walkOf(factory).routes.filter { it.call == routeCall }.map { it.path }
+    }
 
     private fun isNestedUnderUnresolvedPrefix(): Boolean {
         var argument: UElement = call
