@@ -5,10 +5,12 @@
 
 package com.explyt.spring.ai.mcp.beans
 
+import com.explyt.spring.ai.mcp.BoundedPageWriter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -17,7 +19,7 @@ class BoundedBeanResponseWriterTest {
 
     private val mapper = ObjectMapper()
 
-    private fun content(size: Int): BeanResponseContent = BeanResponseContent(
+    private fun content(size: Int, segments: Int = 8): BeanResponseContent = BeanResponseContent(
         "LOOKUP",
         mapper.createObjectNode().put("source", "STATIC").put("precision", "MODULE_ESTIMATE"),
         if (size == 1) "SINGLE" else "MULTIPLE", "COMPLETE", 0,
@@ -27,7 +29,7 @@ class BoundedBeanResponseWriterTest {
                 .put("id", "b-$n").put("name", "clock$n").put("type", "java.time.Clock")
                 .put("kind", "BEAN_METHOD").set<ObjectNode>(
                     "declaration", mapper.createObjectNode()
-                        .put("filePath", "src/" + "long-segment/".repeat(8) + "Clock$n.kt").put("line", n + 1)
+                        .put("filePath", "src/" + "long-segment/".repeat(segments) + "Clock$n.kt").put("line", n + 1)
                 )
         }
     )
@@ -200,5 +202,103 @@ class BoundedBeanResponseWriterTest {
             expected = root["revision"].asText()
         }
         fail("Continuation did not terminate")
+    }
+
+    @Test
+    fun `a budget that holds one active candidate without the sample serves it`() {
+        val geometry = sampleGeometry()
+
+        val json = BoundedBeanResponseWriter()
+            .write(geometry.content, "r-fixed", BeanPageRequest(0, 5, geometry.sampleFreeLength, null))
+
+        val root = mapper.readTree(json)
+        assertEquals("answer was $json", "OK", root["status"].asText())
+        assertTrue("Serialized ${json.length} chars", json.length <= geometry.sampleFreeLength)
+        assertTrue("an active candidate must be served, got $json", root["candidates"].size() >= 1)
+        assertEquals(INACTIVE_COUNT, root["inactiveCount"].asInt())
+        assertEquals("a cut sample is flagged, got $json", true, root["inactiveCandidatesTruncated"]?.asBoolean())
+    }
+
+    @Test
+    fun `the sample shrinks to leave room for the first active candidate`() {
+        val geometry = sampleGeometry()
+
+        val json = BoundedBeanResponseWriter()
+            .write(geometry.content, "r-fixed", BeanPageRequest(0, 5, geometry.oneSampledLength, null))
+
+        val root = mapper.readTree(json)
+        assertEquals("answer was $json", "OK", root["status"].asText())
+        assertTrue("Serialized ${json.length} chars", json.length <= geometry.oneSampledLength)
+        assertTrue("an active candidate must be served, got $json", root["candidates"].size() >= 1)
+        val sampled = root["inactiveCandidates"]?.size() ?: 0
+        assertTrue("a sample that fits beside the first candidate is kept, got $json", sampled in 1 until INACTIVE_COUNT)
+        assertEquals("a cut sample is flagged, got $json", true, root["inactiveCandidatesTruncated"]?.asBoolean())
+    }
+
+    @Test
+    fun `the budget a too-large answer names serves the first active candidate`() {
+        val geometry = sampleGeometry()
+        val writer = BoundedBeanResponseWriter()
+        val tight = geometry.sampleFreeLength - 1
+        assertTrue("Precondition: $tight is a valid budget", tight >= BoundedPageWriter.MIN_CHARS)
+
+        val refusal = mapper.readTree(writer.write(geometry.content, "r-fixed", BeanPageRequest(0, 5, tight, null)))
+        assertEquals(
+            "Precondition: no candidate fits $tight, got $refusal",
+            "RESPONSE_TOO_LARGE", refusal["error"]?.get("code")?.asText()
+        )
+        val named = BUDGET_HINT.find(refusal["error"]["message"].asText())?.groupValues?.get(1)?.toInt()
+        assertNotNull("Precondition: the refusal names a budget, got $refusal", named)
+
+        val json = writer.write(geometry.content, "r-fixed", BeanPageRequest(0, 5, named!!, null))
+
+        val root = mapper.readTree(json)
+        assertEquals("retrying with the named maxChars $named must succeed, got $json", "OK", root["status"].asText())
+        assertTrue("an active candidate must be served, got $json", root["candidates"].size() >= 1)
+        assertTrue(
+            "the named budget $named must not pay for the sample, the sample-free page is ${geometry.sampleFreeLength}",
+            named <= geometry.sampleFreeLength
+        )
+    }
+
+    private class SampleGeometry(val content: BeanResponseContent, val sampleFreeLength: Int, val oneSampledLength: Int)
+
+    private fun sampleGeometry(): SampleGeometry {
+        val active = content(ACTIVE_COUNT, segments = WIDE_SEGMENTS)
+        val sampleFree = sampleFreeFirstPage(active)
+        val sampleFreeLength = mapper.writeValueAsString(sampleFree).length
+        val emptySampleOverhead =
+            mapper.writeValueAsString(sampleFree.deepCopy().apply { putArray(INACTIVE_CANDIDATES) }).length - sampleFreeLength
+        val inactiveLength = (sampleFreeLength + emptySampleOverhead - 6) / 3 - 1
+        val content = active.copy(inactiveCount = INACTIVE_COUNT, inactiveAt = { n -> inactiveCandidate(n, inactiveLength) })
+        val oneSampled = sampleFree.deepCopy().apply { putArray(INACTIVE_CANDIDATES).add(inactiveCandidate(0, inactiveLength)) }
+        return SampleGeometry(content, sampleFreeLength, mapper.writeValueAsString(oneSampled).length)
+    }
+
+    private fun sampleFreeFirstPage(active: BeanResponseContent): ObjectNode {
+        val json = BoundedBeanResponseWriter()
+            .write(active, "r-fixed", BeanPageRequest(0, 1, BoundedBeanResponseWriter.MAX_CHARS, null))
+        val page = mapper.readTree(json) as ObjectNode
+        assertEquals("Precondition: the sample-free page is served, got $json", "OK", page["status"].asText())
+        assertEquals("Precondition: the sample-free page holds one candidate, got $json", 1, page["candidates"].size())
+        return page.put("inactiveCount", INACTIVE_COUNT).put("inactiveCandidatesTruncated", true)
+    }
+
+    private fun inactiveCandidate(n: Int, length: Int): ObjectNode {
+        val candidate = mapper.createObjectNode()
+            .put("id", "i-$n").put("name", "conditionalClock$n").put("type", "java.time.Clock")
+        val condition = candidate.putObject("condition").put("state", "INACTIVE").put("detail", "")
+        val padding = length - mapper.writeValueAsString(candidate).length
+        assertTrue("Precondition: an inactive candidate of $length chars can be built", padding >= 0)
+        condition.put("detail", "d".repeat(padding))
+        return candidate
+    }
+
+    private companion object {
+        const val ACTIVE_COUNT = 3
+        const val INACTIVE_COUNT = 4
+        const val WIDE_SEGMENTS = 20
+        const val INACTIVE_CANDIDATES = "inactiveCandidates"
+        val BUDGET_HINT = Regex("""at least (\d+)""")
     }
 }

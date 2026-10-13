@@ -300,6 +300,42 @@ class BeanListingConditionTest : ExplytJavaLightTestCase() {
         }
     }
 
+    fun testTogglingConditionEvaluationChangesTheRevision() = runBlockingReleasingWriteIntent<Unit> {
+        addProperties("admin.marker=present")
+        addActiveControllers()
+        addSyncAdminController()
+        assertVerdict<ConditionVerdict.Inactive>(SYNC_ADMIN_CONTROLLER)
+        val settings = SpringToolRunConfigurationsSettingsState.getInstance()
+        val enabled = settings.isBeanFilterEnabled
+        assertTrue("Precondition: condition evaluation starts enabled", enabled)
+        val first = listing(origin = PROJECT, limit = 1)
+        assertEquals(listOf(ALPHA), rows(first).map { it["beanName"].asText() })
+        assertTrue("Precondition: the first page is truncated, got $first", first["truncated"].asBoolean())
+        assertFalse("Precondition: page 1 is read with conditions evaluated, got $first", first.has("limitations"))
+
+        settings.isBeanFilterEnabled = false
+        try {
+            val fresh = listing(origin = PROJECT, limit = 1)
+            assertEquals(
+                "Precondition: the toggle changes the answer, got $fresh",
+                listOf("CONDITIONS_NOT_EVALUATED"), fresh["limitations"]?.map { it.asText() }
+            )
+
+            val stale = listing(
+                origin = PROJECT,
+                limit = 1,
+                offset = first["nextOffset"].asInt(),
+                expectedRevision = first["revision"].asText()
+            )
+
+            assertEquals("a continuation across the toggle must restart, got $stale", "ERROR", stale["status"].asText())
+            assertEquals("RESULT_CHANGED", stale["error"]["code"].asText())
+        } finally {
+            settings.isBeanFilterEnabled = enabled
+            ModificationTrackerManager.getInstance(project).invalidateAll()
+        }
+    }
+
     fun testInactiveLibraryBeansAreCountedInsteadOfListedByDefault() = runBlockingReleasingWriteIntent<Unit> {
         addProperties("admin.marker=present")
         addActiveControllers()
