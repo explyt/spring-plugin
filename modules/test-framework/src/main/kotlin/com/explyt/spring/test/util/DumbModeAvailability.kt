@@ -31,7 +31,7 @@ fun LocalInspectionTool.assertAvailableOnlyInSmartMode(file: PsiFile) {
 }
 
 @Suppress("UnstableApiUsage")
-private fun Project.dropLibraryCaches() {
+fun Project.dropLibraryCaches() {
     JavaLibraryModificationTracker.incModificationCount(this)
     WriteAction.run<Throwable> { PsiManager.getInstance(this).dropPsiCaches() }
 }

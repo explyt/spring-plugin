@@ -11,9 +11,13 @@ import com.explyt.inspection.SpringBaseUastLocalInspectionTool
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.util.assertAvailableOnlyInSmartMode
-import com.explyt.spring.test.util.computeInDumbModeWithColdLibraryCaches
+import com.explyt.spring.test.util.dropLibraryCaches
 import com.explyt.util.SpringBaseClasses.CORE_ENVIRONMENT
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.IndexNotReadyException
+import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiFile
+import com.intellij.testFramework.DumbModeTestUtils
 
 class InspectionAvailabilityInDumbModeTest : ExplytJavaLightTestCase() {
 
@@ -41,22 +45,34 @@ class InspectionAvailabilityInDumbModeTest : ExplytJavaLightTestCase() {
     fun testSpringBoot3JakartaMigrationInspection() =
         SpringBoot3JakartaMigrationInspection().assertAvailableOnlyInSmartMode(sampleFile())
 
-    fun testLibraryClassCacheFindsNothingInDumbModeAndResolvesAfterIndexing() {
-        assertNotNull(
-            "the fixture must provide $CORE_ENVIRONMENT in smart mode",
-            LibraryClassCache.searchForLibraryClass(project, CORE_ENVIRONMENT)
-        )
-        assertNull(
-            "a dumb-mode lookup must answer nothing instead of touching indexes",
-            project.computeInDumbModeWithColdLibraryCaches {
-                LibraryClassCache.searchForLibraryClass(project, CORE_ENVIRONMENT)
-            }
-        )
-        assertNotNull(
-            "the dumb-mode answer must not outlive indexing",
-            LibraryClassCache.searchForLibraryClass(project, CORE_ENVIRONMENT)
-        )
+    fun testColdLibraryClassCacheThrowsIndexNotReadyInDumbMode() {
+        environmentFoundInSmartMode()
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            project.dropLibraryCaches()
+            assertThrows(IndexNotReadyException::class.java) { findEnvironment() }
+        }
     }
+
+    fun testColdDumbModeLookupLeavesNoStaleAnswerAfterIndexing() {
+        environmentFoundInSmartMode()
+        DumbModeTestUtils.runInDumbModeSynchronously(project) {
+            project.dropLibraryCaches()
+            val coldAnswer = try {
+                findEnvironment()
+            } catch (_: IndexNotReadyException) {
+                null
+            }
+            assertNull("a cold dumb-mode lookup must not find the class", coldAnswer)
+        }
+        assertNotNull("the dumb-mode lookup must not outlive indexing", findEnvironment())
+    }
+
+    private fun environmentFoundInSmartMode(): PsiClass {
+        assertFalse("the precondition lookup must run in smart mode", DumbService.isDumb(project))
+        return findEnvironment() ?: throw AssertionError("the fixture must provide $CORE_ENVIRONMENT in smart mode")
+    }
+
+    private fun findEnvironment(): PsiClass? = LibraryClassCache.searchForLibraryClass(project, CORE_ENVIRONMENT)
 
     private fun sampleFile(): PsiFile = myFixture.configureByText(
         "Sample.java",
