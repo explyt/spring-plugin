@@ -347,6 +347,12 @@ class SpringSearchService(private val project: Project) {
     @Deprecated("Don use directly. Use SpringSearchServiceFacade")
     fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> = getComponentBeanFactories(module).keys
 
+    @Deprecated("Don use directly. Use SpringSearchServiceFacade")
+    fun getComponentBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> =
+        getComponentBeanFactories(module).mapValues { (factory, configuration) ->
+            BeanFactoryMethods.overrideIn(configuration, factory) ?: factory
+        }
+
     private fun getComponentBeanFactories(module: Module): Map<PsiMethod, PsiClass> {
         return cachedValuesManager.getCachedValue(module) {
             val factories = LinkedHashMap<PsiMethod, PsiClass>()
