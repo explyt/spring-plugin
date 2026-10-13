@@ -7,9 +7,9 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpExpectedError
-import kotlinx.coroutines.runBlocking
 
 /**
  * An argument naming one of a fixed set of values answers an unknown value with an error listing the valid ones.
@@ -36,7 +36,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
 
     private fun projectPath(): String = project.basePath ?: ""
 
-    fun testUnknownEndpointTypeIsRejectedWithTheValidValues() = runBlocking<Unit> {
+    fun testUnknownEndpointTypeIsRejectedWithTheValidValues() = runBlockingReleasingWriteIntent<Unit> {
         val error = rejected { toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "BOGUS") }
 
         assertEquals(
@@ -47,14 +47,14 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
     }
 
     /** `SPRING_BOOT` was once advertised but never matched an endpoint the tool lists, so it gets no alias. */
-    fun testFormerlyAdvertisedSpringBootIsRejectedToo() = runBlocking<Unit> {
+    fun testFormerlyAdvertisedSpringBootIsRejectedToo() = runBlockingReleasingWriteIntent<Unit> {
         val error = rejected { toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "SPRING_BOOT") }
 
         assertTrue(error, error.startsWith("Unknown endpointType 'SPRING_BOOT'. Valid values: "))
         assertTrue(error, "ACTUATOR" in error)
     }
 
-    fun testEndpointTypeIsCaseInsensitiveAndEmptyMeansAll() = runBlocking<Unit> {
+    fun testEndpointTypeIsCaseInsensitiveAndEmptyMeansAll() = runBlockingReleasingWriteIntent<Unit> {
         val all = mapper.readTree(toolset.getHttpEndpoints(projectPath = projectPath()))
         val mvc = mapper.readTree(toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = " spring_mvc "))
 
@@ -62,7 +62,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
         assertEquals(all["totalCount"].asInt(), mvc["totalCount"].asInt())
     }
 
-    fun testUnknownHttpMethodIsRejectedWithTheValidValues() = runBlocking<Unit> {
+    fun testUnknownHttpMethodIsRejectedWithTheValidValues() = runBlockingReleasingWriteIntent<Unit> {
         val error = rejected {
             toolset.findEndpoint(urlPattern = "/api/demo/items", projectPath = projectPath(), httpMethod = "FETCH")
         }
@@ -70,7 +70,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
         assertEquals("Unknown httpMethod 'FETCH'. Valid values: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS.", error)
     }
 
-    fun testHttpMethodIsCaseInsensitive() = runBlocking<Unit> {
+    fun testHttpMethodIsCaseInsensitive() = runBlockingReleasingWriteIntent<Unit> {
         val found = mapper.readTree(
             toolset.findEndpoint(urlPattern = "/api/demo/items/{id}", projectPath = projectPath(), httpMethod = "get")
         )
@@ -78,7 +78,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
         assertEquals("/api/demo/items/{id}", found["endpoints"][0]["fullPath"].asText())
     }
 
-    fun testUnknownContractHttpMethodIsRejected() = runBlocking<Unit> {
+    fun testUnknownContractHttpMethodIsRejected() = runBlockingReleasingWriteIntent<Unit> {
         val error = rejected {
             toolset.getEndpointContract(urlPattern = "/api/demo/items", projectPath = projectPath(), httpMethod = "FETCH")
         }
@@ -86,7 +86,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
         assertTrue(error, error.startsWith("Unknown httpMethod 'FETCH'. Valid values: GET,"))
     }
 
-    fun testUnknownBeanTypeIsRejectedWithTheValidValues() = runBlocking<Unit> {
+    fun testUnknownBeanTypeIsRejectedWithTheValidValues() = runBlockingReleasingWriteIntent<Unit> {
         val error = rejected {
             toolset.applicationBeans(
                 applicationClassName = "com.example.app.DemoApplication",
@@ -102,7 +102,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
         )
     }
 
-    fun testUnknownBeanSourceIsRejectedWithTheValidValues() = runBlocking<Unit> {
+    fun testUnknownBeanSourceIsRejectedWithTheValidValues() = runBlockingReleasingWriteIntent<Unit> {
         val error = rejected {
             toolset.applicationBeans(
                 applicationClassName = "com.example.app.DemoApplication",
@@ -115,7 +115,7 @@ class SpringBootApplicationMcpToolsetChoiceArgumentTest : ExplytJavaLightTestCas
         assertEquals("Unknown source 'LATEST'. Valid values: AUTO, STATIC, NATIVE.", error)
     }
 
-    fun testBeanTypeAndSourceAreCaseInsensitive() = runBlocking<Unit> {
+    fun testBeanTypeAndSourceAreCaseInsensitive() = runBlockingReleasingWriteIntent<Unit> {
         val page = mapper.readTree(
             toolset.applicationBeans(
                 applicationClassName = "com.example.app.DemoApplication",

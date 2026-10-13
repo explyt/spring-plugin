@@ -7,10 +7,10 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
-import kotlinx.coroutines.runBlocking
 
 /**
  * The response schema `explyt_get_spring_endpoint_contract` reports, against what Jackson writes to the wire.
@@ -39,7 +39,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         )
     }
 
-    fun testEnumWithoutAnnotationsIsItsConstantNames() = runBlocking<Unit> {
+    fun testEnumWithoutAnnotationsIsItsConstantNames() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Status", "Status.PAID", """
             public enum Status { PAID, SHIPPED }
         """)
@@ -53,7 +53,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         assertEquals(listOf("PAID", "SHIPPED"), schema["enumValues"].map { it.asText() })
     }
 
-    fun testEnumConstantRenamedWithJsonProperty() = runBlocking<Unit> {
+    fun testEnumConstantRenamedWithJsonProperty() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Status", "Status.PAID", """
             import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -66,7 +66,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         assertEquals(listOf("paid", "SHIPPED"), responseSchema("/api/schema/status")["enumValues"].map { it.asText() })
     }
 
-    fun testJavaEnumWithJsonValueMethodNamesThatMember() = runBlocking<Unit> {
+    fun testJavaEnumWithJsonValueMethodNamesThatMember() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Status", "Status.PAID", """
             import com.fasterxml.jackson.annotation.JsonValue;
 
@@ -88,7 +88,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         assertEquals(listOf("PAID", "SHIPPED"), schema["enumConstants"].map { it.asText() })
     }
 
-    fun testJavaEnumWithJsonValueFieldNamesThatField() = runBlocking<Unit> {
+    fun testJavaEnumWithJsonValueFieldNamesThatField() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Status", "Status.PAID", """
             import com.fasterxml.jackson.annotation.JsonValue;
 
@@ -112,7 +112,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         assertEquals(listOf("PAID", "SHIPPED"), schema["enumConstants"].map { it.asText() })
     }
 
-    fun testKotlinEnumWithJsonValuePropertyNamesThatMember() = runBlocking<Unit> {
+    fun testKotlinEnumWithJsonValuePropertyNamesThatMember() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/schema/KotlinStatusController.kt", """
             package com.example.schema
@@ -152,7 +152,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         assertTrue("No JDK internals of java.lang.Enum, got $basis", basis["fields"] == null)
     }
 
-    fun testTransientAndIgnoredMembersAreNotWritten() = runBlocking<Unit> {
+    fun testTransientAndIgnoredMembersAreNotWritten() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Order", "new Order()", """
             import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -167,7 +167,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
     }
 
     /** A field a `java.*` superclass declares is the JDK's own state, not part of the DTO a client receives. */
-    fun testFieldsOfAJdkSuperclassAreNotWritten() = runBlocking<Unit> {
+    fun testFieldsOfAJdkSuperclassAreNotWritten() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Batch", "new Batch()", """
             public class Batch extends java.util.Observable {
                 public long id;
@@ -177,7 +177,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         assertEquals(listOf("id"), responseSchema("/api/schema/batch")["fields"].map { it["name"].asText() })
     }
 
-    fun testJsonPropertyRenamesAKotlinProperty() = runBlocking<Unit> {
+    fun testJsonPropertyRenamesAKotlinProperty() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/schema/RenamedController.kt", """
             package com.example.schema
@@ -214,7 +214,7 @@ class SpringBootApplicationMcpToolsetResponseSchemaTest : ExplytJavaLightTestCas
         )
     }
 
-    fun testPlainDtoKeepsItsShape() = runBlocking<Unit> {
+    fun testPlainDtoKeepsItsShape() = runBlockingReleasingWriteIntent<Unit> {
         addJavaController("Item", "new Item()", """
             public class Item {
                 public long id;

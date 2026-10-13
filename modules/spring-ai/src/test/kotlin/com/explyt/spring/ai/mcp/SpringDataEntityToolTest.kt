@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.JavaPsiFacade
@@ -52,7 +53,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
      * A bare array cannot say how many entities exist, so a caller could not tell a complete inventory from a
      * capped one - which is what the old 500-entity cutoff silently produced.
      */
-    fun testTheInventoryCarriesItsOwnCountAndContinuation() = runBlocking<Unit> {
+    fun testTheInventoryCarriesItsOwnCountAndContinuation() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val page = parse(toolset.getSpringDataEntities(projectPath = projectPath()))
@@ -67,7 +68,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     }
 
     /** Every entity has to stay reachable, or a caller cannot tell a page boundary from a missing entity. */
-    fun testASecondPageReturnsTheEntitiesTheFirstOneLeft() = runBlocking<Unit> {
+    fun testASecondPageReturnsTheEntitiesTheFirstOneLeft() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val first = parse(toolset.getSpringDataEntities(projectPath = projectPath(), limit = 2))
@@ -94,7 +95,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     }
 
     /** Continuing a page of an answer that may have changed would serve a slice of a different result set. */
-    fun testAContinuationWithoutTheRevisionIsRejected() = runBlocking<Unit> {
+    fun testAContinuationWithoutTheRevisionIsRejected() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val page = parse(toolset.getSpringDataEntities(projectPath = projectPath(), offset = 2, limit = 2))
@@ -107,7 +108,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
      * The inventory exists to be selected from without paying for schemas, and a client that sees `fields`
      * cannot tell an entity with no column from one whose schema was never read.
      */
-    fun testTheInventoryOmitsTheSchemaThatDetailsCarry() = runBlocking<Unit> {
+    fun testTheInventoryOmitsTheSchemaThatDetailsCarry() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val compact = parse(
@@ -131,7 +132,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     }
 
     /** Details are requested by identity, so a caller asking about one entity is not served the package. */
-    fun testAnExactClassNameSelectsOneEntity() = runBlocking<Unit> {
+    fun testAnExactClassNameSelectsOneEntity() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val page = parse(toolset.getSpringDataEntities(projectPath = projectPath(), className = DEMO_ENTITY))
@@ -141,7 +142,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     }
 
     /** Two ways to narrow the same choice contradict each other; guessing which one wins would be worse. */
-    fun testAClassNameAndAPackageFilterAreRejectedTogether() = runBlocking<Unit> {
+    fun testAClassNameAndAPackageFilterAreRejectedTogether() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val page = parse(
@@ -157,7 +158,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     }
 
     /** An entity that does not exist is an empty answer, not a failure: it may simply not be written yet. */
-    fun testAnUnknownClassNameIsAnEmptyAnswerRatherThanAnError() = runBlocking<Unit> {
+    fun testAnUnknownClassNameIsAnEmptyAnswerRatherThanAnError() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val page = parse(
@@ -171,7 +172,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     }
 
     /** An entity without `@Table` still maps to a table - the one named after its class. */
-    fun testAnEntityWithoutATableAnnotationFallsBackToItsClassName() = runBlocking<Unit> {
+    fun testAnEntityWithoutATableAnnotationFallsBackToItsClassName() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val page = parse(
@@ -190,7 +191,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
      * and continuation included. A cap on entities says nothing about the size of one whose package is deep
      * and whose column names are long, which is why a page can end before `limit` is reached.
      */
-    fun testTheWholeAnswerStaysWithinItsBudgetAndContinuesFromThere() = runBlocking<Unit> {
+    fun testTheWholeAnswerStaysWithinItsBudgetAndContinuesFromThere() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val json = toolset.getSpringDataEntities(projectPath = projectPath(), maxChars = 700)
@@ -207,7 +208,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
     }
 
     /** The entity whose package is deep and whose columns are long is the one a count-based cap mismeasures. */
-    fun testALongEntityIsMeasuredByItsCharactersNotItsCount() = runBlocking<Unit> {
+    fun testALongEntityIsMeasuredByItsCharactersNotItsCount() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val json = toolset.getSpringDataEntities(projectPath = projectPath(), className = WAREHOUSE_ENTITY)
@@ -221,7 +222,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertTrue("Even one long entity must fit the default budget, got " + json.length, json.length <= 1800)
     }
 
-    fun testTheDefaultAnswerFitsAClientContentArray() = runBlocking<Unit> {
+    fun testTheDefaultAnswerFitsAClientContentArray() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val json = toolset.getSpringDataEntities(projectPath = projectPath())
@@ -234,7 +235,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertTrue("A wrapped default answer must stay under 2000 chars, got " + wrapped.length, wrapped.length <= 2000)
     }
 
-    fun testAnEntityThatCannotFitIsReportedRatherThanTruncated() = runBlocking<Unit> {
+    fun testAnEntityThatCannotFitIsReportedRatherThanTruncated() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val page = parse(
@@ -254,7 +255,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testAPrimaryKeyColumnIsNotNullableWhateverItsPropertyType() = runBlocking<Unit> {
+    fun testAPrimaryKeyColumnIsNotNullableWhateverItsPropertyType() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/pk/Cluster.java", """
             package com.example.pk;
@@ -284,7 +285,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("A declared non-null column stays so", false, field(fields, "code")["nullable"].booleanValue())
     }
 
-    fun testAKotlinNullableIdDeclaredNullableIsStillANotNullableColumn() = runBlocking<Unit> {
+    fun testAKotlinNullableIdDeclaredNullableIsStillANotNullableColumn() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/pk/Node.kt", """
             package com.example.pk
@@ -311,7 +312,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, field(fields, "label")["nullable"].booleanValue())
     }
 
-    fun testAnEmbeddedIdIsANotNullablePrimaryKey() = runBlocking<Unit> {
+    fun testAnEmbeddedIdIsANotNullablePrimaryKey() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/pk/ShardKey.java", """
             package com.example.pk;
@@ -349,7 +350,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, field(fields, "owner")["nullable"].booleanValue())
     }
 
-    fun testAnIdInheritedFromAMappedSuperclassIsANotNullablePrimaryKey() = runBlocking<Unit> {
+    fun testAnIdInheritedFromAMappedSuperclassIsANotNullablePrimaryKey() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/pk/Audited.java", """
             package com.example.pk;
@@ -386,7 +387,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, field(fields, "createdBy")["nullable"].booleanValue())
     }
 
-    fun testJavaQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlocking<Unit> {
+    fun testJavaQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/quoted/Cluster.java", """
             package com.example.quoted;
@@ -429,7 +430,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertFalse("A field without a join column carries no flag", field(fields, "region").has("joinColumnQuoted"))
     }
 
-    fun testKotlinQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlocking<Unit> {
+    fun testKotlinQuotedNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/quoted/Node.kt", """
             package com.example.quoted
@@ -470,7 +471,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertFalse("An unquoted column carries no flag", field(fields, "label").has("columnQuoted"))
     }
 
-    fun testAQuotedNameReferencedThroughAConstantIsReadLikeALiteral() = runBlocking<Unit> {
+    fun testAQuotedNameReferencedThroughAConstantIsReadLikeALiteral() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/quoted/Names.java", """
             package com.example.quoted;
@@ -509,7 +510,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, field(detailed["fields"], "id")["columnQuoted"].booleanValue())
     }
 
-    fun testAnUnquotedEntityKeepsExactlyItsKeys() = runBlocking<Unit> {
+    fun testAnUnquotedEntityKeepsExactlyItsKeys() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val compact = compactRecordOf(ORDER_ENTITY)
@@ -526,7 +527,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(keysOf(demo), keysOf(field(detailed["fields"], "reference")))
     }
 
-    fun testAMapsIdAssociationIsPartOfThePrimaryKey() = runBlocking<Unit> {
+    fun testAMapsIdAssociationIsPartOfThePrimaryKey() = runBlockingReleasingWriteIntent<Unit> {
         addOwnerEntity()
         myFixture.addFileToProject(
             "com/example/fk/Profile.java", """
@@ -561,7 +562,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, field(fields, "bio")["nullable"].booleanValue())
     }
 
-    fun testAMandatoryForeignKeyIsNotNullable() = runBlocking<Unit> {
+    fun testAMandatoryForeignKeyIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         addOwnerEntity()
         myFixture.addFileToProject(
             "com/example/fk/Task.java", """
@@ -614,7 +615,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("@NotNull is not masked by a @Column that does not say nullable", false, field(fields, "code")["nullable"].booleanValue())
     }
 
-    fun testAKotlinMandatoryForeignKeyIsNotNullable() = runBlocking<Unit> {
+    fun testAKotlinMandatoryForeignKeyIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         addOwnerEntity()
         myFixture.addFileToProject(
             "com/example/fk/Ticket.kt", """
@@ -644,7 +645,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, field(fields, "watcher")["nullable"].booleanValue())
     }
 
-    fun testABracketQuotedTableNameIsReportedWithoutTheBrackets() = runBlocking<Unit> {
+    fun testABracketQuotedTableNameIsReportedWithoutTheBrackets() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/quoted/Order.java", """
             package com.example.quoted;
@@ -668,7 +669,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(true, compact["tableQuoted"].booleanValue())
     }
 
-    fun testAnIndexOverAQuotedColumnListsTheColumnWithoutItsQuotes() = runBlocking<Unit> {
+    fun testAnIndexOverAQuotedColumnListsTheColumnWithoutItsQuotes() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/quoted/Coupon.java", """
             package com.example.quoted;
@@ -700,7 +701,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals(listOf("Code", "issued_at"), detailed["indexes"][0]["columns"].map { it.asText() })
     }
 
-    fun testAnEntityNameIsTheTableNameWhenNoTableIsDeclared() = runBlocking<Unit> {
+    fun testAnEntityNameIsTheTableNameWhenNoTableIsDeclared() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/named/GraphNode.java", """
             package com.example.named;
@@ -722,28 +723,28 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertFalse("An entity name is not a quoted identifier", compact.has("tableQuoted"))
     }
 
-    fun testAnImplicitPrimitiveBooleanColumnIsNotNullable() = runBlocking<Unit> {
+    fun testAnImplicitPrimitiveBooleanColumnIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         val active = field(fieldsOf(addSwitchEntity()), "active")
 
         assertEquals("Precondition: the property must be primitive", "boolean", active["type"].asText())
         assertEquals("A primitive without @Column maps to a NOT NULL column", false, active["nullable"].booleanValue())
     }
 
-    fun testAnImplicitPrimitiveLongColumnIsNotNullable() = runBlocking<Unit> {
+    fun testAnImplicitPrimitiveLongColumnIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         val version = field(fieldsOf(addSwitchEntity()), "version")
 
         assertEquals("Precondition: the property must be primitive", "long", version["type"].asText())
         assertEquals("A primitive without @Column maps to a NOT NULL column", false, version["nullable"].booleanValue())
     }
 
-    fun testAnImplicitWrapperColumnStaysNullable() = runBlocking<Unit> {
+    fun testAnImplicitWrapperColumnStaysNullable() = runBlockingReleasingWriteIntent<Unit> {
         val flag = field(fieldsOf(addSwitchEntity()), "flag")
 
         assertEquals("Precondition: the property must be boxed", "java.lang.Boolean", flag["type"].asText())
         assertEquals(true, flag["nullable"].booleanValue())
     }
 
-    fun testAnExplicitColumnOnAPrimitiveKeepsItsDefaultNullable() = runBlocking<Unit> {
+    fun testAnExplicitColumnOnAPrimitiveKeepsItsDefaultNullable() = runBlockingReleasingWriteIntent<Unit> {
         val deleted = field(fieldsOf(addSwitchEntity()), "deleted")
 
         assertEquals("Precondition: the property must be primitive", "boolean", deleted["type"].asText())
@@ -751,35 +752,35 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("An explicit @Column ignores primitiveness", true, deleted["nullable"].booleanValue())
     }
 
-    fun testAnExplicitNotNullableColumnOnAWrapperIsNotNullable() = runBlocking<Unit> {
+    fun testAnExplicitNotNullableColumnOnAWrapperIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         val archived = field(fieldsOf(addSwitchEntity()), "archived")
 
         assertEquals("Precondition: the property must be boxed", "java.lang.Boolean", archived["type"].asText())
         assertEquals(false, archived["nullable"].booleanValue())
     }
 
-    fun testAMandatoryBasicColumnIsNotNullable() = runBlocking<Unit> {
+    fun testAMandatoryBasicColumnIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         val code = field(fieldsOf(addSwitchEntity()), "code")
 
         assertEquals("Precondition: the property must be a reference", "java.lang.String", code["type"].asText())
         assertEquals("@Basic(optional = false) maps to a NOT NULL column", false, code["nullable"].booleanValue())
     }
 
-    fun testAnOptionalBasicPrimitiveColumnIsNullable() = runBlocking<Unit> {
+    fun testAnOptionalBasicPrimitiveColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         val priority = field(fieldsOf(addSwitchEntity()), "priority")
 
         assertEquals("Precondition: the property must be primitive", "int", priority["type"].asText())
         assertEquals("@Basic(optional = true) overrides primitiveness", true, priority["nullable"].booleanValue())
     }
 
-    fun testABareBasicPrimitiveColumnIsNullable() = runBlocking<Unit> {
+    fun testABareBasicPrimitiveColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         val rank = field(fieldsOf(addSwitchEntity()), "rank")
 
         assertEquals("Precondition: the property must be primitive", "int", rank["type"].asText())
         assertEquals("@Basic defaults to optional = true", true, rank["nullable"].booleanValue())
     }
 
-    fun testAnImplicitPrimitiveInheritedFromAMappedSuperclassIsNotNullable() = runBlocking<Unit> {
+    fun testAnImplicitPrimitiveInheritedFromAMappedSuperclassIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/primitive/Versioned.java", """
             package com.example.primitive;
@@ -813,7 +814,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("An inherited primitive without @Column maps to a NOT NULL column", false, revision["nullable"].booleanValue())
     }
 
-    fun testKotlinNonNullPrimitivePropertiesAreNotNullableColumns() = runBlocking<Unit> {
+    fun testKotlinNonNullPrimitivePropertiesAreNotNullableColumns() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/primitive/Toggle.kt", """
             package com.example.primitive
@@ -840,21 +841,21 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("counter maps to a NOT NULL column", false, field(fields, "counter")["nullable"].booleanValue())
     }
 
-    fun testAMandatoryBasicOverridesAnExplicitlyNullableColumn() = runBlocking<Unit> {
+    fun testAMandatoryBasicOverridesAnExplicitlyNullableColumn() = runBlockingReleasingWriteIntent<Unit> {
         val label = field(fieldsOf(addGateEntity()), "label")
 
         assertEquals("Precondition: the property must be a reference", "java.lang.String", label["type"].asText())
         assertEquals("@Basic(optional = false) forces NOT NULL over @Column(nullable = true)", false, label["nullable"].booleanValue())
     }
 
-    fun testAMandatoryBasicPrimitiveWithoutAColumnIsNotNullable() = runBlocking<Unit> {
+    fun testAMandatoryBasicPrimitiveWithoutAColumnIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         val weight = field(fieldsOf(addGateEntity()), "weight")
 
         assertEquals("Precondition: the property must be primitive", "int", weight["type"].asText())
         assertEquals(false, weight["nullable"].booleanValue())
     }
 
-    fun testANotNullPrimitiveWithAnExplicitColumnIsNotNullable() = runBlocking<Unit> {
+    fun testANotNullPrimitiveWithAnExplicitColumnIsNotNullable() = runBlockingReleasingWriteIntent<Unit> {
         val open = field(fieldsOf(addGateEntity()), "open")
 
         assertEquals("Precondition: the property must be primitive", "boolean", open["type"].asText())
@@ -862,7 +863,7 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("@NotNull is not masked by a @Column that does not say nullable", false, open["nullable"].booleanValue())
     }
 
-    fun testJavaxBasicAnnotationsFollowTheSameRules() = runBlocking<Unit> {
+    fun testJavaxBasicAnnotationsFollowTheSameRules() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/legacy/Lever.java", """
             package com.example.legacy;
@@ -897,83 +898,83 @@ class SpringDataEntityToolTest : ExplytJavaLightTestCase() {
         assertEquals("An implicit primitive column under javax", false, field(fields, "locked")["nullable"].booleanValue())
     }
 
-    fun testJavaSingleTableNotNullSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testJavaSingleTableNotNullSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = false, name = "code")
     }
 
-    fun testKotlinSingleTableNotNullSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testKotlinSingleTableNotNullSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = true, name = "code")
     }
 
-    fun testJavaSingleTableMandatoryBasicSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testJavaSingleTableMandatoryBasicSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = false, name = "name")
     }
 
-    fun testKotlinSingleTableMandatoryBasicSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testKotlinSingleTableMandatoryBasicSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = true, name = "name")
     }
 
-    fun testJavaSingleTableImplicitPrimitiveSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testJavaSingleTableImplicitPrimitiveSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = false, name = "level")
     }
 
-    fun testKotlinSingleTableImplicitPrimitiveSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testKotlinSingleTableImplicitPrimitiveSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = true, name = "level")
     }
 
-    fun testJavaDefaultSingleTableSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testJavaDefaultSingleTableSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = false, name = "code", strategy = null)
     }
 
-    fun testKotlinDefaultSingleTableSubclassColumnIsNullable() = runBlocking<Unit> {
+    fun testKotlinDefaultSingleTableSubclassColumnIsNullable() = runBlockingReleasingWriteIntent<Unit> {
         assertForcedSubclassColumn(kotlin = true, name = "code", strategy = null)
     }
 
-    fun testJavaSingleTableExplicitNotNullSubclassColumnKeepsItsConstraint() = runBlocking<Unit> {
+    fun testJavaSingleTableExplicitNotNullSubclassColumnKeepsItsConstraint() = runBlockingReleasingWriteIntent<Unit> {
         assertExplicitSubclassColumn(kotlin = false)
     }
 
-    fun testKotlinSingleTableExplicitNotNullSubclassColumnKeepsItsConstraint() = runBlocking<Unit> {
+    fun testKotlinSingleTableExplicitNotNullSubclassColumnKeepsItsConstraint() = runBlockingReleasingWriteIntent<Unit> {
         assertExplicitSubclassColumn(kotlin = true)
     }
 
-    fun testJavaSingleTableRootColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testJavaSingleTableRootColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertRootColumns(kotlin = false)
     }
 
-    fun testKotlinSingleTableRootColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testKotlinSingleTableRootColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertRootColumns(kotlin = true)
     }
 
-    fun testJavaJoinedSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testJavaJoinedSubclassColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertOtherStrategyColumns(kotlin = false, strategy = "JOINED")
     }
 
-    fun testKotlinJoinedSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testKotlinJoinedSubclassColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertOtherStrategyColumns(kotlin = true, strategy = "JOINED")
     }
 
-    fun testJavaTablePerClassSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testJavaTablePerClassSubclassColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertOtherStrategyColumns(kotlin = false, strategy = "TABLE_PER_CLASS")
     }
 
-    fun testKotlinTablePerClassSubclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testKotlinTablePerClassSubclassColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertOtherStrategyColumns(kotlin = true, strategy = "TABLE_PER_CLASS")
     }
 
-    fun testJavaMappedSuperclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testJavaMappedSuperclassColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertMappedSuperclassColumns(kotlin = false)
     }
 
-    fun testKotlinMappedSuperclassColumnsKeepTheirConstraints() = runBlocking<Unit> {
+    fun testKotlinMappedSuperclassColumnsKeepTheirConstraints() = runBlockingReleasingWriteIntent<Unit> {
         assertMappedSuperclassColumns(kotlin = true)
     }
 
-    fun testJavaMappedSuperclassBetweenSingleTableEntitiesHasNullableColumns() = runBlocking<Unit> {
+    fun testJavaMappedSuperclassBetweenSingleTableEntitiesHasNullableColumns() = runBlockingReleasingWriteIntent<Unit> {
         assertMappedMiddleColumns(kotlin = false)
     }
 
-    fun testKotlinMappedSuperclassBetweenSingleTableEntitiesHasNullableColumns() = runBlocking<Unit> {
+    fun testKotlinMappedSuperclassBetweenSingleTableEntitiesHasNullableColumns() = runBlockingReleasingWriteIntent<Unit> {
         assertMappedMiddleColumns(kotlin = true)
     }
 

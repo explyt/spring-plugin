@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.ReadAction
@@ -21,7 +22,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.toUElementOfType
@@ -65,7 +65,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         addSource(TEST_ROOT, PLAIN_TEST_FILE, PLAIN_TEST_SOURCE, isTestSource = true)
     }
 
-    fun testCoRouterReferenceRouteStartsAtItsHandler() = runBlocking<Unit> {
+    fun testCoRouterReferenceRouteStartsAtItsHandler() = runBlockingReleasingWriteIntent<Unit> {
         assertRouteModelled("/co/items", "GET")
 
         val chain = traceAt(CATALOG_FILE, CATALOG_SOURCE, "GET(\"/co/items\", handler::list)")["chain"]
@@ -74,7 +74,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("CatalogService.list"), targetsOf(chain[0]))
     }
 
-    fun testRouterReferenceRouteStartsAtItsHandler() = runBlocking<Unit> {
+    fun testRouterReferenceRouteStartsAtItsHandler() = runBlockingReleasingWriteIntent<Unit> {
         assertRouteModelled("/mvc/items", "GET")
 
         val chain = traceAt(INVENTORY_FILE, INVENTORY_SOURCE, "GET(\"/mvc/items\", handler::list)")["chain"]
@@ -83,7 +83,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("InventoryService.list"), targetsOf(chain[0]))
     }
 
-    fun testJavaBuilderReferenceRouteStartsAtItsHandler() = runBlocking<Unit> {
+    fun testJavaBuilderReferenceRouteStartsAtItsHandler() = runBlockingReleasingWriteIntent<Unit> {
         assertRouteModelled("/java/orders", "GET")
 
         val chain = traceAt(ORDER_ROUTES_FILE, ORDER_ROUTES_SOURCE, ".GET(\"/java/orders\", handler::list)")["chain"]
@@ -92,7 +92,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("OrderService.list"), targetsOf(chain[0]))
     }
 
-    fun testCoRouterLambdaRouteTracesOnlyItsOwnCalls() = runBlocking<Unit> {
+    fun testCoRouterLambdaRouteTracesOnlyItsOwnCalls() = runBlockingReleasingWriteIntent<Unit> {
         assertRouteModelled("/co/items/one", "GET")
 
         val chain = traceAt(CATALOG_FILE, CATALOG_SOURCE, "GET(\"/co/items/one\")")["chain"]
@@ -100,7 +100,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertLambdaRouteStart(chain, factory = "CatalogRoutes.catalogRoutes", ownCall = "CatalogService.find")
     }
 
-    fun testRouterLambdaRouteTracesOnlyItsOwnCalls() = runBlocking<Unit> {
+    fun testRouterLambdaRouteTracesOnlyItsOwnCalls() = runBlockingReleasingWriteIntent<Unit> {
         assertRouteModelled("/mvc/items/one", "GET")
 
         val chain = traceAt(INVENTORY_FILE, INVENTORY_SOURCE, "GET(\"/mvc/items/one\")")["chain"]
@@ -108,7 +108,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertLambdaRouteStart(chain, factory = "InventoryRoutes.inventoryRoutes", ownCall = "InventoryService.find")
     }
 
-    fun testJavaBuilderLambdaRouteTracesOnlyItsOwnCalls() = runBlocking<Unit> {
+    fun testJavaBuilderLambdaRouteTracesOnlyItsOwnCalls() = runBlockingReleasingWriteIntent<Unit> {
         assertRouteModelled("/java/orders/one", "GET")
 
         val chain = traceAt(ORDER_ROUTES_FILE, ORDER_ROUTES_SOURCE, ".GET(\"/java/orders/one\"")["chain"]
@@ -116,31 +116,31 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertLambdaRouteStart(chain, factory = "OrderRoutes.orderRoutes", ownCall = "OrderService.find")
     }
 
-    fun testCoRouterReferenceRouteListsTestsCallingItsUrl() = runBlocking<Unit> {
+    fun testCoRouterReferenceRouteListsTestsCallingItsUrl() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceAt(CATALOG_FILE, CATALOG_SOURCE, "GET(\"/co/items\", handler::list)", includeTests = true)["chain"][0]
 
         assertUrlReferences(head, CATALOG_TEST_FILE, "/co/items", CATALOG_TEST_SOURCE, "get().uri(\"/co/items\")")
     }
 
-    fun testRouterReferenceRouteListsTestsCallingItsUrl() = runBlocking<Unit> {
+    fun testRouterReferenceRouteListsTestsCallingItsUrl() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceAt(INVENTORY_FILE, INVENTORY_SOURCE, "GET(\"/mvc/items\", handler::list)", includeTests = true)["chain"][0]
 
         assertUrlReferences(head, INVENTORY_TEST_FILE, "/mvc/items", INVENTORY_TEST_SOURCE, "get(\"/mvc/items\")")
     }
 
-    fun testJavaBuilderReferenceRouteListsTestsCallingItsUrl() = runBlocking<Unit> {
+    fun testJavaBuilderReferenceRouteListsTestsCallingItsUrl() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceAt(ORDER_ROUTES_FILE, ORDER_ROUTES_SOURCE, ".GET(\"/java/orders\", handler::list)", includeTests = true)["chain"][0]
 
         assertUrlReferences(head, ORDER_TEST_FILE, "/java/orders", ORDER_TEST_SOURCE, "get().uri(\"/java/orders\")")
     }
 
-    fun testCoRouterLambdaRouteListsTestsCallingItsUrl() = runBlocking<Unit> {
+    fun testCoRouterLambdaRouteListsTestsCallingItsUrl() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceAt(CATALOG_FILE, CATALOG_SOURCE, "GET(\"/co/items/one\")", includeTests = true)["chain"][0]
 
         assertUrlReferences(head, CATALOG_TEST_FILE, "/co/items/one", CATALOG_TEST_SOURCE, "get().uri(\"/co/items/one\")")
     }
 
-    fun testAnnotatedHandlerTraceIsUnchanged() = runBlocking<Unit> {
+    fun testAnnotatedHandlerTraceIsUnchanged() = runBlockingReleasingWriteIntent<Unit> {
         assertRouteModelled("/plain/items", "GET")
 
         val head = traceAt(PLAIN_FILE, PLAIN_SOURCE, "fun items(): String = service.items()", includeTests = true)["chain"][0]
@@ -150,26 +150,26 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertUrlReferences(head, PLAIN_TEST_FILE, "/plain/items", PLAIN_TEST_SOURCE, "get(\"/plain/items\")")
     }
 
-    fun testCoRouterLambdaRouteStartIsMarkedWithItsRoute() = runBlocking<Unit> {
+    fun testCoRouterLambdaRouteStartIsMarkedWithItsRoute() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceAt(CATALOG_FILE, CATALOG_SOURCE, "GET(\"/co/items/one\")")["chain"][0]
 
         assertEquals("GET /co/items/one", head["route"]?.asText())
     }
 
-    fun testJavaBuilderReferenceRouteStartIsMarkedWithItsRoute() = runBlocking<Unit> {
+    fun testJavaBuilderReferenceRouteStartIsMarkedWithItsRoute() = runBlockingReleasingWriteIntent<Unit> {
         val head = traceAt(ORDER_ROUTES_FILE, ORDER_ROUTES_SOURCE, ".GET(\"/java/orders\", handler::list)")["chain"][0]
 
         assertEquals("GET /java/orders", head["route"]?.asText())
     }
 
-    fun testRouteIsAbsentOutsideFunctionalRoutes() = runBlocking<Unit> {
+    fun testRouteIsAbsentOutsideFunctionalRoutes() = runBlockingReleasingWriteIntent<Unit> {
         val chain = traceAt(PLAIN_FILE, PLAIN_SOURCE, "fun items(): String = service.items()")["chain"]
 
         assertEquals("PlainController.items", nameOf(chain[0]))
         assertTrue("No node of an annotated handler trace carries a route, got $chain", chain.none { it.has("route") })
     }
 
-    fun testNestedRouteKeepsItsFullPathAndRequest() = runBlocking<Unit> {
+    fun testNestedRouteKeepsItsFullPathAndRequest() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             "\"/a\".nest { GET(\"/b\", handler::list) }"
@@ -186,7 +186,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertUrlReferences(head, CATALOG_TEST_FILE, "/a/b", requests, "get().uri(\"/a/b\")")
     }
 
-    fun testPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+    fun testPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             """
@@ -206,7 +206,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("CatalogService.list"), targetsOf(head))
     }
 
-    fun testReactiveRouterPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+    fun testReactiveRouterPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE
             .replace("import org.springframework.web.reactive.function.server.coRouter", "import org.springframework.web.reactive.function.server.router")
             .replace("= coRouter {", "= router {")
@@ -220,7 +220,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )
     }
 
-    fun testValueArgumentPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+    fun testValueArgumentPathPredicateNestTraceStartsWithThePrefixedRoute() = runBlockingReleasingWriteIntent<Unit> {
         assertCatalogNestTrace(
             "nest(path(\"/a\")) { GET(\"/b\", handler::list) }",
             "/a/b",
@@ -228,18 +228,18 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )
     }
 
-    fun testStringNestTraceStartsWithThePrefixedRoute() = runBlocking<Unit> {
+    fun testStringNestTraceStartsWithThePrefixedRoute() = runBlockingReleasingWriteIntent<Unit> {
         assertCatalogNestTrace("\"/a\".nest { GET(\"/b\", handler::list) }", "/a/b")
     }
 
-    fun testAcceptPredicateNestTraceKeepsTheChildRoute() = runBlocking<Unit> {
+    fun testAcceptPredicateNestTraceKeepsTheChildRoute() = runBlockingReleasingWriteIntent<Unit> {
         assertCatalogNestTrace(
             "accept(org.springframework.http.MediaType.APPLICATION_JSON).nest { GET(\"/b\", handler::list) }",
             "/b"
         )
     }
 
-    fun testUnresolvedStringNestTraceHidesItsRoute() = runBlocking<Unit> {
+    fun testUnresolvedStringNestTraceHidesItsRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE
             .replace(
                 "import org.springframework.web.reactive.function.server.coRouter",
@@ -260,7 +260,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("CatalogService.list"), targetsOf(head))
     }
 
-    fun testUnresolvedDslPathNestTraceHidesItsRoute() = runBlocking<Unit> {
+    fun testUnresolvedDslPathNestTraceHidesItsRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             """
@@ -278,14 +278,14 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("CatalogService.list"), targetsOf(head))
     }
 
-    fun testComposedPathPredicateNestTraceKeepsTheChildRoute() = runBlocking<Unit> {
+    fun testComposedPathPredicateNestTraceKeepsTheChildRoute() = runBlockingReleasingWriteIntent<Unit> {
         assertCatalogNestTrace(
             "(path(\"/a\") and accept(org.springframework.http.MediaType.APPLICATION_JSON)).nest { GET(\"/b\", handler::list) }",
             "/a/b"
         )
     }
 
-    fun testJavaBuilderPathNestTraceHasNoInventedRoute() = runBlocking<Unit> {
+    fun testJavaBuilderPathNestTraceHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = ORDER_ROUTES_SOURCE.replace(
             ".GET(\"/java/orders\", handler::list)",
             ".path(\"/a\", b -> b.GET(\"/b\", handler::list))"
@@ -333,7 +333,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("java.lang.String"), method.parameterList.parameters.map { it.type.canonicalText })
     }
 
-    fun testGenericMethodRouteKeepsItsVerbAndRequest() = runBlocking<Unit> {
+    fun testGenericMethodRouteKeepsItsVerbAndRequest() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             "\"/created\".nest { method(org.springframework.http.HttpMethod.POST, handler::list) }"
@@ -350,7 +350,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertUrlReferences(head, CATALOG_TEST_FILE, "/created", requests, "post().uri(\"/created\")")
     }
 
-    fun testAnyMethodPathRouteStartsAtItsHandlerAndNamesAllMethods() = runBlocking<Unit> {
+    fun testAnyMethodPathRouteStartsAtItsHandlerAndNamesAllMethods() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace("GET(\"/co/items\", handler::list)", "path(\"/co/any\", handler::list)")
         addSource(MAIN_ROOT, CATALOG_FILE, source)
         assertRouteModelled("/co/any", "")
@@ -362,7 +362,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals("ALL /co/any", head["route"]?.asText())
     }
 
-    fun testAnyMethodPathRouteListsTestRequestsOfEveryVerbLikeAVerbRoute() = runBlocking<Unit> {
+    fun testAnyMethodPathRouteListsTestRequestsOfEveryVerbLikeAVerbRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             "path(\"/x\", handler::list)\n        GET(\"/y\", handler::list)"
@@ -388,7 +388,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )
     }
 
-    fun testIteratedPathsListBothRequestsAndMarkTheFirstPath() = runBlocking<Unit> {
+    fun testIteratedPathsListBothRequestsAndMarkTheFirstPath() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             "listOf(\"/x\", \"/y\").forEach { path -> GET(path, handler::list) }"
@@ -413,7 +413,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )
     }
 
-    fun testJavaHandlerFieldFallsBackToTheRegistrationMethod() = runBlocking<Unit> {
+    fun testJavaHandlerFieldFallsBackToTheRegistrationMethod() = runBlockingReleasingWriteIntent<Unit> {
         val source = ORDER_ROUTES_SOURCE.replace(
             "public class OrderRoutes {",
             """public class OrderRoutes {
@@ -429,17 +429,17 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals(listOf("OrderService.find", "OrderService.remove"), targetsOf(head))
     }
 
-    fun testJavaRouteNestedUnderAPredicatePrefixHasNoInventedRoute() = runBlocking<Unit> {
+    fun testJavaRouteNestedUnderAPredicatePrefixHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
         assertNestedJavaRouteHasNoInventedRoute(
             ".nest(org.springframework.web.reactive.function.server.RequestPredicates.path(\"/a\"), b -> b.GET(\"/x\", handler::list))"
         )
     }
 
-    fun testJavaRouteNestedUnderABuilderPathHasNoInventedRoute() = runBlocking<Unit> {
+    fun testJavaRouteNestedUnderABuilderPathHasNoInventedRoute() = runBlockingReleasingWriteIntent<Unit> {
         assertNestedJavaRouteHasNoInventedRoute(".path(\"/a\", b -> b.GET(\"/x\", handler::list))")
     }
 
-    fun testRouteWithoutAPathHasNoTestUrlReferences() = runBlocking<Unit> {
+    fun testRouteWithoutAPathHasNoTestUrlReferences() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items/one\") { catalog.find()",
             "GET { catalog.find()"
@@ -457,7 +457,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         )
     }
 
-    fun testLineInsideALambdaRouteBodyStartsAtThatRoute() = runBlocking<Unit> {
+    fun testLineInsideALambdaRouteBodyStartsAtThatRoute() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items/one\") { catalog.find(); ServerResponse.ok().buildAndAwait() }",
             "GET(\"/co/items/one\") {\n        catalog.find()\n        ServerResponse.ok().buildAndAwait()\n    }"
@@ -470,7 +470,7 @@ class SpringBootApplicationMcpToolsetTraceFunctionalRouteTest : JavaCodeInsightF
         assertEquals("GET /co/items/one", chain[0]["route"]?.asText())
     }
 
-    fun testNestHeaderLineFallsBackToTheFactory() = runBlocking<Unit> {
+    fun testNestHeaderLineFallsBackToTheFactory() = runBlockingReleasingWriteIntent<Unit> {
         val source = CATALOG_SOURCE.replace(
             "GET(\"/co/items\", handler::list)",
             "\"/a\".nest {\n        GET(\"/b\", handler::list)\n    }"

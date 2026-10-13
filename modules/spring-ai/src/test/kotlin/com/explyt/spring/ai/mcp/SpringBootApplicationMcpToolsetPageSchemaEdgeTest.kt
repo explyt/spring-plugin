@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytMultiModuleTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -14,7 +15,6 @@ import com.intellij.openapi.application.readAction
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 /**
  * Edges of the declared `PagedModel` return and of a composed `@EnableSpringDataWebSupport`.
@@ -38,7 +38,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         TestLibrary(HATEOAS_COORDINATES, false),
     )
 
-    fun testHateoasPagedModelIsNotGivenTheSpringDataShape() = runBlocking<Unit> {
+    fun testHateoasPagedModelIsNotGivenTheSpringDataShape() = runBlockingReleasingWriteIntent<Unit> {
         addController(
             "HateoasController", """
             @GetMapping("/orders/hateoas")
@@ -49,7 +49,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertNotTheSpringDataShape(schemaOf("/orders/hateoas", "$HATEOAS_PAGED_MODEL<$ORDER_DTO>"))
     }
 
-    fun testKotlinHateoasPagedModelIsNotGivenTheSpringDataShape() = runBlocking<Unit> {
+    fun testKotlinHateoasPagedModelIsNotGivenTheSpringDataShape() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/shop/KotlinHateoasController.kt", """
             package com.example.shop
@@ -69,7 +69,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertNotTheSpringDataShape(schemaOf("/orders/kotlin-hateoas", "$HATEOAS_PAGED_MODEL<$ORDER_DTO>"))
     }
 
-    fun testProjectClassNamedPagedModelIsDescribedByItsOwnFields() = runBlocking<Unit> {
+    fun testProjectClassNamedPagedModelIsDescribedByItsOwnFields() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/web/PagedModel.java", """
             package com.example.web;
@@ -98,7 +98,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertNull(schema.toString(), schema["wireShapeSource"])
     }
 
-    fun testRawPagedModelKeepsTheShapeWithAnUntypedContent() = runBlocking<Unit> {
+    fun testRawPagedModelKeepsTheShapeWithAnUntypedContent() = runBlockingReleasingWriteIntent<Unit> {
         addController(
             "RawPagedModelController", """
             @GetMapping("/orders/raw-model")
@@ -119,7 +119,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertNull("a declared PagedModel is not an assumption: $schema", schema["wireShapeAssumed"])
     }
 
-    fun testPagedModelsInsideAListKeepTheirDeclaredShape() = runBlocking<Unit> {
+    fun testPagedModelsInsideAListKeepTheirDeclaredShape() = runBlockingReleasingWriteIntent<Unit> {
         addController(
             "PagedModelListController", """
             @GetMapping("/orders/models")
@@ -133,7 +133,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("DECLARED_TYPE", schema)
     }
 
-    fun testKotlinPagedModelsInsideAListKeepTheirDeclaredShape() = runBlocking<Unit> {
+    fun testKotlinPagedModelsInsideAListKeepTheirDeclaredShape() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/shop/KotlinPagedModelListController.kt", """
             package com.example.shop
@@ -156,7 +156,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("DECLARED_TYPE", schema)
     }
 
-    fun testWhitespaceSerializationModeUsesBootDirectDefault() = runBlocking<Unit> {
+    fun testWhitespaceSerializationModeUsesBootDirectDefault() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=   ")
 
         val schema = pageSchema("/orders/page")
@@ -165,7 +165,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("DEFAULT", schema)
     }
 
-    fun testPlaceholderWithAnEmptyDefaultUsesBootDirectDefault() = runBlocking<Unit> {
+    fun testPlaceholderWithAnEmptyDefaultUsesBootDirectDefault() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=\${PAGE_MODE:}")
 
         val schema = pageSchema("/orders/page")
@@ -174,7 +174,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("DEFAULT", schema)
     }
 
-    fun testAliasedModeOnTheUsingClassOutranksTheMetaDefaultViaDto() = runBlocking<Unit> {
+    fun testAliasedModeOnTheUsingClassOutranksTheMetaDefaultViaDto() = runBlockingReleasingWriteIntent<Unit> {
         addAliasedWebSupport(metaMode = "DIRECT")
         addAliasedWebConfig("ComposedWebConfig", "VIA_DTO")
 
@@ -184,7 +184,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
     }
 
-    fun testAliasedModeOnTheUsingClassOutranksTheMetaDefaultDirect() = runBlocking<Unit> {
+    fun testAliasedModeOnTheUsingClassOutranksTheMetaDefaultDirect() = runBlockingReleasingWriteIntent<Unit> {
         addAliasedWebSupport(metaMode = "VIA_DTO")
         addAliasedWebConfig("ComposedWebConfig", "DIRECT")
 
@@ -194,7 +194,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
     }
 
-    fun testAliasedModeSetFromKotlinOutranksTheMetaDefault() = runBlocking<Unit> {
+    fun testAliasedModeSetFromKotlinOutranksTheMetaDefault() = runBlockingReleasingWriteIntent<Unit> {
         addAliasedWebSupport(metaMode = "DIRECT")
         addFile(
             "com/example/config/KotlinComposedWebConfig.kt", """
@@ -216,7 +216,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.KotlinComposedWebConfig", schema)
     }
 
-    fun testComposedViaDtoUseWinsOverAComposedDirectUse() = runBlocking<Unit> {
+    fun testComposedViaDtoUseWinsOverAComposedDirectUse() = runBlockingReleasingWriteIntent<Unit> {
         addAliasedWebSupport(metaMode = "DIRECT")
         addAliasedWebConfig("AlphaWebConfig", "DIRECT")
         addAliasedWebConfig("ZuluWebConfig", "VIA_DTO")
@@ -227,7 +227,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.ZuluWebConfig", schema)
     }
 
-    fun testComposedAnnotationUsedByNoClassHasNoEffect() = runBlocking<Unit> {
+    fun testComposedAnnotationUsedByNoClassHasNoEffect() = runBlockingReleasingWriteIntent<Unit> {
         addAliasedWebSupport(metaMode = "VIA_DTO")
 
         val schema = pageSchema("/orders/page")
@@ -236,7 +236,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("DEFAULT", schema)
     }
 
-    fun testComposedAnnotationUsedOnlyInTestSourcesHasNoEffect() = runBlocking<Unit> {
+    fun testComposedAnnotationUsedOnlyInTestSourcesHasNoEffect() = runBlockingReleasingWriteIntent<Unit> {
         addAliasedWebSupport(metaMode = "VIA_DTO")
         val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
         PsiTestUtil.addSourceRoot(module, testRoot, true)
@@ -264,7 +264,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         }
     }
 
-    fun testComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+    fun testComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addComposedWebSupport(attribute = "mode", aliased = true, default = "VIA_DTO")
         addPlainComposedUse("ComposedWebConfig")
 
@@ -274,7 +274,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
-    fun testKotlinPlainUseOfComposedAliasDefaultViaDtoIsUnknown() = runBlocking<Unit> {
+    fun testKotlinPlainUseOfComposedAliasDefaultViaDtoIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addComposedWebSupport(attribute = "mode", aliased = true, default = "VIA_DTO")
         addFile(
             "com/example/config/KotlinComposedWebConfig.kt", """
@@ -295,7 +295,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
-    fun testComposedConventionDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+    fun testComposedConventionDefaultViaDtoUsedPlainlyIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addComposedWebSupport(attribute = "pageSerializationMode", aliased = false, default = "VIA_DTO")
         addPlainComposedUse("ComposedWebConfig")
 
@@ -305,7 +305,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
-    fun testComposedAliasDefaultDirectUsedPlainlyIsAlsoUnknown() = runBlocking<Unit> {
+    fun testComposedAliasDefaultDirectUsedPlainlyIsAlsoUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addComposedWebSupport(attribute = "mode", aliased = true, default = "DIRECT")
         addPlainComposedUse("ComposedWebConfig")
 
@@ -315,7 +315,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
-    fun testComposedAliasSetToDirectAtTheUseSiteIsDirect() = runBlocking<Unit> {
+    fun testComposedAliasSetToDirectAtTheUseSiteIsDirect() = runBlockingReleasingWriteIntent<Unit> {
         addComposedWebSupport(attribute = "mode", aliased = true, default = "VIA_DTO")
         addFile(
             "com/example/config/ComposedWebConfig.java", """
@@ -338,7 +338,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
     }
 
-    fun testComposedMetaFixedViaDtoWithoutOwnAttributeIsPagedModel() = runBlocking<Unit> {
+    fun testComposedMetaFixedViaDtoWithoutOwnAttributeIsPagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/config/EnableComposedWeb.java", """
             package com.example.config;
@@ -366,7 +366,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
     }
 
-    fun testConventionModeSetToViaDtoAtTheUseSiteIsUnknown() = runBlocking<Unit> {
+    fun testConventionModeSetToViaDtoAtTheUseSiteIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", CONVENTION_MODE_DIRECT)
         assertDeclaresUnaliased(COMPOSED_WEB_SUPPORT, "pageSerializationMode")
         addComposedUse("ComposedWebConfig", "@EnableComposedWeb(pageSerializationMode = PageSerializationMode.VIA_DTO)")
@@ -377,7 +377,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertDirectPage(schema)
     }
 
-    fun testKotlinConventionModeSetToViaDtoAtTheUseSiteIsUnknown() = runBlocking<Unit> {
+    fun testKotlinConventionModeSetToViaDtoAtTheUseSiteIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", CONVENTION_MODE_DIRECT)
         assertDeclaresUnaliased(COMPOSED_WEB_SUPPORT, "pageSerializationMode")
         addKotlinComposedUse("@EnableComposedWeb(pageSerializationMode = PageSerializationMode.VIA_DTO)")
@@ -388,7 +388,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertDirectPage(schema)
     }
 
-    fun testConventionModeSetToDirectOverAViaDtoMetaIsUnknown() = runBlocking<Unit> {
+    fun testConventionModeSetToDirectOverAViaDtoMetaIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation("EnableComposedWeb", META_VIA_DTO, CONVENTION_MODE_DIRECT)
         assertDeclaresUnaliased(COMPOSED_WEB_SUPPORT, "pageSerializationMode")
         addComposedUse("ComposedWebConfig", "@EnableComposedWeb(pageSerializationMode = PageSerializationMode.DIRECT)")
@@ -399,7 +399,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertDirectPage(schema)
     }
 
-    fun testNestedComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+    fun testNestedComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", ALIASED_MODE_VIA_DTO)
         addOuterWebSupport()
         addComposedUse("ComposedWebConfig", "@EnableOuterWeb")
@@ -410,7 +410,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertDirectPage(schema)
     }
 
-    fun testKotlinNestedComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+    fun testKotlinNestedComposedAliasDefaultViaDtoUsedPlainlyIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation("EnableComposedWeb", "@EnableSpringDataWebSupport", ALIASED_MODE_VIA_DTO)
         addOuterWebSupport()
         addKotlinComposedUse("@EnableOuterWeb")
@@ -421,7 +421,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertDirectPage(schema)
     }
 
-    fun testNestedComposedConventionDefaultViaDtoUsedPlainlyIsUnknown() = runBlocking<Unit> {
+    fun testNestedComposedConventionDefaultViaDtoUsedPlainlyIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation(
             "EnableComposedWeb", "@EnableSpringDataWebSupport",
             "PageSerializationMode pageSerializationMode() default PageSerializationMode.VIA_DTO;"
@@ -436,7 +436,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertDirectPage(schema)
     }
 
-    fun testNestedComposedAliasSetToViaDtoOnTheOuterAnnotationIsPagedModel() = runBlocking<Unit> {
+    fun testNestedComposedAliasSetToViaDtoOnTheOuterAnnotationIsPagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation(
             "EnableComposedWeb", "@EnableSpringDataWebSupport",
             "$ALIAS_TO_MODE PageSerializationMode mode() default PageSerializationMode.DIRECT;"
@@ -450,7 +450,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertPagedModel(schema)
     }
 
-    fun testNestedComposedWithoutAttributesOverAViaDtoMetaIsPagedModel() = runBlocking<Unit> {
+    fun testNestedComposedWithoutAttributesOverAViaDtoMetaIsPagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation("EnableComposedWeb", META_VIA_DTO, "")
         assertEquals("no own attribute", 0, composedWebSupport().methods.size)
         addOuterWebSupport()
@@ -462,7 +462,7 @@ class SpringBootApplicationMcpToolsetPageSchemaEdgeTest : PageSchemaTestCase() {
         assertPagedModel(schema)
     }
 
-    fun testPositionalUnrelatedValueOfAComposedAnnotationKeepsTheDirectDefault() = runBlocking<Unit> {
+    fun testPositionalUnrelatedValueOfAComposedAnnotationKeepsTheDirectDefault() = runBlockingReleasingWriteIntent<Unit> {
         addWebSupportAnnotation("EnableMyWeb", "@EnableSpringDataWebSupport", "String value() default \"\";")
         assertDeclaresUnaliased("com.example.config.EnableMyWeb", "value")
         addComposedUse("ComposedWebConfig", "@EnableMyWeb(\"x\")", "com.example.config.EnableMyWeb")
@@ -702,7 +702,7 @@ class SpringBootApplicationMcpToolsetPageSchemaModulesTest : ExplytMultiModuleTe
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    fun testComposedAnnotationFromADependencyModuleControlsTheApplicationMode() = runBlocking<Unit> {
+    fun testComposedAnnotationFromADependencyModuleControlsTheApplicationMode() = runBlockingReleasingWriteIntent<Unit> {
         val shared = addDependencyModule("shared")
         addFileToModule(shared, "com/example/config/EnableAliasedWeb.java", aliasedWebSupport("DIRECT"))
         addFileToModule(module, "com/example/shop/ShopApplication.java", SHOP_APPLICATION)

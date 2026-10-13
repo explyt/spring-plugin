@@ -7,13 +7,13 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 /**
  * An endpoint declared in a test source root is reported by every endpoint tool, marked `testSource: true`, and
@@ -54,7 +54,7 @@ class SpringBootApplicationMcpToolsetTestSourceTest : ExplytJavaLightTestCase() 
         }
     }
 
-    fun testFindListsTheProductionHandlerBeforeTheTestProbe() = runBlocking<Unit> {
+    fun testFindListsTheProductionHandlerBeforeTheTestProbe() = runBlockingReleasingWriteIntent<Unit> {
         assertOnlyTheProbeIsDeclaredInTestSources()
 
         val endpoints = find("/api/routes/7")["endpoints"]
@@ -68,7 +68,7 @@ class SpringBootApplicationMcpToolsetTestSourceTest : ExplytJavaLightTestCase() 
         assertTrue("The probe is marked as test code, got ${endpoints[1]}", endpoints[1].path("testSource").asBoolean())
     }
 
-    fun testListingShowsTheTestProbeLastAndFlagged() = runBlocking<Unit> {
+    fun testListingShowsTheTestProbeLastAndFlagged() = runBlockingReleasingWriteIntent<Unit> {
         assertOnlyTheProbeIsDeclaredInTestSources()
 
         val endpoints = list(compact = true)["endpoints"].toList()
@@ -87,7 +87,7 @@ class SpringBootApplicationMcpToolsetTestSourceTest : ExplytJavaLightTestCase() 
         )
     }
 
-    fun testContractOfASharedRouteListsProductionFirstAndFlagsTheProbe() = runBlocking<Unit> {
+    fun testContractOfASharedRouteListsProductionFirstAndFlagsTheProbe() = runBlockingReleasingWriteIntent<Unit> {
         assertOnlyTheProbeIsDeclaredInTestSources()
 
         val endpoints = contract("/api/routes/7")["endpoints"].toList()
@@ -98,7 +98,7 @@ class SpringBootApplicationMcpToolsetTestSourceTest : ExplytJavaLightTestCase() 
         assertTrue("The probe's contract is marked as test code, got ${endpoints[1]}", endpoints[1].path("testSource").asBoolean())
     }
 
-    fun testTestProbeLandsOnTheLastPage() = runBlocking<Unit> {
+    fun testTestProbeLandsOnTheLastPage() = runBlockingReleasingWriteIntent<Unit> {
         assertOnlyTheProbeIsDeclaredInTestSources()
         val total = list(compact = true)["totalCount"].asInt()
         assertTrue("The fixture needs at least two endpoints to split into pages, got $total", total >= 2)
@@ -118,7 +118,7 @@ class SpringBootApplicationMcpToolsetTestSourceTest : ExplytJavaLightTestCase() 
         assertFalse(lastPage["truncated"].asBoolean())
     }
 
-    fun testNeighbourhoodOfAMissListsProductionRoutesBeforeTheTestProbe() = runBlocking<Unit> {
+    fun testNeighbourhoodOfAMissListsProductionRoutesBeforeTheTestProbe() = runBlockingReleasingWriteIntent<Unit> {
         assertOnlyTheProbeIsDeclaredInTestSources()
 
         val root = find("/api/routes/export/preview")
@@ -130,7 +130,7 @@ class SpringBootApplicationMcpToolsetTestSourceTest : ExplytJavaLightTestCase() 
         assertTrue("The probe neighbour is marked as test code, got ${nearest.last()}", nearest.last().path("testSource").asBoolean())
     }
 
-    fun testProbeInheritingAProductionMappingIsStillMarkedAndRankedLast() = runBlocking<Unit> {
+    fun testProbeInheritingAProductionMappingIsStillMarkedAndRankedLast() = runBlockingReleasingWriteIntent<Unit> {
         addProductionBaseWithProductionAndTestSubclasses()
         val fileIndex = ProjectFileIndex.getInstance(project)
         assertTrue("The probe subclass must live in a test source root", fileIndex.isInTestSourceContent(fileOf(PROBE_VIA_BASE_CLASS)))

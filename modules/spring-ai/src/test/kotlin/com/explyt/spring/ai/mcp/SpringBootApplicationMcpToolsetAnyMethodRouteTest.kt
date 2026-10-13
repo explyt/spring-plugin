@@ -7,9 +7,9 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.runBlocking
 
 private const val CO_ROUTER_PATH = "/x"
 private const val SERVLET_ROUTER_PATH = "/servlet/x"
@@ -34,12 +34,12 @@ class SpringBootApplicationMcpToolsetAnyMethodRouteTest : ExplytKotlinLightTestC
         addServletRouterRoute()
     }
 
-    fun testAnyMethodPathRoutesAreListedForAllMethods() = runBlocking<Unit> {
+    fun testAnyMethodPathRoutesAreListedForAllMethods() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(listOf("ALL"), listedMethodsOf(CO_ROUTER_PATH))
         assertEquals(listOf("ALL"), listedMethodsOf(SERVLET_ROUTER_PATH))
     }
 
-    fun testAnyMethodPathRouteMatchesEveryHttpMethodFilter() = runBlocking<Unit> {
+    fun testAnyMethodPathRouteMatchesEveryHttpMethodFilter() = runBlockingReleasingWriteIntent<Unit> {
         val response = mapper.readTree(
             toolset.findEndpoint(
                 urlPattern = CO_ROUTER_PATH,
@@ -56,7 +56,7 @@ class SpringBootApplicationMcpToolsetAnyMethodRouteTest : ExplytKotlinLightTestC
         )
     }
 
-    fun testCoRouterAnyMethodPathRouteContractNamesItsHandler() = runBlocking<Unit> {
+    fun testCoRouterAnyMethodPathRouteContractNamesItsHandler() = runBlockingReleasingWriteIntent<Unit> {
         assertContractNamesHandler(
             path = CO_ROUTER_PATH,
             registrationClass = "explyt.anymethod.CoRoutes",
@@ -65,7 +65,7 @@ class SpringBootApplicationMcpToolsetAnyMethodRouteTest : ExplytKotlinLightTestC
         )
     }
 
-    fun testServletRouterAnyMethodPathRouteContractNamesItsHandler() = runBlocking<Unit> {
+    fun testServletRouterAnyMethodPathRouteContractNamesItsHandler() = runBlockingReleasingWriteIntent<Unit> {
         assertContractNamesHandler(
             path = SERVLET_ROUTER_PATH,
             registrationClass = "explyt.anymethod.MvcRoutes",

@@ -9,6 +9,7 @@ import com.explyt.spring.core.service.beans.BeanApplicationResolver
 import com.explyt.spring.core.service.beans.SpringInjectionPointResolver
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
@@ -17,7 +18,6 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 
 /**
  * The bean lookup tool as a client reaches it: through the registered toolset, over a real fixture.
@@ -45,7 +45,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** The tool's own purpose, end to end: a bean asked for by one of its names, found through the extension. */
-    fun testLookupClockThroughRegisteredToolset() = runBlocking {
+    fun testLookupClockThroughRegisteredToolset() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val root = call(beanName = "utcClock")
@@ -63,7 +63,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** A bean declared with an SDK return type must not fall out because its type lives outside the project. */
-    fun testLookupByTypeFindsALibraryTypedBean() = runBlocking {
+    fun testLookupByTypeFindsALibraryTypedBean() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val root = call(typeFqn = "java.time.Clock")
@@ -76,7 +76,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
      * A bean declared in a jar is located by the jar's name: a `jar://` URL would carry the absolute path of the
      * local cache, which leaks the home directory and names nothing an agent can open.
      */
-    fun testALibraryDeclarationIsNamedByItsJarNotByAnAbsoluteUrl() = runBlocking {
+    fun testALibraryDeclarationIsNamedByItsJarNotByAnAbsoluteUrl() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
         val libraryClass = JavaPsiFacade.getInstance(project)
             .findClass(LIBRARY_CONFIGURATION, GlobalSearchScope.allScope(project))!!
@@ -102,7 +102,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** The static model is named as an estimate rather than presented as the running context. */
-    fun testStaticAnswerNamesItsPrecision() = runBlocking {
+    fun testStaticAnswerNamesItsPrecision() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val model = call(beanName = "systemClock")["model"]
@@ -112,7 +112,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
         assertEquals("com.explyt.demo.App", model["application"].asText())
     }
 
-    fun testUnknownNameIsNoneWithinTheKnownNames() = runBlocking {
+    fun testUnknownNameIsNoneWithinTheKnownNames() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val root = call(beanName = "nowhereClock")
@@ -124,7 +124,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** An injection point answers about the constructor parameter, with the declaration facts beside it. */
-    fun testInjectionPointResolvesTheDeclaredParameter() = runBlocking {
+    fun testInjectionPointResolvesTheDeclaredParameter() = runBlockingReleasingWriteIntent {
         val file = copyBeanQueryFixture()
         val (line, column) = positionOf(file, "ClockConsumer(Clock clock)", "ClockConsumer(Clock ".length)
 
@@ -147,7 +147,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
      * The field holds the very type a bean is declared for, so a resolver that answered about it anyway would
      * return a confident RESOLVED - the mistake this distinction exists to prevent.
      */
-    fun testAnOrdinaryFieldIsNotAnInjectionPoint() = runBlocking {
+    fun testAnOrdinaryFieldIsNotAnInjectionPoint() = runBlockingReleasingWriteIntent {
         val file = copyBeanQueryFixture()
         val (line, _) = positionOf(file, "private final Clock clock;")
 
@@ -161,7 +161,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** A selection problem is an error a caller can act on, never an empty result that reads as "no beans". */
-    fun testAnUnknownApplicationIsReportedAsAProblem() = runBlocking {
+    fun testAnUnknownApplicationIsReportedAsAProblem() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val root = call(beanName = "systemClock", applicationClassName = "com.explyt.demo.Missing")
@@ -171,7 +171,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** An invalid argument is refused before any model is read, and named as such. */
-    fun testAMixedModeIsRefused() = runBlocking {
+    fun testAMixedModeIsRefused() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val root = call(beanName = "systemClock", filePath = "com/explyt/demo/ClockConsumer.java", line = 12)
@@ -184,7 +184,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
      * A project path naming no open project is refused rather than answered from whichever project is open: a
      * confident answer about the wrong project cannot be told from a correct one.
      */
-    fun testAnUnknownProjectPathIsNotAnsweredFromTheOpenOne() = runBlocking {
+    fun testAnUnknownProjectPathIsNotAnsweredFromTheOpenOne() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val json = toolset().findSpringBean(projectPath = "/nowhere/at/all", beanName = "systemClock")
@@ -195,7 +195,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** With one project open there is no wrong project to substitute, so an omitted path is answered. */
-    fun testAnOmittedProjectPathIsAnsweredFromTheOnlyOpenProject() = runBlocking {
+    fun testAnOmittedProjectPathIsAnsweredFromTheOnlyOpenProject() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val json = toolset().findSpringBean(
@@ -210,7 +210,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** A blank path is an omitted one, not a path that matches nothing. */
-    fun testABlankProjectPathIsTreatedAsOmitted() = runBlocking {
+    fun testABlankProjectPathIsTreatedAsOmitted() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val json = toolset().findSpringBean(
@@ -226,7 +226,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** A path differing only in a trailing separator names the same project. */
-    fun testATrailingSeparatorStillNamesTheProject() = runBlocking {
+    fun testATrailingSeparatorStillNamesTheProject() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val json = toolset().findSpringBean(
@@ -247,7 +247,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
      * The answer is asserted to be a real one first: any empty or failed response would satisfy a size bound on
      * its own and prove nothing about the projection that has to fit inside it.
      */
-    fun testTheDefaultAnswerFitsTheClientBudget() = runBlocking {
+    fun testTheDefaultAnswerFitsTheClientBudget() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val json = toolset().findSpringBean(projectPath = projectPath(), beanName = "systemClock")
@@ -263,7 +263,7 @@ class SpringBeanMcpToolsetTest : ExplytJavaLightTestCase() {
     }
 
     /** A continuation is bound to the question it continues, so a changed filter cannot reuse its offset. */
-    fun testAContinuationOfADifferentQueryIsRefused() = runBlocking {
+    fun testAContinuationOfADifferentQueryIsRefused() = runBlockingReleasingWriteIntent {
         copyBeanQueryFixture()
 
         val first = call(beanName = "systemClock")
