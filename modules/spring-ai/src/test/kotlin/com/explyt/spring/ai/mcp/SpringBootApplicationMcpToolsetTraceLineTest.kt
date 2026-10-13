@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.editor.Document
@@ -16,7 +17,6 @@ import com.intellij.psi.PsiManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
@@ -35,7 +35,7 @@ class SpringBootApplicationMcpToolsetTraceLineTest : JavaCodeInsightFixtureTestC
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    fun testEveryLineOfAMethodStartsTheSameTrace() = runBlocking<Unit> {
+    fun testEveryLineOfAMethodStartsTheSameTrace() = runBlockingReleasingWriteIntent<Unit> {
         val source = """
             package com.example.app
 
@@ -80,7 +80,7 @@ class SpringBootApplicationMcpToolsetTraceLineTest : JavaCodeInsightFixtureTestC
      * The refusal names the methods around it, because the caller cannot otherwise tell a wrong line from a file
      * this tool cannot read.
      */
-    fun testLineOutsideAnyMethodIsRefusedWithTheNearestDeclarations() = runBlocking<Unit> {
+    fun testLineOutsideAnyMethodIsRefusedWithTheNearestDeclarations() = runBlockingReleasingWriteIntent<Unit> {
         val source = """
             package com.example.app
 

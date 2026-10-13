@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
@@ -24,7 +25,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
@@ -57,7 +57,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         moduleBuilder.addJdkVersion(LanguageLevel.JDK_21)
     }
 
-    fun testTraceCallChainHappyPath() = runBlocking<Unit> {
+    fun testTraceCallChainHappyPath() = runBlockingReleasingWriteIntent<Unit> {
         val basePath = project.basePath!!
         val sourcesRoot = File(basePath, "src").apply { mkdirs() }
 
@@ -171,7 +171,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         )
     }
 
-    fun testTraceKotlinLightCallee() = runBlocking {
+    fun testTraceKotlinLightCallee() = runBlockingReleasingWriteIntent {
         val basePath = project.basePath!!
         val sourcesRoot = File(basePath, "kotlinSrc").apply { mkdirs() }
         val relativePath = "kotlinSrc/com/example/app/Controller.kt"
@@ -232,7 +232,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals(declarationLine, callee["line"].asInt())
     }
 
-    fun testTraceGeneratedDataClassCalleeLine() = runBlocking {
+    fun testTraceGeneratedDataClassCalleeLine() = runBlockingReleasingWriteIntent {
         // Generated `copy()` of a Kotlin data class: a light callee whose reported line must stay inside the
         // declaring file rather than being fabricated. See the unit tests for the null-range fallback itself.
         val basePath = project.basePath!!
@@ -292,32 +292,32 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         )
     }
 
-    fun testCompanionCallNamesItsOuterClass() = runBlocking {
+    fun testCompanionCallNamesItsOuterClass() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("kotlinParse")
         val call = companionCall(chain, "parse")
         assertEquals("PROJECT", call["kind"].asText())
         assertEquals("VmId.parse", call["target"].asText())
     }
 
-    fun testJavaJvmStaticCallNamesItsOuterClass() = runBlocking {
+    fun testJavaJvmStaticCallNamesItsOuterClass() = runBlockingReleasingWriteIntent {
         val call = companionCall(traceCompanion("javaStaticParse", javaCaller = true), "parse")
         assertEquals("PROJECT", call["kind"].asText())
         assertEquals("StaticVmId.parse", call["target"].asText())
     }
 
-    fun testJavaCompanionCallNamesItsOuterClass() = runBlocking {
+    fun testJavaCompanionCallNamesItsOuterClass() = runBlockingReleasingWriteIntent {
         val call = companionCall(traceCompanion("javaCompanionParse", javaCaller = true), "parse")
         assertEquals("PROJECT", call["kind"].asText())
         assertEquals("StaticVmId.parse", call["target"].asText())
     }
 
-    fun testNamedCompanionCallNamesItsOuterClass() = runBlocking {
+    fun testNamedCompanionCallNamesItsOuterClass() = runBlockingReleasingWriteIntent {
         val call = companionCall(traceCompanion("namedFactory"), "of")
         assertEquals("PROJECT", call["kind"].asText())
         assertEquals("FactoryVmId.of", call["target"].asText())
     }
 
-    fun testOwnCompanionCallIsInternal() = runBlocking {
+    fun testOwnCompanionCallIsInternal() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("ownParse")
         val call = companionCall(chain, "parse")
         assertEquals("INTERNAL", call["kind"].asText())
@@ -325,24 +325,24 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("INTERNAL", node["reachedBy"].asText())
     }
 
-    fun testOwnCompanionCallUsesTheSameOuterClassName() = runBlocking {
+    fun testOwnCompanionCallUsesTheSameOuterClassName() = runBlockingReleasingWriteIntent {
         val call = companionCall(traceCompanion("ownParse"), "parse")
         assertEquals("VmId.parse", call["target"].asText())
     }
 
-    fun testTopLevelObjectCallKeepsItsName() = runBlocking {
+    fun testTopLevelObjectCallKeepsItsName() = runBlockingReleasingWriteIntent {
         val call = companionCall(traceCompanion("objectParse"), "parse")
         assertEquals("IdFormat.parse", call["target"].asText())
         assertEquals("PROJECT", call["kind"].asText())
     }
 
-    fun testNestedClassCallKeepsItsShortName() = runBlocking {
+    fun testNestedClassCallKeepsItsShortName() = runBlockingReleasingWriteIntent {
         val call = companionCall(traceCompanion("nestedParse"), "parse")
         assertEquals("Inner.parse", call["target"].asText())
         assertEquals("PROJECT", call["kind"].asText())
     }
 
-    fun testCompanionCallsLinkToDistinctOuterClassNodes() = runBlocking {
+    fun testCompanionCallsLinkToDistinctOuterClassNodes() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("twoParsers")
         val calls = chain[0]["callsInto"].filter { it["target"].asText().endsWith(".parse") }
         assertEquals("Both companion calls must be present in callsInto", 2, calls.size)
@@ -357,7 +357,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertTrue(nodes.all { it["filePath"].asText().endsWith("Ids.kt") })
     }
 
-    fun testNestedCompanionCallNamesItsImmediateOuterClass() = runBlocking {
+    fun testNestedCompanionCallNamesItsImmediateOuterClass() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("nestedCompanionParse")
         val call = companionCall(chain, "parse")
         assertEquals("InnerId.parse", call["target"].asText())
@@ -367,7 +367,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("explyt.trace.Outer.InnerId.Companion", node["className"].asText())
     }
 
-    fun testCompanionNameFallsBackToClassNavigationWithoutKotlinMethodOrigin() = runBlocking {
+    fun testCompanionNameFallsBackToClassNavigationWithoutKotlinMethodOrigin() = runBlockingReleasingWriteIntent {
         companionCall(traceCompanion("kotlinParse"), "parse")
         val companion = JavaPsiFacade.getInstance(project)
             .findClass("explyt.trace.VmId.Companion", GlobalSearchScope.projectScope(project))!!
@@ -379,7 +379,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("VmId.parse", CallChainTracer.nameOf(method))
     }
 
-    fun testCompanionTestReferenceKeepsOuterClassTargetAndDirectReferenceLines() = runBlocking {
+    fun testCompanionTestReferenceKeepsOuterClassTargetAndDirectReferenceLines() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("kotlinParse", includeTests = true)
         val call = companionCall(chain, "parse")
         assertEquals("VmId.parse", call["target"].asText())
@@ -393,7 +393,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertTrue("A direct reference has no interface via", reference["via"] == null || reference["via"].isNull)
     }
 
-    fun testClassNestedInCompanionKeepsItsOwnName() = runBlocking {
+    fun testClassNestedInCompanionKeepsItsOwnName() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("classInCompanionParse")
         val call = companionCall(chain, "parse")
         assertEquals("Nested.parse", call["target"].asText())
@@ -402,7 +402,7 @@ class SpringBootApplicationMcpToolsetTraceCallChainTest : JavaCodeInsightFixture
         assertEquals("explyt.trace.Owner.Companion.Nested", node["className"].asText())
     }
 
-    fun testJavaJvmStaticAndCompanionCallsKeepDistinctNodes() = runBlocking {
+    fun testJavaJvmStaticAndCompanionCallsKeepDistinctNodes() = runBlockingReleasingWriteIntent {
         val chain = traceCompanion("bothStaticParsers", javaCaller = true)
         val calls = chain[0]["callsInto"].toList()
         assertEquals(listOf("StaticVmId.parse", "StaticVmId.parse"), calls.map { it["target"].asText() })

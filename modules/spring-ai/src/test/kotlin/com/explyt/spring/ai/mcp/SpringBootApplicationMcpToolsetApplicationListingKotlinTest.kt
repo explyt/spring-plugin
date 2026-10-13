@@ -7,12 +7,12 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 class SpringBootApplicationMcpToolsetApplicationListingKotlinTest : ExplytKotlinLightTestCase() {
 
@@ -36,7 +36,7 @@ class SpringBootApplicationMcpToolsetApplicationListingKotlinTest : ExplytKotlin
         }
     }
 
-    fun testListsKotlinProductionAndTestApplicationsInApplicationClassesOrder() = runBlocking<Unit> {
+    fun testListsKotlinProductionAndTestApplicationsInApplicationClassesOrder() = runBlockingReleasingWriteIntent<Unit> {
         addKotlin("com/example/ZetaApp.kt", """
             package com.example
 
@@ -60,7 +60,7 @@ class SpringBootApplicationMcpToolsetApplicationListingKotlinTest : ExplytKotlin
         assertTrue("test application must be marked, got ${rows[1]}", rows[1]["testSource"].asBoolean())
     }
 
-    fun testDoesNotListKotlinMetaAnnotationTypeAsApplication() = runBlocking<Unit> {
+    fun testDoesNotListKotlinMetaAnnotationTypeAsApplication() = runBlockingReleasingWriteIntent<Unit> {
         addKotlin("com/example/MyApp.kt", """
             package com.example
 

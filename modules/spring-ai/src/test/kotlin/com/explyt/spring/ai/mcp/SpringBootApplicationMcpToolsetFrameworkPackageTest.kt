@@ -7,9 +7,9 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.runBlocking
 
 /**
  * `explyt_get_spring_endpoint_contract` for a project whose own package is under `org.springframework.` - a sample
@@ -37,7 +37,7 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
     }
 
     /** A project DTO under `org.springframework.` was unwrapped as if it were a framework container, giving `null`. */
-    fun testProjectClassUnderTheSpringPackageIsDescribedByItsGetters() = runBlocking<Unit> {
+    fun testProjectClassUnderTheSpringPackageIsDescribedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/vets", "GET")
 
         assertEquals("$SHOP.vet.Vets", schema["className"].asText())
@@ -51,21 +51,21 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         )
     }
 
-    fun testPrivateFieldWithoutAGetterIsNotWritten() = runBlocking<Unit> {
+    fun testPrivateFieldWithoutAGetterIsNotWritten() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/orders/one", "GET")
 
         assertEquals("ResponseEntity still unwraps to its body", "$SHOP.order.OrderDto", schema["className"].asText())
         assertEquals(listOf("id", "note"), names(schema))
     }
 
-    fun testJsonPropertyOnAJavaGetterRenamesTheProperty() = runBlocking<Unit> {
+    fun testJsonPropertyOnAJavaGetterRenamesTheProperty() = runBlockingReleasingWriteIntent<Unit> {
         val fields = responseSchema("/receipt", "GET")["fields"]
 
         assertEquals(listOf("order_id"), fields.map { it["name"].asText() })
         assertEquals("orderId", fields.single()["declaredName"].asText())
     }
 
-    fun testCallOnAProjectBeanUnderTheSpringPackageIsAServiceCall() = runBlocking<Unit> {
+    fun testCallOnAProjectBeanUnderTheSpringPackageIsAServiceCall() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractOf("/orders", "POST")
 
         assertEquals(
@@ -75,7 +75,7 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
     }
 
     /** The collection rule is unchanged: a JDK list still reaches its element, outside the Spring package too. */
-    fun testListOfAPlainProjectDtoStillReachesTheElement() = runBlocking<Unit> {
+    fun testListOfAPlainProjectDtoStillReachesTheElement() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/plain/items", "GET")
 
         assertEquals("com.example.plain.PlainItem", schema["className"].asText())
@@ -86,14 +86,14 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
      * A Java bean is what Jackson writes: its getters under Jackson's default naming - a leading run of capitals is
      * lower-cased as a whole, `getURL` is `url` - and not the private fields behind them.
      */
-    fun testJavaBeanOutsideTheSpringPackageIsDescribedByItsGetters() = runBlocking<Unit> {
+    fun testJavaBeanOutsideTheSpringPackageIsDescribedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/plain/report", "GET")
 
         assertEquals(listOf("rowList", "url"), names(schema))
     }
 
     /** JDK value types keep no expanded schema: they are not containers and not DTOs. */
-    fun testJdkValueTypesStayUnexpanded() = runBlocking<Unit> {
+    fun testJdkValueTypesStayUnexpanded() = runBlockingReleasingWriteIntent<Unit> {
         assertTrue(responseSchemaOrNull("/orders/label", "GET").isNull)
         assertTrue(responseSchemaOrNull("/orders/since", "GET").isNull)
         assertEquals(
@@ -102,7 +102,7 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         )
     }
 
-    fun testNonGenericLibraryDtoIsExpandedByItsGetters() = runBlocking<Unit> {
+    fun testNonGenericLibraryDtoIsExpandedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/problem", "GET")
 
         assertEquals("org.springframework.http.ProblemDetail", schema["className"].asText())
@@ -111,38 +111,38 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         assertFalse(schema.has("schemaOmitted"))
     }
 
-    fun testLibraryMapIsMarkedOmitted() = runBlocking<Unit> {
+    fun testLibraryMapIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         assertOmitted("/library/http-headers", "org.springframework.http.HttpHeaders", "MAP_TYPE")
     }
 
-    fun testLibraryCollectionIsMarkedOmitted() = runBlocking<Unit> {
+    fun testLibraryCollectionIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         assertOmitted("/library/sources", "org.springframework.core.env.MutablePropertySources", "COLLECTION_TYPE")
     }
 
-    fun testJsonTreeIsMarkedOmitted() = runBlocking<Unit> {
+    fun testJsonTreeIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         assertOmitted("/library/node", "com.fasterxml.jackson.databind.node.ObjectNode", "JSON_TREE")
     }
 
-    fun testSelfSerializingLibraryTypeIsMarkedOmitted() = runBlocking<Unit> {
+    fun testSelfSerializingLibraryTypeIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         assertOmitted("/library/jsonp", "com.fasterxml.jackson.databind.util.JSONPObject", "CUSTOM_SERIALIZATION")
     }
 
-    fun testLibraryClassWithoutPropertiesIsMarkedOmitted() = runBlocking<Unit> {
+    fun testLibraryClassWithoutPropertiesIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         assertOmitted("/library/method", "org.springframework.http.HttpMethod", "NO_VISIBLE_PROPERTIES")
     }
 
-    fun testProjectEnumKeepsItsValues() = runBlocking<Unit> {
+    fun testProjectEnumKeepsItsValues() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/plain/kind", "GET")
 
         assertEquals(listOf("className", "enumValues"), schema.fieldNames().asSequence().toList())
         assertEquals(listOf("SMALL", "LARGE"), schema["enumValues"].map { it.asText() })
     }
 
-    fun testJsonArrayIsAJsonTreeBeforeItIsACollection() = runBlocking<Unit> {
+    fun testJsonArrayIsAJsonTreeBeforeItIsACollection() = runBlockingReleasingWriteIntent<Unit> {
         assertOmitted("/library/array", "com.fasterxml.jackson.databind.node.ArrayNode", "JSON_TREE")
     }
 
-    fun testThirdPartyLibraryDtoIsExpandedByItsGetters() = runBlocking<Unit> {
+    fun testThirdPartyLibraryDtoIsExpandedByItsGetters() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/version", "GET")
 
         assertEquals("com.fasterxml.jackson.databind.PropertyName", schema["className"].asText())
@@ -153,14 +153,14 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         )
     }
 
-    fun testGenericThirdPartyLibraryClassIsDescribedAsItself() = runBlocking<Unit> {
+    fun testGenericThirdPartyLibraryClassIsDescribedAsItself() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/lru", "GET")
 
         assertEquals("com.fasterxml.jackson.databind.util.LRUMap", schema["className"].asText())
         assertEquals("NO_VISIBLE_PROPERTIES", schema["schemaOmitted"].asText())
     }
 
-    fun testLibraryTypesNestedInAProjectDtoCarryTheirOwnSchema() = runBlocking<Unit> {
+    fun testLibraryTypesNestedInAProjectDtoCarryTheirOwnSchema() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/envelope", "GET")
 
         assertEquals(listOf("headers", "tree", "version"), names(schema))
@@ -176,7 +176,7 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         assertTrue(version["fields"].size() > 0)
     }
 
-    fun testLibraryDtoBeyondTheDepthBudgetHasNoNestedSchema() = runBlocking<Unit> {
+    fun testLibraryDtoBeyondTheDepthBudgetHasNoNestedSchema() = runBlockingReleasingWriteIntent<Unit> {
         val level1 = responseSchema("/library/deep", "GET")
         val level2 = field(level1, "inner")["nested"]
         val level3 = field(level2, "inner")["nested"]
@@ -187,11 +187,11 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         assertTrue("the key is written as null, with no marker", version["nested"].isNull)
     }
 
-    fun testLibraryClassWithAJsonValueMethodIsMarkedCustomSerialized() = runBlocking<Unit> {
+    fun testLibraryClassWithAJsonValueMethodIsMarkedCustomSerialized() = runBlockingReleasingWriteIntent<Unit> {
         assertOmitted("/library/schema", "com.fasterxml.jackson.databind.jsonschema.JsonSchema", "CUSTOM_SERIALIZATION")
     }
 
-    fun testLibraryEnumIsItsConstantNames() = runBlocking<Unit> {
+    fun testLibraryEnumIsItsConstantNames() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/status", "GET")
 
         assertEquals("org.springframework.http.HttpStatus", schema["className"].asText())
@@ -206,7 +206,7 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         assertFalse(schema.has("fields"))
     }
 
-    fun testLibraryInfrastructureIsMarkedOmitted() = runBlocking<Unit> {
+    fun testLibraryInfrastructureIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/view", "GET")
 
         assertEquals("org.springframework.web.servlet.ModelAndView", schema["className"].asText())
@@ -214,28 +214,28 @@ class SpringBootApplicationMcpToolsetFrameworkPackageTest : ExplytJavaLightTestC
         assertFalse(schema.has("fields"))
     }
 
-    fun testLibraryInfrastructureInsideAContainerIsMarkedOmitted() = runBlocking<Unit> {
+    fun testLibraryInfrastructureInsideAContainerIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/file", "GET")
 
         assertEquals("org.springframework.core.io.Resource", schema["className"].asText())
         assertEquals("LIBRARY_INFRASTRUCTURE", schema["schemaOmitted"].asText())
     }
 
-    fun testAbstractLibraryTypeIsMarkedOmitted() = runBlocking<Unit> {
+    fun testAbstractLibraryTypeIsMarkedOmitted() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/library/headers", "GET")
 
         assertEquals("org.springframework.web.context.request.WebRequest", schema["className"].asText())
         assertEquals("ABSTRACT_TYPE", schema["schemaOmitted"].asText())
     }
 
-    fun testGenericLibraryWrapperStillUnwrapsToItsPayload() = runBlocking<Unit> {
+    fun testGenericLibraryWrapperStillUnwrapsToItsPayload() = runBlockingReleasingWriteIntent<Unit> {
         val schema = responseSchema("/orders/one", "GET")
 
         assertEquals(listOf("className", "fields"), schema.fieldNames().asSequence().toList())
         assertEquals("$SHOP.order.OrderDto", schema["className"].asText())
     }
 
-    fun testRecursiveDtoStopsAtTheDepthBudget() = runBlocking<Unit> {
+    fun testRecursiveDtoStopsAtTheDepthBudget() = runBlockingReleasingWriteIntent<Unit> {
         val levels = generateSequence(responseSchema("/library/tree", "GET")) { node ->
             node["fields"].firstOrNull { it["name"].asText() == "child" }?.get("nested")?.takeUnless { it.isNull }
         }.count()

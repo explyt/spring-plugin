@@ -8,13 +8,13 @@ package com.explyt.spring.ai.mcp
 import com.explyt.spring.ai.mcp.beans.SpringBeanMcpToolset
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpToolset
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClassType
-import kotlinx.coroutines.runBlocking
 
 /**
  * Where the endpoint tools say an unannotated handler parameter comes from.
@@ -40,7 +40,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    fun testUnannotatedFormObjectIsAModelAttributeBesideAPrimitivePathVariable() = runBlocking<Unit> {
+    fun testUnannotatedFormObjectIsAModelAttributeBesideAPrimitivePathVariable() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwnerController()
 
         val parameters = contractParameters("/owners/7/edit", "/owners/{ownerId}/edit")
@@ -51,7 +51,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testFindFormBindsTheOwnerAsAModelAttributeNextToADefaultedPage() = runBlocking<Unit> {
+    fun testFindFormBindsTheOwnerAsAModelAttributeNextToADefaultedPage() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwnerController()
 
         val parameters = contractParameters("/owners")
@@ -63,7 +63,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
     }
 
     /** `BeanUtils.isSimpleProperty`: `CharSequence`, `Number`, `Temporal`, `Enum`, `UUID` and their arrays. */
-    fun testUnannotatedSimpleTypesAreQueryParametersNamedAfterTheParameter() = runBlocking<Unit> {
+    fun testUnannotatedSimpleTypesAreQueryParametersNamedAfterTheParameter() = runBlockingReleasingWriteIntent<Unit> {
         addJavaSearchController()
 
         val sources = sourcesOf(contractParameters("/search"))
@@ -83,7 +83,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testKotlinUnannotatedParametersFollowTheSameRule() = runBlocking<Unit> {
+    fun testKotlinUnannotatedParametersFollowTheSameRule() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinPetController()
 
         val parameters = contractParameters("/pets/3", "/pets/{petId}")
@@ -95,7 +95,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         assertEquals("int", typeOf(parameters, "page"))
     }
 
-    fun testPrimitiveParameterReportsTheDeclaredType() = runBlocking<Unit> {
+    fun testPrimitiveParameterReportsTheDeclaredType() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwnerController()
 
         val edit = contractParameters("/owners/7/edit", "/owners/{ownerId}/edit")
@@ -105,7 +105,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         assertEquals("int", typeOf(find, "page"))
     }
 
-    fun testFindEndpointReportsTheSameSourcesAsTheContract() = runBlocking<Unit> {
+    fun testFindEndpointReportsTheSameSourcesAsTheContract() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwnerController()
 
         val found = mapper.readTree(toolset.findEndpoint(urlPattern = "/owners/7/edit", projectPath = projectPath()))
@@ -119,7 +119,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
     }
 
     /** An annotation Spring does not know may be the key of a project resolver: the tool cannot say what binds it. */
-    fun testAParameterUnderAnUnknownAnnotationStaysUnknown() = runBlocking<Unit> {
+    fun testAParameterUnderAnUnknownAnnotationStaysUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addJavaSearchController()
 
         val sources = sourcesOf(contractParameters("/me"))
@@ -127,7 +127,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         assertEquals(mapOf("caller" to "UNKNOWN"), sources)
     }
 
-    fun testNestedApplicationClassResolvesWithADollarInTheBeanListing() = runBlocking<Unit> {
+    fun testNestedApplicationClassResolvesWithADollarInTheBeanListing() = runBlockingReleasingWriteIntent<Unit> {
         addNestedApplication()
 
         val page = mapper.readTree(
@@ -148,7 +148,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         })
     }
 
-    fun testNestedApplicationClassResolvesWithADollarInTheBeanLookup() = runBlocking<Unit> {
+    fun testNestedApplicationClassResolvesWithADollarInTheBeanLookup() = runBlockingReleasingWriteIntent<Unit> {
         addNestedApplication()
 
         val root = mapper.readTree(
@@ -164,7 +164,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         assertEquals("com.example.app.PetClinicTests.TestConfiguration", root["model"]["application"].asText())
     }
 
-    fun testMultipartRequestInterfacesAreSuppliedByTheServletRequestResolver() = runBlocking<Unit> {
+    fun testMultipartRequestInterfacesAreSuppliedByTheServletRequestResolver() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving(MULTIPART_REQUEST, MULTIPART_HTTP_SERVLET_REQUEST, HTTP_SERVLET_REQUEST)
         addJavaServletArgumentsController()
 
@@ -174,7 +174,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testPushBuilderIsSuppliedByTheServletRequestResolver() = runBlocking<Unit> {
+    fun testPushBuilderIsSuppliedByTheServletRequestResolver() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving(PUSH_BUILDER, HTTP_SERVLET_REQUEST)
         addJavaServletArgumentsController()
 
@@ -184,7 +184,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testUnannotatedJakartaPartIsAMultipartPartLikeAMultipartFile() = runBlocking<Unit> {
+    fun testUnannotatedJakartaPartIsAMultipartPartLikeAMultipartFile() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving(JAKARTA_PART, MULTIPART_FILE)
         addJavaServletArgumentsController()
 
@@ -194,7 +194,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testKotlinUnannotatedJakartaPartIsAMultipartPart() = runBlocking<Unit> {
+    fun testKotlinUnannotatedJakartaPartIsAMultipartPart() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving(JAKARTA_PART, MULTIPART_FILE)
         myFixture.addFileToProject(
             "com/example/app/AttachmentController.kt", """
@@ -219,7 +219,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testZoneSubclassesMissTheExactServletPredicateAndBindAsSimpleQueryValues() = runBlocking<Unit> {
+    fun testZoneSubclassesMissTheExactServletPredicateAndBindAsSimpleQueryValues() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving("java.util.SimpleTimeZone", "java.time.ZoneOffset")
         addJavaServletArgumentsController()
 
@@ -229,7 +229,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testProjectSubtypesOfExactOnlyBuilderAndSessionStatusAreModelAttributes() = runBlocking<Unit> {
+    fun testProjectSubtypesOfExactOnlyBuilderAndSessionStatusAreModelAttributes() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving(URI_COMPONENTS_BUILDER, SERVLET_URI_COMPONENTS_BUILDER, SESSION_STATUS)
         addJavaServletArgumentsController()
 
@@ -245,7 +245,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testServletModelMapAndMapAreTheModelWhileAHashMapIsAModelAttribute() = runBlocking<Unit> {
+    fun testServletModelMapAndMapAreTheModelWhileAHashMapIsAModelAttribute() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving("org.springframework.ui.ModelMap", "java.util.HashMap")
         addJavaServletArgumentsController()
 
@@ -255,7 +255,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testAnnotatedMapsAreNotFrameworkSuppliedOnServlet() = runBlocking<Unit> {
+    fun testAnnotatedMapsAreNotFrameworkSuppliedOnServlet() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving("java.util.Map", "org.springframework.web.bind.annotation.MatrixVariable", "org.springframework.web.bind.annotation.RequestAttribute")
         addAnnotatedMapController()
 
@@ -318,7 +318,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSupplied() = runBlocking<Unit> {
+    fun testTypeUseAndClassRetentionMapAnnotationsAreFrameworkSupplied() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving("java.util.Map", "org.jspecify.annotations.Nullable", "lombok.NonNull")
         addRetainedMapController()
 
@@ -330,7 +330,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testKotlinNullableMapIsFrameworkSupplied() = runBlocking<Unit> {
+    fun testKotlinNullableMapIsFrameworkSupplied() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving("java.util.Map", "org.jetbrains.annotations.Nullable")
         myFixture.addFileToProject(
             "com/example/app/KotlinRetainedMapController.kt", """
@@ -355,7 +355,7 @@ class SpringBootApplicationMcpToolsetParameterSourcesTest : ExplytJavaLightTestC
         )
     }
 
-    fun testKotlinNonNullMapIsFrameworkSupplied() = runBlocking<Unit> {
+    fun testKotlinNonNullMapIsFrameworkSupplied() = runBlockingReleasingWriteIntent<Unit> {
         assertServletStackResolving("java.util.Map", "org.jetbrains.annotations.NotNull")
         myFixture.addFileToProject(
             "com/example/app/KotlinNonNullMapController.kt", """

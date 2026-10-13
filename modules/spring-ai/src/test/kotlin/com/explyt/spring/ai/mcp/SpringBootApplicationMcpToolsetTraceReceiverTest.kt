@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.application.WriteAction
@@ -18,7 +19,6 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureTestCase() {
@@ -54,74 +54,74 @@ class SpringBootApplicationMcpToolsetTraceReceiverTest : JavaCodeInsightFixtureT
         IndexingTestUtil.waitUntilIndexesAreReady(project)
     }
 
-    fun testTopLevelExtensionInAnotherFileReportsItsDeclaredReceiver() = runBlocking {
+    fun testTopLevelExtensionInAnotherFileReportsItsDeclaredReceiver() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("fun chargeAccount", "charge")
         assertEquals("$ROOT/com/example/billing/Extensions.kt", node["filePath"].asText())
         assertEquals(listOf("amount"), parametersOf(node))
         assertReceiver("BillingAccount", node)
     }
 
-    fun testObjectMemberExtensionReportsItsExtensionReceiverNotTheDispatchReceiver() = runBlocking {
+    fun testObjectMemberExtensionReportsItsExtensionReceiverNotTheDispatchReceiver() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("fun chargeWithHelper", "chargeWithPolicy")
         assertEquals(listOf("amount"), parametersOf(node))
         assertReceiver("BillingAccount", node)
     }
 
-    fun testGenericExtensionKeepsTheDeclaredTypeParameterRatherThanItsBound() = runBlocking {
+    fun testGenericExtensionKeepsTheDeclaredTypeParameterRatherThanItsBound() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("fun touchAccount", "touch")
         assertEquals(emptyList<String>(), parametersOf(node))
         assertReceiver("T", node)
     }
 
-    fun testNullableExtensionKeepsTheQuestionMark() = runBlocking {
+    fun testNullableExtensionKeepsTheQuestionMark() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("fun normalizeLabel", "orBlank")
         assertEquals(emptyList<String>(), parametersOf(node))
         assertReceiver("String?", node)
     }
 
-    fun testOrdinaryMemberMethodHasNoReceiverKey() = runBlocking {
+    fun testOrdinaryMemberMethodHasNoReceiverKey() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("fun readBalance", "balance")
         assertEquals(listOf("currency"), parametersOf(node))
         assertFalse("Ordinary methods must omit receiver, not serialize null: $node", node.has("receiver"))
     }
 
-    fun testSuspendExtensionReportsReceiverWithoutJvmContinuationOrReceiverParameters() = runBlocking {
+    fun testSuspendExtensionReportsReceiverWithoutJvmContinuationOrReceiverParameters() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("suspend fun chargeLater", "chargeSuspending")
         assertEquals(listOf("amount"), parametersOf(node))
         assertFalse("The JVM continuation must not leak into parameters", parametersOf(node).any { it.contains('$') })
         assertReceiver("BillingAccount", node)
     }
 
-    fun testOrdinaryNodeRetainsTheBaselineOrderedKeys() = runBlocking {
+    fun testOrdinaryNodeRetainsTheBaselineOrderedKeys() = runBlockingReleasingWriteIntent {
         assertEquals(BASELINE_KEYS, nodeReachedFrom("fun readBalance", "balance").fieldNames().asSequence().toList())
     }
 
-    fun testExtensionNodeInsertsReceiverImmediatelyAfterParameters() = runBlocking {
+    fun testExtensionNodeInsertsReceiverImmediatelyAfterParameters() = runBlockingReleasingWriteIntent {
         val keys = BASELINE_KEYS.toMutableList().apply { add(indexOf("parameters") + 1, "receiver") }
         assertEquals(keys, nodeReachedFrom("fun chargeAccount", "charge").fieldNames().asSequence().toList())
     }
 
-    fun testJavaMethodOmitsReceiver() = runBlocking {
+    fun testJavaMethodOmitsReceiver() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("fun javaBalance", "available")
         assertEquals(listOf("currency"), parametersOf(node))
         assertFalse("Java methods must omit receiver: $node", node.has("receiver"))
     }
 
-    fun testQualifiedReceiverKeepsItsWrittenPackage() = runBlocking {
+    fun testQualifiedReceiverKeepsItsWrittenPackage() = runBlockingReleasingWriteIntent {
         assertReceiver("com.example.billing.BillingAccount", nodeReachedFrom("fun qualifiedCharge", "chargeQualified"))
     }
 
-    fun testTypealiasReceiverKeepsTheAlias() = runBlocking {
+    fun testTypealiasReceiverKeepsTheAlias() = runBlockingReleasingWriteIntent {
         assertReceiver("Money", nodeReachedFrom("fun formatMoney", "format"))
     }
 
-    fun testFunctionTypeReceiverKeepsParentheses() = runBlocking {
+    fun testFunctionTypeReceiverKeepsParentheses() = runBlockingReleasingWriteIntent {
         val node = nodeReachedFrom("fun runCallback", "runWith")
         assertEquals(listOf("x"), parametersOf(node))
         assertReceiver("((String) -> Unit)", node)
     }
 
-    fun testClassMemberExtensionReportsReceiverWhenCalledInsideItsClass() = runBlocking {
+    fun testClassMemberExtensionReportsReceiverWhenCalledInsideItsClass() = runBlockingReleasingWriteIntent {
         assertReceiver("BillingAccount", nodeReachedFrom("fun memberCharge", "chargeInClass"))
     }
 

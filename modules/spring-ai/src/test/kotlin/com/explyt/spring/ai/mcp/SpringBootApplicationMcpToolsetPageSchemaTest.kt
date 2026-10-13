@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -14,7 +15,6 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 /**
  * A Spring Data `Page` or `Slice` response in `explyt_get_spring_endpoint_contract` is described as Spring Data writes
@@ -231,7 +231,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         TestLibrary.kotlin_1_9_22,
     )
 
-    fun testPageWithoutWebSupportIsWrittenDirectByDefault() = runBlocking<Unit> {
+    fun testPageWithoutWebSupportIsWrittenDirectByDefault() = runBlockingReleasingWriteIntent<Unit> {
         val schema = pageSchema("/orders/page")
 
         assertDirectPage(schema)
@@ -239,7 +239,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertPageAssumed(schema)
     }
 
-    fun testPageContentIsTheElementSchema() = runBlocking<Unit> {
+    fun testPageContentIsTheElementSchema() = runBlockingReleasingWriteIntent<Unit> {
         val content = field(pageSchema("/orders/page"), "content")
 
         assertEquals("java.util.List<$ORDER_DTO>", content["type"].asText())
@@ -247,7 +247,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertEquals(listOf("id", "note"), names(content["nested"]))
     }
 
-    fun testViaDtoAnnotationWritesPagedModel() = runBlocking<Unit> {
+    fun testViaDtoAnnotationWritesPagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
 
         val schema = pageSchema("/orders/page")
@@ -256,7 +256,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
-    fun testViaDtoAnnotationInKotlinWritesPagedModel() = runBlocking<Unit> {
+    fun testViaDtoAnnotationInKotlinWritesPagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/config/KotlinWebConfig.kt", """
             package com.example.config
@@ -278,7 +278,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.KotlinWebConfig", schema)
     }
 
-    fun testExplicitDirectAnnotationWritesPageDirect() = runBlocking<Unit> {
+    fun testExplicitDirectAnnotationWritesPageDirect() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("DIRECT")
 
         val schema = pageSchema("/orders/page")
@@ -287,7 +287,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
-    fun testAnnotationWithoutModeAttributeIsDirect() = runBlocking<Unit> {
+    fun testAnnotationWithoutModeAttributeIsDirect() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig(null)
 
         val schema = pageSchema("/orders/page")
@@ -296,7 +296,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
-    fun testViaDtoPropertyWritesPagedModel() = runBlocking<Unit> {
+    fun testViaDtoPropertyWritesPagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
 
         val schema = pageSchema("/orders/page")
@@ -305,7 +305,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(SERIALIZATION_MODE_KEY, schema)
     }
 
-    fun testAnnotationOutranksTheProperty() = runBlocking<Unit> {
+    fun testAnnotationOutranksTheProperty() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("DIRECT")
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
 
@@ -315,7 +315,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
-    fun testPlaceholderModeIsReportedUnknownWithTheDefaultShape() = runBlocking<Unit> {
+    fun testPlaceholderModeIsReportedUnknownWithTheDefaultShape() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=\${PAGE_MODE}")
 
         val schema = pageSchema("/orders/page")
@@ -325,7 +325,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertPageAssumed(schema)
     }
 
-    fun testModeInAnInactiveProfileFileIsNotLoaded() = runBlocking<Unit> {
+    fun testModeInAnInactiveProfileFileIsNotLoaded() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application-prod.properties", "$SERIALIZATION_MODE_KEY=VIA_DTO")
 
         val schema = pageSchema("/orders/page")
@@ -335,7 +335,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertPageAssumed(schema)
     }
 
-    fun testModeInAnActiveProfileFileIsLoaded() = runBlocking<Unit> {
+    fun testModeInAnActiveProfileFileIsLoaded() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "spring.profiles.active=prod")
         addFile("application-prod.properties", "$SERIALIZATION_MODE_KEY=VIA_DTO")
 
@@ -345,31 +345,31 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(SERIALIZATION_MODE_KEY, schema)
     }
 
-    fun testSliceIsWrittenDirect() = runBlocking<Unit> {
+    fun testSliceIsWrittenDirect() = runBlockingReleasingWriteIntent<Unit> {
         assertDirectSlice(sliceSchema("/orders/slice"))
     }
 
-    fun testSliceStaysDirectUnderViaDto() = runBlocking<Unit> {
+    fun testSliceStaysDirectUnderViaDto() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
 
         assertDirectSlice(sliceSchema("/orders/slice"))
     }
 
-    fun testResponseEntityOfPageUnwrapsToThePage() = runBlocking<Unit> {
+    fun testResponseEntityOfPageUnwrapsToThePage() = runBlockingReleasingWriteIntent<Unit> {
         val schema = schemaOf("/orders/entity-page", "org.springframework.http.ResponseEntity<$PAGE<$ORDER_DTO>>")
 
         assertDirectPage(schema)
         assertSource("DEFAULT", schema)
     }
 
-    fun testPagedModelReturnDescribesItsDeclaredWireShape() = runBlocking<Unit> {
+    fun testPagedModelReturnDescribesItsDeclaredWireShape() = runBlockingReleasingWriteIntent<Unit> {
         val schema = schemaOf("/orders/model", "$PAGED_MODEL<$ORDER_DTO>")
 
         assertPagedModel(schema)
         assertSource("DECLARED_TYPE", schema)
     }
 
-    fun testPagedModelReturnKeepsItsDeclaredWireShapeWithViaDtoProperty() = runBlocking<Unit> {
+    fun testPagedModelReturnKeepsItsDeclaredWireShapeWithViaDtoProperty() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
 
         val schema = schemaOf("/orders/model", "$PAGED_MODEL<$ORDER_DTO>")
@@ -378,7 +378,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("DECLARED_TYPE", schema)
     }
 
-    fun testResponseEntityOfPagedModelDescribesItsDeclaredWireShape() = runBlocking<Unit> {
+    fun testResponseEntityOfPagedModelDescribesItsDeclaredWireShape() = runBlockingReleasingWriteIntent<Unit> {
         val schema = schemaOf(
             "/orders/entity-model",
             "org.springframework.http.ResponseEntity<$PAGED_MODEL<$ORDER_DTO>>",
@@ -388,7 +388,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("DECLARED_TYPE", schema)
     }
 
-    fun testKotlinSuspendHandlerReturningPagedModelIsThePagedModel() = runBlocking<Unit> {
+    fun testKotlinSuspendHandlerReturningPagedModelIsThePagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/shop/SuspendPagedModelController.kt", """
             package com.example.shop
@@ -411,7 +411,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("DECLARED_TYPE", schema)
     }
 
-    fun testBlankSerializationModeUsesBootDirectDefault() = runBlocking<Unit> {
+    fun testBlankSerializationModeUsesBootDirectDefault() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=")
 
         val schema = pageSchema("/orders/page")
@@ -420,7 +420,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("DEFAULT", schema)
     }
 
-    fun testComposedWebSupportAnnotationControlsPageSerialization() = runBlocking<Unit> {
+    fun testComposedWebSupportAnnotationControlsPageSerialization() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/config/EnableMyWeb.java", """
             package com.example.config;
@@ -458,7 +458,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("@EnableSpringDataWebSupport on com.example.config.ComposedWebConfig", schema)
     }
 
-    fun testKotlinSuspendHandlerReturningPageIsThePage() = runBlocking<Unit> {
+    fun testKotlinSuspendHandlerReturningPageIsThePage() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/shop/SuspendOrderController.kt", """
             package com.example.shop
@@ -478,7 +478,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertDirectPage(schemaOf("/orders/suspend-page", "$PAGE<$ORDER_DTO>"))
     }
 
-    fun testUnknownModeValueIsReportedUnknownWithTheDefaultShape() = runBlocking<Unit> {
+    fun testUnknownModeValueIsReportedUnknownWithTheDefaultShape() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=garbage")
 
         val schema = pageSchema("/orders/page")
@@ -487,7 +487,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
-    fun testUpperCaseModeValueWritesPagedModel() = runBlocking<Unit> {
+    fun testUpperCaseModeValueWritesPagedModel() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=VIA_DTO")
 
         val schema = pageSchema("/orders/page")
@@ -496,7 +496,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(SERIALIZATION_MODE_KEY, schema)
     }
 
-    fun testWebSupportInATestSourceRootDoesNotChangeTheProductionShape() = runBlocking<Unit> {
+    fun testWebSupportInATestSourceRootDoesNotChangeTheProductionShape() = runBlockingReleasingWriteIntent<Unit> {
         val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
         PsiTestUtil.addSourceRoot(module, testRoot, true)
         try {
@@ -525,7 +525,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         }
     }
 
-    fun testPagesInsideAListAreDescribedWithTheConfiguredShape() = runBlocking<Unit> {
+    fun testPagesInsideAListAreDescribedWithTheConfiguredShape() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
         addNestedPagesController()
 
@@ -536,7 +536,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertPageAssumed(schema)
     }
 
-    fun testPageFieldOfADtoIsDescribedWithTheConfiguredShape() = runBlocking<Unit> {
+    fun testPageFieldOfADtoIsDescribedWithTheConfiguredShape() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
         addNestedPagesController()
 
@@ -549,7 +549,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, orders["nested"])
     }
 
-    fun testPageOfAnUnresolvedElementKeepsThePageShape() = runBlocking<Unit> {
+    fun testPageOfAnUnresolvedElementKeepsThePageShape() = runBlockingReleasingWriteIntent<Unit> {
         addFile(
             "com/example/shop/UnresolvedController.java", """
             package com.example.shop;
@@ -581,7 +581,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertTrue("an unresolved element has no schema: $content", content["nested"].isNull)
     }
 
-    fun testDirectPageImplSubclassIsWrittenWithEveryPageKeyAndItsOwnGetters() = runBlocking<Unit> {
+    fun testDirectPageImplSubclassIsWrittenWithEveryPageKeyAndItsOwnGetters() = runBlockingReleasingWriteIntent<Unit> {
         addCustomPage()
 
         val schema = schemaOf("/orders/custom-page", "$CUSTOM_PAGE<$ORDER_DTO>")
@@ -591,7 +591,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertPageableAndSortAsWritten(schema)
     }
 
-    fun testUnknownModeLeavesAPageImplSubclassDirectAndSaysSo() = runBlocking<Unit> {
+    fun testUnknownModeLeavesAPageImplSubclassDirectAndSaysSo() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=\${PAGE_MODE}")
         addCustomPage()
 
@@ -601,7 +601,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource("UNKNOWN", schema)
     }
 
-    fun testPageImplSubclassWithAFixedElementIsRewrappedUnderViaDto() = runBlocking<Unit> {
+    fun testPageImplSubclassWithAFixedElementIsRewrappedUnderViaDto() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
         addFile(
             "com/example/shop/OrderDtoPage.java", """
@@ -637,7 +637,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
-    fun testPageImplSubclassIsRewrappedUnderViaDto() = runBlocking<Unit> {
+    fun testPageImplSubclassIsRewrappedUnderViaDto() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
         addCustomPage()
 
@@ -647,7 +647,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
-    fun testOwnPageImplementationIsNotRewrappedUnderViaDto() = runBlocking<Unit> {
+    fun testOwnPageImplementationIsNotRewrappedUnderViaDto() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
         addFile(
             "com/example/shop/WindowPage.java", """
@@ -684,7 +684,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertTrue("its own getter is written: $schema", "window" in names(schema))
     }
 
-    fun testSliceImplSubclassStaysDirectUnderViaDto() = runBlocking<Unit> {
+    fun testSliceImplSubclassStaysDirectUnderViaDto() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfig("VIA_DTO")
         addFile(
             "com/example/shop/OrderSlice.java", """
@@ -786,21 +786,21 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         )
     }
 
-    fun testDirectPageDescribesPageableAndSortAsWritten() = runBlocking<Unit> {
+    fun testDirectPageDescribesPageableAndSortAsWritten() = runBlockingReleasingWriteIntent<Unit> {
         val schema = pageSchema("/orders/page")
 
         assertDirectPage(schema)
         assertPageableAndSortAsWritten(schema)
     }
 
-    fun testDirectSliceDescribesPageableAndSortAsWritten() = runBlocking<Unit> {
+    fun testDirectSliceDescribesPageableAndSortAsWritten() = runBlockingReleasingWriteIntent<Unit> {
         val schema = sliceSchema("/orders/slice")
 
         assertDirectSlice(schema)
         assertPageableAndSortAsWritten(schema)
     }
 
-    fun testViaDtoDeclarationWinsOverAnEarlierDirectOne() = runBlocking<Unit> {
+    fun testViaDtoDeclarationWinsOverAnEarlierDirectOne() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfigNamed("AlphaWebConfig", "DIRECT")
         addWebConfig("VIA_DTO")
 
@@ -810,7 +810,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(WEB_CONFIG_SOURCE, schema)
     }
 
-    fun testTwoDirectDeclarationsStayDirect() = runBlocking<Unit> {
+    fun testTwoDirectDeclarationsStayDirect() = runBlockingReleasingWriteIntent<Unit> {
         addWebConfigNamed("AlphaWebConfig", "DIRECT")
         addWebConfig("DIRECT")
 
@@ -820,7 +820,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertTrue(schema.toString(), schema["wireShapeSource"].asText().startsWith("@EnableSpringDataWebSupport on "))
     }
 
-    fun testCamelCaseModeValueIsReadLeniently() = runBlocking<Unit> {
+    fun testCamelCaseModeValueIsReadLeniently() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=viaDto")
 
         val schema = pageSchema("/orders/page")
@@ -829,7 +829,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(SERIALIZATION_MODE_KEY, schema)
     }
 
-    fun testDottedModeValueIsReadLeniently() = runBlocking<Unit> {
+    fun testDottedModeValueIsReadLeniently() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=VIA.DTO")
 
         val schema = pageSchema("/orders/page")
@@ -838,7 +838,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertSource(SERIALIZATION_MODE_KEY, schema)
     }
 
-    fun testClassNameAsModeValueIsReportedUnknown() = runBlocking<Unit> {
+    fun testClassNameAsModeValueIsReportedUnknown() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=PagedModel")
 
         val schema = pageSchema("/orders/page")
@@ -894,7 +894,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertResolves("com.example.config.$className")
     }
 
-    fun testListOfDtoIsUnchanged() = runBlocking<Unit> {
+    fun testListOfDtoIsUnchanged() = runBlockingReleasingWriteIntent<Unit> {
         val schema = schemaOf("/orders/list", "java.util.List<$ORDER_DTO>")
 
         assertEquals(listOf("className", "fields"), keys(schema))
@@ -902,7 +902,7 @@ class SpringBootApplicationMcpToolsetPageSchemaTest : PageSchemaTestCase() {
         assertEquals(listOf("id", "note"), names(schema))
     }
 
-    fun testPlainDtoIsUnchanged() = runBlocking<Unit> {
+    fun testPlainDtoIsUnchanged() = runBlockingReleasingWriteIntent<Unit> {
         val schema = schemaOf("/orders/one", ORDER_DTO)
 
         assertEquals(listOf("className", "fields"), keys(schema))
@@ -925,7 +925,7 @@ class SpringBootApplicationMcpToolsetReactivePageSchemaTest : PageSchemaTestCase
         TestLibrary.springDataJpa_3_4_0,
     )
 
-    fun testPropertyIsIgnoredOnAReactiveApplication() = runBlocking<Unit> {
+    fun testPropertyIsIgnoredOnAReactiveApplication() = runBlockingReleasingWriteIntent<Unit> {
         addFile("application.properties", "$SERIALIZATION_MODE_KEY=via-dto")
 
         val schema = pageSchema("/orders/page")
@@ -935,7 +935,7 @@ class SpringBootApplicationMcpToolsetReactivePageSchemaTest : PageSchemaTestCase
         assertPageAssumed(schema)
     }
 
-    fun testWebSupportAnnotationOnAReactiveApplicationIsUnknown() = runBlocking<Unit> {
+    fun testWebSupportAnnotationOnAReactiveApplicationIsUnknown() = runBlockingReleasingWriteIntent<Unit> {
         assertNull(
             "reactive fixture must not resolve Spring MVC WebConfigurer",
             JavaPsiFacade.getInstance(project).findClass(
@@ -952,7 +952,7 @@ class SpringBootApplicationMcpToolsetReactivePageSchemaTest : PageSchemaTestCase
         assertPageAssumed(schema)
     }
 
-    fun testPlainDtoIsUnchangedOnAReactiveApplication() = runBlocking<Unit> {
+    fun testPlainDtoIsUnchangedOnAReactiveApplication() = runBlockingReleasingWriteIntent<Unit> {
         val schema = schemaOf("/orders/one", ORDER_DTO)
 
         assertEquals(listOf("className", "fields"), keys(schema))
