@@ -2433,8 +2433,10 @@ private const val BEAN_CONDITION_DESCRIPTION =
         "its conditions cannot be decided statically - then 'annotation', 'carrier' and 'detail' name the " +
         "first undecided condition and 'reasons' lists the reason of every undecided one. 'exposed' and " +
         "'access' describe the configured exposure, not whether the bean exists. The key is absent when no " +
-        "condition excludes the bean or leaves it undecided, and when bean condition evaluation is disabled " +
-        "in the settings. "
+        "condition excludes the bean or leaves it undecided. While bean condition evaluation is disabled in the " +
+        "settings a missing key does not mean the bean is active: no endpoint carries it then, and every page " +
+        "names that in the envelope-level 'limitations': [\"CONDITIONS_NOT_EVALUATED\"], a key absent while " +
+        "conditions are evaluated. "
 
 data class EndpointParameterJson(
     val name: String,
