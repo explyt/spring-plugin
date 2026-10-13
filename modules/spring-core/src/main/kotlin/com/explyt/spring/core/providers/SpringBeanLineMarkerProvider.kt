@@ -13,6 +13,7 @@ import com.explyt.spring.core.service.SpringSearchServiceFacade
 import com.explyt.spring.core.service.SpringSearchUtils
 import com.explyt.spring.core.statistic.StatisticActionId
 import com.explyt.spring.core.statistic.StatisticService
+import com.explyt.spring.core.util.InjectionConstructors
 import com.explyt.spring.core.util.InjectionPointOwners
 import com.explyt.spring.core.util.SpringCoreUtil
 import com.explyt.spring.core.util.SpringCoreUtil.getArrayType
@@ -336,12 +337,11 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allAutowiredAnnotations = SpringSearchUtils.getAutowiredFieldAnnotations(module)
             val allAutowiredAnnotationsNames = allAutowiredAnnotations.mapNotNull { it.qualifiedName }
 
-            val allBeans = springSearchService.getActiveBeansClasses(module) +
-                    springSearchService.getDependentBeanPsiClassesAnnotatedByComponent(module)
+            val allBeans = springSearchService.getInjectionPointOwnerBeans(module)
 
             val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
             val owners = InjectionPointOwners.of(beanClasses.asSequence())
-            val componentClasses = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+            val componentClasses = springSearchService.getInjectionPointComponentBeans(module)
                 .mapTo(HashSet()) { it.psiClass }
 
             val allFieldsWithAutowired = owners.asSequence()
@@ -357,11 +357,14 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
             val allParametersWithAutowired = mutableSetOf<UVariable>()
             owners.forEach { owner ->
                 val methods = owner.toUElementOfType<UClass>()?.methods ?: return@forEach
+                val injectionConstructors =
+                    InjectionConstructors.of(owner) { it.isAnnotatedBy(allAutowiredAnnotationsNames) }
                 allParametersWithAutowired.addAll(
                     methods.asSequence()
                         .filter {
                             if (it.isConstructor) owner in beanClasses
                                     && (owner in componentClasses || it.isAnnotatedBy(allAutowiredAnnotationsNames))
+                                    && it.javaPsi in injectionConstructors
                             else it.isAnnotatedBy(allAutowiredAnnotationsNames)
                                     || it.isAnnotatedBy(SpringCoreClasses.BEAN)
                         }
