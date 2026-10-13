@@ -348,14 +348,11 @@ class SpringSearchService(private val project: Project) {
     fun getComponentBeanPsiMethods(module: Module): Set<PsiMethod> = getComponentBeanFactories(module).keys
 
     @Deprecated("Don use directly. Use SpringSearchServiceFacade")
-    fun getComponentBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> =
-        getComponentBeanFactories(module).mapValues { (factory, configuration) ->
-            BeanFactoryMethods.overrideIn(configuration, factory) ?: factory
-        }
+    fun getComponentBeanFactoryMethods(module: Module): Map<PsiMethod, PsiMethod> = getComponentBeanFactories(module)
 
-    private fun getComponentBeanFactories(module: Module): Map<PsiMethod, PsiClass> {
+    private fun getComponentBeanFactories(module: Module): Map<PsiMethod, PsiMethod> {
         return cachedValuesManager.getCachedValue(module) {
-            val factories = LinkedHashMap<PsiMethod, PsiClass>()
+            val factories = LinkedHashMap<PsiMethod, PsiMethod>()
             getBeanPsiClassesAnnotatedByComponent(module)
                 .asSequence()
                 .map { it.psiClass }
@@ -363,7 +360,7 @@ class SpringSearchService(private val project: Project) {
                 .forEach { configuration ->
                     getMethodBeans(configuration)
                         .filter { isActive(it) }
-                        .forEach { factories.putIfAbsent(it, configuration) }
+                        .forEach { factory -> factories.getOrPut(factory) { effectiveFactory(configuration, factory) } }
                 }
             CachedValueProvider.Result(
                 factories,
@@ -372,11 +369,14 @@ class SpringSearchService(private val project: Project) {
         }
     }
 
+    private fun effectiveFactory(configuration: PsiClass, factory: PsiMethod): PsiMethod =
+        BeanFactoryMethods.overrideIn(configuration, factory) ?: factory
+
     private fun methodBeansOf(
-        configuration: PsiClass, factory: PsiMethod, beanClassOf: (PsiType) -> PsiClass?
+        factory: PsiMethod, effectiveFactory: PsiMethod, beanClassOf: (PsiType) -> PsiClass?
     ): Sequence<PsiBean> {
-        val factoryOverride = BeanFactoryMethods.overrideIn(configuration, factory)
-        val beanClass = (factoryOverride ?: factory).returnType?.let(beanClassOf) ?: return emptySequence()
+        val beanClass = effectiveFactory.returnType?.let(beanClassOf) ?: return emptySequence()
+        val factoryOverride = effectiveFactory.takeUnless { it == factory }
         return factory.resolveBeanName.asSequence()
             .map { PsiBean(it, beanClass, factory.getQualifierAnnotation(), factory, factoryOverride = factoryOverride) }
     }
@@ -407,7 +407,7 @@ class SpringSearchService(private val project: Project) {
 
     private fun searchComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanFactories(module).asSequence()
-            .flatMap { (factory, configuration) -> methodBeansOf(configuration, factory) { it.resolvedPsiClass } }
+            .flatMap { (factory, effectiveFactory) -> methodBeansOf(factory, effectiveFactory) { it.resolvedPsiClass } }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it.psiClass) }
             .toSet()
     }
@@ -419,7 +419,9 @@ class SpringSearchService(private val project: Project) {
             .flatMap { configuration ->
                 BeanFactoryMethods.of(configuration)
                     .filter { isActive(it) }
-                    .flatMap { factory -> methodBeansOf(configuration, factory) { it.resolvedPsiClass } }
+                    .flatMap { factory ->
+                        methodBeansOf(factory, effectiveFactory(configuration, factory)) { it.resolvedPsiClass }
+                    }
             }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it.psiClass) }
             .toSet()
@@ -427,7 +429,9 @@ class SpringSearchService(private val project: Project) {
 
     fun searchArrayComponentPsiClassesByBeanMethods(module: Module): Set<PsiBean> {
         return getComponentBeanFactories(module).asSequence()
-            .flatMap { (factory, configuration) -> methodBeansOf(configuration, factory) { it.resolvedDeepPsiClass } }
+            .flatMap { (factory, effectiveFactory) ->
+                methodBeansOf(factory, effectiveFactory) { it.resolvedDeepPsiClass }
+            }
             .filter { it.factoryMethod?.returnType is PsiArrayType }
             .filter { SpringCoreUtil.isSpringBeanCandidateClass(it.psiClass) }
             .toSet()
@@ -493,8 +497,7 @@ class SpringSearchService(private val project: Project) {
     fun PsiType.isMultipleBean(module: Module): Boolean {
         if (!possibleMultipleBean()) return false
         val beanPsiType = beanPsiType ?: return true
-        val methodsPsiBeans = getComponentBeanFactories(module)
-            .map { (factory, configuration) -> BeanFactoryMethods.overrideIn(configuration, factory) ?: factory }
+        val methodsPsiBeans = getComponentBeanFactories(module).values
 
         val byExactMatch = methodsPsiBeans.filterByExactMatch(this)
         if (byExactMatch.isEmpty()) return true
