@@ -28,7 +28,7 @@ class InspectionAvailabilityInDumbModeTest : ExplytJavaLightTestCase() {
         "OrderDao.java",
         """
         import org.springframework.jdbc.core.simple.JdbcClient;
-        
+
         public class OrderDao {
             JdbcClient jdbcClient;
         }

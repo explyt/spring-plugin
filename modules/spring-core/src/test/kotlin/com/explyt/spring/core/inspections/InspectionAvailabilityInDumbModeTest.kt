@@ -78,7 +78,7 @@ class InspectionAvailabilityInDumbModeTest : ExplytJavaLightTestCase() {
         "Sample.java",
         """
         import javax.annotation.PostConstruct;
-        
+
         public class Sample {
             @PostConstruct
             void init() {}
