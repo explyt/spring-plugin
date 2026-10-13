@@ -186,6 +186,34 @@ abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase()
         )
     }
 
+    protected fun assertIgnoredMethodWarning(
+        problems: List<HighlightInfo>,
+        anchor: String = "b",
+        firstMethod: String = "a"
+    ) {
+        assertSingleProblem(problems, HighlightSeverity.WARNING, anchor, beanName = "svc", firstMethod = firstMethod)
+        val description = problems.single().description
+        assertTrue(
+            "the message says that one of the functions is ignored: $description",
+            description.contains("ignore", ignoreCase = true)
+        )
+        assertFalse(
+            "the context starts below Spring 6.2.0, so no startup failure is claimed: $description",
+            description.contains("fails at startup")
+        )
+        assertEquals(SpringCoreBundle.message(IGNORED_METHOD_MESSAGE, "svc", firstMethod), description)
+    }
+
+    protected fun assertRegistrationOrderWarning(problems: List<HighlightInfo>, anchor: String, firstMethod: String) {
+        assertSingleProblem(problems, HighlightSeverity.WARNING, anchor, beanName = "svc", firstMethod = firstMethod)
+        val description = problems.single().description
+        assertTrue(
+            "the message names both outcomes, a startup failure and an ignored function: $description",
+            description.contains("fails at startup") && description.contains("ignores one of the two methods")
+        )
+        assertEquals(SpringCoreBundle.message(REGISTRATION_ORDER_MESSAGE, "svc", firstMethod), description)
+    }
+
     protected fun assertSingleProblem(
         problems: List<HighlightInfo>,
         severity: HighlightSeverity,
@@ -205,6 +233,8 @@ abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase()
 
     private companion object {
         const val INSPECTION_ID = "SpringDuplicateBeanName"
+        const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
+        const val REGISTRATION_ORDER_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.alias.order"
     }
 }
 
@@ -463,27 +493,38 @@ class SpringDuplicateBeanNameBeforeSpring62InspectionTest : SpringDuplicateBeanN
     fun testCollisionOfTwoAliasesFailsAtStartup() {
         assertStartupFailure(highlights(TWO_ALIASES_COLLISION), anchor = "y", firstMethod = "x")
     }
+}
 
-    private fun assertIgnoredMethodWarning(
-        problems: List<HighlightInfo>,
-        anchor: String = "b",
-        firstMethod: String = "a"
-    ) {
-        assertSingleProblem(problems, HighlightSeverity.WARNING, anchor, beanName = "svc", firstMethod = firstMethod)
-        val description = problems.single().description
-        assertTrue(
-            "the message says that one of the functions is ignored: $description",
-            description.contains("ignore", ignoreCase = true)
-        )
-        assertFalse(
-            "the context starts below Spring 6.2.0, so no startup failure is claimed: $description",
-            description.contains("fails at startup")
-        )
-        assertEquals(SpringCoreBundle.message(IGNORED_METHOD_MESSAGE, "svc", firstMethod), description)
+class SpringDuplicateBeanNameBeforeSpring6InspectionTest : SpringDuplicateBeanNameKotlinTestCase() {
+    override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_2_7_18)
+    override val springCoreVersion: String = "5.3.31"
+
+    fun testAliasCollisionWithMissingOverridingPropertyWarnsThatTheOutcomeDependsOnRegistrationOrder() {
+        assertRegistrationOrderWarning(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
     }
 
-    private companion object {
-        const val IGNORED_METHOD_MESSAGE = "explyt.spring.inspection.bean.name.duplicate.ignored"
+    fun testAliasCollisionWithDisallowedOverridingWarnsThatTheOutcomeDependsOnRegistrationOrder() {
+        allowBeanDefinitionOverriding("false")
+
+        assertRegistrationOrderWarning(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testAliasCollisionDeclaredAfterThePrimaryNameWarnsThatTheOutcomeDependsOnRegistrationOrder() {
+        assertRegistrationOrderWarning(highlights(ALIAS_COLLISION_AFTER_PRIMARY_NAME), anchor = "x", firstMethod = "y")
+    }
+
+    fun testAliasCollisionWithAllowedOverridingIsNotReported() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(ALIAS_COLLISION))
+    }
+
+    fun testCollisionOfTwoAliasesFailsAtStartup() {
+        assertStartupFailure(highlights(TWO_ALIASES_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testMissingOverridingPropertyWarnsThatOneFunctionIsIgnored() {
+        assertIgnoredMethodWarning(highlights(FULL_CONFIGURATION))
     }
 }
 
@@ -553,6 +594,16 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         assertEmpty(highlights(CONFIGURATION_WITHOUT_UNIQUE_METHODS))
     }
 
+    fun testAliasCollisionWithAllowedOverridingIsNotReportedInFullConfiguration() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(ALIAS_COLLISION))
+    }
+
+    fun testAliasCollisionWithMissingOverridingPropertyFailsAtStartupInFullConfiguration() {
+        assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
     private fun assertSpring7Problem(problems: List<HighlightInfo>) {
         assertSingleProblem(problems, HighlightSeverity.ERROR, anchor = "b", beanName = "svc", firstMethod = "a")
         assertEquals(
@@ -581,8 +632,18 @@ class SpringDuplicateBeanNameUnknownSpringVersionInspectionTest : SpringDuplicat
         assertUnknownVersionWarning(highlights(FULL_CONFIGURATION))
     }
 
-    fun testAliasCollisionWithMissingOverridingPropertyFailsAtStartup() {
-        assertStartupFailure(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    fun testAliasCollisionWithMissingOverridingPropertyWarnsThatTheOutcomeDependsOnRegistrationOrder() {
+        assertRegistrationOrderWarning(highlights(ALIAS_COLLISION), anchor = "y", firstMethod = "x")
+    }
+
+    fun testAliasCollisionWithAllowedOverridingIsNotReportedInFullConfiguration() {
+        allowBeanDefinitionOverriding("true")
+
+        assertEmpty(highlights(ALIAS_COLLISION))
+    }
+
+    fun testCollisionOfTwoAliasesFailsAtStartup() {
+        assertStartupFailure(highlights(TWO_ALIASES_COLLISION), anchor = "y", firstMethod = "x")
     }
 
     fun testAllowedOverridingInFullConfigurationUsesWarning() {
