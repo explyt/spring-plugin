@@ -9,8 +9,6 @@ import com.explyt.util.CacheKeyStore
 import com.intellij.java.library.JavaLibraryModificationTracker
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.project.DumbService
-import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.impl.LibraryScopeCache
 import com.intellij.openapi.util.Key
@@ -28,25 +26,17 @@ object LibraryClassCache {
         project: Project,
         fqn: String
     ): PsiClass? = runReadAction {
-        if (DumbService.isDumb(project)) findWhileIndexing(project, fqn) else findCached(project, fqn)
-    }
-
-    fun searchForLibraryClass(module: Module, fqn: String) = searchForLibraryClass(module.project, fqn)
-
-    fun searchForLibraryClasses(
-        module: Module,
-        fqns: Collection<String>
-    ): Collection<PsiClass> =
-        fqns.mapNotNull { searchForLibraryClass(module, it) }
-
-    private fun findCached(project: Project, fqn: String): PsiClass? =
         CachedValuesManager.getManager(project)
             .getCachedValue(
                 project,
                 keys.getValue(fqn),
                 {
+                    val result = JavaPsiFacade.getInstance(project).findClass(
+                        fqn, LibraryScopeCache.getInstance(project).librariesOnlyScope
+                    )
+
                     CachedValueProvider.Result.create(
-                        findLibraryClass(project, fqn),
+                        result,
 
                         @Suppress("UnstableApiUsage")
                         JavaLibraryModificationTracker.getInstance(project),
@@ -56,15 +46,13 @@ object LibraryClassCache {
                 },
                 false
             )
+    }
 
-    private fun findWhileIndexing(project: Project, fqn: String): PsiClass? =
-        project.getUserData(keys.getValue(fqn))?.upToDateOrNull?.get()
-            ?: try {
-                findLibraryClass(project, fqn)
-            } catch (_: IndexNotReadyException) {
-                null
-            }
+    fun searchForLibraryClass(module: Module, fqn: String) = searchForLibraryClass(module.project, fqn)
 
-    private fun findLibraryClass(project: Project, fqn: String): PsiClass? =
-        JavaPsiFacade.getInstance(project).findClass(fqn, LibraryScopeCache.getInstance(project).librariesOnlyScope)
+    fun searchForLibraryClasses(
+        module: Module,
+        fqns: Collection<String>
+    ): Collection<PsiClass> =
+        fqns.mapNotNull { searchForLibraryClass(module, it) }
 }
