@@ -56,9 +56,11 @@ object HandlerMethods {
         val mappedType = mappedType(controller) { it.isMetaAnnotatedBy(SpringWebClasses.REQUEST_MAPPING) }
             ?: return emptyList()
         val annotated = mappedType.toUElement() as? UAnnotated
-            ?: return requestMappingMah.getAnnotationMemberValues(mappedType, MAPPING_PATH_ATTRIBUTES)
+            ?: return requestMappingMah.nearestAnnotation(mappedType)
+                ?.let { requestMappingMah.getAnnotationMemberValues(it, MAPPING_PATH_ATTRIBUTES) }.orEmpty()
                 .mapNotNull { AnnotationUtil.getStringAttributeValue(it) }
-        return requestMappingMah.getAnnotationValues(annotated, MAPPING_PATH_ATTRIBUTES)
+        return requestMappingMah.nearestAnnotation(annotated)
+            ?.let { requestMappingMah.getAnnotationMemberValues(it, MAPPING_PATH_ATTRIBUTES) }.orEmpty()
             .mapNotNull { it.evaluateString() }
     }
 
