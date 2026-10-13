@@ -11,43 +11,54 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.backgroundWriteAction
 import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.application.smartReadAction
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 class RunBlockingReleasingWriteIntentTest : ExplytJavaLightTestCase() {
 
-    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+    @OptIn(DelicateCoroutinesApi::class)
     fun testToolReadIsNotBlockedByTheEdtWriteIntentWhileAWriteIsPending() {
         val application = ApplicationManager.getApplication()
         assertTrue("light tests run on the EDT", application.isDispatchThread)
         assertTrue("the EDT holds write-intent", application.isWriteIntentLockAcquired)
 
-        val value = runBlockingReleasingWriteIntent(timeout = 10.seconds) {
-            val writer = GlobalScope.launch(Dispatchers.Default) { backgroundWriteAction { } }
-            try {
-                val writePending = withTimeoutOrNull(3.seconds) {
-                    while (!ApplicationManagerEx.getApplicationEx().isWriteActionPending) delay(10.milliseconds)
-                    true
-                } ?: false
-                assertTrue("a background write is pending behind the EDT's write-intent", writePending)
+        val writer = GlobalScope.launch(Dispatchers.Default) { backgroundWriteAction { } }
+        try {
+            assertTrue(
+                "a background write is pending behind the EDT's write-intent",
+                awaitHoldingWriteIntent(5.seconds) { ApplicationManagerEx.getApplicationEx().isWriteActionPending },
+            )
 
-                val read = withTimeout(5.seconds) {
+            val value = runBlockingReleasingWriteIntent(timeout = 30.seconds) {
+                withTimeout(5.seconds) {
                     withContext(Dispatchers.IO) { smartReadAction(project) { 42 } }
                 }
-                withTimeout(5.seconds) { writer.join() }
-                read
-            } finally {
-                if (writer.isActive) writer.cancel()
             }
-        }
 
-        assertEquals(42, value)
+            assertEquals(42, value)
+            writer.joinWithin(10.seconds)
+        } finally {
+            if (writer.isActive) writer.cancel()
+        }
     }
+
+    private fun awaitHoldingWriteIntent(deadline: Duration, condition: () -> Boolean): Boolean {
+        val until = System.nanoTime() + deadline.inWholeNanoseconds
+        while (!condition()) {
+            if (System.nanoTime() > until) return false
+            Thread.sleep(10)
+        }
+        return true
+    }
+
+    private fun Job.joinWithin(deadline: Duration) =
+        runBlocking(Dispatchers.Default) { withTimeout(deadline) { join() } }
 }
