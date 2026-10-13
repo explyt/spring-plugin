@@ -1,0 +1,41 @@
+<!--
+  ~ Copyright (c) 2026 Explyt Ltd
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<html lang="en">
+<head>
+    <title>Composed @Bean Name Conflicts With Its Meta-Annotation</title>
+</head>
+<body>
+
+<p>Reports a composed <code>@Bean</code> annotation whose <code>name</code> attribute, set at the use site, conflicts
+with the name fixed by the meta <code>@Bean("...")</code> value.</p>
+
+<p>On Spring Framework 6 an annotation attribute called <code>name</code> without an <code>@AliasFor</code> to <code>@Bean</code> overrides
+<code>@Bean.name</code> by convention. When the meta-annotation fixes the bean name through <code>value</code> and the
+use site sets a different <code>name</code>, the application fails at startup with
+<code>AnnotationConfigurationException: Different @AliasFor mirror values</code>.</p>
+
+<p>Not reported: Spring Framework 7, which no longer applies convention-based overrides; an unknown Spring version;
+attributes declared with an explicit <code>@AliasFor</code> to <code>@Bean</code>; a meta
+<code>@Bean(name = "...")</code>, which the convention simply overrides; a use site that leaves <code>name</code>
+at its default or sets it to the meta value.</p>
+
+<p><b>Example:</b></p>
+<pre><code lang="java">
+    @Bean("fixed")
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface MyBean {
+        String[] name() default {};
+    }
+
+    @Configuration
+    class AppConfiguration {
+        @MyBean(name = "x")
+        Foo foo() { return new Foo(); }
+    }
+</code></pre>
+
+</body>
+</html>

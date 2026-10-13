@@ -36,11 +36,23 @@ class MergedAnnotationAttributes(
         data class Default(val attribute: PsiMethod) : Source
     }
 
+    class ConventionOverride(val useSite: Source.Declared, val root: PsiAnnotation)
+
     private class Level(val type: PsiClass, val annotation: PsiAnnotation)
 
     fun resolve(useSite: PsiAnnotation, targetAttributes: Set<String>): List<Source>? {
         val path = metaPathOf(useSite) ?: return null
         return attributeGroups(path.last().type, targetAttributes).mapNotNull { sourceOf(path, it) }
+    }
+
+    fun conventionOverrideOf(useSite: PsiAnnotation, targetAttribute: String): ConventionOverride? {
+        if (!conventionMapping) return null
+        val path = metaPathOf(useSite)?.takeIf { it.size > 1 } ?: return null
+        val group = mirrorsOf(path.last().type, listOf(targetAttribute))
+        if (aliasesAlong(path, group).first().isNotEmpty()) return null
+        val conventionNames = conventionAttributes(path.first().type, group).ifEmpty { return null }
+        val declared = pick(path.first(), conventionNames) as? Source.Declared ?: return null
+        return ConventionOverride(declared, path.last().annotation)
     }
 
     private fun metaPathOf(useSite: PsiAnnotation): List<Level>? {
