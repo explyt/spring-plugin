@@ -6,8 +6,8 @@
 package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.explyt.spring.web.util.WebApplicationStack
-import kotlinx.coroutines.runBlocking
 
 abstract class McpToolsetApiVersionTestCase : McpToolsetWebStackTestCase() {
 
@@ -68,7 +68,7 @@ class SpringBootApplicationMcpToolsetServletApiVersionTest : McpToolsetApiVersio
         TestLibrary.kotlin_1_9_22,
     )
 
-    fun testApiVersionArgumentIsSuppliedByTheServletFramework() = runBlocking<Unit> {
+    fun testApiVersionArgumentIsSuppliedByTheServletFramework() = runBlockingReleasingWriteIntent<Unit> {
         assertApiVersionStack(WebApplicationStack.SERVLET)
         addJavaVersionController()
 
@@ -78,7 +78,7 @@ class SpringBootApplicationMcpToolsetServletApiVersionTest : McpToolsetApiVersio
         )
     }
 
-    fun testKotlinApiVersionArgumentIsSuppliedByTheServletFramework() = runBlocking<Unit> {
+    fun testKotlinApiVersionArgumentIsSuppliedByTheServletFramework() = runBlockingReleasingWriteIntent<Unit> {
         assertApiVersionStack(WebApplicationStack.SERVLET)
         addKotlinVersionController()
 
@@ -97,7 +97,7 @@ class SpringBootApplicationMcpToolsetReactiveApiVersionTest : McpToolsetApiVersi
         TestLibrary.kotlin_1_9_22,
     )
 
-    fun testApiVersionArgumentIsSuppliedByTheReactiveFramework() = runBlocking<Unit> {
+    fun testApiVersionArgumentIsSuppliedByTheReactiveFramework() = runBlockingReleasingWriteIntent<Unit> {
         assertApiVersionStack(WebApplicationStack.REACTIVE)
         addJavaVersionController()
 

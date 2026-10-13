@@ -8,6 +8,7 @@ package com.explyt.spring.ai.mcp
 import com.explyt.spring.test.ExplytMultiModuleTestCase
 import com.explyt.spring.test.TestLibrary
 import com.explyt.spring.test.addFromMaven
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.module.JavaModuleType
@@ -19,7 +20,6 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
-import kotlinx.coroutines.runBlocking
 
 /**
  * A Gradle `test` source-set module declaring a test application lists every built-in Actuator endpoint a second
@@ -51,7 +51,7 @@ class SpringBootApplicationMcpToolsetTestApplicationActuatorTest : ExplytMultiMo
         assertTrue("precondition: test app", isInTestSources(TEST))
     }
 
-    fun testListingMarksTheTestApplicationCopy() = runBlocking<Unit> {
+    fun testListingMarksTheTestApplicationCopy() = runBlockingReleasingWriteIntent<Unit> {
         val listed = mapper.readTree(
             toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "ACTUATOR", compact = true)
         )["endpoints"].toList()
@@ -59,7 +59,7 @@ class SpringBootApplicationMcpToolsetTestApplicationActuatorTest : ExplytMultiMo
         assertTestCopyFollows(listed)
     }
 
-    fun testFindMarksTheTestApplicationCopy() = runBlocking<Unit> {
+    fun testFindMarksTheTestApplicationCopy() = runBlockingReleasingWriteIntent<Unit> {
         val found = mapper.readTree(
             toolset.findEndpoint(urlPattern = "/actuator/health", projectPath = projectPath())
         )["endpoints"].toList()

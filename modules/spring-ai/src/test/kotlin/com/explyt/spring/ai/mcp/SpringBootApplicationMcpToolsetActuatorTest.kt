@@ -7,12 +7,12 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytKotlinLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 
 /**
  * The built-in Actuator endpoints as the MCP endpoint tools report them: found by the URL a health check calls, and
@@ -73,7 +73,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
      * `health` is two operations - `/actuator/health` and `/actuator/health/{*path}` for any nested component - and the
      * lookup lists the exact route first, the way it orders any other match.
      */
-    fun testHealthIsFoundAndExposedByDefault() = runBlocking<Unit> {
+    fun testHealthIsFoundAndExposedByDefault() = runBlockingReleasingWriteIntent<Unit> {
         val found = find("/actuator/health")
 
         assertEquals(listOf("/actuator/health", "/actuator/health/{*path}"), found.map { it["fullPath"].asText() })
@@ -83,7 +83,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertEquals("EXPOSED", health["exposed"].asText())
     }
 
-    fun testLibraryEndpointCarriesNoTestSourceKey() = runBlocking<Unit> {
+    fun testLibraryEndpointCarriesNoTestSourceKey() = runBlockingReleasingWriteIntent<Unit> {
         val found = exactMatch("/actuator/health")
         val listed = listActuator(compact = true).single { it["fullPath"].asText() == "/actuator/health" }
 
@@ -91,7 +91,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertFalse("A built-in endpoint is library code, got $listed", listed.has("testSource"))
     }
 
-    fun testActuatorEndpointNamesItsApplication() = runBlocking<Unit> {
+    fun testActuatorEndpointNamesItsApplication() = runBlockingReleasingWriteIntent<Unit> {
         val found = exactMatch("/actuator/health")
         val listed = listActuator(compact = true).single { it["fullPath"].asText() == "/actuator/health" }
 
@@ -103,7 +103,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         )
     }
 
-    fun testControllerEndpointNamesNoApplication() = runBlocking<Unit> {
+    fun testControllerEndpointNamesNoApplication() = runBlockingReleasingWriteIntent<Unit> {
         val orders = exactMatch("/api/orders")
 
         assertEquals(
@@ -115,11 +115,11 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         )
     }
 
-    fun testInfoIsFoundButNotExposedByDefault() = runBlocking<Unit> {
+    fun testInfoIsFoundButNotExposedByDefault() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals("NOT_EXPOSED", exactMatch("/actuator/info")["exposed"].asText())
     }
 
-    fun testIncludeListExposesTheListedEndpoints() = runBlocking<Unit> {
+    fun testIncludeListExposesTheListedEndpoints() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "application.yaml", """
             management:
@@ -138,7 +138,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
      * A deployment health check calls the URL under the servlet context path, which no Actuator path declares. The
      * endpoint is declared in a jar, so the module whose base path applies is found through the jar's file.
      */
-    fun testHealthUnderTheDeclaredContextPathIsFoundWithItsBasePath() = runBlocking<Unit> {
+    fun testHealthUnderTheDeclaredContextPathIsFoundWithItsBasePath() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "application.yaml", """
             server:
@@ -159,7 +159,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertEquals(listOf("EXPOSED", "EXPOSED"), root["endpoints"].map { it["exposed"].asText() })
     }
 
-    fun testListingOfActuatorEndpointsCarriesExposureOnEveryRecord() = runBlocking<Unit> {
+    fun testListingOfActuatorEndpointsCarriesExposureOnEveryRecord() = runBlockingReleasingWriteIntent<Unit> {
         val listed = listActuator(compact = false)
 
         val paths = listed.map { it["fullPath"].asText() }
@@ -177,7 +177,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
     }
 
     /** `exposed` is a fact about Actuator endpoints; any other endpoint keeps its documented shape. */
-    fun testControllerEndpointHasNoExposedKey() = runBlocking<Unit> {
+    fun testControllerEndpointHasNoExposedKey() = runBlockingReleasingWriteIntent<Unit> {
         val listed = mapper.readTree(
             toolset.getHttpEndpoints(projectPath = projectPath(), controllerFilter = "OrdersController")
         )["endpoints"].single()
@@ -192,7 +192,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertFalse(find("/api/orders").single().has("exposed"))
     }
 
-    fun testContractOfHealthCarriesExposure() = runBlocking<Unit> {
+    fun testContractOfHealthCarriesExposure() = runBlockingReleasingWriteIntent<Unit> {
         val contract = mapper.readTree(
             toolset.getEndpointContract(urlPattern = "/actuator/health", projectPath = projectPath())
         )["endpoints"].first()
@@ -210,7 +210,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
      * A built-in endpoint is declared in a jar under the user's home, which is nothing an agent can open and a path
      * that must not leave the machine: the record names the jar instead, and keeps the class as its identity.
      */
-    fun testLibraryEndpointIsLocatedByItsJarNotByAnAbsolutePath() = runBlocking<Unit> {
+    fun testLibraryEndpointIsLocatedByItsJarNotByAnAbsolutePath() = runBlockingReleasingWriteIntent<Unit> {
         val healthEndpoint = JavaPsiFacade.getInstance(project)
             .findClass(HEALTH_ENDPOINT, GlobalSearchScope.allScope(project))!!
         val expectedJar = JarFileSystem.getInstance()
@@ -228,7 +228,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         }
     }
 
-    fun testProjectEndpointKeepsItsFilePathAndNamesNoLibrary() = runBlocking<Unit> {
+    fun testProjectEndpointKeepsItsFilePathAndNamesNoLibrary() = runBlockingReleasingWriteIntent<Unit> {
         val orders = find("/api/orders").single()
 
         assertEquals("com/example/app/web/OrdersController.kt", orders["filePath"].asText())
@@ -237,7 +237,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
     }
 
     /** Access is a gate independent of exposure: `shutdown` is exposed by `*` yet answers 404 without access. */
-    fun testAccessIsReportedNextToExposure() = runBlocking<Unit> {
+    fun testAccessIsReportedNextToExposure() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("application.properties", "management.endpoints.web.exposure.include=*")
 
         val shutdown = exactMatch("/actuator/shutdown")
@@ -257,7 +257,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertFalse("a controller endpoint has no 'access' key", find("/api/orders").single().has("access"))
     }
 
-    fun testReadOnlyAccessDeniesAWriteOperation() = runBlocking<Unit> {
+    fun testReadOnlyAccessDeniesAWriteOperation() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("application.properties", "management.endpoints.access.default=read-only")
 
         val loggers = find("/actuator/loggers/{name}").filter { it["fullPath"].asText() == "/actuator/loggers/{name}" }
@@ -266,7 +266,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
     }
 
     /** `@ReadOperation(produces = ...)` reaches the record: the thread dump also answers as plain text. */
-    fun testOperationProducesIsReported() = runBlocking<Unit> {
+    fun testOperationProducesIsReported() = runBlockingReleasingWriteIntent<Unit> {
         val produces = find("/actuator/threaddump")
             .filter { it["fullPath"].asText() == "/actuator/threaddump" }
             .flatMap { record -> record["produces"]?.map { it.asText() }.orEmpty() }
@@ -274,7 +274,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertTrue("the text dump's media type is reported, got $produces", produces.any { it.startsWith("text/plain") })
     }
 
-    fun testOperationReportsWhereItsMediaTypesComeFrom() = runBlocking<Unit> {
+    fun testOperationReportsWhereItsMediaTypesComeFrom() = runBlockingReleasingWriteIntent<Unit> {
         val health = exactMatch("/actuator/health")
         assertEquals("BOOT_DEFAULT", health["producesSource"]?.asText())
         assertEquals(
@@ -294,13 +294,13 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertEquals("NONE", contractOf("/actuator/loggers/{name}", "POST")["producesSource"]?.asText())
     }
 
-    fun testControllerEndpointHasNoProducesSourceKey() = runBlocking<Unit> {
+    fun testControllerEndpointHasNoProducesSourceKey() = runBlockingReleasingWriteIntent<Unit> {
         assertFalse(find("/api/orders").single().has("producesSource"))
         assertFalse(contractOf("/api/orders", "GET").has("producesSource"))
     }
 
     /** A `@Selector` is a path segment, and a write operation's other arguments are fields of its JSON body. */
-    fun testSelectorIsAPathParameterAndWriteArgumentsAreTheBody() = runBlocking<Unit> {
+    fun testSelectorIsAPathParameterAndWriteArgumentsAreTheBody() = runBlockingReleasingWriteIntent<Unit> {
         val write = contractOf("/actuator/loggers/{name}", "POST")["parameters"].associateBy { it["name"].asText() }
         assertEquals("PATH", write.getValue("name")["source"].asText())
         assertEquals("BODY", write.getValue("configuredLevel")["source"].asText())
@@ -310,7 +310,7 @@ class SpringBootApplicationMcpToolsetActuatorTest : ExplytKotlinLightTestCase() 
         assertEquals("PATH", read.getValue("name")["source"].asText())
     }
 
-    fun testLoggersResponseIsDescribedByTheDescriptorGetters() = runBlocking<Unit> {
+    fun testLoggersResponseIsDescribedByTheDescriptorGetters() = runBlockingReleasingWriteIntent<Unit> {
         val descriptor = JavaPsiFacade.getInstance(project).findClass(
             "org.springframework.boot.actuate.logging.LoggersEndpoint.LoggersDescriptor",
             GlobalSearchScope.allScope(project)

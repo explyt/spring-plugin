@@ -5,6 +5,7 @@
 
 package com.explyt.spring.ai.mcp
 
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -17,7 +18,6 @@ import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.runBlocking
 
 /**
  * Which calls on injected beans `explyt_get_spring_endpoint_contract` lists for a handler.
@@ -47,7 +47,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
     }
 
     /** The guard is called first, the service second: both are listed, and `serviceCall` stays the first. */
-    fun testGuardBeforeServiceListsBoth() = runBlocking<Unit> {
+    fun testGuardBeforeServiceListsBoth() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractOf("/api/stores/{id}/orders")
 
         assertEquals(
@@ -59,11 +59,11 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(lineOf("ordersService.list(id, it)"), contract["serviceCalls"][1]["callLine"].asInt())
     }
 
-    fun testExpressionBodiedHandlerHasOneCall() = runBlocking<Unit> {
+    fun testExpressionBodiedHandlerHasOneCall() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(listOf("com.example.app.web.OrdersService.count"), targets(contractOf("/api/stores/{id}/count")))
     }
 
-    fun testInjectedCompanionDependencyUsesItsSourceOwner() = runBlocking<Unit> {
+    fun testInjectedCompanionDependencyUsesItsSourceOwner() = runBlockingReleasingWriteIntent<Unit> {
         val callee = sourceNameCallee("handle")
         assertTrue((callee.containingClass?.navigationElement as? KtObjectDeclaration)?.isCompanion() == true)
         assertEquals("com.example.app.web.SourceHandler.Companion", callee.containingClass?.qualifiedName)
@@ -73,7 +73,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertFalse(contract["serviceCalls"].single()["target"].asText().contains(".Companion."))
     }
 
-    fun testInternalServiceMethodUsesItsSourceName() = runBlocking<Unit> {
+    fun testInternalServiceMethodUsesItsSourceName() = runBlockingReleasingWriteIntent<Unit> {
         val callee = sourceNameCallee("calculate")
         val source = callee.navigationElement as KtNamedFunction
         assertTrue(source.hasModifier(KtTokens.INTERNAL_KEYWORD))
@@ -83,7 +83,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertFalse(target.contains('\u0024'))
     }
 
-    fun testClassNestedInCompanionKeepsItsQualifiedSourceName() = runBlocking<Unit> {
+    fun testClassNestedInCompanionKeepsItsQualifiedSourceName() = runBlockingReleasingWriteIntent<Unit> {
         val callee = sourceNameCallee("parse")
         assertEquals("com.example.app.web.Owner.Companion.Nested", callee.containingClass?.qualifiedName)
         assertFalse((callee.containingClass?.navigationElement as? KtObjectDeclaration)?.isCompanion() == true)
@@ -93,7 +93,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         )
     }
 
-    fun testNamedCompanionUsesItsOuterSourceOwner() = runBlocking<Unit> {
+    fun testNamedCompanionUsesItsOuterSourceOwner() = runBlockingReleasingWriteIntent<Unit> {
         val callee = sourceNameCallee("create")
         val owner = callee.containingClass?.navigationElement as KtObjectDeclaration
         assertTrue(owner.isCompanion())
@@ -105,7 +105,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
     }
 
     /** Two calls of one bean method on different lines are two places a change has to be made. */
-    fun testSameMethodOnTwoLinesIsListedTwice() = runBlocking<Unit> {
+    fun testSameMethodOnTwoLinesIsListedTwice() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractOf("/api/stores/{id}/compare")
 
         assertEquals(
@@ -118,7 +118,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         )
     }
 
-    fun testFrameworkAndStdlibCallsAreNeverListed() = runBlocking<Unit> {
+    fun testFrameworkAndStdlibCallsAreNeverListed() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractOf("/api/stores/{id}/summary")
 
         assertEquals(listOf("com.example.app.web.OrdersService.count"), targets(contract))
@@ -128,7 +128,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
      * Kotlin copies a nullable bean into a local `val` to smart-cast it; the local is the bean, so its calls are the
      * handler's service calls. The UAST visit lists an outer call before the calls in its arguments.
      */
-    fun testCallsOnLocalCopiesOfNullableBeansAreListed() = runBlocking<Unit> {
+    fun testCallsOnLocalCopiesOfNullableBeansAreListed() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractOf("/api/items/{id}/activity")
 
         assertEquals(
@@ -144,7 +144,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(lineOf("stats.activity(id"), contract["serviceCalls"][2]["callLine"].asInt())
     }
 
-    fun testElvisThrowAndNonNullAssertionKeepTheBean() = runBlocking<Unit> {
+    fun testElvisThrowAndNonNullAssertionKeepTheBean() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(
             listOf("com.example.app.web.ImageStore.put", "com.example.app.web.ItemStatsService.count"),
             targets(contractOf("/api/items/{id}/image"))
@@ -152,12 +152,12 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
     }
 
     /** A cast, in parentheses or not, changes the static type only: the local still holds the bean. */
-    fun testCastKeepsTheBean() = runBlocking<Unit> {
+    fun testCastKeepsTheBean() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(listOf("com.example.app.web.ImageStore.put"), targets(contractOf("/api/items/{id}/cast")))
     }
 
     /** A `var` can be pointed elsewhere and a local built from scratch is not the bean: neither is a service call. */
-    fun testReassignableOrUnrelatedLocalsAreNotTheBean() = runBlocking<Unit> {
+    fun testReassignableOrUnrelatedLocalsAreNotTheBean() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(emptyList<String>(), targets(contractOf("/api/items/{id}/other")))
     }
 
@@ -165,11 +165,11 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
      * An elvis whose right side is another value can hold either side, so the local is not a copy of the left one;
      * only a right side that leaves the scope - `throw`, `return`, `error()` - makes the result the left side.
      */
-    fun testElvisWithAFallbackValueIsNotACopy() = runBlocking<Unit> {
+    fun testElvisWithAFallbackValueIsNotACopy() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(emptyList<String>(), targets(contractOf("/api/items/{id}/fallback")))
     }
 
-    fun testFinalJavaLocalCopyIsTheBean() = runBlocking<Unit> {
+    fun testFinalJavaLocalCopyIsTheBean() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/web/JavaItemsController.java", JAVA_SOURCE)
 
         assertEquals(
@@ -178,7 +178,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         )
     }
 
-    fun testReassignedJavaLocalIsNotTheBean() = runBlocking<Unit> {
+    fun testReassignedJavaLocalIsNotTheBean() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/web/JavaItemsController.java", JAVA_SOURCE)
 
         assertEquals(emptyList<String>(), targets(contractOf("/api/java-items/{id}/reassigned")))
@@ -188,7 +188,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
      * A bean method passed as a callable reference is invoked by the function it is passed to, so it is a call of the
      * handler on that bean - here through a local copy, after an ordinary call on another bean.
      */
-    fun testBeanMethodPassedAsAReferenceIsListed() = runBlocking<Unit> {
+    fun testBeanMethodPassedAsAReferenceIsListed() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractOf("/api/logos/{id}/upload")
 
         assertEquals(
@@ -198,7 +198,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(lineOf("input.use(validator::validate)"), contract["serviceCalls"][1]["callLine"].asInt())
     }
 
-    fun testReferenceOnAConstructorInjectedFieldIsListed() = runBlocking<Unit> {
+    fun testReferenceOnAConstructorInjectedFieldIsListed() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(listOf("com.example.app.web.LogoStore.save"), targets(contractOf("/api/logos/batch")))
     }
 
@@ -209,11 +209,11 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
      * - `LogoStore::size` qualifies the method by a type, not by an injected instance;
      * - `logoStore::capacity` reads a property of the bean, although it resolves to the getter.
      */
-    fun testReferencesThatAreNotOnAnInjectedBeanAreNotListed() = runBlocking<Unit> {
+    fun testReferencesThatAreNotOnAnInjectedBeanAreNotListed() = runBlockingReleasingWriteIntent<Unit> {
         assertEquals(emptyList<String>(), targets(contractOf("/api/logos/names")))
     }
 
-    fun testJavaMethodReferenceOnAnInjectedFieldIsListed() = runBlocking<Unit> {
+    fun testJavaMethodReferenceOnAnInjectedFieldIsListed() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/web/JavaItemsController.java", JAVA_SOURCE)
 
         assertEquals(
@@ -222,7 +222,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         )
     }
 
-    fun testHandlerWithoutBeanCallsHasAnEmptyList() = runBlocking<Unit> {
+    fun testHandlerWithoutBeanCallsHasAnEmptyList() = runBlockingReleasingWriteIntent<Unit> {
         val contract = contractOf("/api/stores/ping")
 
         assertTrue("serviceCalls is always present", contract.has("serviceCalls"))
@@ -230,7 +230,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertTrue(contract["serviceCall"].isNull)
     }
 
-    fun testInheritedRepositoryMethodIsListedWithItsLibrary() = runBlocking<Unit> {
+    fun testInheritedRepositoryMethodIsListedWithItsLibrary() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
         val repository = myFixture.findClass("com.example.app.owners.OwnerRepository")
         assertEquals(
@@ -255,7 +255,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
     }
 
     /** A call in the handler's own helper is made where the helper calls it, in place of the call of the helper. */
-    fun testCallsMadeThroughOwnHelpersAreListed() = runBlocking<Unit> {
+    fun testCallsMadeThroughOwnHelpersAreListed() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
 
         val contract = contractOf("/owners/list")
@@ -272,7 +272,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(contract["serviceCall"], contract["serviceCalls"][0])
     }
 
-    fun testRecursiveHelperIsFollowedOnce() = runBlocking<Unit> {
+    fun testRecursiveHelperIsFollowedOnce() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
 
         assertEquals(listOf("com.example.app.owners.OwnerAudit.loop"), targets(contractOf("/owners/recursive")))
@@ -282,7 +282,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
      * A helper of another class is not the handler's code, a repository passed to it is no longer the injected field,
      * and a locally created object is not the bean.
      */
-    fun testHelpersOfOtherClassesAndLocalObjectsAreNotListed() = runBlocking<Unit> {
+    fun testHelpersOfOtherClassesAndLocalObjectsAreNotListed() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
         myFixture.addFileToProject(
             "com/example/app/owners/OwnerAuditing.kt",
@@ -292,7 +292,7 @@ class SpringBootApplicationMcpToolsetServiceCallsTest : ExplytJavaLightTestCase(
         assertEquals(emptyList<String>(), targets(contractOf("/owners/elsewhere")))
     }
 
-    fun testUnresolvedMethodOnAnInjectedBeanIsListedAsUnresolved() = runBlocking<Unit> {
+    fun testUnresolvedMethodOnAnInjectedBeanIsListedAsUnresolved() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject("com/example/app/owners/OwnersController.kt", OWNERS_SOURCE)
 
         val calls = contractOf("/owners/missing")["serviceCalls"]

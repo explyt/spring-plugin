@@ -7,11 +7,11 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.runBlocking
 
 /**
  * A relationship mapped through `@JoinTable` reports the join table it declares (#507).
@@ -32,7 +32,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
     private val toolset = SpringBootApplicationMcpToolset()
     private val mapper = ObjectMapper()
 
-    fun testAPetclinicManyToManyReportsItsJoinTable() = runBlocking<Unit> {
+    fun testAPetclinicManyToManyReportsItsJoinTable() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
             "com/example/vets/Vet.java", """
@@ -66,7 +66,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testCompositeJoinColumnsAreReportedInDeclarationOrder() = runBlocking<Unit> {
+    fun testCompositeJoinColumnsAreReportedInDeclarationOrder() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
             "com/example/vets/Clinic.java", """
@@ -106,7 +106,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testQuotedJoinTableNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlocking<Unit> {
+    fun testQuotedJoinTableNamesAreReportedWithoutTheirDelimitersAndFlagged() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
             "com/example/vets/Surgeon.java", """
@@ -144,7 +144,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testAKotlinJoinTableWithArrayLiteralsIsReported() = runBlocking<Unit> {
+    fun testAKotlinJoinTableWithArrayLiteralsIsReported() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
             "com/example/vets/Nurse.kt", """
@@ -180,7 +180,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testAJoinTableWithOnlyANameEmitsEmptyColumnArrays() = runBlocking<Unit> {
+    fun testAJoinTableWithOnlyANameEmitsEmptyColumnArrays() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
             "com/example/vets/NamedOnly.java", """
@@ -212,7 +212,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testJoinColumnsWithoutNamesCarryNullNamesAndNoQuotedFlags() = runBlocking<Unit> {
+    fun testJoinColumnsWithoutNamesCarryNullNamesAndNoQuotedFlags() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
             "com/example/vets/UnnamedColumns.java", """
@@ -246,7 +246,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testJavaxJoinTableIsReportedLikeJakartaJoinTable() = runBlocking<Unit> {
+    fun testJavaxJoinTableIsReportedLikeJakartaJoinTable() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/vets/LegacySpecialty.java", """
             package com.example.vets;
@@ -279,7 +279,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testAJoinTableOnANonRelationshipFieldIsIgnored() = runBlocking<Unit> {
+    fun testAJoinTableOnANonRelationshipFieldIsIgnored() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/vets/StrayJoinTable.java", """
             package com.example.vets;
@@ -305,7 +305,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertFalse("A non-relationship @JoinTable must be ignored, got $value", value.has("joinTable"))
     }
 
-    fun testAnInverseManyToManyWithoutJoinTableReportsOnlyMappedBy() = runBlocking<Unit> {
+    fun testAnInverseManyToManyWithoutJoinTableReportsOnlyMappedBy() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/vets/Specialty.java", """
             package com.example.vets;
@@ -332,7 +332,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertFalse("The inverse side declares no join table, got $vets", vets.has("joinTable"))
     }
 
-    fun testAnInverseSideWithAJoinTableReportsBothDeclarations() = runBlocking<Unit> {
+    fun testAnInverseSideWithAJoinTableReportsBothDeclarations() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.addFileToProject(
             "com/example/vets/Specialty.java", """
             package com.example.vets;
@@ -364,7 +364,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testAnOwningManyToManyWithoutJoinTableInventsNoDefaultName() = runBlocking<Unit> {
+    fun testAnOwningManyToManyWithoutJoinTableInventsNoDefaultName() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
         myFixture.addFileToProject(
             "com/example/vets/Intern.java", """
@@ -391,7 +391,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertFalse("A default join table name must not be guessed, got $specialties", specialties.has("joinTable"))
     }
 
-    fun testAnOrdinaryColumnKeepsExactlyItsKeys() = runBlocking<Unit> {
+    fun testAnOrdinaryColumnKeepsExactlyItsKeys() = runBlockingReleasingWriteIntent<Unit> {
         addSpecialtyEntity()
 
         val name = field(fieldsOf("com.example.vets.Specialty"), "name")
@@ -402,7 +402,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testJavaOneToManyOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+    fun testJavaOneToManyOmitsNullableWithoutAnOwnerColumn() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@OneToMany(mappedBy = \"owner\") private Set<Pet> pets;")
 
         val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
@@ -410,7 +410,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pets)
     }
 
-    fun testKotlinOneToManyOmitsNullableForANonNullCollection() = runBlocking<Unit> {
+    fun testKotlinOneToManyOmitsNullableForANonNullCollection() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinOwner("@field:OneToMany(mappedBy = \"owner\") val pets: MutableSet<Pet> = mutableSetOf()")
 
         val pets = relationshipField("com.example.mapping.Owner", "pets", "ONE_TO_MANY")
@@ -418,7 +418,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pets)
     }
 
-    fun testJavaManyToManyOmitsNullableForAJoinTable() = runBlocking<Unit> {
+    fun testJavaManyToManyOmitsNullableForAJoinTable() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@ManyToMany @JoinTable(name = \"owner_pets\") private Set<Pet> pets;")
 
         val pets = relationshipField("com.example.mapping.Owner", "pets", "MANY_TO_MANY")
@@ -426,7 +426,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pets)
     }
 
-    fun testKotlinManyToManyOmitsNullableForAJoinTable() = runBlocking<Unit> {
+    fun testKotlinManyToManyOmitsNullableForAJoinTable() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinOwner("@field:ManyToMany @field:JoinTable(name = \"owner_pets\") val pets: MutableSet<Pet> = mutableSetOf()")
 
         val pets = relationshipField("com.example.mapping.Owner", "pets", "MANY_TO_MANY")
@@ -434,7 +434,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pets)
     }
 
-    fun testElementCollectionOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+    fun testElementCollectionOmitsNullableWithoutAnOwnerColumn() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@ElementCollection private Set<String> tags;")
 
         val tags = field(fieldsOf("com.example.mapping.Owner"), "tags")
@@ -443,7 +443,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(tags)
     }
 
-    fun testInverseOneToOneOmitsNullableWithoutAnOwnerColumn() = runBlocking<Unit> {
+    fun testInverseOneToOneOmitsNullableWithoutAnOwnerColumn() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@OneToOne(mappedBy = \"profile\") private Pet pet;")
 
         val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
@@ -451,19 +451,19 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pet)
     }
 
-    fun testManyToOneKeepsNullableForAnOptionalForeignKey() = runBlocking<Unit> {
+    fun testManyToOneKeepsNullableForAnOptionalForeignKey() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@ManyToOne private Pet pet;")
 
         assertOwnerColumnNullable(relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE"), true)
     }
 
-    fun testManyToOneKeepsNullableForAMandatoryForeignKey() = runBlocking<Unit> {
+    fun testManyToOneKeepsNullableForAMandatoryForeignKey() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@ManyToOne(optional = false) private Pet pet;")
 
         assertOwnerColumnNullable(relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE"), false)
     }
 
-    fun testManyToOneKeepsNullableForANotNullJoinColumn() = runBlocking<Unit> {
+    fun testManyToOneKeepsNullableForANotNullJoinColumn() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@ManyToOne @JoinColumn(name = \"pet_id\", nullable = false) private Pet pet;")
 
         val pet = relationshipField("com.example.mapping.Owner", "pet", "MANY_TO_ONE")
@@ -471,7 +471,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertOwnerColumnNullable(pet, false)
     }
 
-    fun testOwningOneToOneKeepsNullableForItsJoinColumn() = runBlocking<Unit> {
+    fun testOwningOneToOneKeepsNullableForItsJoinColumn() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@OneToOne @JoinColumn(name = \"pet_id\", nullable = false) private Pet pet;")
 
         val pet = relationshipField("com.example.mapping.Owner", "pet", "ONE_TO_ONE")
@@ -480,7 +480,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertOwnerColumnNullable(pet, false)
     }
 
-    fun testBasicPrimitiveAndWrapperKeepTheirNullableKeys() = runBlocking<Unit> {
+    fun testBasicPrimitiveAndWrapperKeepTheirNullableKeys() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("private int count; private Integer optionalCount;")
 
         val fields = fieldsOf("com.example.mapping.Owner")
@@ -494,7 +494,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertOwnerColumnNullable(optionalCount, true)
     }
 
-    fun testJavaInverseManyToManyOmitsNullable() = runBlocking<Unit> {
+    fun testJavaInverseManyToManyOmitsNullable() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@ManyToMany(mappedBy = \"owners\") private Set<Pet> pets;")
         assertMappingAnnotation("pets", "jakarta.persistence.ManyToMany")
 
@@ -503,7 +503,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pets)
     }
 
-    fun testKotlinInverseOneToOneOmitsNullable() = runBlocking<Unit> {
+    fun testKotlinInverseOneToOneOmitsNullable() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinOwner("@field:OneToOne(mappedBy = \"profile\") var pet: Pet? = null")
         assertMappingAnnotation("pet", "jakarta.persistence.OneToOne")
 
@@ -512,7 +512,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pet)
     }
 
-    fun testKotlinElementCollectionOmitsNullable() = runBlocking<Unit> {
+    fun testKotlinElementCollectionOmitsNullable() = runBlockingReleasingWriteIntent<Unit> {
         addKotlinOwner("@field:ElementCollection val tags: MutableSet<String> = mutableSetOf()")
         assertMappingAnnotation("tags", "jakarta.persistence.ElementCollection")
 
@@ -522,7 +522,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(tags)
     }
 
-    fun testJavaxOneToManyOmitsNullable() = runBlocking<Unit> {
+    fun testJavaxOneToManyOmitsNullable() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@javax.persistence.OneToMany(mappedBy = \"owner\") private Set<Pet> pets;")
         assertMappingAnnotation("pets", "javax.persistence.OneToMany")
 
@@ -531,7 +531,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pets)
     }
 
-    fun testJavaxElementCollectionOmitsNullable() = runBlocking<Unit> {
+    fun testJavaxElementCollectionOmitsNullable() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@javax.persistence.ElementCollection private Set<String> tags;")
         assertMappingAnnotation("tags", "javax.persistence.ElementCollection")
 
@@ -541,7 +541,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(tags)
     }
 
-    fun testUnidirectionalOneToManyOmitsNullableForAChildTableForeignKey() = runBlocking<Unit> {
+    fun testUnidirectionalOneToManyOmitsNullableForAChildTableForeignKey() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@OneToMany @JoinColumn(name = \"owner_id\") private Set<Pet> pets;")
         assertMappingAnnotation("pets", "jakarta.persistence.JoinColumn")
 
@@ -551,7 +551,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertNoOwnerColumnNullable(pets)
     }
 
-    fun testEmbeddedFieldKeepsNullableKey() = runBlocking<Unit> {
+    fun testEmbeddedFieldKeepsNullableKey() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@Embedded private OwnerKey details;")
         assertMappingAnnotation("details", "jakarta.persistence.Embedded")
 
@@ -561,7 +561,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertTrue("Embedded fields must keep nullable, got $details", details.has("nullable"))
     }
 
-    fun testEmbeddedIdFieldKeepsNullableKey() = runBlocking<Unit> {
+    fun testEmbeddedIdFieldKeepsNullableKey() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@EmbeddedId private OwnerKey key;", idDeclaration = "")
         assertMappingAnnotation("key", "jakarta.persistence.EmbeddedId")
 
@@ -570,7 +570,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertTrue("Embedded id fields must keep nullable, got $key", key.has("nullable"))
     }
 
-    fun testOwningOneToOneMapsIdKeepsNullableKey() = runBlocking<Unit> {
+    fun testOwningOneToOneMapsIdKeepsNullableKey() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@OneToOne @MapsId @JoinColumn(name = \"id\") private Pet pet;")
         assertMappingAnnotation("pet", "jakarta.persistence.MapsId")
 
@@ -580,7 +580,7 @@ class SpringDataEntityJoinTableTest : ExplytJavaLightTestCase() {
         assertTrue("MapsId fields must keep nullable, got $pet", pet.has("nullable"))
     }
 
-    fun testOwningOneToOnePrimaryKeyJoinColumnKeepsNullableKey() = runBlocking<Unit> {
+    fun testOwningOneToOnePrimaryKeyJoinColumnKeepsNullableKey() = runBlockingReleasingWriteIntent<Unit> {
         addJavaOwner("@OneToOne @PrimaryKeyJoinColumn private Pet pet;")
         assertMappingAnnotation("pet", "jakarta.persistence.PrimaryKeyJoinColumn")
 

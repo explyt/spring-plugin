@@ -7,13 +7,13 @@ package com.explyt.spring.ai.mcp
 
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.psi.CommonClassNames
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 
 /**
  * How `explyt_find_spring_endpoint` and `explyt_get_spring_endpoint_contract` read a URL taken from a running
@@ -43,7 +43,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * A URL copied from a browser or a log line resolves as the path the application serves: no route declares a
      * scheme, a host, a query or a fragment.
      */
-    fun testDeployedUrlResolvesAsItsRequestPath() = runBlocking<Unit> {
+    fun testDeployedUrlResolvesAsItsRequestPath() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = find("https://example.com:8443/api/demo/items/42?expand=true#details")
@@ -57,7 +57,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * no route declares it. A URL carrying one used to answer "no such route" - an invitation to write a duplicate
      * of an endpoint that exists.
      */
-    fun testUrlUnderAContextPathResolvesAndReportsThePrefix() = runBlocking<Unit> {
+    fun testUrlUnderAContextPathResolvesAndReportsThePrefix() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = find("https://example.com/t/api/demo/items/42?window=24h", httpMethod = "GET")
@@ -67,7 +67,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
         assertEquals("getItem", root["endpoints"][0]["methodName"].asText())
     }
 
-    fun testPrefixOfSeveralSegmentsIsDroppedWhole() = runBlocking<Unit> {
+    fun testPrefixOfSeveralSegmentsIsDroppedWhole() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = find("/gateway/t/api/routes/export")
@@ -81,7 +81,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
     }
 
     /** A contract is looked up the same way, so a URL from a failing request can be inspected as it was sent. */
-    fun testContractOfAUrlUnderAContextPath() = runBlocking<Unit> {
+    fun testContractOfAUrlUnderAContextPath() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = mapper.readTree(
@@ -96,7 +96,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * A route that does not exist yet under a context path is still answered with its neighbourhood: every route
      * opens after the prefix, so read as written the URL shares nothing with any of them.
      */
-    fun testMissUnderAContextPathListsTheNearestRoutes() = runBlocking<Unit> {
+    fun testMissUnderAContextPathListsTheNearestRoutes() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = find("https://example.com/t/api/routes/export/preview")
@@ -113,7 +113,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * caller who typed a fragment - but here the tool cut the fragment out itself, and a full URL naming no route is
      * answered with its neighbourhood instead.
      */
-    fun testDroppedPrefixDoesNotTurnAFragmentIntoAMatch() = runBlocking<Unit> {
+    fun testDroppedPrefixDoesNotTurnAFragmentIntoAMatch() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = find("/t/api/demo")
@@ -131,7 +131,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * The shared path of a miss is spelled as the routes declare it. The URL carries a value where the route has a
      * `{template}`, and echoing the value would read as if a route with that literal segment existed.
      */
-    fun testSharedPrefixOfAMissKeepsTheRouteTemplate() = runBlocking<Unit> {
+    fun testSharedPrefixOfAMissKeepsTheRouteTemplate() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
 
         val root = find("https://example.com/t/api/demo/items/42/history")
@@ -146,7 +146,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * prefix it proves nothing about which route was requested: `/t/acme/reports` is not `/{tenant}/reports`
      * served under `/t`. Read as written, the template route still answers.
      */
-    fun testTemplateRouteIsNotMatchedUnderAnAssumedPrefix() = runBlocking<Unit> {
+    fun testTemplateRouteIsNotMatchedUnderAnAssumedPrefix() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject(
             "com/example/app/web/TenantController.java", """
@@ -178,7 +178,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * A path settled for another verb is an answer about that URL: dropping one more segment to satisfy the method
      * filter would report a route the URL does not address.
      */
-    fun testMethodFilterDoesNotPushTheLookupUnderAPrefix() = runBlocking<Unit> {
+    fun testMethodFilterDoesNotPushTheLookupUnderAPrefix() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject(
             "com/example/app/web/BulkController.java", """
@@ -210,7 +210,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * Spring binds a missing value to a parameter with a `defaultValue`, and to one it considers optional, instead
      * of rejecting the request. A client generated from `required: true` would make such a parameter mandatory.
      */
-    fun testJavaParameterWithADefaultOrOptionalTypeIsNotRequired() = runBlocking<Unit> {
+    fun testJavaParameterWithADefaultOrOptionalTypeIsNotRequired() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject(
             "com/example/app/web/WindowController.java", """
@@ -253,7 +253,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
     }
 
     /** Kotlin states optionality in the signature: a nullable type or a default value. */
-    fun testKotlinNullableOrDefaultedParameterIsNotRequired() = runBlocking<Unit> {
+    fun testKotlinNullableOrDefaultedParameterIsNotRequired() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         addKotlinActivityController()
 
@@ -271,7 +271,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * text, so its start is the first line of the comment - above the annotations and the signature, and not the
      * line `explyt_trace_spring_call_chain` names for the method.
      */
-    fun testEndpointLineIsTheDeclarationLineRatherThanItsDocumentation() = runBlocking<Unit> {
+    fun testEndpointLineIsTheDeclarationLineRatherThanItsDocumentation() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         val source = addKotlinActivityController()
 
@@ -281,7 +281,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
         assertEquals(expectedLine, endpoint["line"].asInt())
     }
 
-    fun testJavaEndpointLineSkipsItsJavadocAndAnnotations() = runBlocking<Unit> {
+    fun testJavaEndpointLineSkipsItsJavadocAndAnnotations() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         val source = """
             package com.example.app.web;
@@ -313,7 +313,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * the return type `Object`. Spring supplies the continuation and answers with the declared type, so reporting the
      * compiled shape shows a request argument no client sends and a response nobody can generate a client for.
      */
-    fun testSuspendHandlerIsReportedWithItsDeclaredSignature() = runBlocking<Unit> {
+    fun testSuspendHandlerIsReportedWithItsDeclaredSignature() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         addSuspendController()
         val compiled = suspendHandler("find")
@@ -345,7 +345,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
     }
 
     /** A `suspend` handler declared to return `Unit` answers with no body, like a non-suspend Kotlin `Unit` function. */
-    fun testSuspendUnitHandlerReturnsVoid() = runBlocking<Unit> {
+    fun testSuspendUnitHandlerReturnsVoid() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         addSuspendController()
 
@@ -359,7 +359,7 @@ class SpringBootApplicationMcpToolsetEndpointLookupTest : ExplytJavaLightTestCas
      * Two handlers sharing a path and a verb are chosen by the request's `Content-Type`, not by their order: without
      * `consumes` on the records they read as one mapping declared twice.
      */
-    fun testHandlersSharingAPathCarryTheirConsumes() = runBlocking<Unit> {
+    fun testHandlersSharingAPathCarryTheirConsumes() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("springBootApp", "")
         myFixture.addFileToProject(
             "com/example/app/web/OrderImportController.kt", """

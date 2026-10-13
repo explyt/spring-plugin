@@ -8,12 +8,12 @@ package com.explyt.spring.ai.mcp.beans
 import com.explyt.spring.ai.mcp.SpringBootApplicationMcpToolset
 import com.explyt.spring.test.ExplytJavaLightTestCase
 import com.explyt.spring.test.TestLibrary
+import com.explyt.spring.test.util.runBlockingReleasingWriteIntent
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.intellij.mcpserver.McpExpectedError
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.runBlocking
 
 class BeanListingPageTest : ExplytJavaLightTestCase() {
 
@@ -38,7 +38,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         }
     }
 
-    fun testListingIsAnEnvelope() = runBlocking<Unit> {
+    fun testListingIsAnEnvelope() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
 
         val page = listing(DEMO_APPLICATION, "CONTROLLER")
@@ -51,7 +51,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals(0, page["offset"]?.asInt())
     }
 
-    fun testProjectBeanIsMarkedProject() = runBlocking<Unit> {
+    fun testProjectBeanIsMarkedProject() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
         assertResolves("com.example.app.service.DemoService")
 
@@ -62,7 +62,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals("PROJECT", service!!["origin"]?.asText())
     }
 
-    fun testLibraryTypedFactoryBeanIsProject() = runBlocking<Unit> {
+    fun testLibraryTypedFactoryBeanIsProject() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
         assertResolves("com.explyt.demo.TimeConfig")
 
@@ -77,7 +77,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testLibraryBeanIsMarkedLibrary() = runBlocking<Unit> {
+    fun testLibraryBeanIsMarkedLibrary() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
         assertTrue(
             "Precondition: $LIBRARY_CONTROLLER comes from a library jar",
@@ -92,7 +92,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals("LIBRARY", controller!!["origin"]?.asText())
     }
 
-    fun testOriginFilterProject() = runBlocking<Unit> {
+    fun testOriginFilterProject() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
         val everything = listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000)
         assertTrue(
@@ -116,7 +116,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertFalse("No row lacks an origin here, so nothing is counted as unknown: $page", page.has("unknownOriginCount"))
     }
 
-    fun testUnknownOriginIsRejectedWithTheValidValues() = runBlocking<Unit> {
+    fun testUnknownOriginIsRejectedWithTheValidValues() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
 
         val error = rejected { listingText(DEMO_APPLICATION, "CONTROLLER", origin = "MINE") }
@@ -124,7 +124,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals("Unknown origin 'MINE'. Valid values: PROJECT, LIBRARY.", error)
     }
 
-    fun testPagingContinuation() = runBlocking<Unit> {
+    fun testPagingContinuation() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
         val unpaged = listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000)
         val total = unpaged["totalCount"]?.asInt() ?: -1
@@ -153,7 +153,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals(rows(unpaged).map(::rowKey), keys)
     }
 
-    fun testRevisionChangesWithOrigin() = runBlocking<Unit> {
+    fun testRevisionChangesWithOrigin() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
 
         val all = listing(DEMO_APPLICATION, "CONTROLLER")
@@ -167,7 +167,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         )
     }
 
-    fun testStaleRevisionIsResultChanged() = runBlocking<Unit> {
+    fun testStaleRevisionIsResultChanged() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
 
         val page = listing(DEMO_APPLICATION, "CONTROLLER", offset = 1, limit = 1, expectedRevision = "stale")
@@ -176,7 +176,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals("RESULT_CHANGED", page["error"]?.get("code")?.asText())
     }
 
-    fun testOrderProjectFirst() = runBlocking<Unit> {
+    fun testOrderProjectFirst() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
 
         val beans = rows(listing(DEMO_APPLICATION, "CONTROLLER", limit = 50, maxChars = 16000))
@@ -195,7 +195,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertEquals(expected.map(::rowKey), beans.map(::rowKey))
     }
 
-    fun testTheDefaultPageFitsTheClientBudget() = runBlocking<Unit> {
+    fun testTheDefaultPageFitsTheClientBudget() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
 
         val json = toolset.applicationBeans(
@@ -220,7 +220,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
     }
 
 
-    fun testUnknownOriginRowsAreCountedAcrossFilteredPages() = runBlocking<Unit> {
+    fun testUnknownOriginRowsAreCountedAcrossFilteredPages() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
         val application = JavaPsiFacade.getInstance(project)
             .findClass(BEAN_QUERY_APPLICATION, GlobalSearchScope.projectScope(project))!!
@@ -256,7 +256,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertTrue("Terminal nextOffset is present as JSON null: $second", second["nextOffset"]?.isNull == true)
     }
 
-    fun testLibraryOriginFilter() = runBlocking<Unit> {
+    fun testLibraryOriginFilter() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
         val page = listing(DEMO_APPLICATION, "CONTROLLER", origin = "LIBRARY")
         val beans = rows(page)
@@ -274,7 +274,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertFalse("listed inactive library rows are not counted again: $page", page.has("inactiveLibraryCount"))
     }
 
-    fun testOffsetPastEndIsTerminal() = runBlocking<Unit> {
+    fun testOffsetPastEndIsTerminal() = runBlockingReleasingWriteIntent<Unit> {
         copyDemoApplication()
         val first = listing(DEMO_APPLICATION, "CONTROLLER")
         val offset = first["totalCount"].asInt() + 1
@@ -287,7 +287,7 @@ class BeanListingPageTest : ExplytJavaLightTestCase() {
         assertTrue("Terminal nextOffset is present as JSON null: $page", page["nextOffset"]?.isNull == true)
     }
 
-    fun testUnknownOriginRowsSortLast() = runBlocking<Unit> {
+    fun testUnknownOriginRowsSortLast() = runBlockingReleasingWriteIntent<Unit> {
         myFixture.copyDirectoryToProject("beanQuery", "")
         val application = JavaPsiFacade.getInstance(project)
             .findClass(BEAN_QUERY_APPLICATION, GlobalSearchScope.projectScope(project))!!
