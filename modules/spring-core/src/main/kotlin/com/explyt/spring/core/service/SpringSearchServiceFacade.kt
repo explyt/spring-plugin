@@ -167,7 +167,7 @@ class SpringSearchServiceFacade(private val project: Project) {
         val owners = InjectionPointOwners.of(beanClasses.asSequence())
         val componentBeans = if (isNative || isExternalProjectExist(project))
             nativeSearchService.getBeanPsiClassesAnnotatedByComponent()
-        else springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+        else springSearchService.getInjectionPointComponentBeans(module)
         val componentClasses = componentBeans.mapTo(HashSet()) { it.psiClass }
 
         val allFieldsWithAutowired = owners.asSequence()

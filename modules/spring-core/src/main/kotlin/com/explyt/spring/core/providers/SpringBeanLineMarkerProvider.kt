@@ -307,7 +307,7 @@ class SpringBeanLineMarkerProvider : RelatedItemLineMarkerProvider() {
 
             val beanClasses = allBeans.mapTo(HashSet()) { it.psiClass }
             val owners = InjectionPointOwners.of(beanClasses.asSequence())
-            val componentClasses = springSearchService.getBeanPsiClassesAnnotatedByComponent(module)
+            val componentClasses = springSearchService.getInjectionPointComponentBeans(module)
                 .mapTo(HashSet()) { it.psiClass }
 
             val allFieldsWithAutowired = owners.asSequence()
