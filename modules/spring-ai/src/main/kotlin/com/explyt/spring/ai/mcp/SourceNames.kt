@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -16,8 +17,7 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 internal object SourceNames {
 
     fun shortNameOf(method: PsiMethod): String {
-        val declaration = kotlinOwnerOf(method)
-        val owner = if (declaration is KtObjectDeclaration && declaration.isCompanion()) {
+        val owner = if (isCompanionMember(method)) {
             sourceOwnerOf(method)?.name ?: method.containingClass?.name ?: "?"
         } else {
             method.containingClass?.name ?: "?"
@@ -32,6 +32,18 @@ internal object SourceNames {
             ?: return null
         return "$owner.${sourceNameOf(method)}"
     }
+
+    fun qualifiedOwnerNameOf(method: PsiMethod): String? {
+        val containingClass = method.containingClass ?: return null
+        if (method.hasModifierProperty(PsiModifier.STATIC)) return containingClass.qualifiedName
+        if (isCompanionMember(method)) {
+            return sourceOwnerOf(method)?.fqName?.asString() ?: containingClass.qualifiedName
+        }
+        return containingClass.qualifiedName
+    }
+
+    private fun isCompanionMember(method: PsiMethod): Boolean =
+        (kotlinOwnerOf(method) as? KtObjectDeclaration)?.isCompanion() == true
 
     private fun sourceOwnerOf(method: PsiMethod): KtClassOrObject? {
         val declaration = kotlinOwnerOf(method) ?: return null
