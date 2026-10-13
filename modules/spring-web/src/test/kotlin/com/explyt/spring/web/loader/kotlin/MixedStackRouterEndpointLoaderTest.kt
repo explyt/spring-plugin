@@ -15,6 +15,7 @@ import com.explyt.spring.web.loader.SpringWebMvcFnEndpointsLoader
 import com.explyt.spring.web.SpringWebClasses
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.toUElementOfType
 
@@ -205,6 +206,43 @@ class MixedStackRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         assertEquals(2, pathRoute.valueArgumentCount)
         assertEquals(2, method.parameterList.parametersCount)
         assertEquals("java.lang.String", method.parameterList.parameters.first().type.canonicalText)
+        assertBothLoadersAreApplicable()
+
+        assertEquals(
+            listOf(SERVLET_ROUTE to "GET", "/x" to "", "/y" to "GET"),
+            endpointsOfType(EndpointType.SPRING_MVC)
+        )
+        assertEquals(listOf(REACTIVE_ROUTE to "GET"), endpointsOfType(EndpointType.SPRING_WEBFLUX))
+    }
+
+    fun testServletRouterStringRouteIsListedForAnyMethod() {
+        val file = myFixture.addFileToProject(
+            "StringRouteServletRouterConfig.kt",
+            """
+            import org.springframework.context.annotation.Bean
+            import org.springframework.context.annotation.Configuration
+            import org.springframework.web.servlet.function.RouterFunction
+            import org.springframework.web.servlet.function.ServerResponse
+            import org.springframework.web.servlet.function.router
+
+            @Configuration
+            class StringRouteServletRouterConfig {
+                @Bean
+                fun routes(handler: ServletUserHandler): RouterFunction<ServerResponse> = router {
+                    "/x" { handler.list(it) }
+                    GET("/y", handler::list)
+                }
+            }
+            """.trimIndent()
+        )
+        val stringRoute = PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+            .single { it.calleeExpression is KtStringTemplateExpression }
+            .toUElementOfType<UCallExpression>()!!
+        val method = stringRoute.resolve()!!
+        assertEquals("org.springframework.web.servlet.function.RouterFunctionDsl", method.containingClass?.qualifiedName)
+        assertEquals("invoke", method.name)
+        assertEquals("void", method.returnType?.canonicalText)
+        assertEquals("java.lang.String", stringRoute.receiverType?.canonicalText)
         assertBothLoadersAreApplicable()
 
         assertEquals(

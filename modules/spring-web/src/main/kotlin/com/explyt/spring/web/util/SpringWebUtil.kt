@@ -24,6 +24,7 @@ import com.explyt.spring.web.providers.JaxRsRunLineMarkerProvider.Companion.VALU
 import com.explyt.spring.web.references.contributors.webClient.EndpointResult
 import com.explyt.spring.web.route.RoutePredicates
 import com.explyt.spring.web.route.RoutePrefix
+import com.explyt.spring.web.route.RouterDslRoutes
 import com.explyt.util.ExplytAnnotationUtil.getBooleanValue
 import com.explyt.util.ExplytAnnotationUtil.getStringValue
 import com.explyt.util.ExplytKotlinUtil.mapToList
@@ -665,7 +666,7 @@ object SpringWebUtil {
         if (RoutePredicates.returnsRequestPredicate(callExpression)) return null
         if (callExpression.methodName == SpringWebClasses.ROUTER_DSL_GENERIC_METHOD) return listOf("")
 
-        val uriArgument = callExpression.valueArguments.firstOrNull() ?: return null
+        val uriArgument = RouterDslRoutes.uriExpressionOf(callExpression) ?: return null
         return RoutePathResolver.resolveUriValues(uriArgument).takeIf { it.isNotEmpty() }
     }
 
