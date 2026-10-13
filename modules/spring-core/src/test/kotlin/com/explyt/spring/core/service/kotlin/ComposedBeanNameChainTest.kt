@@ -207,6 +207,21 @@ class ComposedBeanNameChainTest : ExplytKotlinLightTestCase() {
         listOf("x"),
     )
 
+    fun testNearestMetaChainWinsOverEarlierDeclaredDeeperChain() = assertBeanNames(
+        """
+        @Bean("deep")
+        annotation class DeepBean
+        @DeepBean
+        annotation class MiddleBean
+        @MiddleBean
+        @Bean("near")
+        annotation class MyBean
+        """,
+        "@MyBean",
+        mapOf(("beanname.MyBean" to "value") to emptyList()),
+        listOf("near"),
+    )
+
     private fun assertBeanNames(
         declarations: String,
         usage: String,

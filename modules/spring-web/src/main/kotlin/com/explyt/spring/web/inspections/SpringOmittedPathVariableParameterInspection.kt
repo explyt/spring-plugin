@@ -99,7 +99,7 @@ class SpringOmittedPathVariableParameterInspection : SpringBaseUastLocalInspecti
         uAnnotated ?: return emptyList()
         val mahRequestMapping = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, REQUEST_MAPPING)
-        val urlPaths = mahRequestMapping.getAnnotationValues(uAnnotated, setOf("value", "path"))
+        val urlPaths = mahRequestMapping.getDeclaredAnnotationValues(uAnnotated, setOf("value", "path"))
 
         val urlPathParams = mutableListOf<RefInfo>()
         for (memberValue in urlPaths) {

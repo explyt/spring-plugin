@@ -37,7 +37,7 @@ class PathRegexpInjector : MultiHostInjector {
 
         val mahRequestMapping = SpringSearchService.getInstance(module.project)
             .getMetaAnnotations(module, REQUEST_MAPPING)
-        val urlPaths = mahRequestMapping.getAnnotationMemberValues(uElement, setOf("value", "path"))
+        val urlPaths = mahRequestMapping.getDeclaredAnnotationMemberValues(uElement, setOf("value", "path"))
         for (memberValue in urlPaths) {
             memberValue.evaluateString() ?: continue
             val valueSourcePsi = memberValue.sourcePsi ?: continue
