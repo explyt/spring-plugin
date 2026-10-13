@@ -261,6 +261,68 @@ class BoundedBeanResponseWriterTest {
         )
     }
 
+    @Test
+    fun `the inactive sample takes at most half the budget even when it fits beside the first candidate`() {
+        val active = content(ACTIVE_COUNT)
+        val sampleFreeLength = lengthOf(sampledPageOf(active, candidates = 1, sample = emptyList(), flagged = true))
+        val sample = List(MAX_INACTIVE_SAMPLE) { inactiveCandidate(it, sampleFreeLength / 2) }
+        val twoEntrySample = sample.take(2)
+        val content = active.copy(inactiveCount = sample.size, inactiveAt = sample::get)
+        val budget = lengthOf(sampledPageOf(active, candidates = 1, sample = sample, flagged = true))
+        val halfBudget = budget / 2
+        assertTrue("Precondition: $budget is a valid budget", budget in BoundedPageWriter.MIN_CHARS..BoundedPageWriter.MAX_CHARS)
+        assertTrue("Precondition: $budget holds the sample-free page of $sampleFreeLength", budget >= sampleFreeLength)
+        assertTrue(
+            "Precondition: the full sample of ${lengthOf(sample)} chars is longer than half of $budget",
+            lengthOf(sample) > halfBudget
+        )
+        assertTrue(
+            "Precondition: the full sample leaves no room for a second active candidate within $budget",
+            lengthOf(sampledPageOf(active, candidates = 2, sample = sample, flagged = false)) > budget
+        )
+        assertTrue(
+            "Precondition: a two-entry sample of ${lengthOf(twoEntrySample)} chars fits half of $budget",
+            lengthOf(twoEntrySample) <= halfBudget
+        )
+        assertTrue(
+            "Precondition: two active candidates fit beside a two-entry sample within $budget",
+            lengthOf(sampledPageOf(active, candidates = 2, sample = twoEntrySample, flagged = true)) <= budget
+        )
+
+        val json = BoundedBeanResponseWriter().write(content, "r-fixed", BeanPageRequest(0, 5, budget, null))
+
+        val root = mapper.readTree(json)
+        assertEquals("answer was $json", "OK", root["status"].asText())
+        assertTrue("Serialized ${json.length} chars", json.length <= budget)
+        assertEquals("Precondition: inactive candidates exist, got $json", MAX_INACTIVE_SAMPLE, root["inactiveCount"]?.asInt())
+        val servedSampleLength = root[INACTIVE_CANDIDATES]?.let(::lengthOf) ?: 0
+        assertTrue(
+            "the sample of $servedSampleLength chars must take at most half of $budget, got $json",
+            servedSampleLength <= halfBudget
+        )
+        assertEquals("a capped sample is flagged, got $json", true, root["inactiveCandidatesTruncated"]?.asBoolean())
+        assertTrue("two active candidates fit beside a half-budget sample, got $json", root["candidates"].size() >= 2)
+    }
+
+    private fun sampledPageOf(
+        active: BeanResponseContent,
+        candidates: Int,
+        sample: List<ObjectNode>,
+        flagged: Boolean
+    ): ObjectNode {
+        val json = BoundedBeanResponseWriter()
+            .write(active, "r-fixed", BeanPageRequest(0, candidates, BoundedBeanResponseWriter.MAX_CHARS, null))
+        val page = mapper.readTree(json) as ObjectNode
+        assertEquals("Precondition: the sample-free page is served, got $json", "OK", page["status"].asText())
+        assertEquals("Precondition: the sample-free page holds $candidates candidates, got $json", candidates, page["candidates"].size())
+        page.put("inactiveCount", MAX_INACTIVE_SAMPLE)
+        if (sample.isNotEmpty()) page.putArray(INACTIVE_CANDIDATES).addAll(sample)
+        if (flagged) page.put("inactiveCandidatesTruncated", true)
+        return page
+    }
+
+    private fun lengthOf(value: Any): Int = mapper.writeValueAsString(value).length
+
     private class SampleGeometry(val content: BeanResponseContent, val sampleFreeLength: Int, val oneSampledLength: Int)
 
     private fun sampleGeometry(): SampleGeometry {
@@ -298,6 +360,7 @@ class BoundedBeanResponseWriterTest {
         const val ACTIVE_COUNT = 3
         const val INACTIVE_COUNT = 4
         const val WIDE_SEGMENTS = 20
+        const val MAX_INACTIVE_SAMPLE = 3
         const val INACTIVE_CANDIDATES = "inactiveCandidates"
         val BUDGET_HINT = Regex("""at least (\d+)""")
     }

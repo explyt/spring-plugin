@@ -597,12 +597,14 @@ class SpringBeanMcpConditionVerdictTest : ExplytJavaLightTestCase() {
         val served = sampled["candidates"].size()
         val displaced = baseline - served
         val shortest = unsampled["candidates"].minOf { mapper.writeValueAsString(it).length + 1 }
-        val measurement = "a sample of ${sample.size()} costing $sampleCost chars moved $displaced of $baseline active " +
-                "candidates to later pages (shortest candidate $shortest chars, page ${json.length} chars)"
+        val sampleLength = mapper.writeValueAsString(sample).length
+        val measurement = "a sample of ${sample.size()} ($sampleLength chars) costing $sampleCost chars moved $displaced of " +
+                "$baseline active candidates to later pages (shortest candidate $shortest chars, page ${json.length} " +
+                "chars, budget $MAX_DEFAULT_PAYLOAD)"
         println("#634 measurement: $measurement")
         assertTrue(measurement, served >= 1)
         assertTrue(measurement, sample.size() <= MAX_INACTIVE_SAMPLE)
-        assertTrue(measurement, displaced <= sampleCost / shortest + 1)
+        assertTrue(measurement, sampleLength <= MAX_DEFAULT_PAYLOAD / 2)
     }
 
     private fun envelopeLengthOf(page: JsonNode): Int =
