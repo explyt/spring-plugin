@@ -7,6 +7,7 @@ package com.explyt.spring.ai.mcp
 
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifier
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -31,6 +32,16 @@ internal object SourceNames {
             ?: method.containingClass?.qualifiedName
             ?: return null
         return "$owner.${sourceNameOf(method)}"
+    }
+
+    fun qualifiedOwnerNameOf(method: PsiMethod): String? {
+        val containingClass = method.containingClass ?: return null
+        if (method.hasModifierProperty(PsiModifier.STATIC)) return containingClass.qualifiedName
+        val sourceOwner = shortNameOf(method).substringBeforeLast('.')
+        if (sourceOwner != containingClass.name) {
+            return qualifiedNameOf(method)?.substringBeforeLast('.') ?: containingClass.qualifiedName
+        }
+        return containingClass.qualifiedName
     }
 
     private fun sourceOwnerOf(method: PsiMethod): KtClassOrObject? {
