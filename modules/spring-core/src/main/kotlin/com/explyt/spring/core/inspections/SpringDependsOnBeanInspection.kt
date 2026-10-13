@@ -52,7 +52,7 @@ class SpringDependsOnBeanInspection : SpringBaseUastLocalInspectionTool() {
         val metaHolder = SpringSearchService.getInstance(module.project).getMetaAnnotations(module, DEPENDS_ON)
         val uAnnotation = uMember.uAnnotations.firstOrNull { metaHolder.contains(it) } ?: return null
 
-        val annotationMemberValues = metaHolder.getAnnotationMemberValues(uAnnotation, setOf("value"))
+        val annotationMemberValues = metaHolder.getDeclaredAnnotationMemberValues(uAnnotation, setOf("value"))
 
         return annotationMemberValues.asSequence()
             .filter {

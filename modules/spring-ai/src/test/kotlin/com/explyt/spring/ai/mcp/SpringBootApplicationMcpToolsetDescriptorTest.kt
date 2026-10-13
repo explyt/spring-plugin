@@ -144,6 +144,28 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
         }
     }
 
+    /**
+     * An endpoint answer is as unbounded as the project is large, and a client cuts an answer it cannot hold
+     * silently: the endpoint tools take the budget and continuation arguments the bean, entity and trace tools take.
+     */
+    @Test
+    fun `endpoint tools document their budget and continuation`() {
+        for (toolName in ENDPOINT_TOOL_NAMES) {
+            val tool = toolNamed(toolName)
+            for (argument in PAGE_ARGUMENTS) {
+                val parameter = tool.parameters.singleOrNull { it.name == argument }
+                assertTrue("$toolName has no '$argument' argument", parameter != null)
+                assertTrue(
+                    "$toolName '$argument' is not described",
+                    parameter!!.findAnnotation<McpDescription>()?.description.orEmpty().isNotBlank()
+                )
+            }
+            for (key in listOf("maxChars", "nextOffset", "expectedRevision", "revision")) {
+                assertTrue("$toolName description does not name '$key'", tool.toolDescription.contains("'$key'"))
+            }
+        }
+    }
+
     @Test
     fun `every description leads with the moment to call the tool`() {
         for (tool in tools) {
@@ -171,6 +193,7 @@ class SpringBootApplicationMcpToolsetDescriptorTest {
             "explyt_get_spring_endpoint_contract",
         )
         const val ALL_METHODS_FRAGMENT = "[\"ALL\"]"
+        val PAGE_ARGUMENTS = listOf("maxChars", "offset", "expectedRevision")
 
         val TOOL_NAME = Regex("""explyt_[a-z_]+""")
         const val LEAD_SENTENCES = 2
