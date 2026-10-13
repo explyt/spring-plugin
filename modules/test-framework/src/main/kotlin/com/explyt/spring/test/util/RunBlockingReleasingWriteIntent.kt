@@ -13,6 +13,7 @@ import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.application.impl.TestOnlyThreading
 import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.util.DebugAttachDetectorArgs
 import com.intellij.testFramework.common.timeoutRunBlocking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -41,7 +42,7 @@ private fun <T> runOnEdtReleasingWriteIntent(timeout: Duration, block: suspend C
             PlatformTestUtil.waitWithEventsDispatching(
                 { timeoutMessage(timeout, deferred) },
                 { deferred.isCompleted },
-                timeout.inWholeSeconds.toInt().coerceAtLeast(1),
+                if (DebugAttachDetectorArgs.isAttached()) Int.MAX_VALUE else timeout.inWholeSeconds.toInt().coerceAtLeast(1),
             )
         }
     } finally {
