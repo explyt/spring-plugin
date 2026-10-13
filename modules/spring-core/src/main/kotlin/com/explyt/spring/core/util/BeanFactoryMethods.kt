@@ -12,6 +12,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
+import com.intellij.psi.util.MethodSignatureUtil
 
 object BeanFactoryMethods {
     fun of(psiClass: PsiClass): Sequence<PsiMethod> {
@@ -37,4 +38,8 @@ object BeanFactoryMethods {
         visit(psiClass)
         return methods.asSequence()
     }
+
+    fun overrideIn(configuration: PsiClass, factory: PsiMethod): PsiMethod? =
+        MethodSignatureUtil.findMethodBySuperMethod(configuration, factory, true)
+            ?.takeUnless { factory.manager.areElementsEquivalent(it, factory) }
 }
