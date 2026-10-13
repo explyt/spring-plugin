@@ -56,7 +56,7 @@ class SpringBeanIncorrectAutowiringInspection : SpringBaseUastLocalInspectionToo
         if (arrayType != null) {
             val isArrayBeanExist = SpringSearchServiceFacade.getInstance(manager.project)
                 .searchArrayComponentPsiClassesByBeanMethods(module).asSequence()
-                .mapNotNull { (it.psiMember as? PsiMethod)?.returnType }
+                .mapNotNull { it.factoryMethod?.returnType }
                 .any { arrayType.isAssignableFrom(it) }
             if (isArrayBeanExist) return emptyArray()
         }

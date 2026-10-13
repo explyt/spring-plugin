@@ -44,6 +44,77 @@ class BeanFactoryMethodsTest : ExplytKotlinLightTestCase() {
         assertEquals("com.explyt.demo.Base", (beans.single().psiMember as PsiMethod).containingClass?.qualifiedName)
     }
 
+    fun testUnannotatedCovariantOverrideIsOneBeanTypedByOverride() {
+        configureCovariantOverride()
+        val beans = SpringSearchServiceFacade.getInstance(project).getAllActiveBeans(module)
+            .filter { it.name == "animal" }
+        assertEquals("Covariant override must stay one animal bean", 1, beans.size)
+        assertEquals(
+            "Spring resolves the factory on Child, so the bean is typed by the override",
+            "com.explyt.demo.Dog",
+            beans.single().psiClass.qualifiedName
+        )
+    }
+
+    fun testStaticSnapshotTypesCovariantOverrideByOverride() {
+        configureCovariantOverride()
+        val snapshot = SpringSearchServiceFacade.getInstance(project)
+            .getBeanSnapshot(psiClass("App"), BeanSourcePreference.STATIC)
+        assertEquals(BeanModelSource.STATIC, snapshot.selection.source)
+        val records = snapshot.records.filter { it.name == "animal" }
+        assertEquals("Static snapshot must contain one animal record", 1, records.size)
+        assertEquals("com.explyt.demo.Dog", records.single().typeName)
+    }
+
+    fun testCovariantOverrideAutowiresByOverrideType() {
+        configureCovariantOverride()
+        assertAutowiringHighlights("Dog", "dog")
+    }
+
+    fun testCovariantOverrideStillAutowiresBySuperclassType() {
+        configureCovariantOverride()
+        assertAutowiringHighlights("Animal", "animal")
+    }
+
+    private fun configureCovariantOverride() {
+        configure(
+            "override fun animal(): Dog = Dog()",
+            "open class Animal; class Dog : Animal(); open class Base { @Bean open fun animal(): Animal = Animal() }",
+            ": Base()"
+        )
+        val base = psiClass("Base").findMethodsByName("animal", false).single()
+        val child = psiClass("Child").findMethodsByName("animal", false).single()
+        assertTrue("Precondition: superclass factory is @Bean", base.hasAnnotation(SpringCoreClasses.BEAN))
+        assertEquals("com.explyt.demo.Animal", base.returnType?.canonicalText)
+        assertFalse("Precondition: override has no @Bean", child.hasAnnotation(SpringCoreClasses.BEAN))
+        assertEquals("Precondition: override narrows the return type", "com.explyt.demo.Dog", child.returnType?.canonicalText)
+        assertTrue("Precondition: Child overrides Base.animal", child.findSuperMethods().contains(base))
+        assertTrue("Precondition: Dog is an Animal", psiClass("Dog").isInheritor(psiClass("Animal"), false))
+    }
+
+    private fun assertAutowiringHighlights(type: String, field: String) {
+        myFixture.enableInspections(SpringBeanIncorrectAutowiringInspection::class.java)
+        myFixture.configureByText(
+            "Consumer.kt",
+            """
+            package com.explyt.demo
+            import org.springframework.stereotype.Component
+            import org.springframework.beans.factory.annotation.Autowired
+            @Component
+            class Consumer {
+                @Autowired lateinit var $field: $type
+            }
+            """.trimIndent()
+        )
+        val injection = psiClass("Consumer").findFieldByName(field, false)!!
+        assertTrue(
+            "Precondition: injection is @Autowired",
+            injection.hasAnnotation("org.springframework.beans.factory.annotation.Autowired")
+        )
+        assertEquals("com.explyt.demo.$type", injection.type.canonicalText)
+        myFixture.testHighlighting(true, false, false)
+    }
+
     fun testSameNameOverloadsAreOneActiveBean() {
         configure(
             "@Bean fun foo(): Foo = Foo()\n@Bean fun foo(dep: Dep): Foo = Foo()",
