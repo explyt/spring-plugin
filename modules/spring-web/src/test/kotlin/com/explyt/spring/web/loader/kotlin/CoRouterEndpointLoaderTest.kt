@@ -810,6 +810,65 @@ class CoRouterEndpointLoaderTest : ExplytKotlinLightTestCase() {
         }
     }
 
+    fun testStringNestPrefixIsJoinedWithASlashlessInnerPath() {
+        addRouterConfig(""""/a".nest { GET("b", handler::handle) }""")
+        assertCallsResolveTo("GET", CO_ROUTER_DSL, returnType = null, argumentCount = 2)
+        assertEquals(listOf("/a"), nestPrefixes(0))
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringNestPrefixWithATrailingSlashIsJoinedWithASlashedInnerPath() {
+        addRouterConfig(""""/a/".nest { GET("/b", handler::handle) }""")
+        assertCallsResolveTo("GET", CO_ROUTER_DSL, returnType = null, argumentCount = 2)
+        assertEquals(listOf("/a/"), nestPrefixes(0))
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringNestPrefixWithATrailingSlashIsJoinedWithASlashlessInnerPath() {
+        addRouterConfig(""""/a/".nest { GET("b", handler::handle) }""")
+        assertCallsResolveTo("GET", CO_ROUTER_DSL, returnType = null, argumentCount = 2)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testPathPredicateNestPrefixIsJoinedWithASlashlessInnerPath() {
+        addRouterConfig("""path("/a").nest { GET("b", handler::handle) }""")
+        assertPathPredicateCall(isNestReceiver = true)
+        assertEquals(listOf("/a/b" to "GET"), webFluxEndpoints())
+    }
+
+    fun testStringNestPrefixWithAnEmptyInnerPathServesThePrefix() {
+        addRouterConfig(""""/a".nest { GET("", handler::handle) }""")
+        assertCallsResolveTo("GET", CO_ROUTER_DSL, returnType = null, argumentCount = 2)
+        assertEquals(listOf("/a" to "GET"), webFluxEndpoints())
+    }
+
+    fun testPrefixAndPathCombinationsAboveTheCapAreNotListed() {
+        addCombinationRouterConfig(prefixCount = 11, pathCount = 10)
+        assertEquals(11, nestPrefixes(0)?.size)
+        assertEquals(emptyList<Pair<String, String>>(), webFluxEndpoints())
+    }
+
+    fun testPrefixAndPathCombinationsAtTheCapAreAllListed() {
+        addCombinationRouterConfig(prefixCount = 10, pathCount = 10)
+        assertEquals(10, nestPrefixes(0)?.size)
+        val expected = (1..10).flatMap { prefix -> (1..10).map { path -> "/p$prefix/r$path" to "GET" } }
+            .sortedBy { it.first + it.second }
+        assertEquals(expected, webFluxEndpoints())
+    }
+
+    private fun addCombinationRouterConfig(prefixCount: Int, pathCount: Int) {
+        addRouterConfig(
+            routes = """
+                PREFIXES.forEach { prefix -> prefix.nest { PATHS.forEach { uri -> GET(uri, handler::handle) } } }
+            """,
+            companionBody = """
+                val PREFIXES = listOf(${(1..prefixCount).joinToString { "\"/p$it\"" }})
+                val PATHS = listOf(${(1..pathCount).joinToString { "\"/r$it\"" }})
+            """
+        )
+        assertCallsResolveTo("GET", CO_ROUTER_DSL, returnType = null, argumentCount = 2)
+    }
+
     private fun assertValueArgumentNestHasNoUastMethodName(fileName: String = "GatewayProxyRouterConfig.kt") {
         val psiFile = myFixture.psiManager.findFile(myFixture.findFileInTempDir(fileName))!!
         val nest = PsiTreeUtil.findChildrenOfType(psiFile, KtCallExpression::class.java)

@@ -7,6 +7,7 @@ package com.explyt.spring.core.service.beans
 
 import com.explyt.spring.core.SpringCoreClasses
 import com.explyt.spring.core.JavaEeClasses
+import com.explyt.spring.core.util.InjectionConstructors
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
@@ -134,17 +135,8 @@ class SpringInjectionPointResolver(private val project: Project) {
         if (!isConstructor) return false
         val owner = containingClass ?: return false
         if (!owner.isComponentLike()) return false
-        if (owner.constructors.any { it != this && it.hasInjectionAnnotation() }) return false
-        return owner.sourceConstructorCount() == 1
+        return this in InjectionConstructors.of(owner) { it.hasInjectionAnnotation() }
     }
-
-    /**
-     * Kotlin publishes one light constructor per defaulted-parameter overload, all sharing a single
-     * `KtPrimaryConstructor`. Counting the light ones would read a class with a default value as having several
-     * constructors and refuse to answer about it, so the declarations behind them are what is counted.
-     */
-    private fun PsiClass.sourceConstructorCount(): Int =
-        constructors.mapTo(HashSet()) { it.navigationElement }.size
 
     private fun PsiClass.isComponentLike(): Boolean {
         val uClass = toUElementOfType<UClass>() ?: return false

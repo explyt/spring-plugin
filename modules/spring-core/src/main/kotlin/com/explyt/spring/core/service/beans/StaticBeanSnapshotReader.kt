@@ -116,7 +116,7 @@ class StaticBeanSnapshotReader(private val project: Project) {
 
     private fun declaredTypeOf(bean: PsiBean, factory: PsiMethod?): PsiType? = when (factory) {
         null -> JavaPsiFacade.getElementFactory(project).createType(bean.psiClass)
-        else -> factory.returnType
+        else -> bean.factoryMethod?.returnType
     }
 
     private fun declarationKey(bean: PsiBean): String =

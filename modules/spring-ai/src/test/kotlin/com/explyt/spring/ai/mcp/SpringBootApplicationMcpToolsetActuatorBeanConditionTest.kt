@@ -342,9 +342,7 @@ class SpringBootApplicationMcpToolsetActuatorBeanConditionTest : ExplytKotlinLig
         )["endpoints"].single { it["fullPath"].asText() == url }
 
     private suspend fun listActuator(compact: Boolean): List<JsonNode> =
-        mapper.readTree(
-            toolset.getHttpEndpoints(projectPath = projectPath(), endpointType = "ACTUATOR", compact = compact)
-        )["endpoints"].toList()
+        toolset.allListedEndpoints(projectPath(), endpointType = "ACTUATOR", compact = compact, mapper = mapper)
 
     private companion object {
         const val CONDITIONAL_ON_PROPERTY = "org.springframework.boot.autoconfigure.condition.ConditionalOnProperty"
