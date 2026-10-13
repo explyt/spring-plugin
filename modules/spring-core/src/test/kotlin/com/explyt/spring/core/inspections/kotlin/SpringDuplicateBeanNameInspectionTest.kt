@@ -40,6 +40,41 @@ private const val CONFIGURATION_WITHOUT_UNIQUE_METHODS = """
     }
 """
 
+private const val COMPOSED_CONFIGURATION = """
+    @Configuration
+    annotation class MyConfig
+
+    @MyConfig
+    open class Config {
+        @Bean("svc") fun a(): Any = Any()
+        @Bean("svc") fun b(): Any = Any()
+    }
+"""
+
+private const val COMPOSED_CONFIGURATION_WITHOUT_UNIQUE_METHODS = """
+    @Configuration(enforceUniqueMethods = false)
+    annotation class MyConfig
+
+    @MyConfig
+    open class Config {
+        @Bean("svc") fun a(): Any = Any()
+        @Bean("svc") fun b(): Any = Any()
+    }
+"""
+
+private fun aliasedComposedConfiguration(useSite: String) = """
+    @Configuration
+    annotation class MyConfig(
+        @get:AliasFor(annotation = Configuration::class, attribute = "enforceUniqueMethods") val unique: Boolean = false,
+    )
+
+    $useSite
+    open class Config {
+        @Bean("svc") fun a(): Any = Any()
+        @Bean("svc") fun b(): Any = Any()
+    }
+"""
+
 abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase() {
 
     protected abstract val springMajor: Int?
@@ -57,7 +92,8 @@ abstract class SpringDuplicateBeanNameKotlinTestCase : ExplytBaseLightTestCase()
     protected fun highlights(body: String): List<HighlightInfo> {
         myFixture.configureByText(
             "Config.kt",
-            "package demo\n\nimport org.springframework.context.annotation.Bean\n" +
+            "package demo\n\nimport org.springframework.core.annotation.AliasFor\n" +
+                    "import org.springframework.context.annotation.Bean\n" +
                     "import org.springframework.context.annotation.Configuration\n" +
                     "import org.springframework.context.annotation.Profile\n" +
                     "import org.springframework.stereotype.Component\n" +
@@ -327,18 +363,40 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
     override val libraries: Array<TestLibrary> = arrayOf(TestLibrary.springBootAutoConfigure_4_1_0)
     override val springMajor: Int = 7
 
+    fun testMissingOverridingPropertyKeepsTheProblemInFullConfiguration() {
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
+    }
+
     fun testDisallowedOverridingKeepsTheProblemInFullConfiguration() {
         allowBeanDefinitionOverriding("false")
 
-        assertProblem(highlights(FULL_CONFIGURATION).single(), anchor = "b", beanName = "svc", firstMethod = "a")
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
     }
 
     fun testAllowedOverridingKeepsTheProblemInFullConfiguration() {
         allowBeanDefinitionOverriding("true")
 
-        assertSingleProblem(
-            highlights(FULL_CONFIGURATION), HighlightSeverity.ERROR, anchor = "b", beanName = "svc", firstMethod = "a"
-        )
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testUnresolvableOverridingPropertyKeepsTheErrorInFullConfiguration() {
+        allowBeanDefinitionOverriding("${'$'}{OVERRIDING}")
+
+        assertSpring7Problem(highlights(FULL_CONFIGURATION))
+    }
+
+    fun testComposedConfigurationWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+        allowBeanDefinitionOverriding("true")
+
+        assertSpring7Problem(highlights(COMPOSED_CONFIGURATION))
+        assertEmpty(highlights(COMPOSED_CONFIGURATION_WITHOUT_UNIQUE_METHODS))
+    }
+
+    fun testComposedConfigurationAliasDefaultWithoutUniqueMethodEnforcementSuppressesTheProblem() {
+        allowBeanDefinitionOverriding("true")
+
+        assertSpring7Problem(highlights(aliasedComposedConfiguration("@MyConfig(unique = true)")))
+        assertEmpty(highlights(aliasedComposedConfiguration("@MyConfig")))
     }
 
     fun testDisallowedOverridingKeepsTheProblemInLiteClass() {
@@ -365,6 +423,14 @@ class SpringDuplicateBeanNameSpring7InspectionTest : SpringDuplicateBeanNameKotl
         allowBeanDefinitionOverriding("true")
 
         assertEmpty(highlights(CONFIGURATION_WITHOUT_UNIQUE_METHODS))
+    }
+
+    private fun assertSpring7Problem(problems: List<HighlightInfo>) {
+        assertSingleProblem(problems, HighlightSeverity.ERROR, anchor = "b", beanName = "svc", firstMethod = "a")
+        assertEquals(
+            SpringCoreBundle.message("explyt.spring.inspection.bean.name.duplicate.overriding.spring7", "svc", "a"),
+            problems.single().description
+        )
     }
 }
 
